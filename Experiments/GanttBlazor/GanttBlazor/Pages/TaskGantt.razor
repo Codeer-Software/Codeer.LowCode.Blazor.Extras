@@ -1,0 +1,209 @@
+﻿@using Microsoft.AspNetCore.Components.Web
+
+<svg width="@ChartWidth"
+     height="@ChartHeight"
+     style="border:1px solid #ccc;user-select:none;"
+     @onmousemove="OnMouseMove"
+     @onmouseup="EndDrag"
+     @onmouseleave="EndDrag">
+
+  <!-- ▽ 矢印マーカー定義 -->
+  <defs>
+    <marker id="arrow" markerWidth="6" markerHeight="6" refX="5" refY="3"
+            orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L6,3 L0,6 Z" fill="#888" />
+    </marker>
+  </defs>
+
+  <!-- ▽ 交互背景 -->
+  @for (int h = StartHour; h < EndHour; h++)
+  {
+    <rect x="@(LabelWidth + (h - StartHour) * HourWidth)"
+          y="@HeaderHeight"
+          width="@HourWidth"
+          height="@(Machines.Count * RowHeight)"
+          fill="@(h % 2 == 0 ? BgEven : BgOdd)" />
+  }
+
+  <!-- ▽ 機器ラベル -->
+  @for (int i = 0; i < Machines.Count; i++)
+  {
+    var y = HeaderHeight + i * RowHeight;
+    <line x1="0" y1="@y" x2="@ChartWidth" y2="@y" stroke="#ddd" />
+    <g><text x="5" y="@(y + RowHeight/2 + 5)" font-size="12">@Machines[i]</text></g>
+  }
+
+  <!-- ▽ 時間ヘッダー -->
+  @for (int h = StartHour; h <= EndHour; h++)
+  {
+    var x = LabelWidth + (h - StartHour) * HourWidth;
+    <line x1="@x" y1="0" x2="@x" y2="@ChartHeight" stroke="#ccc" />
+    <g><text x="@(x + 2)" y="14" font-size="12">@($"{h}:00")</text></g>
+  }
+
+  <!-- ▽ 依存線 -->
+  @foreach (var dep in Dependencies)
+  {
+    var from = Tasks.First(t => t.Id == dep.FromId);
+    var to = Tasks.First(t => t.Id == dep.ToId);
+
+    double x1 = TaskLeft(from) + TaskWidth(from);
+    double y1 = TaskTop(from) + TaskHeight / 2;
+    double x2 = TaskLeft(to);
+    double y2 = TaskTop(to) + TaskHeight / 2;
+
+    <line x1="@x1" y1="@y1" x2="@x2" y2="@y2"
+          stroke="#888" stroke-dasharray="4 2" marker-end="url(#arrow)" />
+  }
+
+  <!-- ▽ タスク本体 -->
+  @foreach (var t in Tasks)
+  {
+    double left = TaskLeft(t);
+    double top = TaskTop(t);
+    double width = TaskWidth(t);
+
+    <!-- 本体 -->
+    <rect class="task"
+          x="@left" y="@top"
+          width="@width" height="@TaskHeight"
+          rx="5" ry="5"
+          stroke="#333" stroke-width="1" fill="steelblue"
+          @onmousedown="e => StartDrag(e, t.Id, DragMode.Move)" />
+
+    <!-- 左ハンドル -->
+    <rect x="@left" y="@top" width="6" height="@TaskHeight"
+          fill="transparent" style="cursor:ew-resize"
+          @onmousedown="e => StartDrag(e, t.Id, DragMode.ResizeLeft)" />
+
+    <!-- 右ハンドル -->
+    <rect x="@(left + width - 6)" y="@top" width="6" height="@TaskHeight"
+          fill="transparent" style="cursor:ew-resize"
+          @onmousedown="e => StartDrag(e, t.Id, DragMode.ResizeRight)" />
+
+    <!-- ラベル（クリック透過） -->
+    <g>
+      <text pointer-events="none"
+            x="@(left + 5)"
+            y="@(top + TaskHeight/2 + 4)"
+            fill="white" font-size="12">@t.Name</text>
+    </g>
+  }
+</svg>
+
+<style>
+  .task {
+    cursor: grab;
+  }
+
+  text {
+    pointer-events: none;
+  }
+</style>
+
+@code {
+  /* ==== 定数 ==== */
+  const int StartHour = 12, EndHour = 18, HourWidth = 100, SnapMinutes = 10;
+  const int RowHeight = 50, HeaderHeight = 20, LabelWidth = 80, PadY = 10;
+  const int TaskHeight = RowHeight - PadY * 2;
+  const string BgEven = "#f5f5f5", BgOdd = "#ffffff";
+  double StepPx => HourWidth * SnapMinutes / 60.0;
+  int ChartWidth => LabelWidth + (EndHour - StartHour) * HourWidth;
+  int ChartHeight => HeaderHeight + Machines.Count * RowHeight;
+
+  /* ==== データ ==== */
+  record TaskItem(int Id, double Start, double End, int Machine, string Name);
+  record Dependency(int FromId, int ToId);
+
+  List<string> Machines = new() { "機器A", "機器B", "機器C" };
+
+  List<TaskItem> Tasks = new()
+    {
+        new TaskItem(1, 13.0, 14.5, 0, "タスク1"),
+        new TaskItem(2, 15.0, 16.5, 1, "タスク2")
+    };
+
+  List<Dependency> Dependencies = new()
+    {
+        new Dependency(1, 2)   // Task1 → Task2
+    };
+
+  /* ==== ドラッグ制御 ==== */
+  enum DragMode { Move, ResizeLeft, ResizeRight }
+  bool _dragging;
+  int _dragId;
+  DragMode _mode;
+  double _offsetX, _offsetY;
+
+  /* 座標計算ヘルパ */
+  double TaskLeft(TaskItem t) => LabelWidth + (t.Start - StartHour) * HourWidth;
+  double TaskTop(TaskItem t) => HeaderHeight + t.Machine * RowHeight + PadY;
+  double TaskWidth(TaskItem t) => (t.End - t.Start) * HourWidth;
+
+  /* ドラッグ開始 */
+  void StartDrag(MouseEventArgs e, int id, DragMode mode)
+  {
+    _dragging = true; _dragId = id; _mode = mode;
+    var t = Tasks.First(x => x.Id == id);
+    _offsetX = e.OffsetX - TaskLeft(t);
+    _offsetY = e.OffsetY - TaskTop(t);
+  }
+
+  /* ドラッグ中 */
+  void OnMouseMove(MouseEventArgs e)
+  {
+    if (!_dragging) return;
+    int idx = Tasks.FindIndex(t => t.Id == _dragId);
+    if (idx == -1) return;
+    var cur = Tasks[idx];
+
+    switch (_mode)
+    {
+      case DragMode.Move:
+        MoveTask(e, idx, cur); break;
+      case DragMode.ResizeLeft:
+        ResizeLeft(e, idx, cur); break;
+      case DragMode.ResizeRight:
+        ResizeRight(e, idx, cur); break;
+    }
+  }
+  void EndDrag() => _dragging = false;
+
+  /* ---- Move ---- */
+  void MoveTask(MouseEventArgs e, int idx, TaskItem cur)
+  {
+    int step = (int)Math.Round((e.OffsetX - _offsetX - LabelWidth) / StepPx);
+    step = Math.Max(0, step);
+    double newStart = StartHour + step * SnapMinutes / 60.0;
+    double span = cur.End - cur.Start, newEnd = newStart + span;
+
+    var rawRow = (e.OffsetY - _offsetY - HeaderHeight - PadY) / RowHeight;
+    int row = Math.Clamp((int)Math.Round(rawRow), 0, Machines.Count - 1);
+
+    Tasks[idx] = cur with { Start = newStart, End = newEnd, Machine = row };
+    StateHasChanged();
+  }
+
+  /* ---- 左端リサイズ ---- */
+  void ResizeLeft(MouseEventArgs e, int idx, TaskItem cur)
+  {
+    int step = (int)Math.Round((e.OffsetX - LabelWidth) / StepPx);
+    step = Math.Clamp(step, 0, StepForHour(cur.End) - 1);
+    double newStart = StartHour + step * SnapMinutes / 60.0;
+    Tasks[idx] = cur with { Start = newStart };
+    StateHasChanged();
+  }
+
+  /* ---- 右端リサイズ ---- */
+  void ResizeRight(MouseEventArgs e, int idx, TaskItem cur)
+  {
+    int step = (int)Math.Round((e.OffsetX - LabelWidth) / StepPx);
+    step = Math.Max(step, StepForHour(cur.Start) + 1);
+    double newEnd = StartHour + step * SnapMinutes / 60.0;
+    Tasks[idx] = cur with { End = newEnd };
+    StateHasChanged();
+  }
+
+  /* ---- 共通 ---- */
+  int StepForHour(double hour) => (int)Math.Round((hour - StartHour) * 60 / SnapMinutes);
+}

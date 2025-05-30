@@ -1,0 +1,74 @@
+﻿@page "/"
+
+<div class="calendar-container">
+  <div class="calendar-header">
+    <div>日</div><div>月</div><div>火</div><div>水</div><div>木</div><div>金</div><div>土</div>
+  </div>
+
+  <div class="calendar-grid">
+    @foreach (var day in days)
+    {
+      <div class="calendar-cell">
+        @if (day.HasValue)
+        {
+          <div class="date-number">@day.Value.Day</div>
+        }
+        else
+        {
+          <div class="date-number empty"></div>
+        }
+      </div>
+    }
+
+    <div class="event-block" style="@GetStyle(eventStart, eventEnd)">
+      イベント（8〜10日）
+    </div>
+  </div>
+</div>
+
+@code {
+  private int year = 2024;
+  private int month = 7;
+  private List<DateTime?> days = new();
+
+  // サンプルイベント（8日〜10日）
+  private DateTime eventStart = new DateTime(2024, 7, 8);
+  private DateTime eventEnd = new DateTime(2024, 7, 10);
+
+  protected override void OnInitialized()
+  {
+    GenerateDays();
+  }
+
+  private void GenerateDays()
+  {
+    days.Clear();
+
+    var firstDayOfMonth = new DateTime(year, month, 1);
+    int daysInMonth = DateTime.DaysInMonth(year, month);
+    int startDayOfWeek = (int)firstDayOfMonth.DayOfWeek;
+
+    for (int i = 0; i < startDayOfWeek; i++) days.Add(null);
+    for (int i = 1; i <= daysInMonth; i++) days.Add(new DateTime(year, month, i));
+    while (days.Count < 42) days.Add(null);
+  }
+
+  private string GetStyle(DateTime start, DateTime end)
+  {
+    var startIndex = days.FindIndex(x => x?.Date == start.Date);
+    var endIndex = days.FindIndex(x => x?.Date == end.Date);
+
+    if (startIndex == -1 || endIndex == -1) return "";
+
+    var startRow = startIndex / 7;
+    var startCol = startIndex % 7;
+    var spanDays = (end - start).Days + 1;
+
+    double cellWidthPercent = 100.0 / 7.0;
+    var top = $"calc(60px * {startRow})";
+    var left = $"calc({cellWidthPercent}% * {startCol})";
+    var width = $"calc({cellWidthPercent}% * {spanDays} - 1px)";
+
+    return $"top: {top}; left: {left}; width: {width};";
+  }
+}
