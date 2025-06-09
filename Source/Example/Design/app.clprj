@@ -1,0 +1,23 @@
+{
+  "CurrentUserModuleDesignName": "",
+  "AppAccessConditions": {
+    "ModuleName": ""
+  },
+  "BackgroundColor": "",
+  "Color": "",
+  "FontFamily": "",
+  "Versions": [
+    {
+      "AssemblyName": "Codeer.LowCode.Blazor",
+      "Version": "1.2.10.0"
+    },
+    {
+      "AssemblyName": "Codeer.LowCode.Blazor.Extras",
+      "Version": "1.0.0.0"
+    },
+    {
+      "AssemblyName": "Extras.Client.Shared",
+      "Version": "1.0.0.0"
+    }
+  ]
+}

@@ -1,0 +1,55 @@
+﻿@using Codeer.LowCode.Blazor.Components
+@using Codeer.LowCode.Blazor.Extras.Fields
+@inherits FieldComponentBase<CalendarField>
+
+<div class="calendar-container">
+  <div class="calendar-header">
+    <div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div>
+  </div>
+
+  <div class="calendar-grid">
+    @foreach (var day in Field.Days)
+    {
+      <div class="calendar-cell">
+        @if (day.HasValue)
+        {
+          <div class="date-number">@day.Value.Day</div>
+        }
+        else
+        {
+          <div class="date-number empty"></div>
+        }
+      </div>
+    }
+
+    <div class="event-block" style="@GetStyle(eventStart, eventEnd)">
+      event（8-10）
+    </div>
+  </div>
+</div>
+
+@code {
+
+  // sample
+  private DateTime eventStart = new DateTime(2024, 7, 8);
+  private DateTime eventEnd = new DateTime(2024, 7, 10);
+
+  private string GetStyle(DateTime start, DateTime end)
+  {
+    var startIndex = Field.Days.FindIndex(x => x?.Date == start.Date);
+    var endIndex = Field.Days.FindIndex(x => x?.Date == end.Date);
+
+    if (startIndex == -1 || endIndex == -1) return "";
+
+    var startRow = startIndex / 7;
+    var startCol = startIndex % 7;
+    var spanDays = (end - start).Days + 1;
+
+    double cellWidthPercent = 100.0 / 7.0;
+    var top = $"calc(60px * {startRow})";
+    var left = $"calc({cellWidthPercent}% * {startCol})";
+    var width = $"calc({cellWidthPercent}% * {spanDays} - 1px)";
+
+    return $"top: {top}; left: {left}; width: {width};";
+  }
+}

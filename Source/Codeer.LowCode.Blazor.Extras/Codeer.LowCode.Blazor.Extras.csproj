@@ -1,0 +1,33 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Razor">
+
+	<PropertyGroup>
+		<TargetFramework>net8.0</TargetFramework>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+		<AddRazorSupportForMvc>true</AddRazorSupportForMvc>
+		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
+		<Version>0.0.1</Version>
+		<Description></Description>
+		<PackageProjectUrl>https://github.com/Codeer-Software/Codeer.LowCode.Blazor.Extras</PackageProjectUrl>
+		<RepositoryUrl>https://github.com/Codeer-Software/Codeer.LowCode.Blazor.Extras</RepositoryUrl>
+		<PackageTags>Blazor;LowCode;Codeer</PackageTags>
+		<PackageLicenseExpression>MIT</PackageLicenseExpression>
+		<PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
+		<PackageReleaseNotes>
+		</PackageReleaseNotes>
+		<PackageId>Codeer.LowCode.Blazor.Extras</PackageId>
+	</PropertyGroup>
+
+	<PropertyGroup>
+		<StaticWebAssetFingerprintingEnabled>false</StaticWebAssetFingerprintingEnabled>
+		<StaticWebAssetsFingerprintContent>false</StaticWebAssetsFingerprintContent>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<PackageReference Include="Codeer.LowCode.Blazor" Version="1.2.10" />
+		<PackageReference Include="Microsoft.AspNetCore.WebUtilities" Version="8.0.8" />
+		<PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="8.0.8" />
+		<PackageReference Include="Microsoft.Extensions.Http" Version="8.0.0" />
+	</ItemGroup>
+
+</Project>
