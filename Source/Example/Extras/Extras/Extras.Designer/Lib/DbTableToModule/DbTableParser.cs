@@ -74,7 +74,7 @@ namespace Extras.Designer.Lib.DbTableToModule
         {
             if (string.IsNullOrEmpty(source)) return source;
 
-            var words = source.Split('_');
+            var words = source.Split(['_', '.']);
             if (words.Length == 1)
             {
                 if (string.IsNullOrEmpty(words[0])) return string.Empty;

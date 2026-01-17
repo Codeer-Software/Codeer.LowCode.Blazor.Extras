@@ -2,11 +2,13 @@ using Codeer.LowCode.Blazor;
 using Codeer.LowCode.Blazor.DataIO;
 using Codeer.LowCode.Blazor.Repository.Data;
 using Codeer.LowCode.Blazor.Repository.Match;
+using Codeer.LowCode.Blazor.RequestInterfaces;
 using Codeer.LowCode.Blazor.Utils;
 using Excel.Report.PDF;
 using Extras.Client.Shared.Services;
 using Extras.Server.Services;
 using Extras.Server.Services.FileManagement;
+using MessagePack;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Extras.Server.Controllers
@@ -24,7 +26,7 @@ namespace Extras.Server.Controllers
             => await _dataService.DisposeAsync();
 
         [HttpGet("config")]
-        public SystemConfigForFront GetSytemConfig()
+        public SystemConfigForFront GetSystemConfig()
             => SystemConfig.Instance.ForFront();
 
         [HttpGet("design")]
@@ -35,8 +37,15 @@ namespace Extras.Server.Controllers
         }
 
         [HttpPost("list")]
-        public async Task<Paging<ModuleData>> GetListAsync(int? page, SearchCondition? condition)
-            => await _dataService.ModuleDataIO.GetListAsync(condition!, page ?? 0);
+        public async Task<IActionResult> GetListAsync(List<GetListRequest> request)
+        {
+            var ret = new List<Paging<ModuleData>>();
+            foreach (var e in request)
+            {
+                ret.Add(await _dataService.ModuleDataIO.GetListAsync(e.Condition, e.PageIndex));
+            }
+            return Ok(new MemoryStream(MessagePackSerializer.Typeless.Serialize(ret)));
+        }
 
         [HttpPost]
         public async Task<List<ModuleSubmitResult>> SubmitAsync(List<ModuleSubmitData>? data)

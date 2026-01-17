@@ -18,14 +18,14 @@ namespace Extras.Server.Controllers
             => await _dataService.DisposeAsync();
 
         [HttpPost("file")]
-        public async Task<ModuleData> FileToDataAsync(string? moduleName, string? fileName)
+        public async Task<ModuleData> FileToDataAsync(string? moduleName, string? fieldName, string? fileName)
         {
             var memoryStream = new MemoryStream();
             await Request.Body.CopyToAsync(memoryStream);
             memoryStream.Position = 0;
             try
             {
-                return await AITextAnalyzeService.FileToDataAsync(_dataService.ModuleDataIO, moduleName, fileName, memoryStream);
+                return await AITextAnalyzeService.FileToDataAsync(_dataService.ModuleDataIO, moduleName, fieldName, fileName, memoryStream);
             }
             catch
             {
@@ -34,11 +34,11 @@ namespace Extras.Server.Controllers
         }
 
         [HttpPost("text")]
-        public async Task<ModuleData> TextToDataAsync(string? moduleName, [FromForm] string? text)
+        public async Task<ModuleData> TextToDataAsync(string? moduleName, string? fieldName, [FromForm] string? text)
         {
             try
             {
-                return await AITextAnalyzeService.TextToDataAsync(_dataService.ModuleDataIO, moduleName, text ?? string.Empty);
+                return await AITextAnalyzeService.TextToDataAsync(_dataService.ModuleDataIO, moduleName, fieldName, text ?? string.Empty);
             }
             catch
             {

@@ -3,10 +3,8 @@ using System.Text.RegularExpressions;
 using Azure.AI.OpenAI;
 using Codeer.LowCode.Blazor.DataIO.Db.Definition;
 using Codeer.LowCode.Blazor.Designer.Extensibility;
-using Codeer.LowCode.Blazor.Designer.Extra;
-using Codeer.LowCode.Blazor.DesignLogic;
 using Codeer.LowCode.Blazor.Json;
-using ControlzEx.Standard;
+using Codeer.LowCode.Blazor.Repository.Design;
 using OpenAI.Chat;
 using static Codeer.LowCode.Blazor.Designer.Extra.QuerySettingPropertyControl;
 

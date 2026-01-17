@@ -8,7 +8,7 @@ using OpenAI.Chat;
 
 namespace Extras.Designer.Lib.AI
 {
-    public static class DbNmaeCreator
+    public static class DbNameCreator
     {
         public static async Task CreateDbNames(DesignerSettings settings, ModuleDesign module, bool isAll)
         {

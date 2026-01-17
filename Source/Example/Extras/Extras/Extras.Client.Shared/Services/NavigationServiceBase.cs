@@ -9,16 +9,14 @@ namespace Extras.Client.Shared.Services
     public abstract class NavigationServiceBase : INavigationService
     {
         readonly NavigationManager _navigationManager;
-        readonly IAppInfoService _appInfo;
 
         public abstract bool CanLogout { get; }
 
         public abstract Task Logout();
 
-        public NavigationServiceBase(NavigationManager navigationManager, IAppInfoService appInfo)
+        public NavigationServiceBase(NavigationManager navigationManager)
         {
             _navigationManager = navigationManager;
-            _appInfo = appInfo;
         }
 
         public string GetModuleUrl(string moduleSegment) => $"/{GetCurrentPageFrame()}/{moduleSegment}";

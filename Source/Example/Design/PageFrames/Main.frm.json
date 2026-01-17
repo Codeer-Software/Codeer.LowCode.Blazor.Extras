@@ -68,12 +68,14 @@
   "TopPageModuleDesign": {
     "ModulePageType": "Auto",
     "ModuleUrlSegment": "",
+    "ActiveModuleSegments": [],
     "PageFrame": "",
     "Module": "Home",
     "Id": "",
     "Parameters": "",
     "ListPageDesign": {
       "SearchLayoutName": "",
+      "UserUrlParameter": true,
       "PageTitle": "",
       "HeaderTitle": "",
       "CanBulkDataUpdate": false,
@@ -84,13 +86,14 @@
         "LayoutName": "",
         "CanNavigateToDetail": false,
         "NavigateModuleUrlSegment": "",
-        "IsStriped": false,
+        "CanCustomizeColumns": false,
         "DisplayName": "",
         "SearchCondition": {
           "LimitCount": 50,
+          "SelectFields": [],
+          "SortConditions": [],
           "SortFieldVariable": "",
           "SortDescending": false,
-          "SelectFields": [],
           "ModuleName": ""
         },
         "PagerPosition": "Bottom",
@@ -105,7 +108,9 @@
         "OnSearchDataChanged": "",
         "OnSelectedIndexChanged": "",
         "OnSelectedIndexChanging": "",
+        "OnDoubleClickRow": "",
         "Name": "",
+        "IgnoreModification": false,
         "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.ListFieldDesign"
       }
     },

@@ -1,6 +1,5 @@
 using System.Globalization;
 using Codeer.LowCode.Blazor.Components.AppParts.Loading;
-using Codeer.LowCode.Blazor.Components.Dialog;
 using Codeer.LowCode.Blazor.RequestInterfaces;
 using Extras.Client.Shared.AITextAnalyzer;
 using Microsoft.Extensions.DependencyInjection;
@@ -17,10 +16,6 @@ namespace Extras.Client.Shared.Services
             services.AddScoped<IUIService, UIService>();
             services.AddScoped<Codeer.LowCode.Blazor.RequestInterfaces.Services>();
             services.AddScoped<ILogger, Logger>();
-            services.AddSingleton<ModuleDialogService>();
-            services.AddSingleton<ModulePanelService>();
-            services.AddSingleton<MessageBoxService>();
-            services.AddSingleton<ContextMenuService>();
             services.AddSingleton<LoadingService>();
             services.AddToaster(config =>
             {

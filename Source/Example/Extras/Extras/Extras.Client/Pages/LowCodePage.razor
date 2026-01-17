@@ -13,6 +13,17 @@
 {
   <LowCodePageComponent ModuleDesignName="@ModuleDesignName" PageFrameName="@PageFrameName" Id="@Id" Guid="@(AppInfoService.AsImplement().Guid)"></LowCodePageComponent>
 }
+else
+{
+  <svg class="loading-progress">
+    <circle r="40%" cx="50%" cy="50%" />
+    <circle r="40%" cx="50%" cy="50%" />
+  </svg>
+  <div class="loading-progress-text"></div>
+  <div class="app-init-note" aria-live="polite">
+    App Initializing
+  </div>
+}
 
 @code {
   [Parameter]
@@ -28,6 +39,7 @@
 
   protected override async Task OnInitializedAsync()
   {
+    _isValid = false;
     await base.OnInitializedAsync();
     AppInfoService.AsImplement().OnHotReload += PageBase_OnHotReload;
   }
@@ -50,7 +62,7 @@
   {
     _isValid = false;
     await AppInfoService.AsImplement().InitializeAppAsync();
-    _isValid = true;
     NavigationService.CompleteUrl(AppInfoService, PageFrameName, ModuleDesignName);
+    _isValid = true;
   }
 }

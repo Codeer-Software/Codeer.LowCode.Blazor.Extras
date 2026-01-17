@@ -1,5 +1,5 @@
 using System.Configuration;
-using System.Globalization;
+using System.Diagnostics;
 using System.IO;
 using System.IO.Compression;
 using System.Net.Http;
@@ -37,14 +37,12 @@ namespace Extras.Designer
         protected override void OnStartup(StartupEventArgs e)
         {
             typeof(CalendarField).ToString();
-
             AISettings.Instance.OpenAIEndPoint = Environment.GetEnvironmentVariable("AZURE_OPENAI_API_ENDPOINT") ?? string.Empty;
             AISettings.Instance.OpenAIKey = Environment.GetEnvironmentVariable("AZURE_OPENAI_API_KEY") ?? string.Empty;
             AISettings.Instance.ChatModel = "gpt-4o";
 
             Codeer.LowCode.Blazor.License.LicenseManager.IsAutoUpdate =
                 bool.TryParse(ConfigurationManager.AppSettings["IsLicenseAutoUpdate"], out var val) ? val : true;
-
             Services.AddSingleton<IDbAccessorFactory, DbAccessorFactory>();
             Services.AddSingleton<IAITextAnalyzerCore, AITextAnalyzerCoreDummy>();
             ScriptRuntimeTypeManager.AddType(typeof(ExcelCellIndex));
@@ -94,6 +92,8 @@ namespace Extras.Designer
                 DesignerEnvironment.AddSolutionExplorerMenu(e => CreateDBInformation(e, true), SolutionExplorerMenuTarget.Module, "Create DB Name (AI)", "All");
                 DesignerEnvironment.AddSolutionExplorerMenu(e => CreateDBInformation(e, false), SolutionExplorerMenuTarget.Module, "Create DB Name (AI)", "Empty Only");
             }
+
+            DesignerEnvironment.AddSolutionExplorerMenu(ExportPrintExcelCheatSheet, SolutionExplorerMenuTarget.Module, "Export Excel Print CheatSheet");
 
             DesignerEnvironment.AddDbColumnTransformHandler(DbColumnTransformHandler);
 
@@ -146,10 +146,12 @@ namespace Extras.Designer
                 }
                 var settingsFile = File.ReadAllText(Path.Combine(DesignerEnvironment.CurrentFileDirectory, "designer.settings.json"));
                 var clone = mod.JsonClone();
-                await DbNmaeCreator.CreateDbNames(DesignerEnvironment.GetDesignerSettings(), clone, isAll);
+                await DbNameCreator.CreateDbNames(DesignerEnvironment.GetDesignerSettings(), clone, isAll);
 
-                File.WriteAllText(Path.Combine(DesignerEnvironment.CurrentFileDirectory, "Modules", e.Item), JsonConverterEx.SerializeObject(clone));
-                dlg.Close();
+                var path = Directory.GetFiles(Path.Combine(DesignerEnvironment.CurrentFileDirectory, "Modules"), e.Item, SearchOption.AllDirectories).FirstOrDefault() ??
+                    Path.Combine(DesignerEnvironment.CurrentFileDirectory, "Modules", e.Item);
+
+                File.WriteAllText(path, JsonConverterEx.SerializeObject(clone)); dlg.Close();
             };
             dlg.ShowDialog();
         }
@@ -173,8 +175,10 @@ namespace Extras.Designer
 
             var ddl = mod.CreateDDL(dataSource.DataSourceType);
 
-            new TextDisplayWindow
+            new DDLWindow
             {
+                DesignerEnvironment = DesignerEnvironment,
+                DataSource = dataSource,
                 DisplayText = string.Join(Environment.NewLine, ddl),
                 Owner = Application.Current.MainWindow,
                 WindowStartupLocation = WindowStartupLocation.CenterOwner,
@@ -231,12 +235,60 @@ namespace Extras.Designer
             }.Show();
         }
 
+        private void ExportPrintExcelCheatSheet(SolutionExplorerMenuClickEventArgs e)
+        {
+            if (string.IsNullOrEmpty(DesignerEnvironment.CurrentFileDirectory))
+            {
+                return;
+            }
+
+            var modName = e.Item.Split(".").First();
+            var designData = DesignerEnvironment.GetDesignData();
+            var module = designData.Modules.Find(modName);
+            if (module == null)
+            {
+                DesignerEnvironment.ShowToast("Module not found", false);
+                return;
+            }
+
+            var dialog = new SaveFileDialog
+            {
+                Filter = "Excel files (*.xlsx)|*.xlsx",
+                FileName = $"{module.Name}_PrintExcelCheatSheet.xlsx"
+            };
+            if (dialog.ShowDialog() != true)
+            {
+                return;
+            }
+
+            try
+            {
+                var moduleToCheatSheet = new ModuleToExcelCheatSheet();
+                var stream = moduleToCheatSheet.CreatePrintExcelCheatSheet(designData, module);
+                File.WriteAllBytes(dialog.FileName, stream.ToArray());
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = dialog.FileName,
+                    UseShellExecute = true
+                });
+                DesignerEnvironment.ShowToast("Print Excel CheatSheet exported.", true);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    ex.Message,
+                    "Error",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+            }
+        }
+
         private class AITextAnalyzerCoreDummy : IAITextAnalyzerCore
         {
-            public Task<ModuleData?> FileToModuleDataAsync(string moduleName, string fileName, StreamContent content)
+            public Task<ModuleData?> FileToModuleDataAsync(string moduleName, string fieldName, string fileName, StreamContent content)
                 => throw new NotImplementedException();
 
-            public Task<ModuleData?> TextToModuleDataAsync(string moduleName, string text)
+            public Task<ModuleData?> TextToModuleDataAsync(string moduleName, string fieldName, string text)
                 => throw new NotImplementedException();
         }
 
@@ -326,23 +378,25 @@ namespace Extras.Designer
         {
             using Stream stream = new MemoryStream(Extras.Designer.Properties.Resources.EmptyTemplate);
             ZipFile.ExtractToDirectory(stream, path);
-        }
-
-        static void CreateGettingStandard(string path)
-        {
-            using (Stream stream = new MemoryStream(Extras.Designer.Properties.Resources.GettingStartedTemplate))
-            {
-                ZipFile.ExtractToDirectory(stream, path);
-            }
 
             var dbPath = "C:\\Codeer.LowCode.Blazor.Local\\Data\\sqlite_sample.db";
             if (!File.Exists(dbPath))
             {
-                if (!File.Exists(dbPath))
-                {
-                    Directory.CreateDirectory(Path.GetDirectoryName(dbPath)!);
-                    File.WriteAllBytes(dbPath, Extras.Designer.Properties.Resources.sqlite_sample);
-                }
+                Directory.CreateDirectory(Path.GetDirectoryName(dbPath)!);
+                File.WriteAllBytes(dbPath, Extras.Designer.Properties.Resources.sqlite_sample);
+            }
+        }
+
+        static void CreateGettingStandard(string path)
+        {
+            using Stream stream = new MemoryStream(Extras.Designer.Properties.Resources.GettingStartedTemplate);
+            ZipFile.ExtractToDirectory(stream, path);
+
+            var dbPath = "C:\\Codeer.LowCode.Blazor.Local\\Data\\sqlite_sample.db";
+            if (!File.Exists(dbPath))
+            {
+                Directory.CreateDirectory(Path.GetDirectoryName(dbPath)!);
+                File.WriteAllBytes(dbPath, Extras.Designer.Properties.Resources.sqlite_sample);
             }
         }
     }

@@ -13,6 +13,7 @@
       "RelativeField": "",
       "OnClick": "",
       "Name": "TitleLabel",
+      "IgnoreModification": false,
       "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.LabelFieldDesign"
     },
     {
@@ -20,17 +21,20 @@
       "ObjectFit": "Contain",
       "OnClick": "",
       "Name": "LCLogo",
+      "IgnoreModification": false,
       "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.ImageViewerFieldDesign"
     },
     {
       "DisplayName": "",
       "SearchCondition": {
+        "SelectFields": [],
+        "SortConditions": [],
         "SortFieldVariable": "",
         "SortDescending": false,
-        "SelectFields": [],
         "ModuleName": "",
         "Condition": {
           "IsOrMatch": false,
+          "IsNot": false,
           "Children": [],
           "Name": "",
           "TypeFullName": "Codeer.LowCode.Blazor.Repository.Match.MultiMatchCondition"
@@ -43,6 +47,7 @@
       "DetailLayoutName": "",
       "OnDataChanged": "",
       "Name": "Calendar",
+      "IgnoreModification": false,
       "TypeFullName": "Codeer.LowCode.Blazor.Extras.Designs.CalendarFieldDesign"
     },
     {
@@ -52,6 +57,7 @@
       "IsRequired": false,
       "OnDataChanged": "",
       "Name": "ColorPicker",
+      "IgnoreModification": false,
       "TypeFullName": "Design.Samples.ColorPicker.ColorPickerFieldDesign"
     }
   ],
@@ -71,6 +77,8 @@
     "": {
       "OnBeforeInitialization": "",
       "OnAfterInitialization": "",
+      "OnLocationChanging": "",
+      "OnFieldDataChanged": "",
       "DataOnlyFields": [],
       "ClassName": "",
       "Color": "",
@@ -79,11 +87,12 @@
         "Name": "",
         "Padding": {},
         "IsBordered": false,
-        "IsFlowLayout": false,
-        "IsFillAvailable": false,
+        "UseBorderedShrinkWrap": false,
         "IsExpandable": false,
         "ExpanderLabel": "",
         "IsExpanderDefaultOpened": false,
+        "IsFlowLayout": false,
+        "IsFillAvailable": false,
         "ScrollDirection": "Unset",
         "BackgroundColor": "",
         "Rows": [
@@ -230,6 +239,7 @@
       "DataOnlyFields": [],
       "OnBeforeInitialization": "",
       "OnAfterInitialization": "",
+      "OnFieldDataChanged": "",
       "Elements": []
     }
   },
@@ -242,11 +252,12 @@
         "Name": "",
         "Padding": {},
         "IsBordered": false,
-        "IsFlowLayout": false,
-        "IsFillAvailable": false,
+        "UseBorderedShrinkWrap": false,
         "IsExpandable": false,
         "ExpanderLabel": "",
         "IsExpanderDefaultOpened": false,
+        "IsFlowLayout": false,
+        "IsFillAvailable": false,
         "ScrollDirection": "Unset",
         "BackgroundColor": "",
         "Rows": [
@@ -319,13 +330,14 @@
     "LayoutName": "",
     "CanNavigateToDetail": false,
     "NavigateModuleUrlSegment": "",
-    "IsStriped": false,
+    "CanCustomizeColumns": false,
     "DisplayName": "",
     "SearchCondition": {
       "LimitCount": 50,
+      "SelectFields": [],
+      "SortConditions": [],
       "SortFieldVariable": "",
       "SortDescending": false,
-      "SelectFields": [],
       "ModuleName": ""
     },
     "PagerPosition": "Bottom",
@@ -340,7 +352,9 @@
     "OnSearchDataChanged": "",
     "OnSelectedIndexChanged": "",
     "OnSelectedIndexChanging": "",
+    "OnDoubleClickRow": "",
     "Name": "",
+    "IgnoreModification": false,
     "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.ListFieldDesign"
   },
   "CanBulkDataUpdate": false,

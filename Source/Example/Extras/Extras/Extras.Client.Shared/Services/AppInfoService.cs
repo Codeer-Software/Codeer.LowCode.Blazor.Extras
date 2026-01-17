@@ -13,36 +13,48 @@ using Microsoft.AspNetCore.SignalR.Client;
 
 namespace Extras.Client.Shared.Services
 {
-    public class AppInfoService : IAppInfoService
+    public interface IAppInfoServiceExtension : IAppInfoService
+    {
+        Guid Guid { get; set; }
+        event EventHandler OnHotReload;
+        Task InitializeAppAsync();
+        void SetCurrentUserId(string id);
+    }
+
+    public class AppInfoService : IAppInfoServiceExtension
     {
         readonly NavigationManager _navigationManager;
         readonly HttpService _http;
         readonly ScriptRuntimeTypeManager _scriptRuntimeTypeManager = new();
         readonly ToasterEx _toaster;
+        readonly LoadingService _loadingService;
         HubConnection? _hubConnection;
         DesignData? _design;
         DateTime _lastHotReload = DateTime.Now;
         SystemConfigForFront? _config;
+        LocalizeService? _localizeService;
 
         public ModuleData? CurrentUserData { get; private set; }
 
-        public string CurrentUserId { get; set; } = string.Empty;
+        public string CurrentUserId { get; private set; } = string.Empty;
 
         public Guid Guid { get; set; } = Guid.NewGuid();
 
         public event EventHandler OnHotReload = delegate { };
 
-        public bool IsDesignMode => false;
-
         public DesignData GetDesignData() => _design ?? new();
 
         public bool CanScriptDebug => _config?.CanScriptDebug == true;
+
+        public string Localize(string text)
+            => _localizeService?.Localize(text) ?? text;
 
         public AppInfoService(HttpService http, LoadingService loadingService, NavigationManager navigationManager, ILogger logger, ToasterEx toaster)
         {
             _http = http;
             _navigationManager = navigationManager;
             _toaster = toaster;
+            _loadingService = loadingService;
             _scriptRuntimeTypeManager.AddCustomInjector(() => http);
             _scriptRuntimeTypeManager.AddType(typeof(ScriptObjects.Excel));
             _scriptRuntimeTypeManager.AddType(typeof(ExcelCellIndex));
@@ -52,22 +64,32 @@ namespace Extras.Client.Shared.Services
             _scriptRuntimeTypeManager.AddService(new MailService());
             _scriptRuntimeTypeManager.AddService(loadingService);
             _scriptRuntimeTypeManager.AddType<LoadingService.LoadingScope>();
+            _scriptRuntimeTypeManager.UseDesignCache();
         }
+        public void SetCurrentUserId(string id) => CurrentUserId = id;
 
         public async Task InitializeAppAsync()
         {
+            using var scope = _loadingService.StartLoading(int.MaxValue);
+
             await InitializeHotReloadAsync();
             if (_design != null) return;
 
-            _design = DesignDataTransferLogic.ToDesignData(await _http.GetFromStreamAsync($"/api/module_data/design"));
+            using var designDataStream = await _http.GetFromStreamAsync($"/api/module_data/design");
+            _design = DesignDataTransferLogic.ToDesignData(designDataStream);
+            _localizeService = await this.CreateLocalizeService();
+
             var currentUserModule = _design.Modules.Find(_design.AppSettings.CurrentUserModuleDesignName);
             if (currentUserModule == null || string.IsNullOrEmpty(CurrentUserId)) return;
-            CurrentUserData = (await _http.PostAsJsonAsync<SearchCondition, Paging<ModuleData>>($"/api/module_data/list",
-                new()
+            var currentUserRequest = new GetListRequest
+            {
+                Condition = new()
                 {
                     ModuleName = currentUserModule.Name,
                     Condition = new FieldValueMatchCondition { SearchTargetVariable = "Id.Value", Comparison = MatchComparison.Equal, Value = MultiTypeValue.Create(CurrentUserId) }
-                }))?.Items.FirstOrDefault();
+                }
+            };
+            CurrentUserData = (await ModuleDataService.GetListAsync(_http, [currentUserRequest]))?.FirstOrDefault()?.Items.FirstOrDefault();
         }
 
         public ScriptRuntimeTypeManager GetScriptRuntimeTypeManager()
@@ -75,7 +97,7 @@ namespace Extras.Client.Shared.Services
 
         public async Task<MemoryStream?> GetResourceAsync(string resourcePath)
         {
-            var result = await _http.GetAsync($"/api/module_data/resource?resource={resourcePath}");
+            var result = await _http.GetAsync($"/api/module_data/resource?resource={resourcePath}", false);
             if (result == null) return null;
             return (MemoryStream)await result.Content.ReadAsStreamAsync();
         }
@@ -86,6 +108,7 @@ namespace Extras.Client.Shared.Services
             Guid = Guid.NewGuid();
             _design = null;
             CurrentUserData = null;
+            _scriptRuntimeTypeManager.ClearDesignCache();
         }
 
         async Task InitializeHotReloadAsync()

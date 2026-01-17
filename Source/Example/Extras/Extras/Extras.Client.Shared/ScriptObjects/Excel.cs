@@ -41,7 +41,7 @@ namespace Extras.Client.Shared.ScriptObjects
                 if (!string.IsNullOrEmpty(_name))
                     return await GetData(_module, _name, text);
                 var value = new ObjectWrapper<object>();
-                return await _module.TryGetValueByPropertyTextAsync(text, value) ? new ExcelOverWriteCell { Value = value.Value } : null;
+                return await _module.TryGetValueByPropertyTextAsync(text, value) ? new ExcelOverWriteCell { Value = Adjust(value.Value) } : null;
             }
 
             public async Task<ExcelOverWriteCell?> GetData(object? x, string elementName, string text)
@@ -49,8 +49,11 @@ namespace Extras.Client.Shared.ScriptObjects
                 if (_module == null)
                     return null;
                 var value = new ObjectWrapper<object>();
-                return await _module.TryGetValueByPropertyTextAsync(x, text, elementName, value) ? new ExcelOverWriteCell { Value = value.Value } : null;
+                return await _module.TryGetValueByPropertyTextAsync(x, text, elementName, value) ? new ExcelOverWriteCell { Value = Adjust(value.Value) } : null;
             }
+
+            static object? Adjust(object? value)
+                => value is DateOnly d ? d.ToDateTime(TimeOnly.MinValue) : value;
         }
 
         XLWorkbook _book;
@@ -74,7 +77,7 @@ namespace Extras.Client.Shared.ScriptObjects
         public void Dispose() => _book.Dispose();
 
         public async Task OverWrite(Module data)
-            => await _book.Worksheets.First().OverWrite(new DataGetter(data));
+            => await _book.OverWrite(new DataGetter(data));
 
         public ExcelCellIndex? FindCellByText(string text)
         {
