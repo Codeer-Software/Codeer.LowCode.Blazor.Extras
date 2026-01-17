@@ -1,0 +1,49 @@
+﻿@using Codeer.LowCode.Blazor.Components
+@using Codeer.LowCode.Blazor.Components.Interop
+@using Codeer.LowCode.Blazor.Extras.Fields
+@using Microsoft.AspNetCore.Components.Forms
+@using Codeer.LowCode.Blazor.Repository.Design
+@using Codeer.LowCode.Blazor.Components.Dialog
+@using Microsoft.AspNetCore.Components.Web
+@inherits FieldComponentBase<MarkerListField>
+
+<div class="scroll-host">
+    <div class="img-overlay"
+         @ondblclick="HandleDoubleClick">
+
+      <img src="@($"data:image/{Field.ImageExtension};base64,{Field.ObjectUrl}")" alt="Base64 Image" class="base-img" draggable="false" />
+
+      @foreach (var m in Field.MarkerList)
+      {
+        <div class="marker"
+             style="@GetMarkerStyle(m)"
+             @onclick="@(() => HandleMarkerClick(m))"
+             @onclick:stopPropagation="true"
+             @ondblclick:stopPropagation="true">
+          <div class="circle"></div>
+        <div class="label">@m.Label</div>
+        </div>
+      }
+  </div>
+</div>
+
+@code {
+  protected override async Task OnInitializedAsync()
+  {
+    await Field.InitAsync();
+    await base.OnInitializedAsync();
+  }
+
+  string GetMarkerStyle(Marker m)
+    => $"left:{m.X}px; top:{m.Y}px;";
+
+  async Task HandleMarkerClick(Marker m)
+    => await Field.OnClickMarkerAsync(m.Id);
+
+  async Task HandleDoubleClick(MouseEventArgs e)
+  {
+    var x = (int)Math.Round(e.OffsetX);
+    var y = (int)Math.Round(e.OffsetY);
+    await Field.OnDoubleClickPointAsync(x, y);
+  }
+}

@@ -1,0 +1,63 @@
+﻿/* 外側：はみ出したらスクロール */
+.scroll-host {
+    overflow: auto;
+    max-width: 100%;
+    max-height: 100%;
+    /* 必要なら高さ固定: height: 600px; など */
+}
+
+/* 画像の上に重ねる */
+.img-overlay {
+    position: relative;
+    display: inline-block; /* 中身(画像)の実寸に合わせる */
+    user-select: none;
+}
+
+/* ここが重要：レスポンシブ縮小を禁止して等倍表示 */
+.base-img {
+    display: block;
+    position: relative;
+    z-index: 0;
+    max-width: none; /* ←これがないと親幅に合わせて縮む */
+    height: auto;
+}
+/* マーカー（座標点＝アンカー） */
+.marker {
+    position: absolute;
+    z-index: 10;
+    /* ここだけ変更：全体を中心寄せしない／箱サイズを0にする */
+    width: 0;
+    height: 0;
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+/* 円：アンカー点(0,0)を中心にする */
+.circle {
+    position: absolute;
+    left: 0;
+    top: 0;
+    transform: translate(-50%, -50%); /* これで円の中心が座標に一致 */
+
+    width: 30px;
+    height: 30px; /* 半径15px */
+    border-radius: 50%;
+    border: 2px solid red;
+    background: rgba(255,0,0,0.15);
+    box-sizing: border-box;
+}
+
+/* ラベル：アンカー点の右側に固定（サイズに依存しない） */
+.label {
+    position: absolute;
+    left: 21px; /* 15px(半径) + 6px(元margin相当) */
+    top: 0;
+    transform: translateY(-50%);
+    margin-left: 0; /* 元のmarginは不要に */
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: rgba(0,0,0,0.6);
+    color: #fff;
+    font-size: 12px;
+    line-height: 1.2;
+}
