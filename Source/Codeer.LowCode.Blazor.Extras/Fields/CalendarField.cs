@@ -26,30 +26,6 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         : FieldBase<CalendarFieldDesign>(design), ISearchResultsViewField
     {
 
-        public int Year = 2024;
-        public int Month = 7;
-        public List<DateTime?> Days => GenerateDays();
-        
-        
-        List<DateTime?> GenerateDays()
-        {
-            var days = new List<DateTime?>();
-
-            var firstDayOfMonth = new DateTime(Year, Month, 1);
-            int daysInMonth = DateTime.DaysInMonth(Year, Month);
-            int startDayOfWeek = (int)firstDayOfMonth.DayOfWeek;
-
-            for (int i = 0; i < startDayOfWeek; i++) days.Add(null);
-            for (int i = 1; i <= daysInMonth; i++) days.Add(new DateTime(Year, Month, i));
-            while (days.Count < 42) days.Add(null);
-
-            return days;
-        }
-
-
-
-
-
         private SearchCondition? _additionalCondition;
         private DateTime? _currentMonth;
 
@@ -221,6 +197,8 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         internal async Task SetCurrentDayAsync(DateTime date)
         {
             SelectedDate = date;
+            _currentMonth = null;
+            NotifyStateChanged();
             await ReloadAsync();
         }
 

@@ -1,55 +1,110 @@
-﻿@using Codeer.LowCode.Blazor.Components
+@using Microsoft.AspNetCore.Components.Web
+@using Codeer.LowCode.Blazor.Components
 @using Codeer.LowCode.Blazor.Extras.Fields
 @inherits FieldComponentBase<CalendarField>
 
-<div class="calendar-container">
+<div @ref="Element" class="calendar-container">
+  <div class="calendar-nav">
+    <button type="button" class="nav-button" @onclick="PreviousMonth">&#9664;</button>
+    <span class="nav-title">@Field.SelectedDate.Year / @Field.SelectedDate.Month.ToString("D2")</span>
+    <button type="button" class="nav-button" @onclick="NextMonth">&#9654;</button>
+  </div>
+
   <div class="calendar-header">
-    <div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div>
+    <div class="calendar-header-cell sun">Sun</div>
+    <div class="calendar-header-cell">Mon</div>
+    <div class="calendar-header-cell">Tue</div>
+    <div class="calendar-header-cell">Wed</div>
+    <div class="calendar-header-cell">Thu</div>
+    <div class="calendar-header-cell">Fri</div>
+    <div class="calendar-header-cell sat">Sat</div>
   </div>
 
   <div class="calendar-grid">
-    @foreach (var day in Field.Days)
+    @foreach (var day in GetDays())
     {
-      <div class="calendar-cell">
-        @if (day.HasValue)
-        {
-          <div class="date-number">@day.Value.Day</div>
-        }
-        else
-        {
-          <div class="date-number empty"></div>
-        }
+      <div class="calendar-cell @(day.IsCurrentMonth ? "" : "other-month") @(day.IsToday ? "today" : "") @(day.DayOfWeek == DayOfWeek.Sunday ? "sun" : "") @(day.DayOfWeek == DayOfWeek.Saturday ? "sat" : "")"
+           @onclick="() => OnCellClicked(day.Date)">
+        <div class="date-number">@day.Date.Day</div>
+        <div class="events-container">
+          @foreach (var item in GetEventsForDay(day.Date))
+          {
+            <div class="event-item" @onclick="() => OnEventClicked(item)" @onclick:stopPropagation="true"
+                 title="@item.Text">
+              @item.Text
+            </div>
+          }
+        </div>
       </div>
     }
-
-    <div class="event-block" style="@GetStyle(eventStart, eventEnd)">
-      event（8-10）
-    </div>
   </div>
 </div>
 
 @code {
-
-  // sample
-  private DateTime eventStart = new DateTime(2024, 7, 8);
-  private DateTime eventEnd = new DateTime(2024, 7, 10);
-
-  private string GetStyle(DateTime start, DateTime end)
+  private async Task PreviousMonth()
   {
-    var startIndex = Field.Days.FindIndex(x => x?.Date == start.Date);
-    var endIndex = Field.Days.FindIndex(x => x?.Date == end.Date);
+    await Field.SetCurrentDayAsync(Field.SelectedDate.AddMonths(-1));
+  }
 
-    if (startIndex == -1 || endIndex == -1) return "";
+  private async Task NextMonth()
+  {
+    await Field.SetCurrentDayAsync(Field.SelectedDate.AddMonths(1));
+  }
 
-    var startRow = startIndex / 7;
-    var startCol = startIndex % 7;
-    var spanDays = (end - start).Days + 1;
+  private async Task OnCellClicked(DateTime date)
+  {
+    await Field.AddAsync(date);
+  }
 
-    double cellWidthPercent = 100.0 / 7.0;
-    var top = $"calc(60px * {startRow})";
-    var left = $"calc({cellWidthPercent}% * {startCol})";
-    var width = $"calc({cellWidthPercent}% * {spanDays} - 1px)";
+  private async Task OnEventClicked(ModuleCalendarItem item)
+  {
+    await Field.EditAsync(item.Module);
+  }
 
-    return $"top: {top}; left: {left}; width: {width};";
+  private List<CalendarDay> GetDays()
+  {
+    var selectedDate = Field.SelectedDate;
+    var year = selectedDate.Year;
+    var month = selectedDate.Month;
+    var firstDayOfMonth = new DateTime(year, month, 1);
+    var startDayOfWeek = (int)firstDayOfMonth.DayOfWeek;
+    var startDate = firstDayOfMonth.AddDays(-startDayOfWeek);
+    var today = DateTime.Today;
+    var days = new List<CalendarDay>(42);
+
+    for (var i = 0; i < 42; i++)
+    {
+      var date = startDate.AddDays(i);
+      days.Add(new CalendarDay
+      {
+        Date = date,
+        DayOfWeek = date.DayOfWeek,
+        IsCurrentMonth = date.Year == year && date.Month == month,
+        IsToday = date.Date == today
+      });
+    }
+
+    return days;
+  }
+
+  private List<ModuleCalendarItem> GetEventsForDay(DateTime date)
+  {
+    return Field.Items
+      .Where(item =>
+      {
+        if (item.Start == default) return false;
+        var start = item.Start.Date;
+        var end = (item.End ?? item.Start).Date;
+        return date.Date >= start && date.Date <= end;
+      })
+      .ToList();
+  }
+
+  private class CalendarDay
+  {
+    public DateTime Date { get; set; }
+    public DayOfWeek DayOfWeek { get; set; }
+    public bool IsCurrentMonth { get; set; }
+    public bool IsToday { get; set; }
   }
 }
