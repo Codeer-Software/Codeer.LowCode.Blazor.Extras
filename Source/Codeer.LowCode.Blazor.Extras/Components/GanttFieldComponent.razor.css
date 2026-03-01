@@ -1,0 +1,313 @@
+/* ===== Container ===== */
+.gantt-container {
+  width: 100%;
+  font-family: "Google Sans", Roboto, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 14px;
+  border: 1px solid #dadce0;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ===== Toolbar ===== */
+.gantt-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 16px;
+  border-bottom: 1px solid #dadce0;
+  background: #fff;
+  flex-shrink: 0;
+}
+
+.toolbar-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.toolbar-btn {
+  border: 1px solid #dadce0;
+  background: #fff;
+  cursor: pointer;
+  border-radius: 4px;
+  color: #3c4043;
+  line-height: 1;
+  font-size: 13px;
+  font-family: inherit;
+}
+
+.toolbar-btn:hover {
+  background: #f1f3f4;
+}
+
+.today-btn {
+  padding: 6px 16px;
+  font-weight: 500;
+}
+
+.nav-btn {
+  padding: 6px 10px;
+  font-size: 12px;
+  border: none;
+}
+
+.nav-btn:hover {
+  background: #f1f3f4;
+  border-radius: 50%;
+}
+
+.add-btn {
+  padding: 6px 14px;
+  font-weight: 500;
+  color: #1a73e8;
+  border-color: #1a73e8;
+}
+
+.add-btn:hover {
+  background: #e8f0fe;
+}
+
+.toolbar-title {
+  font-size: 18px;
+  font-weight: 400;
+  color: #3c4043;
+  margin-left: 8px;
+}
+
+.view-switcher {
+  display: flex;
+  border: 1px solid #dadce0;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.view-btn {
+  border: none;
+  background: #fff;
+  cursor: pointer;
+  padding: 6px 14px;
+  font-size: 13px;
+  font-family: inherit;
+  color: #3c4043;
+  border-right: 1px solid #dadce0;
+}
+
+.view-btn:last-child {
+  border-right: none;
+}
+
+.view-btn:hover {
+  background: #f1f3f4;
+}
+
+.view-btn.active {
+  background: #e8f0fe;
+  color: #1967d2;
+  font-weight: 500;
+}
+
+/* ===== Gantt Body ===== */
+.gantt-body {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* ===== Left Labels ===== */
+.gantt-labels {
+  width: 200px;
+  min-width: 200px;
+  flex-shrink: 0;
+  border-right: 2px solid #dadce0;
+  background: #fff;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+}
+
+.gantt-label-header {
+  display: flex;
+  align-items: flex-end;
+  padding: 0 12px 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #5f6368;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 1px solid #dadce0;
+  background: #f8f9fa;
+  flex-shrink: 0;
+}
+
+.gantt-label-body {
+  overflow-y: auto;
+}
+
+.gantt-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 12px;
+  border-bottom: 1px solid #f0f0f0;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+
+.gantt-label-row:hover {
+  background: #f1f3f4;
+}
+
+.gantt-label-text {
+  font-size: 13px;
+  color: #3c4043;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+
+.gantt-label-progress {
+  font-size: 11px;
+  color: #5f6368;
+  margin-left: 8px;
+  flex-shrink: 0;
+}
+
+/* ===== Timeline ===== */
+.gantt-timeline-scroll {
+  flex: 1;
+  overflow-x: auto;
+  overflow-y: auto;
+}
+
+.gantt-timeline-svg {
+  display: block;
+}
+
+/* ===== SVG Header ===== */
+::deep .header-month-bg {
+  fill: #f8f9fa;
+}
+
+::deep .header-day-bg {
+  fill: #f8f9fa;
+}
+
+::deep .header-weekend-bg {
+  fill: #eef0f2;
+}
+
+::deep .header-offhour-bg {
+  fill: #f0f1f3;
+}
+
+::deep .header-month-text {
+  font-size: 12px;
+  font-weight: 600;
+  fill: #3c4043;
+  text-anchor: middle;
+  dominant-baseline: auto;
+}
+
+::deep .header-date-text {
+  font-size: 11px;
+  font-weight: 500;
+  fill: #3c4043;
+  text-anchor: middle;
+  dominant-baseline: auto;
+}
+
+::deep .header-day-text {
+  font-size: 10px;
+  fill: #5f6368;
+  text-anchor: middle;
+  dominant-baseline: auto;
+}
+
+::deep .header-hour-text {
+  font-size: 9px;
+  fill: #70757a;
+  dominant-baseline: auto;
+}
+
+::deep .header-sep {
+  stroke: #dadce0;
+  stroke-width: 1;
+}
+
+::deep .header-sep-light {
+  stroke: #e8eaed;
+  stroke-width: 0.5;
+}
+
+/* ===== SVG Grid ===== */
+::deep .grid-weekend {
+  fill: #f8f9fb;
+}
+
+::deep .grid-line {
+  stroke: #eef0f2;
+  stroke-width: 0.5;
+}
+
+::deep .grid-line-main {
+  stroke: #dadce0;
+  stroke-width: 1;
+}
+
+::deep .grid-row-line {
+  stroke: #f0f0f0;
+  stroke-width: 1;
+}
+
+/* ===== Today Line ===== */
+::deep .today-line {
+  stroke: #ea4335;
+  stroke-width: 1.5;
+  stroke-dasharray: none;
+}
+
+::deep .today-marker {
+  fill: #ea4335;
+}
+
+/* ===== Task Bars ===== */
+::deep .task-bar {
+  fill: #c6dafc;
+  cursor: grab;
+  transition: fill 0.15s;
+}
+
+::deep .task-bar:hover {
+  fill: #a8c7fa;
+}
+
+::deep .task-progress {
+  fill: #1a73e8;
+  pointer-events: none;
+}
+
+::deep .task-text {
+  font-size: 11px;
+  fill: #1a3a5c;
+  font-weight: 500;
+  dominant-baseline: auto;
+}
+
+::deep .resize-handle {
+  fill: transparent;
+  cursor: ew-resize;
+}
+
+::deep .resize-handle:hover {
+  fill: rgba(26, 115, 232, 0.25);
+}

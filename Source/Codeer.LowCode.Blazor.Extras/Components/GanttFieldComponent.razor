@@ -1,0 +1,547 @@
+@using System.Globalization
+@using Microsoft.AspNetCore.Components.Web
+@using Codeer.LowCode.Blazor.Components
+@using Codeer.LowCode.Blazor.Extras.Fields
+@inherits FieldComponentBase<GanttField>
+
+<div @ref="Element" class="gantt-container">
+  @* ===== Toolbar ===== *@
+  <div class="gantt-toolbar">
+    <div class="toolbar-left">
+      <button type="button" class="toolbar-btn today-btn" @onclick="GoToday">Today</button>
+      <button type="button" class="toolbar-btn nav-btn" @onclick="GoPrev">&#9664;</button>
+      <button type="button" class="toolbar-btn nav-btn" @onclick="GoNext">&#9654;</button>
+      <span class="toolbar-title">@GetTitle()</span>
+    </div>
+    <div class="toolbar-right">
+      <button type="button" class="toolbar-btn add-btn" @onclick="OnAddClicked">+ Add</button>
+      <div class="view-switcher">
+        <button type="button" class="view-btn @(Field.ViewMode == GanttViewMode.Day ? "active" : "")"
+                @onclick="() => SetViewMode(GanttViewMode.Day)">Day</button>
+        <button type="button" class="view-btn @(Field.ViewMode == GanttViewMode.Week ? "active" : "")"
+                @onclick="() => SetViewMode(GanttViewMode.Week)">Week</button>
+        <button type="button" class="view-btn @(Field.ViewMode == GanttViewMode.Month ? "active" : "")"
+                @onclick="() => SetViewMode(GanttViewMode.Month)">Month</button>
+      </div>
+    </div>
+  </div>
+
+  @* ===== Gantt Body ===== *@
+  <div class="gantt-body">
+    @{
+      var dates = GetDates();
+      var rowHeight = 40;
+      var headerHeight = GetHeaderHeight();
+      var bodyHeight = Math.Max(Field.Items.Count * rowHeight, rowHeight);
+      var totalHeight = headerHeight + bodyHeight;
+      var colWidth = GetColumnWidth();
+      var totalCols = dates.Count;
+      var timelineWidth = totalCols * colWidth;
+    }
+
+    @* ===== Left: Task labels ===== *@
+    <div class="gantt-labels">
+      <div class="gantt-label-header" style="height: @Px(headerHeight);">
+        <span>Task</span>
+      </div>
+      <div class="gantt-label-body">
+        @foreach (var item in Field.Items)
+        {
+          <div class="gantt-label-row" style="height: @Px(rowHeight);"
+               @onclick="() => OnTaskClicked(item)" title="@item.Text">
+            <span class="gantt-label-text">@item.Text</span>
+            @if (item.Progress > 0)
+            {
+              <span class="gantt-label-progress">@item.Progress%</span>
+            }
+          </div>
+        }
+      </div>
+    </div>
+
+    @* ===== Right: Timeline ===== *@
+    <div class="gantt-timeline-scroll">
+      <svg class="gantt-timeline-svg"
+           width="@timelineWidth" height="@totalHeight"
+           @onmousemove="OnMouseMove" @onmouseup="OnMouseUp" @onmouseleave="OnMouseUp">
+
+        @* --- Header --- *@
+        @if (Field.ViewMode == GanttViewMode.Month)
+        {
+          @* Month view: month groups + day columns *@
+          var monthGroups = GetMonthGroups(dates);
+          var mgX = 0.0;
+          @foreach (var mg in monthGroups)
+          {
+            var mgWidth = mg.Days * colWidth;
+            <rect x="@mgX" y="0" width="@mgWidth" height="24" class="header-month-bg" />
+            <g><text x="@(mgX + mgWidth / 2)" y="16" class="header-month-text">@mg.Label</text></g>
+            <line x1="@mgX" y1="0" x2="@mgX" y2="24" class="header-sep" />
+            mgX += mgWidth;
+          }
+          @for (var i = 0; i < dates.Count; i++)
+          {
+            var x = i * colWidth;
+            var d = dates[i];
+            var isWeekend = d.DayOfWeek == DayOfWeek.Saturday || d.DayOfWeek == DayOfWeek.Sunday;
+            <rect x="@x" y="24" width="@colWidth" height="24" class="@(isWeekend ? "header-weekend-bg" : "header-day-bg")" />
+            <g><text x="@(x + colWidth / 2)" y="40" class="header-day-text">@d.Day</text></g>
+            <line x1="@x" y1="24" x2="@x" y2="48" class="header-sep-light" />
+          }
+          <line x1="0" y1="24" x2="@timelineWidth" y2="24" class="header-sep" />
+          <line x1="0" y1="48" x2="@timelineWidth" y2="48" class="header-sep" />
+        }
+        else if (Field.ViewMode == GanttViewMode.Week)
+        {
+          @* Week view: date groups + hours *@
+          var dayGroups = GetDayGroups(dates);
+          var dgX = 0.0;
+          @foreach (var dg in dayGroups)
+          {
+            var dgWidth = dg.Hours * colWidth;
+            var isWeekend = dg.Date.DayOfWeek == DayOfWeek.Saturday || dg.Date.DayOfWeek == DayOfWeek.Sunday;
+            <rect x="@dgX" y="0" width="@dgWidth" height="24" class="@(isWeekend ? "header-weekend-bg" : "header-day-bg")" />
+            <g><text x="@(dgX + dgWidth / 2)" y="16" class="header-date-text">@dg.Label</text></g>
+            <line x1="@dgX" y1="0" x2="@dgX" y2="24" class="header-sep" />
+            dgX += dgWidth;
+          }
+          @for (var i = 0; i < dates.Count; i++)
+          {
+            var x = i * colWidth;
+            var h = dates[i].Hour;
+            @if (h % 6 == 0)
+            {
+              <g><text x="@(x + 2)" y="@(headerHeight - 4)" class="header-hour-text">@($"{h}:00")</text></g>
+            }
+            <line x1="@x" y1="24" x2="@x" y2="@headerHeight" class="header-sep-light" />
+          }
+          <line x1="0" y1="24" x2="@timelineWidth" y2="24" class="header-sep" />
+          <line x1="0" y1="@headerHeight" x2="@timelineWidth" y2="@headerHeight" class="header-sep" />
+        }
+        else
+        {
+          @* Day view: hour columns *@
+          @for (var i = 0; i < dates.Count; i++)
+          {
+            var x = i * colWidth;
+            var h = dates[i].Hour;
+            <rect x="@x" y="0" width="@colWidth" height="@headerHeight"
+                  class="@(h >= 9 && h < 17 ? "header-day-bg" : "header-offhour-bg")" />
+            <g><text x="@(x + colWidth / 2)" y="@(headerHeight - 6)" class="header-hour-text">@($"{h}:00")</text></g>
+            <line x1="@x" y1="0" x2="@x" y2="@headerHeight" class="header-sep-light" />
+          }
+          <line x1="0" y1="@headerHeight" x2="@timelineWidth" y2="@headerHeight" class="header-sep" />
+        }
+
+        @* --- Grid background --- *@
+        @for (var i = 0; i < dates.Count; i++)
+        {
+          var x = i * colWidth;
+          var d = dates[i];
+          var isWeekend = Field.ViewMode == GanttViewMode.Month
+            ? (d.DayOfWeek == DayOfWeek.Saturday || d.DayOfWeek == DayOfWeek.Sunday)
+            : false;
+          @if (isWeekend)
+          {
+            <rect x="@x" y="@headerHeight" width="@colWidth" height="@bodyHeight" class="grid-weekend" />
+          }
+          <line x1="@x" y1="@headerHeight" x2="@x" y2="@totalHeight"
+                class="@(IsMainGridLine(d) ? "grid-line-main" : "grid-line")" />
+        }
+
+        @* Row separators *@
+        @for (var r = 0; r <= Field.Items.Count; r++)
+        {
+          var y = headerHeight + r * rowHeight;
+          <line x1="0" y1="@y" x2="@timelineWidth" y2="@y" class="grid-row-line" />
+        }
+
+        @* --- Today line --- *@
+        @{
+          var todayX = GetTodayX(dates, colWidth);
+        }
+        @if (todayX >= 0 && todayX <= timelineWidth)
+        {
+          <line x1="@todayX" y1="@headerHeight" x2="@todayX" y2="@totalHeight" class="today-line" />
+          <polygon points="@TodayMarker(todayX, headerHeight)" class="today-marker" />
+        }
+
+        @* --- Task bars --- *@
+        @for (var idx = 0; idx < Field.Items.Count; idx++)
+        {
+          var item = Field.Items[idx];
+          var barPos = GetBarPosition(item, dates, colWidth, headerHeight, rowHeight, idx);
+          @if (barPos.Width > 0)
+          {
+            var barY = barPos.Y;
+            var barH = barPos.Height;
+            var capturedItem = item;
+            var capturedIdx = idx;
+
+            @* Bar background (full bar) *@
+            <rect x="@barPos.X" y="@barY" width="@barPos.Width" height="@barH"
+                  rx="4" ry="4" class="task-bar"
+                  @onmousedown="e => StartDrag(e, capturedIdx, DragMode.Move)"
+                  @onmousedown:stopPropagation="true" />
+
+            @* Progress fill *@
+            @if (item.Progress > 0)
+            {
+              var progressWidth = barPos.Width * item.Progress / 100.0;
+              <rect x="@barPos.X" y="@barY" width="@progressWidth" height="@barH"
+                    rx="4" ry="4" class="task-progress"
+                    @onmousedown="e => StartDrag(e, capturedIdx, DragMode.Move)"
+                    @onmousedown:stopPropagation="true" />
+              @if (progressWidth < barPos.Width)
+              {
+                @* Clip the right rounded corners of progress when not 100% *@
+                <rect x="@(barPos.X + progressWidth - 4)" y="@barY" width="4" height="@barH"
+                      class="task-progress"
+                      @onmousedown="e => StartDrag(e, capturedIdx, DragMode.Move)"
+                      @onmousedown:stopPropagation="true" />
+              }
+            }
+
+            @* Task text *@
+            <g><text x="@(barPos.X + 8)" y="@(barY + barH / 2 + 4)"
+                  class="task-text" pointer-events="none">@TruncateText(item.Text, barPos.Width)</text></g>
+
+            @* Left resize handle *@
+            <rect x="@barPos.X" y="@barY" width="6" height="@barH"
+                  class="resize-handle" rx="2" ry="2"
+                  @onmousedown="e => StartDrag(e, capturedIdx, DragMode.ResizeLeft)"
+                  @onmousedown:stopPropagation="true" />
+
+            @* Right resize handle *@
+            <rect x="@(barPos.X + barPos.Width - 6)" y="@barY" width="6" height="@barH"
+                  class="resize-handle" rx="2" ry="2"
+                  @onmousedown="e => StartDrag(e, capturedIdx, DragMode.ResizeRight)"
+                  @onmousedown:stopPropagation="true" />
+          }
+        }
+      </svg>
+    </div>
+  </div>
+</div>
+
+@code {
+  enum DragMode { Move, ResizeLeft, ResizeRight }
+
+  bool _dragging;
+  int _dragIdx;
+  DragMode _dragMode;
+  double _dragStartX;
+  DateTime _dragOrigStart;
+  DateTime _dragOrigEnd;
+
+  private string Px(double v) => v.ToString("0.#", CultureInfo.InvariantCulture) + "px";
+  private string F(double v) => v.ToString("0.##", CultureInfo.InvariantCulture);
+
+  // ===== Navigation =====
+
+  private string GetTitle()
+  {
+    var s = Field.ViewStart;
+    var (_, end) = Field.GetViewDateRange();
+    var e = end.AddDays(-1);
+    return Field.ViewMode switch
+    {
+      GanttViewMode.Day => s.ToString("MMMM d, yyyy", CultureInfo.InvariantCulture),
+      GanttViewMode.Month when s.Month == e.Month => s.ToString("MMMM yyyy", CultureInfo.InvariantCulture),
+      GanttViewMode.Month => $"{s.ToString("MMM", CultureInfo.InvariantCulture)} - {e.ToString("MMM yyyy", CultureInfo.InvariantCulture)}",
+      _ when s.Month == e.Month => $"{s.ToString("MMMM d", CultureInfo.InvariantCulture)} - {e.Day}, {s.Year}",
+      _ => $"{s.ToString("MMM d", CultureInfo.InvariantCulture)} - {e.ToString("MMM d, yyyy", CultureInfo.InvariantCulture)}",
+    };
+  }
+
+  private async Task GoToday()
+  {
+    var start = Field.ViewMode switch
+    {
+      GanttViewMode.Day => DateTime.Today,
+      GanttViewMode.Month => new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1),
+      _ => DateTime.Today.AddDays(-(int)DateTime.Today.DayOfWeek),
+    };
+    await Field.SetViewStartAsync(start);
+  }
+
+  private async Task GoPrev()
+  {
+    var next = Field.ViewMode switch
+    {
+      GanttViewMode.Day => Field.ViewStart.AddDays(-1),
+      GanttViewMode.Month => Field.ViewStart.AddMonths(-1),
+      _ => Field.ViewStart.AddDays(-7),
+    };
+    await Field.SetViewStartAsync(next);
+  }
+
+  private async Task GoNext()
+  {
+    var next = Field.ViewMode switch
+    {
+      GanttViewMode.Day => Field.ViewStart.AddDays(1),
+      GanttViewMode.Month => Field.ViewStart.AddMonths(1),
+      _ => Field.ViewStart.AddDays(7),
+    };
+    await Field.SetViewStartAsync(next);
+  }
+
+  private async Task SetViewMode(GanttViewMode mode)
+  {
+    var newStart = mode switch
+    {
+      GanttViewMode.Day => DateTime.Today,
+      GanttViewMode.Month => new DateTime(Field.ViewStart.Year, Field.ViewStart.Month, 1),
+      _ => Field.ViewStart.Date.AddDays(-(int)Field.ViewStart.DayOfWeek),
+    };
+    await Field.SetViewModeAsync(mode);
+    await Field.SetViewStartAsync(newStart);
+  }
+
+  // ===== Event handlers =====
+
+  private async Task OnAddClicked() => await Field.AddAsync(DateTime.Now);
+
+  private async Task OnTaskClicked(GanttItem item) => await Field.EditAsync(item.Module);
+
+  // ===== Date/column generation =====
+
+  private int GetHeaderHeight() => Field.ViewMode switch
+  {
+    GanttViewMode.Month => 48,
+    GanttViewMode.Week => 44,
+    _ => 28,
+  };
+
+  private int GetColumnWidth() => Field.ViewMode switch
+  {
+    GanttViewMode.Month => 32,
+    GanttViewMode.Week => 14,
+    _ => 40,
+  };
+
+  private List<DateTime> GetDates()
+  {
+    var (start, end) = Field.GetViewDateRange();
+    var list = new List<DateTime>();
+    switch (Field.ViewMode)
+    {
+      case GanttViewMode.Day:
+        for (var h = 0; h < 24; h++)
+          list.Add(start.Date.AddHours(h));
+        break;
+      case GanttViewMode.Week:
+        var current = start;
+        while (current < end)
+        {
+          list.Add(current);
+          current = current.AddHours(1);
+        }
+        break;
+      default:
+        var d = start.Date;
+        while (d < end)
+        {
+          list.Add(d);
+          d = d.AddDays(1);
+        }
+        break;
+    }
+    return list;
+  }
+
+  // ===== Header helpers =====
+
+  private record MonthGroup(string Label, int Days);
+  private record DayGroup(string Label, DateTime Date, int Hours);
+
+  private List<MonthGroup> GetMonthGroups(List<DateTime> dates)
+  {
+    var groups = new List<MonthGroup>();
+    if (dates.Count == 0) return groups;
+    var curMonth = dates[0].Month;
+    var curYear = dates[0].Year;
+    var count = 0;
+    foreach (var d in dates)
+    {
+      if (d.Month != curMonth || d.Year != curYear)
+      {
+        groups.Add(new MonthGroup(new DateTime(curYear, curMonth, 1).ToString("MMM yyyy", CultureInfo.InvariantCulture), count));
+        curMonth = d.Month;
+        curYear = d.Year;
+        count = 0;
+      }
+      count++;
+    }
+    if (count > 0)
+      groups.Add(new MonthGroup(new DateTime(curYear, curMonth, 1).ToString("MMM yyyy", CultureInfo.InvariantCulture), count));
+    return groups;
+  }
+
+  private List<DayGroup> GetDayGroups(List<DateTime> dates)
+  {
+    var groups = new List<DayGroup>();
+    if (dates.Count == 0) return groups;
+    var curDate = dates[0].Date;
+    var count = 0;
+    foreach (var d in dates)
+    {
+      if (d.Date != curDate)
+      {
+        groups.Add(new DayGroup(curDate.ToString("ddd M/d", CultureInfo.InvariantCulture), curDate, count));
+        curDate = d.Date;
+        count = 0;
+      }
+      count++;
+    }
+    if (count > 0)
+      groups.Add(new DayGroup(curDate.ToString("ddd M/d", CultureInfo.InvariantCulture), curDate, count));
+    return groups;
+  }
+
+  private bool IsMainGridLine(DateTime d) => Field.ViewMode switch
+  {
+    GanttViewMode.Month => d.DayOfWeek == DayOfWeek.Monday,
+    GanttViewMode.Week => d.Hour == 0,
+    _ => d.Hour % 6 == 0,
+  };
+
+  // ===== Today line =====
+
+  private double GetTodayX(List<DateTime> dates, int colWidth)
+  {
+    if (dates.Count == 0) return -1;
+    var now = DateTime.Now;
+    var start = dates[0];
+    var end = dates[^1];
+    var unit = Field.ViewMode switch
+    {
+      GanttViewMode.Month => TimeSpan.FromDays(1),
+      GanttViewMode.Week => TimeSpan.FromHours(1),
+      _ => TimeSpan.FromHours(1),
+    };
+    var endDate = end.Add(unit);
+    if (now < start || now > endDate) return -1;
+    var totalUnits = (endDate - start).TotalSeconds / unit.TotalSeconds;
+    var nowUnits = (now - start).TotalSeconds / unit.TotalSeconds;
+    return nowUnits / totalUnits * dates.Count * colWidth;
+  }
+
+  private string TodayMarker(double x, int headerHeight)
+  {
+    var y = headerHeight;
+    return $"{F(x - 5)},{y} {F(x + 5)},{y} {F(x)},{y + 6}";
+  }
+
+  // ===== Task bar positioning =====
+
+  private record BarPosition(double X, double Y, double Width, double Height);
+
+  private BarPosition GetBarPosition(GanttItem item, List<DateTime> dates, int colWidth, int headerHeight, int rowHeight, int rowIdx)
+  {
+    if (dates.Count == 0) return new BarPosition(0, 0, 0, 0);
+
+    var start = dates[0];
+    var unit = Field.ViewMode switch
+    {
+      GanttViewMode.Month => TimeSpan.FromDays(1),
+      GanttViewMode.Week => TimeSpan.FromHours(1),
+      _ => TimeSpan.FromHours(1),
+    };
+    var endDate = dates[^1].Add(unit);
+    var totalUnits = (endDate - start).TotalSeconds / unit.TotalSeconds;
+
+    var barStart = Math.Max(0, (item.Start - start).TotalSeconds / unit.TotalSeconds);
+    var barEnd = Math.Min(totalUnits, (item.End - start).TotalSeconds / unit.TotalSeconds);
+
+    if (barEnd <= barStart) return new BarPosition(0, 0, 0, 0);
+
+    var pxPerUnit = (double)(dates.Count * colWidth) / totalUnits;
+    var x = barStart * pxPerUnit;
+    var width = Math.Max((barEnd - barStart) * pxPerUnit, 4);
+    var pad = 6;
+    var barHeight = rowHeight - pad * 2;
+    var y = headerHeight + rowIdx * rowHeight + pad;
+
+    return new BarPosition(x, y, width, barHeight);
+  }
+
+  private string TruncateText(string text, double width)
+  {
+    var maxChars = (int)(width / 7) - 1;
+    if (maxChars <= 0) return "";
+    if (text.Length <= maxChars) return text;
+    return maxChars <= 3 ? "" : text[..(maxChars - 1)] + "...";
+  }
+
+  // ===== Drag & Drop =====
+
+  private void StartDrag(MouseEventArgs e, int idx, DragMode mode)
+  {
+    _dragging = true;
+    _dragIdx = idx;
+    _dragMode = mode;
+    _dragStartX = e.ClientX;
+    _dragOrigStart = Field.Items[idx].Start;
+    _dragOrigEnd = Field.Items[idx].End;
+  }
+
+  private void OnMouseMove(MouseEventArgs e)
+  {
+    if (!_dragging || _dragIdx < 0 || _dragIdx >= Field.Items.Count) return;
+
+    var dx = e.ClientX - _dragStartX;
+    var colWidth = GetColumnWidth();
+    var snap = GetSnapTimeSpan();
+    var snapPx = GetSnapPx(colWidth);
+    var steps = (int)Math.Round(dx / snapPx);
+
+    var item = Field.Items[_dragIdx];
+
+    switch (_dragMode)
+    {
+      case DragMode.Move:
+        item.Start = _dragOrigStart.Add(snap * steps);
+        item.End = _dragOrigEnd.Add(snap * steps);
+        break;
+      case DragMode.ResizeLeft:
+        var newStart = _dragOrigStart.Add(snap * steps);
+        if (newStart < _dragOrigEnd) item.Start = newStart;
+        break;
+      case DragMode.ResizeRight:
+        var newEnd = _dragOrigEnd.Add(snap * steps);
+        if (newEnd > _dragOrigStart) item.End = newEnd;
+        break;
+    }
+    StateHasChanged();
+  }
+
+  private async Task OnMouseUp(MouseEventArgs e)
+  {
+    if (!_dragging) return;
+    _dragging = false;
+
+    if (_dragIdx < 0 || _dragIdx >= Field.Items.Count) return;
+
+    var item = Field.Items[_dragIdx];
+    if (item.Start != _dragOrigStart || item.End != _dragOrigEnd)
+    {
+      await Field.UpdateTaskDatesAsync(item, item.Start, item.End);
+    }
+  }
+
+  private TimeSpan GetSnapTimeSpan() => Field.ViewMode switch
+  {
+    GanttViewMode.Month => TimeSpan.FromDays(1),
+    GanttViewMode.Week => TimeSpan.FromHours(1),
+    _ => TimeSpan.FromMinutes(30),
+  };
+
+  private double GetSnapPx(int colWidth) => Field.ViewMode switch
+  {
+    GanttViewMode.Month => colWidth,
+    GanttViewMode.Week => colWidth,
+    _ => colWidth / 2.0,
+  };
+}

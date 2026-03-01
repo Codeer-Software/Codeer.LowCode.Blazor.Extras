@@ -49,6 +49,25 @@
       "Name": "Calendar",
       "IgnoreModification": false,
       "TypeFullName": "Codeer.LowCode.Blazor.Extras.Designs.CalendarFieldDesign"
+    },
+    {
+      "DisplayName": "",
+      "SearchCondition": {
+        "SelectFields": [],
+        "SortConditions": [],
+        "SortFieldVariable": "",
+        "SortDescending": false,
+        "ModuleName": "Task"
+      },
+      "TextField": "Title",
+      "StartField": "Start",
+      "EndField": "End",
+      "ProgressField": "Progress",
+      "DetailLayoutName": "",
+      "OnDataChanged": "",
+      "Name": "Gantt",
+      "IgnoreModification": false,
+      "TypeFullName": "Codeer.LowCode.Blazor.Extras.Designs.GanttFieldDesign"
     }
   ],
   "UserWriteCondition": {
@@ -163,6 +182,38 @@
               {
                 "Layout": {
                   "FieldName": "Calendar",
+                  "ContextMenu": "",
+                  "ClassName": "",
+                  "FontFamily": "",
+                  "Color": "",
+                  "BackgroundColor": "",
+                  "Name": "",
+                  "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.FieldLayoutDesign"
+                },
+                "Padding": {},
+                "BackgroundColor": "",
+                "BorderStyle": {
+                  "LeftColor": "",
+                  "TopColor": "",
+                  "RightColor": "",
+                  "BottomColor": ""
+                },
+                "CanResize": false,
+                "Border": "None"
+              }
+            ]
+          },
+          {
+            "IsWrap": false,
+            "Margin": {},
+            "GridRowType": "Normal",
+            "CanResize": false,
+            "BackgroundColor": "",
+            "IsRowMarginRemoved": false,
+            "Columns": [
+              {
+                "Layout": {
+                  "FieldName": "Gantt",
                   "ContextMenu": "",
                   "ClassName": "",
                   "FontFamily": "",
