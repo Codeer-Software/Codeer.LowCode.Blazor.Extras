@@ -9,7 +9,6 @@ using Codeer.LowCode.Blazor.DataIO.Db.Definition;
 using Codeer.LowCode.Blazor.Designer;
 using Codeer.LowCode.Blazor.Designer.Extensibility;
 using Codeer.LowCode.Blazor.Designer.Extensibility.Views;
-using Codeer.LowCode.Blazor.Designer.Extra;
 using Codeer.LowCode.Blazor.Designer.Models;
 using Codeer.LowCode.Blazor.Designer.Views.Windows;
 using Codeer.LowCode.Blazor.DesignLogic;
@@ -22,7 +21,6 @@ using Codeer.LowCode.Blazor.SystemSettings;
 using Extras.Client.Shared.AITextAnalyzer;
 using Extras.Client.Shared.ScriptObjects;
 using Extras.Designer.Lib;
-using Extras.Designer.Lib.AI;
 using Extras.Designer.Lib.DbTableToModule;
 using Extras.Designer.Lib.ExcelToModule;
 using Extras.Designer.Lib.ModuleToClass;
@@ -37,9 +35,6 @@ namespace Extras.Designer
         protected override void OnStartup(StartupEventArgs e)
         {
             typeof(CalendarField).ToString();
-            AISettings.Instance.OpenAIEndPoint = Environment.GetEnvironmentVariable("AZURE_OPENAI_API_ENDPOINT") ?? string.Empty;
-            AISettings.Instance.OpenAIKey = Environment.GetEnvironmentVariable("AZURE_OPENAI_API_KEY") ?? string.Empty;
-            AISettings.Instance.ChatModel = "gpt-4o";
 
             Codeer.LowCode.Blazor.License.LicenseManager.IsAutoUpdate =
                 bool.TryParse(ConfigurationManager.AppSettings["IsLicenseAutoUpdate"], out var val) ? val : true;
@@ -85,14 +80,6 @@ namespace Extras.Designer
             DesignerEnvironment.AddSolutionExplorerMenu(CreateFieldDataClass, SolutionExplorerMenuTarget.Module, "Create FieldData Class");
             DesignerEnvironment.AddSolutionExplorerMenu(CreateEfClass, SolutionExplorerMenuTarget.Module, "Create EF Class");
 
-            if (!string.IsNullOrEmpty(AISettings.Instance.OpenAIKey))
-            {
-                QuerySettingPropertyControl.CreateQueryChat = dataSource => new QueryChat(DesignerEnvironment, AISettings.Instance, dataSource);
-                DesignerEnvironment.AddMainMenu(CreateModulesByAI, "Tools", "Create Modules by AI");
-                DesignerEnvironment.AddSolutionExplorerMenu(e => CreateDBInformation(e, true), SolutionExplorerMenuTarget.Module, "Create DB Name (AI)", "All");
-                DesignerEnvironment.AddSolutionExplorerMenu(e => CreateDBInformation(e, false), SolutionExplorerMenuTarget.Module, "Create DB Name (AI)", "Empty Only");
-            }
-
             DesignerEnvironment.AddSolutionExplorerMenu(ExportPrintExcelCheatSheet, SolutionExplorerMenuTarget.Module, "Export Excel Print CheatSheet");
 
             DesignerEnvironment.AddDbColumnTransformHandler(DbColumnTransformHandler);
@@ -130,30 +117,6 @@ namespace Extras.Designer
             //モジュールに変換
             var err = DbTableParser.Import(DesignerEnvironment, userSelected.Value.selectedDataSource, userSelected.Value.selectedTables);
             if (!string.IsNullOrEmpty(err)) DesignerEnvironment.ShowToast(err, false);
-        }
-
-        private void CreateDBInformation(SolutionExplorerMenuClickEventArgs e, bool isAll)
-        {
-            var dlg = new WaitingWindow();
-            dlg.Loaded += async (_, _) =>
-            {
-                var modName = e.Item.Split(".").First();
-                var mod = DesignerEnvironment.GetDesignData().Modules.Find(modName);
-                if (mod == null)
-                {
-                    DesignerEnvironment.ShowToast("Module not found", false);
-                    return;
-                }
-                var settingsFile = File.ReadAllText(Path.Combine(DesignerEnvironment.CurrentFileDirectory, "designer.settings.json"));
-                var clone = mod.JsonClone();
-                await DbNameCreator.CreateDbNames(DesignerEnvironment.GetDesignerSettings(), clone, isAll);
-
-                var path = Directory.GetFiles(Path.Combine(DesignerEnvironment.CurrentFileDirectory, "Modules"), e.Item, SearchOption.AllDirectories).FirstOrDefault() ??
-                    Path.Combine(DesignerEnvironment.CurrentFileDirectory, "Modules", e.Item);
-
-                File.WriteAllText(path, JsonConverterEx.SerializeObject(clone)); dlg.Close();
-            };
-            dlg.ShowDialog();
         }
 
         private void CreateDDL(SolutionExplorerMenuClickEventArgs e)
@@ -325,17 +288,6 @@ namespace Extras.Designer
             {
                 MessageBox.Show(e.Message);
             }
-        }
-
-        private void CreateModulesByAI()
-        {
-            if (string.IsNullOrEmpty(DesignerEnvironment.CurrentFileDirectory)) return;
-            var window = new AIChatWindow(new ModuleCreator(DesignerEnvironment, AISettings.Instance))
-            {
-                Owner = MainWindow,
-                WindowStartupLocation = WindowStartupLocation.CenterOwner
-            };
-            window.Show();
         }
 
         private void ExportPageObject()
