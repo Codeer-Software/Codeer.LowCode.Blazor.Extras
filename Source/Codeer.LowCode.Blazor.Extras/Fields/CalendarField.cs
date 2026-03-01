@@ -128,7 +128,8 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
                 ModuleName = Design.SearchCondition.ModuleName,
                 Condition = MultiMatchCondition.Or(
                     MultiMatchCondition.And(startVariable.GreaterThanOrEqual(rangeStart), startVariable.LessThan(rangeEnd)),
-                    MultiMatchCondition.And(endVariable.GreaterThanOrEqual(rangeStart), endVariable.LessThan(rangeEnd))
+                    MultiMatchCondition.And(endVariable.GreaterThanOrEqual(rangeStart), endVariable.LessThan(rangeEnd)),
+                    MultiMatchCondition.And(startVariable.LessThan(rangeStart), endVariable.GreaterThanOrEqual(rangeEnd))
                     )
             };
 
