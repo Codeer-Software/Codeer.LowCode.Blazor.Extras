@@ -10,6 +10,13 @@ using Codeer.LowCode.Blazor.Script.Internal.ScriptServices;
 
 namespace Codeer.LowCode.Blazor.Extras.Fields
 {
+    public enum CalendarViewMode
+    {
+        Month,
+        Week,
+        Day
+    }
+
     public class ModuleCalendarItem
     {
         public DateTime Start { get; set; }
@@ -27,7 +34,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
     {
 
         private SearchCondition? _additionalCondition;
-        private DateTime? _currentMonth;
+        private (DateTime Start, DateTime End)? _currentRange;
 
         [ScriptHide]
         public Func<SearchCondition?, Task> OnQueryChangedAsync { get; set; } = _ => Task.CompletedTask;
@@ -48,6 +55,8 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         internal List<ModuleCalendarItem> Items { get; } = [];
 
         internal DateTime SelectedDate { get; private set; } = DateTime.Now;
+
+        internal CalendarViewMode ViewMode { get; private set; } = CalendarViewMode.Month;
 
         public int Page => 0;
 
@@ -106,22 +115,20 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         {
             if (!AllowLoad) return;
 
-            var date = new DateTime(SelectedDate.Year, SelectedDate.Month, 1);
+            var (rangeStart, rangeEnd) = GetViewDateRange();
 
-            if (_currentMonth is not null && _currentMonth == date) return;
+            if (_currentRange is not null && _currentRange.Value.Start == rangeStart && _currentRange.Value.End == rangeEnd) return;
 
-            _currentMonth = date;
+            _currentRange = (rangeStart, rangeEnd);
 
-            var startDate = _currentMonth.Value.AddDays(-7);
-            var endDate = _currentMonth.Value.AddMonths(1).AddDays(7);
             var startVariable = new VariableName($"{Design.StartField}.Value");
             var endVariable = new VariableName($"{Design.EndField}.Value");
             var condition = new SearchCondition
             {
                 ModuleName = Design.SearchCondition.ModuleName,
                 Condition = MultiMatchCondition.Or(
-                    MultiMatchCondition.And(startVariable.GreaterThanOrEqual(startDate), startVariable.LessThan(endDate)),
-                    MultiMatchCondition.And(endVariable.GreaterThanOrEqual(startDate), endVariable.LessThan(endDate))
+                    MultiMatchCondition.And(startVariable.GreaterThanOrEqual(rangeStart), startVariable.LessThan(rangeEnd)),
+                    MultiMatchCondition.And(endVariable.GreaterThanOrEqual(rangeStart), endVariable.LessThan(rangeEnd))
                     )
             };
 
@@ -132,6 +139,21 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             Items.AddRange(items.Select(ConvertToCalendarItem).OrderBy(e => e.Start).ThenByDescending(e => (e.End ?? e.Start) - e.Start).ToList());
 
             NotifyStateChanged();
+        }
+
+        internal (DateTime Start, DateTime End) GetViewDateRange()
+        {
+            switch (ViewMode)
+            {
+                case CalendarViewMode.Week:
+                    var weekStart = SelectedDate.Date.AddDays(-(int)SelectedDate.DayOfWeek);
+                    return (weekStart, weekStart.AddDays(7));
+                case CalendarViewMode.Day:
+                    return (SelectedDate.Date, SelectedDate.Date.AddDays(1));
+                default:
+                    var monthFirst = new DateTime(SelectedDate.Year, SelectedDate.Month, 1);
+                    return (monthFirst.AddDays(-7), monthFirst.AddMonths(1).AddDays(7));
+            }
         }
 
         internal async Task AddAsync(DateTime date)
@@ -199,7 +221,15 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         internal async Task SetCurrentDayAsync(DateTime date)
         {
             SelectedDate = date;
-            _currentMonth = null;
+            _currentRange = null;
+            NotifyStateChanged();
+            await ReloadAsync();
+        }
+
+        internal async Task SetViewModeAsync(CalendarViewMode mode)
+        {
+            ViewMode = mode;
+            _currentRange = null;
             NotifyStateChanged();
             await ReloadAsync();
         }
