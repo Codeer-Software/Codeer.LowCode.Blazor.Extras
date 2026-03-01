@@ -148,6 +148,21 @@
       "Name": "サブミットボタン",
       "IgnoreModification": false,
       "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.SubmitButtonFieldDesign"
+    },
+    {
+      "DbColumn": "processing_counter",
+      "Placeholder": "",
+      "Format": "",
+      "IsSlider": false,
+      "IsUpdateProtected": false,
+      "IsSimpleSearchParameter": false,
+      "OnSearchDataChanged": "",
+      "DisplayName": "",
+      "IsRequired": false,
+      "OnDataChanged": "",
+      "Name": "ProcessingCounter",
+      "IgnoreModification": false,
+      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.NumberFieldDesign"
     }
   ],
   "UserWriteCondition": {

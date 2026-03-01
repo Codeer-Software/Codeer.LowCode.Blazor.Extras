@@ -34,14 +34,37 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         [TargetFieldType(Types = [typeof(DateTimeFieldDesign)])]
         public string EndField { get; set; } = "";
 
-        [Designer(CandidateType = CandidateType.Field)]
+        [Designer(CandidateType = CandidateType.Field, Category = nameof(SearchCondition))]
         [ModuleMember(Member = $"{nameof(SearchCondition)}.{nameof(SearchCondition.ModuleName)}")]
         [TargetFieldType(Types = [typeof(NumberFieldDesign)])]
         public string ProgressField { get; set; } = "";
 
+        [Designer(CandidateType = CandidateType.Field, Category = nameof(SearchCondition))]
+        [ModuleMember(Member = $"{nameof(SearchCondition)}.{nameof(SearchCondition.ModuleName)}")]
+        [TargetFieldType(Types = [typeof(IdFieldDesign)])]
+        public string IdField { get; set; } = "";
+
+        [Designer(CandidateType = CandidateType.Field, Category = nameof(SearchCondition))]
+        [ModuleMember(Member = $"{nameof(SearchCondition)}.{nameof(SearchCondition.ModuleName)}")]
+        [TargetFieldType(Types = [typeof(NumberFieldDesign)])]
+        public string ProcessingCounterField { get; set; } = "";
+
         [Designer(CandidateType = CandidateType.DetailLayout)]
         [Layout(ModuleNameMember = $"{nameof(SearchCondition)}.{nameof(SearchCondition.ModuleName)}")]
         public string DetailLayoutName { get; set; } = string.Empty;
+
+        [Designer(Scope = DesignerScope.All, Category = nameof(DependenciesModule))]
+        public SearchCondition DependenciesModule { get; set; } = new();
+
+        [Designer(CandidateType = CandidateType.Field, Category = nameof(DependenciesModule))]
+        [ModuleMember(Member = $"{nameof(DependenciesModule)}.{nameof(DependenciesModule.ModuleName)}")]
+        [TargetFieldType(Types = [typeof(IdFieldDesign), typeof(LinkFieldDesign)])]
+        public string DependencySourceIdField { get; set; } = "";
+
+        [Designer(CandidateType = CandidateType.Field, Category = nameof(DependenciesModule))]
+        [ModuleMember(Member = $"{nameof(DependenciesModule)}.{nameof(DependenciesModule.ModuleName)}")]
+        [TargetFieldType(Types = [typeof(IdFieldDesign), typeof(LinkFieldDesign)])]
+        public string DependencyDestinationIdField { get; set; } = "";
 
         [Designer(CandidateType = CandidateType.ScriptEvent)]
         public string OnDataChanged { get; set; } = string.Empty;
@@ -63,9 +86,14 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
             context.CheckFieldRelativeFieldExistence(Name, nameof(StartField), SearchCondition.ModuleName, StartField).AddTo(result);
             context.CheckFieldRelativeFieldExistence(Name, nameof(EndField), SearchCondition.ModuleName, EndField).AddTo(result);
             context.CheckFieldRelativeFieldExistence(Name, nameof(ProgressField), SearchCondition.ModuleName, ProgressField).AddTo(result);
+            context.CheckFieldRelativeFieldExistence(Name, nameof(IdField), SearchCondition.ModuleName, IdField).AddTo(result);
+            context.CheckFieldRelativeFieldExistence(Name, nameof(ProcessingCounterField), SearchCondition.ModuleName, ProcessingCounterField).AddTo(result);
             context.CheckFieldRelativeModuleLayoutExistence(Name, nameof(DetailLayoutName), SearchCondition.ModuleName, DetailLayoutName).AddTo(result);
+            context.CheckFieldRelativeFieldExistence(Name, nameof(DependencySourceIdField), DependenciesModule.ModuleName, DependencySourceIdField).AddTo(result);
+            context.CheckFieldRelativeFieldExistence(Name, nameof(DependencyDestinationIdField), DependenciesModule.ModuleName, DependencyDestinationIdField).AddTo(result);
             context.CheckFieldFunctionExistence(Name, nameof(OnDataChanged), OnDataChanged, null).AddTo(result);
             result.AddRange(SearchCondition.CheckDesign(context, Name, nameof(SearchCondition)));
+            result.AddRange(DependenciesModule.CheckDesign(context, Name, nameof(DependenciesModule)));
             return result;
         }
 
@@ -74,9 +102,14 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
             .AddField(SearchCondition.ModuleName, StartField, value => StartField = value)
             .AddField(SearchCondition.ModuleName, EndField, value => EndField = value)
             .AddField(SearchCondition.ModuleName, ProgressField, value => ProgressField = value)
+            .AddField(SearchCondition.ModuleName, IdField, value => IdField = value)
+            .AddField(SearchCondition.ModuleName, ProcessingCounterField, value => ProcessingCounterField = value)
             .AddLayout(SearchCondition.ModuleName, ModuleLayoutType.Detail, DetailLayoutName,
                 value => DetailLayoutName = value)
+            .AddField(DependenciesModule.ModuleName, DependencySourceIdField, value => DependencySourceIdField = value)
+            .AddField(DependenciesModule.ModuleName, DependencyDestinationIdField, value => DependencyDestinationIdField = value)
             .AddMatchCondition(SearchCondition)
+            .AddMatchCondition(DependenciesModule)
             .Build();
     }
 }

@@ -4,7 +4,8 @@
       "Bash(dotnet build:*)",
       "WebSearch",
       "Bash(xargs grep -l \"ISearchResultsViewField\")",
-      "Bash(xargs grep:*)"
+      "Bash(xargs grep:*)",
+      "Bash(find \":*)"
     ]
   }
 }
