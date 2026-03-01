@@ -1,3 +1,4 @@
+@using System.Globalization
 @using Microsoft.AspNetCore.Components.Web
 @using Codeer.LowCode.Blazor.Components
 @using Codeer.LowCode.Blazor.Extras.Fields
@@ -23,15 +24,21 @@
   <div class="calendar-grid">
     @foreach (var day in GetDays())
     {
+      var positions = GetEventPositions(day.Date);
+      var containerHeight = GetContainerHeight(positions);
       <div class="calendar-cell @(day.IsCurrentMonth ? "" : "other-month") @(day.IsToday ? "today" : "") @(day.DayOfWeek == DayOfWeek.Sunday ? "sun" : "") @(day.DayOfWeek == DayOfWeek.Saturday ? "sat" : "")"
            @onclick="() => OnCellClicked(day.Date)">
         <div class="date-number">@day.Date.Day</div>
-        <div class="events-container">
-          @foreach (var item in GetEventsForDay(day.Date))
+        <div class="events-container" style="height: @Px(containerHeight);">
+          @foreach (var pos in positions)
           {
-            <div class="event-item" @onclick="() => OnEventClicked(item)" @onclick:stopPropagation="true"
-                 title="@item.Text">
-              @item.Text
+            var left = pos.TotalColumns > 1 ? (double)pos.Column / pos.TotalColumns * 100.0 : 0;
+            var width = pos.TotalColumns > 1 ? 100.0 / pos.TotalColumns : 100.0;
+            <div class="event-item"
+                 style="top: @Px(pos.TopPx); left: @Pct(left); width: calc(@Pct(width) - 1px); height: @Px(pos.HeightPx);"
+                 @onclick="() => OnEventClicked(pos.Item)" @onclick:stopPropagation="true"
+                 title="@GetEventTooltip(pos.Item)">
+              <span class="event-time">@pos.Item.Start.ToString("HH:mm")</span> @pos.Item.Text
             </div>
           }
         </div>
@@ -41,6 +48,12 @@
 </div>
 
 @code {
+  const double PxPerHour = 8.0;
+  const double MinEventHeight = 16.0;
+
+  private string Px(double v) => v.ToString("0.#", CultureInfo.InvariantCulture) + "px";
+  private string Pct(double v) => v.ToString("0.##", CultureInfo.InvariantCulture) + "%";
+
   private async Task PreviousMonth()
   {
     await Field.SetCurrentDayAsync(Field.SelectedDate.AddMonths(-1));
@@ -87,17 +100,78 @@
     return days;
   }
 
-  private List<ModuleCalendarItem> GetEventsForDay(DateTime date)
+  private List<EventPosition> GetEventPositions(DateTime date)
   {
-    return Field.Items
+    var dayStart = date.Date;
+    var dayEnd = dayStart.AddDays(1);
+
+    var clipped = Field.Items
       .Where(item =>
       {
         if (item.Start == default) return false;
-        var start = item.Start.Date;
-        var end = (item.End ?? item.Start).Date;
-        return date.Date >= start && date.Date <= end;
+        var s = item.Start.Date;
+        var e = (item.End ?? item.Start).Date;
+        return date.Date >= s && date.Date <= e;
+      })
+      .Select(item =>
+      {
+        var s = item.Start < dayStart ? dayStart : item.Start;
+        var e = (item.End ?? item.Start) > dayEnd ? dayEnd : (item.End ?? item.Start);
+        if (e <= s) e = s.AddMinutes(30);
+        return (Item: item, Start: s, End: e);
       })
       .ToList();
+
+    if (clipped.Count == 0) return [];
+
+    // Column assignment: greedy algorithm
+    var columns = new List<List<(ModuleCalendarItem Item, DateTime Start, DateTime End)>>();
+    var columnMap = new Dictionary<ModuleCalendarItem, int>();
+
+    foreach (var evt in clipped)
+    {
+      var placed = false;
+      for (var col = 0; col < columns.Count; col++)
+      {
+        if (evt.Start >= columns[col][^1].End)
+        {
+          columns[col].Add(evt);
+          columnMap[evt.Item] = col;
+          placed = true;
+          break;
+        }
+      }
+      if (!placed)
+      {
+        columns.Add([evt]);
+        columnMap[evt.Item] = columns.Count - 1;
+      }
+    }
+
+    var totalColumns = columns.Count;
+
+    return clipped.Select(e => new EventPosition
+    {
+      Item = e.Item,
+      Column = columnMap[e.Item],
+      TotalColumns = totalColumns,
+      TopPx = (e.Start - dayStart).TotalHours * PxPerHour,
+      HeightPx = Math.Max((e.End - e.Start).TotalHours * PxPerHour, MinEventHeight)
+    }).ToList();
+  }
+
+  private double GetContainerHeight(List<EventPosition> positions)
+  {
+    if (positions.Count == 0) return 0;
+    return positions.Max(p => p.TopPx + p.HeightPx);
+  }
+
+  private string GetEventTooltip(ModuleCalendarItem item)
+  {
+    var start = item.Start.ToString("HH:mm");
+    var end = item.End?.ToString("HH:mm") ?? "";
+    var time = string.IsNullOrEmpty(end) ? start : $"{start} - {end}";
+    return $"{time} {item.Text}";
   }
 
   private class CalendarDay
@@ -106,5 +180,14 @@
     public DayOfWeek DayOfWeek { get; set; }
     public bool IsCurrentMonth { get; set; }
     public bool IsToday { get; set; }
+  }
+
+  private class EventPosition
+  {
+    public ModuleCalendarItem Item { get; set; } = default!;
+    public int Column { get; set; }
+    public int TotalColumns { get; set; }
+    public double TopPx { get; set; }
+    public double HeightPx { get; set; }
   }
 }

@@ -129,7 +129,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
 
             var items = await this.GetChildModulesAsync(GetSearchCondition(), ModuleLayoutType.Detail, Design.DetailLayoutName);
             Items.Clear();
-            Items.AddRange(items.Select(ConvertToCalendarItem).ToList());
+            Items.AddRange(items.Select(ConvertToCalendarItem).OrderBy(e => e.Start).ThenByDescending(e => (e.End ?? e.Start) - e.Start).ToList());
 
             NotifyStateChanged();
         }
@@ -156,6 +156,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             if (await mod.SubmitAsync() != true) return;
 
             Items.Add(ConvertToCalendarItem(mod)!);
+            SortItems();
 
             await InvokeOnDataChangedAsync();
             await NotifyDataChangedAsync();
@@ -182,6 +183,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
                         item.End = mod.GetField<DateTimeField>(Design.EndField)?.Value ?? item.End;
                         item.AllDay = mod.GetField<BooleanField>(Design.AllDayField)?.Value ?? item.AllDay;
                     }
+                    SortItems();
                     break;
                 case "Delete":
                     await mod.DeleteAsync();
@@ -206,6 +208,13 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         {
             await Module.ExecuteScriptAsync(Design.OnDataChanged);
             await OnDataChangedAsync();
+        }
+
+        private void SortItems()
+        {
+            var sorted = Items.OrderBy(e => e.Start).ThenByDescending(e => (e.End ?? e.Start) - e.Start).ToList();
+            Items.Clear();
+            Items.AddRange(sorted);
         }
 
         private ModuleCalendarItem ConvertToCalendarItem(Module data)

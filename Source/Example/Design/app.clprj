@@ -14,10 +14,6 @@
     {
       "AssemblyName": "Codeer.LowCode.Blazor.Extras",
       "Version": "0.0.1.0"
-    },
-    {
-      "AssemblyName": "Extras.Client.Shared",
-      "Version": "1.0.0.0"
     }
   ],
   "LocalizeResourcePath": ""
