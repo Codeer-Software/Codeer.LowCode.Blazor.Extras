@@ -9,6 +9,7 @@
   background: #fff;
   display: flex;
   flex-direction: column;
+  outline: none;
 }
 
 /* ===== Toolbar ===== */
@@ -333,12 +334,15 @@
   cursor: pointer;
 }
 
-/* ===== Link target highlight ===== */
-::deep .task-bar.link-target {
-  cursor: crosshair;
-  stroke: #1a73e8;
+/* ===== Dependency Linking Stub ===== */
+::deep .dep-linking-stub {
+  stroke: #ea4335;
   stroke-width: 2;
-  stroke-dasharray: 4 2;
+  stroke-dasharray: 4 3;
+}
+
+::deep .dep-linking-dot {
+  fill: #ea4335;
 }
 
 /* ===== Context Menu ===== */
@@ -371,31 +375,4 @@
 
 .context-menu-item:hover {
   background: #f1f3f4;
-}
-
-/* ===== Status Bar ===== */
-.status-bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 6px 16px;
-  font-size: 12px;
-  flex-shrink: 0;
-}
-
-.status-bar.linking {
-  background: #e8f0fe;
-  color: #1967d2;
-  border-bottom: 1px solid #c2d9fc;
-}
-
-.status-bar.selected {
-  background: #fce8e6;
-  color: #c5221f;
-  border-bottom: 1px solid #f5c6c2;
-}
-
-.status-hint {
-  font-size: 11px;
-  opacity: 0.7;
 }

@@ -27,27 +27,6 @@
     </div>
   </div>
 
-  @* ===== Status Bar (dependency linking / selected) ===== *@
-  @if (_depLinkingSourceId != null)
-  {
-    var srcName = Field.Items.FirstOrDefault(e => e.Id == _depLinkingSourceId)?.Text ?? "";
-    <div class="status-bar linking">
-      <span>Select destination task for dependency from "@srcName"</span>
-      <button type="button" class="toolbar-btn" @onclick="CancelDepLinking">Cancel</button>
-    </div>
-  }
-  else if (_selectedDepKey != null)
-  {
-    var sel = Field.DependencyList.FirstOrDefault(e => e.Key == _selectedDepKey);
-    @if (sel != null)
-    {
-      <div class="status-bar selected">
-        <span>Dependency: @sel.FromLabel → @sel.ToLabel</span>
-        <span class="status-hint">Press Delete to remove</span>
-      </div>
-    }
-  }
-
   @* ===== Gantt Body ===== *@
   <div class="gantt-body">
     @{
@@ -210,11 +189,10 @@
             var barH = barPos.Height;
             var capturedItem = item;
             var capturedIdx = idx;
-            var isLinkTarget = _depLinkingSourceId != null && item.Id != _depLinkingSourceId;
 
             @* Bar background (full bar) *@
             <rect x="@barPos.X" y="@barY" width="@barPos.Width" height="@barH"
-                  rx="4" ry="4" class="task-bar @(isLinkTarget ? "link-target" : "")"
+                  rx="4" ry="4" class="task-bar"
                   @onmousedown="e => OnBarMouseDown(e, capturedIdx, capturedItem)"
                   @onmousedown:stopPropagation="true"
                   @oncontextmenu="e => OnBarContextMenu(e, capturedItem)"
@@ -249,6 +227,17 @@
                   class="resize-handle" rx="2" ry="2"
                   @onmousedown="e => StartDrag(e, capturedIdx, DragMode.ResizeRight)"
                   @onmousedown:stopPropagation="true" />
+
+            @* Linking mode: stub line from source bar *@
+            @if (_depLinkingSourceId == item.Id)
+            {
+              var stubX1 = barPos.X + barPos.Width;
+              var stubY = barPos.Y + barH / 2;
+              var stubX2 = stubX1 + 30;
+              <line x1="@F(stubX1)" y1="@F(stubY)" x2="@F(stubX2)" y2="@F(stubY)"
+                    class="dep-linking-stub" pointer-events="none" />
+              <circle cx="@F(stubX2)" cy="@F(stubY)" r="3" class="dep-linking-dot" />
+            }
           }
         }
 
@@ -399,9 +388,7 @@
   private void OnContainerClick()
   {
     _selectedDepKey = null;
-    if (_depLinkingSourceId == null) return;
-    // Click on empty area cancels linking
-    CancelDepLinking();
+    _depLinkingSourceId = null;
   }
 
   // ===== Task bar events =====
@@ -430,7 +417,6 @@
     _contextMenuY = e.ClientY;
     _contextMenuTaskId = item.Id;
     _selectedDepKey = null;
-    StateHasChanged();
   }
 
   // ===== Context Menu =====
@@ -446,13 +432,6 @@
     _depLinkingSourceId = _contextMenuTaskId;
     _contextMenuVisible = false;
     _contextMenuTaskId = null;
-    StateHasChanged();
-  }
-
-  private void CancelDepLinking()
-  {
-    _depLinkingSourceId = null;
-    StateHasChanged();
   }
 
   // ===== Dependency line selection & deletion =====
