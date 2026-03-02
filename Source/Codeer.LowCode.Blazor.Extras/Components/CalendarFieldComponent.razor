@@ -51,13 +51,25 @@
                 <div class="month-date @(day.IsToday ? "today-circle" : "")">@day.Date.Day</div>
                 @foreach (var evt in shown)
                 {
-                  <div class="month-event @(evt.AllDay ? "allday" : "timed")"
+                  var isMultiDay = !evt.AllDay && evt.End.HasValue && evt.Start.Date != evt.End.Value.Date;
+                  var isStartDay = day.Date == evt.Start.Date;
+                  var isEndDay = evt.End.HasValue && day.Date == evt.End.Value.Date;
+                  var eventClass = evt.AllDay || isMultiDay ? "allday" : "timed";
+                  <div class="month-event @eventClass"
                        @onclick="() => OnEventClicked(evt)" @onclick:stopPropagation="true"
                        title="@GetEventTooltip(evt)">
-                    @if (!evt.AllDay)
+                    @if (!evt.AllDay && !isMultiDay)
                     {
                       <span class="month-event-dot"></span>
                       <span class="month-event-time">@evt.Start.ToString("H:mm")</span>
+                    }
+                    else if (isMultiDay && isStartDay)
+                    {
+                      <span class="month-event-time">@evt.Start.ToString("H:mm") -</span>
+                    }
+                    else if (isMultiDay && isEndDay)
+                    {
+                      <span class="month-event-time">- @evt.End!.Value.ToString("H:mm")</span>
                     }
                     <span class="month-event-text">@evt.Text</span>
                   </div>
@@ -131,12 +143,16 @@
               {
                 var left = pos.TotalColumns > 1 ? (double)pos.Column / pos.TotalColumns * 100.0 : 0;
                 var width = pos.TotalColumns > 1 ? 100.0 / pos.TotalColumns : 100.0;
+                var timeText = GetTimeEventTimeText(pos);
                 <div class="time-event"
                      style="top: @Px(pos.TopPx); left: @Pct(left); width: calc(@Pct(width) - 2px); height: @Px(pos.HeightPx);"
                      @onclick="() => OnEventClicked(pos.Item)" @onclick:stopPropagation="true"
                      title="@GetEventTooltip(pos.Item)">
                   <div class="time-event-title">@pos.Item.Text</div>
-                  <div class="time-event-time">@pos.Item.Start.ToString("H:mm") - @(pos.Item.End?.ToString("H:mm") ?? "")</div>
+                  @if (!string.IsNullOrEmpty(timeText))
+                  {
+                    <div class="time-event-time">@timeText</div>
+                  }
                 </div>
               }
             </div>
@@ -193,12 +209,16 @@
             {
               var left = pos.TotalColumns > 1 ? (double)pos.Column / pos.TotalColumns * 100.0 : 0;
               var width = pos.TotalColumns > 1 ? 100.0 / pos.TotalColumns : 100.0;
+              var timeText = GetTimeEventTimeText(pos);
               <div class="time-event"
                    style="top: @Px(pos.TopPx); left: @Pct(left); width: calc(@Pct(width) - 2px); height: @Px(pos.HeightPx);"
                    @onclick="() => OnEventClicked(pos.Item)" @onclick:stopPropagation="true"
                    title="@GetEventTooltip(pos.Item)">
                 <div class="time-event-title">@pos.Item.Text</div>
-                <div class="time-event-time">@pos.Item.Start.ToString("H:mm") - @(pos.Item.End?.ToString("H:mm") ?? "")</div>
+                @if (!string.IsNullOrEmpty(timeText))
+                {
+                  <div class="time-event-time">@timeText</div>
+                }
               </div>
             }
           </div>
@@ -418,14 +438,32 @@
 
     var totalColumns = columns.Count;
 
-    return clipped.Select(e => new EventPosition
+    return clipped.Select(e =>
     {
-      Item = e.Item,
-      Column = columnMap[e.Item],
-      TotalColumns = totalColumns,
-      TopPx = (e.Start - dayStart).TotalHours * PxPerHour,
-      HeightPx = Math.Max((e.End - e.Start).TotalHours * PxPerHour, MinEventHeight)
+      var isMultiDay = e.Item.End.HasValue && e.Item.Start.Date != e.Item.End.Value.Date;
+      return new EventPosition
+      {
+        Item = e.Item,
+        Column = columnMap[e.Item],
+        TotalColumns = totalColumns,
+        TopPx = (e.Start - dayStart).TotalHours * PxPerHour,
+        HeightPx = Math.Max((e.End - e.Start).TotalHours * PxPerHour, MinEventHeight),
+        IsMultiDay = isMultiDay,
+        IsStartDay = isMultiDay && date.Date == e.Item.Start.Date,
+        IsEndDay = isMultiDay && e.Item.End.HasValue && date.Date == e.Item.End.Value.Date,
+      };
     }).ToList();
+  }
+
+  private string GetTimeEventTimeText(EventPosition pos)
+  {
+    if (!pos.IsMultiDay)
+      return $"{pos.Item.Start.ToString("H:mm")} - {pos.Item.End?.ToString("H:mm") ?? ""}";
+    if (pos.IsStartDay)
+      return $"{pos.Item.Start.ToString("H:mm")} -";
+    if (pos.IsEndDay)
+      return $"- {pos.Item.End!.Value.ToString("H:mm")}";
+    return "";
   }
 
   private string GetEventTooltip(ModuleCalendarItem item)
@@ -453,5 +491,8 @@
     public int TotalColumns { get; set; }
     public double TopPx { get; set; }
     public double HeightPx { get; set; }
+    public bool IsMultiDay { get; set; }
+    public bool IsStartDay { get; set; }
+    public bool IsEndDay { get; set; }
   }
 }
