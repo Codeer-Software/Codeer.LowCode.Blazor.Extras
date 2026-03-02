@@ -323,6 +323,8 @@
 
   // ===== Navigation =====
 
+  private CultureInfo _culture => CultureInfo.CurrentUICulture;
+
   private string GetTitle()
   {
     var s = Field.ViewStart;
@@ -330,11 +332,16 @@
     var e = end.AddDays(-1);
     return Field.ViewMode switch
     {
-      GanttViewMode.Day => s.ToString("MMMM d, yyyy", CultureInfo.InvariantCulture),
-      GanttViewMode.Month when s.Month == e.Month => s.ToString("MMMM yyyy", CultureInfo.InvariantCulture),
-      GanttViewMode.Month => $"{s.ToString("MMM", CultureInfo.InvariantCulture)} - {e.ToString("MMM yyyy", CultureInfo.InvariantCulture)}",
-      _ when s.Month == e.Month => $"{s.ToString("MMMM d", CultureInfo.InvariantCulture)} - {e.Day}, {s.Year}",
-      _ => $"{s.ToString("MMM d", CultureInfo.InvariantCulture)} - {e.ToString("MMM d, yyyy", CultureInfo.InvariantCulture)}",
+      GanttViewMode.Day => s.ToString(Resources.DateFormatDayTitle, _culture),
+      GanttViewMode.Month when s.Month == e.Month => s.ToString(Resources.DateFormatMonthTitle, _culture),
+      GanttViewMode.Month => string.Format(Resources.RangeTitleFormat,
+        s.ToString(Resources.DateFormatMonthNameShort, _culture),
+        e.ToString(Resources.DateFormatMonthYearShort, _culture)),
+      _ when s.Month == e.Month => string.Format(Resources.WeekTitleSameMonth,
+        s.ToString(Resources.DateFormatMonthNameFull, _culture), s.Day, e.Day, s.Year),
+      _ => string.Format(Resources.RangeTitleFormat,
+        s.ToString(Resources.DateFormatMonthDayShort, _culture),
+        e.ToString(Resources.DateFormatDateShort, _culture)),
     };
   }
 
@@ -528,7 +535,7 @@
     {
       if (d.Month != curMonth || d.Year != curYear)
       {
-        groups.Add(new MonthGroup(new DateTime(curYear, curMonth, 1).ToString("MMM yyyy", CultureInfo.InvariantCulture), count));
+        groups.Add(new MonthGroup(new DateTime(curYear, curMonth, 1).ToString(Resources.DateFormatMonthYearShort, _culture), count));
         curMonth = d.Month;
         curYear = d.Year;
         count = 0;
@@ -536,7 +543,7 @@
       count++;
     }
     if (count > 0)
-      groups.Add(new MonthGroup(new DateTime(curYear, curMonth, 1).ToString("MMM yyyy", CultureInfo.InvariantCulture), count));
+      groups.Add(new MonthGroup(new DateTime(curYear, curMonth, 1).ToString(Resources.DateFormatMonthYearShort, _culture), count));
     return groups;
   }
 
@@ -550,14 +557,14 @@
     {
       if (d.Date != curDate)
       {
-        groups.Add(new DayGroup(curDate.ToString("ddd M/d", CultureInfo.InvariantCulture), curDate, count));
+        groups.Add(new DayGroup(curDate.ToString(Resources.DateFormatDayGroupShort, _culture), curDate, count));
         curDate = d.Date;
         count = 0;
       }
       count++;
     }
     if (count > 0)
-      groups.Add(new DayGroup(curDate.ToString("ddd M/d", CultureInfo.InvariantCulture), curDate, count));
+      groups.Add(new DayGroup(curDate.ToString(Resources.DateFormatDayGroupShort, _culture), curDate, count));
     return groups;
   }
 

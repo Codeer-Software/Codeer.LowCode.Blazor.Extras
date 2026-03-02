@@ -102,4 +102,43 @@
   <data name="Base64Image" xml:space="preserve">
     <value>Base64 Image</value>
   </data>
+  <data name="DateFormatDayTitle" xml:space="preserve">
+    <value>MMMM d, yyyy</value>
+  </data>
+  <data name="DateFormatMonthTitle" xml:space="preserve">
+    <value>MMMM yyyy</value>
+  </data>
+  <data name="DateFormatDayName" xml:space="preserve">
+    <value>dddd</value>
+  </data>
+  <data name="DateFormatMonthYearShort" xml:space="preserve">
+    <value>MMM yyyy</value>
+  </data>
+  <data name="DateFormatDayGroupShort" xml:space="preserve">
+    <value>ddd M/d</value>
+  </data>
+  <data name="DateFormatDateShort" xml:space="preserve">
+    <value>MMM d, yyyy</value>
+  </data>
+  <data name="DateFormatMonthDayShort" xml:space="preserve">
+    <value>MMM d</value>
+  </data>
+  <data name="DateFormatMonthNameFull" xml:space="preserve">
+    <value>MMMM</value>
+  </data>
+  <data name="DateFormatMonthNameShort" xml:space="preserve">
+    <value>MMM</value>
+  </data>
+  <data name="WeekTitleSameMonth" xml:space="preserve">
+    <value>{0} {1} - {2}, {3}</value>
+    <comment>{0}=month name, {1}=start day, {2}=end day, {3}=year</comment>
+  </data>
+  <data name="WeekTitleDiffMonth" xml:space="preserve">
+    <value>{0} {1} - {2} {3}, {4}</value>
+    <comment>{0}=start month, {1}=start day, {2}=end month, {3}=end day, {4}=year</comment>
+  </data>
+  <data name="RangeTitleFormat" xml:space="preserve">
+    <value>{0} - {1}</value>
+    <comment>{0}=start, {1}=end</comment>
+  </data>
 </root>

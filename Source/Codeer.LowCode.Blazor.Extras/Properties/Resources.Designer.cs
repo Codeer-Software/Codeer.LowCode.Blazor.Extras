@@ -248,5 +248,77 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
                 return ResourceManager.GetString("Week", resourceCulture);
             }
         }
+
+        internal static string DateFormatDayTitle {
+            get {
+                return ResourceManager.GetString("DateFormatDayTitle", resourceCulture);
+            }
+        }
+
+        internal static string DateFormatMonthTitle {
+            get {
+                return ResourceManager.GetString("DateFormatMonthTitle", resourceCulture);
+            }
+        }
+
+        internal static string DateFormatDayName {
+            get {
+                return ResourceManager.GetString("DateFormatDayName", resourceCulture);
+            }
+        }
+
+        internal static string DateFormatMonthYearShort {
+            get {
+                return ResourceManager.GetString("DateFormatMonthYearShort", resourceCulture);
+            }
+        }
+
+        internal static string DateFormatDayGroupShort {
+            get {
+                return ResourceManager.GetString("DateFormatDayGroupShort", resourceCulture);
+            }
+        }
+
+        internal static string DateFormatDateShort {
+            get {
+                return ResourceManager.GetString("DateFormatDateShort", resourceCulture);
+            }
+        }
+
+        internal static string DateFormatMonthDayShort {
+            get {
+                return ResourceManager.GetString("DateFormatMonthDayShort", resourceCulture);
+            }
+        }
+
+        internal static string DateFormatMonthNameFull {
+            get {
+                return ResourceManager.GetString("DateFormatMonthNameFull", resourceCulture);
+            }
+        }
+
+        internal static string DateFormatMonthNameShort {
+            get {
+                return ResourceManager.GetString("DateFormatMonthNameShort", resourceCulture);
+            }
+        }
+
+        internal static string WeekTitleSameMonth {
+            get {
+                return ResourceManager.GetString("WeekTitleSameMonth", resourceCulture);
+            }
+        }
+
+        internal static string WeekTitleDiffMonth {
+            get {
+                return ResourceManager.GetString("WeekTitleDiffMonth", resourceCulture);
+            }
+        }
+
+        internal static string RangeTitleFormat {
+            get {
+                return ResourceManager.GetString("RangeTitleFormat", resourceCulture);
+            }
+        }
     }
 }

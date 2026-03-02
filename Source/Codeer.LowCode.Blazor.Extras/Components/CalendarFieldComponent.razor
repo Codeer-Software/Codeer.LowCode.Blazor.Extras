@@ -172,7 +172,7 @@
       <div class="day-header">
         <div class="time-gutter-header"></div>
         <div class="day-header-cell">
-          <span class="day-header-dayname">@dayDate.ToString("dddd", CultureInfo.InvariantCulture)</span>
+          <span class="day-header-dayname">@dayDate.ToString(Resources.DateFormatDayName, CultureInfo.CurrentUICulture)</span>
           <span class="day-header-date @(dayDate == DateTime.Today ? "today-circle" : "")">@dayDate.Day</span>
         </div>
       </div>
@@ -238,14 +238,16 @@
 
   // ===== Navigation =====
 
+  private CultureInfo _culture => CultureInfo.CurrentUICulture;
+
   private string GetTitle()
   {
     var d = Field.SelectedDate;
     return Field.ViewMode switch
     {
-      CalendarViewMode.Day => d.ToString("MMMM d, yyyy", CultureInfo.InvariantCulture),
+      CalendarViewMode.Day => d.ToString(Resources.DateFormatDayTitle, _culture),
       CalendarViewMode.Week => GetWeekTitle(),
-      _ => d.ToString("MMMM yyyy", CultureInfo.InvariantCulture),
+      _ => d.ToString(Resources.DateFormatMonthTitle, _culture),
     };
   }
 
@@ -254,10 +256,15 @@
     var start = Field.SelectedDate.Date.AddDays(-(int)Field.SelectedDate.DayOfWeek);
     var end = start.AddDays(6);
     if (start.Month == end.Month)
-      return $"{start.ToString("MMMM", CultureInfo.InvariantCulture)} {start.Day} - {end.Day}, {start.Year}";
+      return string.Format(Resources.WeekTitleSameMonth,
+        start.ToString(Resources.DateFormatMonthNameFull, _culture), start.Day, end.Day, start.Year);
     if (start.Year == end.Year)
-      return $"{start.ToString("MMM", CultureInfo.InvariantCulture)} {start.Day} - {end.ToString("MMM", CultureInfo.InvariantCulture)} {end.Day}, {start.Year}";
-    return $"{start.ToString("MMM d, yyyy", CultureInfo.InvariantCulture)} - {end.ToString("MMM d, yyyy", CultureInfo.InvariantCulture)}";
+      return string.Format(Resources.WeekTitleDiffMonth,
+        start.ToString(Resources.DateFormatMonthNameShort, _culture), start.Day,
+        end.ToString(Resources.DateFormatMonthNameShort, _culture), end.Day, start.Year);
+    return string.Format(Resources.RangeTitleFormat,
+      start.ToString(Resources.DateFormatDateShort, _culture),
+      end.ToString(Resources.DateFormatDateShort, _culture));
   }
 
   private async Task GoToday() => await Field.SetCurrentDayAsync(DateTime.Now);
