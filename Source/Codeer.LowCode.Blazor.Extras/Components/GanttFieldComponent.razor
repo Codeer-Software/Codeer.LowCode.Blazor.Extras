@@ -194,6 +194,7 @@
             <rect x="@barPos.X" y="@barY" width="@barPos.Width" height="@barH"
                   rx="4" ry="4" class="task-bar"
                   @onmousedown="e => OnBarMouseDown(e, capturedIdx, capturedItem)"
+                  @onmousedown:preventDefault="true"
                   @onmousedown:stopPropagation="true"
                   @oncontextmenu="e => OnBarContextMenu(e, capturedItem)"
                   @oncontextmenu:preventDefault="true"
@@ -220,12 +221,14 @@
             <rect x="@barPos.X" y="@barY" width="6" height="@barH"
                   class="resize-handle" rx="2" ry="2"
                   @onmousedown="e => StartDrag(e, capturedIdx, DragMode.ResizeLeft)"
+                  @onmousedown:preventDefault="true"
                   @onmousedown:stopPropagation="true" />
 
             @* Right resize handle *@
             <rect x="@(barPos.X + barPos.Width - 6)" y="@barY" width="6" height="@barH"
                   class="resize-handle" rx="2" ry="2"
                   @onmousedown="e => StartDrag(e, capturedIdx, DragMode.ResizeRight)"
+                  @onmousedown:preventDefault="true"
                   @onmousedown:stopPropagation="true" />
 
             @* Linking mode: stub line from source bar *@

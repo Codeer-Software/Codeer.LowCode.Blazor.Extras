@@ -1,3 +1,4 @@
+using Codeer.LowCode.Blazor.Components.AppParts.Loading;
 using Codeer.LowCode.Blazor.DataIO;
 using Codeer.LowCode.Blazor.DesignLogic;
 using Codeer.LowCode.Blazor.Extras.Designs;
@@ -7,6 +8,7 @@ using Codeer.LowCode.Blazor.Repository.Design;
 using Codeer.LowCode.Blazor.Repository.Match;
 using Codeer.LowCode.Blazor.Script;
 using Codeer.LowCode.Blazor.Script.Internal.ScriptServices;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Codeer.LowCode.Blazor.Extras.Fields
 {
@@ -235,6 +237,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             if (startField != null) await startField.SetValueAsync(newStart);
             if (endField != null) await endField.SetValueAsync(newEnd);
 
+            using var scope = Services.Provider.GetService<LoadingService>()?.StartLoading(300);
             if (await item.Module.SubmitAsync() != true) return;
 
             item.Start = newStart;
