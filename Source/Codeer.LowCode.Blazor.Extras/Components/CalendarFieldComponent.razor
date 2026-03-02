@@ -141,11 +141,10 @@
               }
               @foreach (var pos in dayEvents)
               {
-                var left = pos.TotalColumns > 1 ? (double)pos.Column / pos.TotalColumns * 100.0 : 0;
-                var width = pos.TotalColumns > 1 ? 100.0 / pos.TotalColumns : 100.0;
+                var layerOffset = pos.Layer * 14;
                 var timeText = GetTimeEventTimeText(pos);
                 <div class="time-event"
-                     style="top: @Px(pos.TopPx); left: @Pct(left); width: calc(@Pct(width) - 2px); height: @Px(pos.HeightPx);"
+                     style="top: @Px(pos.TopPx); left: @Px(layerOffset); width: calc(100% - @Px(layerOffset) - 2px); height: @Px(pos.HeightPx); z-index: @(pos.Layer + 1);"
                      @onclick="() => OnEventClicked(pos.Item)" @onclick:stopPropagation="true"
                      title="@GetEventTooltip(pos.Item)">
                   <div class="time-event-title">@pos.Item.Text</div>
@@ -207,11 +206,10 @@
             }
             @foreach (var pos in dayTimed)
             {
-              var left = pos.TotalColumns > 1 ? (double)pos.Column / pos.TotalColumns * 100.0 : 0;
-              var width = pos.TotalColumns > 1 ? 100.0 / pos.TotalColumns : 100.0;
+              var layerOffset = pos.Layer * 14;
               var timeText = GetTimeEventTimeText(pos);
               <div class="time-event"
-                   style="top: @Px(pos.TopPx); left: @Pct(left); width: calc(@Pct(width) - 2px); height: @Px(pos.HeightPx);"
+                   style="top: @Px(pos.TopPx); left: @Px(layerOffset); width: calc(100% - @Px(layerOffset) - 2px); height: @Px(pos.HeightPx); z-index: @(pos.Layer + 1);"
                    @onclick="() => OnEventClicked(pos.Item)" @onclick:stopPropagation="true"
                    title="@GetEventTooltip(pos.Item)">
                 <div class="time-event-title">@pos.Item.Text</div>
@@ -413,39 +411,28 @@
 
     if (clipped.Count == 0) return [];
 
-    var columns = new List<List<(ModuleCalendarItem Item, DateTime Start, DateTime End)>>();
-    var columnMap = new Dictionary<ModuleCalendarItem, int>();
-
-    foreach (var evt in clipped)
+    // Assign layers: overlapping events stack with increasing layer.
+    // Earlier / longer events stay at lower layers (background),
+    // shorter overlapping events get higher layers (foreground, offset right).
+    var layers = new int[clipped.Count];
+    for (var i = 0; i < clipped.Count; i++)
     {
-      var placed = false;
-      for (var col = 0; col < columns.Count; col++)
+      var maxLayer = -1;
+      for (var j = 0; j < i; j++)
       {
-        if (evt.Start >= columns[col][^1].End)
-        {
-          columns[col].Add(evt);
-          columnMap[evt.Item] = col;
-          placed = true;
-          break;
-        }
+        if (clipped[i].Start < clipped[j].End && clipped[i].End > clipped[j].Start)
+          maxLayer = Math.Max(maxLayer, layers[j]);
       }
-      if (!placed)
-      {
-        columns.Add([evt]);
-        columnMap[evt.Item] = columns.Count - 1;
-      }
+      layers[i] = maxLayer + 1;
     }
 
-    var totalColumns = columns.Count;
-
-    return clipped.Select(e =>
+    return clipped.Select((e, i) =>
     {
       var isMultiDay = e.Item.End.HasValue && e.Item.Start.Date != e.Item.End.Value.Date;
       return new EventPosition
       {
         Item = e.Item,
-        Column = columnMap[e.Item],
-        TotalColumns = totalColumns,
+        Layer = layers[i],
         TopPx = (e.Start - dayStart).TotalHours * PxPerHour,
         HeightPx = Math.Max((e.End - e.Start).TotalHours * PxPerHour, MinEventHeight),
         IsMultiDay = isMultiDay,
@@ -487,8 +474,7 @@
   private class EventPosition
   {
     public ModuleCalendarItem Item { get; set; } = default!;
-    public int Column { get; set; }
-    public int TotalColumns { get; set; }
+    public int Layer { get; set; }
     public double TopPx { get; set; }
     public double HeightPx { get; set; }
     public bool IsMultiDay { get; set; }
