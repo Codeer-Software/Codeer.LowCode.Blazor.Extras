@@ -179,10 +179,10 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             if (start != null) await start.SetValueAsync(date);
             if (end != null) await end.SetValueAsync(date.AddDays(1));
 
-            if (await mod.ShowDialogAsync("OK", "Cancel") != "OK") return;
+            if (await mod.ShowDialogAsync(Properties.Resources.OK, Properties.Resources.Cancel) != Properties.Resources.OK) return;
             if (!mod.ValidateInput())
             {
-                await Services.UIService.NotifyError("Input Error");
+                await Services.UIService.NotifyError(Properties.Resources.InputError);
                 return;
             }
             if (await mod.SubmitAsync() != true) return;
@@ -197,31 +197,34 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         internal async Task EditAsync(Module? mod)
         {
             if (mod == null) return;
-            switch (await mod.ShowDialogAsync("Update", "Delete", "Cancel"))
+            var dialogResult = await mod.ShowDialogAsync(Properties.Resources.Update, Properties.Resources.Delete, Properties.Resources.Cancel);
+            if (dialogResult == Properties.Resources.Update)
             {
-                case "Update":
-                    if (!mod.ValidateInput())
-                    {
-                        await Services.UIService.NotifyError("Input Error");
-                        return;
-                    }
-                    if (await mod.SubmitAsync() != true) return;
+                if (!mod.ValidateInput())
+                {
+                    await Services.UIService.NotifyError(Properties.Resources.InputError);
+                    return;
+                }
+                if (await mod.SubmitAsync() != true) return;
 
-                    var item = Items.FirstOrDefault(e => e.Module?.GetIdText() == mod.GetIdText());
-                    if (item != null)
-                    {
-                        item.Text = mod.GetField<TextField>(Design.TextField)?.Value ?? item.Text;
-                        item.Start = mod.GetField<DateTimeField>(Design.StartField)?.Value ?? item.Start;
-                        item.End = mod.GetField<DateTimeField>(Design.EndField)?.Value ?? item.End;
-                        item.Progress = GetProgressValue(mod);
-                    }
-                    SortItems();
-                    break;
-                case "Delete":
-                    await mod.DeleteAsync();
-                    return;
-                default:
-                    return;
+                var item = Items.FirstOrDefault(e => e.Module?.GetIdText() == mod.GetIdText());
+                if (item != null)
+                {
+                    item.Text = mod.GetField<TextField>(Design.TextField)?.Value ?? item.Text;
+                    item.Start = mod.GetField<DateTimeField>(Design.StartField)?.Value ?? item.Start;
+                    item.End = mod.GetField<DateTimeField>(Design.EndField)?.Value ?? item.End;
+                    item.Progress = GetProgressValue(mod);
+                }
+                SortItems();
+            }
+            else if (dialogResult == Properties.Resources.Delete)
+            {
+                await mod.DeleteAsync();
+                return;
+            }
+            else
+            {
+                return;
             }
 
             await InvokeOnDataChangedAsync();

@@ -2,13 +2,14 @@
 @using Microsoft.AspNetCore.Components.Web
 @using Codeer.LowCode.Blazor.Components
 @using Codeer.LowCode.Blazor.Extras.Fields
+@using Codeer.LowCode.Blazor.Extras.Properties
 @inherits FieldComponentBase<CalendarField>
 
 <div @ref="Element" class="calendar-container">
   @* ===== Toolbar ===== *@
   <div class="calendar-toolbar">
     <div class="toolbar-left">
-      <button type="button" class="toolbar-btn today-btn" @onclick="GoToday">Today</button>
+      <button type="button" class="toolbar-btn today-btn" @onclick="GoToday">@Resources.Today</button>
       <button type="button" class="toolbar-btn nav-btn" @onclick="GoPrev">&#9664;</button>
       <button type="button" class="toolbar-btn nav-btn" @onclick="GoNext">&#9654;</button>
       <span class="toolbar-title">@GetTitle()</span>
@@ -16,11 +17,11 @@
     <div class="toolbar-right">
       <div class="view-switcher">
         <button type="button" class="view-btn @(Field.ViewMode == CalendarViewMode.Day ? "active" : "")"
-                @onclick="() => SetViewMode(CalendarViewMode.Day)">Day</button>
+                @onclick="() => SetViewMode(CalendarViewMode.Day)">@Resources.Day</button>
         <button type="button" class="view-btn @(Field.ViewMode == CalendarViewMode.Week ? "active" : "")"
-                @onclick="() => SetViewMode(CalendarViewMode.Week)">Week</button>
+                @onclick="() => SetViewMode(CalendarViewMode.Week)">@Resources.Week</button>
         <button type="button" class="view-btn @(Field.ViewMode == CalendarViewMode.Month ? "active" : "")"
-                @onclick="() => SetViewMode(CalendarViewMode.Month)">Month</button>
+                @onclick="() => SetViewMode(CalendarViewMode.Month)">@Resources.Month</button>
       </div>
     </div>
   </div>
@@ -77,7 +78,7 @@
                 @if (moreCount > 0)
                 {
                   <div class="month-more" @onclick="() => OnMonthMoreClicked(day.Date)" @onclick:stopPropagation="true">
-                    +@moreCount more
+                    @string.Format(Resources.MoreFormat, moreCount)
                   </div>
                 }
               </div>
@@ -230,7 +231,7 @@
   const double PxPerHour = 48.0;
   const double MinEventHeight = 20.0;
 
-  private static readonly string[] _dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  private static string[] _dayNames => [Resources.Sun, Resources.Mon, Resources.Tue, Resources.Wed, Resources.Thu, Resources.Fri, Resources.Sat];
 
   private string Px(double v) => v.ToString("0.#", CultureInfo.InvariantCulture) + "px";
   private string Pct(double v) => v.ToString("0.##", CultureInfo.InvariantCulture) + "%";

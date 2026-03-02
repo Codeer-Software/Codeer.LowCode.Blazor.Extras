@@ -2,6 +2,7 @@
 @using Microsoft.AspNetCore.Components.Web
 @using Codeer.LowCode.Blazor.Components
 @using Codeer.LowCode.Blazor.Extras.Fields
+@using Codeer.LowCode.Blazor.Extras.Properties
 @inherits FieldComponentBase<GanttField>
 
 <div @ref="Element" class="gantt-container" tabindex="0"
@@ -9,20 +10,20 @@
   @* ===== Toolbar ===== *@
   <div class="gantt-toolbar">
     <div class="toolbar-left">
-      <button type="button" class="toolbar-btn today-btn" @onclick="GoToday">Today</button>
+      <button type="button" class="toolbar-btn today-btn" @onclick="GoToday">@Resources.Today</button>
       <button type="button" class="toolbar-btn nav-btn" @onclick="GoPrev">&#9664;</button>
       <button type="button" class="toolbar-btn nav-btn" @onclick="GoNext">&#9654;</button>
       <span class="toolbar-title">@GetTitle()</span>
     </div>
     <div class="toolbar-right">
-      <button type="button" class="toolbar-btn add-btn" @onclick="OnAddClicked">+ Add</button>
+      <button type="button" class="toolbar-btn add-btn" @onclick="OnAddClicked">@Resources.Add</button>
       <div class="view-switcher">
         <button type="button" class="view-btn @(Field.ViewMode == GanttViewMode.Day ? "active" : "")"
-                @onclick="() => SetViewMode(GanttViewMode.Day)">Day</button>
+                @onclick="() => SetViewMode(GanttViewMode.Day)">@Resources.Day</button>
         <button type="button" class="view-btn @(Field.ViewMode == GanttViewMode.Week ? "active" : "")"
-                @onclick="() => SetViewMode(GanttViewMode.Week)">Week</button>
+                @onclick="() => SetViewMode(GanttViewMode.Week)">@Resources.Week</button>
         <button type="button" class="view-btn @(Field.ViewMode == GanttViewMode.Month ? "active" : "")"
-                @onclick="() => SetViewMode(GanttViewMode.Month)">Month</button>
+                @onclick="() => SetViewMode(GanttViewMode.Month)">@Resources.Month</button>
       </div>
     </div>
   </div>
@@ -43,7 +44,7 @@
     @* ===== Left: Task labels ===== *@
     <div class="gantt-labels">
       <div class="gantt-label-header" style="height: @Px(headerHeight);">
-        <span>Task</span>
+        <span>@Resources.Task</span>
       </div>
       <div class="gantt-label-body">
         @foreach (var item in Field.Items)
@@ -289,7 +290,7 @@
     <div class="context-menu-overlay" @onclick="CloseContextMenu">
       <div class="context-menu" style="left: @Px(_contextMenuX); top: @Px(_contextMenuY);"
            @onclick:stopPropagation="true">
-        <div class="context-menu-item" @onclick="OnContextMenuAddDep">Add Dependency</div>
+        <div class="context-menu-item" @onclick="OnContextMenuAddDep">@Resources.AddDependency</div>
       </div>
     </div>
   }

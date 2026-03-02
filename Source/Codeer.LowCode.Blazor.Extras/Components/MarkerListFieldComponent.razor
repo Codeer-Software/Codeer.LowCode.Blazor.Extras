@@ -1,6 +1,7 @@
 ﻿@using Codeer.LowCode.Blazor.Components
 @using Codeer.LowCode.Blazor.Components.Interop
 @using Codeer.LowCode.Blazor.Extras.Fields
+@using Codeer.LowCode.Blazor.Extras.Properties
 @using Microsoft.AspNetCore.Components.Forms
 @using Codeer.LowCode.Blazor.Repository.Design
 @using Codeer.LowCode.Blazor.Components.Dialog
@@ -11,7 +12,7 @@
     <div class="img-overlay"
          @ondblclick="HandleDoubleClick">
 
-      <img src="@($"data:image/{Field.ImageExtension};base64,{Field.ObjectUrl}")" alt="Base64 Image" class="base-img" draggable="false" />
+      <img src="@($"data:image/{Field.ImageExtension};base64,{Field.ObjectUrl}")" alt="@Resources.Base64Image" class="base-img" draggable="false" />
 
       @foreach (var m in Field.MarkerList)
       {
