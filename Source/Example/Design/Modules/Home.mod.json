@@ -206,7 +206,7 @@
             "Columns": [
               {
                 "Layout": {
-                  "FieldName": "Calendar",
+                  "FieldName": "Gantt",
                   "ContextMenu": "",
                   "ClassName": "",
                   "FontFamily": "",
@@ -238,7 +238,7 @@
             "Columns": [
               {
                 "Layout": {
-                  "FieldName": "Gantt",
+                  "FieldName": "Calendar",
                   "ContextMenu": "",
                   "ClassName": "",
                   "FontFamily": "",
