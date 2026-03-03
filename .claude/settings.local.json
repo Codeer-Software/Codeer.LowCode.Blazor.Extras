@@ -5,7 +5,8 @@
       "WebSearch",
       "Bash(xargs grep -l \"ISearchResultsViewField\")",
       "Bash(xargs grep:*)",
-      "Bash(find \":*)"
+      "Bash(find \":*)",
+      "Bash(sed:*)"
     ]
   }
 }
