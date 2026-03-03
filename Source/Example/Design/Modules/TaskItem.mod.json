@@ -108,7 +108,7 @@
         "IsFlowLayout": false,
         "IsFillAvailable": false,
         "ScrollDirection": "Unset",
-        "BackgroundColor": "",
+        "BackgroundColor": "#FFFFFF",
         "Rows": [
           {
             "IsWrap": false,
