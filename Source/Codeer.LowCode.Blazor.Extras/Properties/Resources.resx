@@ -141,4 +141,7 @@
     <value>{0} - {1}</value>
     <comment>{0}=start, {1}=end</comment>
   </data>
+  <data name="NoItems" xml:space="preserve">
+    <value>No items</value>
+  </data>
 </root>

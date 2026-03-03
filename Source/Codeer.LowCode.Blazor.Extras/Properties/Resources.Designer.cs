@@ -320,5 +320,11 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
                 return ResourceManager.GetString("RangeTitleFormat", resourceCulture);
             }
         }
+
+        internal static string NoItems {
+            get {
+                return ResourceManager.GetString("NoItems", resourceCulture);
+            }
+        }
     }
 }

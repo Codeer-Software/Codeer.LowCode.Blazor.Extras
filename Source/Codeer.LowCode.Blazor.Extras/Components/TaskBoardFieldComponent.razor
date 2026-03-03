@@ -1,0 +1,203 @@
+@using Microsoft.AspNetCore.Components.Web
+@using Microsoft.JSInterop
+@using Codeer.LowCode.Blazor.Components
+@using Codeer.LowCode.Blazor.OperatingModel
+@using Codeer.LowCode.Blazor.Repository.Design
+@using Codeer.LowCode.Blazor.RequestInterfaces
+@using Codeer.LowCode.Blazor.Components.Fields
+@using Codeer.LowCode.Blazor.Extras.Fields
+@using Codeer.LowCode.Blazor.Extras.Properties
+@inherits FieldComponentBase<TaskBoardField>
+@inject Services Services
+@inject IJSRuntime JSRuntime
+
+<div @ref="Element" class="taskboard-container">
+  <div class="taskboard-columns">
+    @foreach (var status in Field.StatusCategories)
+    {
+      var columnItems = Field.GetColumnItems(status.Value);
+      var capturedStatus = status;
+      <div class="taskboard-column"
+           @ondragover="OnDragOver"
+           @ondragover:preventDefault="true"
+           @ondrop="() => OnDropOnColumn(capturedStatus.Value)">
+        <div class="taskboard-column-header">
+          <span class="column-title">@status.DisplayText</span>
+          <span class="column-count">@columnItems.Count</span>
+          <button type="button" class="column-add-btn" @onclick="() => OnAddClicked(capturedStatus.Value)">+</button>
+        </div>
+        <div class="taskboard-column-body">
+          @foreach (var (index, item) in columnItems.Select((item, i) => (i, item)))
+          {
+            var capturedItem = item;
+            var capturedIndex = index;
+            var capturedStatusValue = capturedStatus.Value;
+            var isDragOver = _dragOverStatus == capturedStatusValue && _dragOverIndex == capturedIndex;
+            @if (isDragOver && _dragOverPosition == DropPosition.Before)
+            {
+              <div class="taskboard-drop-indicator"></div>
+            }
+            <div class="taskboard-card @(_dragItem == capturedItem ? "dragging" : "")"
+                 draggable="true"
+                 @ondragstart="() => OnDragStart(capturedItem, capturedStatusValue, capturedIndex)"
+                 @ondragend="OnDragEnd"
+                 @ondragover="e => OnCardDragOver(e, capturedStatusValue, capturedIndex)"
+                 @ondragover:preventDefault="true"
+                 @ondrop="() => OnDropOnColumn(capturedStatusValue)"
+                 @ondrop:stopPropagation="true"
+                 @ondblclick="() => OnCardDoubleClicked(capturedItem)">
+              @if (ModuleDesign is not null)
+              {
+                <ChildModule Design="@LayoutDesign" ModuleDesign="ModuleDesign" Data="capturedItem.Module" IsTransparent />
+              }
+            </div>
+            @if (isDragOver && _dragOverPosition == DropPosition.After)
+            {
+              <div class="taskboard-drop-indicator"></div>
+            }
+          }
+          @if (_dragItem != null)
+          {
+            <div class="taskboard-empty-drop @(_dragOverStatus == capturedStatus.Value && _dragOverIndex >= columnItems.Count ? "drag-over" : "")"
+                 @ondragover="e => OnEmptyAreaDragOver(e, capturedStatus.Value, columnItems.Count)"
+                 @ondragover:preventDefault="true"
+                 @ondrop="() => OnDropOnColumn(capturedStatus.Value)"
+                 @ondrop:stopPropagation="true">
+            </div>
+          }
+          else if (columnItems.Count == 0)
+          {
+            <div class="taskboard-empty-drop">
+              <span class="empty-text">@Resources.NoItems</span>
+            </div>
+          }
+        </div>
+      </div>
+    }
+  </div>
+</div>
+
+@code {
+  enum DropPosition { Before, After }
+
+  private IJSObjectReference? _jsModule;
+  private ModuleDesign? ModuleDesign { get; set; }
+
+  private GridLayoutDesign LayoutDesign
+  {
+    get
+    {
+      if (ModuleDesign == null) return new();
+      var layoutName = Field.Design.DetailLayoutName;
+      if (ModuleDesign.DetailLayouts.TryGetValue(layoutName, out var detail))
+        return (GridLayoutDesign)detail.Layout;
+      if (!string.IsNullOrEmpty(layoutName) && ModuleDesign.DetailLayouts.TryGetValue(string.Empty, out var defaultDetail))
+        return (GridLayoutDesign)defaultDetail.Layout;
+      return new();
+    }
+  }
+
+  private TaskBoardItem? _dragItem;
+  private string? _dragSourceStatus;
+  private int _dragSourceIndex;
+  private string? _dragOverStatus;
+  private int _dragOverIndex = -1;
+  private DropPosition _dragOverPosition;
+
+  protected override async Task OnParametersSetAsync()
+  {
+    await base.OnParametersSetAsync();
+    var moduleName = Field.Design.SearchCondition.ModuleName;
+    if (!string.IsNullOrEmpty(moduleName))
+      ModuleDesign = Services.AppInfoService.GetDesignData().Modules.Find(moduleName);
+  }
+
+  protected override async Task OnAfterRenderAsync(bool firstRender)
+  {
+    await base.OnAfterRenderAsync(firstRender);
+    if (firstRender)
+    {
+      _jsModule = await JSRuntime.InvokeAsync<IJSObjectReference>(
+        "import", "./_content/Codeer.LowCode.Blazor.Extras/taskboard-interop.js");
+      await _jsModule.InvokeVoidAsync("initTaskBoard", Element);
+    }
+  }
+
+  public override async ValueTask DisposeAsync()
+  {
+    if (_jsModule != null)
+    {
+      try { await _jsModule.DisposeAsync(); } catch { }
+    }
+    await base.DisposeAsync();
+  }
+
+  private async Task OnAddClicked(string statusValue)
+    => await Field.AddAsync(statusValue);
+
+  private async Task OnCardDoubleClicked(TaskBoardItem item)
+    => await Field.EditAsync(item.Module);
+
+  private void OnDragStart(TaskBoardItem item, string statusValue, int index)
+  {
+    _dragItem = item;
+    _dragSourceStatus = statusValue;
+    _dragSourceIndex = index;
+  }
+
+  private void OnDragEnd()
+  {
+    _dragItem = null;
+    _dragSourceStatus = null;
+    _dragOverStatus = null;
+    _dragOverIndex = -1;
+    StateHasChanged();
+  }
+
+  private void OnDragOver(DragEventArgs e)
+  {
+  }
+
+  private void OnCardDragOver(DragEventArgs e, string statusValue, int index)
+  {
+    if (_dragItem == null) return;
+    _dragOverStatus = statusValue;
+    _dragOverIndex = index;
+    _dragOverPosition = DropPosition.After;
+    StateHasChanged();
+  }
+
+  private void OnEmptyAreaDragOver(DragEventArgs e, string statusValue, int count)
+  {
+    if (_dragItem == null) return;
+    _dragOverStatus = statusValue;
+    _dragOverIndex = count;
+    _dragOverPosition = DropPosition.Before;
+    StateHasChanged();
+  }
+
+  private async Task OnDropOnColumn(string statusValue)
+  {
+    if (_dragItem == null) return;
+
+    var item = _dragItem;
+    var newIndex = _dragOverIndex;
+
+    if (_dragOverPosition == DropPosition.After) newIndex++;
+
+    if (_dragSourceStatus == statusValue && _dragSourceIndex < newIndex)
+    {
+      newIndex--;
+    }
+
+    if (newIndex < 0) newIndex = 0;
+
+    _dragItem = null;
+    _dragSourceStatus = null;
+    _dragOverStatus = null;
+    _dragOverIndex = -1;
+
+    await Field.MoveTaskAsync(item, statusValue, newIndex);
+    StateHasChanged();
+  }
+}
