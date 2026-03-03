@@ -192,4 +192,7 @@
   <data name="RichTextBackColor" xml:space="preserve">
     <value>背景色</value>
   </data>
+  <data name="RichTextClearFormat" xml:space="preserve">
+    <value>書式クリア</value>
+  </data>
 </root>

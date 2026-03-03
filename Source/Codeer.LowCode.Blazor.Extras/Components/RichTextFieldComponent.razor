@@ -114,6 +114,9 @@ else
         <button type="button" class="toolbar-btn" title="@Resources.RichTextLink" @onclick="InsertLink">
           <span class="toolbar-icon">&#128279;</span>
         </button>
+        <button type="button" class="toolbar-btn" title="@Resources.RichTextClearFormat" @onclick="ClearFormatting">
+          <span class="toolbar-icon clear-format-icon">T<span class="clear-x">&#215;</span></span>
+        </button>
       </div>
 
       <div class="toolbar-separator"></div>
@@ -257,6 +260,21 @@ else
   {
     if (_jsModule == null) return;
     var html = await _jsModule.InvokeAsync<string>("execFormatCommandWithRestore", _editorElement, command, value);
+    _isUpdatingFromJs = true;
+    try
+    {
+      await Field.SetValueAsync(html);
+    }
+    finally
+    {
+      _isUpdatingFromJs = false;
+    }
+  }
+
+  private async Task ClearFormatting()
+  {
+    if (_jsModule == null) return;
+    var html = await _jsModule.InvokeAsync<string>("clearAllFormatting", _editorElement);
     _isUpdatingFromJs = true;
     try
     {

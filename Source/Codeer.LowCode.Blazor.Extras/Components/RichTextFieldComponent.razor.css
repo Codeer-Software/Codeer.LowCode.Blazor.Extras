@@ -81,6 +81,22 @@
   text-align: right;
 }
 
+.clear-format-icon {
+  position: relative;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+.clear-x {
+  position: absolute;
+  top: -4px;
+  right: -6px;
+  font-size: 10px;
+  font-weight: bold;
+  color: #dc3545;
+  line-height: 1;
+}
+
 .color-dropdown-wrapper {
   position: relative;
 }

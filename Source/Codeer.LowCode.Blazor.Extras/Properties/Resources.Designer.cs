@@ -422,5 +422,11 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
                 return ResourceManager.GetString("RichTextBackColor", resourceCulture);
             }
         }
+
+        internal static string RichTextClearFormat {
+            get {
+                return ResourceManager.GetString("RichTextClearFormat", resourceCulture);
+            }
+        }
     }
 }

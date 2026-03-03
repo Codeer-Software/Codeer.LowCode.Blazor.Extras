@@ -78,6 +78,13 @@ export function insertLink(editorElement) {
     return editorElement.innerHTML;
 }
 
+export function clearAllFormatting(editorElement) {
+    editorElement.focus();
+    document.execCommand('removeFormat', false, null);
+    document.execCommand('formatBlock', false, 'div');
+    return editorElement.innerHTML;
+}
+
 export function dispose(editorElement) {
     state.delete(editorElement);
 }

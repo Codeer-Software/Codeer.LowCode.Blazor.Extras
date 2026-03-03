@@ -192,4 +192,7 @@
   <data name="RichTextBackColor" xml:space="preserve">
     <value>Highlight Color</value>
   </data>
+  <data name="RichTextClearFormat" xml:space="preserve">
+    <value>Clear Formatting</value>
+  </data>
 </root>
