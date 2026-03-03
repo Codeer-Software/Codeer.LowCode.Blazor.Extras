@@ -144,4 +144,52 @@
   <data name="NoItems" xml:space="preserve">
     <value>アイテムなし</value>
   </data>
+  <data name="RichTextBold" xml:space="preserve">
+    <value>太字</value>
+  </data>
+  <data name="RichTextItalic" xml:space="preserve">
+    <value>斜体</value>
+  </data>
+  <data name="RichTextUnderline" xml:space="preserve">
+    <value>下線</value>
+  </data>
+  <data name="RichTextStrikethrough" xml:space="preserve">
+    <value>取消線</value>
+  </data>
+  <data name="RichTextHeading" xml:space="preserve">
+    <value>見出し</value>
+  </data>
+  <data name="RichTextNormal" xml:space="preserve">
+    <value>標準</value>
+  </data>
+  <data name="RichTextUnorderedList" xml:space="preserve">
+    <value>箇条書き</value>
+  </data>
+  <data name="RichTextOrderedList" xml:space="preserve">
+    <value>番号付きリスト</value>
+  </data>
+  <data name="RichTextAlignLeft" xml:space="preserve">
+    <value>左揃え</value>
+  </data>
+  <data name="RichTextAlignCenter" xml:space="preserve">
+    <value>中央揃え</value>
+  </data>
+  <data name="RichTextAlignRight" xml:space="preserve">
+    <value>右揃え</value>
+  </data>
+  <data name="RichTextLink" xml:space="preserve">
+    <value>リンク挿入</value>
+  </data>
+  <data name="RichTextUndo" xml:space="preserve">
+    <value>元に戻す</value>
+  </data>
+  <data name="RichTextRedo" xml:space="preserve">
+    <value>やり直し</value>
+  </data>
+  <data name="RichTextForeColor" xml:space="preserve">
+    <value>文字色</value>
+  </data>
+  <data name="RichTextBackColor" xml:space="preserve">
+    <value>背景色</value>
+  </data>
 </root>

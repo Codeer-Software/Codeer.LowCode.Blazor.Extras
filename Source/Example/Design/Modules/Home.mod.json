@@ -7,24 +7,6 @@
   "CanDelete": true,
   "Fields": [
     {
-      "Text": "Hello world, This is Codeer.LowCode.Blazor!",
-      "Icon": "",
-      "Style": "H1",
-      "RelativeField": "",
-      "OnClick": "",
-      "Name": "TitleLabel",
-      "IgnoreModification": false,
-      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.LabelFieldDesign"
-    },
-    {
-      "ResourcePath": "lc_logo_256.png",
-      "ObjectFit": "Contain",
-      "OnClick": "",
-      "Name": "LCLogo",
-      "IgnoreModification": false,
-      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.ImageViewerFieldDesign"
-    },
-    {
       "DisplayName": "",
       "SearchCondition": {
         "SelectFields": [],
@@ -93,6 +75,16 @@
       "Name": "Gantt",
       "IgnoreModification": false,
       "TypeFullName": "Codeer.LowCode.Blazor.Extras.Designs.GanttFieldDesign"
+    },
+    {
+      "DbColumn": "",
+      "Height": "200px",
+      "DisplayName": "",
+      "IsRequired": false,
+      "OnDataChanged": "",
+      "Name": "RichText",
+      "IgnoreModification": false,
+      "TypeFullName": "Codeer.LowCode.Blazor.Extras.Designs.RichTextFieldDesign"
     }
   ],
   "UserWriteCondition": {
@@ -139,16 +131,6 @@
             "IsRowMarginRemoved": false,
             "Columns": [
               {
-                "Layout": {
-                  "FieldName": "TitleLabel",
-                  "ContextMenu": "",
-                  "ClassName": "",
-                  "FontFamily": "",
-                  "Color": "",
-                  "BackgroundColor": "",
-                  "Name": "",
-                  "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.FieldLayoutDesign"
-                },
                 "Padding": {},
                 "BackgroundColor": "",
                 "BorderStyle": {
@@ -173,7 +155,7 @@
             "Columns": [
               {
                 "Layout": {
-                  "FieldName": "LCLogo",
+                  "FieldName": "RichText",
                   "ContextMenu": "",
                   "ClassName": "",
                   "FontFamily": "",
@@ -190,7 +172,6 @@
                   "RightColor": "",
                   "BottomColor": ""
                 },
-                "HorizontalAlignment": "Center",
                 "CanResize": false,
                 "Border": "None"
               }

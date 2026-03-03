@@ -144,4 +144,52 @@
   <data name="NoItems" xml:space="preserve">
     <value>No items</value>
   </data>
+  <data name="RichTextBold" xml:space="preserve">
+    <value>Bold</value>
+  </data>
+  <data name="RichTextItalic" xml:space="preserve">
+    <value>Italic</value>
+  </data>
+  <data name="RichTextUnderline" xml:space="preserve">
+    <value>Underline</value>
+  </data>
+  <data name="RichTextStrikethrough" xml:space="preserve">
+    <value>Strikethrough</value>
+  </data>
+  <data name="RichTextHeading" xml:space="preserve">
+    <value>Heading</value>
+  </data>
+  <data name="RichTextNormal" xml:space="preserve">
+    <value>Normal</value>
+  </data>
+  <data name="RichTextUnorderedList" xml:space="preserve">
+    <value>Bullet List</value>
+  </data>
+  <data name="RichTextOrderedList" xml:space="preserve">
+    <value>Numbered List</value>
+  </data>
+  <data name="RichTextAlignLeft" xml:space="preserve">
+    <value>Align Left</value>
+  </data>
+  <data name="RichTextAlignCenter" xml:space="preserve">
+    <value>Align Center</value>
+  </data>
+  <data name="RichTextAlignRight" xml:space="preserve">
+    <value>Align Right</value>
+  </data>
+  <data name="RichTextLink" xml:space="preserve">
+    <value>Insert Link</value>
+  </data>
+  <data name="RichTextUndo" xml:space="preserve">
+    <value>Undo</value>
+  </data>
+  <data name="RichTextRedo" xml:space="preserve">
+    <value>Redo</value>
+  </data>
+  <data name="RichTextForeColor" xml:space="preserve">
+    <value>Text Color</value>
+  </data>
+  <data name="RichTextBackColor" xml:space="preserve">
+    <value>Highlight Color</value>
+  </data>
 </root>

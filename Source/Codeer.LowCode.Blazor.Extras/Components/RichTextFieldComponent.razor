@@ -1,0 +1,302 @@
+@using Microsoft.AspNetCore.Components.Web
+@using Microsoft.JSInterop
+@using Codeer.LowCode.Blazor.Components
+@using Codeer.LowCode.Blazor.Extras.Fields
+@using Codeer.LowCode.Blazor.Extras.Properties
+@inherits FieldComponentBase<RichTextField>
+@inject IJSRuntime JSRuntime
+
+@if (Field.IsViewOnly)
+{
+  <div class="richtext-view" style="@GetHeightStyle()">
+    @((MarkupString)(Field.Value ?? string.Empty))
+  </div>
+}
+else
+{
+  <div class="richtext-editor-wrapper">
+    <div @ref="_toolbarElement" class="richtext-toolbar">
+      <div class="toolbar-group">
+        <button type="button" class="toolbar-btn" title="@Resources.RichTextBold" @onclick='() => ExecCommand("bold")'>
+          <strong>B</strong>
+        </button>
+        <button type="button" class="toolbar-btn" title="@Resources.RichTextItalic" @onclick='() => ExecCommand("italic")'>
+          <em>I</em>
+        </button>
+        <button type="button" class="toolbar-btn" title="@Resources.RichTextUnderline" @onclick='() => ExecCommand("underline")'>
+          <u>U</u>
+        </button>
+        <button type="button" class="toolbar-btn" title="@Resources.RichTextStrikethrough" @onclick='() => ExecCommand("strikeThrough")'>
+          <s>S</s>
+        </button>
+      </div>
+
+      <div class="toolbar-separator"></div>
+
+      <div class="toolbar-group">
+        <select class="toolbar-select" @onchange="OnHeadingChanged" title="@Resources.RichTextHeading">
+          <option value="">@Resources.RichTextNormal</option>
+          <option value="h1">H1</option>
+          <option value="h2">H2</option>
+          <option value="h3">H3</option>
+        </select>
+      </div>
+
+      <div class="toolbar-separator"></div>
+
+      <div class="toolbar-group">
+        <button type="button" class="toolbar-btn" title="@Resources.RichTextUnorderedList" @onclick='() => ExecCommand("insertUnorderedList")'>
+          <span class="toolbar-icon">&#8226;</span>
+        </button>
+        <button type="button" class="toolbar-btn" title="@Resources.RichTextOrderedList" @onclick='() => ExecCommand("insertOrderedList")'>
+          <span class="toolbar-icon">1.</span>
+        </button>
+      </div>
+
+      <div class="toolbar-separator"></div>
+
+      <div class="toolbar-group">
+        <button type="button" class="toolbar-btn" title="@Resources.RichTextAlignLeft" @onclick='() => ExecCommand("justifyLeft")'>
+          <span class="toolbar-icon align-icon">&#9776;</span>
+        </button>
+        <button type="button" class="toolbar-btn" title="@Resources.RichTextAlignCenter" @onclick='() => ExecCommand("justifyCenter")'>
+          <span class="toolbar-icon align-icon center">&#9776;</span>
+        </button>
+        <button type="button" class="toolbar-btn" title="@Resources.RichTextAlignRight" @onclick='() => ExecCommand("justifyRight")'>
+          <span class="toolbar-icon align-icon right">&#9776;</span>
+        </button>
+      </div>
+
+      <div class="toolbar-separator"></div>
+
+      <div class="toolbar-group">
+        <div class="color-dropdown-wrapper">
+          <button type="button" class="toolbar-btn" title="@Resources.RichTextForeColor"
+                  @onclick="ToggleForeColorPalette" @onclick:stopPropagation="true">
+            <span class="color-icon" style="border-bottom: 3px solid @_foreColor;">A</span>
+          </button>
+          @if (_showForeColorPalette)
+          {
+            <div class="color-palette" @onclick:stopPropagation="true">
+              @foreach (var color in _paletteColors)
+              {
+                var c = color;
+                <button type="button" class="color-swatch @(c == _foreColor ? "selected" : "")"
+                        style="background: @c;" title="@c"
+                        @onclick="() => ApplyForeColor(c)"></button>
+              }
+            </div>
+          }
+        </div>
+        <div class="color-dropdown-wrapper">
+          <button type="button" class="toolbar-btn" title="@Resources.RichTextBackColor"
+                  @onclick="ToggleBackColorPalette" @onclick:stopPropagation="true">
+            <span class="color-icon highlight-icon" style="background: @_backColor;">A</span>
+          </button>
+          @if (_showBackColorPalette)
+          {
+            <div class="color-palette" @onclick:stopPropagation="true">
+              @foreach (var color in _paletteColors)
+              {
+                var c = color;
+                <button type="button" class="color-swatch @(c == _backColor ? "selected" : "")"
+                        style="background: @c;" title="@c"
+                        @onclick="() => ApplyBackColor(c)"></button>
+              }
+            </div>
+          }
+        </div>
+      </div>
+
+      <div class="toolbar-separator"></div>
+
+      <div class="toolbar-group">
+        <button type="button" class="toolbar-btn" title="@Resources.RichTextLink" @onclick="InsertLink">
+          <span class="toolbar-icon">&#128279;</span>
+        </button>
+      </div>
+
+      <div class="toolbar-separator"></div>
+
+      <div class="toolbar-group">
+        <button type="button" class="toolbar-btn" title="@Resources.RichTextUndo" @onclick='() => ExecCommand("undo")'>
+          <span class="toolbar-icon">&#8617;</span>
+        </button>
+        <button type="button" class="toolbar-btn" title="@Resources.RichTextRedo" @onclick='() => ExecCommand("redo")'>
+          <span class="toolbar-icon">&#8618;</span>
+        </button>
+      </div>
+    </div>
+
+    <div @ref="_editorElement"
+         class="richtext-content"
+         contenteditable="true"
+         style="@GetHeightStyle()"
+         id="@WebElementId">
+    </div>
+  </div>
+}
+
+@code {
+  private ElementReference _editorElement;
+  private ElementReference _toolbarElement;
+  private IJSObjectReference? _jsModule;
+  private DotNetObjectReference<RichTextFieldComponent>? _dotNetRef;
+  private bool _isUpdatingFromJs;
+  private string _foreColor = "#000000";
+  private string _backColor = "#ffff00";
+  private bool _showForeColorPalette;
+  private bool _showBackColorPalette;
+
+  private static readonly string[] _paletteColors =
+  [
+    "#000000", "#434343", "#666666", "#999999", "#cccccc", "#efefef", "#f3f3f3", "#ffffff",
+    "#ff0000", "#ff9900", "#ffff00", "#00ff00", "#00ffff", "#0000ff", "#9900ff", "#ff00ff",
+    "#f4cccc", "#fce5cd", "#fff2cc", "#d9ead3", "#d0e0e3", "#cfe2f3", "#d9d2e9", "#ead1dc",
+    "#ea9999", "#f9cb9c", "#ffe599", "#b6d7a8", "#a2c4c9", "#9fc5e8", "#b4a7d6", "#d5a6bd",
+    "#e06666", "#f6b26b", "#ffd966", "#93c47d", "#76a5af", "#6fa8dc", "#8e7cc3", "#c27ba0",
+    "#cc0000", "#e69138", "#f1c232", "#6aa84f", "#45818e", "#3d85c6", "#674ea7", "#a64d79",
+    "#990000", "#b45f06", "#bf9000", "#38761d", "#134f5c", "#0b5394", "#351c75", "#741b47",
+  ];
+
+  protected override async Task OnAfterRenderAsync(bool firstRender)
+  {
+    await base.OnAfterRenderAsync(firstRender);
+    if (firstRender && !Field.IsViewOnly)
+    {
+      _jsModule = await JSRuntime.InvokeAsync<IJSObjectReference>(
+        "import", "./_content/Codeer.LowCode.Blazor.Extras/richtext-interop.js");
+      _dotNetRef = DotNetObjectReference.Create(this);
+      await _jsModule.InvokeVoidAsync("initEditor", _editorElement, _toolbarElement, _dotNetRef);
+
+      if (!string.IsNullOrEmpty(Field.Value))
+      {
+        await _jsModule.InvokeVoidAsync("setContent", _editorElement, Field.Value);
+      }
+
+      Field.OnDataChangedAsync = OnFieldDataChanged;
+    }
+  }
+
+  private async Task OnFieldDataChanged()
+  {
+    if (_isUpdatingFromJs || _jsModule == null) return;
+    await _jsModule.InvokeVoidAsync("setContent", _editorElement, Field.Value);
+    StateHasChanged();
+  }
+
+  [JSInvokable]
+  public async Task OnContentChanged(string html)
+  {
+    _isUpdatingFromJs = true;
+    try
+    {
+      await Field.SetValueAsync(html);
+    }
+    finally
+    {
+      _isUpdatingFromJs = false;
+    }
+  }
+
+  private async Task ExecCommand(string command, string? value = null)
+  {
+    if (_jsModule == null) return;
+    var html = await _jsModule.InvokeAsync<string>("execFormatCommand", _editorElement, command, value);
+    _isUpdatingFromJs = true;
+    try
+    {
+      await Field.SetValueAsync(html);
+    }
+    finally
+    {
+      _isUpdatingFromJs = false;
+    }
+  }
+
+  private async Task OnHeadingChanged(ChangeEventArgs e)
+  {
+    var value = e.Value?.ToString();
+    if (string.IsNullOrEmpty(value))
+    {
+      await ExecCommand("formatBlock", "div");
+    }
+    else
+    {
+      await ExecCommand("formatBlock", value);
+    }
+  }
+
+  private void ToggleForeColorPalette()
+  {
+    _showBackColorPalette = false;
+    _showForeColorPalette = !_showForeColorPalette;
+  }
+
+  private void ToggleBackColorPalette()
+  {
+    _showForeColorPalette = false;
+    _showBackColorPalette = !_showBackColorPalette;
+  }
+
+  private async Task ApplyForeColor(string color)
+  {
+    _foreColor = color;
+    _showForeColorPalette = false;
+    await ExecCommandWithRestore("foreColor", color);
+  }
+
+  private async Task ApplyBackColor(string color)
+  {
+    _backColor = color;
+    _showBackColorPalette = false;
+    await ExecCommandWithRestore("hiliteColor", color);
+  }
+
+  private async Task ExecCommandWithRestore(string command, string? value = null)
+  {
+    if (_jsModule == null) return;
+    var html = await _jsModule.InvokeAsync<string>("execFormatCommandWithRestore", _editorElement, command, value);
+    _isUpdatingFromJs = true;
+    try
+    {
+      await Field.SetValueAsync(html);
+    }
+    finally
+    {
+      _isUpdatingFromJs = false;
+    }
+  }
+
+  private async Task InsertLink()
+  {
+    if (_jsModule == null) return;
+    var html = await _jsModule.InvokeAsync<string>("insertLink", _editorElement);
+    _isUpdatingFromJs = true;
+    try
+    {
+      await Field.SetValueAsync(html);
+    }
+    finally
+    {
+      _isUpdatingFromJs = false;
+    }
+  }
+
+  private string GetHeightStyle()
+  {
+    var height = Field.Design?.Height;
+    return string.IsNullOrEmpty(height) ? "" : $"min-height: {height}";
+  }
+
+  public override async ValueTask DisposeAsync()
+  {
+    if (_jsModule != null)
+    {
+      try { await _jsModule.InvokeVoidAsync("dispose", _editorElement); } catch { }
+      try { await _jsModule.DisposeAsync(); } catch { }
+    }
+    _dotNetRef?.Dispose();
+    await base.DisposeAsync();
+  }
+}

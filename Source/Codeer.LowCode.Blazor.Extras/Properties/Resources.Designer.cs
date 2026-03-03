@@ -326,5 +326,101 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
                 return ResourceManager.GetString("NoItems", resourceCulture);
             }
         }
+
+        internal static string RichTextBold {
+            get {
+                return ResourceManager.GetString("RichTextBold", resourceCulture);
+            }
+        }
+
+        internal static string RichTextItalic {
+            get {
+                return ResourceManager.GetString("RichTextItalic", resourceCulture);
+            }
+        }
+
+        internal static string RichTextUnderline {
+            get {
+                return ResourceManager.GetString("RichTextUnderline", resourceCulture);
+            }
+        }
+
+        internal static string RichTextStrikethrough {
+            get {
+                return ResourceManager.GetString("RichTextStrikethrough", resourceCulture);
+            }
+        }
+
+        internal static string RichTextHeading {
+            get {
+                return ResourceManager.GetString("RichTextHeading", resourceCulture);
+            }
+        }
+
+        internal static string RichTextNormal {
+            get {
+                return ResourceManager.GetString("RichTextNormal", resourceCulture);
+            }
+        }
+
+        internal static string RichTextUnorderedList {
+            get {
+                return ResourceManager.GetString("RichTextUnorderedList", resourceCulture);
+            }
+        }
+
+        internal static string RichTextOrderedList {
+            get {
+                return ResourceManager.GetString("RichTextOrderedList", resourceCulture);
+            }
+        }
+
+        internal static string RichTextAlignLeft {
+            get {
+                return ResourceManager.GetString("RichTextAlignLeft", resourceCulture);
+            }
+        }
+
+        internal static string RichTextAlignCenter {
+            get {
+                return ResourceManager.GetString("RichTextAlignCenter", resourceCulture);
+            }
+        }
+
+        internal static string RichTextAlignRight {
+            get {
+                return ResourceManager.GetString("RichTextAlignRight", resourceCulture);
+            }
+        }
+
+        internal static string RichTextLink {
+            get {
+                return ResourceManager.GetString("RichTextLink", resourceCulture);
+            }
+        }
+
+        internal static string RichTextUndo {
+            get {
+                return ResourceManager.GetString("RichTextUndo", resourceCulture);
+            }
+        }
+
+        internal static string RichTextRedo {
+            get {
+                return ResourceManager.GetString("RichTextRedo", resourceCulture);
+            }
+        }
+
+        internal static string RichTextForeColor {
+            get {
+                return ResourceManager.GetString("RichTextForeColor", resourceCulture);
+            }
+        }
+
+        internal static string RichTextBackColor {
+            get {
+                return ResourceManager.GetString("RichTextBackColor", resourceCulture);
+            }
+        }
     }
 }
