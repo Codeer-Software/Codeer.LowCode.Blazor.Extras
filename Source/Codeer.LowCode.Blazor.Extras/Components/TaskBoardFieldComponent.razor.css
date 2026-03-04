@@ -75,6 +75,31 @@
 .taskboard-card {
   cursor: grab;
   user-select: none;
+  position: relative;
+}
+
+.card-drop-before,
+.card-drop-after {
+  position: absolute;
+  left: 0;
+  right: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.card-drop-before {
+  top: 0;
+  height: 50%;
+}
+
+.card-drop-after {
+  bottom: 0;
+  height: 50%;
+}
+
+.is-dragging .card-drop-before,
+.is-dragging .card-drop-after {
+  pointer-events: auto;
 }
 
 .taskboard-card:active {

@@ -11,7 +11,7 @@
 @inject Services Services
 @inject IJSRuntime JSRuntime
 
-<div @ref="Element" class="taskboard-container">
+<div @ref="Element" class="taskboard-container @(_dragItem != null ? "is-dragging" : "")">
   <div class="taskboard-columns">
     @foreach (var status in Field.StatusCategories)
     {
@@ -45,6 +45,18 @@
                  @ondrop="() => OnDropOnColumn(capturedStatusValue)"
                  @ondrop:stopPropagation="true"
                  @ondblclick="() => OnCardDoubleClicked(capturedItem)">
+              <div class="card-drop-before"
+                   @ondragover="() => OnCardDragOverWithPosition(capturedStatusValue, capturedIndex, DropPosition.Before)"
+                   @ondragover:preventDefault="true"
+                   @ondragover:stopPropagation="true"
+                   @ondrop="() => OnDropOnColumn(capturedStatusValue)"
+                   @ondrop:stopPropagation="true"></div>
+              <div class="card-drop-after"
+                   @ondragover="() => OnCardDragOverWithPosition(capturedStatusValue, capturedIndex, DropPosition.After)"
+                   @ondragover:preventDefault="true"
+                   @ondragover:stopPropagation="true"
+                   @ondrop="() => OnDropOnColumn(capturedStatusValue)"
+                   @ondrop:stopPropagation="true"></div>
               @if (ModuleDesign is not null)
               {
                 <ChildModule Design="@LayoutDesign" ModuleDesign="ModuleDesign" Data="capturedItem.Module" IsTransparent />
@@ -157,6 +169,15 @@
     _dragOverStatus = statusValue;
     _dragOverIndex = index;
     _dragOverPosition = DropPosition.After;
+    StateHasChanged();
+  }
+
+  private void OnCardDragOverWithPosition(string statusValue, int index, DropPosition position)
+  {
+    if (_dragItem == null) return;
+    _dragOverStatus = statusValue;
+    _dragOverIndex = index;
+    _dragOverPosition = position;
     StateHasChanged();
   }
 
