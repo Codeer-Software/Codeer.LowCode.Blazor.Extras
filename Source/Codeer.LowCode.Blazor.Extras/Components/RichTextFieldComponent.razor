@@ -138,6 +138,18 @@ else
          style="@GetHeightStyle()"
          id="@WebElementId">
     </div>
+
+    @if (_showLinkPopup)
+    {
+      <div class="link-popup" style="top: @(_linkPopupTop)px; left: @(_linkPopupLeft)px;"
+           @onclick:stopPropagation="true">
+        <input @ref="_linkInput" type="text" class="link-input" placeholder="URL"
+               @bind="_linkUrl" @bind:event="oninput"
+               @onkeydown="OnLinkKeyDown" />
+        <button type="button" class="link-popup-btn link-popup-ok" @onclick="ConfirmLink">OK</button>
+        <button type="button" class="link-popup-btn link-popup-cancel" @onclick="CancelLink">&#215;</button>
+      </div>
+    }
   </div>
 }
 
@@ -151,6 +163,11 @@ else
   private string _backColor = "#ffff00";
   private bool _showForeColorPalette;
   private bool _showBackColorPalette;
+  private bool _showLinkPopup;
+  private double _linkPopupTop;
+  private double _linkPopupLeft;
+  private string _linkUrl = string.Empty;
+  private ElementReference _linkInput;
 
   private static readonly string[] _paletteColors =
   [
@@ -290,7 +307,21 @@ else
   private async Task InsertLink()
   {
     if (_jsModule == null) return;
-    var html = await _jsModule.InvokeAsync<string>("insertLink", _editorElement);
+    var pos = await _jsModule.InvokeAsync<LinkPopupPosition>("getLinkPopupPosition", _editorElement);
+    _linkPopupTop = pos.Top;
+    _linkPopupLeft = pos.Left;
+    _linkUrl = string.Empty;
+    _showLinkPopup = true;
+    StateHasChanged();
+    await Task.Yield();
+    try { await _linkInput.FocusAsync(); } catch { }
+  }
+
+  private async Task ConfirmLink()
+  {
+    _showLinkPopup = false;
+    if (_jsModule == null || string.IsNullOrWhiteSpace(_linkUrl)) return;
+    var html = await _jsModule.InvokeAsync<string>("applyLink", _editorElement, _linkUrl);
     _isUpdatingFromJs = true;
     try
     {
@@ -301,6 +332,19 @@ else
       _isUpdatingFromJs = false;
     }
   }
+
+  private void CancelLink()
+  {
+    _showLinkPopup = false;
+  }
+
+  private async Task OnLinkKeyDown(KeyboardEventArgs e)
+  {
+    if (e.Key == "Enter") await ConfirmLink();
+    else if (e.Key == "Escape") CancelLink();
+  }
+
+  private record LinkPopupPosition(double Top, double Left);
 
   private string GetHeightStyle()
   {

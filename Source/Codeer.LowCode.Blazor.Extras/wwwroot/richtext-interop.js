@@ -85,14 +85,32 @@ export function setContent(editorElement, html) {
     ensureLinkTargets(editorElement);
 }
 
-export function insertLink(editorElement) {
+export function getLinkPopupPosition(editorElement) {
     saveSelection(editorElement);
-    const url = prompt('URL:');
-    if (url) {
-        restoreSelection(editorElement);
-        document.execCommand('createLink', false, url);
-        ensureLinkTargets(editorElement);
+    const wrapperRect = editorElement.parentElement.getBoundingClientRect();
+    const sel = window.getSelection();
+    if (sel.rangeCount > 0) {
+        const range = sel.getRangeAt(0);
+        const rangeRect = range.getBoundingClientRect();
+        if (rangeRect.width > 0 || rangeRect.height > 0) {
+            return {
+                top: rangeRect.bottom - wrapperRect.top + 4,
+                left: rangeRect.left - wrapperRect.left
+            };
+        }
     }
+    // Fallback: position below the toolbar
+    const editorRect = editorElement.getBoundingClientRect();
+    return {
+        top: editorRect.top - wrapperRect.top + 4,
+        left: 8
+    };
+}
+
+export function applyLink(editorElement, url) {
+    restoreSelection(editorElement);
+    document.execCommand('createLink', false, url);
+    ensureLinkTargets(editorElement);
     return editorElement.innerHTML;
 }
 
