@@ -69,6 +69,11 @@
   line-height: 1;
 }
 
+.toolbar-svg-icon {
+  width: 16px;
+  height: 16px;
+}
+
 .align-icon {
   font-size: 10px;
   letter-spacing: -1px;
