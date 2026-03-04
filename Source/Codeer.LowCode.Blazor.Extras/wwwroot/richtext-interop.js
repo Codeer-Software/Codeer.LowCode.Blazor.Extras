@@ -39,6 +39,15 @@ export function initEditor(editorElement, toolbarElement, dotNetRef) {
         document.execCommand('insertHTML', false, text);
     });
 
+    // Open links in new tab when clicked in editor
+    editorElement.addEventListener('click', (e) => {
+        const anchor = e.target.closest('a');
+        if (anchor && editorElement.contains(anchor)) {
+            e.preventDefault();
+            window.open(anchor.href, '_blank', 'noopener,noreferrer');
+        }
+    });
+
     // Save selection on every mouseup/keyup inside editor
     editorElement.addEventListener('mouseup', () => saveSelection(editorElement));
     editorElement.addEventListener('keyup', () => saveSelection(editorElement));
@@ -64,8 +73,16 @@ export function getContent(editorElement) {
     return editorElement.innerHTML;
 }
 
+function ensureLinkTargets(editorElement) {
+    editorElement.querySelectorAll('a').forEach(a => {
+        a.setAttribute('target', '_blank');
+        a.setAttribute('rel', 'noopener noreferrer');
+    });
+}
+
 export function setContent(editorElement, html) {
     editorElement.innerHTML = html || '';
+    ensureLinkTargets(editorElement);
 }
 
 export function insertLink(editorElement) {
@@ -74,6 +91,7 @@ export function insertLink(editorElement) {
     if (url) {
         restoreSelection(editorElement);
         document.execCommand('createLink', false, url);
+        ensureLinkTargets(editorElement);
     }
     return editorElement.innerHTML;
 }

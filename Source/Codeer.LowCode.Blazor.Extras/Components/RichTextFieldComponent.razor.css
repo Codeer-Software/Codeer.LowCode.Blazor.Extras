@@ -186,6 +186,7 @@
 .richtext-content ::deep a {
   color: #0d6efd;
   text-decoration: underline;
+  cursor: pointer;
 }
 
 .richtext-content ::deep p {
