@@ -30,7 +30,9 @@ function restoreSelection(editorElement) {
 }
 
 export function initEditor(editorElement, toolbarElement, dotNetRef) {
+    const editorState = getState(editorElement);
     editorElement.addEventListener('input', () => {
+        if (editorState.suppressInput) return;
         dotNetRef.invokeMethodAsync('OnContentChanged', editorElement.innerHTML);
     });
     editorElement.addEventListener('paste', (e) => {
@@ -86,32 +88,83 @@ export function setContent(editorElement, html) {
 }
 
 export function getLinkPopupPosition(editorElement) {
-    saveSelection(editorElement);
     const wrapperRect = editorElement.parentElement.getBoundingClientRect();
-    const sel = window.getSelection();
-    if (sel.rangeCount > 0) {
-        const range = sel.getRangeAt(0);
-        const rangeRect = range.getBoundingClientRect();
+    const s = getState(editorElement);
+
+    let top, left;
+    if (s.savedRange) {
+        const rangeRect = s.savedRange.getBoundingClientRect();
         if (rangeRect.width > 0 || rangeRect.height > 0) {
-            return {
-                top: rangeRect.bottom - wrapperRect.top + 4,
-                left: rangeRect.left - wrapperRect.left
-            };
+            top = rangeRect.bottom - wrapperRect.top + 4;
+            left = rangeRect.left - wrapperRect.left;
         }
     }
-    // Fallback: position below the toolbar
-    const editorRect = editorElement.getBoundingClientRect();
-    return {
-        top: editorRect.top - wrapperRect.top + 4,
-        left: 8
-    };
+    if (top === undefined) {
+        const editorRect = editorElement.getBoundingClientRect();
+        top = editorRect.top - wrapperRect.top + 4;
+        left = 8;
+    }
+
+    // Wrap selected text in a visible highlight span
+    if (s.savedRange && !s.savedRange.collapsed) {
+        try {
+            s.suppressInput = true;
+            const mark = document.createElement('span');
+            mark.style.backgroundColor = '#b3d4fc';
+            mark.setAttribute('data-link-highlight', '');
+            const contents = s.savedRange.extractContents();
+            mark.appendChild(contents);
+            s.savedRange.insertNode(mark);
+            s.highlightMark = mark;
+            const newRange = document.createRange();
+            newRange.selectNodeContents(mark);
+            s.savedRange = newRange;
+        } catch (e) {
+            // ignore – highlight is cosmetic
+        } finally {
+            s.suppressInput = false;
+        }
+    }
+
+    return { top, left };
+}
+
+function removeHighlight(editorElement) {
+    const s = getState(editorElement);
+    if (!s.highlightMark) return;
+    s.suppressInput = true;
+    try {
+        const mark = s.highlightMark;
+        const parent = mark.parentNode;
+        const firstChild = mark.firstChild;
+        const lastChild = mark.lastChild;
+        while (mark.firstChild) {
+            parent.insertBefore(mark.firstChild, mark);
+        }
+        parent.removeChild(mark);
+        if (firstChild && lastChild) {
+            const range = document.createRange();
+            range.setStartBefore(firstChild);
+            range.setEndAfter(lastChild);
+            s.savedRange = range;
+        }
+    } catch (e) {
+        // ignore
+    }
+    s.highlightMark = null;
+    s.suppressInput = false;
 }
 
 export function applyLink(editorElement, url) {
+    removeHighlight(editorElement);
     restoreSelection(editorElement);
     document.execCommand('createLink', false, url);
     ensureLinkTargets(editorElement);
     return editorElement.innerHTML;
+}
+
+export function cancelLinkHighlight(editorElement) {
+    removeHighlight(editorElement);
 }
 
 export function clearAllFormatting(editorElement) {
