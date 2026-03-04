@@ -16,7 +16,7 @@
 else
 {
   <div class="richtext-editor-wrapper">
-    <div @ref="_toolbarElement" class="richtext-toolbar">
+    <div @ref="_toolbarElement" class="richtext-toolbar" @onkeydown="OnToolbarKeyDown">
       <div class="toolbar-group">
         <button type="button" class="toolbar-btn" title="@Resources.RichTextBold" @onclick='() => ExecCommand("bold")'>
           <strong>B</strong>
@@ -79,6 +79,9 @@ else
           @if (_showForeColorPalette)
           {
             <div class="color-palette" @onclick:stopPropagation="true">
+              <div class="color-palette-header">
+                <button type="button" class="color-palette-close" @onclick="() => _showForeColorPalette = false">&#215;</button>
+              </div>
               @foreach (var color in _paletteColors)
               {
                 var c = color;
@@ -97,6 +100,9 @@ else
           @if (_showBackColorPalette)
           {
             <div class="color-palette" @onclick:stopPropagation="true">
+              <div class="color-palette-header">
+                <button type="button" class="color-palette-close" @onclick="() => _showBackColorPalette = false">&#215;</button>
+              </div>
               @foreach (var color in _paletteColors)
               {
                 var c = color;
@@ -245,6 +251,15 @@ else
     else
     {
       await ExecCommand("formatBlock", value);
+    }
+  }
+
+  private void OnToolbarKeyDown(KeyboardEventArgs e)
+  {
+    if (e.Key == "Escape")
+    {
+      _showForeColorPalette = false;
+      _showBackColorPalette = false;
     }
   }
 
