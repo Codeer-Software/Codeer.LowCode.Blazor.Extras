@@ -20,14 +20,26 @@
       {
         <button type="button" class="toolbar-btn add-btn" @onclick="OnAddClicked">@Resources.Add</button>
       }
-      <div class="view-switcher">
-        <button type="button" class="view-btn @(Field.ViewMode == GanttViewMode.Day ? "active" : "")"
-                @onclick="() => SetViewMode(GanttViewMode.Day)">@Resources.Day</button>
-        <button type="button" class="view-btn @(Field.ViewMode == GanttViewMode.Week ? "active" : "")"
-                @onclick="() => SetViewMode(GanttViewMode.Week)">@Resources.Week</button>
-        <button type="button" class="view-btn @(Field.ViewMode == GanttViewMode.Month ? "active" : "")"
-                @onclick="() => SetViewMode(GanttViewMode.Month)">@Resources.Month</button>
-      </div>
+      @if (EnabledViewModeCount > 1)
+      {
+        <div class="view-switcher">
+          @if (Field.IsViewModeEnabled(GanttViewMode.Day))
+          {
+            <button type="button" class="view-btn @(Field.ViewMode == GanttViewMode.Day ? "active" : "")"
+                    @onclick="() => SetViewMode(GanttViewMode.Day)">@Resources.Day</button>
+          }
+          @if (Field.IsViewModeEnabled(GanttViewMode.Week))
+          {
+            <button type="button" class="view-btn @(Field.ViewMode == GanttViewMode.Week ? "active" : "")"
+                    @onclick="() => SetViewMode(GanttViewMode.Week)">@Resources.Week</button>
+          }
+          @if (Field.IsViewModeEnabled(GanttViewMode.Month))
+          {
+            <button type="button" class="view-btn @(Field.ViewMode == GanttViewMode.Month ? "active" : "")"
+                    @onclick="() => SetViewMode(GanttViewMode.Month)">@Resources.Month</button>
+          }
+        </div>
+      }
     </div>
   </div>
 
@@ -119,6 +131,11 @@
   private bool IsViewMode => Field.IsViewOnly;
   private bool IsEditable => !IsViewMode && !IsDisabled;
 
+  private int EnabledViewModeCount =>
+    (Field.IsViewModeEnabled(GanttViewMode.Day) ? 1 : 0) +
+    (Field.IsViewModeEnabled(GanttViewMode.Week) ? 1 : 0) +
+    (Field.IsViewModeEnabled(GanttViewMode.Month) ? 1 : 0);
+
   private CultureInfo _culture => CultureInfo.CurrentUICulture;
 
   private string Px(double v) => v.ToString("0.#", CultureInfo.InvariantCulture) + "px";
@@ -140,26 +157,38 @@
       bodyHeight, headerHeight + bodyHeight, dates.Count * colWidth, timeUnit);
   }
 
-  private int GetHeaderHeight() => Field.ViewMode switch
+  private int GetHeaderHeight()
   {
-    GanttViewMode.Month => 48,
-    GanttViewMode.Week => 44,
-    _ => 28,
-  };
+    if (Field.IsDateOnly) return Field.ViewMode == GanttViewMode.Month ? 48 : 44;
+    return Field.ViewMode switch
+    {
+      GanttViewMode.Month => 48,
+      GanttViewMode.Week => 44,
+      _ => 28,
+    };
+  }
 
-  private int GetColumnWidth() => Field.ViewMode switch
+  private int GetColumnWidth()
   {
-    GanttViewMode.Month => 32,
-    GanttViewMode.Week => 14,
-    _ => 40,
-  };
+    if (Field.IsDateOnly) return 32;
+    return Field.ViewMode switch
+    {
+      GanttViewMode.Month => 32,
+      GanttViewMode.Week => 14,
+      _ => 40,
+    };
+  }
 
-  private TimeSpan GetTimeUnit() => Field.ViewMode switch
+  private TimeSpan GetTimeUnit()
   {
-    GanttViewMode.Month => TimeSpan.FromDays(1),
-    GanttViewMode.Week => TimeSpan.FromHours(1),
-    _ => TimeSpan.FromHours(1),
-  };
+    if (Field.IsDateOnly) return TimeSpan.FromDays(1);
+    return Field.ViewMode switch
+    {
+      GanttViewMode.Month => TimeSpan.FromDays(1),
+      GanttViewMode.Week => TimeSpan.FromHours(1),
+      _ => TimeSpan.FromHours(1),
+    };
+  }
 
   // ===== SVG Render sections =====
 
@@ -187,6 +216,29 @@
       }
       <line x1="0" y1="24" x2="@lp.TimelineWidth" y2="24" class="header-sep" />
       <line x1="0" y1="48" x2="@lp.TimelineWidth" y2="48" class="header-sep" />
+    }
+    else if (Field.ViewMode == GanttViewMode.Week && Field.IsDateOnly)
+    {
+      var mgX = 0.0;
+      foreach (var mg in GetMonthGroups(lp.Dates))
+      {
+        var mgWidth = mg.Days * lp.ColWidth;
+        <rect x="@mgX" y="0" width="@mgWidth" height="24" class="header-month-bg" />
+        <g><text x="@(mgX + mgWidth / 2)" y="16" class="header-month-text">@mg.Label</text></g>
+        <line x1="@mgX" y1="0" x2="@mgX" y2="24" class="header-sep" />
+        mgX += mgWidth;
+      }
+      for (var i = 0; i < lp.Dates.Count; i++)
+      {
+        var x = i * lp.ColWidth;
+        var d = lp.Dates[i];
+        var isWeekend = d.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday;
+        <rect x="@x" y="24" width="@lp.ColWidth" height="20" class="@(isWeekend ? "header-weekend-bg" : "header-day-bg")" />
+        <g><text x="@(x + lp.ColWidth / 2)" y="38" class="header-day-text">@d.Day</text></g>
+        <line x1="@x" y1="24" x2="@x" y2="@lp.HeaderHeight" class="header-sep-light" />
+      }
+      <line x1="0" y1="24" x2="@lp.TimelineWidth" y2="24" class="header-sep" />
+      <line x1="0" y1="@lp.HeaderHeight" x2="@lp.TimelineWidth" y2="@lp.HeaderHeight" class="header-sep" />
     }
     else if (Field.ViewMode == GanttViewMode.Week)
     {
@@ -234,7 +286,7 @@
     {
       var x = i * lp.ColWidth;
       var d = lp.Dates[i];
-      var isWeekend = Field.ViewMode == GanttViewMode.Month
+      var isWeekend = (Field.ViewMode == GanttViewMode.Month || Field.IsDateOnly)
         && d.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday;
       if (isWeekend)
       {
@@ -515,17 +567,24 @@
   {
     var (start, end) = Field.GetViewDateRange();
     var list = new List<DateTime>();
-    switch (Field.ViewMode)
+    if (Field.IsDateOnly)
     {
-      case GanttViewMode.Day:
-        for (var h = 0; h < 24; h++) list.Add(start.Date.AddHours(h));
-        break;
-      case GanttViewMode.Week:
-        for (var c = start; c < end; c = c.AddHours(1)) list.Add(c);
-        break;
-      default:
-        for (var d = start.Date; d < end; d = d.AddDays(1)) list.Add(d);
-        break;
+      for (var d = start.Date; d < end; d = d.AddDays(1)) list.Add(d);
+    }
+    else
+    {
+      switch (Field.ViewMode)
+      {
+        case GanttViewMode.Day:
+          for (var h = 0; h < 24; h++) list.Add(start.Date.AddHours(h));
+          break;
+        case GanttViewMode.Week:
+          for (var c = start; c < end; c = c.AddHours(1)) list.Add(c);
+          break;
+        default:
+          for (var d = start.Date; d < end; d = d.AddDays(1)) list.Add(d);
+          break;
+      }
     }
     return list;
   }
@@ -579,12 +638,16 @@
     return groups;
   }
 
-  private bool IsMainGridLine(DateTime d) => Field.ViewMode switch
+  private bool IsMainGridLine(DateTime d)
   {
-    GanttViewMode.Month => d.DayOfWeek == DayOfWeek.Monday,
-    GanttViewMode.Week => d.Hour == 0,
-    _ => d.Hour % 6 == 0,
-  };
+    if (Field.IsDateOnly) return d.DayOfWeek == DayOfWeek.Monday;
+    return Field.ViewMode switch
+    {
+      GanttViewMode.Month => d.DayOfWeek == DayOfWeek.Monday,
+      GanttViewMode.Week => d.Hour == 0,
+      _ => d.Hour % 6 == 0,
+    };
+  }
 
   // ===== Positioning =====
 
@@ -685,17 +748,25 @@
       await Field.UpdateTaskDatesAsync(item, item.Start, item.End);
   }
 
-  private TimeSpan GetSnapTimeSpan() => Field.ViewMode switch
+  private TimeSpan GetSnapTimeSpan()
   {
-    GanttViewMode.Month => TimeSpan.FromDays(1),
-    GanttViewMode.Week => TimeSpan.FromHours(1),
-    _ => TimeSpan.FromMinutes(30),
-  };
+    if (Field.IsDateOnly) return TimeSpan.FromDays(1);
+    return Field.ViewMode switch
+    {
+      GanttViewMode.Month => TimeSpan.FromDays(1),
+      GanttViewMode.Week => TimeSpan.FromHours(1),
+      _ => TimeSpan.FromMinutes(30),
+    };
+  }
 
-  private double GetSnapPx(int colWidth) => Field.ViewMode switch
+  private double GetSnapPx(int colWidth)
   {
-    GanttViewMode.Month => colWidth,
-    GanttViewMode.Week => colWidth,
-    _ => colWidth / 2.0,
-  };
+    if (Field.IsDateOnly) return colWidth;
+    return Field.ViewMode switch
+    {
+      GanttViewMode.Month => colWidth,
+      GanttViewMode.Week => colWidth,
+      _ => colWidth / 2.0,
+    };
+  }
 }

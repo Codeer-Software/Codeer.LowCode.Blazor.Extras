@@ -26,12 +26,12 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
 
         [Designer(CandidateType = CandidateType.Field)]
         [ModuleMember(Member = $"{nameof(SearchCondition)}.{nameof(SearchCondition.ModuleName)}")]
-        [TargetFieldType(Types = [typeof(DateTimeFieldDesign)])]
+        [TargetFieldType(Types = [typeof(DateTimeFieldDesign), typeof(DateFieldDesign)])]
         public string StartField { get; set; } = "";
 
         [Designer(CandidateType = CandidateType.Field)]
         [ModuleMember(Member = $"{nameof(SearchCondition)}.{nameof(SearchCondition.ModuleName)}")]
-        [TargetFieldType(Types = [typeof(DateTimeFieldDesign)])]
+        [TargetFieldType(Types = [typeof(DateTimeFieldDesign), typeof(DateFieldDesign)])]
         public string EndField { get; set; } = "";
 
         [Designer(CandidateType = CandidateType.Field, Category = nameof(SearchCondition))]
@@ -65,6 +65,15 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         [ModuleMember(Member = $"{nameof(DependenciesModule)}.{nameof(DependenciesModule.ModuleName)}")]
         [TargetFieldType(Types = [typeof(IdFieldDesign), typeof(LinkFieldDesign)])]
         public string DependencyDestinationIdField { get; set; } = "";
+
+        [Designer]
+        public bool EnableDayView { get; set; } = true;
+
+        [Designer]
+        public bool EnableWeekView { get; set; } = true;
+
+        [Designer]
+        public bool EnableMonthView { get; set; } = true;
 
         [Designer(CandidateType = CandidateType.ScriptEvent)]
         public string OnDataChanged { get; set; } = string.Empty;

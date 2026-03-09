@@ -59,6 +59,8 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
 
         internal List<DependencyListItem> DependencyList { get; set; } = [];
 
+        internal bool IsDateOnly { get; private set; }
+
         public DateTime ViewStart { get; private set; } = DateTime.Today.AddDays(-(int)DateTime.Today.DayOfWeek);
 
         public GanttViewMode ViewMode { get; private set; } = GanttViewMode.Week;
@@ -76,6 +78,8 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         [ScriptHide]
         public override async Task InitializeDataAsync(FieldDataBase? fieldDataBase)
         {
+            IsDateOnly = DetectIsDateOnly();
+            ViewMode = GetDefaultViewMode();
             if (this.IsInLayout()) await ReloadAsync();
         }
 
@@ -174,10 +178,19 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         [ScriptMethodToProperty("ViewMode")]
         public async Task SetViewModeScriptAsync(GanttViewMode mode)
         {
+            if (!IsViewModeEnabled(mode)) return;
             ViewMode = mode;
             NotifyStateChanged();
             await ReloadAsync();
         }
+
+        internal bool IsViewModeEnabled(GanttViewMode mode) => mode switch
+        {
+            GanttViewMode.Day => !IsDateOnly && Design.EnableDayView,
+            GanttViewMode.Week => Design.EnableWeekView,
+            GanttViewMode.Month => Design.EnableMonthView,
+            _ => false,
+        };
 
         internal (DateTime Start, DateTime End) GetViewDateRange() => ViewMode switch
         {
@@ -188,7 +201,13 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
 
         internal Task SetViewStartAsync(DateTime date) => SetViewStartScriptAsync(date);
 
-        internal Task SetViewModeAsync(GanttViewMode mode) => SetViewModeScriptAsync(mode);
+        internal async Task SetViewModeAsync(GanttViewMode mode)
+        {
+            if (!IsViewModeEnabled(mode)) return;
+            ViewMode = mode;
+            NotifyStateChanged();
+            await ReloadAsync();
+        }
 
         // ===== CRUD operations =====
 
@@ -197,10 +216,8 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             var mod = await this.CreateChildModuleAsync(ModuleName, ModuleLayoutType.Detail, Design.DetailLayoutName);
             await mod.AssignRequiredCondition(Design.SearchCondition);
 
-            var start = mod.GetField<DateTimeField>(Design.StartField);
-            var end = mod.GetField<DateTimeField>(Design.EndField);
-            if (start != null) await start.SetValueAsync(date);
-            if (end != null) await end.SetValueAsync(date.AddDays(1));
+            SetDateFieldValue(mod, Design.StartField, date);
+            SetDateFieldValue(mod, Design.EndField, date.AddDays(1));
 
             if (await mod.ShowDialogAsync(Properties.Resources.OK, Properties.Resources.Cancel) != Properties.Resources.OK) return;
             if (!mod.ValidateInput())
@@ -259,10 +276,17 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         {
             if (item.Module == null) return;
 
-            var startField = item.Module.GetField<DateTimeField>(Design.StartField);
-            var endField = item.Module.GetField<DateTimeField>(Design.EndField);
-            if (startField != null) await startField.SetValueAsync(newStart);
-            if (endField != null) await endField.SetValueAsync(newEnd);
+            var saveStart = newStart;
+            var saveEnd = newEnd;
+            if (IsDateOnly)
+            {
+                saveStart = newStart.Date;
+                saveEnd = newEnd.Date.AddDays(-1);
+                if (saveEnd < saveStart) saveEnd = saveStart;
+            }
+
+            SetDateFieldValue(item.Module, Design.StartField, saveStart);
+            SetDateFieldValue(item.Module, Design.EndField, saveEnd);
 
             using var scope = Services.Provider.GetService<LoadingService>()?.StartLoading(300);
             if (await item.Module.SubmitAsync() != true) return;
@@ -350,22 +374,35 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             var item = Items.FirstOrDefault(e => e.Module?.GetIdText() == mod.GetIdText());
             if (item == null) return;
             item.Text = mod.GetField<TextField>(Design.TextField)?.Value ?? item.Text;
-            item.Start = mod.GetField<DateTimeField>(Design.StartField)?.Value ?? item.Start;
-            item.End = mod.GetField<DateTimeField>(Design.EndField)?.Value ?? item.End;
+            item.Start = GetDateTimeValue(mod, Design.StartField) ?? item.Start;
+            item.End = GetDateTimeValue(mod, Design.EndField) ?? item.End;
             item.Progress = GetProgressValue(mod);
         }
 
         private GanttItem ConvertToGanttItem(Module data)
         {
             var id = data.GetIdText() ?? string.Empty;
+            var start = GetDateTimeValue(data, Design.StartField);
+            var end = GetDateTimeValue(data, Design.EndField);
+
+            var s = start ?? default;
+            var e = end ?? start ?? default;
+
+            if (IsDateOnly)
+            {
+                s = s.Date;
+                e = e.Date;
+                if (e <= s) e = s.AddDays(1);
+                else e = e.AddDays(1);
+            }
+
             return new GanttItem
             {
                 Module = data,
                 Id = id,
                 Text = data.GetField<TextField>(Design.TextField)?.Value ?? string.Empty,
-                Start = data.GetField<DateTimeField>(Design.StartField)?.Value ?? default,
-                End = data.GetField<DateTimeField>(Design.EndField)?.Value
-                      ?? data.GetField<DateTimeField>(Design.StartField)?.Value ?? default,
+                Start = s,
+                End = e,
                 Progress = GetProgressValue(data),
                 Dependencies = DependenciesMap.TryGetValue(id, out var deps) ? deps : [],
             };
@@ -376,6 +413,48 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             if (string.IsNullOrEmpty(Design.ProgressField)) return 0;
             var val = data.GetField<NumberField>(Design.ProgressField)?.Value;
             return int.TryParse(val?.ToString() ?? string.Empty, out var p) ? Math.Clamp(p, 0, 100) : 0;
+        }
+
+        private bool DetectIsDateOnly()
+        {
+            if (string.IsNullOrEmpty(Design.StartField)) return false;
+            var moduleName = Design.SearchCondition.ModuleName;
+            if (string.IsNullOrEmpty(moduleName)) return false;
+            var moduleDesign = Services.AppInfoService.GetDesignData().Modules.Find(moduleName);
+            if (moduleDesign == null) return false;
+            var fieldDesign = moduleDesign.Fields.FirstOrDefault(f => f.Name == Design.StartField);
+            return fieldDesign is DateFieldDesign;
+        }
+
+        private GanttViewMode GetDefaultViewMode()
+        {
+            if (Design.EnableWeekView) return GanttViewMode.Week;
+            if (Design.EnableMonthView) return GanttViewMode.Month;
+            if (Design.EnableDayView) return GanttViewMode.Day;
+            return GanttViewMode.Week;
+        }
+
+        private static DateTime? GetDateTimeValue(Module data, string fieldName)
+        {
+            if (string.IsNullOrEmpty(fieldName)) return null;
+            var dateTimeField = data.GetField<DateTimeField>(fieldName);
+            if (dateTimeField != null) return dateTimeField.Value;
+            var dateField = data.GetField<DateField>(fieldName);
+            if (dateField?.Value is { } dateOnly) return dateOnly.ToDateTime(TimeOnly.MinValue);
+            return null;
+        }
+
+        private static void SetDateFieldValue(Module mod, string fieldName, DateTime value)
+        {
+            if (string.IsNullOrEmpty(fieldName)) return;
+            var dateTimeField = mod.GetField<DateTimeField>(fieldName);
+            if (dateTimeField != null)
+            {
+                dateTimeField.SetValueAsync(value).GetAwaiter().GetResult();
+                return;
+            }
+            var dateField = mod.GetField<DateField>(fieldName);
+            dateField?.SetValueAsync(DateOnly.FromDateTime(value)).GetAwaiter().GetResult();
         }
 
         // ===== Dependency helpers =====
