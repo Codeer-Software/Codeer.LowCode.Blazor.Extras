@@ -158,8 +158,11 @@
           {
             <rect x="@x" y="@headerHeight" width="@colWidth" height="@bodyHeight" class="grid-weekend" />
           }
-          <line x1="@x" y1="@headerHeight" x2="@x" y2="@totalHeight"
-                class="@(IsMainGridLine(d) ? "grid-line-main" : "grid-line")" />
+          @if (i > 0)
+          {
+            <line x1="@x" y1="@headerHeight" x2="@x" y2="@totalHeight"
+                  class="@(IsMainGridLine(d) ? "grid-line-main" : "grid-line")" />
+          }
         }
 
         @* Row separators *@
