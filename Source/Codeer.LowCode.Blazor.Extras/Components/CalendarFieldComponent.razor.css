@@ -110,6 +110,8 @@
   flex: 1;
   display: flex;
   flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .month-header {
@@ -132,13 +134,15 @@
   flex: 1;
   display: flex;
   flex-direction: column;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .month-row {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  flex: 1;
-  min-height: 90px;
+  grid-template-rows: 1fr;
+  flex: 1 0 120px;
 }
 
 .month-cell {
@@ -146,8 +150,8 @@
   border-bottom: 1px solid #dadce0;
   padding: 2px;
   cursor: pointer;
-  overflow: hidden;
-  min-height: 90px;
+  overflow-y: auto;
+  min-height: 0;
 }
 
 .month-cell:nth-child(7n) {
@@ -242,18 +246,6 @@
   font-size: 11px;
 }
 
-.month-more {
-  font-size: 11px;
-  color: #1a73e8;
-  padding: 1px 4px;
-  cursor: pointer;
-  font-weight: 500;
-}
-
-.month-more:hover {
-  background: #e8f0fe;
-  border-radius: 3px;
-}
 
 /* ===== Week & Day shared: Time grid ===== */
 .week-view,
