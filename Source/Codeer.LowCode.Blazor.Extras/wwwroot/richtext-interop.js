@@ -60,8 +60,126 @@ export function initEditor(editorElement, toolbarElement, dotNetRef) {
 
 export function execFormatCommand(editorElement, command, value) {
     editorElement.focus();
-    document.execCommand(command, false, value || null);
+    if (command === 'formatBlock') {
+        applyFormatBlock(editorElement, value || 'div');
+    } else {
+        document.execCommand(command, false, value || null);
+    }
     return editorElement.innerHTML;
+}
+
+function getBlockParent(node, editorElement) {
+    const blockTags = ['DIV', 'P', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'BLOCKQUOTE', 'PRE', 'LI'];
+    let cur = node.nodeType === Node.TEXT_NODE ? node.parentNode : node;
+    while (cur && cur !== editorElement) {
+        if (blockTags.includes(cur.tagName)) return cur;
+        cur = cur.parentNode;
+    }
+    return null;
+}
+
+function isEmptyBlock(el) {
+    if (!el) return false;
+    const html = el.innerHTML;
+    return html === '' || html === '<br>' || html.trim() === '';
+}
+
+function applyFormatBlock(editorElement, tag) {
+    const sel = window.getSelection();
+    if (!sel.rangeCount) return;
+    const range = sel.getRangeAt(0);
+
+    // Collect all block-level elements that intersect the selection
+    const blocks = [];
+    const seen = new Set();
+
+    // Walk through all nodes in the selection range
+    const walker = document.createTreeWalker(
+        editorElement,
+        NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT,
+        {
+            acceptNode(node) {
+                // Include nodes that are within or intersect the selection
+                if (range.intersectsNode(node)) return NodeFilter.FILTER_ACCEPT;
+                return NodeFilter.FILTER_SKIP;
+            }
+        }
+    );
+
+    let node = walker.nextNode();
+    while (node) {
+        const block = getBlockParent(node, editorElement);
+        if (block && !seen.has(block)) {
+            seen.add(block);
+            blocks.push(block);
+        } else if (!block && node.nodeType === Node.TEXT_NODE && node.parentNode === editorElement && !seen.has(node)) {
+            // Direct text node child of editor - treat it as its own block
+            seen.add(node);
+            blocks.push(node);
+        }
+        node = walker.nextNode();
+    }
+
+    // Also check for empty block elements (they may not contain text nodes)
+    for (let child = editorElement.firstChild; child; child = child.nextSibling) {
+        if (child.nodeType === Node.ELEMENT_NODE && !seen.has(child) && isEmptyBlock(child)) {
+            if (range.intersectsNode(child)) {
+                seen.add(child);
+                blocks.push(child);
+            }
+        }
+    }
+
+    // Sort blocks by document order
+    blocks.sort((a, b) => {
+        const pos = a.compareDocumentPosition(b);
+        if (pos & Node.DOCUMENT_POSITION_FOLLOWING) return -1;
+        if (pos & Node.DOCUMENT_POSITION_PRECEDING) return 1;
+        return 0;
+    });
+
+    if (blocks.length === 0) {
+        // Fallback to native command
+        document.execCommand('formatBlock', false, tag);
+        return;
+    }
+
+    const tagUpper = tag.toUpperCase();
+    const newBlocks = [];
+
+    for (const block of blocks) {
+        if (block.nodeType === Node.TEXT_NODE) {
+            const newEl = document.createElement(tagUpper);
+            block.parentNode.insertBefore(newEl, block);
+            newEl.appendChild(block);
+            newBlocks.push(newEl);
+        } else if (block.tagName !== tagUpper) {
+            const newEl = document.createElement(tagUpper);
+            while (block.firstChild) {
+                newEl.appendChild(block.firstChild);
+            }
+            if (newEl.innerHTML === '' || newEl.innerHTML.trim() === '') {
+                newEl.innerHTML = '<br>';
+            }
+            block.parentNode.insertBefore(newEl, block);
+            block.parentNode.removeChild(block);
+            newBlocks.push(newEl);
+        } else {
+            // Tag unchanged, keep as-is
+            newBlocks.push(block);
+        }
+    }
+
+    // Restore selection across the converted blocks
+    if (newBlocks.length > 0) {
+        const first = newBlocks[0];
+        const last = newBlocks[newBlocks.length - 1];
+        const newRange = document.createRange();
+        newRange.setStart(first, 0);
+        newRange.setEnd(last, last.childNodes.length);
+        sel.removeAllRanges();
+        sel.addRange(newRange);
+    }
 }
 
 export function execFormatCommandWithRestore(editorElement, command, value) {
@@ -170,7 +288,7 @@ export function cancelLinkHighlight(editorElement) {
 export function clearAllFormatting(editorElement) {
     editorElement.focus();
     document.execCommand('removeFormat', false, null);
-    document.execCommand('formatBlock', false, 'div');
+    applyFormatBlock(editorElement, 'div');
     return editorElement.innerHTML;
 }
 
