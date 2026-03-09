@@ -216,7 +216,9 @@ else
   }
 
   [JSInvokable]
-  public async Task OnContentChanged(string html)
+  public Task OnContentChanged(string html) => UpdateFieldValueAsync(html);
+
+  private async Task UpdateFieldValueAsync(string html)
   {
     _isUpdatingFromJs = true;
     try
@@ -233,28 +235,13 @@ else
   {
     if (_jsModule == null) return;
     var html = await _jsModule.InvokeAsync<string>("execFormatCommand", _editorElement, command, value);
-    _isUpdatingFromJs = true;
-    try
-    {
-      await Field.SetValueAsync(html);
-    }
-    finally
-    {
-      _isUpdatingFromJs = false;
-    }
+    await UpdateFieldValueAsync(html);
   }
 
-  private async Task OnHeadingChanged(ChangeEventArgs e)
+  private Task OnHeadingChanged(ChangeEventArgs e)
   {
     var value = e.Value?.ToString();
-    if (string.IsNullOrEmpty(value))
-    {
-      await ExecCommand("formatBlock", "div");
-    }
-    else
-    {
-      await ExecCommand("formatBlock", value);
-    }
+    return ExecCommand("formatBlock", string.IsNullOrEmpty(value) ? "div" : value);
   }
 
   private void OnToolbarKeyDown(KeyboardEventArgs e)
@@ -296,30 +283,14 @@ else
   {
     if (_jsModule == null) return;
     var html = await _jsModule.InvokeAsync<string>("execFormatCommandWithRestore", _editorElement, command, value);
-    _isUpdatingFromJs = true;
-    try
-    {
-      await Field.SetValueAsync(html);
-    }
-    finally
-    {
-      _isUpdatingFromJs = false;
-    }
+    await UpdateFieldValueAsync(html);
   }
 
   private async Task ClearFormatting()
   {
     if (_jsModule == null) return;
     var html = await _jsModule.InvokeAsync<string>("clearAllFormatting", _editorElement);
-    _isUpdatingFromJs = true;
-    try
-    {
-      await Field.SetValueAsync(html);
-    }
-    finally
-    {
-      _isUpdatingFromJs = false;
-    }
+    await UpdateFieldValueAsync(html);
   }
 
   private async Task InsertLink()
@@ -340,15 +311,7 @@ else
     _showLinkPopup = false;
     if (_jsModule == null || string.IsNullOrWhiteSpace(_linkUrl)) return;
     var html = await _jsModule.InvokeAsync<string>("applyLink", _editorElement, _linkUrl);
-    _isUpdatingFromJs = true;
-    try
-    {
-      await Field.SetValueAsync(html);
-    }
-    finally
-    {
-      _isUpdatingFromJs = false;
-    }
+    await UpdateFieldValueAsync(html);
   }
 
   private async Task CancelLink()
@@ -357,11 +320,10 @@ else
     if (_jsModule != null) await _jsModule.InvokeVoidAsync("cancelLinkHighlight", _editorElement);
   }
 
-  private async Task OnLinkKeyDown(KeyboardEventArgs e)
-  {
-    if (e.Key == "Enter") await ConfirmLink();
-    else if (e.Key == "Escape") await CancelLink();
-  }
+  private Task OnLinkKeyDown(KeyboardEventArgs e)
+    => e.Key == "Enter" ? ConfirmLink()
+     : e.Key == "Escape" ? CancelLink()
+     : Task.CompletedTask;
 
   private record LinkPopupPosition(double Top, double Left);
 

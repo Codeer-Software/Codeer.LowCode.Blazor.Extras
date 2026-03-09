@@ -19,15 +19,14 @@ function saveSelection(editorElement) {
 
 function restoreSelection(editorElement) {
     const s = getState(editorElement);
-    if (!s.savedRange) {
-        editorElement.focus();
-        return;
-    }
     editorElement.focus();
+    if (!s.savedRange) return;
     const sel = window.getSelection();
     sel.removeAllRanges();
     sel.addRange(s.savedRange);
 }
+
+// --- Editor lifecycle ---
 
 export function initEditor(editorElement, toolbarElement, dotNetRef) {
     const editorState = getState(editorElement);
@@ -40,8 +39,6 @@ export function initEditor(editorElement, toolbarElement, dotNetRef) {
         const text = e.clipboardData.getData('text/html') || e.clipboardData.getData('text/plain');
         document.execCommand('insertHTML', false, text);
     });
-
-    // Open links in new tab when clicked in editor
     editorElement.addEventListener('click', (e) => {
         const anchor = e.target.closest('a');
         if (anchor && editorElement.contains(anchor)) {
@@ -49,14 +46,21 @@ export function initEditor(editorElement, toolbarElement, dotNetRef) {
             window.open(anchor.href, '_blank', 'noopener,noreferrer');
         }
     });
-
-    // Save selection on every mouseup/keyup inside editor
     editorElement.addEventListener('mouseup', () => saveSelection(editorElement));
     editorElement.addEventListener('keyup', () => saveSelection(editorElement));
-
-    // Save selection on toolbar mousedown, BEFORE focus leaves the editor
     toolbarElement.addEventListener('mousedown', () => saveSelection(editorElement));
 }
+
+export function setContent(editorElement, html) {
+    editorElement.innerHTML = html || '';
+    ensureLinkTargets(editorElement);
+}
+
+export function dispose(editorElement) {
+    state.delete(editorElement);
+}
+
+// --- Format commands ---
 
 export function execFormatCommand(editorElement, command, value) {
     editorElement.focus();
@@ -68,120 +72,6 @@ export function execFormatCommand(editorElement, command, value) {
     return editorElement.innerHTML;
 }
 
-function getBlockParent(node, editorElement) {
-    const blockTags = ['DIV', 'P', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'BLOCKQUOTE', 'PRE', 'LI'];
-    let cur = node.nodeType === Node.TEXT_NODE ? node.parentNode : node;
-    while (cur && cur !== editorElement) {
-        if (blockTags.includes(cur.tagName)) return cur;
-        cur = cur.parentNode;
-    }
-    return null;
-}
-
-function isEmptyBlock(el) {
-    if (!el) return false;
-    const html = el.innerHTML;
-    return html === '' || html === '<br>' || html.trim() === '';
-}
-
-function applyFormatBlock(editorElement, tag) {
-    const sel = window.getSelection();
-    if (!sel.rangeCount) return;
-    const range = sel.getRangeAt(0);
-
-    // Collect all block-level elements that intersect the selection
-    const blocks = [];
-    const seen = new Set();
-
-    // Walk through all nodes in the selection range
-    const walker = document.createTreeWalker(
-        editorElement,
-        NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT,
-        {
-            acceptNode(node) {
-                // Include nodes that are within or intersect the selection
-                if (range.intersectsNode(node)) return NodeFilter.FILTER_ACCEPT;
-                return NodeFilter.FILTER_SKIP;
-            }
-        }
-    );
-
-    let node = walker.nextNode();
-    while (node) {
-        const block = getBlockParent(node, editorElement);
-        if (block && !seen.has(block)) {
-            seen.add(block);
-            blocks.push(block);
-        } else if (!block && node.nodeType === Node.TEXT_NODE && node.parentNode === editorElement && !seen.has(node)) {
-            // Direct text node child of editor - treat it as its own block
-            seen.add(node);
-            blocks.push(node);
-        }
-        node = walker.nextNode();
-    }
-
-    // Also check for empty block elements (they may not contain text nodes)
-    for (let child = editorElement.firstChild; child; child = child.nextSibling) {
-        if (child.nodeType === Node.ELEMENT_NODE && !seen.has(child) && isEmptyBlock(child)) {
-            if (range.intersectsNode(child)) {
-                seen.add(child);
-                blocks.push(child);
-            }
-        }
-    }
-
-    // Sort blocks by document order
-    blocks.sort((a, b) => {
-        const pos = a.compareDocumentPosition(b);
-        if (pos & Node.DOCUMENT_POSITION_FOLLOWING) return -1;
-        if (pos & Node.DOCUMENT_POSITION_PRECEDING) return 1;
-        return 0;
-    });
-
-    if (blocks.length === 0) {
-        // Fallback to native command
-        document.execCommand('formatBlock', false, tag);
-        return;
-    }
-
-    const tagUpper = tag.toUpperCase();
-    const newBlocks = [];
-
-    for (const block of blocks) {
-        if (block.nodeType === Node.TEXT_NODE) {
-            const newEl = document.createElement(tagUpper);
-            block.parentNode.insertBefore(newEl, block);
-            newEl.appendChild(block);
-            newBlocks.push(newEl);
-        } else if (block.tagName !== tagUpper) {
-            const newEl = document.createElement(tagUpper);
-            while (block.firstChild) {
-                newEl.appendChild(block.firstChild);
-            }
-            if (newEl.innerHTML === '' || newEl.innerHTML.trim() === '') {
-                newEl.innerHTML = '<br>';
-            }
-            block.parentNode.insertBefore(newEl, block);
-            block.parentNode.removeChild(block);
-            newBlocks.push(newEl);
-        } else {
-            // Tag unchanged, keep as-is
-            newBlocks.push(block);
-        }
-    }
-
-    // Restore selection across the converted blocks
-    if (newBlocks.length > 0) {
-        const first = newBlocks[0];
-        const last = newBlocks[newBlocks.length - 1];
-        const newRange = document.createRange();
-        newRange.setStart(first, 0);
-        newRange.setEnd(last, last.childNodes.length);
-        sel.removeAllRanges();
-        sel.addRange(newRange);
-    }
-}
-
 export function execFormatCommandWithRestore(editorElement, command, value) {
     restoreSelection(editorElement);
     document.execCommand(command, false, value || null);
@@ -189,20 +79,119 @@ export function execFormatCommandWithRestore(editorElement, command, value) {
     return editorElement.innerHTML;
 }
 
-export function getContent(editorElement) {
+export function clearAllFormatting(editorElement) {
+    editorElement.focus();
+    document.execCommand('removeFormat', false, null);
+    applyFormatBlock(editorElement, 'div');
     return editorElement.innerHTML;
 }
+
+// --- formatBlock (custom implementation to preserve empty lines) ---
+
+const BLOCK_TAGS = new Set(['DIV', 'P', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'BLOCKQUOTE', 'PRE', 'LI']);
+
+function getBlockParent(node, editorElement) {
+    let cur = node.nodeType === Node.TEXT_NODE ? node.parentNode : node;
+    while (cur && cur !== editorElement) {
+        if (BLOCK_TAGS.has(cur.tagName)) return cur;
+        cur = cur.parentNode;
+    }
+    return null;
+}
+
+function isEmptyBlock(el) {
+    const html = el.innerHTML;
+    return html === '' || html === '<br>' || html.trim() === '';
+}
+
+function collectSelectedBlocks(editorElement, range) {
+    const blocks = [];
+    const seen = new Set();
+
+    const walker = document.createTreeWalker(
+        editorElement,
+        NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT,
+        { acceptNode: (node) => range.intersectsNode(node) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_SKIP }
+    );
+
+    for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+        const block = getBlockParent(node, editorElement);
+        if (block && !seen.has(block)) {
+            seen.add(block);
+            blocks.push(block);
+        } else if (!block && node.nodeType === Node.TEXT_NODE && node.parentNode === editorElement && !seen.has(node)) {
+            seen.add(node);
+            blocks.push(node);
+        }
+    }
+
+    for (let child = editorElement.firstChild; child; child = child.nextSibling) {
+        if (child.nodeType === Node.ELEMENT_NODE && !seen.has(child) && isEmptyBlock(child) && range.intersectsNode(child)) {
+            seen.add(child);
+            blocks.push(child);
+        }
+    }
+
+    blocks.sort((a, b) => {
+        const pos = a.compareDocumentPosition(b);
+        if (pos & Node.DOCUMENT_POSITION_FOLLOWING) return -1;
+        if (pos & Node.DOCUMENT_POSITION_PRECEDING) return 1;
+        return 0;
+    });
+
+    return blocks;
+}
+
+function replaceBlockTag(block, tagUpper) {
+    if (block.nodeType === Node.TEXT_NODE) {
+        const newEl = document.createElement(tagUpper);
+        block.parentNode.insertBefore(newEl, block);
+        newEl.appendChild(block);
+        return newEl;
+    }
+    if (block.tagName === tagUpper) return block;
+
+    const newEl = document.createElement(tagUpper);
+    while (block.firstChild) {
+        newEl.appendChild(block.firstChild);
+    }
+    if (newEl.innerHTML === '' || newEl.innerHTML.trim() === '') {
+        newEl.innerHTML = '<br>';
+    }
+    block.parentNode.insertBefore(newEl, block);
+    block.parentNode.removeChild(block);
+    return newEl;
+}
+
+function applyFormatBlock(editorElement, tag) {
+    const sel = window.getSelection();
+    if (!sel.rangeCount) return;
+
+    const blocks = collectSelectedBlocks(editorElement, sel.getRangeAt(0));
+    if (blocks.length === 0) {
+        document.execCommand('formatBlock', false, tag);
+        return;
+    }
+
+    const tagUpper = tag.toUpperCase();
+    const newBlocks = blocks.map(block => replaceBlockTag(block, tagUpper));
+
+    const first = newBlocks[0];
+    const last = newBlocks[newBlocks.length - 1];
+    const newRange = document.createRange();
+    newRange.setStart(first, 0);
+    newRange.setEnd(last, last.childNodes.length);
+    sel.removeAllRanges();
+    sel.addRange(newRange);
+}
+
+// --- Link handling ---
 
 function ensureLinkTargets(editorElement) {
     editorElement.querySelectorAll('a').forEach(a => {
         a.setAttribute('target', '_blank');
         a.setAttribute('rel', 'noopener noreferrer');
     });
-}
-
-export function setContent(editorElement, html) {
-    editorElement.innerHTML = html || '';
-    ensureLinkTargets(editorElement);
 }
 
 export function getLinkPopupPosition(editorElement) {
@@ -223,7 +212,6 @@ export function getLinkPopupPosition(editorElement) {
         left = 8;
     }
 
-    // Wrap selected text in a visible highlight span
     if (s.savedRange && !s.savedRange.collapsed) {
         try {
             s.suppressInput = true;
@@ -283,15 +271,4 @@ export function applyLink(editorElement, url) {
 
 export function cancelLinkHighlight(editorElement) {
     removeHighlight(editorElement);
-}
-
-export function clearAllFormatting(editorElement) {
-    editorElement.focus();
-    document.execCommand('removeFormat', false, null);
-    applyFormatBlock(editorElement, 'div');
-    return editorElement.innerHTML;
-}
-
-export function dispose(editorElement) {
-    state.delete(editorElement);
 }

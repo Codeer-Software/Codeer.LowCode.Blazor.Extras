@@ -244,13 +244,19 @@
   color: #212529;
 }
 
+/* --- Content area (shared between editor and view) --- */
+
+.richtext-content,
+.richtext-view {
+  font-size: 14px;
+  line-height: 1.6;
+  overflow-y: auto;
+}
+
 .richtext-content {
   padding: 8px 12px;
   outline: none;
-  overflow-y: auto;
   background: white;
-  font-size: 14px;
-  line-height: 1.6;
   flex: 1;
 }
 
@@ -259,71 +265,50 @@
   color: #adb5bd;
 }
 
-.richtext-content ::deep h1 {
-  font-size: 1.8em;
-  margin: 0.4em 0;
-}
-
-.richtext-content ::deep h2 {
-  font-size: 1.4em;
-  margin: 0.4em 0;
-}
-
-.richtext-content ::deep h3 {
-  font-size: 1.2em;
-  margin: 0.4em 0;
-}
-
-.richtext-content ::deep ul,
-.richtext-content ::deep ol {
-  padding-left: 1.5em;
-  margin: 0.4em 0;
-}
-
-.richtext-content ::deep a {
-  color: #0d6efd;
-  text-decoration: underline;
-  cursor: pointer;
-}
-
-.richtext-content ::deep p {
-  margin: 0.25em 0;
-}
-
 .richtext-view {
   padding: 4px 0;
-  overflow-y: auto;
-  font-size: 14px;
-  line-height: 1.6;
   height: 100%;
 }
 
+/* Content element styles (shared) */
+
+.richtext-content ::deep h1,
 .richtext-view ::deep h1 {
   font-size: 1.8em;
   margin: 0.4em 0;
 }
 
+.richtext-content ::deep h2,
 .richtext-view ::deep h2 {
   font-size: 1.4em;
   margin: 0.4em 0;
 }
 
+.richtext-content ::deep h3,
 .richtext-view ::deep h3 {
   font-size: 1.2em;
   margin: 0.4em 0;
 }
 
+.richtext-content ::deep ul,
+.richtext-content ::deep ol,
 .richtext-view ::deep ul,
 .richtext-view ::deep ol {
   padding-left: 1.5em;
   margin: 0.4em 0;
 }
 
+.richtext-content ::deep a,
 .richtext-view ::deep a {
   color: #0d6efd;
   text-decoration: underline;
 }
 
+.richtext-content ::deep a {
+  cursor: pointer;
+}
+
+.richtext-content ::deep p,
 .richtext-view ::deep p {
   margin: 0.25em 0;
 }
