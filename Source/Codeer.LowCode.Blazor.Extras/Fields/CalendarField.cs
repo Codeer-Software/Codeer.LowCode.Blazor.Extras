@@ -28,9 +28,13 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
 
         internal List<ModuleCalendarItem> Items { get; } = [];
 
-        internal DateTime SelectedDate { get; private set; } = DateTime.Now;
+        public DateTime SelectedDate { get; private set; } = DateTime.Now;
 
-        internal CalendarViewMode ViewMode { get; private set; } = CalendarViewMode.Month;
+        public CalendarViewMode ViewMode { get; private set; } = CalendarViewMode.Month;
+
+        public DateTime RangeStart => GetViewDateRange().Start;
+
+        public DateTime RangeEnd => GetViewDateRange().End;
 
         public int Page => 0;
 
@@ -81,6 +85,25 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
 
             await InvokeOnDataChangedAsync();
             await NotifyDataChangedAsync();
+        }
+
+        [ScriptMethodToProperty("SelectedDate")]
+        public async Task SetSelectedDateAsync(DateTime date)
+        {
+            SelectedDate = date;
+            _currentRange = null;
+            NotifyStateChanged();
+            await ReloadAsync();
+        }
+
+        [ScriptMethodToProperty("ViewMode")]
+        public async Task SetViewModeScriptAsync(CalendarViewMode mode)
+        {
+            if (!IsViewModeEnabled(mode)) return;
+            ViewMode = mode;
+            _currentRange = null;
+            NotifyStateChanged();
+            await ReloadAsync();
         }
 
         [ScriptName("Reload")]
