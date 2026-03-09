@@ -368,7 +368,7 @@ else
   private string GetHeightStyle()
   {
     var height = Field.Design?.Height;
-    return string.IsNullOrEmpty(height) ? "" : $"min-height: {height}";
+    return string.IsNullOrEmpty(height) ? "" : $"min-height: {height};";
   }
 
   private static string EnsureLinkTargetBlank(string html)
