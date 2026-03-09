@@ -457,7 +457,6 @@
 
 .time-event:hover {
   background: #1557b0;
-  z-index: 100 !important;
 }
 
 .time-event-title {
