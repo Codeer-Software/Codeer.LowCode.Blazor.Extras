@@ -13,7 +13,7 @@
     },
     {
       "AssemblyName": "Codeer.LowCode.Blazor",
-      "Version": "1.2.49.0"
+      "Version": "1.2.50.0"
     }
   ],
   "LocalizeResourcePath": ""

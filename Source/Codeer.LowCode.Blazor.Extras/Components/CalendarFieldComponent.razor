@@ -14,16 +14,28 @@
       <button type="button" class="toolbar-btn toolbar-btn-next" @onclick="GoNext">&#9654;</button>
       <span class="toolbar-title">@GetTitle()</span>
     </div>
-    <div class="toolbar-right">
-      <div class="view-switcher">
-        <button type="button" class="view-btn @(Field.ViewMode == CalendarViewMode.Day ? "active" : "")"
-                @onclick="() => SetViewMode(CalendarViewMode.Day)">@Resources.Day</button>
-        <button type="button" class="view-btn @(Field.ViewMode == CalendarViewMode.Week ? "active" : "")"
-                @onclick="() => SetViewMode(CalendarViewMode.Week)">@Resources.Week</button>
-        <button type="button" class="view-btn @(Field.ViewMode == CalendarViewMode.Month ? "active" : "")"
-                @onclick="() => SetViewMode(CalendarViewMode.Month)">@Resources.Month</button>
+    @if (EnabledViewModeCount > 1)
+    {
+      <div class="toolbar-right">
+        <div class="view-switcher">
+          @if (Field.IsViewModeEnabled(CalendarViewMode.Day))
+          {
+            <button type="button" class="view-btn @(Field.ViewMode == CalendarViewMode.Day ? "active" : "")"
+                    @onclick="() => SetViewMode(CalendarViewMode.Day)">@Resources.Day</button>
+          }
+          @if (Field.IsViewModeEnabled(CalendarViewMode.Week))
+          {
+            <button type="button" class="view-btn @(Field.ViewMode == CalendarViewMode.Week ? "active" : "")"
+                    @onclick="() => SetViewMode(CalendarViewMode.Week)">@Resources.Week</button>
+          }
+          @if (Field.IsViewModeEnabled(CalendarViewMode.Month))
+          {
+            <button type="button" class="view-btn @(Field.ViewMode == CalendarViewMode.Month ? "active" : "")"
+                    @onclick="() => SetViewMode(CalendarViewMode.Month)">@Resources.Month</button>
+          }
+        </div>
       </div>
-    </div>
+    }
   </div>
 
   @* ===== Month View ===== *@
@@ -145,6 +157,11 @@
 
   private string Px(double v) => v.ToString("0.#", CultureInfo.InvariantCulture) + "px";
 
+  private int EnabledViewModeCount =>
+    (Field.IsViewModeEnabled(CalendarViewMode.Day) ? 1 : 0) +
+    (Field.IsViewModeEnabled(CalendarViewMode.Week) ? 1 : 0) +
+    (Field.IsViewModeEnabled(CalendarViewMode.Month) ? 1 : 0);
+
   private string EventColorStyle(ModuleCalendarItem item)
     => string.IsNullOrEmpty(item.Color) ? "" : $"background:{item.Color};";
 
@@ -163,15 +180,21 @@
       @if (!evt.AllDay && !isMultiDay)
       {
         <span class="month-event-dot"></span>
-        <span class="month-event-time">@evt.Start.ToString("H:mm")</span>
+        @if (!evt.IsDateOnly)
+        {
+          <span class="month-event-time">@evt.Start.ToString("H:mm")</span>
+        }
       }
-      else if (isMultiDay && isStartDay)
+      else if (!evt.IsDateOnly)
       {
-        <span class="month-event-time">@evt.Start.ToString("H:mm") -</span>
-      }
-      else if (isMultiDay && isEndDay)
-      {
-        <span class="month-event-time">- @evt.End!.Value.ToString("H:mm")</span>
+        @if (isMultiDay && isStartDay)
+        {
+          <span class="month-event-time">@evt.Start.ToString("H:mm") -</span>
+        }
+        else if (isMultiDay && isEndDay)
+        {
+          <span class="month-event-time">- @evt.End!.Value.ToString("H:mm")</span>
+        }
       }
       <span class="month-event-text">@evt.Text</span>
     </div>
@@ -385,6 +408,7 @@
 
   private static string GetTimeEventTimeText(EventPosition pos)
   {
+    if (pos.Item.IsDateOnly) return "";
     if (!pos.IsMultiDay)
       return $"{pos.Item.Start:H:mm} - {pos.Item.End:H:mm}";
     if (pos.IsStartDay)
@@ -396,7 +420,7 @@
 
   private static string GetEventTooltip(ModuleCalendarItem item)
   {
-    if (item.AllDay) return item.Text;
+    if (item.AllDay || item.IsDateOnly) return item.Text;
     var end = item.End?.ToString("H:mm") ?? "";
     return string.IsNullOrEmpty(end) ? $"{item.Start:H:mm} {item.Text}" : $"{item.Start:H:mm} - {end} {item.Text}";
   }

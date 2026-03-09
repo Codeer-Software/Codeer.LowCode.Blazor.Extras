@@ -1,4 +1,4 @@
-﻿using Codeer.LowCode.Blazor.DesignLogic;
+using Codeer.LowCode.Blazor.DesignLogic;
 using Codeer.LowCode.Blazor.DesignLogic.Check;
 using Codeer.LowCode.Blazor.DesignLogic.Refactor;
 using Codeer.LowCode.Blazor.Extras.Components;
@@ -26,12 +26,12 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
 
         [Designer(CandidateType = CandidateType.Field)]
         [ModuleMember(Member = $"{nameof(SearchCondition)}.{nameof(SearchCondition.ModuleName)}")]
-        [TargetFieldType(Types = [typeof(DateTimeFieldDesign)])]
+        [TargetFieldType(Types = [typeof(DateTimeFieldDesign), typeof(DateFieldDesign)])]
         public string StartField { get; set; } = "";
 
         [Designer(CandidateType = CandidateType.Field)]
         [ModuleMember(Member = $"{nameof(SearchCondition)}.{nameof(SearchCondition.ModuleName)}")]
-        [TargetFieldType(Types = [typeof(DateTimeFieldDesign)])]
+        [TargetFieldType(Types = [typeof(DateTimeFieldDesign), typeof(DateFieldDesign)])]
         public string EndField { get; set; } = "";
 
         [Designer(CandidateType = CandidateType.Field)]
@@ -48,6 +48,15 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         [Layout(ModuleNameMember = $"{nameof(SearchCondition)}.{nameof(SearchCondition.ModuleName)}")]
         public string DetailLayoutName { get; set; } = string.Empty;
 
+        [Designer]
+        public bool EnableMonthView { get; set; } = true;
+
+        [Designer]
+        public bool EnableWeekView { get; set; } = true;
+
+        [Designer]
+        public bool EnableDayView { get; set; } = true;
+
         [Designer(CandidateType = CandidateType.ScriptEvent)]
         public string OnDataChanged { get; set; } = string.Empty;
 
@@ -60,7 +69,6 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         public override FieldBase CreateField() => new CalendarField(this);
 
         public override FieldDataBase? CreateData() => null;
-
 
         public override List<DesignCheckInfo> CheckDesign(DesignCheckContext context)
         {

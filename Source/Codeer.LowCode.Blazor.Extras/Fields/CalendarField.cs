@@ -43,6 +43,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         [ScriptHide]
         public override async Task InitializeDataAsync(FieldDataBase? fieldDataBase)
         {
+            ViewMode = GetDefaultViewMode();
             if (this.IsInLayout()) await ReloadAsync();
         }
 
@@ -120,6 +121,14 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             NotifyStateChanged();
         }
 
+        internal bool IsViewModeEnabled(CalendarViewMode mode) => mode switch
+        {
+            CalendarViewMode.Month => Design.EnableMonthView,
+            CalendarViewMode.Week => Design.EnableWeekView,
+            CalendarViewMode.Day => Design.EnableDayView,
+            _ => false,
+        };
+
         internal (DateTime Start, DateTime End) GetViewDateRange()
         {
             return ViewMode switch
@@ -138,10 +147,8 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
 
             var targetDateTime = new DateTime(DateOnly.FromDateTime(date), TimeOnly.FromDateTime(DateTime.Now));
 
-            var start = mod.GetField<DateTimeField>(Design.StartField);
-            var end = mod.GetField<DateTimeField>(Design.EndField);
-            if (start != null) await start.SetValueAsync(targetDateTime);
-            if (end != null) await end.SetValueAsync(targetDateTime.AddHours(1));
+            SetDateFieldValue(mod, Design.StartField, targetDateTime);
+            SetDateFieldValue(mod, Design.EndField, targetDateTime.AddHours(1));
 
             if (await mod.ShowDialogAsync(Properties.Resources.OK, Properties.Resources.Cancel) != Properties.Resources.OK) return;
             if (!mod.ValidateInput())
@@ -198,10 +205,19 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
 
         internal async Task SetViewModeAsync(CalendarViewMode mode)
         {
+            if (!IsViewModeEnabled(mode)) return;
             ViewMode = mode;
             _currentRange = null;
             NotifyStateChanged();
             await ReloadAsync();
+        }
+
+        private CalendarViewMode GetDefaultViewMode()
+        {
+            if (Design.EnableMonthView) return CalendarViewMode.Month;
+            if (Design.EnableWeekView) return CalendarViewMode.Week;
+            if (Design.EnableDayView) return CalendarViewMode.Day;
+            return CalendarViewMode.Month;
         }
 
         private async Task InvokeOnDataChangedAsync()
@@ -227,14 +243,16 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             item.Start = updated.Start;
             item.End = updated.End;
             item.AllDay = updated.AllDay;
+            item.IsDateOnly = updated.IsDateOnly;
             item.Color = updated.Color;
         }
 
         private ModuleCalendarItem ConvertToCalendarItem(Module data)
         {
             var text = data.GetField<TextField>(Design.TextField)?.Value;
-            var start = data.GetField<DateTimeField>(Design.StartField)?.Value;
-            var end = data.GetField<DateTimeField>(Design.EndField)?.Value;
+            var isDateOnly = IsDateField(data, Design.StartField);
+            var start = GetDateTimeValue(data, Design.StartField);
+            var end = GetDateTimeValue(data, Design.EndField);
             var allDay = data.GetField<BooleanField>(Design.AllDayField)?.Value ?? false;
             var color = string.IsNullOrEmpty(Design.ColorField) ? "" : data.GetField<TextField>(Design.ColorField)?.Value ?? "";
 
@@ -244,11 +262,43 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             {
                 Module = data,
                 Text = text,
+                IsDateOnly = isDateOnly,
                 Start = start.Value,
                 End = end ?? start.Value,
                 AllDay = allDay || end is null,
                 Color = color,
             };
+        }
+
+        private static bool IsDateField(Module data, string fieldName)
+            => !string.IsNullOrEmpty(fieldName) && data.GetField<DateField>(fieldName) != null;
+
+        private static DateTime? GetDateTimeValue(Module data, string fieldName)
+        {
+            if (string.IsNullOrEmpty(fieldName)) return null;
+
+            var dateTimeField = data.GetField<DateTimeField>(fieldName);
+            if (dateTimeField != null) return dateTimeField.Value;
+
+            var dateField = data.GetField<DateField>(fieldName);
+            if (dateField?.Value is { } dateOnly) return dateOnly.ToDateTime(TimeOnly.MinValue);
+
+            return null;
+        }
+
+        private static void SetDateFieldValue(Module mod, string fieldName, DateTime value)
+        {
+            if (string.IsNullOrEmpty(fieldName)) return;
+
+            var dateTimeField = mod.GetField<DateTimeField>(fieldName);
+            if (dateTimeField != null)
+            {
+                dateTimeField.SetValueAsync(value).GetAwaiter().GetResult();
+                return;
+            }
+
+            var dateField = mod.GetField<DateField>(fieldName);
+            dateField?.SetValueAsync(DateOnly.FromDateTime(value)).GetAwaiter().GetResult();
         }
 
         private (DateTime Start, DateTime End) GetWeekRange()
