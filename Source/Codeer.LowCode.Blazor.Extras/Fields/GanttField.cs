@@ -19,7 +19,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         Month
     }
 
-    public class GanttItem
+    internal class GanttItem
     {
         public string Id { get; set; } = string.Empty;
         public string Text { get; set; } = string.Empty;
@@ -30,7 +30,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         public Module? Module { get; set; }
     }
 
-    public record DependencyListItem(string FromLabel, string ToLabel, string From, string To, string Key);
+    internal record DependencyListItem(string FromLabel, string ToLabel, string From, string To, string Key);
 
     public class GanttField(GanttFieldDesign design)
         : FieldBase<GanttFieldDesign>(design), ISearchResultsViewField

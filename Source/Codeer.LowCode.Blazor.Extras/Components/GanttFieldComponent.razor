@@ -276,7 +276,7 @@
 
       <rect x="@bar.X" y="@bar.Y" width="@bar.Width" height="@bar.Height"
             rx="4" ry="4" class="task-bar"
-            style="@(IsEditable ? "cursor: grab;" : "cursor: pointer;")"
+            style="@(IsEditable ? "cursor: grab;" : "")"
             @onmousedown="e => OnBarMouseDown(e, capturedIdx, capturedItem)"
             @onmousedown:preventDefault="true"
             @onmousedown:stopPropagation="true"
@@ -443,11 +443,7 @@
 
   private async Task OnBarMouseDown(MouseEventArgs e, int idx, GanttItem item)
   {
-    if (!IsEditable)
-    {
-      await Field.EditAsync(item.Module, true);
-      return;
-    }
+    if (!IsEditable) return;
     if (_depLinkingSourceId != null)
     {
       if (item.Id != _depLinkingSourceId)
