@@ -16,7 +16,10 @@
       <span class="toolbar-title">@GetTitle()</span>
     </div>
     <div class="toolbar-right">
-      <button type="button" class="toolbar-btn add-btn" @onclick="OnAddClicked">@Resources.Add</button>
+      @if (IsEditable)
+      {
+        <button type="button" class="toolbar-btn add-btn" @onclick="OnAddClicked">@Resources.Add</button>
+      }
       <div class="view-switcher">
         <button type="button" class="view-btn @(Field.ViewMode == GanttViewMode.Day ? "active" : "")"
                 @onclick="() => SetViewMode(GanttViewMode.Day)">@Resources.Day</button>
@@ -197,6 +200,7 @@
             @* Bar background (full bar) *@
             <rect x="@barPos.X" y="@barY" width="@barPos.Width" height="@barH"
                   rx="4" ry="4" class="task-bar"
+                  style="@(IsEditable ? "cursor: grab;" : "cursor: pointer;")"
                   @onmousedown="e => OnBarMouseDown(e, capturedIdx, capturedItem)"
                   @onmousedown:preventDefault="true"
                   @onmousedown:stopPropagation="true"
@@ -221,19 +225,22 @@
             <g><text x="@(barPos.X + 8)" y="@(barY + barH / 2 + 4)"
                   class="task-text" pointer-events="none">@TruncateText(item.Text, barPos.Width)</text></g>
 
-            @* Left resize handle *@
-            <rect x="@barPos.X" y="@barY" width="6" height="@barH"
-                  class="resize-handle" rx="2" ry="2"
-                  @onmousedown="e => StartDrag(e, capturedIdx, DragMode.ResizeLeft)"
-                  @onmousedown:preventDefault="true"
-                  @onmousedown:stopPropagation="true" />
+            @if (IsEditable)
+            {
+              @* Left resize handle *@
+              <rect x="@barPos.X" y="@barY" width="6" height="@barH"
+                    class="resize-handle" rx="2" ry="2"
+                    @onmousedown="e => StartDrag(e, capturedIdx, DragMode.ResizeLeft)"
+                    @onmousedown:preventDefault="true"
+                    @onmousedown:stopPropagation="true" />
 
-            @* Right resize handle *@
-            <rect x="@(barPos.X + barPos.Width - 6)" y="@barY" width="6" height="@barH"
-                  class="resize-handle" rx="2" ry="2"
-                  @onmousedown="e => StartDrag(e, capturedIdx, DragMode.ResizeRight)"
-                  @onmousedown:preventDefault="true"
-                  @onmousedown:stopPropagation="true" />
+              @* Right resize handle *@
+              <rect x="@(barPos.X + barPos.Width - 6)" y="@barY" width="6" height="@barH"
+                    class="resize-handle" rx="2" ry="2"
+                    @onmousedown="e => StartDrag(e, capturedIdx, DragMode.ResizeRight)"
+                    @onmousedown:preventDefault="true"
+                    @onmousedown:stopPropagation="true" />
+            }
 
             @* Linking mode: stub line from source bar *@
             @if (_depLinkingSourceId == item.Id)
@@ -272,6 +279,7 @@
               @* Invisible wide hit area for clicking *@
               <path d="M @F(x1),@F(y1) L @F(midX),@F(y1) L @F(midX),@F(y2) L @F(x2),@F(y2)"
                     class="dep-hit-area"
+                    style="@(IsEditable ? "" : "cursor: default;")"
                     @onclick="() => OnDepLineClick(capturedKey)"
                     @onclick:stopPropagation="true" />
 
@@ -320,6 +328,11 @@
 
   // Selected dependency line
   string? _selectedDepKey;
+
+  // ===== ViewOnly / Enabled =====
+  private bool IsDisabled => Field.IsEnabled == false;
+  private bool IsViewMode => Field.IsViewOnly;
+  private bool IsEditable => !IsViewMode && !IsDisabled;
 
   private string Px(double v) => v.ToString("0.#", CultureInfo.InvariantCulture) + "px";
   private string F(double v) => v.ToString("0.##", CultureInfo.InvariantCulture);
@@ -395,9 +408,16 @@
 
   // ===== Event handlers =====
 
-  private async Task OnAddClicked() => await Field.AddAsync(DateTime.Now);
+  private async Task OnAddClicked()
+  {
+    if (!IsEditable) return;
+    await Field.AddAsync(DateTime.Now);
+  }
 
-  private async Task OnTaskClicked(GanttItem item) => await Field.EditAsync(item.Module);
+  private async Task OnTaskClicked(GanttItem item)
+  {
+    await Field.EditAsync(item.Module, !IsEditable);
+  }
 
   private void OnContainerClick()
   {
@@ -409,6 +429,11 @@
 
   private async Task OnBarMouseDown(MouseEventArgs e, int idx, GanttItem item)
   {
+    if (!IsEditable)
+    {
+      await Field.EditAsync(item.Module, true);
+      return;
+    }
     if (_depLinkingSourceId != null)
     {
       if (item.Id != _depLinkingSourceId)
@@ -425,6 +450,7 @@
 
   private void OnBarContextMenu(MouseEventArgs e, GanttItem item)
   {
+    if (!IsEditable) return;
     if (_depLinkingSourceId != null) return;
     _contextMenuVisible = true;
     _contextMenuX = e.ClientX;
@@ -452,6 +478,7 @@
 
   private void OnDepLineClick(string key)
   {
+    if (!IsEditable) return;
     _selectedDepKey = _selectedDepKey == key ? null : key;
     _depLinkingSourceId = null;
     StateHasChanged();
@@ -459,6 +486,7 @@
 
   private async Task OnKeyDown(KeyboardEventArgs e)
   {
+    if (!IsEditable) return;
     if (e.Key == "Delete" && _selectedDepKey != null)
     {
       var dep = Field.DependencyList.FirstOrDefault(x => x.Key == _selectedDepKey);
@@ -650,6 +678,7 @@
 
   private void StartDrag(MouseEventArgs e, int idx, DragMode mode)
   {
+    if (!IsEditable) return;
     if (_depLinkingSourceId != null) return;
     _dragging = true;
     _dragIdx = idx;

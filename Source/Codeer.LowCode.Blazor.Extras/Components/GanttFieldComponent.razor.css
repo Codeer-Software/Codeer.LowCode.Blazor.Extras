@@ -285,7 +285,6 @@
 /* ===== Task Bars ===== */
 ::deep .task-bar {
   fill: #c6dafc;
-  cursor: grab;
   transition: fill 0.15s;
 }
 

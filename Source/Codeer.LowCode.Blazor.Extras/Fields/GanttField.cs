@@ -194,9 +194,17 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             await NotifyDataChangedAsync();
         }
 
-        internal async Task EditAsync(Module? mod)
+        internal async Task EditAsync(Module? mod, bool viewOnly = false)
         {
             if (mod == null) return;
+
+            if (viewOnly)
+            {
+                mod.IsViewOnly = true;
+                await mod.ShowDialogAsync(Properties.Resources.Cancel);
+                return;
+            }
+
             var dialogResult = await mod.ShowDialogAsync(Properties.Resources.Update, Properties.Resources.Delete, Properties.Resources.Cancel);
             if (dialogResult == Properties.Resources.Update)
             {
