@@ -55,6 +55,7 @@
             @foreach (var day in week)
             {
               <div class="month-cell @(day.IsCurrentMonth ? "" : "month-cell-other-month") @(day.IsToday ? "month-cell-today" : "")"
+                   style="@(IsEditable ? "" : "cursor: default;")"
                    @onclick="() => OnCellClicked(day.Date)">
                 <div class="month-date @(day.IsToday ? "month-date-today" : "")">@day.Date.Day</div>
                 @foreach (var evt in GetMonthDayEvents(day.Date))
@@ -222,7 +223,7 @@
   private RenderFragment RenderTimeColumn(DateTime date, bool isToday) => __builder =>
   {
     var dayEvents = GetTimedEventsForDay(date);
-    <div class="time-column @(isToday ? "time-column-today" : "")" @onclick="() => OnCellClicked(date)">
+    <div class="time-column @(isToday ? "time-column-today" : "")" style="@(IsEditable ? "" : "cursor: default;")" @onclick="() => OnCellClicked(date)">
       @for (var h = 0; h < 24; h++)
       {
         <div class="time-cell"></div>
@@ -298,11 +299,23 @@
 
   private async Task SetViewMode(CalendarViewMode mode) => await Field.SetViewModeAsync(mode);
 
+  // ===== ViewOnly / Enabled =====
+  private bool IsDisabled => Field.IsEnabled == false;
+  private bool IsViewMode => Field.IsViewOnly;
+  private bool IsEditable => !IsViewMode && !IsDisabled;
+
   // ===== Event handlers =====
 
-  private async Task OnCellClicked(DateTime date) => await Field.AddAsync(date);
+  private async Task OnCellClicked(DateTime date)
+  {
+    if (!IsEditable) return;
+    await Field.AddAsync(date);
+  }
 
-  private async Task OnEventClicked(ModuleCalendarItem item) => await Field.EditAsync(item.Module);
+  private async Task OnEventClicked(ModuleCalendarItem item)
+  {
+    await Field.EditAsync(item.Module, !IsEditable);
+  }
 
   // ===== Month View helpers =====
 

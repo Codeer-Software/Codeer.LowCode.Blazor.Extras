@@ -8,5 +8,4 @@ void カレンダーテストボタン_OnClick()
 void DetailLayoutDesign_OnAfterInitialization()
 {
     RichText.Value = "abc\r\nefg";
-//    Gantt.IsEnabled = false;
 }
