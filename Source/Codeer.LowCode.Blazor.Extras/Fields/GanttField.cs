@@ -67,11 +67,44 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
 
         private bool HasDependenciesModule => !string.IsNullOrEmpty(Design?.DependenciesModule?.ModuleName);
 
+        // ===== FieldBase overrides =====
+
         [ScriptHide]
         public override async Task InitializeDataAsync(FieldDataBase? fieldDataBase)
         {
             if (this.IsInLayout()) await ReloadAsync();
         }
+
+        [ScriptHide]
+        public override FieldSubmitData GetSubmitData() => new();
+
+        [ScriptHide]
+        public override FieldDataBase? GetData() => null;
+
+        [ScriptHide]
+        public override Task SetDataAsync(FieldDataBase? fieldDataBase) => Task.CompletedTask;
+
+        [ScriptHide]
+        public override async Task OnExternalFieldChangedAsync(string fieldName)
+        {
+            if (!this.IsInLayout()) return;
+            var searchCondition = GetSearchCondition();
+            if (searchCondition.GetFieldVariableConditions().All(e => new VariableName(e.Variable).FieldName.Root != fieldName)) return;
+            await ReloadAsync();
+        }
+
+        [ScriptHide]
+        public override async Task OnChildDataChangedAsync()
+        {
+            var removedCount = Items.RemoveAll(e => e.Module?.IsDeleted == true);
+            if (removedCount == 0) return;
+
+            MakeDependencyList();
+            await InvokeOnDataChangedAsync();
+            await NotifyDataChangedAsync();
+        }
+
+        // ===== Search condition =====
 
         [ScriptName("SetAdditionalCondition")]
         public async Task SetAdditionalConditionAsync(ModuleSearcher searcher)
@@ -86,38 +119,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             await OnQueryChangedAsync(GetSearchCondition());
         }
 
-        [ScriptHide]
-        public override FieldSubmitData GetSubmitData() => new();
-
-        [ScriptHide]
-        public override FieldDataBase? GetData() => null;
-
-        [ScriptHide]
-        public override async Task SetDataAsync(FieldDataBase? fieldDataBase) => await Task.CompletedTask;
-
-        [ScriptHide]
-        public override async Task OnExternalFieldChangedAsync(string fieldName)
-        {
-            if (!this.IsInLayout()) return;
-            var searchCondition = GetSearchCondition();
-            if (searchCondition.GetFieldVariableConditions().All(e => new VariableName(e.Variable).FieldName.Root != fieldName)) return;
-            await ReloadAsync();
-        }
-
-        [ScriptHide]
-        public override async Task OnChildDataChangedAsync()
-        {
-            var count = Items.Count;
-            foreach (var e in Items.ToList())
-            {
-                if (e.Module?.IsDeleted == true) Items.Remove(e);
-            }
-            if (count == Items.Count) return;
-
-            MakeDependencyList();
-            await InvokeOnDataChangedAsync();
-            await NotifyDataChangedAsync();
-        }
+        // ===== Data loading =====
 
         [ScriptName("Reload")]
         public async Task ReloadAsync()
@@ -126,7 +128,6 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
 
             var (rangeStart, rangeEnd) = GetViewDateRange();
 
-            // 依存関係を先に取得
             if (HasDependenciesModule)
             {
                 var depsItems = await this.GetChildModulesAsync(Design.DependenciesModule, ModuleLayoutType.None);
@@ -150,24 +151,36 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
 
             var items = await this.GetChildModulesAsync(GetSearchCondition(), ModuleLayoutType.Detail, Design.DetailLayoutName);
             Items.Clear();
-            Items.AddRange(items.Select(ConvertToGanttItem).Where(e => e.Start != default).OrderBy(e => e.Start).ToList());
+            Items.AddRange(items.Select(ConvertToGanttItem).Where(e => e.Start != default).OrderBy(e => e.Start));
 
             MakeDependencyList();
             NotifyStateChanged();
         }
 
-        internal (DateTime Start, DateTime End) GetViewDateRange()
+        // ===== View state =====
+
+        internal (DateTime Start, DateTime End) GetViewDateRange() => ViewMode switch
         {
-            switch (ViewMode)
-            {
-                case GanttViewMode.Day:
-                    return (ViewStart.Date, ViewStart.Date.AddDays(1));
-                case GanttViewMode.Month:
-                    return (ViewStart.Date, ViewStart.Date.AddDays(42));
-                default:
-                    return (ViewStart.Date, ViewStart.Date.AddDays(14));
-            }
+            GanttViewMode.Day => (ViewStart.Date, ViewStart.Date.AddDays(1)),
+            GanttViewMode.Month => (ViewStart.Date, ViewStart.Date.AddDays(42)),
+            _ => (ViewStart.Date, ViewStart.Date.AddDays(14)),
+        };
+
+        internal async Task SetViewStartAsync(DateTime date)
+        {
+            ViewStart = date;
+            NotifyStateChanged();
+            await ReloadAsync();
         }
+
+        internal async Task SetViewModeAsync(GanttViewMode mode)
+        {
+            ViewMode = mode;
+            NotifyStateChanged();
+            await ReloadAsync();
+        }
+
+        // ===== CRUD operations =====
 
         internal async Task AddAsync(DateTime date)
         {
@@ -215,14 +228,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
                 }
                 if (await mod.SubmitAsync() != true) return;
 
-                var item = Items.FirstOrDefault(e => e.Module?.GetIdText() == mod.GetIdText());
-                if (item != null)
-                {
-                    item.Text = mod.GetField<TextField>(Design.TextField)?.Value ?? item.Text;
-                    item.Start = mod.GetField<DateTimeField>(Design.StartField)?.Value ?? item.Start;
-                    item.End = mod.GetField<DateTimeField>(Design.EndField)?.Value ?? item.End;
-                    item.Progress = GetProgressValue(mod);
-                }
+                UpdateItemFromModule(mod);
                 SortItems();
             }
             else if (dialogResult == Properties.Resources.Delete)
@@ -258,6 +264,8 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             await NotifyDataChangedAsync();
         }
 
+        // ===== Dependency operations =====
+
         internal async Task AddDependenciesAsync(string sourceId, string destinationId)
         {
             if (!HasDependenciesModule) return;
@@ -266,52 +274,19 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             var dstTask = Items.FirstOrDefault(e => e.Module?.GetIdText() == destinationId);
             if (srcTask?.Module == null || dstTask?.Module == null) return;
 
-            // ProcessingCounterField をインクリメント
-            if (!string.IsNullOrEmpty(Design.ProcessingCounterField))
-            {
-                var sourceCounterField = srcTask.Module.GetField<NumberField>(Design.ProcessingCounterField);
-                var destinationCounterField = dstTask.Module.GetField<NumberField>(Design.ProcessingCounterField);
-                if (sourceCounterField != null)
-                    await sourceCounterField.SetValueAsync(sourceCounterField.Value + 1);
-                if (destinationCounterField != null)
-                    await destinationCounterField.SetValueAsync(destinationCounterField.Value + 1);
-            }
+            await IncrementProcessingCounters(srcTask.Module, dstTask.Module);
 
-            // 依存関係モジュールに新規レコード作成
             var mod = await this.CreateChildModuleAsync(Design.DependenciesModule.ModuleName, ModuleLayoutType.None);
             if (!await SetDepFieldValueAsync(mod, Design.DependencySourceIdField, sourceId)) return;
             if (!await SetDepFieldValueAsync(mod, Design.DependencyDestinationIdField, destinationId)) return;
 
             if (await mod.SubmitAsync([srcTask.Module, dstTask.Module]) != true) return;
 
-            // メモリ上の依存関係を更新
-            if (DependenciesMap.ContainsKey(destinationId))
-            {
-                var deps = DependenciesMap[destinationId].ToList();
-                deps.Add(sourceId);
-                DependenciesMap[destinationId] = deps.ToArray();
-            }
-            else
-            {
-                DependenciesMap[destinationId] = [sourceId];
-            }
-
+            AddToDependenciesMap(destinationId, sourceId);
             UpdateItemDependencies();
             MakeDependencyList();
 
-            // DB から最新データを再取得（楽観ロック Version 同期）
-            if (!string.IsNullOrEmpty(Design.IdField))
-            {
-                var idVariable = new VariableName($"{Design.IdField}.Value");
-                var reloadCondition = new SearchCondition
-                {
-                    ModuleName = Design.SearchCondition.ModuleName,
-                    Condition = MultiMatchCondition.Or(idVariable.Equal(sourceId), idVariable.Equal(destinationId))
-                };
-                var mods = await this.GetChildModulesAsync(reloadCondition, ModuleLayoutType.Detail, Design.DetailLayoutName);
-                srcTask.Module = mods.FirstOrDefault(e => e.GetIdText() == sourceId);
-                dstTask.Module = mods.FirstOrDefault(e => e.GetIdText() == destinationId);
-            }
+            await ReloadDependencyTasksAsync(sourceId, destinationId, srcTask, dstTask);
 
             await InvokeOnDataChangedAsync();
             await NotifyDataChangedAsync();
@@ -325,7 +300,6 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             var dstTask = Items.FirstOrDefault(e => e.Module?.GetIdText() == destinationId);
             if (srcTask?.Module == null || dstTask?.Module == null) return;
 
-            // SubmitData に SearchDelete 条件を追加
             var srcSubmitData = srcTask.Module.GetSubmitData();
             srcSubmitData.SearchDelete.Add(new SearchCondition
             {
@@ -335,41 +309,18 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
                     new VariableName($"{Design.DependencyDestinationIdField}.Value").Equal(destinationId))
             });
 
-            // メモリ上の依存関係を更新
-            if (DependenciesMap.ContainsKey(destinationId))
-            {
-                var deps = DependenciesMap[destinationId].ToList();
-                deps.Remove(sourceId);
-                if (deps.Count == 0)
-                    DependenciesMap.Remove(destinationId);
-                else
-                    DependenciesMap[destinationId] = deps.ToArray();
-            }
-
+            RemoveFromDependenciesMap(destinationId, sourceId);
             UpdateItemDependencies();
             MakeDependencyList();
 
-            // 送信
             await Services.ModuleDataService.SubmitAsync(
-                new[] { srcSubmitData, dstTask.Module.GetSubmitData() }.ToList());
+                [srcSubmitData, dstTask.Module.GetSubmitData()]);
 
             await InvokeOnDataChangedAsync();
             await NotifyDataChangedAsync();
         }
 
-        internal async Task SetViewStartAsync(DateTime date)
-        {
-            ViewStart = date;
-            NotifyStateChanged();
-            await ReloadAsync();
-        }
-
-        internal async Task SetViewModeAsync(GanttViewMode mode)
-        {
-            ViewMode = mode;
-            NotifyStateChanged();
-            await ReloadAsync();
-        }
+        // ===== Private helpers =====
 
         private async Task InvokeOnDataChangedAsync()
         {
@@ -384,24 +335,40 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             Items.AddRange(sorted);
         }
 
+        private void UpdateItemFromModule(Module mod)
+        {
+            var item = Items.FirstOrDefault(e => e.Module?.GetIdText() == mod.GetIdText());
+            if (item == null) return;
+            item.Text = mod.GetField<TextField>(Design.TextField)?.Value ?? item.Text;
+            item.Start = mod.GetField<DateTimeField>(Design.StartField)?.Value ?? item.Start;
+            item.End = mod.GetField<DateTimeField>(Design.EndField)?.Value ?? item.End;
+            item.Progress = GetProgressValue(mod);
+        }
+
         private GanttItem ConvertToGanttItem(Module data)
         {
-            var text = data.GetField<TextField>(Design.TextField)?.Value;
-            var start = data.GetField<DateTimeField>(Design.StartField)?.Value;
-            var end = data.GetField<DateTimeField>(Design.EndField)?.Value;
             var id = data.GetIdText() ?? string.Empty;
-
             return new GanttItem
             {
                 Module = data,
                 Id = id,
-                Text = text ?? string.Empty,
-                Start = start ?? default,
-                End = end ?? start ?? default,
+                Text = data.GetField<TextField>(Design.TextField)?.Value ?? string.Empty,
+                Start = data.GetField<DateTimeField>(Design.StartField)?.Value ?? default,
+                End = data.GetField<DateTimeField>(Design.EndField)?.Value
+                      ?? data.GetField<DateTimeField>(Design.StartField)?.Value ?? default,
                 Progress = GetProgressValue(data),
                 Dependencies = DependenciesMap.TryGetValue(id, out var deps) ? deps : [],
             };
         }
+
+        private int GetProgressValue(Module data)
+        {
+            if (string.IsNullOrEmpty(Design.ProgressField)) return 0;
+            var val = data.GetField<NumberField>(Design.ProgressField)?.Value;
+            return int.TryParse(val?.ToString() ?? string.Empty, out var p) ? Math.Clamp(p, 0, 100) : 0;
+        }
+
+        // ===== Dependency helpers =====
 
         private KeyValuePair<string, string> ConvertToGanttDeps(Module data)
         {
@@ -413,39 +380,68 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         private void UpdateItemDependencies()
         {
             foreach (var item in Items)
-            {
                 item.Dependencies = DependenciesMap.TryGetValue(item.Id, out var deps) ? deps : [];
-            }
         }
 
         private void MakeDependencyList()
         {
-            DependencyList.Clear();
-            foreach (var pair in DependenciesMap)
-            {
-                var toLabel = Items.FirstOrDefault(e => e.Id == pair.Key)?.Text ?? "";
-                foreach (var from in pair.Value)
-                {
-                    var fromLabel = Items.FirstOrDefault(e => e.Id == from)?.Text ?? "";
-                    DependencyList.Add(new DependencyListItem(fromLabel, toLabel, from, pair.Key, $"{from}->{pair.Key}"));
-                }
-            }
-            DependencyList = DependencyList.OrderBy(item => item.Key).ToList();
+            DependencyList = DependenciesMap
+                .SelectMany(pair => pair.Value.Select(from => new DependencyListItem(
+                    Items.FirstOrDefault(e => e.Id == from)?.Text ?? "",
+                    Items.FirstOrDefault(e => e.Id == pair.Key)?.Text ?? "",
+                    from, pair.Key, $"{from}->{pair.Key}")))
+                .OrderBy(e => e.Key)
+                .ToList();
         }
 
-        private int GetProgressValue(Module data)
+        private void AddToDependenciesMap(string destinationId, string sourceId)
         {
-            if (string.IsNullOrEmpty(Design.ProgressField)) return 0;
-            var val = data.GetField<NumberField>(Design.ProgressField)?.Value;
-            return int.TryParse(val?.ToString() ?? string.Empty, out var p) ? Math.Clamp(p, 0, 100) : 0;
+            if (DependenciesMap.TryGetValue(destinationId, out var existing))
+                DependenciesMap[destinationId] = [.. existing, sourceId];
+            else
+                DependenciesMap[destinationId] = [sourceId];
+        }
+
+        private void RemoveFromDependenciesMap(string destinationId, string sourceId)
+        {
+            if (!DependenciesMap.TryGetValue(destinationId, out var existing)) return;
+            var updated = existing.Where(e => e != sourceId).ToArray();
+            if (updated.Length == 0)
+                DependenciesMap.Remove(destinationId);
+            else
+                DependenciesMap[destinationId] = updated;
+        }
+
+        private async Task IncrementProcessingCounters(Module srcModule, Module dstModule)
+        {
+            if (string.IsNullOrEmpty(Design.ProcessingCounterField)) return;
+
+            var srcCounter = srcModule.GetField<NumberField>(Design.ProcessingCounterField);
+            var dstCounter = dstModule.GetField<NumberField>(Design.ProcessingCounterField);
+            if (srcCounter != null) await srcCounter.SetValueAsync(srcCounter.Value + 1);
+            if (dstCounter != null) await dstCounter.SetValueAsync(dstCounter.Value + 1);
+        }
+
+        private async Task ReloadDependencyTasksAsync(string sourceId, string destinationId, GanttItem srcTask, GanttItem dstTask)
+        {
+            if (string.IsNullOrEmpty(Design.IdField)) return;
+
+            var idVariable = new VariableName($"{Design.IdField}.Value");
+            var reloadCondition = new SearchCondition
+            {
+                ModuleName = Design.SearchCondition.ModuleName,
+                Condition = MultiMatchCondition.Or(idVariable.Equal(sourceId), idVariable.Equal(destinationId))
+            };
+            var mods = await this.GetChildModulesAsync(reloadCondition, ModuleLayoutType.Detail, Design.DetailLayoutName);
+            srcTask.Module = mods.FirstOrDefault(e => e.GetIdText() == sourceId);
+            dstTask.Module = mods.FirstOrDefault(e => e.GetIdText() == destinationId);
         }
 
         private static string? GetDepFieldValue(Module data, string fieldName)
         {
             var idField = data.GetField<IdField>(fieldName);
             if (idField != null) return idField.Value;
-            var linkField = data.GetField<LinkField>(fieldName);
-            return linkField?.Value;
+            return data.GetField<LinkField>(fieldName)?.Value;
         }
 
         private static async Task<bool> SetDepFieldValueAsync(Module data, string fieldName, string value)

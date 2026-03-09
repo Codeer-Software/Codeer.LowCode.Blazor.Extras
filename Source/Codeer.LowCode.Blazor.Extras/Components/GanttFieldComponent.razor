@@ -34,25 +34,18 @@
   @* ===== Gantt Body ===== *@
   <div class="gantt-body">
     @{
-      var dates = GetDates();
-      var rowHeight = 40;
-      var headerHeight = GetHeaderHeight();
-      var bodyHeight = Math.Max(Field.Items.Count * rowHeight, rowHeight);
-      var totalHeight = headerHeight + bodyHeight;
-      var colWidth = GetColumnWidth();
-      var totalCols = dates.Count;
-      var timelineWidth = totalCols * colWidth;
+      var lp = CalcLayout();
     }
 
     @* ===== Left: Task labels ===== *@
     <div class="gantt-labels">
-      <div class="gantt-label-header" style="height: @Px(headerHeight);">
+      <div class="gantt-label-header" style="height: @Px(lp.HeaderHeight);">
         <span>@Resources.Task</span>
       </div>
       <div class="gantt-label-body">
         @foreach (var item in Field.Items)
         {
-          <div class="gantt-label-row" style="height: @Px(rowHeight);"
+          <div class="gantt-label-row" style="height: @Px(lp.RowHeight);"
                @onclick="() => OnTaskClicked(item)" title="@item.Text">
             <span class="gantt-label-text">@item.Text</span>
             @if (item.Progress > 0)
@@ -65,9 +58,9 @@
     </div>
 
     @* ===== Right: Timeline ===== *@
-    <div class="gantt-timeline-scroll" style="background: linear-gradient(to bottom, #f8f9fa @Px(headerHeight), #fff @Px(headerHeight));">
+    <div class="gantt-timeline-scroll" style="background: linear-gradient(to bottom, #f8f9fa @Px(lp.HeaderHeight), #fff @Px(lp.HeaderHeight));">
       <svg class="gantt-timeline-svg"
-           width="@timelineWidth" height="@totalHeight"
+           width="@lp.TimelineWidth" height="@lp.TotalHeight"
            @onmousemove="OnMouseMove" @onmouseup="OnMouseUp" @onmouseleave="OnMouseUp">
 
         <defs>
@@ -81,216 +74,11 @@
           </marker>
         </defs>
 
-        @* --- Header --- *@
-        @if (Field.ViewMode == GanttViewMode.Month)
-        {
-          @* Month view: month groups + day columns *@
-          var monthGroups = GetMonthGroups(dates);
-          var mgX = 0.0;
-          @foreach (var mg in monthGroups)
-          {
-            var mgWidth = mg.Days * colWidth;
-            <rect x="@mgX" y="0" width="@mgWidth" height="24" class="header-month-bg" />
-            <g><text x="@(mgX + mgWidth / 2)" y="16" class="header-month-text">@mg.Label</text></g>
-            <line x1="@mgX" y1="0" x2="@mgX" y2="24" class="header-sep" />
-            mgX += mgWidth;
-          }
-          @for (var i = 0; i < dates.Count; i++)
-          {
-            var x = i * colWidth;
-            var d = dates[i];
-            var isWeekend = d.DayOfWeek == DayOfWeek.Saturday || d.DayOfWeek == DayOfWeek.Sunday;
-            <rect x="@x" y="24" width="@colWidth" height="24" class="@(isWeekend ? "header-weekend-bg" : "header-day-bg")" />
-            <g><text x="@(x + colWidth / 2)" y="40" class="header-day-text">@d.Day</text></g>
-            <line x1="@x" y1="24" x2="@x" y2="48" class="header-sep-light" />
-          }
-          <line x1="0" y1="24" x2="@timelineWidth" y2="24" class="header-sep" />
-          <line x1="0" y1="48" x2="@timelineWidth" y2="48" class="header-sep" />
-        }
-        else if (Field.ViewMode == GanttViewMode.Week)
-        {
-          @* Week view: date groups + hours *@
-          var dayGroups = GetDayGroups(dates);
-          var dgX = 0.0;
-          @foreach (var dg in dayGroups)
-          {
-            var dgWidth = dg.Hours * colWidth;
-            var isWeekend = dg.Date.DayOfWeek == DayOfWeek.Saturday || dg.Date.DayOfWeek == DayOfWeek.Sunday;
-            <rect x="@dgX" y="0" width="@dgWidth" height="24" class="@(isWeekend ? "header-weekend-bg" : "header-day-bg")" />
-            <g><text x="@(dgX + dgWidth / 2)" y="16" class="header-date-text">@dg.Label</text></g>
-            <line x1="@dgX" y1="0" x2="@dgX" y2="24" class="header-sep" />
-            dgX += dgWidth;
-          }
-          @for (var i = 0; i < dates.Count; i++)
-          {
-            var x = i * colWidth;
-            var h = dates[i].Hour;
-            @if (h % 6 == 0)
-            {
-              <g><text x="@(x + 2)" y="@(headerHeight - 4)" class="header-hour-text" text-anchor="start">@($"{h}:00")</text></g>
-            }
-            <line x1="@x" y1="24" x2="@x" y2="@headerHeight" class="header-sep-light" />
-          }
-          <line x1="0" y1="24" x2="@timelineWidth" y2="24" class="header-sep" />
-          <line x1="0" y1="@headerHeight" x2="@timelineWidth" y2="@headerHeight" class="header-sep" />
-        }
-        else
-        {
-          @* Day view: hour columns *@
-          @for (var i = 0; i < dates.Count; i++)
-          {
-            var x = i * colWidth;
-            var h = dates[i].Hour;
-            <rect x="@x" y="0" width="@colWidth" height="@headerHeight"
-                  class="@(h >= 9 && h < 17 ? "header-day-bg" : "header-offhour-bg")" />
-            <g><text x="@(x + colWidth / 2)" y="@(headerHeight - 6)" class="header-hour-text">@($"{h}:00")</text></g>
-            <line x1="@x" y1="0" x2="@x" y2="@headerHeight" class="header-sep-light" />
-          }
-          <line x1="0" y1="@headerHeight" x2="@timelineWidth" y2="@headerHeight" class="header-sep" />
-        }
-
-        @* --- Grid background --- *@
-        @for (var i = 0; i < dates.Count; i++)
-        {
-          var x = i * colWidth;
-          var d = dates[i];
-          var isWeekend = Field.ViewMode == GanttViewMode.Month
-            ? (d.DayOfWeek == DayOfWeek.Saturday || d.DayOfWeek == DayOfWeek.Sunday)
-            : false;
-          @if (isWeekend)
-          {
-            <rect x="@x" y="@headerHeight" width="@colWidth" height="@bodyHeight" class="grid-weekend" />
-          }
-          @if (i > 0)
-          {
-            <line x1="@x" y1="@headerHeight" x2="@x" y2="@totalHeight"
-                  class="@(IsMainGridLine(d) ? "grid-line-main" : "grid-line")" />
-          }
-        }
-
-        @* Row separators *@
-        @for (var r = 0; r <= Field.Items.Count; r++)
-        {
-          var y = headerHeight + r * rowHeight;
-          <line x1="0" y1="@y" x2="@timelineWidth" y2="@y" class="grid-row-line" />
-        }
-
-        @* --- Today line --- *@
-        @{
-          var todayX = GetTodayX(dates, colWidth);
-        }
-        @if (todayX >= 0 && todayX <= timelineWidth)
-        {
-          <line x1="@todayX" y1="@headerHeight" x2="@todayX" y2="@totalHeight" class="today-line" />
-          <polygon points="@TodayMarker(todayX, headerHeight)" class="today-marker" />
-        }
-
-        @* --- Task bars --- *@
-        @for (var idx = 0; idx < Field.Items.Count; idx++)
-        {
-          var item = Field.Items[idx];
-          var barPos = GetBarPosition(item, dates, colWidth, headerHeight, rowHeight, idx);
-          @if (barPos.Width > 0)
-          {
-            var barY = barPos.Y;
-            var barH = barPos.Height;
-            var capturedItem = item;
-            var capturedIdx = idx;
-
-            @* Bar background (full bar) *@
-            <rect x="@barPos.X" y="@barY" width="@barPos.Width" height="@barH"
-                  rx="4" ry="4" class="task-bar"
-                  style="@(IsEditable ? "cursor: grab;" : "cursor: pointer;")"
-                  @onmousedown="e => OnBarMouseDown(e, capturedIdx, capturedItem)"
-                  @onmousedown:preventDefault="true"
-                  @onmousedown:stopPropagation="true"
-                  @oncontextmenu="e => OnBarContextMenu(e, capturedItem)"
-                  @oncontextmenu:preventDefault="true"
-                  @oncontextmenu:stopPropagation="true" />
-
-            @* Progress fill *@
-            @if (item.Progress > 0)
-            {
-              var progressWidth = barPos.Width * item.Progress / 100.0;
-              <rect x="@barPos.X" y="@barY" width="@progressWidth" height="@barH"
-                    rx="4" ry="4" class="task-progress" />
-              @if (progressWidth < barPos.Width)
-              {
-                <rect x="@(barPos.X + progressWidth - 4)" y="@barY" width="4" height="@barH"
-                      class="task-progress" />
-              }
-            }
-
-            @* Task text *@
-            <g><text x="@(barPos.X + 8)" y="@(barY + barH / 2 + 4)"
-                  class="task-text" pointer-events="none">@TruncateText(item.Text, barPos.Width)</text></g>
-
-            @if (IsEditable)
-            {
-              @* Left resize handle *@
-              <rect x="@barPos.X" y="@barY" width="6" height="@barH"
-                    class="resize-handle" rx="2" ry="2"
-                    @onmousedown="e => StartDrag(e, capturedIdx, DragMode.ResizeLeft)"
-                    @onmousedown:preventDefault="true"
-                    @onmousedown:stopPropagation="true" />
-
-              @* Right resize handle *@
-              <rect x="@(barPos.X + barPos.Width - 6)" y="@barY" width="6" height="@barH"
-                    class="resize-handle" rx="2" ry="2"
-                    @onmousedown="e => StartDrag(e, capturedIdx, DragMode.ResizeRight)"
-                    @onmousedown:preventDefault="true"
-                    @onmousedown:stopPropagation="true" />
-            }
-
-            @* Linking mode: stub line from source bar *@
-            @if (_depLinkingSourceId == item.Id)
-            {
-              var stubX1 = barPos.X + barPos.Width;
-              var stubY = barPos.Y + barH / 2;
-              var stubX2 = stubX1 + 30;
-              <line x1="@F(stubX1)" y1="@F(stubY)" x2="@F(stubX2)" y2="@F(stubY)"
-                    class="dep-linking-stub" pointer-events="none" />
-              <circle cx="@F(stubX2)" cy="@F(stubY)" r="3" class="dep-linking-dot" />
-            }
-          }
-        }
-
-        @* --- Dependency arrows --- *@
-        @foreach (var dep in Field.DependencyList)
-        {
-          var fromItem = Field.Items.FirstOrDefault(e => e.Id == dep.From);
-          var toItem = Field.Items.FirstOrDefault(e => e.Id == dep.To);
-          if (fromItem != null && toItem != null)
-          {
-            var fromIdx = Field.Items.IndexOf(fromItem);
-            var toIdx = Field.Items.IndexOf(toItem);
-            var fromBar = GetBarPosition(fromItem, dates, colWidth, headerHeight, rowHeight, fromIdx);
-            var toBar = GetBarPosition(toItem, dates, colWidth, headerHeight, rowHeight, toIdx);
-            if (fromBar.Width > 0 && toBar.Width > 0)
-            {
-              var x1 = fromBar.X + fromBar.Width;
-              var y1 = fromBar.Y + fromBar.Height / 2;
-              var x2 = toBar.X;
-              var y2 = toBar.Y + toBar.Height / 2;
-              var midX = x1 + 12;
-              var isSelected = _selectedDepKey == dep.Key;
-              var capturedKey = dep.Key;
-
-              @* Invisible wide hit area for clicking *@
-              <path d="M @F(x1),@F(y1) L @F(midX),@F(y1) L @F(midX),@F(y2) L @F(x2),@F(y2)"
-                    class="dep-hit-area"
-                    style="@(IsEditable ? "" : "cursor: default;")"
-                    @onclick="() => OnDepLineClick(capturedKey)"
-                    @onclick:stopPropagation="true" />
-
-              @* Visible line *@
-              <path d="M @F(x1),@F(y1) L @F(midX),@F(y1) L @F(midX),@F(y2) L @F(x2),@F(y2)"
-                    class="@(isSelected ? "dep-line dep-selected" : "dep-line")"
-                    marker-end="@(isSelected ? "url(#dep-arrow-selected)" : "url(#dep-arrow)")"
-                    pointer-events="none" />
-            }
-          }
-        }
+        @RenderHeader(lp)
+        @RenderGrid(lp)
+        @RenderTodayLine(lp)
+        @RenderTaskBars(lp)
+        @RenderDependencyArrows(lp)
       </svg>
     </div>
   </div>
@@ -308,6 +96,9 @@
 </div>
 
 @code {
+  const int RowHeight = 40;
+  const int BarPadding = 6;
+
   enum DragMode { Move, ResizeLeft, ResizeRight }
 
   bool _dragging;
@@ -317,29 +108,256 @@
   DateTime _dragOrigStart;
   DateTime _dragOrigEnd;
 
-  // Context menu
   bool _contextMenuVisible;
   double _contextMenuX;
   double _contextMenuY;
   string? _contextMenuTaskId;
-
-  // Dependency linking
   string? _depLinkingSourceId;
-
-  // Selected dependency line
   string? _selectedDepKey;
 
-  // ===== ViewOnly / Enabled =====
   private bool IsDisabled => Field.IsEnabled == false;
   private bool IsViewMode => Field.IsViewOnly;
   private bool IsEditable => !IsViewMode && !IsDisabled;
 
+  private CultureInfo _culture => CultureInfo.CurrentUICulture;
+
   private string Px(double v) => v.ToString("0.#", CultureInfo.InvariantCulture) + "px";
   private string F(double v) => v.ToString("0.##", CultureInfo.InvariantCulture);
 
-  // ===== Navigation =====
+  // ===== Layout calculation =====
 
-  private CultureInfo _culture => CultureInfo.CurrentUICulture;
+  private record LayoutParams(List<DateTime> Dates, int HeaderHeight, int ColWidth, int RowHeight,
+    int BodyHeight, int TotalHeight, int TimelineWidth, TimeSpan TimeUnit);
+
+  private LayoutParams CalcLayout()
+  {
+    var dates = GetDates();
+    var headerHeight = GetHeaderHeight();
+    var colWidth = GetColumnWidth();
+    var bodyHeight = Math.Max(Field.Items.Count * RowHeight, RowHeight);
+    var timeUnit = GetTimeUnit();
+    return new LayoutParams(dates, headerHeight, colWidth, RowHeight,
+      bodyHeight, headerHeight + bodyHeight, dates.Count * colWidth, timeUnit);
+  }
+
+  private int GetHeaderHeight() => Field.ViewMode switch
+  {
+    GanttViewMode.Month => 48,
+    GanttViewMode.Week => 44,
+    _ => 28,
+  };
+
+  private int GetColumnWidth() => Field.ViewMode switch
+  {
+    GanttViewMode.Month => 32,
+    GanttViewMode.Week => 14,
+    _ => 40,
+  };
+
+  private TimeSpan GetTimeUnit() => Field.ViewMode switch
+  {
+    GanttViewMode.Month => TimeSpan.FromDays(1),
+    GanttViewMode.Week => TimeSpan.FromHours(1),
+    _ => TimeSpan.FromHours(1),
+  };
+
+  // ===== SVG Render sections =====
+
+  private RenderFragment RenderHeader(LayoutParams lp) => __builder =>
+  {
+    if (Field.ViewMode == GanttViewMode.Month)
+    {
+      var mgX = 0.0;
+      foreach (var mg in GetMonthGroups(lp.Dates))
+      {
+        var mgWidth = mg.Days * lp.ColWidth;
+        <rect x="@mgX" y="0" width="@mgWidth" height="24" class="header-month-bg" />
+        <g><text x="@(mgX + mgWidth / 2)" y="16" class="header-month-text">@mg.Label</text></g>
+        <line x1="@mgX" y1="0" x2="@mgX" y2="24" class="header-sep" />
+        mgX += mgWidth;
+      }
+      for (var i = 0; i < lp.Dates.Count; i++)
+      {
+        var x = i * lp.ColWidth;
+        var d = lp.Dates[i];
+        var isWeekend = d.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday;
+        <rect x="@x" y="24" width="@lp.ColWidth" height="24" class="@(isWeekend ? "header-weekend-bg" : "header-day-bg")" />
+        <g><text x="@(x + lp.ColWidth / 2)" y="40" class="header-day-text">@d.Day</text></g>
+        <line x1="@x" y1="24" x2="@x" y2="48" class="header-sep-light" />
+      }
+      <line x1="0" y1="24" x2="@lp.TimelineWidth" y2="24" class="header-sep" />
+      <line x1="0" y1="48" x2="@lp.TimelineWidth" y2="48" class="header-sep" />
+    }
+    else if (Field.ViewMode == GanttViewMode.Week)
+    {
+      var dgX = 0.0;
+      foreach (var dg in GetDayGroups(lp.Dates))
+      {
+        var dgWidth = dg.Hours * lp.ColWidth;
+        var isWeekend = dg.Date.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday;
+        <rect x="@dgX" y="0" width="@dgWidth" height="24" class="@(isWeekend ? "header-weekend-bg" : "header-day-bg")" />
+        <g><text x="@(dgX + dgWidth / 2)" y="16" class="header-date-text">@dg.Label</text></g>
+        <line x1="@dgX" y1="0" x2="@dgX" y2="24" class="header-sep" />
+        dgX += dgWidth;
+      }
+      for (var i = 0; i < lp.Dates.Count; i++)
+      {
+        var x = i * lp.ColWidth;
+        var h = lp.Dates[i].Hour;
+        if (h % 6 == 0)
+        {
+          <g><text x="@(x + 2)" y="@(lp.HeaderHeight - 4)" class="header-hour-text" text-anchor="start">@($"{h}:00")</text></g>
+        }
+        <line x1="@x" y1="24" x2="@x" y2="@lp.HeaderHeight" class="header-sep-light" />
+      }
+      <line x1="0" y1="24" x2="@lp.TimelineWidth" y2="24" class="header-sep" />
+      <line x1="0" y1="@lp.HeaderHeight" x2="@lp.TimelineWidth" y2="@lp.HeaderHeight" class="header-sep" />
+    }
+    else
+    {
+      for (var i = 0; i < lp.Dates.Count; i++)
+      {
+        var x = i * lp.ColWidth;
+        var h = lp.Dates[i].Hour;
+        <rect x="@x" y="0" width="@lp.ColWidth" height="@lp.HeaderHeight"
+              class="@(h >= 9 && h < 17 ? "header-day-bg" : "header-offhour-bg")" />
+        <g><text x="@(x + lp.ColWidth / 2)" y="@(lp.HeaderHeight - 6)" class="header-hour-text">@($"{h}:00")</text></g>
+        <line x1="@x" y1="0" x2="@x" y2="@lp.HeaderHeight" class="header-sep-light" />
+      }
+      <line x1="0" y1="@lp.HeaderHeight" x2="@lp.TimelineWidth" y2="@lp.HeaderHeight" class="header-sep" />
+    }
+  };
+
+  private RenderFragment RenderGrid(LayoutParams lp) => __builder =>
+  {
+    for (var i = 0; i < lp.Dates.Count; i++)
+    {
+      var x = i * lp.ColWidth;
+      var d = lp.Dates[i];
+      var isWeekend = Field.ViewMode == GanttViewMode.Month
+        && d.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday;
+      if (isWeekend)
+      {
+        <rect x="@x" y="@lp.HeaderHeight" width="@lp.ColWidth" height="@lp.BodyHeight" class="grid-weekend" />
+      }
+      if (i > 0)
+      {
+        <line x1="@x" y1="@lp.HeaderHeight" x2="@x" y2="@lp.TotalHeight"
+              class="@(IsMainGridLine(d) ? "grid-line-main" : "grid-line")" />
+      }
+    }
+    for (var r = 0; r <= Field.Items.Count; r++)
+    {
+      var y = lp.HeaderHeight + r * lp.RowHeight;
+      <line x1="0" y1="@y" x2="@lp.TimelineWidth" y2="@y" class="grid-row-line" />
+    }
+  };
+
+  private RenderFragment RenderTodayLine(LayoutParams lp) => __builder =>
+  {
+    var todayX = GetTodayX(lp);
+    if (todayX >= 0 && todayX <= lp.TimelineWidth)
+    {
+      <line x1="@todayX" y1="@lp.HeaderHeight" x2="@todayX" y2="@lp.TotalHeight" class="today-line" />
+      <polygon points="@TodayMarker(todayX, lp.HeaderHeight)" class="today-marker" />
+    }
+  };
+
+  private RenderFragment RenderTaskBars(LayoutParams lp) => __builder =>
+  {
+    for (var idx = 0; idx < Field.Items.Count; idx++)
+    {
+      var item = Field.Items[idx];
+      var bar = GetBarPosition(item, lp, idx);
+      if (bar.Width <= 0) continue;
+
+      var capturedItem = item;
+      var capturedIdx = idx;
+
+      <rect x="@bar.X" y="@bar.Y" width="@bar.Width" height="@bar.Height"
+            rx="4" ry="4" class="task-bar"
+            style="@(IsEditable ? "cursor: grab;" : "cursor: pointer;")"
+            @onmousedown="e => OnBarMouseDown(e, capturedIdx, capturedItem)"
+            @onmousedown:preventDefault="true"
+            @onmousedown:stopPropagation="true"
+            @oncontextmenu="e => OnBarContextMenu(e, capturedItem)"
+            @oncontextmenu:preventDefault="true"
+            @oncontextmenu:stopPropagation="true" />
+
+      @if (item.Progress > 0)
+      {
+        var progressWidth = bar.Width * item.Progress / 100.0;
+        <rect x="@bar.X" y="@bar.Y" width="@progressWidth" height="@bar.Height"
+              rx="4" ry="4" class="task-progress" />
+        if (progressWidth < bar.Width)
+        {
+          <rect x="@(bar.X + progressWidth - 4)" y="@bar.Y" width="4" height="@bar.Height"
+                class="task-progress" />
+        }
+      }
+
+      <g><text x="@(bar.X + 8)" y="@(bar.Y + bar.Height / 2 + 4)"
+            class="task-text" pointer-events="none">@TruncateText(item.Text, bar.Width)</text></g>
+
+      @if (IsEditable)
+      {
+        <rect x="@bar.X" y="@bar.Y" width="6" height="@bar.Height"
+              class="resize-handle" rx="2" ry="2"
+              @onmousedown="e => StartDrag(e, capturedIdx, DragMode.ResizeLeft)"
+              @onmousedown:preventDefault="true"
+              @onmousedown:stopPropagation="true" />
+        <rect x="@(bar.X + bar.Width - 6)" y="@bar.Y" width="6" height="@bar.Height"
+              class="resize-handle" rx="2" ry="2"
+              @onmousedown="e => StartDrag(e, capturedIdx, DragMode.ResizeRight)"
+              @onmousedown:preventDefault="true"
+              @onmousedown:stopPropagation="true" />
+      }
+
+      @if (_depLinkingSourceId == item.Id)
+      {
+        var stubX1 = bar.X + bar.Width;
+        var stubY = bar.Y + bar.Height / 2;
+        var stubX2 = stubX1 + 30;
+        <line x1="@F(stubX1)" y1="@F(stubY)" x2="@F(stubX2)" y2="@F(stubY)"
+              class="dep-linking-stub" pointer-events="none" />
+        <circle cx="@F(stubX2)" cy="@F(stubY)" r="3" class="dep-linking-dot" />
+      }
+    }
+  };
+
+  private RenderFragment RenderDependencyArrows(LayoutParams lp) => __builder =>
+  {
+    foreach (var dep in Field.DependencyList)
+    {
+      var fromItem = Field.Items.FirstOrDefault(e => e.Id == dep.From);
+      var toItem = Field.Items.FirstOrDefault(e => e.Id == dep.To);
+      if (fromItem == null || toItem == null) continue;
+
+      var fromBar = GetBarPosition(fromItem, lp, Field.Items.IndexOf(fromItem));
+      var toBar = GetBarPosition(toItem, lp, Field.Items.IndexOf(toItem));
+      if (fromBar.Width <= 0 || toBar.Width <= 0) continue;
+
+      var x1 = fromBar.X + fromBar.Width;
+      var y1 = fromBar.Y + fromBar.Height / 2;
+      var x2 = toBar.X;
+      var y2 = toBar.Y + toBar.Height / 2;
+      var midX = x1 + 12;
+      var isSelected = _selectedDepKey == dep.Key;
+      var capturedKey = dep.Key;
+      var pathD = $"M {F(x1)},{F(y1)} L {F(midX)},{F(y1)} L {F(midX)},{F(y2)} L {F(x2)},{F(y2)}";
+
+      <path d="@pathD" class="dep-hit-area"
+            style="@(IsEditable ? "" : "cursor: default;")"
+            @onclick="() => OnDepLineClick(capturedKey)"
+            @onclick:stopPropagation="true" />
+      <path d="@pathD"
+            class="@(isSelected ? "dep-line dep-selected" : "dep-line")"
+            marker-end="@(isSelected ? "url(#dep-arrow-selected)" : "url(#dep-arrow)")"
+            pointer-events="none" />
+    }
+  };
+
+  // ===== Navigation =====
 
   private string GetTitle()
   {
@@ -415,17 +433,13 @@
   }
 
   private async Task OnTaskClicked(GanttItem item)
-  {
-    await Field.EditAsync(item.Module, !IsEditable);
-  }
+    => await Field.EditAsync(item.Module, !IsEditable);
 
   private void OnContainerClick()
   {
     _selectedDepKey = null;
     _depLinkingSourceId = null;
   }
-
-  // ===== Task bar events =====
 
   private async Task OnBarMouseDown(MouseEventArgs e, int idx, GanttItem item)
   {
@@ -450,16 +464,13 @@
 
   private void OnBarContextMenu(MouseEventArgs e, GanttItem item)
   {
-    if (!IsEditable) return;
-    if (_depLinkingSourceId != null) return;
+    if (!IsEditable || _depLinkingSourceId != null) return;
     _contextMenuVisible = true;
     _contextMenuX = e.ClientX;
     _contextMenuY = e.ClientY;
     _contextMenuTaskId = item.Id;
     _selectedDepKey = null;
   }
-
-  // ===== Context Menu =====
 
   private void CloseContextMenu()
   {
@@ -473,8 +484,6 @@
     _contextMenuVisible = false;
     _contextMenuTaskId = null;
   }
-
-  // ===== Dependency line selection & deletion =====
 
   private void OnDepLineClick(string key)
   {
@@ -504,21 +513,7 @@
     }
   }
 
-  // ===== Date/column generation =====
-
-  private int GetHeaderHeight() => Field.ViewMode switch
-  {
-    GanttViewMode.Month => 48,
-    GanttViewMode.Week => 44,
-    _ => 28,
-  };
-
-  private int GetColumnWidth() => Field.ViewMode switch
-  {
-    GanttViewMode.Month => 32,
-    GanttViewMode.Week => 14,
-    _ => 40,
-  };
+  // ===== Date generation =====
 
   private List<DateTime> GetDates()
   {
@@ -527,24 +522,13 @@
     switch (Field.ViewMode)
     {
       case GanttViewMode.Day:
-        for (var h = 0; h < 24; h++)
-          list.Add(start.Date.AddHours(h));
+        for (var h = 0; h < 24; h++) list.Add(start.Date.AddHours(h));
         break;
       case GanttViewMode.Week:
-        var current = start;
-        while (current < end)
-        {
-          list.Add(current);
-          current = current.AddHours(1);
-        }
+        for (var c = start; c < end; c = c.AddHours(1)) list.Add(c);
         break;
       default:
-        var d = start.Date;
-        while (d < end)
-        {
-          list.Add(d);
-          d = d.AddDays(1);
-        }
+        for (var d = start.Date; d < end; d = d.AddDays(1)) list.Add(d);
         break;
     }
     return list;
@@ -606,67 +590,46 @@
     _ => d.Hour % 6 == 0,
   };
 
-  // ===== Today line =====
+  // ===== Positioning =====
 
-  private double GetTodayX(List<DateTime> dates, int colWidth)
+  private double GetTodayX(LayoutParams lp)
   {
-    if (dates.Count == 0) return -1;
+    if (lp.Dates.Count == 0) return -1;
     var now = DateTime.Now;
-    var start = dates[0];
-    var end = dates[^1];
-    var unit = Field.ViewMode switch
-    {
-      GanttViewMode.Month => TimeSpan.FromDays(1),
-      GanttViewMode.Week => TimeSpan.FromHours(1),
-      _ => TimeSpan.FromHours(1),
-    };
-    var endDate = end.Add(unit);
+    var start = lp.Dates[0];
+    var endDate = lp.Dates[^1].Add(lp.TimeUnit);
     if (now < start || now > endDate) return -1;
-    var totalUnits = (endDate - start).TotalSeconds / unit.TotalSeconds;
-    var nowUnits = (now - start).TotalSeconds / unit.TotalSeconds;
-    return nowUnits / totalUnits * dates.Count * colWidth;
+    var totalUnits = (endDate - start).TotalSeconds / lp.TimeUnit.TotalSeconds;
+    var nowUnits = (now - start).TotalSeconds / lp.TimeUnit.TotalSeconds;
+    return nowUnits / totalUnits * lp.TimelineWidth;
   }
 
   private string TodayMarker(double x, int headerHeight)
-  {
-    var y = headerHeight;
-    return $"{F(x - 5)},{y} {F(x + 5)},{y} {F(x)},{y + 6}";
-  }
-
-  // ===== Task bar positioning =====
+    => $"{F(x - 5)},{headerHeight} {F(x + 5)},{headerHeight} {F(x)},{headerHeight + 6}";
 
   private record BarPosition(double X, double Y, double Width, double Height);
 
-  private BarPosition GetBarPosition(GanttItem item, List<DateTime> dates, int colWidth, int headerHeight, int rowHeight, int rowIdx)
+  private BarPosition GetBarPosition(GanttItem item, LayoutParams lp, int rowIdx)
   {
-    if (dates.Count == 0) return new BarPosition(0, 0, 0, 0);
+    if (lp.Dates.Count == 0) return new(0, 0, 0, 0);
 
-    var start = dates[0];
-    var unit = Field.ViewMode switch
-    {
-      GanttViewMode.Month => TimeSpan.FromDays(1),
-      GanttViewMode.Week => TimeSpan.FromHours(1),
-      _ => TimeSpan.FromHours(1),
-    };
-    var endDate = dates[^1].Add(unit);
-    var totalUnits = (endDate - start).TotalSeconds / unit.TotalSeconds;
+    var start = lp.Dates[0];
+    var endDate = lp.Dates[^1].Add(lp.TimeUnit);
+    var totalUnits = (endDate - start).TotalSeconds / lp.TimeUnit.TotalSeconds;
 
-    var barStart = Math.Max(0, (item.Start - start).TotalSeconds / unit.TotalSeconds);
-    var barEnd = Math.Min(totalUnits, (item.End - start).TotalSeconds / unit.TotalSeconds);
+    var barStart = Math.Max(0, (item.Start - start).TotalSeconds / lp.TimeUnit.TotalSeconds);
+    var barEnd = Math.Min(totalUnits, (item.End - start).TotalSeconds / lp.TimeUnit.TotalSeconds);
+    if (barEnd <= barStart) return new(0, 0, 0, 0);
 
-    if (barEnd <= barStart) return new BarPosition(0, 0, 0, 0);
-
-    var pxPerUnit = (double)(dates.Count * colWidth) / totalUnits;
-    var x = barStart * pxPerUnit;
-    var width = Math.Max((barEnd - barStart) * pxPerUnit, 4);
-    var pad = 6;
-    var barHeight = rowHeight - pad * 2;
-    var y = headerHeight + rowIdx * rowHeight + pad;
-
-    return new BarPosition(x, y, width, barHeight);
+    var pxPerUnit = (double)lp.TimelineWidth / totalUnits;
+    return new(
+      barStart * pxPerUnit,
+      lp.HeaderHeight + rowIdx * lp.RowHeight + BarPadding,
+      Math.Max((barEnd - barStart) * pxPerUnit, 4),
+      lp.RowHeight - BarPadding * 2);
   }
 
-  private string TruncateText(string text, double width)
+  private static string TruncateText(string text, double width)
   {
     var maxChars = (int)(width / 7) - 1;
     if (maxChars <= 0) return "";
@@ -678,8 +641,7 @@
 
   private void StartDrag(MouseEventArgs e, int idx, DragMode mode)
   {
-    if (!IsEditable) return;
-    if (_depLinkingSourceId != null) return;
+    if (!IsEditable || _depLinkingSourceId != null) return;
     _dragging = true;
     _dragIdx = idx;
     _dragMode = mode;
@@ -692,12 +654,10 @@
   {
     if (!_dragging || _dragIdx < 0 || _dragIdx >= Field.Items.Count) return;
 
-    var dx = e.ClientX - _dragStartX;
     var colWidth = GetColumnWidth();
     var snap = GetSnapTimeSpan();
     var snapPx = GetSnapPx(colWidth);
-    var steps = (int)Math.Round(dx / snapPx);
-
+    var steps = (int)Math.Round((e.ClientX - _dragStartX) / snapPx);
     var item = Field.Items[_dragIdx];
 
     switch (_dragMode)
@@ -722,14 +682,11 @@
   {
     if (!_dragging) return;
     _dragging = false;
-
     if (_dragIdx < 0 || _dragIdx >= Field.Items.Count) return;
 
     var item = Field.Items[_dragIdx];
     if (item.Start != _dragOrigStart || item.End != _dragOrigEnd)
-    {
       await Field.UpdateTaskDatesAsync(item, item.Start, item.End);
-    }
   }
 
   private TimeSpan GetSnapTimeSpan() => Field.ViewMode switch
