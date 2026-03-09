@@ -1,7 +1,6 @@
 using System.Windows;
 using System.Windows.Controls;
 using Codeer.LowCode.Blazor.Extras.Designer.ViewModels;
-using Codeer.LowCode.Blazor.Extras.Designs;
 using Codeer.LowCode.Blazor.Extras.Models;
 using Codeer.LowCode.Blazor.DesignLogic;
 using Codeer.LowCode.Blazor.Repository.Design;

@@ -3,7 +3,7 @@ using System.Runtime.CompilerServices;
 using System.Windows.Input;
 using System.Windows.Media;
 using Codeer.LowCode.Blazor.Extras.Designer.Interop;
-using Codeer.LowCode.Blazor.Extras.Designs;
+using Codeer.LowCode.Blazor.Extras.Models;
 
 namespace Codeer.LowCode.Blazor.Extras.Designer.ViewModels
 {
@@ -15,7 +15,8 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.ViewModels
         {
             _parent = parent;
             Model = model;
-            ChooseColorCommand = new DelegateCommand(OpenColorPicker);
+            ChooseColorCommand = new DelegateCommand(() => OpenColorPicker(c => Color = c, Color));
+            ChooseBackgroundColorCommand = new DelegateCommand(() => OpenColorPicker(c => BackgroundColor = c, BackgroundColor));
             MoveUpCommand = new DelegateCommand(() => _parent.MoveUp(this));
             MoveDownCommand = new DelegateCommand(() => _parent.MoveDown(this));
         }
@@ -55,6 +56,17 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.ViewModels
             }
         }
 
+        public string BackgroundColor
+        {
+            get => Model.BackgroundColor;
+            set
+            {
+                if (value == Model.BackgroundColor) return;
+                Model.BackgroundColor = value;
+                OnPropertyChanged();
+            }
+        }
+
         public bool CanAdd
         {
             get => Model.CanAdd;
@@ -67,6 +79,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.ViewModels
         }
 
         public ICommand ChooseColorCommand { get; }
+        public ICommand ChooseBackgroundColorCommand { get; }
         public ICommand MoveUpCommand { get; }
         public ICommand MoveDownCommand { get; }
 
@@ -77,15 +90,15 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.ViewModels
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
 
-        private void OpenColorPicker()
+        private void OpenColorPicker(Action<string> setter, string currentValue)
         {
             var dialog = new ColorDialog
             {
-                Color = HexStringToColor(Color)
+                Color = HexStringToColor(currentValue)
             };
             if (dialog.ShowDialog() == true)
             {
-                Color = ColorToHexString(dialog.Color);
+                setter(ColorToHexString(dialog.Color));
             }
         }
 

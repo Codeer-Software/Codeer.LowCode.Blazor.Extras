@@ -1,3 +1,4 @@
+@using Codeer.LowCode.Blazor.Extras.Models
 @using Microsoft.AspNetCore.Components.Web
 @using Microsoft.JSInterop
 @using Codeer.LowCode.Blazor.Components
@@ -24,10 +25,7 @@
            @ondrop="() => OnDropOnColumn(capturedStatus.Value)">
         <div class="taskboard-column-header" style="@GetHeaderStyle(capturedStatus)">
           <span class="column-title">@status.DisplayText</span>
-          @if (capturedStatus.CanAdd)
-          {
-            <button type="button" class="column-add-btn" @onclick="() => OnAddClicked(capturedStatus.Value)">+</button>
-          }
+          <button type="button" class="column-add-btn" style="@(capturedStatus.CanAdd ? "" : "visibility:hidden")" @onclick="() => OnAddClicked(capturedStatus.Value)">+</button>
         </div>
         <div class="taskboard-column-body">
           @foreach (var (index, item) in columnItems.Select((item, i) => (i, item)))
@@ -143,8 +141,20 @@
 
   private static string GetHeaderStyle(TaskBoardStatusDesign status)
   {
-    if (string.IsNullOrEmpty(status.Color)) return string.Empty;
-    return $"background: {status.Color}; border-bottom-color: {status.Color};";
+    var hasColor = !string.IsNullOrEmpty(status.Color);
+    var hasBg = !string.IsNullOrEmpty(status.BackgroundColor);
+    if (!hasColor && !hasBg) return string.Empty;
+    var parts = new List<string>();
+    if (hasBg)
+    {
+      parts.Add($"background: {status.BackgroundColor}");
+      parts.Add($"border-bottom-color: {status.BackgroundColor}");
+    }
+    if (hasColor)
+    {
+      parts.Add($"color: {status.Color}");
+    }
+    return string.Join("; ", parts) + ";";
   }
 
   private async Task OnAddClicked(string statusValue)

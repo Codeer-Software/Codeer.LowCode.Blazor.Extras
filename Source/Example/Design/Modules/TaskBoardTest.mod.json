@@ -27,20 +27,23 @@
           {
             "DisplayText": "ToDo",
             "Value": "",
-            "Color": "#00FF40",
+            "Color": "#FFFFFF",
+            "BackgroundColor": "#00FF40",
             "CanAdd": true
           },
           {
             "DisplayText": "進行中",
             "Value": "",
             "Color": "",
-            "CanAdd": true
+            "BackgroundColor": "",
+            "CanAdd": false
           },
           {
             "DisplayText": "完了",
             "Value": "",
             "Color": "",
-            "CanAdd": true
+            "BackgroundColor": "",
+            "CanAdd": false
           }
         ]
       },

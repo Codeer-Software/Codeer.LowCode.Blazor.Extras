@@ -11,17 +11,6 @@ using Codeer.LowCode.Blazor.Repository.Match;
 
 namespace Codeer.LowCode.Blazor.Extras.Designs
 {
-    public class TaskBoardStatusDesign
-    {
-        public string DisplayText { get; set; } = string.Empty;
-
-        public string Value { get; set; } = string.Empty;
-
-        public string Color { get; set; } = string.Empty;
-
-        public bool CanAdd { get; set; } = true;
-    }
-
     public class TaskBoardFieldDesign() : FieldDesignBase(typeof(TaskBoardFieldDesign).FullName!), IDisplayName,
         ISearchResultsViewFieldDesign
     {
