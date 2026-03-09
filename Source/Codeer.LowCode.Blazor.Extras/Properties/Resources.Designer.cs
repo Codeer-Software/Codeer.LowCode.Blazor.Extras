@@ -579,10 +579,5 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
             }
         }
 
-        internal static string RichTextFieldHeight {
-            get {
-                return ResourceManager.GetString("RichTextFieldHeight", resourceCulture);
-            }
-        }
     }
 }

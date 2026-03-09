@@ -9,7 +9,7 @@
 
 @if (Field.IsViewOnly)
 {
-  <div class="richtext-view" style="@GetHeightStyle()">
+  <div class="richtext-view">
     @((MarkupString)EnsureLinkTargetBlank(Field.Value ?? string.Empty))
   </div>
 }
@@ -144,7 +144,6 @@ else
     <div @ref="_editorElement"
          class="richtext-content"
          contenteditable="@(!IsDisabled)"
-         style="@GetHeightStyle()"
          id="@WebElementId">
     </div>
 
@@ -328,12 +327,6 @@ else
      : Task.CompletedTask;
 
   private record LinkPopupPosition(double Top, double Left);
-
-  private string GetHeightStyle()
-  {
-    var height = Field.Design?.Height;
-    return string.IsNullOrEmpty(height) ? "" : $"min-height: {height};";
-  }
 
   private static string EnsureLinkTargetBlank(string html)
   {

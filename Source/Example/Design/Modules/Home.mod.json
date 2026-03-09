@@ -85,7 +85,6 @@
     },
     {
       "DbColumn": "",
-      "Height": "200px",
       "DisplayName": "",
       "IsRequired": false,
       "OnDataChanged": "",
@@ -259,7 +258,7 @@
             "IsWrap": false,
             "Margin": {},
             "GridRowType": "Normal",
-            "CanResize": true,
+            "CanResize": false,
             "BackgroundColor": "",
             "IsRowMarginRemoved": false,
             "Columns": [

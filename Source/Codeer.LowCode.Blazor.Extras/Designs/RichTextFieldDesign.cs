@@ -12,9 +12,6 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         [Designer(Index = 0, CandidateType = CandidateType.DbColumn, DisplayName = "$RichTextFieldDbColumn"), DbColumn(nameof(RichTextFieldData.Value))]
         public string DbColumn { get; set; } = string.Empty;
 
-        [Designer(Index = 1, DisplayName = "$RichTextFieldHeight")]
-        public string Height { get; set; } = "200px";
-
         public override string GetWebComponentTypeFullName() => typeof(RichTextFieldComponent).FullName!;
 
         public override string GetSearchWebComponentTypeFullName() => string.Empty;
