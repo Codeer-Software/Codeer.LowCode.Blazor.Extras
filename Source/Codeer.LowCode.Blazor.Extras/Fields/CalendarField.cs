@@ -17,12 +17,6 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         private (DateTime Start, DateTime End)? _currentRange;
 
         [ScriptHide]
-        public Func<SearchCondition?, Task> OnQueryChangedAsync { get; set; } = _ => Task.CompletedTask;
-
-        [ScriptHide]
-        public Func<Task> OnSearchDataChangedAsync { get; set; } = () => Task.CompletedTask;
-
-        [ScriptHide]
         public Func<Task> OnDataChangedAsync { get; set; } = () => Task.CompletedTask;
 
         public bool AllowLoad { get; set; } = true;
@@ -54,10 +48,10 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         [ScriptHide]
         public async Task SetAdditionalConditionAsync(SearchCondition condition, int page)
         {
+            await Task.CompletedTask;
             if (condition.ModuleName != Design.SearchCondition.ModuleName)
                 throw LowCodeException.Create("{0} Invalid Module", Design.SearchCondition.ModuleName, condition.ModuleName);
             _additionalCondition = condition;
-            await OnQueryChangedAsync(GetSearchCondition());
         }
 
         [ScriptHide]
