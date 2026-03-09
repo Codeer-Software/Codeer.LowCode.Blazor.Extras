@@ -59,9 +59,13 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
 
         internal List<DependencyListItem> DependencyList { get; set; } = [];
 
-        internal DateTime ViewStart { get; private set; } = DateTime.Today.AddDays(-(int)DateTime.Today.DayOfWeek);
+        public DateTime ViewStart { get; private set; } = DateTime.Today.AddDays(-(int)DateTime.Today.DayOfWeek);
 
-        internal GanttViewMode ViewMode { get; private set; } = GanttViewMode.Week;
+        public GanttViewMode ViewMode { get; private set; } = GanttViewMode.Week;
+
+        public DateTime RangeStart => GetViewDateRange().Start;
+
+        public DateTime RangeEnd => GetViewDateRange().End;
 
         public int Page => 0;
 
@@ -159,6 +163,22 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
 
         // ===== View state =====
 
+        [ScriptMethodToProperty("ViewStart")]
+        public async Task SetViewStartScriptAsync(DateTime date)
+        {
+            ViewStart = date;
+            NotifyStateChanged();
+            await ReloadAsync();
+        }
+
+        [ScriptMethodToProperty("ViewMode")]
+        public async Task SetViewModeScriptAsync(GanttViewMode mode)
+        {
+            ViewMode = mode;
+            NotifyStateChanged();
+            await ReloadAsync();
+        }
+
         internal (DateTime Start, DateTime End) GetViewDateRange() => ViewMode switch
         {
             GanttViewMode.Day => (ViewStart.Date, ViewStart.Date.AddDays(1)),
@@ -166,19 +186,9 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             _ => (ViewStart.Date, ViewStart.Date.AddDays(14)),
         };
 
-        internal async Task SetViewStartAsync(DateTime date)
-        {
-            ViewStart = date;
-            NotifyStateChanged();
-            await ReloadAsync();
-        }
+        internal Task SetViewStartAsync(DateTime date) => SetViewStartScriptAsync(date);
 
-        internal async Task SetViewModeAsync(GanttViewMode mode)
-        {
-            ViewMode = mode;
-            NotifyStateChanged();
-            await ReloadAsync();
-        }
+        internal Task SetViewModeAsync(GanttViewMode mode) => SetViewModeScriptAsync(mode);
 
         // ===== CRUD operations =====
 

@@ -66,6 +66,7 @@ namespace Extras.Client.Shared.Services
             _scriptRuntimeTypeManager.AddService(loadingService);
             _scriptRuntimeTypeManager.AddType<LoadingService.LoadingScope>();
             _scriptRuntimeTypeManager.AddType<CalendarViewMode>();
+            _scriptRuntimeTypeManager.AddType<GanttViewMode>();
             _scriptRuntimeTypeManager.UseDesignCache();
         }
         public void SetCurrentUserId(string id) => CurrentUserId = id;

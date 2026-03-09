@@ -9,3 +9,9 @@ void DetailLayoutDesign_OnAfterInitialization()
 {
     RichText.Value = "abc\r\nefg";
 }
+void ガントテストボタン_OnClick()
+{    
+    using var x = this.SuspendNotifyStateChanged();
+    Gantt.ViewMode = GanttViewMode.Day;
+    Gantt.ViewStart = new DateTime(2027, 4, 3);
+}

@@ -49,7 +49,8 @@ namespace Extras.Designer
             ScriptRuntimeTypeManager.AddService(new LoadingService());
             ScriptRuntimeTypeManager.AddType<LoadingService.LoadingScope>();
             ScriptRuntimeTypeManager.AddType<CalendarViewMode>();
-
+            ScriptRuntimeTypeManager.AddType<GanttViewMode>();
+            
             BlazorRuntime.InstallBundleCss("Extras.Client.Shared");
             BlazorRuntime.InstallBundleCss("Codeer.LowCode.Blazor.Extras");
 
