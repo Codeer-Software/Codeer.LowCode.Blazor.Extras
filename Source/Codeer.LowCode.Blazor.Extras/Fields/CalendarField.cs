@@ -1,4 +1,4 @@
-﻿using Codeer.LowCode.Blazor.DataIO;
+using Codeer.LowCode.Blazor.DataIO;
 using Codeer.LowCode.Blazor.DesignLogic;
 using Codeer.LowCode.Blazor.Extras.Designs;
 using Codeer.LowCode.Blazor.OperatingModel;
@@ -10,30 +10,9 @@ using Codeer.LowCode.Blazor.Script.Internal.ScriptServices;
 
 namespace Codeer.LowCode.Blazor.Extras.Fields
 {
-    public enum CalendarViewMode
-    {
-        Month,
-        Week,
-        Day
-    }
-
-    public class ModuleCalendarItem
-    {
-        public DateTime Start { get; set; }
-
-        public DateTime? End { get; set; }
-
-        public bool AllDay { get; set; }
-
-        public string Text { get; set; } = string.Empty;
-        public string Color { get; set; } = string.Empty;
-        public Module? Module { get; set; }
-    }
-
     public class CalendarField(CalendarFieldDesign design)
         : FieldBase<CalendarFieldDesign>(design), ISearchResultsViewField
     {
-
         private SearchCondition? _additionalCondition;
         private (DateTime Start, DateTime End)? _currentRange;
 
@@ -41,10 +20,10 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         public Func<SearchCondition?, Task> OnQueryChangedAsync { get; set; } = _ => Task.CompletedTask;
 
         [ScriptHide]
-        public Func<Task> OnSearchDataChangedAsync { get; set; } = async () => await Task.CompletedTask;
+        public Func<Task> OnSearchDataChangedAsync { get; set; } = () => Task.CompletedTask;
 
         [ScriptHide]
-        public Func<Task> OnDataChangedAsync { get; set; } = async () => await Task.CompletedTask;
+        public Func<Task> OnDataChangedAsync { get; set; } = () => Task.CompletedTask;
 
         public bool AllowLoad { get; set; } = true;
 
@@ -74,7 +53,8 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         [ScriptHide]
         public async Task SetAdditionalConditionAsync(SearchCondition condition, int page)
         {
-            if (condition.ModuleName != Design.SearchCondition.ModuleName) throw LowCodeException.Create("{0} Invalid Module", Design.SearchCondition.ModuleName, condition.ModuleName);
+            if (condition.ModuleName != Design.SearchCondition.ModuleName)
+                throw LowCodeException.Create("{0} Invalid Module", Design.SearchCondition.ModuleName, condition.ModuleName);
             _additionalCondition = condition;
             await OnQueryChangedAsync(GetSearchCondition());
         }
@@ -86,7 +66,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         public override FieldDataBase? GetData() => null;
 
         [ScriptHide]
-        public override async Task SetDataAsync(FieldDataBase? fieldDataBase) => await Task.CompletedTask;
+        public override Task SetDataAsync(FieldDataBase? fieldDataBase) => Task.CompletedTask;
 
         [ScriptHide]
         public override async Task OnExternalFieldChangedAsync(string fieldName)
@@ -101,10 +81,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         public override async Task OnChildDataChangedAsync()
         {
             var count = Items.Count;
-            foreach (var e in Items.ToList())
-            {
-                if (e.Module?.IsDeleted == true) Items.Remove(e);
-            }
+            Items.RemoveAll(e => e.Module?.IsDeleted == true);
             if (count == Items.Count) return;
 
             await InvokeOnDataChangedAsync();
@@ -118,7 +95,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
 
             var (rangeStart, rangeEnd) = GetViewDateRange();
 
-            if (_currentRange is not null && _currentRange.Value.Start == rangeStart && _currentRange.Value.End == rangeEnd) return;
+            if (_currentRange is { } range && range.Start == rangeStart && range.End == rangeEnd) return;
 
             _currentRange = (rangeStart, rangeEnd);
 
@@ -131,31 +108,26 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
                     MultiMatchCondition.And(startVariable.GreaterThanOrEqual(rangeStart), startVariable.LessThan(rangeEnd)),
                     MultiMatchCondition.And(endVariable.GreaterThanOrEqual(rangeStart), endVariable.LessThan(rangeEnd)),
                     MultiMatchCondition.And(startVariable.LessThan(rangeStart), endVariable.GreaterThanOrEqual(rangeEnd))
-                    )
+                )
             };
 
             await SetAdditionalConditionAsync(condition, 0);
 
-            var items = await this.GetChildModulesAsync(GetSearchCondition(), ModuleLayoutType.Detail, Design.DetailLayoutName);
+            var modules = await this.GetChildModulesAsync(GetSearchCondition(), ModuleLayoutType.Detail, Design.DetailLayoutName);
             Items.Clear();
-            Items.AddRange(items.Select(ConvertToCalendarItem).OrderBy(e => e.Start).ThenByDescending(e => (e.End ?? e.Start) - e.Start).ToList());
+            Items.AddRange(modules.Select(ConvertToCalendarItem).OrderByStart());
 
             NotifyStateChanged();
         }
 
         internal (DateTime Start, DateTime End) GetViewDateRange()
         {
-            switch (ViewMode)
+            return ViewMode switch
             {
-                case CalendarViewMode.Week:
-                    var weekStart = SelectedDate.Date.AddDays(-(int)SelectedDate.DayOfWeek);
-                    return (weekStart, weekStart.AddDays(7));
-                case CalendarViewMode.Day:
-                    return (SelectedDate.Date, SelectedDate.Date.AddDays(1));
-                default:
-                    var monthFirst = new DateTime(SelectedDate.Year, SelectedDate.Month, 1);
-                    return (monthFirst.AddDays(-7), monthFirst.AddMonths(1).AddDays(7));
-            }
+                CalendarViewMode.Week => GetWeekRange(),
+                CalendarViewMode.Day => (SelectedDate.Date, SelectedDate.Date.AddDays(1)),
+                _ => GetMonthRange(),
+            };
         }
 
         internal async Task AddAsync(DateTime date)
@@ -179,7 +151,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             }
             if (await mod.SubmitAsync() != true) return;
 
-            Items.Add(ConvertToCalendarItem(mod)!);
+            Items.Add(ConvertToCalendarItem(mod));
             SortItems();
 
             await InvokeOnDataChangedAsync();
@@ -199,16 +171,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
                 }
                 if (await mod.SubmitAsync() != true) return;
 
-                var item = Items.FirstOrDefault(e => e.Module?.GetIdText() == mod.GetIdText());
-                if (item != null)
-                {
-                    item.Text = mod.GetField<TextField>(Design.TextField)?.Value ?? item.Text;
-                    item.Start = mod.GetField<DateTimeField>(Design.StartField)?.Value ?? item.Start;
-                    item.End = mod.GetField<DateTimeField>(Design.EndField)?.Value ?? item.End;
-                    item.AllDay = mod.GetField<BooleanField>(Design.AllDayField)?.Value ?? item.AllDay;
-                    if (!string.IsNullOrEmpty(Design.ColorField))
-                        item.Color = mod.GetField<TextField>(Design.ColorField)?.Value ?? item.Color;
-                }
+                UpdateItemFromModule(mod);
                 SortItems();
             }
             else if (dialogResult == Properties.Resources.Delete)
@@ -249,19 +212,31 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
 
         private void SortItems()
         {
-            var sorted = Items.OrderBy(e => e.Start).ThenByDescending(e => (e.End ?? e.Start) - e.Start).ToList();
+            var sorted = Items.OrderByStart().ToList();
             Items.Clear();
             Items.AddRange(sorted);
         }
 
+        private void UpdateItemFromModule(Module mod)
+        {
+            var item = Items.FirstOrDefault(e => e.Module?.GetIdText() == mod.GetIdText());
+            if (item == null) return;
+
+            var updated = ConvertToCalendarItem(mod);
+            item.Text = updated.Text;
+            item.Start = updated.Start;
+            item.End = updated.End;
+            item.AllDay = updated.AllDay;
+            item.Color = updated.Color;
+        }
+
         private ModuleCalendarItem ConvertToCalendarItem(Module data)
         {
-            var design = Design;
-            var text = data.GetField<TextField>(design.TextField)?.Value;
-            var start = data.GetField<DateTimeField>(design.StartField)?.Value;
-            var end = data.GetField<DateTimeField>(design.EndField)?.Value;
-            var allDay = data.GetField<BooleanField>(design.AllDayField)?.Value ?? false;
-            var color = string.IsNullOrEmpty(design.ColorField) ? "" : data.GetField<TextField>(design.ColorField)?.Value ?? "";
+            var text = data.GetField<TextField>(Design.TextField)?.Value;
+            var start = data.GetField<DateTimeField>(Design.StartField)?.Value;
+            var end = data.GetField<DateTimeField>(Design.EndField)?.Value;
+            var allDay = data.GetField<BooleanField>(Design.AllDayField)?.Value ?? false;
+            var color = string.IsNullOrEmpty(Design.ColorField) ? "" : data.GetField<TextField>(Design.ColorField)?.Value ?? "";
 
             if (text is null || start is null) return new() { Module = data };
 
@@ -276,7 +251,25 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             };
         }
 
+        private (DateTime Start, DateTime End) GetWeekRange()
+        {
+            var weekStart = SelectedDate.Date.AddDays(-(int)SelectedDate.DayOfWeek);
+            return (weekStart, weekStart.AddDays(7));
+        }
+
+        private (DateTime Start, DateTime End) GetMonthRange()
+        {
+            var monthFirst = new DateTime(SelectedDate.Year, SelectedDate.Month, 1);
+            return (monthFirst.AddDays(-7), monthFirst.AddMonths(1).AddDays(7));
+        }
+
         private SearchCondition GetSearchCondition()
             => Design.SearchCondition.MergeSearchCondition(_additionalCondition);
+    }
+
+    internal static class CalendarItemExtensions
+    {
+        public static IOrderedEnumerable<ModuleCalendarItem> OrderByStart(this IEnumerable<ModuleCalendarItem> items)
+            => items.OrderBy(e => e.Start).ThenByDescending(e => (e.End ?? e.Start) - e.Start);
     }
 }

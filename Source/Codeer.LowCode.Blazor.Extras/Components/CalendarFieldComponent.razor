@@ -31,47 +31,23 @@
   {
     <div class="month-view">
       <div class="month-header">
-        @foreach (var d in _dayNames)
+        @foreach (var d in DayNames)
         {
           <div class="month-header-cell">@d</div>
         }
       </div>
       <div class="month-grid">
-        @{ var weeks = GetMonthWeeks(); }
-        @foreach (var week in weeks)
+        @foreach (var week in GetMonthWeeks())
         {
           <div class="month-row">
             @foreach (var day in week)
             {
-              var evts = GetMonthDayEvents(day.Date);
               <div class="month-cell @(day.IsCurrentMonth ? "" : "month-cell-other-month") @(day.IsToday ? "month-cell-today" : "")"
-                   @onclick="() => OnMonthCellClicked(day.Date)">
+                   @onclick="() => OnCellClicked(day.Date)">
                 <div class="month-date @(day.IsToday ? "month-date-today" : "")">@day.Date.Day</div>
-                @foreach (var evt in evts)
+                @foreach (var evt in GetMonthDayEvents(day.Date))
                 {
-                  var isMultiDay = !evt.AllDay && evt.End.HasValue && evt.Start.Date != evt.End.Value.Date;
-                  var isStartDay = day.Date == evt.Start.Date;
-                  var isEndDay = evt.End.HasValue && day.Date == evt.End.Value.Date;
-                  var eventClass = evt.AllDay || isMultiDay ? "month-event-allday" : "month-event-timed";
-                  <div class="month-event @eventClass"
-                       style="@EventColorStyle(evt)"
-                       @onclick="() => OnEventClicked(evt)" @onclick:stopPropagation="true"
-                       title="@GetEventTooltip(evt)">
-                    @if (!evt.AllDay && !isMultiDay)
-                    {
-                      <span class="month-event-dot"></span>
-                      <span class="month-event-time">@evt.Start.ToString("H:mm")</span>
-                    }
-                    else if (isMultiDay && isStartDay)
-                    {
-                      <span class="month-event-time">@evt.Start.ToString("H:mm") -</span>
-                    }
-                    else if (isMultiDay && isEndDay)
-                    {
-                      <span class="month-event-time">- @evt.End!.Value.ToString("H:mm")</span>
-                    }
-                    <span class="month-event-text">@evt.Text</span>
-                  </div>
+                  @RenderMonthEvent(evt, day.Date)
                 }
               </div>
             }
@@ -85,14 +61,14 @@
   @if (Field.ViewMode == CalendarViewMode.Week)
   {
     var weekDays = GetWeekDays();
-    var weekAllDay = GetAllDayEvents(weekDays);
+    var weekAllDay = weekDays.Select(d => GetAllDayEventsForDay(d.Date)).ToList();
     <div class="week-view">
       <div class="week-header">
         <div class="time-gutter-header"></div>
         @foreach (var d in weekDays)
         {
           <div class="week-header-cell @(d.IsToday ? "week-header-cell-today" : "")">
-            <div class="week-header-dayname">@_dayNames[(int)d.Date.DayOfWeek]</div>
+            <div class="week-header-dayname">@DayNames[(int)d.Date.DayOfWeek]</div>
             <div class="week-header-date @(d.IsToday ? "week-header-date-today" : "")">@d.Date.Day</div>
           </div>
         }
@@ -107,47 +83,17 @@
               <div class="allday-cell">
                 @foreach (var evt in dayEvts)
                 {
-                  <div class="allday-event" style="@EventColorStyle(evt)" @onclick="() => OnEventClicked(evt)" title="@evt.Text">
-                    @evt.Text
-                  </div>
+                  @RenderAllDayEvent(evt)
                 }
               </div>
             }
           </div>
         }
         <div class="time-grid">
-          <div class="time-gutter">
-            @for (var h = 0; h < 24; h++)
-            {
-              <div class="time-gutter-cell">
-                <span class="time-label">@(h == 0 ? "" : $"{h}:00")</span>
-              </div>
-            }
-          </div>
+          @RenderTimeGutter()
           @foreach (var d in weekDays)
           {
-            var dayEvents = GetTimedEventsForDay(d.Date);
-            <div class="time-column @(d.IsToday ? "time-column-today" : "")" @onclick="() => OnTimeCellClicked(d.Date)">
-              @for (var h = 0; h < 24; h++)
-              {
-                <div class="time-cell"></div>
-              }
-              @foreach (var pos in dayEvents)
-              {
-                var layerOffset = pos.Layer * 14;
-                var timeText = GetTimeEventTimeText(pos);
-                <div class="time-event"
-                     style="top: @Px(pos.TopPx); left: @Px(layerOffset); width: calc(100% - @Px(layerOffset) - 2px); height: @Px(pos.HeightPx); z-index: @(pos.Layer + 1); @EventColorStyle(pos.Item)"
-                     @onclick="() => OnEventClicked(pos.Item)" @onclick:stopPropagation="true"
-                     title="@GetEventTooltip(pos.Item)">
-                  <div class="time-event-title">@pos.Item.Text</div>
-                  @if (!string.IsNullOrEmpty(timeText))
-                  {
-                    <div class="time-event-time">@timeText</div>
-                  }
-                </div>
-              }
-            </div>
+            @RenderTimeColumn(d.Date, d.IsToday)
           }
         </div>
       </div>
@@ -159,7 +105,6 @@
   {
     var dayDate = Field.SelectedDate.Date;
     var dayAllDay = GetAllDayEventsForDay(dayDate);
-    var dayTimed = GetTimedEventsForDay(dayDate);
     <div class="day-view">
       <div class="day-header">
         <div class="time-gutter-header"></div>
@@ -176,43 +121,14 @@
             <div class="allday-cell day-allday-cell">
               @foreach (var evt in dayAllDay)
               {
-                <div class="allday-event" style="@EventColorStyle(evt)" @onclick="() => OnEventClicked(evt)" title="@evt.Text">
-                  @evt.Text
-                </div>
+                @RenderAllDayEvent(evt)
               }
             </div>
           </div>
         }
         <div class="time-grid day-time-grid">
-          <div class="time-gutter">
-            @for (var h = 0; h < 24; h++)
-            {
-              <div class="time-gutter-cell">
-                <span class="time-label">@(h == 0 ? "" : $"{h}:00")</span>
-              </div>
-            }
-          </div>
-          <div class="time-column time-column-today" @onclick="() => OnTimeCellClicked(dayDate)">
-            @for (var h = 0; h < 24; h++)
-            {
-              <div class="time-cell"></div>
-            }
-            @foreach (var pos in dayTimed)
-            {
-              var layerOffset = pos.Layer * 14;
-              var timeText = GetTimeEventTimeText(pos);
-              <div class="time-event"
-                   style="top: @Px(pos.TopPx); left: @Px(layerOffset); width: calc(100% - @Px(layerOffset) - 2px); height: @Px(pos.HeightPx); z-index: @(pos.Layer + 1); @EventColorStyle(pos.Item)"
-                   @onclick="() => OnEventClicked(pos.Item)" @onclick:stopPropagation="true"
-                   title="@GetEventTooltip(pos.Item)">
-                <div class="time-event-title">@pos.Item.Text</div>
-                @if (!string.IsNullOrEmpty(timeText))
-                {
-                  <div class="time-event-time">@timeText</div>
-                }
-              </div>
-            }
-          </div>
+          @RenderTimeGutter()
+          @RenderTimeColumn(dayDate, true)
         </div>
       </div>
     </div>
@@ -223,26 +139,97 @@
   const double PxPerHour = 48.0;
   const double MinEventHeight = 20.0;
 
-  private static string[] _dayNames => [Resources.Sun, Resources.Mon, Resources.Tue, Resources.Wed, Resources.Thu, Resources.Fri, Resources.Sat];
+  private static string[] DayNames => [Resources.Sun, Resources.Mon, Resources.Tue, Resources.Wed, Resources.Thu, Resources.Fri, Resources.Sat];
+
+  private CultureInfo Culture => CultureInfo.CurrentUICulture;
 
   private string Px(double v) => v.ToString("0.#", CultureInfo.InvariantCulture) + "px";
-  private string Pct(double v) => v.ToString("0.##", CultureInfo.InvariantCulture) + "%";
-  private string EventColorStyle(ModuleCalendarItem item) => string.IsNullOrEmpty(item.Color) ? "" : $"background:{item.Color};";
+
+  private string EventColorStyle(ModuleCalendarItem item)
+    => string.IsNullOrEmpty(item.Color) ? "" : $"background:{item.Color};";
+
+  // ===== Shared render methods =====
+
+  private RenderFragment RenderMonthEvent(ModuleCalendarItem evt, DateTime cellDate) => __builder =>
+  {
+    var isMultiDay = !evt.AllDay && evt.End.HasValue && evt.Start.Date != evt.End.Value.Date;
+    var isStartDay = cellDate == evt.Start.Date;
+    var isEndDay = evt.End.HasValue && cellDate == evt.End.Value.Date;
+    var eventClass = evt.AllDay || isMultiDay ? "month-event-allday" : "month-event-timed";
+    <div class="month-event @eventClass"
+         style="@EventColorStyle(evt)"
+         @onclick="() => OnEventClicked(evt)" @onclick:stopPropagation="true"
+         title="@GetEventTooltip(evt)">
+      @if (!evt.AllDay && !isMultiDay)
+      {
+        <span class="month-event-dot"></span>
+        <span class="month-event-time">@evt.Start.ToString("H:mm")</span>
+      }
+      else if (isMultiDay && isStartDay)
+      {
+        <span class="month-event-time">@evt.Start.ToString("H:mm") -</span>
+      }
+      else if (isMultiDay && isEndDay)
+      {
+        <span class="month-event-time">- @evt.End!.Value.ToString("H:mm")</span>
+      }
+      <span class="month-event-text">@evt.Text</span>
+    </div>
+  };
+
+  private RenderFragment RenderAllDayEvent(ModuleCalendarItem evt) => __builder =>
+  {
+    <div class="allday-event" style="@EventColorStyle(evt)" @onclick="() => OnEventClicked(evt)" title="@evt.Text">
+      @evt.Text
+    </div>
+  };
+
+  private RenderFragment RenderTimeGutter() => __builder =>
+  {
+    <div class="time-gutter">
+      @for (var h = 0; h < 24; h++)
+      {
+        <div class="time-gutter-cell">
+          <span class="time-label">@(h == 0 ? "" : $"{h}:00")</span>
+        </div>
+      }
+    </div>
+  };
+
+  private RenderFragment RenderTimeColumn(DateTime date, bool isToday) => __builder =>
+  {
+    var dayEvents = GetTimedEventsForDay(date);
+    <div class="time-column @(isToday ? "time-column-today" : "")" @onclick="() => OnCellClicked(date)">
+      @for (var h = 0; h < 24; h++)
+      {
+        <div class="time-cell"></div>
+      }
+      @foreach (var pos in dayEvents)
+      {
+        var layerOffset = pos.Layer * 14;
+        var timeText = GetTimeEventTimeText(pos);
+        <div class="time-event"
+             style="top: @Px(pos.TopPx); left: @Px(layerOffset); width: calc(100% - @Px(layerOffset) - 2px); height: @Px(pos.HeightPx); z-index: @(pos.Layer + 1); @EventColorStyle(pos.Item)"
+             @onclick="() => OnEventClicked(pos.Item)" @onclick:stopPropagation="true"
+             title="@GetEventTooltip(pos.Item)">
+          <div class="time-event-title">@pos.Item.Text</div>
+          @if (!string.IsNullOrEmpty(timeText))
+          {
+            <div class="time-event-time">@timeText</div>
+          }
+        </div>
+      }
+    </div>
+  };
 
   // ===== Navigation =====
 
-  private CultureInfo _culture => CultureInfo.CurrentUICulture;
-
-  private string GetTitle()
+  private string GetTitle() => Field.ViewMode switch
   {
-    var d = Field.SelectedDate;
-    return Field.ViewMode switch
-    {
-      CalendarViewMode.Day => d.ToString(Resources.DateFormatDayTitle, _culture),
-      CalendarViewMode.Week => GetWeekTitle(),
-      _ => d.ToString(Resources.DateFormatMonthTitle, _culture),
-    };
-  }
+    CalendarViewMode.Day => Field.SelectedDate.ToString(Resources.DateFormatDayTitle, Culture),
+    CalendarViewMode.Week => GetWeekTitle(),
+    _ => Field.SelectedDate.ToString(Resources.DateFormatMonthTitle, Culture),
+  };
 
   private string GetWeekTitle()
   {
@@ -250,14 +237,14 @@
     var end = start.AddDays(6);
     if (start.Month == end.Month)
       return string.Format(Resources.WeekTitleSameMonth,
-        start.ToString(Resources.DateFormatMonthNameFull, _culture), start.Day, end.Day, start.Year);
+        start.ToString(Resources.DateFormatMonthNameFull, Culture), start.Day, end.Day, start.Year);
     if (start.Year == end.Year)
       return string.Format(Resources.WeekTitleDiffMonth,
-        start.ToString(Resources.DateFormatMonthNameShort, _culture), start.Day,
-        end.ToString(Resources.DateFormatMonthNameShort, _culture), end.Day, start.Year);
+        start.ToString(Resources.DateFormatMonthNameShort, Culture), start.Day,
+        end.ToString(Resources.DateFormatMonthNameShort, Culture), end.Day, start.Year);
     return string.Format(Resources.RangeTitleFormat,
-      start.ToString(Resources.DateFormatDateShort, _culture),
-      end.ToString(Resources.DateFormatDateShort, _culture));
+      start.ToString(Resources.DateFormatDateShort, Culture),
+      end.ToString(Resources.DateFormatDateShort, Culture));
   }
 
   private async Task GoToday() => await Field.SetCurrentDayAsync(DateTime.Now);
@@ -290,9 +277,7 @@
 
   // ===== Event handlers =====
 
-  private async Task OnMonthCellClicked(DateTime date) => await Field.AddAsync(date);
-
-  private async Task OnTimeCellClicked(DateTime date) => await Field.AddAsync(date);
+  private async Task OnCellClicked(DateTime date) => await Field.AddAsync(date);
 
   private async Task OnEventClicked(ModuleCalendarItem item) => await Field.EditAsync(item.Module);
 
@@ -314,13 +299,7 @@
       for (var d = 0; d < 7; d++)
       {
         var date = startDate.AddDays(w * 7 + d);
-        week.Add(new CalendarDay
-        {
-          Date = date,
-          DayOfWeek = date.DayOfWeek,
-          IsCurrentMonth = date.Year == year && date.Month == month,
-          IsToday = date.Date == today
-        });
+        week.Add(new CalendarDay(date, date.Year == year && date.Month == month, date.Date == today));
       }
       weeks.Add(week);
     }
@@ -328,17 +307,9 @@
   }
 
   private List<ModuleCalendarItem> GetMonthDayEvents(DateTime date)
-  {
-    return Field.Items
-      .Where(item =>
-      {
-        if (item.Start == default) return false;
-        var s = item.Start.Date;
-        var e = (item.End ?? item.Start).Date;
-        return date.Date >= s && date.Date <= e;
-      })
+    => Field.Items
+      .Where(item => item.Start != default && date.Date >= item.Start.Date && date.Date <= (item.End ?? item.Start).Date)
       .ToList();
-  }
 
   // ===== Week View helpers =====
 
@@ -346,37 +317,15 @@
   {
     var start = Field.SelectedDate.Date.AddDays(-(int)Field.SelectedDate.DayOfWeek);
     var today = DateTime.Today;
-    return Enumerable.Range(0, 7).Select(i =>
-    {
-      var date = start.AddDays(i);
-      return new CalendarDay
-      {
-        Date = date,
-        DayOfWeek = date.DayOfWeek,
-        IsCurrentMonth = true,
-        IsToday = date.Date == today
-      };
-    }).ToList();
-  }
-
-  private List<List<ModuleCalendarItem>> GetAllDayEvents(List<CalendarDay> days)
-  {
-    return days.Select(d => GetAllDayEventsForDay(d.Date)).ToList();
+    return Enumerable.Range(0, 7)
+      .Select(i => { var date = start.AddDays(i); return new CalendarDay(date, true, date.Date == today); })
+      .ToList();
   }
 
   private List<ModuleCalendarItem> GetAllDayEventsForDay(DateTime date)
-  {
-    return Field.Items
-      .Where(item =>
-      {
-        if (item.Start == default) return false;
-        if (!item.AllDay) return false;
-        var s = item.Start.Date;
-        var e = (item.End ?? item.Start).Date;
-        return date.Date >= s && date.Date <= e;
-      })
+    => Field.Items
+      .Where(item => item.Start != default && item.AllDay && date.Date >= item.Start.Date && date.Date <= (item.End ?? item.Start).Date)
       .ToList();
-  }
 
   // ===== Time grid event positioning =====
 
@@ -386,13 +335,7 @@
     var dayEnd = dayStart.AddDays(1);
 
     var clipped = Field.Items
-      .Where(item =>
-      {
-        if (item.Start == default || item.AllDay) return false;
-        var s = item.Start;
-        var e = item.End ?? item.Start;
-        return s < dayEnd && e > dayStart;
-      })
+      .Where(item => item.Start != default && !item.AllDay && item.Start < dayEnd && (item.End ?? item.Start) > dayStart)
       .Select(item =>
       {
         var s = item.Start < dayStart ? dayStart : item.Start;
@@ -406,20 +349,7 @@
 
     if (clipped.Count == 0) return [];
 
-    // Assign layers: overlapping events stack with increasing layer.
-    // Earlier / longer events stay at lower layers (background),
-    // shorter overlapping events get higher layers (foreground, offset right).
-    var layers = new int[clipped.Count];
-    for (var i = 0; i < clipped.Count; i++)
-    {
-      var maxLayer = -1;
-      for (var j = 0; j < i; j++)
-      {
-        if (clipped[i].Start < clipped[j].End && clipped[i].End > clipped[j].Start)
-          maxLayer = Math.Max(maxLayer, layers[j]);
-      }
-      layers[i] = maxLayer + 1;
-    }
+    var layers = AssignLayers(clipped);
 
     return clipped.Select((e, i) =>
     {
@@ -437,34 +367,43 @@
     }).ToList();
   }
 
-  private string GetTimeEventTimeText(EventPosition pos)
+  private static int[] AssignLayers(List<(ModuleCalendarItem Item, DateTime Start, DateTime End)> clipped)
+  {
+    var layers = new int[clipped.Count];
+    for (var i = 0; i < clipped.Count; i++)
+    {
+      var maxLayer = -1;
+      for (var j = 0; j < i; j++)
+      {
+        if (clipped[i].Start < clipped[j].End && clipped[i].End > clipped[j].Start)
+          maxLayer = Math.Max(maxLayer, layers[j]);
+      }
+      layers[i] = maxLayer + 1;
+    }
+    return layers;
+  }
+
+  private static string GetTimeEventTimeText(EventPosition pos)
   {
     if (!pos.IsMultiDay)
-      return $"{pos.Item.Start.ToString("H:mm")} - {pos.Item.End?.ToString("H:mm") ?? ""}";
+      return $"{pos.Item.Start:H:mm} - {pos.Item.End:H:mm}";
     if (pos.IsStartDay)
-      return $"{pos.Item.Start.ToString("H:mm")} -";
+      return $"{pos.Item.Start:H:mm} -";
     if (pos.IsEndDay)
-      return $"- {pos.Item.End!.Value.ToString("H:mm")}";
+      return $"- {pos.Item.End:H:mm}";
     return "";
   }
 
-  private string GetEventTooltip(ModuleCalendarItem item)
+  private static string GetEventTooltip(ModuleCalendarItem item)
   {
     if (item.AllDay) return item.Text;
-    var start = item.Start.ToString("H:mm");
     var end = item.End?.ToString("H:mm") ?? "";
-    return string.IsNullOrEmpty(end) ? $"{start} {item.Text}" : $"{start} - {end} {item.Text}";
+    return string.IsNullOrEmpty(end) ? $"{item.Start:H:mm} {item.Text}" : $"{item.Start:H:mm} - {end} {item.Text}";
   }
 
   // ===== Data classes =====
 
-  private class CalendarDay
-  {
-    public DateTime Date { get; set; }
-    public DayOfWeek DayOfWeek { get; set; }
-    public bool IsCurrentMonth { get; set; }
-    public bool IsToday { get; set; }
-  }
+  private record CalendarDay(DateTime Date, bool IsCurrentMonth, bool IsToday);
 
   private class EventPosition
   {
