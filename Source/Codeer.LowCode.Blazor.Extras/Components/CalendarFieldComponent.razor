@@ -9,9 +9,9 @@
   @* ===== Toolbar ===== *@
   <div class="calendar-toolbar">
     <div class="toolbar-left">
-      <button type="button" class="toolbar-btn today-btn" @onclick="GoToday">@Resources.Today</button>
-      <button type="button" class="toolbar-btn nav-btn" @onclick="GoPrev">&#9664;</button>
-      <button type="button" class="toolbar-btn nav-btn" @onclick="GoNext">&#9654;</button>
+      <button type="button" class="toolbar-btn toolbar-btn-today" @onclick="GoToday">@Resources.Today</button>
+      <button type="button" class="toolbar-btn toolbar-btn-prev" @onclick="GoPrev">&#9664;</button>
+      <button type="button" class="toolbar-btn toolbar-btn-next" @onclick="GoNext">&#9654;</button>
       <span class="toolbar-title">@GetTitle()</span>
     </div>
     <div class="toolbar-right">
@@ -44,15 +44,15 @@
             @foreach (var day in week)
             {
               var evts = GetMonthDayEvents(day.Date);
-              <div class="month-cell @(day.IsCurrentMonth ? "" : "other-month") @(day.IsToday ? "today" : "")"
+              <div class="month-cell @(day.IsCurrentMonth ? "" : "month-cell-other-month") @(day.IsToday ? "month-cell-today" : "")"
                    @onclick="() => OnMonthCellClicked(day.Date)">
-                <div class="month-date @(day.IsToday ? "today-circle" : "")">@day.Date.Day</div>
+                <div class="month-date @(day.IsToday ? "month-date-today" : "")">@day.Date.Day</div>
                 @foreach (var evt in evts)
                 {
                   var isMultiDay = !evt.AllDay && evt.End.HasValue && evt.Start.Date != evt.End.Value.Date;
                   var isStartDay = day.Date == evt.Start.Date;
                   var isEndDay = evt.End.HasValue && day.Date == evt.End.Value.Date;
-                  var eventClass = evt.AllDay || isMultiDay ? "allday" : "timed";
+                  var eventClass = evt.AllDay || isMultiDay ? "month-event-allday" : "month-event-timed";
                   <div class="month-event @eventClass"
                        style="@EventColorStyle(evt)"
                        @onclick="() => OnEventClicked(evt)" @onclick:stopPropagation="true"
@@ -91,9 +91,9 @@
         <div class="time-gutter-header"></div>
         @foreach (var d in weekDays)
         {
-          <div class="week-header-cell @(d.IsToday ? "today" : "")">
+          <div class="week-header-cell @(d.IsToday ? "week-header-cell-today" : "")">
             <div class="week-header-dayname">@_dayNames[(int)d.Date.DayOfWeek]</div>
-            <div class="week-header-date @(d.IsToday ? "today-circle" : "")">@d.Date.Day</div>
+            <div class="week-header-date @(d.IsToday ? "week-header-date-today" : "")">@d.Date.Day</div>
           </div>
         }
       </div>
@@ -127,7 +127,7 @@
           @foreach (var d in weekDays)
           {
             var dayEvents = GetTimedEventsForDay(d.Date);
-            <div class="time-column @(d.IsToday ? "today-col" : "")" @onclick="() => OnTimeCellClicked(d.Date)">
+            <div class="time-column @(d.IsToday ? "time-column-today" : "")" @onclick="() => OnTimeCellClicked(d.Date)">
               @for (var h = 0; h < 24; h++)
               {
                 <div class="time-cell"></div>
@@ -165,7 +165,7 @@
         <div class="time-gutter-header"></div>
         <div class="day-header-cell">
           <span class="day-header-dayname">@dayDate.ToString(Resources.DateFormatDayName, CultureInfo.CurrentUICulture)</span>
-          <span class="day-header-date @(dayDate == DateTime.Today ? "today-circle" : "")">@dayDate.Day</span>
+          <span class="day-header-date @(dayDate == DateTime.Today ? "day-header-date-today" : "")">@dayDate.Day</span>
         </div>
       </div>
       <div class="time-grid-scroll">
@@ -192,7 +192,7 @@
               </div>
             }
           </div>
-          <div class="time-column today-col" @onclick="() => OnTimeCellClicked(dayDate)">
+          <div class="time-column time-column-today" @onclick="() => OnTimeCellClicked(dayDate)">
             @for (var h = 0; h < 24; h++)
             {
               <div class="time-cell"></div>
