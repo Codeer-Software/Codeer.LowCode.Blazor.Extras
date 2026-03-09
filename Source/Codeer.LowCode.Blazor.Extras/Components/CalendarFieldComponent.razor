@@ -30,13 +30,13 @@
   @if (Field.ViewMode == CalendarViewMode.Month)
   {
     <div class="month-view">
-      <div class="month-header">
-        @foreach (var d in DayNames)
-        {
-          <div class="month-header-cell">@d</div>
-        }
-      </div>
       <div class="month-grid">
+        <div class="month-header">
+          @foreach (var d in DayNames)
+          {
+            <div class="month-header-cell">@d</div>
+          }
+        </div>
         @foreach (var week in GetMonthWeeks())
         {
           <div class="month-row">
@@ -63,17 +63,17 @@
     var weekDays = GetWeekDays();
     var weekAllDay = weekDays.Select(d => GetAllDayEventsForDay(d.Date)).ToList();
     <div class="week-view">
-      <div class="week-header">
-        <div class="time-gutter-header"></div>
-        @foreach (var d in weekDays)
-        {
-          <div class="week-header-cell @(d.IsToday ? "week-header-cell-today" : "")">
-            <div class="week-header-dayname">@DayNames[(int)d.Date.DayOfWeek]</div>
-            <div class="week-header-date @(d.IsToday ? "week-header-date-today" : "")">@d.Date.Day</div>
-          </div>
-        }
-      </div>
       <div class="time-grid-scroll">
+        <div class="week-header">
+          <div class="time-gutter-header"></div>
+          @foreach (var d in weekDays)
+          {
+            <div class="week-header-cell @(d.IsToday ? "week-header-cell-today" : "")">
+              <div class="week-header-dayname">@DayNames[(int)d.Date.DayOfWeek]</div>
+              <div class="week-header-date @(d.IsToday ? "week-header-date-today" : "")">@d.Date.Day</div>
+            </div>
+          }
+        </div>
         @if (weekAllDay.Any(g => g.Count > 0))
         {
           <div class="allday-section">

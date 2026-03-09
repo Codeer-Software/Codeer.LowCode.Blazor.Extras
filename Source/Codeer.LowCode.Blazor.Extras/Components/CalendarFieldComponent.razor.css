@@ -120,6 +120,10 @@
   display: grid;
   grid-template-columns: repeat(7, 1fr);
   border-bottom: 1px solid #dadce0;
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: #fff;
 }
 
 .month-header-cell {
@@ -130,6 +134,11 @@
   color: #70757a;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+  border-right: 1px solid #dadce0;
+}
+
+.month-header-cell:last-child {
+  border-right: none;
 }
 
 .month-grid {
@@ -257,7 +266,16 @@
   overflow: hidden;
 }
 
-.week-header,
+.week-header {
+  display: flex;
+  border-bottom: 1px solid #dadce0;
+  flex-shrink: 0;
+  position: sticky;
+  top: 0;
+  z-index: 6;
+  background: #fff;
+}
+
 .day-header {
   display: flex;
   border-bottom: 1px solid #dadce0;
@@ -273,6 +291,7 @@
   flex: 1;
   text-align: center;
   padding: 4px 0 8px;
+  border-left: 1px solid #dadce0;
 }
 
 .week-header-cell-today .week-header-dayname {
