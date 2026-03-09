@@ -27,7 +27,7 @@
       "EndField": "End",
       "AllDayField": "AllDay",
       "ColorField": "Color",
-      "DetailLayoutName": "",
+      "DetailLayoutName": "カレンダー用",
       "EnableMonthView": true,
       "EnableWeekView": true,
       "EnableDayView": true,
