@@ -157,7 +157,7 @@
 .gantt-label-row {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 8px;
   padding: 0 12px;
   border-bottom: 1px solid #f0f0f0;
   cursor: pointer;
@@ -238,6 +238,7 @@
 ::deep .header-hour-text {
   font-size: 9px;
   fill: #70757a;
+  text-anchor: middle;
   dominant-baseline: auto;
 }
 

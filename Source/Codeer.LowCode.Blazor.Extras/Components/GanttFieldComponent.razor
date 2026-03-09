@@ -65,7 +65,7 @@
     </div>
 
     @* ===== Right: Timeline ===== *@
-    <div class="gantt-timeline-scroll">
+    <div class="gantt-timeline-scroll" style="background: linear-gradient(to bottom, #f8f9fa @Px(headerHeight), #fff @Px(headerHeight));">
       <svg class="gantt-timeline-svg"
            width="@timelineWidth" height="@totalHeight"
            @onmousemove="OnMouseMove" @onmouseup="OnMouseUp" @onmouseleave="OnMouseUp">
@@ -127,7 +127,7 @@
             var h = dates[i].Hour;
             @if (h % 6 == 0)
             {
-              <g><text x="@(x + 2)" y="@(headerHeight - 4)" class="header-hour-text">@($"{h}:00")</text></g>
+              <g><text x="@(x + 2)" y="@(headerHeight - 4)" class="header-hour-text" text-anchor="start">@($"{h}:00")</text></g>
             }
             <line x1="@x" y1="24" x2="@x" y2="@headerHeight" class="header-sep-light" />
           }
