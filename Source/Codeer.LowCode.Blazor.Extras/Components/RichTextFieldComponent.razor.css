@@ -244,6 +244,25 @@
   color: #212529;
 }
 
+/* --- Disabled state --- */
+
+.richtext-disabled .richtext-toolbar {
+  background: #e9ecef;
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.richtext-disabled .richtext-toolbar-btn,
+.richtext-disabled .richtext-toolbar-select {
+  color: #adb5bd;
+  cursor: default;
+}
+
+.richtext-disabled .richtext-content {
+  background: #f8f9fa;
+  cursor: default;
+}
+
 /* --- Content area (shared between editor and view) --- */
 
 .richtext-content,

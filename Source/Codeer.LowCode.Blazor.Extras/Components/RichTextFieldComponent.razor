@@ -15,7 +15,7 @@
 }
 else
 {
-  <div class="richtext-editor-wrapper">
+  <div class="richtext-editor-wrapper @(IsDisabled ? "richtext-disabled" : "")">
     <div @ref="_toolbarElement" class="richtext-toolbar" @onkeydown="OnToolbarKeyDown">
       <div class="richtext-toolbar-group">
         <button type="button" class="richtext-toolbar-btn richtext-toolbar-btn-bold" title="@Resources.RichTextBold" @onclick='() => ExecCommand("bold")'>
@@ -143,7 +143,7 @@ else
 
     <div @ref="_editorElement"
          class="richtext-content"
-         contenteditable="true"
+         contenteditable="@(!IsDisabled)"
          style="@GetHeightStyle()"
          id="@WebElementId">
     </div>
@@ -168,6 +168,7 @@ else
   private IJSObjectReference? _jsModule;
   private DotNetObjectReference<RichTextFieldComponent>? _dotNetRef;
   private bool _isUpdatingFromJs;
+  private bool IsDisabled => Field.IsEnabled == false;
   private string _foreColor = "#000000";
   private string _backColor = "#ffff00";
   private bool _showForeColorPalette;
@@ -233,13 +234,14 @@ else
 
   private async Task ExecCommand(string command, string? value = null)
   {
-    if (_jsModule == null) return;
+    if (_jsModule == null || IsDisabled) return;
     var html = await _jsModule.InvokeAsync<string>("execFormatCommand", _editorElement, command, value);
     await UpdateFieldValueAsync(html);
   }
 
   private Task OnHeadingChanged(ChangeEventArgs e)
   {
+    if (IsDisabled) return Task.CompletedTask;
     var value = e.Value?.ToString();
     return ExecCommand("formatBlock", string.IsNullOrEmpty(value) ? "div" : value);
   }
@@ -281,21 +283,21 @@ else
 
   private async Task ExecCommandWithRestore(string command, string? value = null)
   {
-    if (_jsModule == null) return;
+    if (_jsModule == null || IsDisabled) return;
     var html = await _jsModule.InvokeAsync<string>("execFormatCommandWithRestore", _editorElement, command, value);
     await UpdateFieldValueAsync(html);
   }
 
   private async Task ClearFormatting()
   {
-    if (_jsModule == null) return;
+    if (_jsModule == null || IsDisabled) return;
     var html = await _jsModule.InvokeAsync<string>("clearAllFormatting", _editorElement);
     await UpdateFieldValueAsync(html);
   }
 
   private async Task InsertLink()
   {
-    if (_jsModule == null) return;
+    if (_jsModule == null || IsDisabled) return;
     var pos = await _jsModule.InvokeAsync<LinkPopupPosition>("getLinkPopupPosition", _editorElement);
     _linkPopupTop = pos.Top;
     _linkPopupLeft = pos.Left;
