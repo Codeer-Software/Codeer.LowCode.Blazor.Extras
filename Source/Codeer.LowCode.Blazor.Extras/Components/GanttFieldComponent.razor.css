@@ -24,19 +24,19 @@
   flex-shrink: 0;
 }
 
-.toolbar-left {
+.gantt-toolbar-left {
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
-.toolbar-right {
+.gantt-toolbar-right {
   display: flex;
   align-items: center;
   gap: 12px;
 }
 
-.toolbar-btn {
+.gantt-toolbar-btn {
   border: 1px solid #dadce0;
   background: #fff;
   cursor: pointer;
@@ -47,52 +47,54 @@
   font-family: inherit;
 }
 
-.toolbar-btn:hover {
+.gantt-toolbar-btn:hover {
   background: #f1f3f4;
 }
 
-.today-btn {
+.gantt-toolbar-btn-today {
   padding: 6px 16px;
   font-weight: 500;
 }
 
-.nav-btn {
+.gantt-toolbar-btn-prev,
+.gantt-toolbar-btn-next {
   padding: 6px 10px;
   font-size: 12px;
   border: none;
 }
 
-.nav-btn:hover {
+.gantt-toolbar-btn-prev:hover,
+.gantt-toolbar-btn-next:hover {
   background: #f1f3f4;
   border-radius: 50%;
 }
 
-.add-btn {
+.gantt-toolbar-btn-add {
   padding: 6px 14px;
   font-weight: 500;
   color: #1a73e8;
   border-color: #1a73e8;
 }
 
-.add-btn:hover {
+.gantt-toolbar-btn-add:hover {
   background: #e8f0fe;
 }
 
-.toolbar-title {
+.gantt-toolbar-title {
   font-size: 18px;
   font-weight: 400;
   color: #3c4043;
   margin-left: 8px;
 }
 
-.view-switcher {
+.gantt-view-switcher {
   display: flex;
   border: 1px solid #dadce0;
   border-radius: 4px;
   overflow: hidden;
 }
 
-.view-btn {
+.gantt-view-btn {
   border: none;
   background: #fff;
   cursor: pointer;
@@ -103,15 +105,15 @@
   border-right: 1px solid #dadce0;
 }
 
-.view-btn:last-child {
+.gantt-view-btn:last-child {
   border-right: none;
 }
 
-.view-btn:hover {
+.gantt-view-btn:hover {
   background: #f1f3f4;
 }
 
-.view-btn.active {
+.gantt-view-btn.active {
   background: #e8f0fe;
   color: #1967d2;
   font-weight: 500;
@@ -196,23 +198,23 @@
 }
 
 /* ===== SVG Header ===== */
-::deep .header-month-bg {
+::deep .gantt-header-month-bg {
   fill: #f8f9fa;
 }
 
-::deep .header-day-bg {
+::deep .gantt-header-day-bg {
   fill: #f8f9fa;
 }
 
-::deep .header-weekend-bg {
+::deep .gantt-header-weekend-bg {
   fill: #eef0f2;
 }
 
-::deep .header-offhour-bg {
+::deep .gantt-header-offhour-bg {
   fill: #f0f1f3;
 }
 
-::deep .header-month-text {
+::deep .gantt-header-month-text {
   font-size: 12px;
   font-weight: 600;
   fill: #3c4043;
@@ -220,7 +222,7 @@
   dominant-baseline: auto;
 }
 
-::deep .header-date-text {
+::deep .gantt-header-date-text {
   font-size: 11px;
   font-weight: 500;
   fill: #3c4043;
@@ -228,107 +230,107 @@
   dominant-baseline: auto;
 }
 
-::deep .header-day-text {
+::deep .gantt-header-day-text {
   font-size: 10px;
   fill: #5f6368;
   text-anchor: middle;
   dominant-baseline: auto;
 }
 
-::deep .header-hour-text {
+::deep .gantt-header-hour-text {
   font-size: 9px;
   fill: #70757a;
   text-anchor: middle;
   dominant-baseline: auto;
 }
 
-::deep .header-sep {
+::deep .gantt-header-sep {
   stroke: #dadce0;
   stroke-width: 1;
 }
 
-::deep .header-sep-light {
+::deep .gantt-header-sep-light {
   stroke: #e8eaed;
   stroke-width: 0.5;
 }
 
 /* ===== SVG Grid ===== */
-::deep .grid-weekend {
+::deep .gantt-grid-weekend {
   fill: #f8f9fb;
 }
 
-::deep .grid-line {
+::deep .gantt-grid-line {
   stroke: #eef0f2;
   stroke-width: 0.5;
 }
 
-::deep .grid-line-main {
+::deep .gantt-grid-line-main {
   stroke: #dadce0;
   stroke-width: 1;
 }
 
-::deep .grid-row-line {
+::deep .gantt-grid-row-line {
   stroke: #f0f0f0;
   stroke-width: 1;
 }
 
 /* ===== Today Line ===== */
-::deep .today-line {
+::deep .gantt-today-line {
   stroke: #ea4335;
   stroke-width: 1.5;
   stroke-dasharray: none;
 }
 
-::deep .today-marker {
+::deep .gantt-today-marker {
   fill: #ea4335;
 }
 
 /* ===== Task Bars ===== */
-::deep .task-bar {
+::deep .gantt-task-bar {
   fill: #c6dafc;
   transition: fill 0.15s;
 }
 
-::deep .task-bar:hover {
+::deep .gantt-task-bar:hover {
   fill: #a8c7fa;
 }
 
-::deep .task-progress {
+::deep .gantt-task-progress {
   fill: #1a73e8;
   pointer-events: none;
 }
 
-::deep .task-text {
+::deep .gantt-task-text {
   font-size: 11px;
   fill: #1a3a5c;
   font-weight: 500;
   dominant-baseline: auto;
 }
 
-::deep .resize-handle {
+::deep .gantt-resize-handle {
   fill: transparent;
   cursor: ew-resize;
 }
 
-::deep .resize-handle:hover {
+::deep .gantt-resize-handle:hover {
   fill: rgba(26, 115, 232, 0.25);
 }
 
 /* ===== Dependency Arrows ===== */
-::deep .dep-line {
+::deep .gantt-dep-line {
   fill: none;
   stroke: #6b7280;
   stroke-width: 1.5;
   stroke-dasharray: 4 2;
 }
 
-::deep .dep-selected {
+::deep .gantt-dep-selected {
   stroke: #ea4335;
   stroke-width: 2.5;
   stroke-dasharray: none;
 }
 
-::deep .dep-hit-area {
+::deep .gantt-dep-hit-area {
   fill: none;
   stroke: transparent;
   stroke-width: 12;
@@ -336,18 +338,18 @@
 }
 
 /* ===== Dependency Linking Stub ===== */
-::deep .dep-linking-stub {
+::deep .gantt-dep-linking-stub {
   stroke: #ea4335;
   stroke-width: 2;
   stroke-dasharray: 4 3;
 }
 
-::deep .dep-linking-dot {
+::deep .gantt-dep-linking-dot {
   fill: #ea4335;
 }
 
 /* ===== Context Menu ===== */
-.context-menu-overlay {
+.gantt-context-menu-overlay {
   position: fixed;
   top: 0;
   left: 0;
@@ -356,7 +358,7 @@
   z-index: 1000;
 }
 
-.context-menu {
+.gantt-context-menu {
   position: fixed;
   background: #fff;
   border: 1px solid #dadce0;
@@ -367,13 +369,13 @@
   z-index: 1001;
 }
 
-.context-menu-item {
+.gantt-context-menu-item {
   padding: 8px 16px;
   font-size: 13px;
   color: #3c4043;
   cursor: pointer;
 }
 
-.context-menu-item:hover {
+.gantt-context-menu-item:hover {
   background: #f1f3f4;
 }
