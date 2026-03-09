@@ -13,69 +13,69 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
     public class GanttFieldDesign() : FieldDesignBase(typeof(GanttFieldDesign).FullName!), IDisplayName,
         ISearchResultsViewFieldDesign
     {
-        [Designer]
+        [Designer(DisplayName = "$DisplayName")]
         public string DisplayName { get; set; } = string.Empty;
 
-        [Designer(Scope = DesignerScope.All, Category = nameof(SearchCondition))]
+        [Designer(Scope = DesignerScope.All, DisplayName = "$SearchCondition", Category = nameof(SearchCondition))]
         public SearchCondition SearchCondition { get; set; } = new();
 
-        [Designer(CandidateType = CandidateType.Field, Category = nameof(SearchCondition))]
+        [Designer(CandidateType = CandidateType.Field, DisplayName = "$GanttFieldTextField", Category = nameof(SearchCondition))]
         [ModuleMember(Member = $"{nameof(SearchCondition)}.{nameof(SearchCondition.ModuleName)}")]
         [TargetFieldType(Types = [typeof(TextFieldDesign)])]
         public string TextField { get; set; } = "";
 
-        [Designer(CandidateType = CandidateType.Field, Category = nameof(SearchCondition))]
+        [Designer(CandidateType = CandidateType.Field, DisplayName = "$GanttFieldStartField", Category = nameof(SearchCondition))]
         [ModuleMember(Member = $"{nameof(SearchCondition)}.{nameof(SearchCondition.ModuleName)}")]
         [TargetFieldType(Types = [typeof(DateTimeFieldDesign), typeof(DateFieldDesign)])]
         public string StartField { get; set; } = "";
 
-        [Designer(CandidateType = CandidateType.Field, Category = nameof(SearchCondition))]
+        [Designer(CandidateType = CandidateType.Field, DisplayName = "$GanttFieldEndField", Category = nameof(SearchCondition))]
         [ModuleMember(Member = $"{nameof(SearchCondition)}.{nameof(SearchCondition.ModuleName)}")]
         [TargetFieldType(Types = [typeof(DateTimeFieldDesign), typeof(DateFieldDesign)])]
         public string EndField { get; set; } = "";
 
-        [Designer(CandidateType = CandidateType.Field, Category = nameof(SearchCondition))]
+        [Designer(CandidateType = CandidateType.Field, DisplayName = "$GanttFieldProgressField", Category = nameof(SearchCondition))]
         [ModuleMember(Member = $"{nameof(SearchCondition)}.{nameof(SearchCondition.ModuleName)}")]
         [TargetFieldType(Types = [typeof(NumberFieldDesign)])]
         public string ProgressField { get; set; } = "";
 
-        [Designer(CandidateType = CandidateType.Field, Category = nameof(SearchCondition))]
+        [Designer(CandidateType = CandidateType.Field, DisplayName = "$GanttFieldIdField", Category = nameof(SearchCondition))]
         [ModuleMember(Member = $"{nameof(SearchCondition)}.{nameof(SearchCondition.ModuleName)}")]
         [TargetFieldType(Types = [typeof(IdFieldDesign)])]
         public string IdField { get; set; } = "";
 
-        [Designer(CandidateType = CandidateType.Field, Category = nameof(SearchCondition))]
+        [Designer(CandidateType = CandidateType.Field, DisplayName = "$GanttFieldProcessingCounterField", Category = nameof(SearchCondition))]
         [ModuleMember(Member = $"{nameof(SearchCondition)}.{nameof(SearchCondition.ModuleName)}")]
         [TargetFieldType(Types = [typeof(NumberFieldDesign)])]
         public string ProcessingCounterField { get; set; } = "";
 
-        [Designer(CandidateType = CandidateType.DetailLayout, Category = nameof(SearchCondition))]
+        [Designer(CandidateType = CandidateType.DetailLayout, DisplayName = "$DetailLayoutName", Category = nameof(SearchCondition))]
         [Layout(ModuleNameMember = $"{nameof(SearchCondition)}.{nameof(SearchCondition.ModuleName)}")]
         public string DetailLayoutName { get; set; } = string.Empty;
 
-        [Designer(Scope = DesignerScope.All, Category = nameof(DependenciesModule))]
+        [Designer(Scope = DesignerScope.All, DisplayName = "$GanttFieldDependenciesModule", Category = nameof(DependenciesModule))]
         public SearchCondition DependenciesModule { get; set; } = new();
 
-        [Designer(CandidateType = CandidateType.Field, Category = nameof(DependenciesModule))]
+        [Designer(CandidateType = CandidateType.Field, DisplayName = "$GanttFieldDependencySourceIdField", Category = nameof(DependenciesModule))]
         [ModuleMember(Member = $"{nameof(DependenciesModule)}.{nameof(DependenciesModule.ModuleName)}")]
         [TargetFieldType(Types = [typeof(IdFieldDesign), typeof(LinkFieldDesign)])]
         public string DependencySourceIdField { get; set; } = "";
 
-        [Designer(CandidateType = CandidateType.Field, Category = nameof(DependenciesModule))]
+        [Designer(CandidateType = CandidateType.Field, DisplayName = "$GanttFieldDependencyDestinationIdField", Category = nameof(DependenciesModule))]
         [ModuleMember(Member = $"{nameof(DependenciesModule)}.{nameof(DependenciesModule.ModuleName)}")]
         [TargetFieldType(Types = [typeof(IdFieldDesign), typeof(LinkFieldDesign)])]
         public string DependencyDestinationIdField { get; set; } = "";
 
-        [Designer]
+        [Designer(DisplayName = "$GanttFieldEnableDayView")]
         public bool EnableDayView { get; set; } = true;
 
-        [Designer]
+        [Designer(DisplayName = "$GanttFieldEnableWeekView")]
         public bool EnableWeekView { get; set; } = true;
 
-        [Designer]
+        [Designer(DisplayName = "$GanttFieldEnableMonthView")]
         public bool EnableMonthView { get; set; } = true;
 
-        [Designer(CandidateType = CandidateType.ScriptEvent)]
+        [Designer(CandidateType = CandidateType.ScriptEvent, DisplayName = "$OnDataChanged")]
         public string OnDataChanged { get; set; } = string.Empty;
 
         public override string GetWebComponentTypeFullName() => typeof(GanttFieldComponent).FullName!;

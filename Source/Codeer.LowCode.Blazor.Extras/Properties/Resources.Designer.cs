@@ -500,5 +500,89 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
                 return ResourceManager.GetString("OnDataChanged", resourceCulture);
             }
         }
+
+        internal static string GanttFieldTextField {
+            get {
+                return ResourceManager.GetString("GanttFieldTextField", resourceCulture);
+            }
+        }
+
+        internal static string GanttFieldStartField {
+            get {
+                return ResourceManager.GetString("GanttFieldStartField", resourceCulture);
+            }
+        }
+
+        internal static string GanttFieldEndField {
+            get {
+                return ResourceManager.GetString("GanttFieldEndField", resourceCulture);
+            }
+        }
+
+        internal static string GanttFieldProgressField {
+            get {
+                return ResourceManager.GetString("GanttFieldProgressField", resourceCulture);
+            }
+        }
+
+        internal static string GanttFieldIdField {
+            get {
+                return ResourceManager.GetString("GanttFieldIdField", resourceCulture);
+            }
+        }
+
+        internal static string GanttFieldProcessingCounterField {
+            get {
+                return ResourceManager.GetString("GanttFieldProcessingCounterField", resourceCulture);
+            }
+        }
+
+        internal static string GanttFieldDependenciesModule {
+            get {
+                return ResourceManager.GetString("GanttFieldDependenciesModule", resourceCulture);
+            }
+        }
+
+        internal static string GanttFieldDependencySourceIdField {
+            get {
+                return ResourceManager.GetString("GanttFieldDependencySourceIdField", resourceCulture);
+            }
+        }
+
+        internal static string GanttFieldDependencyDestinationIdField {
+            get {
+                return ResourceManager.GetString("GanttFieldDependencyDestinationIdField", resourceCulture);
+            }
+        }
+
+        internal static string GanttFieldEnableDayView {
+            get {
+                return ResourceManager.GetString("GanttFieldEnableDayView", resourceCulture);
+            }
+        }
+
+        internal static string GanttFieldEnableWeekView {
+            get {
+                return ResourceManager.GetString("GanttFieldEnableWeekView", resourceCulture);
+            }
+        }
+
+        internal static string GanttFieldEnableMonthView {
+            get {
+                return ResourceManager.GetString("GanttFieldEnableMonthView", resourceCulture);
+            }
+        }
+
+        internal static string RichTextFieldDbColumn {
+            get {
+                return ResourceManager.GetString("RichTextFieldDbColumn", resourceCulture);
+            }
+        }
+
+        internal static string RichTextFieldHeight {
+            get {
+                return ResourceManager.GetString("RichTextFieldHeight", resourceCulture);
+            }
+        }
     }
 }

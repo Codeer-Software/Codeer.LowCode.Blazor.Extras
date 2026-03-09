@@ -180,6 +180,48 @@
   <data name="OnDataChanged" xml:space="preserve">
     <value>OnDataChanged</value>
   </data>
+  <data name="GanttFieldTextField" xml:space="preserve">
+    <value>Text Field</value>
+  </data>
+  <data name="GanttFieldStartField" xml:space="preserve">
+    <value>Start Field</value>
+  </data>
+  <data name="GanttFieldEndField" xml:space="preserve">
+    <value>End Field</value>
+  </data>
+  <data name="GanttFieldProgressField" xml:space="preserve">
+    <value>Progress Field</value>
+  </data>
+  <data name="GanttFieldIdField" xml:space="preserve">
+    <value>ID Field</value>
+  </data>
+  <data name="GanttFieldProcessingCounterField" xml:space="preserve">
+    <value>Processing Counter Field</value>
+  </data>
+  <data name="GanttFieldDependenciesModule" xml:space="preserve">
+    <value>Dependencies Module</value>
+  </data>
+  <data name="GanttFieldDependencySourceIdField" xml:space="preserve">
+    <value>Source ID Field</value>
+  </data>
+  <data name="GanttFieldDependencyDestinationIdField" xml:space="preserve">
+    <value>Destination ID Field</value>
+  </data>
+  <data name="GanttFieldEnableDayView" xml:space="preserve">
+    <value>Enable Day View</value>
+  </data>
+  <data name="GanttFieldEnableWeekView" xml:space="preserve">
+    <value>Enable Week View</value>
+  </data>
+  <data name="GanttFieldEnableMonthView" xml:space="preserve">
+    <value>Enable Month View</value>
+  </data>
+  <data name="RichTextFieldDbColumn" xml:space="preserve">
+    <value>DB Column</value>
+  </data>
+  <data name="RichTextFieldHeight" xml:space="preserve">
+    <value>Height</value>
+  </data>
   <data name="RichTextBold" xml:space="preserve">
     <value>Bold</value>
   </data>

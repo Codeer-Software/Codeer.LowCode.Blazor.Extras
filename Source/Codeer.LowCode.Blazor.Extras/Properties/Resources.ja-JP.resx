@@ -180,6 +180,48 @@
   <data name="OnDataChanged" xml:space="preserve">
     <value>データ変更イベント</value>
   </data>
+  <data name="GanttFieldTextField" xml:space="preserve">
+    <value>テキストフィールド</value>
+  </data>
+  <data name="GanttFieldStartField" xml:space="preserve">
+    <value>開始フィールド</value>
+  </data>
+  <data name="GanttFieldEndField" xml:space="preserve">
+    <value>終了フィールド</value>
+  </data>
+  <data name="GanttFieldProgressField" xml:space="preserve">
+    <value>進捗フィールド</value>
+  </data>
+  <data name="GanttFieldIdField" xml:space="preserve">
+    <value>IDフィールド</value>
+  </data>
+  <data name="GanttFieldProcessingCounterField" xml:space="preserve">
+    <value>処理カウンターフィールド</value>
+  </data>
+  <data name="GanttFieldDependenciesModule" xml:space="preserve">
+    <value>依存関係モジュール</value>
+  </data>
+  <data name="GanttFieldDependencySourceIdField" xml:space="preserve">
+    <value>ソースIDフィールド</value>
+  </data>
+  <data name="GanttFieldDependencyDestinationIdField" xml:space="preserve">
+    <value>宛先IDフィールド</value>
+  </data>
+  <data name="GanttFieldEnableDayView" xml:space="preserve">
+    <value>日表示を有効にする</value>
+  </data>
+  <data name="GanttFieldEnableWeekView" xml:space="preserve">
+    <value>週表示を有効にする</value>
+  </data>
+  <data name="GanttFieldEnableMonthView" xml:space="preserve">
+    <value>月表示を有効にする</value>
+  </data>
+  <data name="RichTextFieldDbColumn" xml:space="preserve">
+    <value>DBカラム</value>
+  </data>
+  <data name="RichTextFieldHeight" xml:space="preserve">
+    <value>高さ</value>
+  </data>
   <data name="RichTextBold" xml:space="preserve">
     <value>太字</value>
   </data>

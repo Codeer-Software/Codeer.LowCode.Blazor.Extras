@@ -9,10 +9,10 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
 {
     public class RichTextFieldDesign() : ValueFieldDesignBase(typeof(RichTextFieldDesign).FullName!)
     {
-        [Designer(Index = 0, CandidateType = CandidateType.DbColumn), DbColumn(nameof(RichTextFieldData.Value))]
+        [Designer(Index = 0, CandidateType = CandidateType.DbColumn, DisplayName = "$RichTextFieldDbColumn"), DbColumn(nameof(RichTextFieldData.Value))]
         public string DbColumn { get; set; } = string.Empty;
 
-        [Designer(Index = 1)]
+        [Designer(Index = 1, DisplayName = "$RichTextFieldHeight")]
         public string Height { get; set; } = "200px";
 
         public override string GetWebComponentTypeFullName() => typeof(RichTextFieldComponent).FullName!;
