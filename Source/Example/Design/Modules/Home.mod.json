@@ -25,7 +25,7 @@
       "TextField": "Title",
       "StartField": "Start",
       "EndField": "End",
-      "AllDayField": "",
+      "AllDayField": "AllDay",
       "DetailLayoutName": "",
       "OnDataChanged": "",
       "Name": "Calendar",

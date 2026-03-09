@@ -105,24 +105,24 @@
           </div>
         }
       </div>
-      @if (weekAllDay.Any(g => g.Count > 0))
-      {
-        <div class="allday-section">
-          <div class="time-gutter allday-gutter"></div>
-          @foreach (var dayEvts in weekAllDay)
-          {
-            <div class="allday-cell">
-              @foreach (var evt in dayEvts)
-              {
-                <div class="allday-event" @onclick="() => OnEventClicked(evt)" title="@evt.Text">
-                  @evt.Text
-                </div>
-              }
-            </div>
-          }
-        </div>
-      }
       <div class="time-grid-scroll">
+        @if (weekAllDay.Any(g => g.Count > 0))
+        {
+          <div class="allday-section">
+            <div class="time-gutter allday-gutter"></div>
+            @foreach (var dayEvts in weekAllDay)
+            {
+              <div class="allday-cell">
+                @foreach (var evt in dayEvts)
+                {
+                  <div class="allday-event" @onclick="() => OnEventClicked(evt)" title="@evt.Text">
+                    @evt.Text
+                  </div>
+                }
+              </div>
+            }
+          </div>
+        }
         <div class="time-grid">
           <div class="time-gutter">
             @for (var h = 0; h < 24; h++)
@@ -176,21 +176,21 @@
           <span class="day-header-date @(dayDate == DateTime.Today ? "today-circle" : "")">@dayDate.Day</span>
         </div>
       </div>
-      @if (dayAllDay.Count > 0)
-      {
-        <div class="allday-section">
-          <div class="time-gutter allday-gutter"></div>
-          <div class="allday-cell day-allday-cell">
-            @foreach (var evt in dayAllDay)
-            {
-              <div class="allday-event" @onclick="() => OnEventClicked(evt)" title="@evt.Text">
-                @evt.Text
-              </div>
-            }
-          </div>
-        </div>
-      }
       <div class="time-grid-scroll">
+        @if (dayAllDay.Count > 0)
+        {
+          <div class="allday-section">
+            <div class="time-gutter allday-gutter"></div>
+            <div class="allday-cell day-allday-cell">
+              @foreach (var evt in dayAllDay)
+              {
+                <div class="allday-event" @onclick="() => OnEventClicked(evt)" title="@evt.Text">
+                  @evt.Text
+                </div>
+              }
+            </div>
+          </div>
+        }
         <div class="time-grid day-time-grid">
           <div class="time-gutter">
             @for (var h = 0; h < 24; h++)
