@@ -26,6 +26,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         public bool AllDay { get; set; }
 
         public string Text { get; set; } = string.Empty;
+        public string Color { get; set; } = string.Empty;
         public Module? Module { get; set; }
     }
 
@@ -205,6 +206,8 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
                     item.Start = mod.GetField<DateTimeField>(Design.StartField)?.Value ?? item.Start;
                     item.End = mod.GetField<DateTimeField>(Design.EndField)?.Value ?? item.End;
                     item.AllDay = mod.GetField<BooleanField>(Design.AllDayField)?.Value ?? item.AllDay;
+                    if (!string.IsNullOrEmpty(Design.ColorField))
+                        item.Color = mod.GetField<TextField>(Design.ColorField)?.Value ?? item.Color;
                 }
                 SortItems();
             }
@@ -258,6 +261,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             var start = data.GetField<DateTimeField>(design.StartField)?.Value;
             var end = data.GetField<DateTimeField>(design.EndField)?.Value;
             var allDay = data.GetField<BooleanField>(design.AllDayField)?.Value ?? false;
+            var color = string.IsNullOrEmpty(design.ColorField) ? "" : data.GetField<TextField>(design.ColorField)?.Value ?? "";
 
             if (text is null || start is null) return new() { Module = data };
 
@@ -268,6 +272,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
                 Start = start.Value,
                 End = end ?? start.Value,
                 AllDay = allDay || end is null,
+                Color = color,
             };
         }
 

@@ -26,6 +26,7 @@
       "StartField": "Start",
       "EndField": "End",
       "AllDayField": "AllDay",
+      "ColorField": "Color",
       "DetailLayoutName": "",
       "OnDataChanged": "",
       "Name": "Calendar",

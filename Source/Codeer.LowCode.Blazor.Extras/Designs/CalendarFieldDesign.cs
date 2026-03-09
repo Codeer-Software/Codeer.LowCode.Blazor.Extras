@@ -39,6 +39,11 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         [TargetFieldType(Types = [typeof(BooleanFieldDesign)])]
         public string AllDayField { get; set; } = "";
 
+        [Designer(CandidateType = CandidateType.Field)]
+        [ModuleMember(Member = $"{nameof(SearchCondition)}.{nameof(SearchCondition.ModuleName)}")]
+        [TargetFieldType(Types = [typeof(TextFieldDesign)])]
+        public string ColorField { get; set; } = "";
+
         [Designer(CandidateType = CandidateType.DetailLayout)]
         [Layout(ModuleNameMember = $"{nameof(SearchCondition)}.{nameof(SearchCondition.ModuleName)}")]
         public string DetailLayoutName { get; set; } = string.Empty;
@@ -64,6 +69,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
             context.CheckFieldRelativeFieldExistence(Name, nameof(StartField), SearchCondition.ModuleName, StartField).AddTo(result);
             context.CheckFieldRelativeFieldExistence(Name, nameof(EndField), SearchCondition.ModuleName, EndField).AddTo(result);
             context.CheckFieldRelativeFieldExistence(Name, nameof(AllDayField), SearchCondition.ModuleName, AllDayField).AddTo(result);
+            context.CheckFieldRelativeFieldExistence(Name, nameof(ColorField), SearchCondition.ModuleName, ColorField).AddTo(result);
             context.CheckFieldRelativeModuleLayoutExistence(Name, nameof(DetailLayoutName), SearchCondition.ModuleName, DetailLayoutName).AddTo(result);
             context.CheckFieldFunctionExistence(Name, nameof(OnDataChanged), OnDataChanged, null).AddTo(result);
             result.AddRange(SearchCondition.CheckDesign(context, Name, nameof(SearchCondition)));
@@ -75,6 +81,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
             .AddField(SearchCondition.ModuleName, StartField, value => StartField = value)
             .AddField(SearchCondition.ModuleName, EndField, value => EndField = value)
             .AddField(SearchCondition.ModuleName, AllDayField, value => AllDayField = value)
+            .AddField(SearchCondition.ModuleName, ColorField, value => ColorField = value)
             .AddLayout(SearchCondition.ModuleName, ModuleLayoutType.Detail, DetailLayoutName,
                 value => DetailLayoutName = value)
             .AddMatchCondition(SearchCondition)

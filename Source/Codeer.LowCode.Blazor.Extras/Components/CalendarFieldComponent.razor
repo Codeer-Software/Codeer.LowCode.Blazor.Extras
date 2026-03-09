@@ -57,6 +57,7 @@
                   var isEndDay = evt.End.HasValue && day.Date == evt.End.Value.Date;
                   var eventClass = evt.AllDay || isMultiDay ? "allday" : "timed";
                   <div class="month-event @eventClass"
+                       style="@EventColorStyle(evt)"
                        @onclick="() => OnEventClicked(evt)" @onclick:stopPropagation="true"
                        title="@GetEventTooltip(evt)">
                     @if (!evt.AllDay && !isMultiDay)
@@ -115,7 +116,7 @@
               <div class="allday-cell">
                 @foreach (var evt in dayEvts)
                 {
-                  <div class="allday-event" @onclick="() => OnEventClicked(evt)" title="@evt.Text">
+                  <div class="allday-event" style="@EventColorStyle(evt)" @onclick="() => OnEventClicked(evt)" title="@evt.Text">
                     @evt.Text
                   </div>
                 }
@@ -145,7 +146,7 @@
                 var layerOffset = pos.Layer * 14;
                 var timeText = GetTimeEventTimeText(pos);
                 <div class="time-event"
-                     style="top: @Px(pos.TopPx); left: @Px(layerOffset); width: calc(100% - @Px(layerOffset) - 2px); height: @Px(pos.HeightPx); z-index: @(pos.Layer + 1);"
+                     style="top: @Px(pos.TopPx); left: @Px(layerOffset); width: calc(100% - @Px(layerOffset) - 2px); height: @Px(pos.HeightPx); z-index: @(pos.Layer + 1); @EventColorStyle(pos.Item)"
                      @onclick="() => OnEventClicked(pos.Item)" @onclick:stopPropagation="true"
                      title="@GetEventTooltip(pos.Item)">
                   <div class="time-event-title">@pos.Item.Text</div>
@@ -184,7 +185,7 @@
             <div class="allday-cell day-allday-cell">
               @foreach (var evt in dayAllDay)
               {
-                <div class="allday-event" @onclick="() => OnEventClicked(evt)" title="@evt.Text">
+                <div class="allday-event" style="@EventColorStyle(evt)" @onclick="() => OnEventClicked(evt)" title="@evt.Text">
                   @evt.Text
                 </div>
               }
@@ -210,7 +211,7 @@
               var layerOffset = pos.Layer * 14;
               var timeText = GetTimeEventTimeText(pos);
               <div class="time-event"
-                   style="top: @Px(pos.TopPx); left: @Px(layerOffset); width: calc(100% - @Px(layerOffset) - 2px); height: @Px(pos.HeightPx); z-index: @(pos.Layer + 1);"
+                   style="top: @Px(pos.TopPx); left: @Px(layerOffset); width: calc(100% - @Px(layerOffset) - 2px); height: @Px(pos.HeightPx); z-index: @(pos.Layer + 1); @EventColorStyle(pos.Item)"
                    @onclick="() => OnEventClicked(pos.Item)" @onclick:stopPropagation="true"
                    title="@GetEventTooltip(pos.Item)">
                 <div class="time-event-title">@pos.Item.Text</div>
@@ -235,6 +236,7 @@
 
   private string Px(double v) => v.ToString("0.#", CultureInfo.InvariantCulture) + "px";
   private string Pct(double v) => v.ToString("0.##", CultureInfo.InvariantCulture) + "%";
+  private string EventColorStyle(ModuleCalendarItem item) => string.IsNullOrEmpty(item.Color) ? "" : $"background:{item.Color};";
 
   // ===== Navigation =====
 
