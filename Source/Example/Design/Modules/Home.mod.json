@@ -58,7 +58,7 @@
       "ProgressField": "Progress",
       "IdField": "Id",
       "ProcessingCounterField": "ProcessingCounter",
-      "DetailLayoutName": "",
+      "DetailLayoutName": "Gantt用",
       "DependenciesModule": {
         "SelectFields": [],
         "SortConditions": [],
