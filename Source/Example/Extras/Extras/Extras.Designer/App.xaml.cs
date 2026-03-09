@@ -48,6 +48,7 @@ namespace Extras.Designer
             ScriptRuntimeTypeManager.AddService(new MailService());
             ScriptRuntimeTypeManager.AddService(new LoadingService());
             ScriptRuntimeTypeManager.AddType<LoadingService.LoadingScope>();
+            ScriptRuntimeTypeManager.AddType<CalendarViewMode>();
 
             BlazorRuntime.InstallBundleCss("Extras.Client.Shared");
             BlazorRuntime.InstallBundleCss("Codeer.LowCode.Blazor.Extras");
