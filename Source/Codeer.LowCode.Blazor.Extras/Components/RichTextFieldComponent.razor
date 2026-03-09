@@ -17,25 +17,25 @@ else
 {
   <div class="richtext-editor-wrapper">
     <div @ref="_toolbarElement" class="richtext-toolbar" @onkeydown="OnToolbarKeyDown">
-      <div class="toolbar-group">
-        <button type="button" class="toolbar-btn" title="@Resources.RichTextBold" @onclick='() => ExecCommand("bold")'>
+      <div class="richtext-toolbar-group">
+        <button type="button" class="richtext-toolbar-btn richtext-toolbar-btn-bold" title="@Resources.RichTextBold" @onclick='() => ExecCommand("bold")'>
           <strong>B</strong>
         </button>
-        <button type="button" class="toolbar-btn" title="@Resources.RichTextItalic" @onclick='() => ExecCommand("italic")'>
+        <button type="button" class="richtext-toolbar-btn richtext-toolbar-btn-italic" title="@Resources.RichTextItalic" @onclick='() => ExecCommand("italic")'>
           <em>I</em>
         </button>
-        <button type="button" class="toolbar-btn" title="@Resources.RichTextUnderline" @onclick='() => ExecCommand("underline")'>
+        <button type="button" class="richtext-toolbar-btn richtext-toolbar-btn-underline" title="@Resources.RichTextUnderline" @onclick='() => ExecCommand("underline")'>
           <u>U</u>
         </button>
-        <button type="button" class="toolbar-btn" title="@Resources.RichTextStrikethrough" @onclick='() => ExecCommand("strikeThrough")'>
+        <button type="button" class="richtext-toolbar-btn richtext-toolbar-btn-strikethrough" title="@Resources.RichTextStrikethrough" @onclick='() => ExecCommand("strikeThrough")'>
           <s>S</s>
         </button>
       </div>
 
-      <div class="toolbar-separator"></div>
+      <div class="richtext-toolbar-separator"></div>
 
-      <div class="toolbar-group">
-        <select class="toolbar-select" @onchange="OnHeadingChanged" title="@Resources.RichTextHeading">
+      <div class="richtext-toolbar-group">
+        <select class="richtext-toolbar-select" @onchange="OnHeadingChanged" title="@Resources.RichTextHeading">
           <option value="">@Resources.RichTextNormal</option>
           <option value="h1">H1</option>
           <option value="h2">H2</option>
@@ -43,70 +43,70 @@ else
         </select>
       </div>
 
-      <div class="toolbar-separator"></div>
+      <div class="richtext-toolbar-separator"></div>
 
-      <div class="toolbar-group">
-        <button type="button" class="toolbar-btn" title="@Resources.RichTextUnorderedList" @onclick='() => ExecCommand("insertUnorderedList")'>
-          <span class="toolbar-icon">&#8226;</span>
+      <div class="richtext-toolbar-group">
+        <button type="button" class="richtext-toolbar-btn richtext-toolbar-btn-ul" title="@Resources.RichTextUnorderedList" @onclick='() => ExecCommand("insertUnorderedList")'>
+          <span class="richtext-toolbar-icon">&#8226;</span>
         </button>
-        <button type="button" class="toolbar-btn" title="@Resources.RichTextOrderedList" @onclick='() => ExecCommand("insertOrderedList")'>
-          <span class="toolbar-icon">1.</span>
-        </button>
-      </div>
-
-      <div class="toolbar-separator"></div>
-
-      <div class="toolbar-group">
-        <button type="button" class="toolbar-btn" title="@Resources.RichTextAlignLeft" @onclick='() => ExecCommand("justifyLeft")'>
-          <span class="toolbar-icon align-icon">&#9776;</span>
-        </button>
-        <button type="button" class="toolbar-btn" title="@Resources.RichTextAlignCenter" @onclick='() => ExecCommand("justifyCenter")'>
-          <span class="toolbar-icon align-icon center">&#9776;</span>
-        </button>
-        <button type="button" class="toolbar-btn" title="@Resources.RichTextAlignRight" @onclick='() => ExecCommand("justifyRight")'>
-          <span class="toolbar-icon align-icon right">&#9776;</span>
+        <button type="button" class="richtext-toolbar-btn richtext-toolbar-btn-ol" title="@Resources.RichTextOrderedList" @onclick='() => ExecCommand("insertOrderedList")'>
+          <span class="richtext-toolbar-icon">1.</span>
         </button>
       </div>
 
-      <div class="toolbar-separator"></div>
+      <div class="richtext-toolbar-separator"></div>
 
-      <div class="toolbar-group">
-        <div class="color-dropdown-wrapper">
-          <button type="button" class="toolbar-btn" title="@Resources.RichTextForeColor"
+      <div class="richtext-toolbar-group">
+        <button type="button" class="richtext-toolbar-btn richtext-toolbar-btn-align-left" title="@Resources.RichTextAlignLeft" @onclick='() => ExecCommand("justifyLeft")'>
+          <span class="richtext-toolbar-icon richtext-align-icon">&#9776;</span>
+        </button>
+        <button type="button" class="richtext-toolbar-btn richtext-toolbar-btn-align-center" title="@Resources.RichTextAlignCenter" @onclick='() => ExecCommand("justifyCenter")'>
+          <span class="richtext-toolbar-icon richtext-align-icon center">&#9776;</span>
+        </button>
+        <button type="button" class="richtext-toolbar-btn richtext-toolbar-btn-align-right" title="@Resources.RichTextAlignRight" @onclick='() => ExecCommand("justifyRight")'>
+          <span class="richtext-toolbar-icon richtext-align-icon right">&#9776;</span>
+        </button>
+      </div>
+
+      <div class="richtext-toolbar-separator"></div>
+
+      <div class="richtext-toolbar-group">
+        <div class="richtext-color-wrapper">
+          <button type="button" class="richtext-toolbar-btn richtext-toolbar-btn-forecolor" title="@Resources.RichTextForeColor"
                   @onclick="ToggleForeColorPalette" @onclick:stopPropagation="true">
-            <span class="color-icon" style="border-bottom: 3px solid @_foreColor;">A</span>
+            <span class="richtext-color-icon" style="border-bottom: 3px solid @_foreColor;">A</span>
           </button>
           @if (_showForeColorPalette)
           {
-            <div class="color-palette" @onclick:stopPropagation="true">
-              <div class="color-palette-header">
-                <button type="button" class="color-palette-close" @onclick="() => _showForeColorPalette = false">&#215;</button>
+            <div class="richtext-color-palette" @onclick:stopPropagation="true">
+              <div class="richtext-color-palette-header">
+                <button type="button" class="richtext-color-palette-close" @onclick="() => _showForeColorPalette = false">&#215;</button>
               </div>
               @foreach (var color in _paletteColors)
               {
                 var c = color;
-                <button type="button" class="color-swatch @(c == _foreColor ? "selected" : "")"
+                <button type="button" class="richtext-color-swatch @(c == _foreColor ? "selected" : "")"
                         style="background: @c;" title="@c"
                         @onclick="() => ApplyForeColor(c)"></button>
               }
             </div>
           }
         </div>
-        <div class="color-dropdown-wrapper">
-          <button type="button" class="toolbar-btn" title="@Resources.RichTextBackColor"
+        <div class="richtext-color-wrapper">
+          <button type="button" class="richtext-toolbar-btn richtext-toolbar-btn-backcolor" title="@Resources.RichTextBackColor"
                   @onclick="ToggleBackColorPalette" @onclick:stopPropagation="true">
-            <span class="color-icon highlight-icon" style="background: @_backColor;">A</span>
+            <span class="richtext-color-icon richtext-highlight-icon" style="background: @_backColor;">A</span>
           </button>
           @if (_showBackColorPalette)
           {
-            <div class="color-palette" @onclick:stopPropagation="true">
-              <div class="color-palette-header">
-                <button type="button" class="color-palette-close" @onclick="() => _showBackColorPalette = false">&#215;</button>
+            <div class="richtext-color-palette" @onclick:stopPropagation="true">
+              <div class="richtext-color-palette-header">
+                <button type="button" class="richtext-color-palette-close" @onclick="() => _showBackColorPalette = false">&#215;</button>
               </div>
               @foreach (var color in _paletteColors)
               {
                 var c = color;
-                <button type="button" class="color-swatch @(c == _backColor ? "selected" : "")"
+                <button type="button" class="richtext-color-swatch @(c == _backColor ? "selected" : "")"
                         style="background: @c;" title="@c"
                         @onclick="() => ApplyBackColor(c)"></button>
               }
@@ -115,28 +115,28 @@ else
         </div>
       </div>
 
-      <div class="toolbar-separator"></div>
+      <div class="richtext-toolbar-separator"></div>
 
-      <div class="toolbar-group">
-        <button type="button" class="toolbar-btn" title="@Resources.RichTextLink" @onclick="InsertLink">
-          <svg class="toolbar-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <div class="richtext-toolbar-group">
+        <button type="button" class="richtext-toolbar-btn richtext-toolbar-btn-link" title="@Resources.RichTextLink" @onclick="InsertLink">
+          <svg class="richtext-toolbar-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
             <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
             <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
           </svg>
         </button>
-        <button type="button" class="toolbar-btn" title="@Resources.RichTextClearFormat" @onclick="ClearFormatting">
-          <span class="toolbar-icon clear-format-icon">T<span class="clear-x">&#215;</span></span>
+        <button type="button" class="richtext-toolbar-btn richtext-toolbar-btn-clear" title="@Resources.RichTextClearFormat" @onclick="ClearFormatting">
+          <span class="richtext-toolbar-icon richtext-clear-format-icon">T<span class="richtext-clear-x">&#215;</span></span>
         </button>
       </div>
 
-      <div class="toolbar-separator"></div>
+      <div class="richtext-toolbar-separator"></div>
 
-      <div class="toolbar-group">
-        <button type="button" class="toolbar-btn" title="@Resources.RichTextUndo" @onclick='() => ExecCommand("undo")'>
-          <span class="toolbar-icon">&#8617;</span>
+      <div class="richtext-toolbar-group">
+        <button type="button" class="richtext-toolbar-btn richtext-toolbar-btn-undo" title="@Resources.RichTextUndo" @onclick='() => ExecCommand("undo")'>
+          <span class="richtext-toolbar-icon">&#8617;</span>
         </button>
-        <button type="button" class="toolbar-btn" title="@Resources.RichTextRedo" @onclick='() => ExecCommand("redo")'>
-          <span class="toolbar-icon">&#8618;</span>
+        <button type="button" class="richtext-toolbar-btn richtext-toolbar-btn-redo" title="@Resources.RichTextRedo" @onclick='() => ExecCommand("redo")'>
+          <span class="richtext-toolbar-icon">&#8618;</span>
         </button>
       </div>
     </div>
@@ -150,13 +150,13 @@ else
 
     @if (_showLinkPopup)
     {
-      <div class="link-popup" style="top: @(_linkPopupTop)px; left: @(_linkPopupLeft)px;"
+      <div class="richtext-link-popup" style="top: @(_linkPopupTop)px; left: @(_linkPopupLeft)px;"
            @onclick:stopPropagation="true">
-        <input @ref="_linkInput" type="text" class="link-input" placeholder="URL"
+        <input @ref="_linkInput" type="text" class="richtext-link-input" placeholder="URL"
                @bind="_linkUrl" @bind:event="oninput"
                @onkeydown="OnLinkKeyDown" />
-        <button type="button" class="link-popup-btn link-popup-ok" @onclick="ConfirmLink">OK</button>
-        <button type="button" class="link-popup-btn link-popup-cancel" @onclick="CancelLink">&#215;</button>
+        <button type="button" class="richtext-link-popup-btn richtext-link-popup-ok" @onclick="ConfirmLink">OK</button>
+        <button type="button" class="richtext-link-popup-btn richtext-link-popup-cancel" @onclick="CancelLink">&#215;</button>
       </div>
     }
   </div>
