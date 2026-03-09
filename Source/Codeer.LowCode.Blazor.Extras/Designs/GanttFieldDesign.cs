@@ -16,20 +16,20 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         [Designer]
         public string DisplayName { get; set; } = string.Empty;
 
-        [Designer(Scope = DesignerScope.All)]
+        [Designer(Scope = DesignerScope.All, Category = nameof(SearchCondition))]
         public SearchCondition SearchCondition { get; set; } = new();
 
-        [Designer(CandidateType = CandidateType.Field)]
+        [Designer(CandidateType = CandidateType.Field, Category = nameof(SearchCondition))]
         [ModuleMember(Member = $"{nameof(SearchCondition)}.{nameof(SearchCondition.ModuleName)}")]
         [TargetFieldType(Types = [typeof(TextFieldDesign)])]
         public string TextField { get; set; } = "";
 
-        [Designer(CandidateType = CandidateType.Field)]
+        [Designer(CandidateType = CandidateType.Field, Category = nameof(SearchCondition))]
         [ModuleMember(Member = $"{nameof(SearchCondition)}.{nameof(SearchCondition.ModuleName)}")]
         [TargetFieldType(Types = [typeof(DateTimeFieldDesign), typeof(DateFieldDesign)])]
         public string StartField { get; set; } = "";
 
-        [Designer(CandidateType = CandidateType.Field)]
+        [Designer(CandidateType = CandidateType.Field, Category = nameof(SearchCondition))]
         [ModuleMember(Member = $"{nameof(SearchCondition)}.{nameof(SearchCondition.ModuleName)}")]
         [TargetFieldType(Types = [typeof(DateTimeFieldDesign), typeof(DateFieldDesign)])]
         public string EndField { get; set; } = "";
@@ -49,7 +49,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         [TargetFieldType(Types = [typeof(NumberFieldDesign)])]
         public string ProcessingCounterField { get; set; } = "";
 
-        [Designer(CandidateType = CandidateType.DetailLayout)]
+        [Designer(CandidateType = CandidateType.DetailLayout, Category = nameof(SearchCondition))]
         [Layout(ModuleNameMember = $"{nameof(SearchCondition)}.{nameof(SearchCondition.ModuleName)}")]
         public string DetailLayoutName { get; set; } = string.Empty;
 
