@@ -144,6 +144,42 @@
   <data name="NoItems" xml:space="preserve">
     <value>No items</value>
   </data>
+  <data name="DisplayName" xml:space="preserve">
+    <value>DisplayName</value>
+  </data>
+  <data name="SearchCondition" xml:space="preserve">
+    <value>Search Condition</value>
+  </data>
+  <data name="CalendarFieldTextField" xml:space="preserve">
+    <value>Text Field</value>
+  </data>
+  <data name="CalendarFieldStartField" xml:space="preserve">
+    <value>Start Field</value>
+  </data>
+  <data name="CalendarFieldEndField" xml:space="preserve">
+    <value>End Field</value>
+  </data>
+  <data name="CalendarFieldAllDayField" xml:space="preserve">
+    <value>All Day Field</value>
+  </data>
+  <data name="CalendarFieldColorField" xml:space="preserve">
+    <value>Color Field</value>
+  </data>
+  <data name="DetailLayoutName" xml:space="preserve">
+    <value>Detail Layout</value>
+  </data>
+  <data name="CalendarFieldEnableMonthView" xml:space="preserve">
+    <value>Enable Month View</value>
+  </data>
+  <data name="CalendarFieldEnableWeekView" xml:space="preserve">
+    <value>Enable Week View</value>
+  </data>
+  <data name="CalendarFieldEnableDayView" xml:space="preserve">
+    <value>Enable Day View</value>
+  </data>
+  <data name="OnDataChanged" xml:space="preserve">
+    <value>OnDataChanged</value>
+  </data>
   <data name="RichTextBold" xml:space="preserve">
     <value>Bold</value>
   </data>

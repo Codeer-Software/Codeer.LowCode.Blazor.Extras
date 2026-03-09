@@ -13,51 +13,51 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
     public class CalendarFieldDesign() : FieldDesignBase(typeof(CalendarFieldDesign).FullName!), IDisplayName,
         ISearchResultsViewFieldDesign
     {
-        [Designer]
+        [Designer(DisplayName = "$DisplayName")]
         public string DisplayName { get; set; } = string.Empty;
 
-        [Designer(Scope = DesignerScope.All)]
+        [Designer(Scope = DesignerScope.All, DisplayName = "$SearchCondition")]
         public SearchCondition SearchCondition { get; set; } = new();
 
-        [Designer(CandidateType = CandidateType.Field)]
+        [Designer(CandidateType = CandidateType.Field, DisplayName = "$CalendarFieldTextField")]
         [ModuleMember(Member = $"{nameof(SearchCondition)}.{nameof(SearchCondition.ModuleName)}")]
         [TargetFieldType(Types = [typeof(TextFieldDesign)])]
         public string TextField { get; set; } = "";
 
-        [Designer(CandidateType = CandidateType.Field)]
+        [Designer(CandidateType = CandidateType.Field, DisplayName = "$CalendarFieldStartField")]
         [ModuleMember(Member = $"{nameof(SearchCondition)}.{nameof(SearchCondition.ModuleName)}")]
         [TargetFieldType(Types = [typeof(DateTimeFieldDesign), typeof(DateFieldDesign)])]
         public string StartField { get; set; } = "";
 
-        [Designer(CandidateType = CandidateType.Field)]
+        [Designer(CandidateType = CandidateType.Field, DisplayName = "$CalendarFieldEndField")]
         [ModuleMember(Member = $"{nameof(SearchCondition)}.{nameof(SearchCondition.ModuleName)}")]
         [TargetFieldType(Types = [typeof(DateTimeFieldDesign), typeof(DateFieldDesign)])]
         public string EndField { get; set; } = "";
 
-        [Designer(CandidateType = CandidateType.Field)]
+        [Designer(CandidateType = CandidateType.Field, DisplayName = "$CalendarFieldAllDayField")]
         [ModuleMember(Member = $"{nameof(SearchCondition)}.{nameof(SearchCondition.ModuleName)}")]
         [TargetFieldType(Types = [typeof(BooleanFieldDesign)])]
         public string AllDayField { get; set; } = "";
 
-        [Designer(CandidateType = CandidateType.Field)]
+        [Designer(CandidateType = CandidateType.Field, DisplayName = "$CalendarFieldColorField")]
         [ModuleMember(Member = $"{nameof(SearchCondition)}.{nameof(SearchCondition.ModuleName)}")]
         [TargetFieldType(Types = [typeof(TextFieldDesign)])]
         public string ColorField { get; set; } = "";
 
-        [Designer(CandidateType = CandidateType.DetailLayout)]
+        [Designer(CandidateType = CandidateType.DetailLayout, DisplayName = "$DetailLayoutName")]
         [Layout(ModuleNameMember = $"{nameof(SearchCondition)}.{nameof(SearchCondition.ModuleName)}")]
         public string DetailLayoutName { get; set; } = string.Empty;
 
-        [Designer]
+        [Designer(DisplayName = "$CalendarFieldEnableMonthView")]
         public bool EnableMonthView { get; set; } = true;
 
-        [Designer]
+        [Designer(DisplayName = "$CalendarFieldEnableWeekView")]
         public bool EnableWeekView { get; set; } = true;
 
-        [Designer]
+        [Designer(DisplayName = "$CalendarFieldEnableDayView")]
         public bool EnableDayView { get; set; } = true;
 
-        [Designer(CandidateType = CandidateType.ScriptEvent)]
+        [Designer(CandidateType = CandidateType.ScriptEvent, DisplayName = "$OnDataChanged")]
         public string OnDataChanged { get; set; } = string.Empty;
 
         public override string GetWebComponentTypeFullName() => typeof(CalendarFieldComponent).FullName!;

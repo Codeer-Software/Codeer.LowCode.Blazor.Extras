@@ -428,5 +428,77 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
                 return ResourceManager.GetString("RichTextClearFormat", resourceCulture);
             }
         }
+
+        internal static string DisplayName {
+            get {
+                return ResourceManager.GetString("DisplayName", resourceCulture);
+            }
+        }
+
+        internal static string SearchCondition {
+            get {
+                return ResourceManager.GetString("SearchCondition", resourceCulture);
+            }
+        }
+
+        internal static string CalendarFieldTextField {
+            get {
+                return ResourceManager.GetString("CalendarFieldTextField", resourceCulture);
+            }
+        }
+
+        internal static string CalendarFieldStartField {
+            get {
+                return ResourceManager.GetString("CalendarFieldStartField", resourceCulture);
+            }
+        }
+
+        internal static string CalendarFieldEndField {
+            get {
+                return ResourceManager.GetString("CalendarFieldEndField", resourceCulture);
+            }
+        }
+
+        internal static string CalendarFieldAllDayField {
+            get {
+                return ResourceManager.GetString("CalendarFieldAllDayField", resourceCulture);
+            }
+        }
+
+        internal static string CalendarFieldColorField {
+            get {
+                return ResourceManager.GetString("CalendarFieldColorField", resourceCulture);
+            }
+        }
+
+        internal static string DetailLayoutName {
+            get {
+                return ResourceManager.GetString("DetailLayoutName", resourceCulture);
+            }
+        }
+
+        internal static string CalendarFieldEnableMonthView {
+            get {
+                return ResourceManager.GetString("CalendarFieldEnableMonthView", resourceCulture);
+            }
+        }
+
+        internal static string CalendarFieldEnableWeekView {
+            get {
+                return ResourceManager.GetString("CalendarFieldEnableWeekView", resourceCulture);
+            }
+        }
+
+        internal static string CalendarFieldEnableDayView {
+            get {
+                return ResourceManager.GetString("CalendarFieldEnableDayView", resourceCulture);
+            }
+        }
+
+        internal static string OnDataChanged {
+            get {
+                return ResourceManager.GetString("OnDataChanged", resourceCulture);
+            }
+        }
     }
 }

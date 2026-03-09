@@ -144,6 +144,42 @@
   <data name="NoItems" xml:space="preserve">
     <value>アイテムなし</value>
   </data>
+  <data name="DisplayName" xml:space="preserve">
+    <value>表示名</value>
+  </data>
+  <data name="SearchCondition" xml:space="preserve">
+    <value>検索条件</value>
+  </data>
+  <data name="CalendarFieldTextField" xml:space="preserve">
+    <value>テキストフィールド</value>
+  </data>
+  <data name="CalendarFieldStartField" xml:space="preserve">
+    <value>開始フィールド</value>
+  </data>
+  <data name="CalendarFieldEndField" xml:space="preserve">
+    <value>終了フィールド</value>
+  </data>
+  <data name="CalendarFieldAllDayField" xml:space="preserve">
+    <value>終日フィールド</value>
+  </data>
+  <data name="CalendarFieldColorField" xml:space="preserve">
+    <value>色フィールド</value>
+  </data>
+  <data name="DetailLayoutName" xml:space="preserve">
+    <value>詳細レイアウト</value>
+  </data>
+  <data name="CalendarFieldEnableMonthView" xml:space="preserve">
+    <value>月表示を有効にする</value>
+  </data>
+  <data name="CalendarFieldEnableWeekView" xml:space="preserve">
+    <value>週表示を有効にする</value>
+  </data>
+  <data name="CalendarFieldEnableDayView" xml:space="preserve">
+    <value>日表示を有効にする</value>
+  </data>
+  <data name="OnDataChanged" xml:space="preserve">
+    <value>データ変更イベント</value>
+  </data>
   <data name="RichTextBold" xml:space="preserve">
     <value>太字</value>
   </data>
