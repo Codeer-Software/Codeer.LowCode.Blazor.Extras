@@ -5,6 +5,7 @@
 @using Codeer.LowCode.Blazor.Repository.Design
 @using Codeer.LowCode.Blazor.RequestInterfaces
 @using Codeer.LowCode.Blazor.Components.Fields
+@using Codeer.LowCode.Blazor.Extras.Designs
 @using Codeer.LowCode.Blazor.Extras.Fields
 @using Codeer.LowCode.Blazor.Extras.Properties
 @inherits FieldComponentBase<TaskBoardField>
@@ -21,9 +22,12 @@
            @ondragover="OnDragOver"
            @ondragover:preventDefault="true"
            @ondrop="() => OnDropOnColumn(capturedStatus.Value)">
-        <div class="taskboard-column-header">
+        <div class="taskboard-column-header" style="@GetHeaderStyle(capturedStatus)">
           <span class="column-title">@status.DisplayText</span>
-          <button type="button" class="column-add-btn" @onclick="() => OnAddClicked(capturedStatus.Value)">+</button>
+          @if (capturedStatus.CanAdd)
+          {
+            <button type="button" class="column-add-btn" @onclick="() => OnAddClicked(capturedStatus.Value)">+</button>
+          }
         </div>
         <div class="taskboard-column-body">
           @foreach (var (index, item) in columnItems.Select((item, i) => (i, item)))
@@ -135,6 +139,12 @@
       try { await _jsModule.DisposeAsync(); } catch { }
     }
     await base.DisposeAsync();
+  }
+
+  private static string GetHeaderStyle(TaskBoardStatusDesign status)
+  {
+    if (string.IsNullOrEmpty(status.Color)) return string.Empty;
+    return $"background: {status.Color}; border-bottom-color: {status.Color};";
   }
 
   private async Task OnAddClicked(string statusValue)

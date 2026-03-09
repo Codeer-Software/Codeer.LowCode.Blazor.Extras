@@ -22,11 +22,28 @@
           "TypeFullName": "Codeer.LowCode.Blazor.Repository.Match.MultiMatchCondition"
         }
       },
-      "Statuses": [
-        "ToDo",
-        "進行中",
-        "完了"
-      ],
+      "Statuses": {
+        "Items": [
+          {
+            "DisplayText": "ToDo",
+            "Value": "",
+            "Color": "#00FF40",
+            "CanAdd": true
+          },
+          {
+            "DisplayText": "進行中",
+            "Value": "",
+            "Color": "",
+            "CanAdd": true
+          },
+          {
+            "DisplayText": "完了",
+            "Value": "",
+            "Color": "",
+            "CanAdd": true
+          }
+        ]
+      },
       "StatusField": "状態",
       "DetailLayoutName": "",
       "SortIndexField": "順番",

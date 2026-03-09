@@ -1,3 +1,4 @@
+using Codeer.LowCode.Blazor.Extras;
 using Codeer.LowCode.Blazor.Extras.Fields;
 using Codeer.LowCode.Blazor.Json;
 using Codeer.LowCode.Blazor.License;
@@ -13,8 +14,9 @@ using System.Globalization;
 using System.Text.Json.Serialization;
 
 //load dll.
-typeof(CalendarField).ToString();
 typeof(ColorPickerField).ToString();
+
+ExtrasServerInitializer.Initialize();
 
 var builder = WebApplication.CreateBuilder(args);
 

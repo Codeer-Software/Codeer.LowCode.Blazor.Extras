@@ -3,6 +3,7 @@ using Codeer.LowCode.Blazor.DesignLogic.Check;
 using Codeer.LowCode.Blazor.DesignLogic.Refactor;
 using Codeer.LowCode.Blazor.Extras.Components;
 using Codeer.LowCode.Blazor.Extras.Fields;
+using Codeer.LowCode.Blazor.Extras.Models;
 using Codeer.LowCode.Blazor.OperatingModel;
 using Codeer.LowCode.Blazor.Repository.Data;
 using Codeer.LowCode.Blazor.Repository.Design;
@@ -10,6 +11,17 @@ using Codeer.LowCode.Blazor.Repository.Match;
 
 namespace Codeer.LowCode.Blazor.Extras.Designs
 {
+    public class TaskBoardStatusDesign
+    {
+        public string DisplayText { get; set; } = string.Empty;
+
+        public string Value { get; set; } = string.Empty;
+
+        public string Color { get; set; } = string.Empty;
+
+        public bool CanAdd { get; set; } = true;
+    }
+
     public class TaskBoardFieldDesign() : FieldDesignBase(typeof(TaskBoardFieldDesign).FullName!), IDisplayName,
         ISearchResultsViewFieldDesign
     {
@@ -20,7 +32,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         public SearchCondition SearchCondition { get; set; } = new();
 
         [Designer]
-        public List<string> Statuses { get; set; } = new();
+        public TaskBoardStatuses Statuses { get; set; } = new();
 
         [Designer(CandidateType = CandidateType.Field)]
         [ModuleMember(Member = $"{nameof(SearchCondition)}.{nameof(SearchCondition.ModuleName)}")]

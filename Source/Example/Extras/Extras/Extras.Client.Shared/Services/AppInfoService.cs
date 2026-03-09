@@ -1,6 +1,7 @@
 using Codeer.LowCode.Blazor.Components.AppParts.Loading;
 using Codeer.LowCode.Blazor.DesignLogic;
 using Codeer.LowCode.Blazor.DesignLogic.Transfer;
+using Codeer.LowCode.Blazor.Extras;
 using Codeer.LowCode.Blazor.Extras.Fields;
 using Codeer.LowCode.Blazor.Repository;
 using Codeer.LowCode.Blazor.Repository.Data;
@@ -68,6 +69,7 @@ namespace Extras.Client.Shared.Services
             _scriptRuntimeTypeManager.AddType<CalendarViewMode>();
             _scriptRuntimeTypeManager.AddType<GanttViewMode>();
             _scriptRuntimeTypeManager.UseDesignCache();
+            ExtrasClientInitializer.Initialize(this);
         }
         public void SetCurrentUserId(string id) => CurrentUserId = id;
 

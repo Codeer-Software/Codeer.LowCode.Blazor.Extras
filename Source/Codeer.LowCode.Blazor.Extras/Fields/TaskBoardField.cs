@@ -12,12 +12,6 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Codeer.LowCode.Blazor.Extras.Fields
 {
-    public class StatusCategory
-    {
-        public string DisplayText { get; set; } = string.Empty;
-        public string Value { get; set; } = string.Empty;
-    }
-
     public class TaskBoardItem
     {
         public string StatusValue { get; set; } = string.Empty;
@@ -48,7 +42,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
 
         internal List<TaskBoardItem> Items { get; } = [];
 
-        internal List<StatusCategory> StatusCategories { get; private set; } = [];
+        internal List<TaskBoardStatusDesign> StatusCategories { get; private set; } = [];
 
         public int Page => 0;
 
@@ -236,12 +230,12 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
 
         private void ParseStatusCategories()
         {
-            StatusCategories = Design.Statuses.Select(text =>
+            StatusCategories = Design.Statuses.Items.Select(e => new TaskBoardStatusDesign
             {
-                var sp = text.Split(',').Select(e => e.Trim()).ToArray();
-                return sp.Length >= 2
-                    ? new StatusCategory { DisplayText = sp[0], Value = sp[1] }
-                    : new StatusCategory { DisplayText = sp[0], Value = sp[0] };
+                DisplayText = e.DisplayText,
+                Value = string.IsNullOrEmpty(e.Value) ? e.DisplayText : e.Value,
+                Color = e.Color,
+                CanAdd = e.CanAdd,
             }).ToList();
         }
 

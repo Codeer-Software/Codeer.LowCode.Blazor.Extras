@@ -7,7 +7,9 @@
       "Bash(xargs grep:*)",
       "Bash(find \":*)",
       "Bash(sed:*)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(dotnet restore:*)",
+      "Bash(dotnet sln:*)"
     ]
   }
 }

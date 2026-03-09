@@ -12,6 +12,7 @@ using Codeer.LowCode.Blazor.Designer.Extensibility.Views;
 using Codeer.LowCode.Blazor.Designer.Models;
 using Codeer.LowCode.Blazor.Designer.Views.Windows;
 using Codeer.LowCode.Blazor.DesignLogic;
+using Codeer.LowCode.Blazor.Extras.Designer;
 using Codeer.LowCode.Blazor.Extras.Fields;
 using Codeer.LowCode.Blazor.Json;
 using Codeer.LowCode.Blazor.Repository.Data;
@@ -34,7 +35,7 @@ namespace Extras.Designer
     {
         protected override void OnStartup(StartupEventArgs e)
         {
-            typeof(CalendarField).ToString();
+            ExtrasDesignerInitializer.Initialize();
 
             Codeer.LowCode.Blazor.License.LicenseManager.IsAutoUpdate =
                 bool.TryParse(ConfigurationManager.AppSettings["IsLicenseAutoUpdate"], out var val) ? val : true;
