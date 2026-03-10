@@ -135,7 +135,7 @@
     await base.DisposeAsync();
   }
 
-  private static string GetHeaderStyle(TaskBoardStatusDesign status)
+  private static string GetHeaderStyle(TaskBoardStatus status)
   {
     var hasColor = !string.IsNullOrEmpty(status.Color);
     var hasBg = !string.IsNullOrEmpty(status.BackgroundColor);

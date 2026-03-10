@@ -11,7 +11,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.ViewModels
     {
         private readonly TaskBoardStatusesViewModel _parent;
 
-        public TaskBoardStatusViewModel(TaskBoardStatusesViewModel parent, TaskBoardStatusDesign model)
+        public TaskBoardStatusViewModel(TaskBoardStatusesViewModel parent, TaskBoardStatus model)
         {
             _parent = parent;
             Model = model;
@@ -21,7 +21,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.ViewModels
             MoveDownCommand = new DelegateCommand(() => _parent.MoveDown(this));
         }
 
-        public TaskBoardStatusDesign Model { get; }
+        public TaskBoardStatus Model { get; }
 
         public string DisplayText
         {

@@ -44,7 +44,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Controls
 
         private void AddItem(object sender, RoutedEventArgs e)
         {
-            _dataContext.Add(new TaskBoardStatusDesign());
+            _dataContext.Add(new TaskBoardStatus());
         }
     }
 }

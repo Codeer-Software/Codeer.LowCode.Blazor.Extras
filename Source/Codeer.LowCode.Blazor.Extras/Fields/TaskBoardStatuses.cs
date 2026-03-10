@@ -3,7 +3,7 @@ using Codeer.LowCode.Blazor.Repository.Design;
 
 namespace Codeer.LowCode.Blazor.Extras.Fields
 {
-    public class TaskBoardStatusDesign
+    public class TaskBoardStatus
     {
         public string DisplayText { get; set; } = string.Empty;
 
@@ -20,7 +20,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
 
     public class TaskBoardStatuses : ICurrentSettingsText
     {
-        public List<TaskBoardStatusDesign> Items { get; set; } = [];
+        public List<TaskBoardStatus> Items { get; set; } = [];
 
         public string GetCurrentSettings() => string.Join(", ", Items.Select(s => s.DisplayText));
     }

@@ -22,13 +22,13 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.ViewModels
 
         public event PropertyChangedEventHandler? PropertyChanged;
 
-        public void Add(TaskBoardStatusDesign model)
+        public void Add(TaskBoardStatus model)
         {
             Items.Add(new TaskBoardStatusViewModel(this, model));
             _value.Items.Add(model);
         }
 
-        public void Remove(TaskBoardStatusDesign model)
+        public void Remove(TaskBoardStatus model)
         {
             var item = Items.FirstOrDefault(e => e.Model == model);
             if (item == null) return;

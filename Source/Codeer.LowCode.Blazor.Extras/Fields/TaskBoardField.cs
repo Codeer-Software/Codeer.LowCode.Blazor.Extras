@@ -35,7 +35,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
 
         internal List<TaskBoardItem> Items { get; } = [];
 
-        internal List<TaskBoardStatusDesign> StatusCategories => Design.Statuses.Items;
+        internal List<TaskBoardStatus> StatusCategories => Design.Statuses.Items;
 
         public int Page => 0;
 
