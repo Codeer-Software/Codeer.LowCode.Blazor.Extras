@@ -766,6 +766,19 @@
 
   // ===== Drag & Drop =====
 
+  private TimeSpan GetDragSnapUnit()
+  {
+    if (Field.IsDateOnly) return TimeSpan.FromDays(1);
+    return Field.ViewMode switch
+    {
+      GanttViewMode.Month => TimeSpan.FromDays(1),
+      GanttViewMode.Week => TimeSpan.FromHours(1),
+      _ => TimeSpan.FromHours(1),
+    };
+  }
+
+  private double _dragPxPerSecond;
+
   private void StartDrag(MouseEventArgs e, int idx, DragMode mode)
   {
     if (!IsEditable || _depLinkingSourceId != null) return;
@@ -775,30 +788,36 @@
     _dragStartX = e.ClientX;
     _dragOrigStart = Field.Items[idx].Start;
     _dragOrigEnd = Field.Items[idx].End;
+
+    var lp = CalcLayout();
+    var (rangeStart, rangeEnd) = Field.GetViewDateRange();
+    var totalSeconds = (rangeEnd - rangeStart).TotalSeconds;
+    _dragPxPerSecond = totalSeconds > 0 ? lp.TimelineWidth / totalSeconds : 1;
   }
 
   private void OnMouseMove(MouseEventArgs e)
   {
     if (!_dragging || _dragIdx < 0 || _dragIdx >= Field.Items.Count) return;
 
-    var lp = CalcLayout();
-    var snap = lp.TimeUnit;
-    var snapPx = (double)lp.ColWidth;
-    var steps = (int)Math.Round((e.ClientX - _dragStartX) / snapPx);
+    var snap = GetDragSnapUnit();
+    var deltaPx = e.ClientX - _dragStartX;
+    var deltaSeconds = deltaPx / _dragPxPerSecond;
+    var steps = (long)Math.Round(deltaSeconds / snap.TotalSeconds);
+    var delta = TimeSpan.FromTicks(snap.Ticks * steps);
     var item = Field.Items[_dragIdx];
 
     switch (_dragMode)
     {
       case DragMode.Move:
-        item.Start = _dragOrigStart.Add(snap * steps);
-        item.End = _dragOrigEnd.Add(snap * steps);
+        item.Start = _dragOrigStart + delta;
+        item.End = _dragOrigEnd + delta;
         break;
       case DragMode.ResizeLeft:
-        var newStart = _dragOrigStart.Add(snap * steps);
+        var newStart = _dragOrigStart + delta;
         if (newStart < _dragOrigEnd) item.Start = newStart;
         break;
       case DragMode.ResizeRight:
-        var newEnd = _dragOrigEnd.Add(snap * steps);
+        var newEnd = _dragOrigEnd + delta;
         if (newEnd > _dragOrigStart) item.End = newEnd;
         break;
     }
