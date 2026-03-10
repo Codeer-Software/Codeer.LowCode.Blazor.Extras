@@ -1,4 +1,4 @@
-﻿@using Codeer.LowCode.Blazor.Components
+@using Codeer.LowCode.Blazor.Components
 @using Codeer.LowCode.Blazor.Components.Interop
 @using Codeer.LowCode.Blazor.Extras.Fields
 @using Codeer.LowCode.Blazor.Extras.Properties
@@ -10,7 +10,7 @@
 
 <div class="scroll-host">
     <div class="img-overlay"
-         @ondblclick="HandleDoubleClick">
+         @ondblclick="HandleBackgroundClick">
 
       <img src="@($"data:image/{Field.ImageExtension};base64,{Field.ObjectUrl}")" alt="@Resources.Base64Image" class="base-img" draggable="false" />
 
@@ -19,10 +19,9 @@
         <div class="marker"
              style="@GetMarkerStyle(m)"
              @onclick="@(() => HandleMarkerClick(m))"
-             @onclick:stopPropagation="true"
-             @ondblclick:stopPropagation="true">
+             @onclick:stopPropagation="true">
           <div class="circle"></div>
-        <div class="label">@m.Label</div>
+          <div class="label">@m.Label</div>
         </div>
       }
   </div>
@@ -31,7 +30,6 @@
 @code {
   protected override async Task OnInitializedAsync()
   {
-    await Field.InitAsync();
     await base.OnInitializedAsync();
   }
 
@@ -39,12 +37,12 @@
     => $"left:{m.X}px; top:{m.Y}px;";
 
   async Task HandleMarkerClick(Marker m)
-    => await Field.OnClickMarkerAsync(m.Id);
+    => await Field.EditAsync(m.Module);
 
-  async Task HandleDoubleClick(MouseEventArgs e)
+  async Task HandleBackgroundClick(MouseEventArgs e)
   {
     var x = (int)Math.Round(e.OffsetX);
     var y = (int)Math.Round(e.OffsetY);
-    await Field.OnDoubleClickPointAsync(x, y);
+    await Field.AddAsync(x, y);
   }
 }
