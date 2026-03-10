@@ -6,7 +6,7 @@
              xmlns:viewModels="clr-namespace:Codeer.LowCode.Blazor.Extras.Designer.ViewModels"
              mc:Ignorable="d" d:DesignHeight="400" d:DesignWidth="750"
              d:DataContext="{d:DesignInstance viewModels:TaskBoardStatusesViewModel}">
-  <Grid>
+  <Grid Grid.IsSharedSizeScope="True">
     <Grid.RowDefinitions>
       <RowDefinition Height="Auto" />
       <RowDefinition Height="*" />
@@ -14,40 +14,44 @@
       <RowDefinition Height="Auto" />
     </Grid.RowDefinitions>
 
+    <!-- Header -->
     <Grid Margin="5,5,5,2">
       <Grid.ColumnDefinitions>
-        <ColumnDefinition />
-        <ColumnDefinition />
-        <ColumnDefinition />
-        <ColumnDefinition Width="Auto" />
-        <ColumnDefinition />
-        <ColumnDefinition Width="Auto" />
-        <ColumnDefinition Width="Auto" />
-        <ColumnDefinition Width="Auto" />
-        <ColumnDefinition Width="Auto" />
+        <ColumnDefinition SharedSizeGroup="ColDisplayText" />
+        <ColumnDefinition SharedSizeGroup="ColValue" />
+        <ColumnDefinition SharedSizeGroup="ColColor" />
+        <ColumnDefinition SharedSizeGroup="ColColorBtn" Width="Auto" />
+        <ColumnDefinition SharedSizeGroup="ColBgColor" />
+        <ColumnDefinition SharedSizeGroup="ColBgColorBtn" Width="Auto" />
+        <ColumnDefinition SharedSizeGroup="ColMoveUp" Width="Auto" />
+        <ColumnDefinition SharedSizeGroup="ColMoveDown" Width="Auto" />
+        <ColumnDefinition SharedSizeGroup="ColCanAdd" Width="Auto" />
+        <ColumnDefinition SharedSizeGroup="ColDelete" Width="Auto" />
       </Grid.ColumnDefinitions>
       <TextBlock Text="DisplayText" FontWeight="Bold" Margin="0,0,3,0" />
       <TextBlock Grid.Column="1" Text="Value" FontWeight="Bold" Margin="0,0,3,0" />
       <TextBlock Grid.Column="2" Text="Color" FontWeight="Bold" Margin="0,0,3,0" />
       <TextBlock Grid.Column="4" Text="BackgroundColor" FontWeight="Bold" Margin="0,0,3,0" />
-      <TextBlock Grid.Column="7" Text="CanAdd" FontWeight="Bold" Margin="3,0,3,0" />
+      <TextBlock Grid.Column="8" Text="CanAdd" FontWeight="Bold" Margin="3,0,3,0" />
     </Grid>
 
+    <!-- Items -->
     <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
       <ItemsControl ItemsSource="{Binding Items}">
         <ItemsControl.ItemTemplate>
           <DataTemplate>
             <Grid Margin="5,0,5,3">
               <Grid.ColumnDefinitions>
-                <ColumnDefinition />
-                <ColumnDefinition />
-                <ColumnDefinition />
-                <ColumnDefinition Width="Auto" />
-                <ColumnDefinition />
-                <ColumnDefinition Width="Auto" />
-                <ColumnDefinition Width="Auto" />
-                <ColumnDefinition Width="Auto" />
-                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition SharedSizeGroup="ColDisplayText" />
+                <ColumnDefinition SharedSizeGroup="ColValue" />
+                <ColumnDefinition SharedSizeGroup="ColColor" />
+                <ColumnDefinition SharedSizeGroup="ColColorBtn" Width="Auto" />
+                <ColumnDefinition SharedSizeGroup="ColBgColor" />
+                <ColumnDefinition SharedSizeGroup="ColBgColorBtn" Width="Auto" />
+                <ColumnDefinition SharedSizeGroup="ColMoveUp" Width="Auto" />
+                <ColumnDefinition SharedSizeGroup="ColMoveDown" Width="Auto" />
+                <ColumnDefinition SharedSizeGroup="ColCanAdd" Width="Auto" />
+                <ColumnDefinition SharedSizeGroup="ColDelete" Width="Auto" />
               </Grid.ColumnDefinitions>
               <TextBox Margin="0,0,3,0" Text="{Binding DisplayText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
               <TextBox Grid.Column="1" Margin="0,0,3,0" Text="{Binding Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
@@ -55,10 +59,11 @@
               <Button Grid.Column="3" Margin="0,0,3,0" Width="24" FontFamily="Segoe Fluent Icons" Content="&#xe790;" Command="{Binding ChooseColorCommand}" />
               <TextBox Grid.Column="4" Margin="0,0,3,0" Text="{Binding BackgroundColor, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
               <Button Grid.Column="5" Margin="0,0,3,0" Width="24" FontFamily="Segoe Fluent Icons" Content="&#xe790;" Command="{Binding ChooseBackgroundColorCommand}" />
-              <Button Grid.Column="6" Margin="0,0,3,0" Width="24" FontFamily="Segoe Fluent Icons" Content="&#xE74A;" Command="{Binding MoveUpCommand}" />
-              <CheckBox Grid.Column="7" Margin="3,0,3,0" IsChecked="{Binding CanAdd, Mode=TwoWay}" VerticalAlignment="Center" />
-              <Button Grid.Column="8" Width="24" FontFamily="Segoe Fluent Icons" Content="&#xE74D;"
-                      Click="DeleteItem" />
+              <Button Grid.Column="6" Margin="0,0,3,0" Width="24" FontFamily="Segoe Fluent Icons" Content="&#xE74A;" Command="{Binding MoveUpCommand}" ToolTip="Move Up" />
+              <Button Grid.Column="7" Margin="0,0,3,0" Width="24" FontFamily="Segoe Fluent Icons" Content="&#xE74B;" Command="{Binding MoveDownCommand}" ToolTip="Move Down" />
+              <CheckBox Grid.Column="8" Margin="3,0,3,0" IsChecked="{Binding CanAdd, Mode=TwoWay}" VerticalAlignment="Center" />
+              <Button Grid.Column="9" Width="24" FontFamily="Segoe Fluent Icons" Content="&#xE74D;"
+                      Click="DeleteItem" ToolTip="Delete" />
             </Grid>
           </DataTemplate>
         </ItemsControl.ItemTemplate>
