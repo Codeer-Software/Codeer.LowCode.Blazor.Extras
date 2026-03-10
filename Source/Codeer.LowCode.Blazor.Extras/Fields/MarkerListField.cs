@@ -25,7 +25,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         private SearchCondition? _additionalCondition;
 
         internal string ObjectUrl { get; set; } = string.Empty;
-        internal string ImageExtension => Design.ResourcePath.Split('.').LastOrDefault() ?? string.Empty;
+        internal string ImageExtension { get; set; } = string.Empty;
         internal List<Marker> MarkerList { get; set; } = new();
 
         [ScriptHide]
@@ -39,7 +39,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         [ScriptHide]
         public override async Task InitializeDataAsync(FieldDataBase? fieldDataBase)
         {
-            await LoadImage();
+            await LoadImageAsync();
             if (this.IsInLayout()) await ReloadAsync();
         }
 
@@ -60,6 +60,14 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         public override async Task OnExternalFieldChangedAsync(string fieldName)
         {
             if (!this.IsInLayout()) return;
+
+            if (fieldName == Design.ImageFileField)
+            {
+                await LoadImageFromFileFieldAsync();
+                NotifyStateChanged();
+                return;
+            }
+
             var searchCondition = GetSearchCondition();
             if (searchCondition.GetFieldVariableConditions().All(e => new VariableName(e.Variable).FieldName.Root != fieldName)) return;
             await ReloadAsync();
@@ -96,7 +104,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
 
             var mod = await this.CreateChildModuleAsync(ModuleName, ModuleLayoutType.Detail, Design.DetailLayoutName);
 
-            await mod.AssignRequiredCondition(Design.SearchCondition);
+            await AssignConditionValuesAsync(mod);
 
             SetNumberFieldValue(mod, Design.XField, x);
             SetNumberFieldValue(mod, Design.YField, y);
@@ -181,8 +189,34 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         private SearchCondition GetSearchCondition()
             => Design.SearchCondition.MergeSearchCondition(_additionalCondition);
 
-        private async Task LoadImage()
+        //TODO 不十分 とうかカレンダー、タスクボード、ガントチャートもこれ必用
+        private async Task AssignConditionValuesAsync(Module childModule)
         {
+            foreach (var condition in Design.SearchCondition.GetFieldVariableConditions())
+            {
+                if (condition.Comparison != MatchComparison.Equal) continue;
+
+                var targetFieldName = new VariableName(condition.SearchTargetVariable).FieldName.FullName;
+                var sourceFieldName = new VariableName(condition.Variable).FieldName.FullName;
+
+                var sourceField = Module.GetField(sourceFieldName);
+                if (sourceField == null) continue;
+
+                var targetField = childModule.GetField(targetFieldName);
+                if (targetField == null) continue;
+
+                await targetField.SetDataAsync(sourceField.GetData());
+            }
+        }
+
+        private async Task LoadImageAsync()
+        {
+            if (!string.IsNullOrEmpty(Design.ImageFileField))
+            {
+                await LoadImageFromFileFieldAsync();
+                return;
+            }
+
             if (string.IsNullOrEmpty(Design.ResourcePath)) return;
 
             using var memoryStream = await Services.AppInfoService.GetResourceAsync(Design.ResourcePath);
@@ -190,6 +224,31 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
 
             var bin = memoryStream!.ToArray();
             ObjectUrl = Convert.ToBase64String(bin);
+            ImageExtension = Design.ResourcePath.Split('.').LastOrDefault() ?? string.Empty;
+        }
+
+        //TODO これはいらなくなる
+        public async Task UpdateImage()
+        {
+            await LoadImageFromFileFieldAsync();
+            NotifyStateChanged();
+        }
+
+        private async Task LoadImageFromFileFieldAsync()
+        {
+            var fileField = Module.GetField<FileField>(Design.ImageFileField);
+            if (fileField == null) return;
+
+            var stream = await fileField.GetMemoryStreamAsync();
+            if (stream == null)
+            {
+                ObjectUrl = string.Empty;
+                ImageExtension = string.Empty;
+                return;
+            }
+
+            ObjectUrl = Convert.ToBase64String(stream.ToArray());
+            ImageExtension = fileField.FileName?.Split('.').LastOrDefault() ?? string.Empty;
         }
 
         private static void SetNumberFieldValue(Module mod, string fieldName, int value)

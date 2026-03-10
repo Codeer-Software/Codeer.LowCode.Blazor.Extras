@@ -11,10 +11,14 @@ using Codeer.LowCode.Blazor.Repository.Match;
 namespace Codeer.LowCode.Blazor.Extras.Designs
 {
     public class MarkerListFieldDesign() : FieldDesignBase(typeof(MarkerListFieldDesign).FullName!),
-        ISearchResultsViewFieldDesign
+        ISearchResultsViewFieldDesign, IDataDependentField
     {
         [Designer(CandidateType = CandidateType.Resource)]
         public string ResourcePath { get; set; } = string.Empty;
+
+        [Designer(CandidateType = CandidateType.Field)]
+        [TargetFieldType(Types = [typeof(FileFieldDesign)])]
+        public string ImageFileField { get; set; } = string.Empty;
 
         [Designer(Scope = DesignerScope.All)]
         public SearchCondition SearchCondition { get; set; } = new();
@@ -62,6 +66,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         public override List<DesignCheckInfo> CheckDesign(DesignCheckContext context)
         {
             var result = new List<DesignCheckInfo>();
+            context.CheckFieldFieldExistence(Name, nameof(ImageFileField), ImageFileField).AddTo(result);
             context.CheckFieldRelativeFieldExistence(Name, nameof(XField), SearchCondition.ModuleName, XField).AddTo(result);
             context.CheckFieldRelativeFieldExistence(Name, nameof(YField), SearchCondition.ModuleName, YField).AddTo(result);
             context.CheckFieldRelativeFieldExistence(Name, nameof(LabelField), SearchCondition.ModuleName, LabelField).AddTo(result);
@@ -74,11 +79,19 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         }
 
         public override RenameResult ChangeName(RenameContext context) => context.Builder(base.ChangeName(context))
+            .AddField(ImageFileField, x => ImageFileField = x)
             .AddField(SearchCondition.ModuleName, XField, x => XField = x)
             .AddField(SearchCondition.ModuleName, YField, x => YField = x)
             .AddField(SearchCondition.ModuleName, LabelField, x => LabelField = x)
             .AddLayout(SearchCondition.ModuleName, ModuleLayoutType.Detail, DetailLayoutName, x => DetailLayoutName = x)
             .AddMatchCondition(SearchCondition)
             .Build();
+
+        public List<string> GetDependencyFields()
+        {
+            var list = new List<string>();
+            if (!string.IsNullOrEmpty(ImageFileField)) list.Add(ImageFileField);
+            return list;
+        }
     }
 }
