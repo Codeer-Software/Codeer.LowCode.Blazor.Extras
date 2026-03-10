@@ -216,6 +216,15 @@
   <data name="GanttFieldEnableMonthView" xml:space="preserve">
     <value>月表示を有効にする</value>
   </data>
+  <data name="TaskBoardFieldStatuses" xml:space="preserve">
+    <value>ステータス一覧</value>
+  </data>
+  <data name="TaskBoardFieldStatusField" xml:space="preserve">
+    <value>ステータスフィールド</value>
+  </data>
+  <data name="TaskBoardFieldSortIndexField" xml:space="preserve">
+    <value>並び順フィールド</value>
+  </data>
   <data name="RichTextFieldDbColumn" xml:space="preserve">
     <value>DBカラム</value>
   </data>

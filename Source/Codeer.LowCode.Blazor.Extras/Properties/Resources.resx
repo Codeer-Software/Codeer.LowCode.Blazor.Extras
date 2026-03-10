@@ -216,6 +216,15 @@
   <data name="GanttFieldEnableMonthView" xml:space="preserve">
     <value>Enable Month View</value>
   </data>
+  <data name="TaskBoardFieldStatuses" xml:space="preserve">
+    <value>Statuses</value>
+  </data>
+  <data name="TaskBoardFieldStatusField" xml:space="preserve">
+    <value>Status Field</value>
+  </data>
+  <data name="TaskBoardFieldSortIndexField" xml:space="preserve">
+    <value>Sort Index Field</value>
+  </data>
   <data name="RichTextFieldDbColumn" xml:space="preserve">
     <value>DB Column</value>
   </data>

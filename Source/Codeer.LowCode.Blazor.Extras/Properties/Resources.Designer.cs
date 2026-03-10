@@ -573,6 +573,24 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
             }
         }
 
+        internal static string TaskBoardFieldStatuses {
+            get {
+                return ResourceManager.GetString("TaskBoardFieldStatuses", resourceCulture);
+            }
+        }
+
+        internal static string TaskBoardFieldStatusField {
+            get {
+                return ResourceManager.GetString("TaskBoardFieldStatusField", resourceCulture);
+            }
+        }
+
+        internal static string TaskBoardFieldSortIndexField {
+            get {
+                return ResourceManager.GetString("TaskBoardFieldSortIndexField", resourceCulture);
+            }
+        }
+
         internal static string RichTextFieldDbColumn {
             get {
                 return ResourceManager.GetString("RichTextFieldDbColumn", resourceCulture);

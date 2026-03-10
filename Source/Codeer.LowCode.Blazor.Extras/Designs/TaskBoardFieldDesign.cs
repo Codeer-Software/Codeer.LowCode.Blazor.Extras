@@ -14,30 +14,30 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
     public class TaskBoardFieldDesign() : FieldDesignBase(typeof(TaskBoardFieldDesign).FullName!), IDisplayName,
         ISearchResultsViewFieldDesign
     {
-        [Designer]
+        [Designer(DisplayName = "$DisplayName")]
         public string DisplayName { get; set; } = string.Empty;
 
-        [Designer(Scope = DesignerScope.All)]
+        [Designer(Scope = DesignerScope.All, DisplayName = "$SearchCondition")]
         public SearchCondition SearchCondition { get; set; } = new();
 
-        [Designer]
+        [Designer(DisplayName = "$TaskBoardFieldStatuses")]
         public TaskBoardStatuses Statuses { get; set; } = new();
 
-        [Designer(CandidateType = CandidateType.Field)]
+        [Designer(CandidateType = CandidateType.Field, DisplayName = "$TaskBoardFieldStatusField")]
         [ModuleMember(Member = $"{nameof(SearchCondition)}.{nameof(SearchCondition.ModuleName)}")]
         [TargetFieldType(Types = [typeof(SelectFieldDesign), typeof(TextFieldDesign)])]
         public string StatusField { get; set; } = "";
 
-        [Designer(CandidateType = CandidateType.DetailLayout)]
+        [Designer(CandidateType = CandidateType.DetailLayout, DisplayName = "$DetailLayoutName")]
         [Layout(ModuleNameMember = $"{nameof(SearchCondition)}.{nameof(SearchCondition.ModuleName)}")]
         public string DetailLayoutName { get; set; } = string.Empty;
 
-        [Designer(CandidateType = CandidateType.Field)]
+        [Designer(CandidateType = CandidateType.Field, DisplayName = "$TaskBoardFieldSortIndexField")]
         [ModuleMember(Member = $"{nameof(SearchCondition)}.{nameof(SearchCondition.ModuleName)}")]
         [TargetFieldType(Types = [typeof(NumberFieldDesign)])]
         public string SortIndexField { get; set; } = "";
 
-        [Designer(CandidateType = CandidateType.ScriptEvent)]
+        [Designer(CandidateType = CandidateType.ScriptEvent, DisplayName = "$OnDataChanged")]
         public string OnDataChanged { get; set; } = string.Empty;
 
         public override string GetWebComponentTypeFullName() => typeof(TaskBoardFieldComponent).FullName!;
