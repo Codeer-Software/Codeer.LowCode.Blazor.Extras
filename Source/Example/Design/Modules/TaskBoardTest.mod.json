@@ -108,6 +108,7 @@
                   "Color": "",
                   "BackgroundColor": "",
                   "Name": "",
+                  "IsViewOnly": true,
                   "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.FieldLayoutDesign"
                 },
                 "Padding": {},

@@ -58,6 +58,12 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
 
         public GanttViewMode ViewMode { get; private set; } = GanttViewMode.Week;
 
+        internal DateTime CustomRangeStart { get; set; } = DateTime.Today.AddMonths(-1);
+
+        internal DateTime CustomRangeEnd { get; set; } = DateTime.Today.AddMonths(1);
+
+        internal bool IsCustomRange => ViewMode == GanttViewMode.CustomRange;
+
         public DateTime RangeStart => GetViewDateRange().Start;
 
         public DateTime RangeEnd => GetViewDateRange().End;
@@ -72,7 +78,15 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         public override async Task InitializeDataAsync(FieldDataBase? fieldDataBase)
         {
             IsDateOnly = DetectIsDateOnly();
-            ViewMode = GetDefaultViewMode();
+            if (Design.CustomRange)
+            {
+                ViewMode = GanttViewMode.CustomRange;
+                ViewStart = CustomRangeStart;
+            }
+            else
+            {
+                ViewMode = GetDefaultViewMode();
+            }
             if (this.IsInLayout()) await ReloadAsync();
         }
 
@@ -179,14 +193,18 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
 
         internal bool IsViewModeEnabled(GanttViewMode mode) => mode switch
         {
-            GanttViewMode.Day => !IsDateOnly && Design.EnableDayView,
-            GanttViewMode.Week => Design.EnableWeekView,
-            GanttViewMode.Month => Design.EnableMonthView,
+            GanttViewMode.Day => !IsDateOnly && Design.EnableDayView && !IsCustomRange,
+            GanttViewMode.Week => Design.EnableWeekView && !IsCustomRange,
+            GanttViewMode.Month => Design.EnableMonthView && !IsCustomRange,
+            GanttViewMode.CustomRange => IsCustomRange,
             _ => false,
         };
 
         internal (DateTime Start, DateTime End) GetViewDateRange()
         {
+            if (ViewMode == GanttViewMode.CustomRange)
+                return (CustomRangeStart.Date, CustomRangeEnd.Date);
+
             if (Design.FitToWidth)
             {
                 return ViewMode switch
@@ -202,6 +220,17 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
                 GanttViewMode.Month => (ViewStart.Date, ViewStart.Date.AddDays(42)),
                 _ => (ViewStart.Date, ViewStart.Date.AddDays(14)),
             };
+        }
+
+        [ScriptMethod(ArgumentTypes = ["DateTime", "DateTime"], ArgumentNames = ["start", "end"])]
+        public async Task SetCustomRangeAsync(DateTime start, DateTime end)
+        {
+            CustomRangeStart = start;
+            CustomRangeEnd = end;
+            ViewMode = GanttViewMode.CustomRange;
+            ViewStart = start;
+            NotifyStateChanged();
+            await ReloadAsync();
         }
 
         internal Task SetViewStartAsync(DateTime date) => SetViewStartScriptAsync(date);

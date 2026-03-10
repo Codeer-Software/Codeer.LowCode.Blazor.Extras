@@ -219,6 +219,9 @@
   <data name="GanttFieldFitToWidth" xml:space="preserve">
     <value>横幅に収める</value>
   </data>
+  <data name="GanttFieldShowDetailHeader" xml:space="preserve">
+    <value>詳細ヘッダーを表示</value>
+  </data>
   <data name="TaskBoardFieldStatuses" xml:space="preserve">
     <value>ステータス一覧</value>
   </data>
@@ -230,6 +233,15 @@
   </data>
   <data name="RichTextFieldDbColumn" xml:space="preserve">
     <value>DBカラム</value>
+  </data>
+  <data name="GanttFieldCustomRange" xml:space="preserve">
+    <value>カスタム範囲</value>
+  </data>
+  <data name="GanttFieldCustomRangeStart" xml:space="preserve">
+    <value>開始</value>
+  </data>
+  <data name="GanttFieldCustomRangeEnd" xml:space="preserve">
+    <value>終了</value>
   </data>
 <data name="RichTextBold" xml:space="preserve">
     <value>太字</value>
