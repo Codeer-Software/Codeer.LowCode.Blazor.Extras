@@ -8,7 +8,6 @@
 @using Codeer.LowCode.Blazor.Components.Fields
 @using Codeer.LowCode.Blazor.Extras.Designs
 @using Codeer.LowCode.Blazor.Extras.Fields
-@using Codeer.LowCode.Blazor.Extras.Properties
 @inherits FieldComponentBase<TaskBoardField>
 @inject Services Services
 @inject IJSRuntime JSRuntime
@@ -17,48 +16,46 @@
   <div class="taskboard-columns">
     @foreach (var status in Field.StatusCategories)
     {
-      var columnItems = Field.GetColumnItems(status.Value);
-      var capturedStatus = status;
+      var statusValue = status.EffectiveValue;
+      var columnItems = Field.GetColumnItems(statusValue);
       <div class="taskboard-column"
-           @ondragover="OnDragOver"
            @ondragover:preventDefault="true"
-           @ondrop="() => OnDropOnColumn(capturedStatus.Value)">
-        <div class="taskboard-column-header" style="@GetHeaderStyle(capturedStatus)">
+           @ondrop="() => OnDropOnColumn(statusValue)">
+        <div class="taskboard-column-header" style="@GetHeaderStyle(status)">
           <span class="taskboard-column-title">@status.DisplayText</span>
           <span class="taskboard-column-count">@columnItems.Count</span>
-          <button type="button" class="taskboard-add-btn" style="@(capturedStatus.CanAdd ? "" : "visibility:hidden")" @onclick="() => OnAddClicked(capturedStatus.Value)">+</button>
+          <button type="button" class="taskboard-add-btn" style="@(status.CanAdd ? "" : "visibility:hidden")" @onclick="() => OnAddClicked(statusValue)">+</button>
         </div>
         <div class="taskboard-column-body">
           @foreach (var (index, item) in columnItems.Select((item, i) => (i, item)))
           {
             var capturedItem = item;
             var capturedIndex = index;
-            var capturedStatusValue = capturedStatus.Value;
-            var isDragOver = _dragOverStatus == capturedStatusValue && _dragOverIndex == capturedIndex;
+            var isDragOver = _dragOverStatus == statusValue && _dragOverIndex == capturedIndex;
             @if (isDragOver && _dragOverPosition == DropPosition.Before)
             {
               <div class="taskboard-drop-indicator"></div>
             }
             <div class="taskboard-card @(_dragItem == capturedItem ? "dragging" : "")"
                  draggable="true"
-                 @ondragstart="() => OnDragStart(capturedItem, capturedStatusValue, capturedIndex)"
+                 @ondragstart="() => OnDragStart(capturedItem, statusValue, capturedIndex)"
                  @ondragend="OnDragEnd"
-                 @ondragover="e => OnCardDragOver(e, capturedStatusValue, capturedIndex)"
+                 @ondragover="e => UpdateDragOver(statusValue, capturedIndex, DropPosition.After)"
                  @ondragover:preventDefault="true"
-                 @ondrop="() => OnDropOnColumn(capturedStatusValue)"
+                 @ondrop="() => OnDropOnColumn(statusValue)"
                  @ondrop:stopPropagation="true"
                  @ondblclick="() => OnCardDoubleClicked(capturedItem)">
               <div class="taskboard-card-drop-before"
-                   @ondragover="() => OnCardDragOverWithPosition(capturedStatusValue, capturedIndex, DropPosition.Before)"
+                   @ondragover="() => UpdateDragOver(statusValue, capturedIndex, DropPosition.Before)"
                    @ondragover:preventDefault="true"
                    @ondragover:stopPropagation="true"
-                   @ondrop="() => OnDropOnColumn(capturedStatusValue)"
+                   @ondrop="() => OnDropOnColumn(statusValue)"
                    @ondrop:stopPropagation="true"></div>
               <div class="taskboard-card-drop-after"
-                   @ondragover="() => OnCardDragOverWithPosition(capturedStatusValue, capturedIndex, DropPosition.After)"
+                   @ondragover="() => UpdateDragOver(statusValue, capturedIndex, DropPosition.After)"
                    @ondragover:preventDefault="true"
                    @ondragover:stopPropagation="true"
-                   @ondrop="() => OnDropOnColumn(capturedStatusValue)"
+                   @ondrop="() => OnDropOnColumn(statusValue)"
                    @ondrop:stopPropagation="true"></div>
               @if (ModuleDesign is not null)
               {
@@ -72,10 +69,10 @@
           }
           @if (_dragItem != null)
           {
-            <div class="taskboard-empty-drop @(_dragOverStatus == capturedStatus.Value && _dragOverIndex >= columnItems.Count ? "drag-over" : "")"
-                 @ondragover="e => OnEmptyAreaDragOver(e, capturedStatus.Value, columnItems.Count)"
+            <div class="taskboard-empty-drop @(_dragOverStatus == statusValue && _dragOverIndex >= columnItems.Count ? "drag-over" : "")"
+                 @ondragover="e => UpdateDragOver(statusValue, columnItems.Count, DropPosition.Before)"
                  @ondragover:preventDefault="true"
-                 @ondrop="() => OnDropOnColumn(capturedStatus.Value)"
+                 @ondrop="() => OnDropOnColumn(statusValue)"
                  @ondrop:stopPropagation="true">
             </div>
           }
@@ -180,34 +177,12 @@
     StateHasChanged();
   }
 
-  private void OnDragOver(DragEventArgs e)
-  {
-  }
-
-  private void OnCardDragOver(DragEventArgs e, string statusValue, int index)
-  {
-    if (_dragItem == null) return;
-    _dragOverStatus = statusValue;
-    _dragOverIndex = index;
-    _dragOverPosition = DropPosition.After;
-    StateHasChanged();
-  }
-
-  private void OnCardDragOverWithPosition(string statusValue, int index, DropPosition position)
+  private void UpdateDragOver(string statusValue, int index, DropPosition position)
   {
     if (_dragItem == null) return;
     _dragOverStatus = statusValue;
     _dragOverIndex = index;
     _dragOverPosition = position;
-    StateHasChanged();
-  }
-
-  private void OnEmptyAreaDragOver(DragEventArgs e, string statusValue, int count)
-  {
-    if (_dragItem == null) return;
-    _dragOverStatus = statusValue;
-    _dragOverIndex = count;
-    _dragOverPosition = DropPosition.Before;
     StateHasChanged();
   }
 

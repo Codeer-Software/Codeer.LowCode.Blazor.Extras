@@ -13,13 +13,6 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Codeer.LowCode.Blazor.Extras.Fields
 {
-    public class TaskBoardItem
-    {
-        public string StatusValue { get; set; } = string.Empty;
-        public int SortIndex { get; set; }
-        public Module? Module { get; set; }
-    }
-
     public class TaskBoardField(TaskBoardFieldDesign design)
         : FieldBase<TaskBoardFieldDesign>(design), ISearchResultsViewField
     {
@@ -43,14 +36,13 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
 
         internal List<TaskBoardItem> Items { get; } = [];
 
-        internal List<TaskBoardStatusDesign> StatusCategories { get; private set; } = [];
+        internal List<TaskBoardStatusDesign> StatusCategories => Design.Statuses.Items;
 
         public int Page => 0;
 
         [ScriptHide]
         public override async Task InitializeDataAsync(FieldDataBase? fieldDataBase)
         {
-            ParseStatusCategories();
             if (this.IsInLayout()) await ReloadAsync();
         }
 
@@ -74,7 +66,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         public override FieldDataBase? GetData() => null;
 
         [ScriptHide]
-        public override async Task SetDataAsync(FieldDataBase? fieldDataBase) => await Task.CompletedTask;
+        public override Task SetDataAsync(FieldDataBase? fieldDataBase) => Task.CompletedTask;
 
         [ScriptHide]
         public override async Task OnExternalFieldChangedAsync(string fieldName)
@@ -88,12 +80,8 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         [ScriptHide]
         public override async Task OnChildDataChangedAsync()
         {
-            var count = Items.Count;
-            foreach (var e in Items.ToList())
-            {
-                if (e.Module?.IsDeleted == true) Items.Remove(e);
-            }
-            if (count == Items.Count) return;
+            var removed = Items.RemoveAll(e => e.Module?.IsDeleted == true);
+            if (removed == 0) return;
 
             await InvokeOnDataChangedAsync();
             await NotifyDataChangedAsync();
@@ -106,7 +94,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
 
             var items = await this.GetChildModulesAsync(GetSearchCondition(), ModuleLayoutType.Detail, Design.DetailLayoutName);
             Items.Clear();
-            Items.AddRange(items.Select(ConvertToTaskBoardItem).OrderBy(e => e.SortIndex).ToList());
+            Items.AddRange(items.Select(ConvertToTaskBoardItem).OrderBy(e => e.SortIndex));
 
             NotifyStateChanged();
         }
@@ -116,7 +104,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             var mod = await this.CreateChildModuleAsync(ModuleName, ModuleLayoutType.Detail, Design.DetailLayoutName);
             await mod.AssignRequiredCondition(Design.SearchCondition);
 
-            await SetStatusValueAsync(mod, statusValue);
+            await SetFieldStringValueAsync(mod, Design.StatusField, statusValue);
 
             if (HasSortIndex)
             {
@@ -154,7 +142,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
                 var item = Items.FirstOrDefault(e => e.Module?.GetIdText() == mod.GetIdText());
                 if (item != null)
                 {
-                    item.StatusValue = GetStatusValue(mod);
+                    item.StatusValue = GetFieldStringValue(mod, Design.StatusField);
                     item.SortIndex = GetSortIndexValue(mod);
                 }
             }
@@ -176,11 +164,9 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         {
             if (item.Module == null) return;
 
-            var statusChanged = item.StatusValue != newStatusValue;
-
-            if (statusChanged)
+            if (item.StatusValue != newStatusValue)
             {
-                await SetStatusValueAsync(item.Module, newStatusValue);
+                await SetFieldStringValueAsync(item.Module, Design.StatusField, newStatusValue);
                 item.StatusValue = newStatusValue;
             }
 
@@ -191,28 +177,20 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
                     .OrderBy(e => e.SortIndex)
                     .ToList();
 
-                if (newIndex < 0) newIndex = 0;
-                if (newIndex > columnItems.Count) newIndex = columnItems.Count;
+                newIndex = Math.Clamp(newIndex, 0, columnItems.Count);
                 columnItems.Insert(newIndex, item);
 
-                for (int i = 0; i < columnItems.Count; i++)
+                for (var i = 0; i < columnItems.Count; i++)
                 {
                     columnItems[i].SortIndex = i;
                     if (columnItems[i].Module != null)
-                    {
                         await SetSortIndexValueAsync(columnItems[i].Module!, i);
-                    }
                 }
             }
 
             using var scope = Services.Provider.GetService<LoadingService>()?.StartLoading(300);
 
-            var modifiedModules = Items
-                .Where(e => e.Module?.IsModified == true)
-                .Select(e => e.Module!)
-                .ToList();
-
-            foreach (var mod in modifiedModules)
+            foreach (var mod in Items.Where(e => e.Module?.IsModified == true).Select(e => e.Module!))
             {
                 await mod.SubmitAsync();
             }
@@ -222,24 +200,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         }
 
         internal List<TaskBoardItem> GetColumnItems(string statusValue)
-        {
-            return Items
-                .Where(e => e.StatusValue == statusValue)
-                .OrderBy(e => e.SortIndex)
-                .ToList();
-        }
-
-        private void ParseStatusCategories()
-        {
-            StatusCategories = Design.Statuses.Items.Select(e => new TaskBoardStatusDesign
-            {
-                DisplayText = e.DisplayText,
-                Value = string.IsNullOrEmpty(e.Value) ? e.DisplayText : e.Value,
-                Color = e.Color,
-                BackgroundColor = e.BackgroundColor,
-                CanAdd = e.CanAdd,
-            }).ToList();
-        }
+            => Items.Where(e => e.StatusValue == statusValue).OrderBy(e => e.SortIndex).ToList();
 
         private async Task InvokeOnDataChangedAsync()
         {
@@ -247,41 +208,32 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             await OnDataChangedAsync();
         }
 
-        private TaskBoardItem ConvertToTaskBoardItem(Module data)
+        private TaskBoardItem ConvertToTaskBoardItem(Module data) => new()
         {
-            return new TaskBoardItem
-            {
-                Module = data,
-                StatusValue = GetStatusValue(data),
-                SortIndex = GetSortIndexValue(data),
-            };
-        }
+            Module = data,
+            StatusValue = GetFieldStringValue(data, Design.StatusField),
+            SortIndex = GetSortIndexValue(data),
+        };
 
-        private string GetStatusValue(Module data)
+        private static string GetFieldStringValue(Module data, string fieldName)
         {
-            var selectField = data.GetField<SelectField>(Design.StatusField);
+            var selectField = data.GetField<SelectField>(fieldName);
             if (selectField != null) return selectField.Value ?? string.Empty;
 
-            var textField = data.GetField<TextField>(Design.StatusField);
-            if (textField != null) return textField.Value ?? string.Empty;
-
-            return string.Empty;
+            var textField = data.GetField<TextField>(fieldName);
+            return textField?.Value ?? string.Empty;
         }
 
-        private async Task SetStatusValueAsync(Module data, string value)
+        private static async Task SetFieldStringValueAsync(Module data, string fieldName, string value)
         {
-            var selectField = data.GetField<SelectField>(Design.StatusField);
+            var selectField = data.GetField<SelectField>(fieldName);
             if (selectField != null)
             {
                 await selectField.SetValueAsync(value);
                 return;
             }
-
-            var textField = data.GetField<TextField>(Design.StatusField);
-            if (textField != null)
-            {
-                await textField.SetValueAsync(value);
-            }
+            var textField = data.GetField<TextField>(fieldName);
+            if (textField != null) await textField.SetValueAsync(value);
         }
 
         private bool HasSortIndex => !string.IsNullOrEmpty(Design.SortIndexField);
