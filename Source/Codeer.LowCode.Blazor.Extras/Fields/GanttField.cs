@@ -115,8 +115,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             if (removedCount == 0) return;
 
             MakeDependencyList();
-            await InvokeOnDataChangedAsync();
-            await NotifyDataChangedAsync();
+            await InvokeOnDataChangedAndNotifyAsync();
         }
 
         // ===== Search condition =====
@@ -175,7 +174,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         // ===== View state =====
 
         [ScriptMethodToProperty("ViewStart")]
-        public async Task SetViewStartScriptAsync(DateTime date)
+        public async Task SetViewStartAsync(DateTime date)
         {
             ViewStart = date;
             NotifyStateChanged();
@@ -183,7 +182,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         }
 
         [ScriptMethodToProperty("ViewMode")]
-        public async Task SetViewModeScriptAsync(GanttViewMode mode)
+        public async Task SetViewModeAsync(GanttViewMode mode)
         {
             if (!IsViewModeEnabled(mode)) return;
             ViewMode = mode;
@@ -205,20 +204,14 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             if (ViewMode == GanttViewMode.CustomRange)
                 return (CustomRangeStart.Date, CustomRangeEnd.Date);
 
-            if (Design.FitToWidth)
+            var start = ViewStart.Date;
+            return (ViewMode, Design.FitToWidth) switch
             {
-                return ViewMode switch
-                {
-                    GanttViewMode.Day => (ViewStart.Date, ViewStart.Date.AddDays(1)),
-                    GanttViewMode.Month => (ViewStart.Date, ViewStart.Date.AddMonths(1)),
-                    _ => (ViewStart.Date, ViewStart.Date.AddDays(7)),
-                };
-            }
-            return ViewMode switch
-            {
-                GanttViewMode.Day => (ViewStart.Date, ViewStart.Date.AddDays(1)),
-                GanttViewMode.Month => (ViewStart.Date, ViewStart.Date.AddDays(42)),
-                _ => (ViewStart.Date, ViewStart.Date.AddDays(14)),
+                (GanttViewMode.Day, _) => (start, start.AddDays(1)),
+                (GanttViewMode.Month, true) => (start, start.AddMonths(1)),
+                (GanttViewMode.Month, false) => (start, start.AddDays(42)),
+                (_, true) => (start, start.AddDays(7)),
+                _ => (start, start.AddDays(14)),
             };
         }
 
@@ -233,15 +226,6 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             await ReloadAsync();
         }
 
-        internal Task SetViewStartAsync(DateTime date) => SetViewStartScriptAsync(date);
-
-        internal async Task SetViewModeAsync(GanttViewMode mode)
-        {
-            if (!IsViewModeEnabled(mode)) return;
-            ViewMode = mode;
-            NotifyStateChanged();
-            await ReloadAsync();
-        }
 
         // ===== CRUD operations =====
 
@@ -250,8 +234,8 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             var mod = await this.CreateChildModuleAsync(ModuleName, ModuleLayoutType.Detail, Design.DetailLayoutName);
             await mod.AssignRequiredCondition(Design.SearchCondition);
 
-            SetDateFieldValue(mod, Design.StartField, date);
-            SetDateFieldValue(mod, Design.EndField, date.AddDays(1));
+            await SetDateFieldValueAsync(mod, Design.StartField, date);
+            await SetDateFieldValueAsync(mod, Design.EndField, date.AddDays(1));
 
             if (await mod.ShowDialogAsync(Properties.Resources.OK, Properties.Resources.Cancel) != Properties.Resources.OK) return;
             if (!mod.ValidateInput())
@@ -264,8 +248,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             Items.Add(ConvertToGanttItem(mod));
             SortItems();
 
-            await InvokeOnDataChangedAsync();
-            await NotifyDataChangedAsync();
+            await InvokeOnDataChangedAndNotifyAsync();
         }
 
         internal async Task EditAsync(Module? mod, bool viewOnly = false)
@@ -302,8 +285,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
                 return;
             }
 
-            await InvokeOnDataChangedAsync();
-            await NotifyDataChangedAsync();
+            await InvokeOnDataChangedAndNotifyAsync();
         }
 
         internal async Task UpdateTaskDatesAsync(GanttItem item, DateTime newStart, DateTime newEnd)
@@ -319,8 +301,8 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
                 if (saveEnd < saveStart) saveEnd = saveStart;
             }
 
-            SetDateFieldValue(item.Module, Design.StartField, saveStart);
-            SetDateFieldValue(item.Module, Design.EndField, saveEnd);
+            await SetDateFieldValueAsync(item.Module, Design.StartField, saveStart);
+            await SetDateFieldValueAsync(item.Module, Design.EndField, saveEnd);
 
             using var scope = Services.Provider.GetService<LoadingService>()?.StartLoading(300);
             if (await item.Module.SubmitAsync() != true) return;
@@ -328,8 +310,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             item.Start = newStart;
             item.End = newEnd;
 
-            await InvokeOnDataChangedAsync();
-            await NotifyDataChangedAsync();
+            await InvokeOnDataChangedAndNotifyAsync();
         }
 
         // ===== Dependency operations =====
@@ -356,8 +337,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
 
             await ReloadDependencyTasksAsync(sourceId, destinationId, srcTask, dstTask);
 
-            await InvokeOnDataChangedAsync();
-            await NotifyDataChangedAsync();
+            await InvokeOnDataChangedAndNotifyAsync();
         }
 
         internal async Task DeleteDependenciesAsync(string sourceId, string destinationId)
@@ -384,24 +364,20 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             await Services.ModuleDataService.SubmitAsync(
                 [srcSubmitData, dstTask.Module.GetSubmitData()]);
 
-            await InvokeOnDataChangedAsync();
-            await NotifyDataChangedAsync();
+            await InvokeOnDataChangedAndNotifyAsync();
         }
 
         // ===== Private helpers =====
 
-        private async Task InvokeOnDataChangedAsync()
+        private async Task InvokeOnDataChangedAndNotifyAsync()
         {
             await Module.ExecuteScriptAsync(Design.OnDataChanged);
             await OnDataChangedAsync();
+            await NotifyDataChangedAsync();
         }
 
         private void SortItems()
-        {
-            var sorted = Items.OrderBy(e => e.Start).ToList();
-            Items.Clear();
-            Items.AddRange(sorted);
-        }
+            => Items.Sort((a, b) => a.Start.CompareTo(b.Start));
 
         private void UpdateItemFromModule(Module mod)
         {
@@ -478,17 +454,17 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             return null;
         }
 
-        private static void SetDateFieldValue(Module mod, string fieldName, DateTime value)
+        private static async Task SetDateFieldValueAsync(Module mod, string fieldName, DateTime value)
         {
             if (string.IsNullOrEmpty(fieldName)) return;
             var dateTimeField = mod.GetField<DateTimeField>(fieldName);
             if (dateTimeField != null)
             {
-                dateTimeField.SetValueAsync(value).GetAwaiter().GetResult();
+                await dateTimeField.SetValueAsync(value);
                 return;
             }
             var dateField = mod.GetField<DateField>(fieldName);
-            dateField?.SetValueAsync(DateOnly.FromDateTime(value)).GetAwaiter().GetResult();
+            if (dateField != null) await dateField.SetValueAsync(DateOnly.FromDateTime(value));
         }
 
         // ===== Dependency helpers =====

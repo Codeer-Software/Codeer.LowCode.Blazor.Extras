@@ -289,98 +289,98 @@
 
   private RenderFragment RenderHeader(LayoutParams lp) => __builder =>
   {
-    if (Field.ViewMode is GanttViewMode.Month or GanttViewMode.CustomRange)
+    var useMonthDayHeader = Field.ViewMode is GanttViewMode.Month or GanttViewMode.CustomRange
+                            || (Field.ViewMode == GanttViewMode.Week && Field.IsDateOnly);
+
+    if (useMonthDayHeader)
     {
-      var mgX = 0.0;
-      foreach (var mg in GetMonthGroups(lp.Dates))
-      {
-        var mgWidth = mg.Days * lp.ColWidth;
-        <rect x="@F(mgX)" y="0" width="@F(mgWidth)" height="24" class="gantt-header-month-bg" />
-        <g><text x="@F(mgX + mgWidth / 2)" y="16" class="gantt-header-month-text">@mg.Label</text></g>
-        <line x1="@F(mgX)" y1="0" x2="@F(mgX)" y2="24" class="gantt-header-sep" />
-        mgX += mgWidth;
-      }
+      RenderMonthGroupHeader(lp)(__builder);
       if (ShowDetailHeader)
       {
-        for (var i = 0; i < lp.Dates.Count; i++)
-        {
-          var x = i * lp.ColWidth;
-          var d = lp.Dates[i];
-          var isWeekend = d.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday;
-          <rect x="@F(x)" y="24" width="@F(lp.ColWidth)" height="24" class="@(isWeekend ? "gantt-header-weekend-bg" : "gantt-header-day-bg")" />
-          <g><text x="@F(x + lp.ColWidth / 2)" y="40" class="gantt-header-day-text">@d.Day</text></g>
-          <line x1="@F(x)" y1="24" x2="@F(x)" y2="48" class="gantt-header-sep-light" />
-        }
-        <line x1="0" y1="24" x2="@F(lp.TimelineWidth)" y2="24" class="gantt-header-sep" />
+        var detailHeight = Field.ViewMode is GanttViewMode.Month or GanttViewMode.CustomRange ? 24 : 20;
+        var textY = Field.ViewMode is GanttViewMode.Month or GanttViewMode.CustomRange ? 40 : 38;
+        RenderDayDetailHeader(lp, detailHeight, textY)(__builder);
       }
-      <line x1="0" y1="@lp.HeaderHeight" x2="@F(lp.TimelineWidth)" y2="@lp.HeaderHeight" class="gantt-header-sep" />
-    }
-    else if (Field.ViewMode == GanttViewMode.Week && Field.IsDateOnly)
-    {
-      var mgX = 0.0;
-      foreach (var mg in GetMonthGroups(lp.Dates))
-      {
-        var mgWidth = mg.Days * lp.ColWidth;
-        <rect x="@F(mgX)" y="0" width="@F(mgWidth)" height="24" class="gantt-header-month-bg" />
-        <g><text x="@F(mgX + mgWidth / 2)" y="16" class="gantt-header-month-text">@mg.Label</text></g>
-        <line x1="@F(mgX)" y1="0" x2="@F(mgX)" y2="24" class="gantt-header-sep" />
-        mgX += mgWidth;
-      }
-      if (ShowDetailHeader)
-      {
-        for (var i = 0; i < lp.Dates.Count; i++)
-        {
-          var x = i * lp.ColWidth;
-          var d = lp.Dates[i];
-          var isWeekend = d.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday;
-          <rect x="@F(x)" y="24" width="@F(lp.ColWidth)" height="20" class="@(isWeekend ? "gantt-header-weekend-bg" : "gantt-header-day-bg")" />
-          <g><text x="@F(x + lp.ColWidth / 2)" y="38" class="gantt-header-day-text">@d.Day</text></g>
-          <line x1="@F(x)" y1="24" x2="@F(x)" y2="@lp.HeaderHeight" class="gantt-header-sep-light" />
-        }
-        <line x1="0" y1="24" x2="@F(lp.TimelineWidth)" y2="24" class="gantt-header-sep" />
-      }
-      <line x1="0" y1="@lp.HeaderHeight" x2="@F(lp.TimelineWidth)" y2="@lp.HeaderHeight" class="gantt-header-sep" />
     }
     else if (Field.ViewMode == GanttViewMode.Week)
     {
-      var dgX = 0.0;
-      foreach (var dg in GetDayGroups(lp.Dates))
-      {
-        var dgWidth = dg.Hours * lp.ColWidth;
-        var isWeekend = dg.Date.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday;
-        <rect x="@F(dgX)" y="0" width="@F(dgWidth)" height="24" class="@(isWeekend ? "gantt-header-weekend-bg" : "gantt-header-day-bg")" />
-        <g><text x="@F(dgX + dgWidth / 2)" y="16" class="gantt-header-date-text">@dg.Label</text></g>
-        <line x1="@F(dgX)" y1="0" x2="@F(dgX)" y2="24" class="gantt-header-sep" />
-        dgX += dgWidth;
-      }
+      RenderDayGroupHeader(lp)(__builder);
       if (ShowDetailHeader)
-      {
-        for (var i = 0; i < lp.Dates.Count; i++)
-        {
-          var x = i * lp.ColWidth;
-          var h = lp.Dates[i].Hour;
-          if (h % 6 == 0)
-          {
-            <g><text x="@F(x + lp.ColWidth / 2)" y="@(lp.HeaderHeight - 4)" class="gantt-header-hour-text">@h</text></g>
-          }
-          <line x1="@F(x)" y1="24" x2="@F(x)" y2="@lp.HeaderHeight" class="gantt-header-sep-light" />
-        }
-        <line x1="0" y1="24" x2="@F(lp.TimelineWidth)" y2="24" class="gantt-header-sep" />
-      }
-      <line x1="0" y1="@lp.HeaderHeight" x2="@F(lp.TimelineWidth)" y2="@lp.HeaderHeight" class="gantt-header-sep" />
+        RenderHourDetailHeader(lp)(__builder);
     }
     else
     {
-      for (var i = 0; i < lp.Dates.Count; i++)
+      RenderDayViewHeader(lp)(__builder);
+    }
+    <line x1="0" y1="@lp.HeaderHeight" x2="@F(lp.TimelineWidth)" y2="@lp.HeaderHeight" class="gantt-header-sep" />
+  };
+
+  private RenderFragment RenderMonthGroupHeader(LayoutParams lp) => __builder =>
+  {
+    var mgX = 0.0;
+    foreach (var mg in GetMonthGroups(lp.Dates))
+    {
+      var mgWidth = mg.Days * lp.ColWidth;
+      <rect x="@F(mgX)" y="0" width="@F(mgWidth)" height="24" class="gantt-header-month-bg" />
+      <g><text x="@F(mgX + mgWidth / 2)" y="16" class="gantt-header-month-text">@mg.Label</text></g>
+      <line x1="@F(mgX)" y1="0" x2="@F(mgX)" y2="24" class="gantt-header-sep" />
+      mgX += mgWidth;
+    }
+  };
+
+  private RenderFragment RenderDayDetailHeader(LayoutParams lp, int detailHeight, int textY) => __builder =>
+  {
+    for (var i = 0; i < lp.Dates.Count; i++)
+    {
+      var x = i * lp.ColWidth;
+      var d = lp.Dates[i];
+      var isWeekend = d.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday;
+      <rect x="@F(x)" y="24" width="@F(lp.ColWidth)" height="@detailHeight" class="@(isWeekend ? "gantt-header-weekend-bg" : "gantt-header-day-bg")" />
+      <g><text x="@F(x + lp.ColWidth / 2)" y="@textY" class="gantt-header-day-text">@d.Day</text></g>
+      <line x1="@F(x)" y1="24" x2="@F(x)" y2="@(24 + detailHeight)" class="gantt-header-sep-light" />
+    }
+    <line x1="0" y1="24" x2="@F(lp.TimelineWidth)" y2="24" class="gantt-header-sep" />
+  };
+
+  private RenderFragment RenderDayGroupHeader(LayoutParams lp) => __builder =>
+  {
+    var dgX = 0.0;
+    foreach (var dg in GetDayGroups(lp.Dates))
+    {
+      var dgWidth = dg.Hours * lp.ColWidth;
+      var isWeekend = dg.Date.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday;
+      <rect x="@F(dgX)" y="0" width="@F(dgWidth)" height="24" class="@(isWeekend ? "gantt-header-weekend-bg" : "gantt-header-day-bg")" />
+      <g><text x="@F(dgX + dgWidth / 2)" y="16" class="gantt-header-date-text">@dg.Label</text></g>
+      <line x1="@F(dgX)" y1="0" x2="@F(dgX)" y2="24" class="gantt-header-sep" />
+      dgX += dgWidth;
+    }
+  };
+
+  private RenderFragment RenderHourDetailHeader(LayoutParams lp) => __builder =>
+  {
+    for (var i = 0; i < lp.Dates.Count; i++)
+    {
+      var x = i * lp.ColWidth;
+      var h = lp.Dates[i].Hour;
+      if (h % 6 == 0)
       {
-        var x = i * lp.ColWidth;
-        var h = lp.Dates[i].Hour;
-        <rect x="@F(x)" y="0" width="@F(lp.ColWidth)" height="@lp.HeaderHeight"
-              class="@(h >= 9 && h < 17 ? "gantt-header-day-bg" : "gantt-header-offhour-bg")" />
-        <g><text x="@F(x + lp.ColWidth / 2)" y="@(lp.HeaderHeight - 6)" class="gantt-header-hour-text">@h</text></g>
-        <line x1="@F(x)" y1="0" x2="@F(x)" y2="@lp.HeaderHeight" class="gantt-header-sep-light" />
+        <g><text x="@F(x + lp.ColWidth / 2)" y="@(lp.HeaderHeight - 4)" class="gantt-header-hour-text">@h</text></g>
       }
-      <line x1="0" y1="@lp.HeaderHeight" x2="@F(lp.TimelineWidth)" y2="@lp.HeaderHeight" class="gantt-header-sep" />
+      <line x1="@F(x)" y1="24" x2="@F(x)" y2="@lp.HeaderHeight" class="gantt-header-sep-light" />
+    }
+    <line x1="0" y1="24" x2="@F(lp.TimelineWidth)" y2="24" class="gantt-header-sep" />
+  };
+
+  private RenderFragment RenderDayViewHeader(LayoutParams lp) => __builder =>
+  {
+    for (var i = 0; i < lp.Dates.Count; i++)
+    {
+      var x = i * lp.ColWidth;
+      var h = lp.Dates[i].Hour;
+      <rect x="@F(x)" y="0" width="@F(lp.ColWidth)" height="@lp.HeaderHeight"
+            class="@(h >= 9 && h < 17 ? "gantt-header-day-bg" : "gantt-header-offhour-bg")" />
+      <g><text x="@F(x + lp.ColWidth / 2)" y="@(lp.HeaderHeight - 6)" class="gantt-header-hour-text">@h</text></g>
+      <line x1="@F(x)" y1="0" x2="@F(x)" y2="@lp.HeaderHeight" class="gantt-header-sep-light" />
     }
   };
 
@@ -484,14 +484,17 @@
 
   private RenderFragment RenderDependencyArrows(LayoutParams lp) => __builder =>
   {
+    var itemIndexMap = new Dictionary<string, int>();
+    for (var i = 0; i < Field.Items.Count; i++)
+      itemIndexMap[Field.Items[i].Id] = i;
+
     foreach (var dep in Field.DependencyList)
     {
-      var fromItem = Field.Items.FirstOrDefault(e => e.Id == dep.From);
-      var toItem = Field.Items.FirstOrDefault(e => e.Id == dep.To);
-      if (fromItem == null || toItem == null) continue;
+      if (!itemIndexMap.TryGetValue(dep.From, out var fromIdx) ||
+          !itemIndexMap.TryGetValue(dep.To, out var toIdx)) continue;
 
-      var fromBar = GetBarPosition(fromItem, lp, Field.Items.IndexOf(fromItem));
-      var toBar = GetBarPosition(toItem, lp, Field.Items.IndexOf(toItem));
+      var fromBar = GetBarPosition(Field.Items[fromIdx], lp, fromIdx);
+      var toBar = GetBarPosition(Field.Items[toIdx], lp, toIdx);
       if (fromBar.Width <= 0 || toBar.Width <= 0) continue;
 
       var x1 = fromBar.X + fromBar.Width;
