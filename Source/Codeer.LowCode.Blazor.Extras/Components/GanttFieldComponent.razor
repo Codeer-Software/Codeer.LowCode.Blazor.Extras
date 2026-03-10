@@ -401,14 +401,15 @@
       <g><text x="@(bar.X + 8)" y="@(bar.Y + bar.Height / 2 + 4)"
             class="gantt-task-text" pointer-events="none">@TruncateText(item.Text, bar.Width)</text></g>
 
-      @if (IsEditable)
+      @if (IsEditable && bar.Width >= 20)
       {
-        <rect x="@bar.X" y="@bar.Y" width="6" height="@bar.Height"
+        var handleW = Math.Max(4, Math.Min(6, bar.Width * 0.2));
+        <rect x="@F(bar.X)" y="@bar.Y" width="@F(handleW)" height="@bar.Height"
               class="gantt-resize-handle" rx="2" ry="2"
               @onmousedown="e => StartDrag(e, capturedIdx, DragMode.ResizeLeft)"
               @onmousedown:preventDefault="true"
               @onmousedown:stopPropagation="true" />
-        <rect x="@(bar.X + bar.Width - 6)" y="@bar.Y" width="6" height="@bar.Height"
+        <rect x="@F(bar.X + bar.Width - handleW)" y="@bar.Y" width="@F(handleW)" height="@bar.Height"
               class="gantt-resize-handle" rx="2" ry="2"
               @onmousedown="e => StartDrag(e, capturedIdx, DragMode.ResizeRight)"
               @onmousedown:preventDefault="true"
@@ -771,9 +772,9 @@
     if (Field.IsDateOnly) return TimeSpan.FromDays(1);
     return Field.ViewMode switch
     {
-      GanttViewMode.Month => TimeSpan.FromDays(1),
+      GanttViewMode.Month => TimeSpan.FromHours(12),
       GanttViewMode.Week => TimeSpan.FromHours(1),
-      _ => TimeSpan.FromHours(1),
+      _ => TimeSpan.FromMinutes(15),
     };
   }
 
