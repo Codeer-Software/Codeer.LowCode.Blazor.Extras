@@ -76,6 +76,10 @@ ExtrasDesignerInitializer.Initialize();
 - [RichTextField - リッチテキストエディタ](docs/RichTextField.md)
 - [MarkerListField - 画像マーカー](docs/MarkerListField.md)
 
+## CSS カスタマイズ
+
+各フィールドの見た目はCSSで自由にカスタマイズできます。詳しくは **[CSS カスタマイズガイド](docs/CSS-Customization.md)** を参照してください。
+
 ## ライセンス
 
 [MIT License](LICENSE)

@@ -57,3 +57,7 @@
 | Month | 月表示 |
 | Week | 週表示 |
 | Day | 日表示 |
+
+## CSS カスタマイズ
+
+カレンダーの見た目はCSSクラスで自由にカスタマイズできます。全CSSクラス一覧とカスタマイズ例は **[CalendarField CSS カスタマイズガイド](CalendarField-CSS-Customization.md)** を参照してください。

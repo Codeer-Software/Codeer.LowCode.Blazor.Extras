@@ -99,3 +99,7 @@
 | Week | 週単位表示 |
 | Month | 月単位表示 |
 | CustomRange | カスタム範囲表示 |
+
+## CSS カスタマイズ
+
+ガントチャートの見た目はCSSクラスで自由にカスタマイズできます。全CSSクラス一覧とカスタマイズ例は **[GanttField CSS カスタマイズガイド](GanttField-CSS-Customization.md)** を参照してください。
