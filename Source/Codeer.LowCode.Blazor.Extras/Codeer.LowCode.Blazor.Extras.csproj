@@ -6,7 +6,7 @@
 		<Nullable>enable</Nullable>
 		<AddRazorSupportForMvc>true</AddRazorSupportForMvc>
 		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
-		<Version>0.0.1</Version>
+		<Version>0.0.2</Version>
 		<Description></Description>
 		<PackageProjectUrl>https://github.com/Codeer-Software/Codeer.LowCode.Blazor.Extras</PackageProjectUrl>
 		<RepositoryUrl>https://github.com/Codeer-Software/Codeer.LowCode.Blazor.Extras</RepositoryUrl>

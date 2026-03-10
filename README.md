@@ -19,15 +19,16 @@
 
 ### 1. NuGet パッケージのインストール
 
-`LowCodeApp.Client.Shared` プロジェクトに NuGet から次のパッケージをインストールしてください。
+以下のプロジェクトにそれぞれ NuGet パッケージをインストールしてください。
 
-```
-Codeer.LowCode.Blazor.Extras
-```
+| インストール先プロジェクト | パッケージ名 |
+|---|---|
+| LowCodeApp.Client.Shared | Codeer.LowCode.Blazor.Extras |
+| LowCodeApp.Designer | Codeer.LowCode.Blazor.Extras.Designer |
 
 ### 2. コードの修正
 
-ライブラリを使用するために、以下の各プロジェクトに初期化コードを追加する必要があります。
+ライブラリの使用に必要なコードを以下のプロジェクトにそれぞれ追加する必要があります。
 
 #### LowCodeApp.Client.Shared
 
@@ -50,9 +51,20 @@ using Codeer.LowCode.Blazor.Extras;
 ExtrasServerInitializer.Initialize();
 ```
 
+#### LowCodeApp.Designer
+
+`App.xaml.cs` に以下のコードを追加してください。
+
+```csharp
+using Codeer.LowCode.Blazor.Extras.Designer;
+
+// OnStartup メソッド内
+ExtrasDesignerInitializer.Initialize();
+```
+
 ### 3. セットアップ完了
 
-以上でセットアップは完了です。Designer からExtras のフィールドが配置できるようになります。
+以上でセットアップは完了です。Designer から Extras のフィールドが配置できるようになります。
 
 ## 各フィールドの詳細
 
