@@ -3,8 +3,6 @@ using Codeer.LowCode.Blazor.Extras.Designs;
 using Codeer.LowCode.Blazor.OperatingModel;
 using Codeer.LowCode.Blazor.Repository.Data;
 using Codeer.LowCode.Blazor.Script;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.JSInterop;
 
 namespace Codeer.LowCode.Blazor.Extras.Fields
 {
@@ -40,8 +38,6 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         {
             await Task.CompletedTask;
             _list = Module.GetField<ListField>(Design.ListField);
-
-            var js = Module.Services.Provider.GetService<IJSRuntime>();
 
             if (_list != null)
             {
