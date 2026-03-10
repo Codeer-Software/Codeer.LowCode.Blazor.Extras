@@ -15,7 +15,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
 
         public bool CanAdd { get; set; } = true;
 
-        public string EffectiveValue => string.IsNullOrEmpty(Value) ? DisplayText : Value;
+        internal string EffectiveValue => string.IsNullOrEmpty(Value) ? DisplayText : Value;
     }
 
     public class TaskBoardStatuses : ICurrentSettingsText

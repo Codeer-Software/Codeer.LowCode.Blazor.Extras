@@ -12,13 +12,6 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Codeer.LowCode.Blazor.Extras.Fields
 {
-    public enum GanttViewMode
-    {
-        Day,
-        Week,
-        Month
-    }
-
     internal class GanttItem
     {
         public string Id { get; set; } = string.Empty;

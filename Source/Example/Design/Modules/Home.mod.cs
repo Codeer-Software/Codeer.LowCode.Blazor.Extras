@@ -13,7 +13,7 @@ void カレンダーテストボタン_OnClick()
 void ガントテストボタン_OnClick()
 {    
     using var x = this.SuspendNotifyStateChanged();
-    Gantt.ViewMode = GanttViewMode.Day;
+    Gantt.ViewMode = GanttViewMode.Month;
     Gantt.ViewStart = new DateTime(2027, 4, 3);
 }
 
