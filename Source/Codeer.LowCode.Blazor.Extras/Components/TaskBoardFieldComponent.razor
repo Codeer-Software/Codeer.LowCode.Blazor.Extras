@@ -23,7 +23,6 @@
            @ondrop="() => OnDropOnColumn(statusValue)">
         <div class="taskboard-column-header" style="@GetHeaderStyle(status)">
           <span class="taskboard-column-title">@status.DisplayText</span>
-          <span class="taskboard-column-count">@columnItems.Count</span>
           <button type="button" class="taskboard-add-btn" style="@(status.CanAdd ? "" : "visibility:hidden")" @onclick="() => OnAddClicked(statusValue)">+</button>
         </div>
         <div class="taskboard-column-body">

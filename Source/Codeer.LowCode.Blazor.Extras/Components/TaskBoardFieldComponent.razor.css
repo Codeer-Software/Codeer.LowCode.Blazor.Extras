@@ -50,17 +50,6 @@
   white-space: nowrap;
 }
 
-.taskboard-column-count {
-  font-size: 0.8rem;
-  font-weight: 500;
-  color: #5f6368;
-  background: rgba(0, 0, 0, 0.08);
-  border-radius: 10px;
-  padding: 1px 8px;
-  min-width: 20px;
-  text-align: center;
-}
-
 /* ===== Add Button ===== */
 .taskboard-add-btn {
   border: none;
