@@ -1,7 +1,7 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
-using Codeer.LowCode.Blazor.Extras.Models;
+using Codeer.LowCode.Blazor.Extras.Fields;
 
 namespace Codeer.LowCode.Blazor.Extras.Designer.ViewModels
 {

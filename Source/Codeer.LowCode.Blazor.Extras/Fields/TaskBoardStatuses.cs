@@ -1,7 +1,7 @@
 using Codeer.LowCode.Blazor.OperatingModel;
 using Codeer.LowCode.Blazor.Repository.Design;
 
-namespace Codeer.LowCode.Blazor.Extras.Models
+namespace Codeer.LowCode.Blazor.Extras.Fields
 {
     public class TaskBoardStatusDesign
     {

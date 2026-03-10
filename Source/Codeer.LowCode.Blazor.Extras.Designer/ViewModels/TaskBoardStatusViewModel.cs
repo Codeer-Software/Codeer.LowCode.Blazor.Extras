@@ -3,7 +3,7 @@ using System.Runtime.CompilerServices;
 using System.Windows.Input;
 using System.Windows.Media;
 using Codeer.LowCode.Blazor.Extras.Designer.Interop;
-using Codeer.LowCode.Blazor.Extras.Models;
+using Codeer.LowCode.Blazor.Extras.Fields;
 
 namespace Codeer.LowCode.Blazor.Extras.Designer.ViewModels
 {
