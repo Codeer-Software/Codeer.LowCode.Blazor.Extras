@@ -222,6 +222,9 @@
   <data name="GanttFieldShowDetailHeader" xml:space="preserve">
     <value>Show Detail Header</value>
   </data>
+  <data name="GanttFieldShowToolbar" xml:space="preserve">
+    <value>Show Toolbar</value>
+  </data>
   <data name="TaskBoardFieldStatuses" xml:space="preserve">
     <value>Statuses</value>
   </data>
@@ -242,6 +245,9 @@
   </data>
   <data name="GanttFieldCustomRangeEnd" xml:space="preserve">
     <value>End</value>
+  </data>
+  <data name="GanttFieldCustomRangeEditable" xml:space="preserve">
+    <value>Custom Range Editable</value>
   </data>
 <data name="RichTextBold" xml:space="preserve">
     <value>Bold</value>

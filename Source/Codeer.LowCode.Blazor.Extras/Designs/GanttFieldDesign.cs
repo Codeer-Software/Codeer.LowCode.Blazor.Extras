@@ -81,8 +81,14 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         [Designer(DisplayName = "$GanttFieldShowDetailHeader")]
         public bool ShowDetailHeader { get; set; } = true;
 
+        [Designer(DisplayName = "$GanttFieldShowToolbar")]
+        public bool ShowToolbar { get; set; } = true;
+
         [Designer(DisplayName = "$GanttFieldCustomRange")]
         public bool CustomRange { get; set; }
+
+        [Designer(DisplayName = "$GanttFieldCustomRangeEditable")]
+        public bool CustomRangeEditable { get; set; } = true;
 
         [Designer(CandidateType = CandidateType.ScriptEvent, DisplayName = "$OnDataChanged")]
         public string OnDataChanged { get; set; } = string.Empty;

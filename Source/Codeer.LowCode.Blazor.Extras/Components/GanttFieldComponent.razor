@@ -10,49 +10,59 @@
 <div @ref="Element" class="gantt-container" tabindex="0"
      @onkeydown="OnKeyDown" @onclick="OnContainerClick" @oncontextmenu:preventDefault="true">
   @* ===== Toolbar ===== *@
-  <div class="gantt-toolbar">
-    <div class="gantt-toolbar-left">
-      @if (Field.IsCustomRange)
-      {
-        <button type="button" class="gantt-range-btn" @onclick="OpenRangePopup">
-          @GetTitle()
-        </button>
-      }
-      else
-      {
-        <button type="button" class="gantt-toolbar-btn gantt-toolbar-btn-today" @onclick="GoToday">@Resources.Today</button>
-        <button type="button" class="gantt-toolbar-btn gantt-toolbar-btn-prev" @onclick="GoPrev">&#9664;</button>
-        <button type="button" class="gantt-toolbar-btn gantt-toolbar-btn-next" @onclick="GoNext">&#9654;</button>
-        <span class="gantt-toolbar-title">@GetTitle()</span>
-      }
+  @if (Field.Design.ShowToolbar)
+  {
+    <div class="gantt-toolbar">
+      <div class="gantt-toolbar-left">
+        @if (Field.IsCustomRange)
+        {
+          @if (Field.Design.CustomRangeEditable)
+          {
+            <button type="button" class="gantt-range-btn" @onclick="OpenRangePopup">
+              @GetTitle()
+            </button>
+          }
+          else
+          {
+            <span class="gantt-toolbar-title">@GetTitle()</span>
+          }
+        }
+        else
+        {
+          <button type="button" class="gantt-toolbar-btn gantt-toolbar-btn-today" @onclick="GoToday">@Resources.Today</button>
+          <button type="button" class="gantt-toolbar-btn gantt-toolbar-btn-prev" @onclick="GoPrev">&#9664;</button>
+          <button type="button" class="gantt-toolbar-btn gantt-toolbar-btn-next" @onclick="GoNext">&#9654;</button>
+          <span class="gantt-toolbar-title">@GetTitle()</span>
+        }
+      </div>
+      <div class="gantt-toolbar-right">
+        @if (IsEditable)
+        {
+          <button type="button" class="gantt-toolbar-btn gantt-toolbar-btn-add" @onclick="OnAddClicked">@Resources.Add</button>
+        }
+        @if (!Field.IsCustomRange && EnabledViewModeCount > 1)
+        {
+          <div class="gantt-view-switcher">
+            @if (Field.IsViewModeEnabled(GanttViewMode.Day))
+            {
+              <button type="button" class="gantt-view-btn @(Field.ViewMode == GanttViewMode.Day ? "active" : "")"
+                      @onclick="() => SetViewMode(GanttViewMode.Day)">@Resources.Day</button>
+            }
+            @if (Field.IsViewModeEnabled(GanttViewMode.Week))
+            {
+              <button type="button" class="gantt-view-btn @(Field.ViewMode == GanttViewMode.Week ? "active" : "")"
+                      @onclick="() => SetViewMode(GanttViewMode.Week)">@Resources.Week</button>
+            }
+            @if (Field.IsViewModeEnabled(GanttViewMode.Month))
+            {
+              <button type="button" class="gantt-view-btn @(Field.ViewMode == GanttViewMode.Month ? "active" : "")"
+                      @onclick="() => SetViewMode(GanttViewMode.Month)">@Resources.Month</button>
+            }
+          </div>
+        }
+      </div>
     </div>
-    <div class="gantt-toolbar-right">
-      @if (IsEditable)
-      {
-        <button type="button" class="gantt-toolbar-btn gantt-toolbar-btn-add" @onclick="OnAddClicked">@Resources.Add</button>
-      }
-      @if (!Field.IsCustomRange && EnabledViewModeCount > 1)
-      {
-        <div class="gantt-view-switcher">
-          @if (Field.IsViewModeEnabled(GanttViewMode.Day))
-          {
-            <button type="button" class="gantt-view-btn @(Field.ViewMode == GanttViewMode.Day ? "active" : "")"
-                    @onclick="() => SetViewMode(GanttViewMode.Day)">@Resources.Day</button>
-          }
-          @if (Field.IsViewModeEnabled(GanttViewMode.Week))
-          {
-            <button type="button" class="gantt-view-btn @(Field.ViewMode == GanttViewMode.Week ? "active" : "")"
-                    @onclick="() => SetViewMode(GanttViewMode.Week)">@Resources.Week</button>
-          }
-          @if (Field.IsViewModeEnabled(GanttViewMode.Month))
-          {
-            <button type="button" class="gantt-view-btn @(Field.ViewMode == GanttViewMode.Month ? "active" : "")"
-                    @onclick="() => SetViewMode(GanttViewMode.Month)">@Resources.Month</button>
-          }
-        </div>
-      }
-    </div>
-  </div>
+  }
 
   @if (_rangePopupOpen)
   {

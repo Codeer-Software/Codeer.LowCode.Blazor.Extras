@@ -222,6 +222,9 @@
   <data name="GanttFieldShowDetailHeader" xml:space="preserve">
     <value>詳細ヘッダーを表示</value>
   </data>
+  <data name="GanttFieldShowToolbar" xml:space="preserve">
+    <value>ツールバーを表示</value>
+  </data>
   <data name="TaskBoardFieldStatuses" xml:space="preserve">
     <value>ステータス一覧</value>
   </data>
@@ -242,6 +245,9 @@
   </data>
   <data name="GanttFieldCustomRangeEnd" xml:space="preserve">
     <value>終了</value>
+  </data>
+  <data name="GanttFieldCustomRangeEditable" xml:space="preserve">
+    <value>カスタム範囲編集可能</value>
   </data>
 <data name="RichTextBold" xml:space="preserve">
     <value>太字</value>

@@ -603,6 +603,18 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
             }
         }
 
+        internal static string GanttFieldCustomRangeEditable {
+            get {
+                return ResourceManager.GetString("GanttFieldCustomRangeEditable", resourceCulture);
+            }
+        }
+
+        internal static string GanttFieldShowToolbar {
+            get {
+                return ResourceManager.GetString("GanttFieldShowToolbar", resourceCulture);
+            }
+        }
+
         internal static string TaskBoardFieldStatuses {
             get {
                 return ResourceManager.GetString("TaskBoardFieldStatuses", resourceCulture);
