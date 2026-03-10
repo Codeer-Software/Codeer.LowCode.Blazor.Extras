@@ -10,7 +10,8 @@
 
 <div class="scroll-host">
     <div class="img-overlay"
-         @ondblclick="HandleBackgroundClick">
+         @ondblclick="HandleBackgroundClick"
+         style="@(IsEditable ? "" : "cursor: default;")">
 
       <img src="@($"data:image/{Field.ImageExtension};base64,{Field.ObjectUrl}")" alt="@Resources.Base64Image" class="base-img" draggable="false" />
 
@@ -28,6 +29,8 @@
 </div>
 
 @code {
+  private bool IsEditable => !Field.IsViewOnly && Field.IsEnabled;
+
   protected override async Task OnInitializedAsync()
   {
     await base.OnInitializedAsync();
@@ -37,10 +40,11 @@
     => $"left:{m.X}px; top:{m.Y}px;";
 
   async Task HandleMarkerClick(Marker m)
-    => await Field.EditAsync(m.Module);
+    => await Field.EditAsync(m.Module, !IsEditable);
 
   async Task HandleBackgroundClick(MouseEventArgs e)
   {
+    if (!IsEditable) return;
     var x = (int)Math.Round(e.OffsetX);
     var y = (int)Math.Round(e.OffsetY);
     await Field.AddAsync(x, y);

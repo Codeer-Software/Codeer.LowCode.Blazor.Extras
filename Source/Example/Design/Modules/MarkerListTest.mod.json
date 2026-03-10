@@ -71,7 +71,7 @@
             "IsWrap": false,
             "Margin": {},
             "GridRowType": "Normal",
-            "CanResize": false,
+            "CanResize": true,
             "BackgroundColor": "",
             "IsRowMarginRemoved": false,
             "Columns": [
@@ -94,7 +94,7 @@
                   "RightColor": "",
                   "BottomColor": ""
                 },
-                "CanResize": false,
+                "CanResize": true,
                 "Border": "None"
               }
             ]
