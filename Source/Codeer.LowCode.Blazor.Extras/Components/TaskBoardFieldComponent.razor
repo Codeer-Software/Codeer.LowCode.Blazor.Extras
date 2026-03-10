@@ -22,7 +22,10 @@
            @ondrop="() => OnDropOnColumn(statusValue)">
         <div class="taskboard-column-header" style="@GetHeaderStyle(status)">
           <span class="taskboard-column-title">@status.DisplayText</span>
-          <button type="button" class="taskboard-add-btn" style="@(status.CanAdd ? "" : "visibility:hidden")" @onclick="() => OnAddClicked(statusValue)">+</button>
+          @if (IsEditable)
+          {
+            <button type="button" class="taskboard-add-btn" style="@(status.CanAdd ? "" : "visibility:hidden")" @onclick="() => OnAddClicked(statusValue)">+</button>
+          }
         </div>
         <div class="taskboard-column-body">
           @foreach (var (index, item) in columnItems.Select((item, i) => (i, item)))
@@ -35,7 +38,8 @@
               <div class="taskboard-drop-indicator"></div>
             }
             <div class="taskboard-card @(_dragItem == capturedItem ? "dragging" : "")"
-                 draggable="true"
+                 style="@(IsEditable ? "" : "cursor: default;")"
+                 draggable="@IsEditable"
                  @ondragstart="() => OnDragStart(capturedItem, statusValue, capturedIndex)"
                  @ondragend="OnDragEnd"
                  @ondragover="e => UpdateDragOver(statusValue, capturedIndex, DropPosition.After)"
@@ -153,14 +157,23 @@
     return string.Join("; ", parts) + ";";
   }
 
+  // ===== ViewOnly / Enabled =====
+  private bool IsDisabled => Field.IsEnabled == false;
+  private bool IsViewMode => Field.IsViewOnly;
+  private bool IsEditable => !IsViewMode && !IsDisabled;
+
   private async Task OnAddClicked(string statusValue)
-    => await Field.AddAsync(statusValue);
+  {
+    if (!IsEditable) return;
+    await Field.AddAsync(statusValue);
+  }
 
   private async Task OnCardDoubleClicked(TaskBoardItem item)
-    => await Field.EditAsync(item.Module);
+    => await Field.EditAsync(item.Module, !IsEditable);
 
   private void OnDragStart(TaskBoardItem item, string statusValue, int index)
   {
+    if (!IsEditable) return;
     _dragItem = item;
     _dragSourceStatus = statusValue;
     _dragSourceIndex = index;
