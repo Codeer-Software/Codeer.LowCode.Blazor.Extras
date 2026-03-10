@@ -225,6 +225,15 @@
   <data name="GanttFieldShowToolbar" xml:space="preserve">
     <value>Show Toolbar</value>
   </data>
+  <data name="GanttCategoryViewMode" xml:space="preserve">
+    <value>View Mode</value>
+  </data>
+  <data name="GanttCategoryDisplay" xml:space="preserve">
+    <value>Display</value>
+  </data>
+  <data name="GanttCategoryEvents" xml:space="preserve">
+    <value>Events</value>
+  </data>
   <data name="TaskBoardFieldStatuses" xml:space="preserve">
     <value>Statuses</value>
   </data>

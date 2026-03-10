@@ -66,31 +66,31 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         [TargetFieldType(Types = [typeof(IdFieldDesign), typeof(LinkFieldDesign)])]
         public string DependencyDestinationIdField { get; set; } = "";
 
-        [Designer(DisplayName = "$GanttFieldEnableDayView")]
+        [Designer(DisplayName = "$GanttFieldEnableDayView", Category = "$GanttCategoryViewMode")]
         public bool EnableDayView { get; set; } = true;
 
-        [Designer(DisplayName = "$GanttFieldEnableWeekView")]
+        [Designer(DisplayName = "$GanttFieldEnableWeekView", Category = "$GanttCategoryViewMode")]
         public bool EnableWeekView { get; set; } = true;
 
-        [Designer(DisplayName = "$GanttFieldEnableMonthView")]
+        [Designer(DisplayName = "$GanttFieldEnableMonthView", Category = "$GanttCategoryViewMode")]
         public bool EnableMonthView { get; set; } = true;
 
-        [Designer(DisplayName = "$GanttFieldFitToWidth")]
-        public bool FitToWidth { get; set; }
-
-        [Designer(DisplayName = "$GanttFieldShowDetailHeader")]
-        public bool ShowDetailHeader { get; set; } = true;
-
-        [Designer(DisplayName = "$GanttFieldShowToolbar")]
-        public bool ShowToolbar { get; set; } = true;
-
-        [Designer(DisplayName = "$GanttFieldCustomRange")]
+        [Designer(DisplayName = "$GanttFieldCustomRange", Category = "$GanttCategoryViewMode")]
         public bool CustomRange { get; set; }
 
-        [Designer(DisplayName = "$GanttFieldCustomRangeEditable")]
+        [Designer(DisplayName = "$GanttFieldCustomRangeEditable", Category = "$GanttCategoryViewMode")]
         public bool CustomRangeEditable { get; set; } = true;
 
-        [Designer(CandidateType = CandidateType.ScriptEvent, DisplayName = "$OnDataChanged")]
+        [Designer(DisplayName = "$GanttFieldFitToWidth", Category = "$GanttCategoryDisplay")]
+        public bool FitToWidth { get; set; }
+
+        [Designer(DisplayName = "$GanttFieldShowDetailHeader", Category = "$GanttCategoryDisplay")]
+        public bool ShowDetailHeader { get; set; } = true;
+
+        [Designer(DisplayName = "$GanttFieldShowToolbar", Category = "$GanttCategoryDisplay")]
+        public bool ShowToolbar { get; set; } = true;
+
+        [Designer(CandidateType = CandidateType.ScriptEvent, DisplayName = "$OnDataChanged", Category = "$GanttCategoryEvents")]
         public string OnDataChanged { get; set; } = string.Empty;
 
         public override string GetWebComponentTypeFullName() => typeof(GanttFieldComponent).FullName!;

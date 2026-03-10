@@ -615,6 +615,24 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
             }
         }
 
+        internal static string GanttCategoryViewMode {
+            get {
+                return ResourceManager.GetString("GanttCategoryViewMode", resourceCulture);
+            }
+        }
+
+        internal static string GanttCategoryDisplay {
+            get {
+                return ResourceManager.GetString("GanttCategoryDisplay", resourceCulture);
+            }
+        }
+
+        internal static string GanttCategoryEvents {
+            get {
+                return ResourceManager.GetString("GanttCategoryEvents", resourceCulture);
+            }
+        }
+
         internal static string TaskBoardFieldStatuses {
             get {
                 return ResourceManager.GetString("TaskBoardFieldStatuses", resourceCulture);

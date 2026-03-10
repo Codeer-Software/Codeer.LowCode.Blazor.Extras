@@ -225,6 +225,15 @@
   <data name="GanttFieldShowToolbar" xml:space="preserve">
     <value>ツールバーを表示</value>
   </data>
+  <data name="GanttCategoryViewMode" xml:space="preserve">
+    <value>ビューモード</value>
+  </data>
+  <data name="GanttCategoryDisplay" xml:space="preserve">
+    <value>表示</value>
+  </data>
+  <data name="GanttCategoryEvents" xml:space="preserve">
+    <value>イベント</value>
+  </data>
   <data name="TaskBoardFieldStatuses" xml:space="preserve">
     <value>ステータス一覧</value>
   </data>
