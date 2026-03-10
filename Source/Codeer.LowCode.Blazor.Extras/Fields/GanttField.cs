@@ -185,12 +185,24 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             _ => false,
         };
 
-        internal (DateTime Start, DateTime End) GetViewDateRange() => ViewMode switch
+        internal (DateTime Start, DateTime End) GetViewDateRange()
         {
-            GanttViewMode.Day => (ViewStart.Date, ViewStart.Date.AddDays(1)),
-            GanttViewMode.Month => (ViewStart.Date, ViewStart.Date.AddDays(42)),
-            _ => (ViewStart.Date, ViewStart.Date.AddDays(14)),
-        };
+            if (Design.FitToWidth)
+            {
+                return ViewMode switch
+                {
+                    GanttViewMode.Day => (ViewStart.Date, ViewStart.Date.AddDays(1)),
+                    GanttViewMode.Month => (ViewStart.Date, ViewStart.Date.AddMonths(1)),
+                    _ => (ViewStart.Date, ViewStart.Date.AddDays(7)),
+                };
+            }
+            return ViewMode switch
+            {
+                GanttViewMode.Day => (ViewStart.Date, ViewStart.Date.AddDays(1)),
+                GanttViewMode.Month => (ViewStart.Date, ViewStart.Date.AddDays(42)),
+                _ => (ViewStart.Date, ViewStart.Date.AddDays(14)),
+            };
+        }
 
         internal Task SetViewStartAsync(DateTime date) => SetViewStartScriptAsync(date);
 

@@ -216,6 +216,9 @@
   <data name="GanttFieldEnableMonthView" xml:space="preserve">
     <value>Enable Month View</value>
   </data>
+  <data name="GanttFieldFitToWidth" xml:space="preserve">
+    <value>Fit To Width</value>
+  </data>
   <data name="TaskBoardFieldStatuses" xml:space="preserve">
     <value>Statuses</value>
   </data>

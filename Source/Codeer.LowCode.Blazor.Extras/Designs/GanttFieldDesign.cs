@@ -75,6 +75,9 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         [Designer(DisplayName = "$GanttFieldEnableMonthView")]
         public bool EnableMonthView { get; set; } = true;
 
+        [Designer(DisplayName = "$GanttFieldFitToWidth")]
+        public bool FitToWidth { get; set; }
+
         [Designer(CandidateType = CandidateType.ScriptEvent, DisplayName = "$OnDataChanged")]
         public string OnDataChanged { get; set; } = string.Empty;
 

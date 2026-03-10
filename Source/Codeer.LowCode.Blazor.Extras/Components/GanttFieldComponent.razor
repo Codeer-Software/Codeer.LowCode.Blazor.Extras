@@ -1,9 +1,11 @@
 @using System.Globalization
 @using Microsoft.AspNetCore.Components.Web
+@using Microsoft.JSInterop
 @using Codeer.LowCode.Blazor.Components
 @using Codeer.LowCode.Blazor.Extras.Fields
 @using Codeer.LowCode.Blazor.Extras.Properties
 @inherits FieldComponentBase<GanttField>
+@inject IJSRuntime JSRuntime
 
 <div @ref="Element" class="gantt-container" tabindex="0"
      @onkeydown="OnKeyDown" @onclick="OnContainerClick" @oncontextmenu:preventDefault="true">
@@ -72,7 +74,7 @@
     @* ===== Right: Timeline ===== *@
     <div class="gantt-timeline-scroll" style="background: linear-gradient(to bottom, #f8f9fa @Px(lp.HeaderHeight), #fff @Px(lp.HeaderHeight));">
       <svg class="gantt-timeline-svg"
-           width="@lp.TimelineWidth" height="@lp.TotalHeight"
+           width="@F(lp.TimelineWidth)" height="@lp.TotalHeight"
            @onmousemove="OnMouseMove" @onmouseup="OnMouseUp" @onmouseleave="OnMouseUp">
 
         <defs>
@@ -113,6 +115,9 @@
 
   enum DragMode { Move, ResizeLeft, ResizeRight }
 
+  private IJSObjectReference? _jsModule;
+  private int _containerWidth;
+
   bool _dragging;
   int _dragIdx;
   DragMode _dragMode;
@@ -127,6 +132,7 @@
   string? _depLinkingSourceId;
   string? _selectedDepKey;
 
+  private bool IsFitToWidth => Field.Design.FitToWidth;
   private bool IsDisabled => Field.IsEnabled == false;
   private bool IsViewMode => Field.IsViewOnly;
   private bool IsEditable => !IsViewMode && !IsDisabled;
@@ -138,23 +144,67 @@
 
   private CultureInfo _culture => CultureInfo.CurrentUICulture;
 
+  private DotNetObjectReference<GanttFieldComponent>? _dotNetRef;
+
+  protected override async Task OnAfterRenderAsync(bool firstRender)
+  {
+    await base.OnAfterRenderAsync(firstRender);
+    if (firstRender && IsFitToWidth)
+    {
+      _jsModule = await JSRuntime.InvokeAsync<IJSObjectReference>(
+        "import", "./_content/Codeer.LowCode.Blazor.Extras/gantt-interop.js");
+      _containerWidth = await _jsModule.InvokeAsync<int>("getTimelineWidth", Element);
+      _dotNetRef = DotNetObjectReference.Create(this);
+      await _jsModule.InvokeVoidAsync("observeResize", Element, _dotNetRef);
+      StateHasChanged();
+    }
+  }
+
+  [JSInvokable]
+  public void OnContainerResized(int width)
+  {
+    if (width == _containerWidth) return;
+    _containerWidth = width;
+    StateHasChanged();
+  }
+
+  public override async ValueTask DisposeAsync()
+  {
+    if (_jsModule != null)
+    {
+      try
+      {
+        await _jsModule.InvokeVoidAsync("disposeResize", Element);
+        await _jsModule.DisposeAsync();
+      }
+      catch { }
+    }
+    _dotNetRef?.Dispose();
+    await base.DisposeAsync();
+  }
+
   private string Px(double v) => v.ToString("0.#", CultureInfo.InvariantCulture) + "px";
   private string F(double v) => v.ToString("0.##", CultureInfo.InvariantCulture);
 
   // ===== Layout calculation =====
 
-  private record LayoutParams(List<DateTime> Dates, int HeaderHeight, int ColWidth, int RowHeight,
-    int BodyHeight, int TotalHeight, int TimelineWidth, TimeSpan TimeUnit);
+  private record LayoutParams(List<DateTime> Dates, int HeaderHeight, double ColWidth, int RowHeight,
+    int BodyHeight, int TotalHeight, double TimelineWidth, TimeSpan TimeUnit);
 
   private LayoutParams CalcLayout()
   {
     var dates = GetDates();
     var headerHeight = GetHeaderHeight();
-    var colWidth = GetColumnWidth();
+    double colWidth = IsFitToWidth && _containerWidth > 0 && dates.Count > 0
+      ? (double)_containerWidth / dates.Count
+      : GetDefaultColumnWidth();
     var bodyHeight = Math.Max(Field.Items.Count * RowHeight, RowHeight);
-    var timeUnit = GetTimeUnit();
+    var timeUnit = dates.Count >= 2 ? dates[1] - dates[0] : GetDefaultTimeUnit();
+    double timelineWidth = IsFitToWidth && _containerWidth > 0
+      ? _containerWidth
+      : dates.Count * colWidth;
     return new LayoutParams(dates, headerHeight, colWidth, RowHeight,
-      bodyHeight, headerHeight + bodyHeight, dates.Count * colWidth, timeUnit);
+      bodyHeight, headerHeight + bodyHeight, timelineWidth, timeUnit);
   }
 
   private int GetHeaderHeight()
@@ -168,7 +218,7 @@
     };
   }
 
-  private int GetColumnWidth()
+  private int GetDefaultColumnWidth()
   {
     if (Field.IsDateOnly) return 32;
     return Field.ViewMode switch
@@ -179,7 +229,7 @@
     };
   }
 
-  private TimeSpan GetTimeUnit()
+  private TimeSpan GetDefaultTimeUnit()
   {
     if (Field.IsDateOnly) return TimeSpan.FromDays(1);
     return Field.ViewMode switch
@@ -200,9 +250,9 @@
       foreach (var mg in GetMonthGroups(lp.Dates))
       {
         var mgWidth = mg.Days * lp.ColWidth;
-        <rect x="@mgX" y="0" width="@mgWidth" height="24" class="gantt-header-month-bg" />
-        <g><text x="@(mgX + mgWidth / 2)" y="16" class="gantt-header-month-text">@mg.Label</text></g>
-        <line x1="@mgX" y1="0" x2="@mgX" y2="24" class="gantt-header-sep" />
+        <rect x="@F(mgX)" y="0" width="@F(mgWidth)" height="24" class="gantt-header-month-bg" />
+        <g><text x="@F(mgX + mgWidth / 2)" y="16" class="gantt-header-month-text">@mg.Label</text></g>
+        <line x1="@F(mgX)" y1="0" x2="@F(mgX)" y2="24" class="gantt-header-sep" />
         mgX += mgWidth;
       }
       for (var i = 0; i < lp.Dates.Count; i++)
@@ -210,12 +260,12 @@
         var x = i * lp.ColWidth;
         var d = lp.Dates[i];
         var isWeekend = d.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday;
-        <rect x="@x" y="24" width="@lp.ColWidth" height="24" class="@(isWeekend ? "gantt-header-weekend-bg" : "gantt-header-day-bg")" />
-        <g><text x="@(x + lp.ColWidth / 2)" y="40" class="gantt-header-day-text">@d.Day</text></g>
-        <line x1="@x" y1="24" x2="@x" y2="48" class="gantt-header-sep-light" />
+        <rect x="@F(x)" y="24" width="@F(lp.ColWidth)" height="24" class="@(isWeekend ? "gantt-header-weekend-bg" : "gantt-header-day-bg")" />
+        <g><text x="@F(x + lp.ColWidth / 2)" y="40" class="gantt-header-day-text">@d.Day</text></g>
+        <line x1="@F(x)" y1="24" x2="@F(x)" y2="48" class="gantt-header-sep-light" />
       }
-      <line x1="0" y1="24" x2="@lp.TimelineWidth" y2="24" class="gantt-header-sep" />
-      <line x1="0" y1="48" x2="@lp.TimelineWidth" y2="48" class="gantt-header-sep" />
+      <line x1="0" y1="24" x2="@F(lp.TimelineWidth)" y2="24" class="gantt-header-sep" />
+      <line x1="0" y1="48" x2="@F(lp.TimelineWidth)" y2="48" class="gantt-header-sep" />
     }
     else if (Field.ViewMode == GanttViewMode.Week && Field.IsDateOnly)
     {
@@ -223,9 +273,9 @@
       foreach (var mg in GetMonthGroups(lp.Dates))
       {
         var mgWidth = mg.Days * lp.ColWidth;
-        <rect x="@mgX" y="0" width="@mgWidth" height="24" class="gantt-header-month-bg" />
-        <g><text x="@(mgX + mgWidth / 2)" y="16" class="gantt-header-month-text">@mg.Label</text></g>
-        <line x1="@mgX" y1="0" x2="@mgX" y2="24" class="gantt-header-sep" />
+        <rect x="@F(mgX)" y="0" width="@F(mgWidth)" height="24" class="gantt-header-month-bg" />
+        <g><text x="@F(mgX + mgWidth / 2)" y="16" class="gantt-header-month-text">@mg.Label</text></g>
+        <line x1="@F(mgX)" y1="0" x2="@F(mgX)" y2="24" class="gantt-header-sep" />
         mgX += mgWidth;
       }
       for (var i = 0; i < lp.Dates.Count; i++)
@@ -233,12 +283,12 @@
         var x = i * lp.ColWidth;
         var d = lp.Dates[i];
         var isWeekend = d.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday;
-        <rect x="@x" y="24" width="@lp.ColWidth" height="20" class="@(isWeekend ? "gantt-header-weekend-bg" : "gantt-header-day-bg")" />
-        <g><text x="@(x + lp.ColWidth / 2)" y="38" class="gantt-header-day-text">@d.Day</text></g>
-        <line x1="@x" y1="24" x2="@x" y2="@lp.HeaderHeight" class="gantt-header-sep-light" />
+        <rect x="@F(x)" y="24" width="@F(lp.ColWidth)" height="20" class="@(isWeekend ? "gantt-header-weekend-bg" : "gantt-header-day-bg")" />
+        <g><text x="@F(x + lp.ColWidth / 2)" y="38" class="gantt-header-day-text">@d.Day</text></g>
+        <line x1="@F(x)" y1="24" x2="@F(x)" y2="@lp.HeaderHeight" class="gantt-header-sep-light" />
       }
-      <line x1="0" y1="24" x2="@lp.TimelineWidth" y2="24" class="gantt-header-sep" />
-      <line x1="0" y1="@lp.HeaderHeight" x2="@lp.TimelineWidth" y2="@lp.HeaderHeight" class="gantt-header-sep" />
+      <line x1="0" y1="24" x2="@F(lp.TimelineWidth)" y2="24" class="gantt-header-sep" />
+      <line x1="0" y1="@lp.HeaderHeight" x2="@F(lp.TimelineWidth)" y2="@lp.HeaderHeight" class="gantt-header-sep" />
     }
     else if (Field.ViewMode == GanttViewMode.Week)
     {
@@ -247,9 +297,9 @@
       {
         var dgWidth = dg.Hours * lp.ColWidth;
         var isWeekend = dg.Date.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday;
-        <rect x="@dgX" y="0" width="@dgWidth" height="24" class="@(isWeekend ? "gantt-header-weekend-bg" : "gantt-header-day-bg")" />
-        <g><text x="@(dgX + dgWidth / 2)" y="16" class="gantt-header-date-text">@dg.Label</text></g>
-        <line x1="@dgX" y1="0" x2="@dgX" y2="24" class="gantt-header-sep" />
+        <rect x="@F(dgX)" y="0" width="@F(dgWidth)" height="24" class="@(isWeekend ? "gantt-header-weekend-bg" : "gantt-header-day-bg")" />
+        <g><text x="@F(dgX + dgWidth / 2)" y="16" class="gantt-header-date-text">@dg.Label</text></g>
+        <line x1="@F(dgX)" y1="0" x2="@F(dgX)" y2="24" class="gantt-header-sep" />
         dgX += dgWidth;
       }
       for (var i = 0; i < lp.Dates.Count; i++)
@@ -258,12 +308,12 @@
         var h = lp.Dates[i].Hour;
         if (h % 6 == 0)
         {
-          <g><text x="@(x + 2)" y="@(lp.HeaderHeight - 4)" class="gantt-header-hour-text" text-anchor="start">@($"{h}:00")</text></g>
+          <g><text x="@F(x + lp.ColWidth / 2)" y="@(lp.HeaderHeight - 4)" class="gantt-header-hour-text">@h</text></g>
         }
-        <line x1="@x" y1="24" x2="@x" y2="@lp.HeaderHeight" class="gantt-header-sep-light" />
+        <line x1="@F(x)" y1="24" x2="@F(x)" y2="@lp.HeaderHeight" class="gantt-header-sep-light" />
       }
-      <line x1="0" y1="24" x2="@lp.TimelineWidth" y2="24" class="gantt-header-sep" />
-      <line x1="0" y1="@lp.HeaderHeight" x2="@lp.TimelineWidth" y2="@lp.HeaderHeight" class="gantt-header-sep" />
+      <line x1="0" y1="24" x2="@F(lp.TimelineWidth)" y2="24" class="gantt-header-sep" />
+      <line x1="0" y1="@lp.HeaderHeight" x2="@F(lp.TimelineWidth)" y2="@lp.HeaderHeight" class="gantt-header-sep" />
     }
     else
     {
@@ -271,12 +321,12 @@
       {
         var x = i * lp.ColWidth;
         var h = lp.Dates[i].Hour;
-        <rect x="@x" y="0" width="@lp.ColWidth" height="@lp.HeaderHeight"
+        <rect x="@F(x)" y="0" width="@F(lp.ColWidth)" height="@lp.HeaderHeight"
               class="@(h >= 9 && h < 17 ? "gantt-header-day-bg" : "gantt-header-offhour-bg")" />
-        <g><text x="@(x + lp.ColWidth / 2)" y="@(lp.HeaderHeight - 6)" class="gantt-header-hour-text">@($"{h}:00")</text></g>
-        <line x1="@x" y1="0" x2="@x" y2="@lp.HeaderHeight" class="gantt-header-sep-light" />
+        <g><text x="@F(x + lp.ColWidth / 2)" y="@(lp.HeaderHeight - 6)" class="gantt-header-hour-text">@h</text></g>
+        <line x1="@F(x)" y1="0" x2="@F(x)" y2="@lp.HeaderHeight" class="gantt-header-sep-light" />
       }
-      <line x1="0" y1="@lp.HeaderHeight" x2="@lp.TimelineWidth" y2="@lp.HeaderHeight" class="gantt-header-sep" />
+      <line x1="0" y1="@lp.HeaderHeight" x2="@F(lp.TimelineWidth)" y2="@lp.HeaderHeight" class="gantt-header-sep" />
     }
   };
 
@@ -290,18 +340,18 @@
         && d.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday;
       if (isWeekend)
       {
-        <rect x="@x" y="@lp.HeaderHeight" width="@lp.ColWidth" height="@lp.BodyHeight" class="gantt-grid-weekend" />
+        <rect x="@F(x)" y="@lp.HeaderHeight" width="@F(lp.ColWidth)" height="@lp.BodyHeight" class="gantt-grid-weekend" />
       }
       if (i > 0)
       {
-        <line x1="@x" y1="@lp.HeaderHeight" x2="@x" y2="@lp.TotalHeight"
+        <line x1="@F(x)" y1="@lp.HeaderHeight" x2="@F(x)" y2="@lp.TotalHeight"
               class="@(IsMainGridLine(d) ? "gantt-grid-line-main" : "gantt-grid-line")" />
       }
     }
     for (var r = 0; r <= Field.Items.Count; r++)
     {
       var y = lp.HeaderHeight + r * lp.RowHeight;
-      <line x1="0" y1="@y" x2="@lp.TimelineWidth" y2="@y" class="gantt-grid-row-line" />
+      <line x1="0" y1="@y" x2="@F(lp.TimelineWidth)" y2="@y" class="gantt-grid-row-line" />
     }
   };
 
@@ -563,29 +613,47 @@
 
   // ===== Date generation =====
 
+  private int GetMaxColumns()
+  {
+    if (!IsFitToWidth || _containerWidth <= 0) return int.MaxValue;
+    var minColWidth = GetDefaultColumnWidth();
+    return Math.Max(1, _containerWidth / minColWidth);
+  }
+
   private List<DateTime> GetDates()
   {
     var (start, end) = Field.GetViewDateRange();
-    var list = new List<DateTime>();
+    var maxCols = GetMaxColumns();
+
     if (Field.IsDateOnly)
+      return GenerateDateList(start, end, maxCols, [1, 2, 7, 14], s => TimeSpan.FromDays(s));
+
+    return Field.ViewMode switch
     {
-      for (var d = start.Date; d < end; d = d.AddDays(1)) list.Add(d);
-    }
-    else
+      GanttViewMode.Day => GenerateDateList(start.Date, start.Date.AddDays(1), maxCols,
+        [1, 2, 3, 6, 12], s => TimeSpan.FromHours(s)),
+      GanttViewMode.Week => GenerateDateList(start, end, maxCols,
+        [1, 2, 3, 6, 12, 24], s => TimeSpan.FromHours(s)),
+      _ => GenerateDateList(start.Date, end, maxCols,
+        [1, 2, 7, 14], s => TimeSpan.FromDays(s)),
+    };
+  }
+
+  private static List<DateTime> GenerateDateList(DateTime start, DateTime end, int maxCols,
+    int[] steps, Func<int, TimeSpan> toSpan)
+  {
+    var totalRange = end - start;
+    var step = toSpan(steps[0]);
+    foreach (var s in steps)
     {
-      switch (Field.ViewMode)
-      {
-        case GanttViewMode.Day:
-          for (var h = 0; h < 24; h++) list.Add(start.Date.AddHours(h));
-          break;
-        case GanttViewMode.Week:
-          for (var c = start; c < end; c = c.AddHours(1)) list.Add(c);
-          break;
-        default:
-          for (var d = start.Date; d < end; d = d.AddDays(1)) list.Add(d);
-          break;
-      }
+      step = toSpan(s);
+      var count = (int)(totalRange / step);
+      if (count <= maxCols) break;
     }
+
+    var list = new List<DateTime>();
+    for (var c = start; c < end; c += step)
+      list.Add(c);
     return list;
   }
 
@@ -713,9 +781,9 @@
   {
     if (!_dragging || _dragIdx < 0 || _dragIdx >= Field.Items.Count) return;
 
-    var colWidth = GetColumnWidth();
-    var snap = GetSnapTimeSpan();
-    var snapPx = GetSnapPx(colWidth);
+    var lp = CalcLayout();
+    var snap = lp.TimeUnit;
+    var snapPx = (double)lp.ColWidth;
     var steps = (int)Math.Round((e.ClientX - _dragStartX) / snapPx);
     var item = Field.Items[_dragIdx];
 
@@ -748,25 +816,4 @@
       await Field.UpdateTaskDatesAsync(item, item.Start, item.End);
   }
 
-  private TimeSpan GetSnapTimeSpan()
-  {
-    if (Field.IsDateOnly) return TimeSpan.FromDays(1);
-    return Field.ViewMode switch
-    {
-      GanttViewMode.Month => TimeSpan.FromDays(1),
-      GanttViewMode.Week => TimeSpan.FromHours(1),
-      _ => TimeSpan.FromMinutes(30),
-    };
-  }
-
-  private double GetSnapPx(int colWidth)
-  {
-    if (Field.IsDateOnly) return colWidth;
-    return Field.ViewMode switch
-    {
-      GanttViewMode.Month => colWidth,
-      GanttViewMode.Week => colWidth,
-      _ => colWidth / 2.0,
-    };
-  }
 }

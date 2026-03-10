@@ -78,6 +78,7 @@
       "EnableDayView": true,
       "EnableWeekView": true,
       "EnableMonthView": true,
+      "FitToWidth": true,
       "OnDataChanged": "",
       "Name": "Gantt",
       "IgnoreModification": false,

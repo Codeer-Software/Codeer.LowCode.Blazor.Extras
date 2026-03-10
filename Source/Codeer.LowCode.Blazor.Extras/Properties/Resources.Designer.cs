@@ -573,6 +573,12 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
             }
         }
 
+        internal static string GanttFieldFitToWidth {
+            get {
+                return ResourceManager.GetString("GanttFieldFitToWidth", resourceCulture);
+            }
+        }
+
         internal static string TaskBoardFieldStatuses {
             get {
                 return ResourceManager.GetString("TaskBoardFieldStatuses", resourceCulture);
