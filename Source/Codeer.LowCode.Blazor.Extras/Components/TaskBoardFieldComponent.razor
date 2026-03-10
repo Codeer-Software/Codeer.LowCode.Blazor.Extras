@@ -24,8 +24,9 @@
            @ondragover:preventDefault="true"
            @ondrop="() => OnDropOnColumn(capturedStatus.Value)">
         <div class="taskboard-column-header" style="@GetHeaderStyle(capturedStatus)">
-          <span class="column-title">@status.DisplayText</span>
-          <button type="button" class="column-add-btn" style="@(capturedStatus.CanAdd ? "" : "visibility:hidden")" @onclick="() => OnAddClicked(capturedStatus.Value)">+</button>
+          <span class="taskboard-column-title">@status.DisplayText</span>
+          <span class="taskboard-column-count">@columnItems.Count</span>
+          <button type="button" class="taskboard-add-btn" style="@(capturedStatus.CanAdd ? "" : "visibility:hidden")" @onclick="() => OnAddClicked(capturedStatus.Value)">+</button>
         </div>
         <div class="taskboard-column-body">
           @foreach (var (index, item) in columnItems.Select((item, i) => (i, item)))
@@ -47,13 +48,13 @@
                  @ondrop="() => OnDropOnColumn(capturedStatusValue)"
                  @ondrop:stopPropagation="true"
                  @ondblclick="() => OnCardDoubleClicked(capturedItem)">
-              <div class="card-drop-before"
+              <div class="taskboard-card-drop-before"
                    @ondragover="() => OnCardDragOverWithPosition(capturedStatusValue, capturedIndex, DropPosition.Before)"
                    @ondragover:preventDefault="true"
                    @ondragover:stopPropagation="true"
                    @ondrop="() => OnDropOnColumn(capturedStatusValue)"
                    @ondrop:stopPropagation="true"></div>
-              <div class="card-drop-after"
+              <div class="taskboard-card-drop-after"
                    @ondragover="() => OnCardDragOverWithPosition(capturedStatusValue, capturedIndex, DropPosition.After)"
                    @ondragover:preventDefault="true"
                    @ondragover:stopPropagation="true"

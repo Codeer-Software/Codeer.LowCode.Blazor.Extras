@@ -1,10 +1,14 @@
+/* ===== Container ===== */
 .taskboard-container {
   width: 100%;
   height: 100%;
   display: flex;
   flex-direction: column;
+  font-family: "Google Sans", Roboto, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 14px;
 }
 
+/* ===== Columns Layout ===== */
 .taskboard-columns {
   display: flex;
   gap: 1rem;
@@ -14,6 +18,7 @@
   min-height: 300px;
 }
 
+/* ===== Column ===== */
 .taskboard-column {
   flex: 1;
   min-width: 280px;
@@ -24,6 +29,7 @@
   flex-direction: column;
 }
 
+/* ===== Column Header ===== */
 .taskboard-column-header {
   display: flex;
   align-items: center;
@@ -35,13 +41,28 @@
   border-bottom: 2px solid #d0d3d9;
 }
 
-.column-title {
+.taskboard-column-title {
   font-size: 0.95rem;
   font-weight: 600;
   flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.column-add-btn {
+.taskboard-column-count {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: #5f6368;
+  background: rgba(0, 0, 0, 0.08);
+  border-radius: 10px;
+  padding: 1px 8px;
+  min-width: 20px;
+  text-align: center;
+}
+
+/* ===== Add Button ===== */
+.taskboard-add-btn {
   border: none;
   background: transparent;
   cursor: pointer;
@@ -55,13 +76,15 @@
   line-height: 1;
   padding: 0;
   opacity: 0.6;
+  color: inherit;
 }
 
-.column-add-btn:hover {
+.taskboard-add-btn:hover {
   background: rgba(0, 0, 0, 0.08);
   opacity: 1;
 }
 
+/* ===== Column Body ===== */
 .taskboard-column-body {
   padding: 0.5rem;
   overflow-y: auto;
@@ -72,34 +95,19 @@
   min-height: 100px;
 }
 
+/* ===== Card ===== */
 .taskboard-card {
   cursor: grab;
   user-select: none;
   position: relative;
+  border-radius: 6px;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  transition: box-shadow 0.15s;
 }
 
-.card-drop-before,
-.card-drop-after {
-  position: absolute;
-  left: 0;
-  right: 0;
-  z-index: 1;
-  pointer-events: none;
-}
-
-.card-drop-before {
-  top: 0;
-  height: 50%;
-}
-
-.card-drop-after {
-  bottom: 0;
-  height: 50%;
-}
-
-.is-dragging .card-drop-before,
-.is-dragging .card-drop-after {
-  pointer-events: auto;
+.taskboard-card:hover {
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
 }
 
 .taskboard-card:active {
@@ -110,6 +118,32 @@
   opacity: 0.4;
 }
 
+/* ===== Card Drop Zones ===== */
+.taskboard-card-drop-before,
+.taskboard-card-drop-after {
+  position: absolute;
+  left: 0;
+  right: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.taskboard-card-drop-before {
+  top: 0;
+  height: 50%;
+}
+
+.taskboard-card-drop-after {
+  bottom: 0;
+  height: 50%;
+}
+
+.is-dragging .taskboard-card-drop-before,
+.is-dragging .taskboard-card-drop-after {
+  pointer-events: auto;
+}
+
+/* ===== Drop Indicator ===== */
 .taskboard-drop-indicator {
   height: 3px;
   background: #1a73e8;
@@ -117,6 +151,7 @@
   margin: 2px 0;
 }
 
+/* ===== Empty Drop Zone ===== */
 .taskboard-empty-drop {
   flex: 1;
   min-height: 40px;
@@ -132,4 +167,3 @@
   border-color: #1a73e8;
   background: #e8f0fe;
 }
-
