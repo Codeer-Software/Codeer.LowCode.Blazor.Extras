@@ -41,6 +41,14 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         [Designer(CandidateType = CandidateType.ScriptEvent)]
         public string OnDataChanged { get; set; } = string.Empty;
 
+        [Designer(CandidateType = CandidateType.ScriptEvent),
+         ScriptMethod(ArgumentTypes = ["string"], ArgumentNames = ["id"])]
+        public string OnClickMarker { get; set; } = string.Empty;
+
+        [Designer(CandidateType = CandidateType.ScriptEvent),
+         ScriptMethod(ArgumentTypes = ["int", "int"], ArgumentNames = ["x", "y"])]
+        public string OnDoubleClickPoint { get; set; } = string.Empty;
+
         public override string GetWebComponentTypeFullName() => typeof(MarkerListFieldComponent).FullName!;
 
         public override string GetSearchWebComponentTypeFullName() => string.Empty;
@@ -59,6 +67,8 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
             context.CheckFieldRelativeFieldExistence(Name, nameof(LabelField), SearchCondition.ModuleName, LabelField).AddTo(result);
             context.CheckFieldRelativeModuleLayoutExistence(Name, nameof(DetailLayoutName), SearchCondition.ModuleName, DetailLayoutName).AddTo(result);
             context.CheckFieldFunctionExistence(Name, nameof(OnDataChanged), OnDataChanged, null).AddTo(result);
+            context.CheckFieldFunctionExistence(Name, nameof(OnClickMarker), OnClickMarker, null).AddTo(result);
+            context.CheckFieldFunctionExistence(Name, nameof(OnDoubleClickPoint), OnDoubleClickPoint, null).AddTo(result);
             result.AddRange(SearchCondition.CheckDesign(context, Name, nameof(SearchCondition)));
             return result;
         }

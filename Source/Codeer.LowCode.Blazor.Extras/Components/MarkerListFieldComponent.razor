@@ -40,11 +40,11 @@
     => $"left:{m.X}px; top:{m.Y}px;";
 
   async Task HandleMarkerClick(Marker m)
-    => await Field.EditAsync(m.Module, !IsEditable);
+    => await Field.OnMarkerClickAsync(m, !IsEditable);
 
   async Task HandleBackgroundClick(MouseEventArgs e)
   {
-    if (!IsEditable) return;
+    if (!IsEditable && string.IsNullOrEmpty(Field.Design.OnDoubleClickPoint)) return;
     var x = (int)Math.Round(e.OffsetX);
     var y = (int)Math.Round(e.OffsetY);
     await Field.AddAsync(x, y);

@@ -88,6 +88,12 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
 
         internal async Task AddAsync(int x, int y)
         {
+            if (!string.IsNullOrEmpty(Design.OnDoubleClickPoint))
+            {
+                await Module.ExecuteScriptAsync(Design.OnDoubleClickPoint, x, y);
+                return;
+            }
+
             var mod = await this.CreateChildModuleAsync(ModuleName, ModuleLayoutType.Detail, Design.DetailLayoutName);
 
             await mod.AssignRequiredCondition(Design.SearchCondition);
@@ -106,6 +112,16 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             await ReloadAsync();
             await InvokeOnDataChangedAsync();
             await NotifyDataChangedAsync();
+        }
+
+        internal async Task OnMarkerClickAsync(Marker m, bool viewOnly)
+        {
+            if (!string.IsNullOrEmpty(Design.OnClickMarker))
+            {
+                await Module.ExecuteScriptAsync(Design.OnClickMarker, m.Id);
+                return;
+            }
+            await EditAsync(m.Module, viewOnly);
         }
 
         internal async Task EditAsync(Module? mod, bool viewOnly = false)
