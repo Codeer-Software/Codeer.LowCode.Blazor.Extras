@@ -258,6 +258,15 @@
   <data name="GanttFieldCustomRangeEditable" xml:space="preserve">
     <value>Custom Range Editable</value>
   </data>
+<data name="DiscardChangesConfirmation" xml:space="preserve">
+    <value>There are unsaved changes. Do you want to discard them?</value>
+  </data>
+  <data name="Yes" xml:space="preserve">
+    <value>Yes</value>
+  </data>
+  <data name="No" xml:space="preserve">
+    <value>No</value>
+  </data>
 <data name="RichTextBold" xml:space="preserve">
     <value>Bold</value>
   </data>

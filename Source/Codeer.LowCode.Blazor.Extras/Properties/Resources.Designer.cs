@@ -657,5 +657,23 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
             }
         }
 
+        internal static string DiscardChangesConfirmation {
+            get {
+                return ResourceManager.GetString("DiscardChangesConfirmation", resourceCulture);
+            }
+        }
+
+        internal static string Yes {
+            get {
+                return ResourceManager.GetString("Yes", resourceCulture);
+            }
+        }
+
+        internal static string No {
+            get {
+                return ResourceManager.GetString("No", resourceCulture);
+            }
+        }
+
     }
 }

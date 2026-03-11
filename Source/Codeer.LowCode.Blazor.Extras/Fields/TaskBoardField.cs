@@ -1,4 +1,4 @@
-using Codeer.LowCode.Blazor.Components.AppParts.Loading;
+using Codeer.LowCode.Blazor.Components.Dialog;
 using Codeer.LowCode.Blazor.DataIO;
 using Codeer.LowCode.Blazor.DesignLogic;
 using Codeer.LowCode.Blazor.Extras.Designs;
@@ -8,13 +8,13 @@ using Codeer.LowCode.Blazor.Repository.Design;
 using Codeer.LowCode.Blazor.Repository.Match;
 using Codeer.LowCode.Blazor.Script;
 using Codeer.LowCode.Blazor.Script.Internal.ScriptServices;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace Codeer.LowCode.Blazor.Extras.Fields
 {
     public class TaskBoardField(TaskBoardFieldDesign design)
         : FieldBase<TaskBoardFieldDesign>(design), ISearchResultsViewField
     {
+        private readonly ModuleCollection _modules = new();
         private SearchCondition? _additionalCondition;
 
         [ScriptHide]
@@ -31,7 +31,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         [ScriptHide]
         public string ModuleName => Design?.SearchCondition.ModuleName ?? string.Empty;
 
-        public override bool IsModified => false;
+        public override bool IsModified => _modules.IsModified;
 
         internal List<TaskBoardItem> Items { get; } = [];
 
@@ -59,7 +59,9 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         }
 
         [ScriptHide]
-        public override FieldSubmitData GetSubmitData() => new();
+        public override FieldSubmitData GetSubmitData()
+            => _modules.GetSubmitData(Services.AppInfoService,
+                SearchConditionHelper.ResolveSearchCondition(Services.AppInfoService, Design.SearchCondition, Module?.GetData()));
 
         [ScriptHide]
         public override FieldDataBase? GetData() => null;
@@ -92,6 +94,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             if (!AllowLoad) return;
 
             var items = await this.GetChildModulesAsync(GetSearchCondition(), ModuleLayoutType.Detail, Design.DetailLayoutName);
+            _modules.ApplyLoaded(items);
             Items.Clear();
             Items.AddRange(items.Select(ConvertToTaskBoardItem).OrderBy(e => e.SortIndex));
 
@@ -117,8 +120,8 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
                 await Services.UIService.NotifyError(Properties.Resources.InputError);
                 return;
             }
-            if (await mod.SubmitAsync() != true) return;
 
+            _modules.Add(mod);
             Items.Add(ConvertToTaskBoardItem(mod));
 
             await InvokeOnDataChangedAsync();
@@ -144,7 +147,6 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
                     await Services.UIService.NotifyError(Properties.Resources.InputError);
                     return;
                 }
-                if (await mod.SubmitAsync() != true) return;
 
                 var item = Items.FirstOrDefault(e => e.Module?.GetIdText() == mod.GetIdText());
                 if (item != null)
@@ -155,8 +157,8 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             }
             else if (dialogResult == Properties.Resources.Delete)
             {
-                await mod.DeleteAsync();
-                return;
+                Items.RemoveAll(e => e.Module == mod);
+                _modules.Remove(mod);
             }
             else
             {
@@ -193,13 +195,6 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
                     if (columnItems[i].Module != null)
                         await SetSortIndexValueAsync(columnItems[i].Module!, i);
                 }
-            }
-
-            using var scope = Services.Provider.GetService<LoadingService>()?.StartLoading(300);
-
-            foreach (var mod in Items.Where(e => e.Module?.IsModified == true).Select(e => e.Module!))
-            {
-                await mod.SubmitAsync();
             }
 
             await InvokeOnDataChangedAsync();
@@ -257,6 +252,16 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             if (!HasSortIndex) return;
             var field = data.GetField<NumberField>(Design.SortIndexField);
             if (field != null) await field.SetValueAsync(value);
+        }
+
+        private async Task<bool> ConfirmDiscardChangesAsync()
+        {
+            if (!_modules.IsModified) return true;
+            var result = await Services.UIService.ShowMessageBox(
+                string.Empty,
+                Properties.Resources.DiscardChangesConfirmation,
+                [new DialogButton("btn btn-outline-primary", Properties.Resources.Yes), new DialogButton("btn btn-outline-primary", Properties.Resources.No)]);
+            return result == Properties.Resources.Yes;
         }
 
         private SearchCondition GetSearchCondition()

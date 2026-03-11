@@ -1,3 +1,4 @@
+using Codeer.LowCode.Blazor.Components.Dialog;
 using Codeer.LowCode.Blazor.DataIO;
 using Codeer.LowCode.Blazor.DesignLogic;
 using Codeer.LowCode.Blazor.Extras.Designs;
@@ -22,7 +23,11 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
     public class MarkerListField(MarkerListFieldDesign design)
         : FieldBase<MarkerListFieldDesign>(design), ISearchResultsViewField
     {
+        private readonly ModuleCollection _modules = new();
         private SearchCondition? _additionalCondition;
+
+        [ScriptHide]
+        public Func<Task> OnDataChangedAsync { get; set; } = () => Task.CompletedTask;
 
         internal string ObjectUrl { get; set; } = string.Empty;
         internal string ImageExtension { get; set; } = string.Empty;
@@ -31,9 +36,17 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         [ScriptHide]
         public string ModuleName => Design?.SearchCondition.ModuleName ?? string.Empty;
 
-        public override bool IsModified => false;
+        public override bool IsModified => _modules.IsModified;
+
+        [ScriptHide]
         public override FieldDataBase? GetData() => null;
-        public override FieldSubmitData GetSubmitData() => new();
+
+        [ScriptHide]
+        public override FieldSubmitData GetSubmitData()
+            => _modules.GetSubmitData(Services.AppInfoService,
+                SearchConditionHelper.ResolveSearchCondition(Services.AppInfoService, Design.SearchCondition, Module?.GetData()));
+
+        [ScriptHide]
         public override Task SetDataAsync(FieldDataBase? fieldDataBase) => Task.CompletedTask;
 
         [ScriptHide]
@@ -89,6 +102,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         public async Task ReloadAsync()
         {
             var modules = await this.GetChildModulesAsync(GetSearchCondition(), ModuleLayoutType.Detail, Design.DetailLayoutName);
+            _modules.ApplyLoaded(modules);
             MarkerList.Clear();
             MarkerList.AddRange(modules.Select(ConvertToMarker));
             NotifyStateChanged();
@@ -104,7 +118,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
 
             var mod = await this.CreateChildModuleAsync(ModuleName, ModuleLayoutType.Detail, Design.DetailLayoutName);
 
-            await AssignConditionValuesAsync(mod);
+            await mod.AssignRequiredCondition(Design.SearchCondition);
 
             SetNumberFieldValue(mod, Design.XField, x);
             SetNumberFieldValue(mod, Design.YField, y);
@@ -115,9 +129,10 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
                 await Services.UIService.NotifyError(Properties.Resources.InputError);
                 return;
             }
-            if (await mod.SubmitAsync() != true) return;
 
-            await ReloadAsync();
+            _modules.Add(mod);
+            MarkerList.Add(ConvertToMarker(mod));
+
             await InvokeOnDataChangedAsync();
             await NotifyDataChangedAsync();
         }
@@ -151,18 +166,27 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
                     await Services.UIService.NotifyError(Properties.Resources.InputError);
                     return;
                 }
-                if (await mod.SubmitAsync() != true) return;
+
+                var marker = MarkerList.FirstOrDefault(e => e.Module?.GetIdText() == mod.GetIdText());
+                if (marker != null)
+                {
+                    marker.Label = string.IsNullOrEmpty(Design.LabelField)
+                        ? string.Empty
+                        : mod.GetField<TextField>(Design.LabelField)?.Value ?? string.Empty;
+                    marker.X = (int)(mod.GetField<NumberField>(Design.XField)?.Value ?? 0);
+                    marker.Y = (int)(mod.GetField<NumberField>(Design.YField)?.Value ?? 0);
+                }
             }
             else if (dialogResult == Properties.Resources.Delete)
             {
-                await mod.DeleteAsync();
+                MarkerList.RemoveAll(e => e.Module == mod);
+                _modules.Remove(mod);
             }
             else
             {
                 return;
             }
 
-            await ReloadAsync();
             await InvokeOnDataChangedAsync();
             await NotifyDataChangedAsync();
         }
@@ -170,6 +194,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         private async Task InvokeOnDataChangedAsync()
         {
             await Module.ExecuteScriptAsync(Design.OnDataChanged);
+            await OnDataChangedAsync();
         }
 
         private Marker ConvertToMarker(Module data)
@@ -189,26 +214,6 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         private SearchCondition GetSearchCondition()
             => Design.SearchCondition.MergeSearchCondition(_additionalCondition);
 
-        //TODO ïsè\ï™ Ç∆Ç§Ç©ÉJÉåÉìÉ_Å[ÅAÉ^ÉXÉNÉ{Å[ÉhÅAÉKÉìÉgÉ`ÉÉÅ[ÉgÇ‡Ç±ÇÍïKóp
-        private async Task AssignConditionValuesAsync(Module childModule)
-        {
-            foreach (var condition in Design.SearchCondition.GetFieldVariableConditions())
-            {
-                if (condition.Comparison != MatchComparison.Equal) continue;
-
-                var targetFieldName = new VariableName(condition.SearchTargetVariable).FieldName.FullName;
-                var sourceFieldName = new VariableName(condition.Variable).FieldName.FullName;
-
-                var sourceField = Module.GetField(sourceFieldName);
-                if (sourceField == null) continue;
-
-                var targetField = childModule.GetField(targetFieldName);
-                if (targetField == null) continue;
-
-                await targetField.SetDataAsync(sourceField.GetData());
-            }
-        }
-
         private async Task LoadImageAsync()
         {
             if (!string.IsNullOrEmpty(Design.ImageFileField))
@@ -227,7 +232,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             ImageExtension = Design.ResourcePath.Split('.').LastOrDefault() ?? string.Empty;
         }
 
-        //TODO Ç±ÇÍÇÕÇ¢ÇÁÇ»Ç≠Ç»ÇÈ
+        //TODO „Åì„Çå„ÅØ„ÅÑ„Çâ„Å™„Åè„Å™„Çã
         public async Task UpdateImage()
         {
             await LoadImageFromFileFieldAsync();

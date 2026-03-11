@@ -1,3 +1,4 @@
+using Codeer.LowCode.Blazor.Components.Dialog;
 using Codeer.LowCode.Blazor.DataIO;
 using Codeer.LowCode.Blazor.DesignLogic;
 using Codeer.LowCode.Blazor.Extras.Designs;
@@ -13,6 +14,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
     public class CalendarField(CalendarFieldDesign design)
         : FieldBase<CalendarFieldDesign>(design), ISearchResultsViewField
     {
+        private readonly ModuleCollection _modules = new();
         private SearchCondition? _additionalCondition;
         private (DateTime Start, DateTime End)? _currentRange;
 
@@ -24,7 +26,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         [ScriptHide]
         public string ModuleName => Design?.SearchCondition.ModuleName ?? string.Empty;
 
-        public override bool IsModified => false;
+        public override bool IsModified => _modules.IsModified;
 
         internal List<ModuleCalendarItem> Items { get; } = [];
 
@@ -59,7 +61,9 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         }
 
         [ScriptHide]
-        public override FieldSubmitData GetSubmitData() => new();
+        public override FieldSubmitData GetSubmitData()
+            => _modules.GetSubmitData(Services.AppInfoService,
+                SearchConditionHelper.ResolveSearchCondition(Services.AppInfoService, Design.SearchCondition, Module?.GetData()));
 
         [ScriptHide]
         public override FieldDataBase? GetData() => null;
@@ -79,9 +83,8 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         [ScriptHide]
         public override async Task OnChildDataChangedAsync()
         {
-            var count = Items.Count;
-            Items.RemoveAll(e => e.Module?.IsDeleted == true);
-            if (count == Items.Count) return;
+            var removedCount = Items.RemoveAll(e => e.Module?.IsDeleted == true);
+            if (removedCount == 0) return;
 
             await InvokeOnDataChangedAsync();
             await NotifyDataChangedAsync();
@@ -90,6 +93,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         [ScriptMethodToProperty("SelectedDate")]
         public async Task SetSelectedDateAsync(DateTime date)
         {
+            if (!await ConfirmDiscardChangesAsync()) return;
             SelectedDate = date;
             _currentRange = null;
             NotifyStateChanged();
@@ -100,6 +104,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         public async Task SetViewModeScriptAsync(CalendarViewMode mode)
         {
             if (!IsViewModeEnabled(mode)) return;
+            if (!await ConfirmDiscardChangesAsync()) return;
             ViewMode = mode;
             _currentRange = null;
             NotifyStateChanged();
@@ -132,6 +137,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             await SetAdditionalConditionAsync(condition, 0);
 
             var modules = await this.GetChildModulesAsync(GetSearchCondition(), ModuleLayoutType.Detail, Design.DetailLayoutName);
+            _modules.ApplyLoaded(modules);
             Items.Clear();
             Items.AddRange(modules.Select(ConvertToCalendarItem).OrderByStart());
 
@@ -173,8 +179,8 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
                 await Services.UIService.NotifyError(Properties.Resources.InputError);
                 return;
             }
-            if (await mod.SubmitAsync() != true) return;
 
+            _modules.Add(mod);
             Items.Add(ConvertToCalendarItem(mod));
             SortItems();
 
@@ -201,15 +207,14 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
                     await Services.UIService.NotifyError(Properties.Resources.InputError);
                     return;
                 }
-                if (await mod.SubmitAsync() != true) return;
 
                 UpdateItemFromModule(mod);
                 SortItems();
             }
             else if (dialogResult == Properties.Resources.Delete)
             {
-                await mod.DeleteAsync();
-                return;
+                Items.RemoveAll(e => e.Module == mod);
+                _modules.Remove(mod);
             }
             else
             {
@@ -222,6 +227,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
 
         internal async Task SetCurrentDayAsync(DateTime date)
         {
+            if (!await ConfirmDiscardChangesAsync()) return;
             SelectedDate = date;
             _currentRange = null;
             NotifyStateChanged();
@@ -231,6 +237,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         internal async Task SetViewModeAsync(CalendarViewMode mode)
         {
             if (!IsViewModeEnabled(mode)) return;
+            if (!await ConfirmDiscardChangesAsync()) return;
             ViewMode = mode;
             _currentRange = null;
             NotifyStateChanged();
@@ -336,6 +343,16 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         {
             var monthFirst = new DateTime(SelectedDate.Year, SelectedDate.Month, 1);
             return (monthFirst.AddDays(-7), monthFirst.AddMonths(1).AddDays(7));
+        }
+
+        private async Task<bool> ConfirmDiscardChangesAsync()
+        {
+            if (!_modules.IsModified) return true;
+            var result = await Services.UIService.ShowMessageBox(
+                string.Empty,
+                Properties.Resources.DiscardChangesConfirmation,
+                [new DialogButton("btn btn-outline-primary", Properties.Resources.Yes), new DialogButton("btn btn-outline-primary", Properties.Resources.No)]);
+            return result == Properties.Resources.Yes;
         }
 
         private SearchCondition GetSearchCondition()

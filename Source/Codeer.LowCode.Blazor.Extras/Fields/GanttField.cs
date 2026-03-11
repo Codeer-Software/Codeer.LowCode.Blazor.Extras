@@ -1,4 +1,4 @@
-using Codeer.LowCode.Blazor.Components.AppParts.Loading;
+using Codeer.LowCode.Blazor.Components.Dialog;
 using Codeer.LowCode.Blazor.DataIO;
 using Codeer.LowCode.Blazor.DesignLogic;
 using Codeer.LowCode.Blazor.Extras.Designs;
@@ -8,7 +8,6 @@ using Codeer.LowCode.Blazor.Repository.Design;
 using Codeer.LowCode.Blazor.Repository.Match;
 using Codeer.LowCode.Blazor.Script;
 using Codeer.LowCode.Blazor.Script.Internal.ScriptServices;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace Codeer.LowCode.Blazor.Extras.Fields
 {
@@ -28,6 +27,8 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
     public class GanttField(GanttFieldDesign design)
         : FieldBase<GanttFieldDesign>(design), ISearchResultsViewField
     {
+        private readonly ModuleCollection _tasks = new();
+        private readonly ModuleCollection _dependencies = new();
         private SearchCondition? _additionalCondition;
 
         [ScriptHide]
@@ -44,7 +45,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         [ScriptHide]
         public string ModuleName => Design?.SearchCondition.ModuleName ?? string.Empty;
 
-        public override bool IsModified => false;
+        public override bool IsModified => _tasks.IsModified || _dependencies.IsModified;
 
         internal List<GanttItem> Items { get; } = [];
 
@@ -91,7 +92,31 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         }
 
         [ScriptHide]
-        public override FieldSubmitData GetSubmitData() => new();
+        public override FieldSubmitData GetSubmitData()
+        {
+            var moduleData = Module?.GetData();
+            var resolvedTaskCondition = SearchConditionHelper.ResolveSearchCondition(
+                Services.AppInfoService, Design.SearchCondition, moduleData);
+            var tasksData = _tasks.GetSubmitData(Services.AppInfoService, resolvedTaskCondition);
+
+            var depsData = HasDependenciesModule
+                ? _dependencies.GetSubmitData(Services.AppInfoService,
+                    SearchConditionHelper.ResolveSearchCondition(Services.AppInfoService, Design.DependenciesModule, moduleData))
+                : _dependencies.GetSubmitData();
+
+            if (!_tasks.IsModified && !_dependencies.IsModified) return new();
+
+            var result = new FieldSubmitData();
+            result.Add.AddRange(tasksData.Add);
+            result.Add.AddRange(depsData.Add);
+            result.Update.AddRange(tasksData.Update);
+            result.Update.AddRange(depsData.Update);
+            result.Delete.AddRange(tasksData.Delete);
+            result.Delete.AddRange(depsData.Delete);
+            result.ExtendedData.AddRange(tasksData.ExtendedData);
+            result.ExtendedData.AddRange(depsData.ExtendedData);
+            return result;
+        }
 
         [ScriptHide]
         public override FieldDataBase? GetData() => null;
@@ -145,6 +170,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             if (HasDependenciesModule)
             {
                 var depsItems = await this.GetChildModulesAsync(Design.DependenciesModule, ModuleLayoutType.None);
+                _dependencies.ApplyLoaded(depsItems);
                 DependenciesMap = depsItems.Select(ConvertToGanttDeps).GroupBy(e => e.Key)
                     .ToDictionary(e => e.Key, e => e.Select(f => f.Value).ToArray());
             }
@@ -164,6 +190,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             await SetAdditionalConditionAsync(condition, 0);
 
             var items = await this.GetChildModulesAsync(GetSearchCondition(), ModuleLayoutType.Detail, Design.DetailLayoutName);
+            _tasks.ApplyLoaded(items);
             Items.Clear();
             Items.AddRange(items.Select(ConvertToGanttItem).Where(e => e.Start != default).OrderBy(e => e.Start));
 
@@ -176,6 +203,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         [ScriptMethodToProperty("ViewStart")]
         public async Task SetViewStartAsync(DateTime date)
         {
+            if (!await ConfirmDiscardChangesAsync()) return;
             ViewStart = date;
             NotifyStateChanged();
             await ReloadAsync();
@@ -185,6 +213,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         public async Task SetViewModeAsync(GanttViewMode mode)
         {
             if (!IsViewModeEnabled(mode)) return;
+            if (!await ConfirmDiscardChangesAsync()) return;
             ViewMode = mode;
             NotifyStateChanged();
             await ReloadAsync();
@@ -218,6 +247,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         [ScriptMethod(ArgumentTypes = ["DateTime", "DateTime"], ArgumentNames = ["start", "end"])]
         public async Task SetCustomRangeAsync(DateTime start, DateTime end)
         {
+            if (!await ConfirmDiscardChangesAsync()) return;
             CustomRangeStart = start;
             CustomRangeEnd = end;
             ViewMode = GanttViewMode.CustomRange;
@@ -243,8 +273,8 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
                 await Services.UIService.NotifyError(Properties.Resources.InputError);
                 return;
             }
-            if (await mod.SubmitAsync() != true) return;
 
+            _tasks.Add(mod);
             Items.Add(ConvertToGanttItem(mod));
             SortItems();
 
@@ -270,15 +300,14 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
                     await Services.UIService.NotifyError(Properties.Resources.InputError);
                     return;
                 }
-                if (await mod.SubmitAsync() != true) return;
 
                 UpdateItemFromModule(mod);
                 SortItems();
             }
             else if (dialogResult == Properties.Resources.Delete)
             {
-                await mod.DeleteAsync();
-                return;
+                Items.RemoveAll(e => e.Module == mod);
+                _tasks.Remove(mod);
             }
             else
             {
@@ -304,9 +333,6 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             await SetDateFieldValueAsync(item.Module, Design.StartField, saveStart);
             await SetDateFieldValueAsync(item.Module, Design.EndField, saveEnd);
 
-            using var scope = Services.Provider.GetService<LoadingService>()?.StartLoading(300);
-            if (await item.Module.SubmitAsync() != true) return;
-
             item.Start = newStart;
             item.End = newEnd;
 
@@ -329,13 +355,11 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             if (!await SetDepFieldValueAsync(mod, Design.DependencySourceIdField, sourceId)) return;
             if (!await SetDepFieldValueAsync(mod, Design.DependencyDestinationIdField, destinationId)) return;
 
-            if (await mod.SubmitAsync([srcTask.Module, dstTask.Module]) != true) return;
+            _dependencies.Add(mod);
 
             AddToDependenciesMap(destinationId, sourceId);
             UpdateItemDependencies();
             MakeDependencyList();
-
-            await ReloadDependencyTasksAsync(sourceId, destinationId, srcTask, dstTask);
 
             await InvokeOnDataChangedAndNotifyAsync();
         }
@@ -344,25 +368,15 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         {
             if (!HasDependenciesModule) return;
 
-            var srcTask = Items.FirstOrDefault(e => e.Module?.GetIdText() == sourceId);
-            var dstTask = Items.FirstOrDefault(e => e.Module?.GetIdText() == destinationId);
-            if (srcTask?.Module == null || dstTask?.Module == null) return;
+            var depModule = _dependencies.Items.FirstOrDefault(m =>
+                GetDepFieldValue(m, Design.DependencySourceIdField) == sourceId &&
+                GetDepFieldValue(m, Design.DependencyDestinationIdField) == destinationId);
 
-            var srcSubmitData = srcTask.Module.GetSubmitData();
-            srcSubmitData.SearchDelete.Add(new SearchCondition
-            {
-                ModuleName = Design.DependenciesModule.ModuleName,
-                Condition = MultiMatchCondition.And(
-                    new VariableName($"{Design.DependencySourceIdField}.Value").Equal(sourceId),
-                    new VariableName($"{Design.DependencyDestinationIdField}.Value").Equal(destinationId))
-            });
+            if (depModule != null) _dependencies.Remove(depModule);
 
             RemoveFromDependenciesMap(destinationId, sourceId);
             UpdateItemDependencies();
             MakeDependencyList();
-
-            await Services.ModuleDataService.SubmitAsync(
-                [srcSubmitData, dstTask.Module.GetSubmitData()]);
 
             await InvokeOnDataChangedAndNotifyAsync();
         }
@@ -521,21 +535,6 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             if (dstCounter != null) await dstCounter.SetValueAsync(dstCounter.Value + 1);
         }
 
-        private async Task ReloadDependencyTasksAsync(string sourceId, string destinationId, GanttItem srcTask, GanttItem dstTask)
-        {
-            if (string.IsNullOrEmpty(Design.IdField)) return;
-
-            var idVariable = new VariableName($"{Design.IdField}.Value");
-            var reloadCondition = new SearchCondition
-            {
-                ModuleName = Design.SearchCondition.ModuleName,
-                Condition = MultiMatchCondition.Or(idVariable.Equal(sourceId), idVariable.Equal(destinationId))
-            };
-            var mods = await this.GetChildModulesAsync(reloadCondition, ModuleLayoutType.Detail, Design.DetailLayoutName);
-            srcTask.Module = mods.FirstOrDefault(e => e.GetIdText() == sourceId);
-            dstTask.Module = mods.FirstOrDefault(e => e.GetIdText() == destinationId);
-        }
-
         private static string? GetDepFieldValue(Module data, string fieldName)
         {
             var idField = data.GetField<IdField>(fieldName);
@@ -558,6 +557,16 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
                 return true;
             }
             return false;
+        }
+
+        private async Task<bool> ConfirmDiscardChangesAsync()
+        {
+            if (!_tasks.IsModified && !_dependencies.IsModified) return true;
+            var result = await Services.UIService.ShowMessageBox(
+                string.Empty,
+                Properties.Resources.DiscardChangesConfirmation,
+                [new DialogButton("btn btn-outline-primary", Properties.Resources.Yes), new DialogButton("btn btn-outline-primary", Properties.Resources.No)]);
+            return result == Properties.Resources.Yes;
         }
 
         private SearchCondition GetSearchCondition()
