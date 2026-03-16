@@ -81,9 +81,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         [ScriptHide]
         public override async Task OnChildDataChangedAsync()
         {
-            var removed = Items.RemoveAll(e => e.Module?.IsDeleted == true);
-            if (removed == 0) return;
-
+            Items.RemoveAll(e => e.Module?.IsDeleted == true);
             await InvokeOnDataChangedAsync();
             await NotifyDataChangedAsync();
         }
