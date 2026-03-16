@@ -104,12 +104,23 @@
     }
   }
 
+  private bool _suppressRender;
   private TaskBoardItem? _dragItem;
   private string? _dragSourceStatus;
   private int _dragSourceIndex;
   private string? _dragOverStatus;
   private int _dragOverIndex = -1;
   private DropPosition _dragOverPosition;
+
+  protected override bool ShouldRender()
+  {
+    if (_suppressRender)
+    {
+      _suppressRender = false;
+      return false;
+    }
+    return true;
+  }
 
   protected override async Task OnParametersSetAsync()
   {
@@ -190,11 +201,14 @@
 
   private void UpdateDragOver(string statusValue, int index, DropPosition position)
   {
-    if (_dragItem == null) return;
+    if (_dragItem == null || (_dragOverStatus == statusValue && _dragOverIndex == index && _dragOverPosition == position))
+    {
+      _suppressRender = true;
+      return;
+    }
     _dragOverStatus = statusValue;
     _dragOverIndex = index;
     _dragOverPosition = position;
-    StateHasChanged();
   }
 
   private async Task OnDropOnColumn(string statusValue)

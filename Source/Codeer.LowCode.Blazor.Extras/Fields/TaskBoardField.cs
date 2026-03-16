@@ -164,34 +164,42 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             await InvokeOnDataChangedAsync();
         }
 
+        bool _moving = false;
         internal async Task MoveTaskAsync(TaskBoardItem item, string newStatusValue, int newIndex)
         {
-            if (item.Module == null) return;
-
-            if (item.StatusValue != newStatusValue)
+            _moving = true;
+            try
             {
-                await SetFieldStringValueAsync(item.Module, Design.StatusField, newStatusValue);
-                item.StatusValue = newStatusValue;
-            }
+                if (item.Module == null) return;
 
-            if (HasSortIndex)
-            {
-                var columnItems = Items
-                    .Where(e => e.StatusValue == newStatusValue && e != item)
-                    .OrderBy(e => e.SortIndex)
-                    .ToList();
-
-                newIndex = Math.Clamp(newIndex, 0, columnItems.Count);
-                columnItems.Insert(newIndex, item);
-
-                for (var i = 0; i < columnItems.Count; i++)
+                if (item.StatusValue != newStatusValue)
                 {
-                    columnItems[i].SortIndex = i;
-                    if (columnItems[i].Module != null)
-                        await SetSortIndexValueAsync(columnItems[i].Module!, i);
+                    await SetFieldStringValueAsync(item.Module, Design.StatusField, newStatusValue);
+                    item.StatusValue = newStatusValue;
+                }
+
+                if (HasSortIndex)
+                {
+                    var columnItems = Items
+                        .Where(e => e.StatusValue == newStatusValue && e != item)
+                        .OrderBy(e => e.SortIndex)
+                        .ToList();
+
+                    newIndex = Math.Clamp(newIndex, 0, columnItems.Count);
+                    columnItems.Insert(newIndex, item);
+
+                    for (var i = 0; i < columnItems.Count; i++)
+                    {
+                        columnItems[i].SortIndex = i;
+                        if (columnItems[i].Module != null)
+                            await SetSortIndexValueAsync(columnItems[i].Module!, i);
+                    }
                 }
             }
-
+            finally
+            {
+                _moving = false;
+            }
             await InvokeOnDataChangedAsync();
         }
 
@@ -200,6 +208,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
 
         private async Task InvokeOnDataChangedAsync()
         {
+            if (_moving) return;
             await NotifyDataChangedAsync();
             await Module.ExecuteScriptAsync(Design.OnDataChanged);
             await OnDataChangedAsync();
