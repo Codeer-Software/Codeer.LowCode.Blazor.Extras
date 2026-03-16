@@ -1,5 +1,9 @@
 
 void ファイル_OnDataChanged()
 {
-    MarkerList.UpdateImage();
+ //   MarkerList.UpdateImage();
+}
+void ボタン_OnClick()
+{
+ //   MarkerList.UpdateImage();
 }

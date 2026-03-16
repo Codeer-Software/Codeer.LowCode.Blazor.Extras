@@ -27,8 +27,8 @@
           {
             "DisplayText": "ToDo",
             "Value": "",
-            "Color": "#FFFFFF",
-            "BackgroundColor": "#00FF40",
+            "Color": "#000000",
+            "BackgroundColor": "#E2FB04",
             "CanAdd": true
           },
           {
@@ -108,7 +108,6 @@
                   "Color": "",
                   "BackgroundColor": "",
                   "Name": "",
-                  "IsViewOnly": true,
                   "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.FieldLayoutDesign"
                 },
                 "Padding": {},

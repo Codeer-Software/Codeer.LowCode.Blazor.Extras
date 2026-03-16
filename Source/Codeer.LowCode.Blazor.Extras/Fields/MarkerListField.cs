@@ -232,13 +232,6 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             ImageExtension = Design.ResourcePath.Split('.').LastOrDefault() ?? string.Empty;
         }
 
-        //TODO これはいらなくなる
-        public async Task UpdateImage()
-        {
-            await LoadImageFromFileFieldAsync();
-            NotifyStateChanged();
-        }
-
         private async Task LoadImageFromFileFieldAsync()
         {
             var fileField = Module.GetField<FileField>(Design.ImageFileField);
