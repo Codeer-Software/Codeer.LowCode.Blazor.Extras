@@ -62,8 +62,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
 
         [ScriptHide]
         public override FieldSubmitData GetSubmitData()
-            => _modules.GetSubmitData(Services.AppInfoService,
-                SearchConditionHelper.ResolveSearchCondition(Services.AppInfoService, Design.SearchCondition, Module?.GetData()));
+            => _modules.GetSubmitData(this, Design.SearchCondition);
 
         [ScriptHide]
         public override FieldDataBase? GetData() => null;
@@ -163,7 +162,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         {
             var mod = await this.CreateChildModuleAsync(ModuleName, ModuleLayoutType.Detail, Design.DetailLayoutName);
 
-            await mod.AssignRequiredCondition(Design.SearchCondition);
+            await this.AssignConditionValuesAsync(Design.SearchCondition, mod);
 
             var targetDateTime = new DateTime(DateOnly.FromDateTime(date), TimeOnly.FromDateTime(DateTime.Now));
 

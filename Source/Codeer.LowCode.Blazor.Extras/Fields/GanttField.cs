@@ -94,14 +94,10 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         [ScriptHide]
         public override FieldSubmitData GetSubmitData()
         {
-            var moduleData = Module?.GetData();
-            var resolvedTaskCondition = SearchConditionHelper.ResolveSearchCondition(
-                Services.AppInfoService, Design.SearchCondition, moduleData);
-            var tasksData = _tasks.GetSubmitData(Services.AppInfoService, resolvedTaskCondition);
+            var tasksData = _tasks.GetSubmitData(this, Design.SearchCondition);
 
             var depsData = HasDependenciesModule
-                ? _dependencies.GetSubmitData(Services.AppInfoService,
-                    SearchConditionHelper.ResolveSearchCondition(Services.AppInfoService, Design.DependenciesModule, moduleData))
+                ? _dependencies.GetSubmitData(this, Design.DependenciesModule)
                 : _dependencies.GetSubmitData();
 
             if (!_tasks.IsModified && !_dependencies.IsModified) return new();
@@ -263,7 +259,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         internal async Task AddAsync(DateTime date)
         {
             var mod = await this.CreateChildModuleAsync(ModuleName, ModuleLayoutType.Detail, Design.DetailLayoutName);
-            await mod.AssignRequiredCondition(Design.SearchCondition);
+            await this.AssignConditionValuesAsync(Design.SearchCondition, mod);
 
             await SetDateFieldValueAsync(mod, Design.StartField, date);
             await SetDateFieldValueAsync(mod, Design.EndField, date.AddDays(1));
