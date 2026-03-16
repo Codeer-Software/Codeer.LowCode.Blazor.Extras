@@ -32,11 +32,6 @@
           {
             var capturedItem = item;
             var capturedIndex = index;
-            var isDragOver = _dragOverStatus == statusValue && _dragOverIndex == capturedIndex;
-            @if (isDragOver && _dragOverPosition == DropPosition.Before)
-            {
-              <div class="taskboard-drop-indicator"></div>
-            }
             <div class="taskboard-card @(_dragItem == capturedItem ? "dragging" : "")"
                  style="@(IsEditable ? "" : "cursor: default;")"
                  draggable="@(IsEditable ? "true" : "false")"
@@ -64,10 +59,6 @@
                 <ChildModule Design="@LayoutDesign" ModuleDesign="ModuleDesign" Data="capturedItem.Module" IsTransparent />
               }
             </div>
-            @if (isDragOver && _dragOverPosition == DropPosition.After)
-            {
-              <div class="taskboard-drop-indicator"></div>
-            }
           }
           @if (_dragItem != null)
           {

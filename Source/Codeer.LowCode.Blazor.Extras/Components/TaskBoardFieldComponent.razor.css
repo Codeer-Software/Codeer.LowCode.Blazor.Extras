@@ -132,14 +132,6 @@
   pointer-events: auto;
 }
 
-/* ===== Drop Indicator ===== */
-.taskboard-drop-indicator {
-  height: 3px;
-  background: #1a73e8;
-  border-radius: 2px;
-  margin: 2px 0;
-}
-
 /* ===== Empty Drop Zone ===== */
 .taskboard-empty-drop {
   flex: 1;
