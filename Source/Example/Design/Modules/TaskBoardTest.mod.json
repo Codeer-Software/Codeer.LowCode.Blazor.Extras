@@ -54,6 +54,14 @@
       "Name": "TaskBoard",
       "IgnoreModification": false,
       "TypeFullName": "Codeer.LowCode.Blazor.Extras.Designs.TaskBoardFieldDesign"
+    },
+    {
+      "ShowStatus": true,
+      "ExcludeFields": [],
+      "DelayMilliseconds": 300,
+      "Name": "自動サブミット",
+      "IgnoreModification": false,
+      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.AutoSubmitFieldDesign"
     }
   ],
   "UserWriteCondition": {
@@ -100,6 +108,16 @@
             "IsRowMarginRemoved": false,
             "Columns": [
               {
+                "Layout": {
+                  "FieldName": "自動サブミット",
+                  "ContextMenu": "",
+                  "ClassName": "",
+                  "FontFamily": "",
+                  "Color": "",
+                  "BackgroundColor": "",
+                  "Name": "",
+                  "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.FieldLayoutDesign"
+                },
                 "Padding": {},
                 "BackgroundColor": "",
                 "BorderStyle": {
