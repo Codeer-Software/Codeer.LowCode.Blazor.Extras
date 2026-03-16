@@ -83,7 +83,6 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         {
             Items.RemoveAll(e => e.Module?.IsDeleted == true);
             await InvokeOnDataChangedAsync();
-            await NotifyDataChangedAsync();
         }
 
         [ScriptName("Reload")]
@@ -123,7 +122,6 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             Items.Add(ConvertToTaskBoardItem(mod));
 
             await InvokeOnDataChangedAsync();
-            await NotifyDataChangedAsync();
         }
 
         internal async Task EditAsync(Module? mod, bool viewOnly = false)
@@ -164,7 +162,6 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             }
 
             await InvokeOnDataChangedAsync();
-            await NotifyDataChangedAsync();
         }
 
         internal async Task MoveTaskAsync(TaskBoardItem item, string newStatusValue, int newIndex)
@@ -196,7 +193,6 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             }
 
             await InvokeOnDataChangedAsync();
-            await NotifyDataChangedAsync();
         }
 
         internal List<TaskBoardItem> GetColumnItems(string statusValue)
@@ -204,6 +200,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
 
         private async Task InvokeOnDataChangedAsync()
         {
+            await NotifyDataChangedAsync();
             await Module.ExecuteScriptAsync(Design.OnDataChanged);
             await OnDataChangedAsync();
         }

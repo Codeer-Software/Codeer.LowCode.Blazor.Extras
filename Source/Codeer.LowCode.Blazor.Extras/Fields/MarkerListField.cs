@@ -89,13 +89,8 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         [ScriptHide]
         public override async Task OnChildDataChangedAsync()
         {
-            await Task.CompletedTask;
-            var count = MarkerList.Count;
             MarkerList.RemoveAll(e => e.Module?.IsDeleted == true);
-            if (count == MarkerList.Count) return;
-
             await InvokeOnDataChangedAsync();
-            await NotifyDataChangedAsync();
         }
 
         [ScriptName("Reload")]
@@ -134,7 +129,6 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             MarkerList.Add(ConvertToMarker(mod));
 
             await InvokeOnDataChangedAsync();
-            await NotifyDataChangedAsync();
         }
 
         internal async Task OnMarkerClickAsync(Marker m, bool viewOnly)
@@ -188,11 +182,11 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             }
 
             await InvokeOnDataChangedAsync();
-            await NotifyDataChangedAsync();
         }
 
         private async Task InvokeOnDataChangedAsync()
         {
+            await NotifyDataChangedAsync();
             await Module.ExecuteScriptAsync(Design.OnDataChanged);
             await OnDataChangedAsync();
         }

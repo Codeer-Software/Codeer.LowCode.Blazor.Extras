@@ -137,9 +137,10 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         public override async Task OnChildDataChangedAsync()
         {
             var removedCount = Items.RemoveAll(e => e.Module?.IsDeleted == true);
-            if (removedCount == 0) return;
-
-            MakeDependencyList();
+            if (0 < removedCount)
+            {
+                MakeDependencyList();
+            }
             await InvokeOnDataChangedAndNotifyAsync();
         }
 
@@ -385,9 +386,9 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
 
         private async Task InvokeOnDataChangedAndNotifyAsync()
         {
+            await NotifyDataChangedAsync();
             await Module.ExecuteScriptAsync(Design.OnDataChanged);
             await OnDataChangedAsync();
-            await NotifyDataChangedAsync();
         }
 
         private void SortItems()

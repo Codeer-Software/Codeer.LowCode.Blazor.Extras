@@ -83,11 +83,8 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         [ScriptHide]
         public override async Task OnChildDataChangedAsync()
         {
-            var removedCount = Items.RemoveAll(e => e.Module?.IsDeleted == true);
-            if (removedCount == 0) return;
-
+            Items.RemoveAll(e => e.Module?.IsDeleted == true);
             await InvokeOnDataChangedAsync();
-            await NotifyDataChangedAsync();
         }
 
         [ScriptMethodToProperty("SelectedDate")]
@@ -185,7 +182,6 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             SortItems();
 
             await InvokeOnDataChangedAsync();
-            await NotifyDataChangedAsync();
         }
 
         internal async Task EditAsync(Module? mod, bool viewOnly = false)
@@ -222,7 +218,6 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             }
 
             await InvokeOnDataChangedAsync();
-            await NotifyDataChangedAsync();
         }
 
         internal async Task SetCurrentDayAsync(DateTime date)
@@ -254,6 +249,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
 
         private async Task InvokeOnDataChangedAsync()
         {
+            await NotifyDataChangedAsync();
             await Module.ExecuteScriptAsync(Design.OnDataChanged);
             await OnDataChangedAsync();
         }
