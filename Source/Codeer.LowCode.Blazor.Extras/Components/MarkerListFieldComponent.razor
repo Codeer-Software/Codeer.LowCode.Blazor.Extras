@@ -8,25 +8,37 @@
 @using Microsoft.AspNetCore.Components.Web
 @inherits FieldComponentBase<MarkerListField>
 
-<div class="scroll-host">
-    <div class="img-overlay"
-         @ondblclick="HandleBackgroundClick"
-         style="@(IsEditable ? "" : "cursor: default;")">
+@if (string.IsNullOrEmpty(Field.ObjectUrl))
+{
+  if (Field.Services.AppInfoService.IsDesignMode)
+  {
+    <div>
+      <span>MarkerList</span>
+    </div>
+  }
+}
+else
+{
+  <div class="scroll-host">
+      <div class="img-overlay"
+           @ondblclick="HandleBackgroundClick"
+           style="@(IsEditable ? "" : "cursor: default;")">
 
-      <img src="@($"data:image/{Field.ImageExtension};base64,{Field.ObjectUrl}")" alt="@Resources.Base64Image" class="base-img" draggable="false" />
+        <img src="@($"data:image/{Field.ImageExtension};base64,{Field.ObjectUrl}")" alt="@Resources.Base64Image" class="base-img" draggable="false" />
 
-      @foreach (var m in Field.MarkerList)
-      {
-        <div class="marker"
-             style="@GetMarkerStyle(m)"
-             @onclick="@(() => HandleMarkerClick(m))"
-             @onclick:stopPropagation="true">
-          <div class="circle"></div>
-          <div class="label">@m.Label</div>
-        </div>
-      }
+        @foreach (var m in Field.MarkerList)
+        {
+          <div class="marker"
+               style="@GetMarkerStyle(m)"
+               @onclick="@(() => HandleMarkerClick(m))"
+               @onclick:stopPropagation="true">
+            <div class="circle"></div>
+            <div class="label">@m.Label</div>
+          </div>
+        }
+    </div>
   </div>
-</div>
+}
 
 @code {
   private bool IsEditable => !Field.IsViewOnly && Field.IsEnabled;

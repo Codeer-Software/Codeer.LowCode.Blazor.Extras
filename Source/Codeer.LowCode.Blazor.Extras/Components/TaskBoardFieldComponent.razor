@@ -39,7 +39,7 @@
             }
             <div class="taskboard-card @(_dragItem == capturedItem ? "dragging" : "")"
                  style="@(IsEditable ? "" : "cursor: default;")"
-                 draggable="@IsEditable"
+                 draggable="@(IsEditable ? "true" : "false")"
                  @ondragstart="() => OnDragStart(capturedItem, statusValue, capturedIndex)"
                  @ondragend="OnDragEnd"
                  @ondragover="e => UpdateDragOver(statusValue, capturedIndex, DropPosition.After)"
