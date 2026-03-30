@@ -1,0 +1,40 @@
+@using Microsoft.JSInterop
+@using Codeer.LowCode.Blazor.Components
+@using Codeer.LowCode.Blazor.Extras.Fields
+@inherits FieldComponentBase<EnterFocusMoveField>
+@inject IJSRuntime JSRuntime
+
+@if (Field.Services.AppInfoService.IsDesignMode)
+{
+  <span style="color:#888; font-size:small;">EnterFocusMove</span>
+}
+else
+{
+  <span @ref="_anchor" style="display:none;"></span>
+}
+
+@code {
+  private ElementReference _anchor;
+  private IJSObjectReference? _jsModule;
+
+  protected override async Task OnAfterRenderAsync(bool firstRender)
+  {
+    await base.OnAfterRenderAsync(firstRender);
+    if (firstRender && !Field.Services.AppInfoService.IsDesignMode)
+    {
+      _jsModule = await JSRuntime.InvokeAsync<IJSObjectReference>(
+        "import", "./_content/Codeer.LowCode.Blazor.Extras/enterfocusmove-interop.js");
+      await _jsModule.InvokeVoidAsync("initialize", _anchor);
+    }
+  }
+
+  public override async ValueTask DisposeAsync()
+  {
+    if (_jsModule != null)
+    {
+      try { await _jsModule.InvokeVoidAsync("dispose", _anchor); } catch { }
+      try { await _jsModule.DisposeAsync(); } catch { }
+    }
+    await base.DisposeAsync();
+  }
+}
