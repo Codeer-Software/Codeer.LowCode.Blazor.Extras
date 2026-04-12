@@ -22,7 +22,7 @@
     <PackageReference Include="MessagePack" Version="3.1.4" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="Codeer.LowCode.Blazor" Version="1.2.51" />
+    <PackageReference Include="Codeer.LowCode.Blazor" Version="1.2.55" />
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Resources\colorpicker.png" />
