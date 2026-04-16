@@ -11,6 +11,8 @@
   flex-direction: column;
   outline: none;
   user-select: none;
+  /* 内部の SVG (intrinsic width あり) が祖先の flex/grid の min-content を押し広げるのを防ぐ */
+  contain: inline-size;
 }
 
 /* ===== Toolbar ===== */
