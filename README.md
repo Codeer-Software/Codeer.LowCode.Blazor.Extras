@@ -14,6 +14,7 @@
 | [TaskBoardField](docs/TaskBoardField.md) | カンバンボード。ドラッグ&ドロップでステータス変更が可能 |
 | [RichTextField](docs/RichTextField.md) | 書式付きテキストエディタ。太字・色・リンクなどのHTMLフォーマットに対応 |
 | [MarkerListField](docs/MarkerListField.md) | 画像上にマーカー(ピン)を配置・操作するフィールド |
+| [EnterFocusMoveField](docs/EnterFocusMoveField.md) | Enterキーでモジュール内の次の入力要素にフォーカスを移動させるユーティリティフィールド |
 
 ## セットアップ
 
@@ -75,6 +76,7 @@ ExtrasDesignerInitializer.Initialize();
 - [TaskBoardField - カンバンボード](docs/TaskBoardField.md)
 - [RichTextField - リッチテキストエディタ](docs/RichTextField.md)
 - [MarkerListField - 画像マーカー](docs/MarkerListField.md)
+- [EnterFocusMoveField - Enterキーでフォーカス移動](docs/EnterFocusMoveField.md)
 
 ## CSS カスタマイズ
 

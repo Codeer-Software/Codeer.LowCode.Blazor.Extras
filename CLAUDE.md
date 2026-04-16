@@ -63,6 +63,14 @@ dotnet build Source/Codeer.LowCode.Blazor.Extras/Codeer.LowCode.Blazor.Extras.cs
 - **インターフェース**: `IDataDependentField`
 - **ファイル**: `Designs/MarkerListFieldDesign.cs`, `Fields/MarkerListField.cs`, `Components/MarkerListFieldComponent.razor`
 
+### EnterFocusMoveField - Enterキーでフォーカス移動
+- **状態**: 実装済み
+- **機能**: モジュール内で Enter キー押下時に次の入力要素にフォーカスを移動 (末尾→先頭ループ、tabindex尊重、IME対応)
+- **UI**: なし (デザインモードでのみ `EnterFocusMove` ラベルを表示)
+- **JS interop**: `wwwroot/enterfocusmove-interop.js` でモジュールルート (`[data-module]` / `[data-module-design]`) に keydown をバインド
+- **除外**: `<textarea>`, `contenteditable`, `data-consumes-enter` 属性を持つ要素, Submit ボタン
+- **ファイル**: `Designs/EnterFocusMoveFieldDesign.cs`, `Fields/EnterFocusMoveField.cs`, `Components/EnterFocusMoveFieldComponent.razor`, `wwwroot/enterfocusmove-interop.js`
+
 ### 実験済みプロトタイプ (Experiments/)
 - **タスクガントチャート** (`TaskGantt.razor`): SVGベース、ドラッグ移動/リサイズ、タスク依存線、スナップ
 - **設備稼働ガントチャート** (`DeviceStateGantt.razor`): SVGベース、ステータス色分け(正常/警告/異常)、時間軸
