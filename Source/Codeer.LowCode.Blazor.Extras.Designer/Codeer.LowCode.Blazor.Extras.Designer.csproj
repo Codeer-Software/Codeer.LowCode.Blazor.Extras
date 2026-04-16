@@ -6,7 +6,7 @@
     <UseWPF>true</UseWPF>
     <ImplicitUsings>enable</ImplicitUsings>
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
-	<Version>0.0.6</Version>
+	<Version>0.0.7</Version>
     <Authors>Codeer</Authors>
     <Company>Codeer</Company>
     <Description>Designer support for Codeer.LowCode.Blazor.Extras. Provides property controls and initializers for the LowCode Designer application.</Description>
