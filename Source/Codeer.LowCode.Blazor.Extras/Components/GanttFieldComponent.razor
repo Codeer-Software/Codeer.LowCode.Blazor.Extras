@@ -236,13 +236,16 @@
   {
     var dates = GetDates();
     var headerHeight = GetHeaderHeight();
-    double colWidth = IsFitToWidth && _containerWidth > 0 && dates.Count > 0
-      ? (double)_containerWidth / dates.Count
+    // FitToWidth で _containerWidth が未計測 (=0) のときは、SVG に intrinsic 幅を与えない。
+    // 親が flex/grid の min-content を参照すると SVG の自然幅まで親が広がってしまい、
+    // 計測値 (scroll.clientWidth) もその広がった値になって収束しないため。
+    double colWidth = IsFitToWidth
+      ? (_containerWidth > 0 && dates.Count > 0 ? (double)_containerWidth / dates.Count : 0)
       : GetDefaultColumnWidth();
     var bodyHeight = Math.Max(Field.Items.Count * RowHeight, RowHeight);
     var timeUnit = dates.Count >= 2 ? dates[1] - dates[0] : GetDefaultTimeUnit();
-    double timelineWidth = IsFitToWidth && _containerWidth > 0
-      ? _containerWidth
+    double timelineWidth = IsFitToWidth
+      ? (_containerWidth > 0 ? _containerWidth : 0)
       : dates.Count * colWidth;
     return new LayoutParams(dates, headerHeight, colWidth, RowHeight,
       bodyHeight, headerHeight + bodyHeight, timelineWidth, timeUnit);
