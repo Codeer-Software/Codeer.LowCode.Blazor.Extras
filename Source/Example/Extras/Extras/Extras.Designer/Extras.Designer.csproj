@@ -11,7 +11,7 @@
     <PackageReference Include="Azure.AI.OpenAI" Version="2.1.0" />
     <PackageReference Include="Microsoft.AspNetCore.Components.WebView.Wpf" Version="8.0.21" />
     <PackageReference Include="System.Net.Http.WinHttpHandler" Version="8.0.0" />
-    <PackageReference Include="Codeer.LowCode.Blazor.Designer" Version="1.2.55" />
+    <PackageReference Include="Codeer.LowCode.Blazor.Designer" Version="1.2.56" />
     <ProjectReference Include="..\..\..\..\Codeer.LowCode.Blazor.Extras.Designer\Codeer.LowCode.Blazor.Extras.Designer.csproj" />
     <ProjectReference Include="..\Extras.Client.Shared\Extras.Client.Shared.csproj" />
     <ProjectReference Include="..\Extras.Server.Shared\Extras.Server.Shared.csproj" />
