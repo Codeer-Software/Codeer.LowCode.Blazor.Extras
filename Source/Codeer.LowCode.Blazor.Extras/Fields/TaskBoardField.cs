@@ -45,6 +45,13 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             if (this.IsInLayout()) await ReloadAsync();
         }
 
+        [ScriptHide]
+        public override async Task<bool> ValidateInput()
+        {
+            if (!await _modules.ValidateInput()) return false;
+            return await base.ValidateInput();
+        }
+
         [ScriptName("SetAdditionalCondition")]
         public async Task SetAdditionalConditionAsync(ModuleSearcher searcher)
             => await SetAdditionalConditionAsync(searcher.GetSearchCondition(), 0);

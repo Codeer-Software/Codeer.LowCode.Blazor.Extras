@@ -41,6 +41,13 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         public int Page => 0;
 
         [ScriptHide]
+        public override async Task<bool> ValidateInput()
+        {
+            if (!await _modules.ValidateInput()) return false;
+            return await base.ValidateInput();
+        }
+
+        [ScriptHide]
         public override async Task InitializeDataAsync(FieldDataBase? fieldDataBase)
         {
             ViewMode = GetDefaultViewMode();

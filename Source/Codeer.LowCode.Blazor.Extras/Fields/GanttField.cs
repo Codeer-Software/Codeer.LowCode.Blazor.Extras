@@ -92,6 +92,14 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         }
 
         [ScriptHide]
+        public override async Task<bool> ValidateInput()
+        {
+            if (!await _tasks.ValidateInput()) return false;
+            if (!await _dependencies.ValidateInput()) return false;
+            return await base.ValidateInput();
+        }
+
+        [ScriptHide]
         public override FieldSubmitData GetSubmitData()
         {
             var tasksData = _tasks.GetSubmitData(this, Design.SearchCondition);

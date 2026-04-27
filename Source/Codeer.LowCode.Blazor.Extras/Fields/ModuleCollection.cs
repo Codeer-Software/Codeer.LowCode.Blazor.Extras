@@ -25,6 +25,18 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             _items.Remove(module);
         }
 
+        public async Task<bool> ValidateInput()
+        {
+            //全て確定させる必要があるのでToList()
+            var results = new List<bool>();
+            foreach (var e in Items)
+            {
+                results.Add(await e.ValidateInput());
+            }
+            if (!results.All(e => e)) return false;
+            return true;
+        }
+
         public void ApplyLoaded(IEnumerable<Module> modules)
         {
             _deleted.Clear();
