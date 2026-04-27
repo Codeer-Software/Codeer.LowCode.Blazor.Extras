@@ -9,15 +9,14 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         : ValueFieldBase<RichTextFieldDesign, RichTextFieldData, string>(design)
     {
         [ScriptHide]
-        public override bool ValidateInput()
+        public override async Task<bool> ValidateInput()
         {
             if (Design.IsRequired && string.IsNullOrWhiteSpace(Value))
             {
                 SetError(Properties.Resources.InputError);
                 return false;
             }
-            ClearError();
-            return true;
+            return await base.ValidateInput();
         }
     }
 }

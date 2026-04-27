@@ -8,8 +8,5 @@ namespace Extras.Client.Shared.Samples.ColorPicker
         : ValueFieldBase<ColorPickerFieldDesign, ColorPickerFieldData, string>(design)
     {
         private readonly ColorPickerFieldDesign _design = design;
-
-        [ScriptHide]
-        public override bool ValidateInput() => true;
     }
 }

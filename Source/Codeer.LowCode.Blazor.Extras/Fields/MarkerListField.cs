@@ -118,7 +118,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             SetNumberFieldValue(mod, Design.YField, y);
 
             if (await mod.ShowDialogAsync(Properties.Resources.OK, Properties.Resources.Cancel) != Properties.Resources.OK) return;
-            if (!mod.ValidateInput())
+            if (!await mod.ValidateInput())
             {
                 await Services.UIService.NotifyError(Properties.Resources.InputError);
                 return;
@@ -154,7 +154,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             var dialogResult = await mod.ShowDialogAsync(Properties.Resources.Update, Properties.Resources.Delete, Properties.Resources.Cancel);
             if (dialogResult == Properties.Resources.Update)
             {
-                if (!mod.ValidateInput())
+                if (!await mod.ValidateInput())
                 {
                     await Services.UIService.NotifyError(Properties.Resources.InputError);
                     return;
