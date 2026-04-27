@@ -96,7 +96,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         {
             if (!AllowLoad) return;
 
-            var items = await this.GetChildModulesAsync(GetSearchCondition(), ModuleLayoutType.Detail, Design.DetailLayoutName);
+            var items = await this.GetChildModulesAsync(GetSearchCondition(), ModuleLayoutType.Detail, Design.CardLayoutName, GetLayoutFieldNames(Design.PopupLayoutName));
             _modules.ApplyLoaded(items);
             Items.Clear();
             Items.AddRange(items.Select(ConvertToTaskBoardItem).OrderBy(e => e.SortIndex));
@@ -104,63 +104,88 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             NotifyStateChanged();
         }
 
+        private IEnumerable<string>? GetLayoutFieldNames(string layoutName)
+        {
+            var moduleDesign = Services.AppInfoService.GetDesignData().Modules.Find(Design.SearchCondition.ModuleName);
+            if (moduleDesign == null) return null;
+            if (!moduleDesign.DetailLayouts.TryGetValue(layoutName, out var layout)) return null;
+            return layout.Layout.GetDescendantFields(moduleDesign).Select(e => e.Name);
+        }
+
         internal async Task AddAsync(string statusValue)
         {
-            var mod = await this.CreateChildModuleAsync(ModuleName, ModuleLayoutType.Detail, Design.DetailLayoutName);
-            await this.AssignConditionValuesAsync(Design.SearchCondition, mod);
+            var popupMod = await this.CreateChildModuleAsync(ModuleName, ModuleLayoutType.Detail, Design.PopupLayoutName);
+            await this.AssignConditionValuesAsync(Design.SearchCondition, popupMod);
 
-            await SetFieldStringValueAsync(mod, Design.StatusField, statusValue);
+            await SetFieldStringValueAsync(popupMod, Design.StatusField, statusValue);
 
             if (HasSortIndex)
             {
                 var maxIndex = Items.Where(e => e.StatusValue == statusValue).Select(e => e.SortIndex).DefaultIfEmpty(-1).Max();
-                await SetSortIndexValueAsync(mod, maxIndex + 1);
+                await SetSortIndexValueAsync(popupMod, maxIndex + 1);
             }
 
-            if (await mod.ShowDialogAsync(Properties.Resources.OK, Properties.Resources.Cancel) != Properties.Resources.OK) return;
-            if (!await mod.ValidateInput())
+            if (await popupMod.ShowDialogAsync(Properties.Resources.OK, Properties.Resources.Cancel) != Properties.Resources.OK) return;
+            if (!await popupMod.ValidateInput())
             {
                 await Services.UIService.NotifyError(Properties.Resources.InputError);
                 return;
             }
 
-            _modules.Add(mod);
-            Items.Add(ConvertToTaskBoardItem(mod));
+            Module cardMod;
+            if (IsSameLayout)
+            {
+                cardMod = popupMod;
+            }
+            else
+            {
+                cardMod = await this.CreateChildModuleAsync(ModuleName, ModuleLayoutType.Detail, Design.CardLayoutName);
+                await CopyFieldDataAsync(popupMod, cardMod);
+            }
+
+            _modules.Add(cardMod);
+            Items.Add(ConvertToTaskBoardItem(cardMod));
 
             await InvokeOnDataChangedAsync();
         }
 
-        internal async Task EditAsync(Module? mod, bool viewOnly = false)
+        internal async Task EditAsync(Module? cardMod, bool viewOnly = false)
         {
-            if (mod == null) return;
+            if (cardMod == null) return;
+
+            var sameLayout = IsSameLayout;
+            var popupMod = sameLayout ? cardMod : await this.CreateChildModuleAsync(ModuleName, ModuleLayoutType.Detail, Design.PopupLayoutName);
+            if (!sameLayout) await CopyFieldDataAsync(cardMod, popupMod);
 
             if (viewOnly)
             {
-                mod.IsViewOnly = true;
-                await mod.ShowDialogAsync(Properties.Resources.Cancel);
+                popupMod.IsViewOnly = true;
+                await popupMod.ShowDialogAsync(Properties.Resources.Cancel);
                 return;
             }
 
-            var dialogResult = await mod.ShowDialogAsync(Properties.Resources.Update, Properties.Resources.Delete, Properties.Resources.Cancel);
+            var dialogResult = await popupMod.ShowDialogAsync(Properties.Resources.Update, Properties.Resources.Delete, Properties.Resources.Cancel);
             if (dialogResult == Properties.Resources.Update)
             {
-                if (!await mod.ValidateInput())
+                if (!await popupMod.ValidateInput())
                 {
                     await Services.UIService.NotifyError(Properties.Resources.InputError);
                     return;
                 }
 
-                var item = Items.FirstOrDefault(e => e.Module?.GetIdText() == mod.GetIdText());
+                if (!sameLayout) await CopyFieldDataAsync(popupMod, cardMod);
+
+                var item = Items.FirstOrDefault(e => e.Module?.GetIdText() == cardMod.GetIdText());
                 if (item != null)
                 {
-                    item.StatusValue = GetFieldStringValue(mod, Design.StatusField);
-                    item.SortIndex = GetSortIndexValue(mod);
+                    item.StatusValue = GetFieldStringValue(cardMod, Design.StatusField);
+                    item.SortIndex = GetSortIndexValue(cardMod);
                 }
             }
             else if (dialogResult == Properties.Resources.Delete)
             {
-                Items.RemoveAll(e => e.Module == mod);
-                _modules.Remove(mod);
+                Items.RemoveAll(e => e.Module == cardMod);
+                _modules.Remove(cardMod);
             }
             else
             {
@@ -168,6 +193,18 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             }
 
             await InvokeOnDataChangedAsync();
+        }
+
+        private bool IsSameLayout => Design.CardLayoutName == Design.PopupLayoutName;
+
+        private static async Task CopyFieldDataAsync(Module from, Module to)
+        {
+            foreach (var fromField in from.GetFields())
+            {
+                var toField = to.GetField(fromField.Design.Name);
+                if (toField == null) continue;
+                await toField.SetDataAsync(fromField.GetData());
+            }
         }
 
         bool _moving = false;

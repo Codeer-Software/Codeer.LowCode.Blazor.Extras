@@ -651,6 +651,24 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
             }
         }
 
+        internal static string TaskBoardFieldCardLayoutName {
+            get {
+                return ResourceManager.GetString("TaskBoardFieldCardLayoutName", resourceCulture);
+            }
+        }
+
+        internal static string TaskBoardFieldPopupLayoutName {
+            get {
+                return ResourceManager.GetString("TaskBoardFieldPopupLayoutName", resourceCulture);
+            }
+        }
+
+        internal static string TaskBoardFieldEnableDoubleClickPopup {
+            get {
+                return ResourceManager.GetString("TaskBoardFieldEnableDoubleClickPopup", resourceCulture);
+            }
+        }
+
         internal static string RichTextFieldDbColumn {
             get {
                 return ResourceManager.GetString("RichTextFieldDbColumn", resourceCulture);

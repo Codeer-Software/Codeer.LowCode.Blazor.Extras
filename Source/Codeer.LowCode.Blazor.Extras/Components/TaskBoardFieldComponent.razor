@@ -86,11 +86,9 @@
     get
     {
       if (ModuleDesign == null) return new();
-      var layoutName = Field.Design.DetailLayoutName;
+      var layoutName = Field.Design.CardLayoutName;
       if (ModuleDesign.DetailLayouts.TryGetValue(layoutName, out var detail))
         return (GridLayoutDesign)detail.Layout;
-      if (!string.IsNullOrEmpty(layoutName) && ModuleDesign.DetailLayouts.TryGetValue(string.Empty, out var defaultDetail))
-        return (GridLayoutDesign)defaultDetail.Layout;
       return new();
     }
   }
@@ -171,7 +169,10 @@
   }
 
   private async Task OnCardDoubleClicked(TaskBoardItem item)
-    => await Field.EditAsync(item.Module, !IsEditable);
+  {
+    if (!Field.Design.EnableDoubleClickPopup) return;
+    await Field.EditAsync(item.Module, !IsEditable);
+  }
 
   private void OnDragStart(TaskBoardItem item, string statusValue, int index)
   {

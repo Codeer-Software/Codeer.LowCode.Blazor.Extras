@@ -27,9 +27,16 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         [TargetFieldType(Types = [typeof(SelectFieldDesign), typeof(TextFieldDesign)])]
         public string StatusField { get; set; } = "";
 
-        [Designer(CandidateType = CandidateType.DetailLayout, DisplayName = "$DetailLayoutName")]
+        [Designer(CandidateType = CandidateType.DetailLayout, DisplayName = "$TaskBoardFieldCardLayoutName")]
         [Layout(ModuleNameMember = $"{nameof(SearchCondition)}.{nameof(SearchCondition.ModuleName)}")]
-        public string DetailLayoutName { get; set; } = string.Empty;
+        public string CardLayoutName { get; set; } = string.Empty;
+
+        [Designer(CandidateType = CandidateType.DetailLayout, DisplayName = "$TaskBoardFieldPopupLayoutName")]
+        [Layout(ModuleNameMember = $"{nameof(SearchCondition)}.{nameof(SearchCondition.ModuleName)}")]
+        public string PopupLayoutName { get; set; } = string.Empty;
+
+        [Designer(DisplayName = "$TaskBoardFieldEnableDoubleClickPopup")]
+        public bool EnableDoubleClickPopup { get; set; } = true;
 
         [Designer(CandidateType = CandidateType.Field, DisplayName = "$TaskBoardFieldSortIndexField")]
         [ModuleMember(Member = $"{nameof(SearchCondition)}.{nameof(SearchCondition.ModuleName)}")]
@@ -54,7 +61,8 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
             var result = new List<DesignCheckInfo>();
             context.CheckFieldRelativeFieldExistence(Name, nameof(StatusField), SearchCondition.ModuleName, StatusField).AddTo(result);
             context.CheckFieldRelativeFieldExistence(Name, nameof(SortIndexField), SearchCondition.ModuleName, SortIndexField).AddTo(result);
-            context.CheckFieldRelativeModuleLayoutExistence(Name, nameof(DetailLayoutName), SearchCondition.ModuleName, DetailLayoutName).AddTo(result);
+            context.CheckFieldRelativeModuleLayoutExistence(Name, nameof(CardLayoutName), SearchCondition.ModuleName, CardLayoutName).AddTo(result);
+            context.CheckFieldRelativeModuleLayoutExistence(Name, nameof(PopupLayoutName), SearchCondition.ModuleName, PopupLayoutName).AddTo(result);
             context.CheckFieldFunctionExistence(Name, nameof(OnDataChanged), OnDataChanged, null).AddTo(result);
             result.AddRange(SearchCondition.CheckDesign(context, Name, nameof(SearchCondition)));
             return result;
@@ -63,8 +71,10 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         public override RenameResult ChangeName(RenameContext context) => context.Builder(base.ChangeName(context))
             .AddField(SearchCondition.ModuleName, StatusField, value => StatusField = value)
             .AddField(SearchCondition.ModuleName, SortIndexField, value => SortIndexField = value)
-            .AddLayout(SearchCondition.ModuleName, ModuleLayoutType.Detail, DetailLayoutName,
-                value => DetailLayoutName = value)
+            .AddLayout(SearchCondition.ModuleName, ModuleLayoutType.Detail, CardLayoutName,
+                value => CardLayoutName = value)
+            .AddLayout(SearchCondition.ModuleName, ModuleLayoutType.Detail, PopupLayoutName,
+                value => PopupLayoutName = value)
             .AddMatchCondition(SearchCondition)
             .Build();
     }

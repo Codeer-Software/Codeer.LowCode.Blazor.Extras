@@ -243,6 +243,15 @@
   <data name="TaskBoardFieldSortIndexField" xml:space="preserve">
     <value>並び順フィールド</value>
   </data>
+  <data name="TaskBoardFieldCardLayoutName" xml:space="preserve">
+    <value>カードレイアウト</value>
+  </data>
+  <data name="TaskBoardFieldPopupLayoutName" xml:space="preserve">
+    <value>ポップアップレイアウト</value>
+  </data>
+  <data name="TaskBoardFieldEnableDoubleClickPopup" xml:space="preserve">
+    <value>ダブルクリックでポップアップ</value>
+  </data>
   <data name="RichTextFieldDbColumn" xml:space="preserve">
     <value>DBカラム</value>
   </data>
