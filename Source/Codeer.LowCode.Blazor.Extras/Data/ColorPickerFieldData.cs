@@ -1,6 +1,6 @@
 using Codeer.LowCode.Blazor.Repository.Data;
 
-namespace Extras.Client.Shared.Samples.ColorPicker
+namespace Codeer.LowCode.Blazor.Extras.Data
 {
     public class ColorPickerFieldData() : ValueFieldDataBase<string>(typeof(ColorPickerFieldData).FullName!), ICloneable<ColorPickerFieldData>
     {

@@ -1,14 +1,23 @@
-textarea[style*="--background:"],
-span[style*="--background:"] {
-  background: var(--background);
+.colorpicker-view {
+  display: flex;
+  align-items: center;
+  padding: 0.5rem 0;
 }
 
-textarea[style*="--foreground:"],
-span[style*="--foreground:"] {
-  color: var(--foreground);
+.colorpicker-edit {
+  display: flex;
+  align-items: center;
 }
 
-.color-tip {
+.colorpicker-text[style*="--colorpicker-background:"] {
+  background: var(--colorpicker-background);
+}
+
+.colorpicker-text[style*="--colorpicker-foreground:"] {
+  color: var(--colorpicker-foreground);
+}
+
+.colorpicker-tip {
   width: 24px;
   height: 24px;
   border-radius: 8px;
@@ -16,7 +25,7 @@ span[style*="--foreground:"] {
   margin-right: 4px;
 }
 
-.color-picker {
+.colorpicker-input {
   display: inline-block;
   appearance: none;
   width: 24px;
@@ -29,7 +38,7 @@ span[style*="--foreground:"] {
   box-sizing: border-box;
 }
 
-.color-picker::-webkit-color-swatch{
+.colorpicker-input::-webkit-color-swatch {
   width: 24px;
   height: 24px;
   border-radius: 8px;

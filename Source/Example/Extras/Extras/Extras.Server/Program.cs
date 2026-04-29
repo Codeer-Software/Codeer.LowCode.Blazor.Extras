@@ -3,7 +3,7 @@ using Codeer.LowCode.Blazor.Extras.Fields;
 using Codeer.LowCode.Blazor.Json;
 using Codeer.LowCode.Blazor.License;
 using Codeer.LowCode.Blazor.SystemSettings;
-using Extras.Client.Shared.Samples.ColorPicker;
+using Extras.Client.Shared.Samples.AIDocumentAnalyzer;
 using Extras.Server.Services;
 using Extras.Server.Services.AI;
 using Extras.Server.Services.DataChangeHistory;
@@ -14,7 +14,7 @@ using System.Globalization;
 using System.Text.Json.Serialization;
 
 //load dll.
-typeof(ColorPickerField).ToString();
+typeof(AITextAnalyzerField).ToString();
 
 ExtrasServerInitializer.Initialize();
 

@@ -1,0 +1,41 @@
+@using System.Text
+@using Codeer.LowCode.Blazor.Components
+@using Codeer.LowCode.Blazor.Extras.Fields
+@inherits FieldComponentBase<ColorPickerField>
+
+@if (Field.IsViewOnly)
+{
+  <div class="colorpicker-view">
+    <div class="colorpicker-tip" style="background:@DisplayValue"></div>
+    <span class="colorpicker-text" style="@GetStyleString()">@DisplayValue</span>
+  </div>
+}
+else
+{
+  <label class="colorpicker-edit">
+    <input class="colorpicker-input"
+           type="color"
+           disabled="@(!Field.IsEnabled)"
+           id="@WebElementId"
+           @bind:get="DisplayValue"
+           @bind:set="OnPickedAsync"
+           @ref="Element" />
+    <span class="colorpicker-text" style="@GetStyleString()">@DisplayValue</span>
+  </label>
+}
+
+@code {
+  private string DisplayValue => string.IsNullOrEmpty(Field.Value) ? Field.Design.Default : Field.Value!;
+
+  private Task OnPickedAsync(string? value) => Field.SetValueAsync(value);
+
+  private string? GetStyleString()
+  {
+    var style = new StringBuilder();
+    if (!string.IsNullOrEmpty(Field.BackgroundColor))
+      style.Append($"--colorpicker-background: {Field.BackgroundColor};");
+    if (!string.IsNullOrEmpty(Field.Color))
+      style.Append($"--colorpicker-foreground: {Field.Color};");
+    return style.Length == 0 ? null : style.ToString();
+  }
+}

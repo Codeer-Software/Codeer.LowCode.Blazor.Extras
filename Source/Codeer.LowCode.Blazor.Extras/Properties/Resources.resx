@@ -255,6 +255,12 @@
   <data name="RichTextFieldDbColumn" xml:space="preserve">
     <value>DB Column</value>
   </data>
+  <data name="ColorPickerFieldDbColumn" xml:space="preserve">
+    <value>DB Column</value>
+  </data>
+  <data name="ColorPickerFieldDefault" xml:space="preserve">
+    <value>Default</value>
+  </data>
   <data name="GanttFieldCustomRange" xml:space="preserve">
     <value>Custom Range</value>
   </data>
