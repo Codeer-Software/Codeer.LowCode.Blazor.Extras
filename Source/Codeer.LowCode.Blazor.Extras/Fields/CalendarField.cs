@@ -190,33 +190,37 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             await InvokeOnDataChangedAsync();
         }
 
-        internal async Task EditAsync(Module? mod, bool viewOnly = false)
+        internal async Task EditAsync(Module? cardMod, bool viewOnly = false)
         {
-            if (mod == null) return;
+            if (cardMod == null) return;
+
+            var popupMod = await this.CreateChildModuleAsync(ModuleName, ModuleLayoutType.Detail, Design.DetailLayoutName);
+            await ModuleHelper.CopyFieldDataAsync(cardMod, popupMod);
 
             if (viewOnly)
             {
-                mod.IsViewOnly = true;
-                await mod.ShowDialogAsync(Properties.Resources.Cancel);
+                popupMod.IsViewOnly = true;
+                await popupMod.ShowDialogAsync(Properties.Resources.Cancel);
                 return;
             }
 
-            var dialogResult = await mod.ShowDialogAsync(Properties.Resources.Update, Properties.Resources.Delete, Properties.Resources.Cancel);
+            var dialogResult = await popupMod.ShowDialogAsync(Properties.Resources.Update, Properties.Resources.Delete, Properties.Resources.Cancel);
             if (dialogResult == Properties.Resources.Update)
             {
-                if (!await mod.ValidateInput())
+                if (!await popupMod.ValidateInput())
                 {
                     await Services.UIService.NotifyError(Properties.Resources.InputError);
                     return;
                 }
 
-                UpdateItemFromModule(mod);
+                await ModuleHelper.CopyFieldDataAsync(popupMod, cardMod);
+                UpdateItemFromModule(cardMod);
                 SortItems();
             }
             else if (dialogResult == Properties.Resources.Delete)
             {
-                Items.RemoveAll(e => e.Module == mod);
-                _modules.Remove(mod);
+                Items.RemoveAll(e => e.Module == cardMod);
+                _modules.Remove(cardMod);
             }
             else
             {

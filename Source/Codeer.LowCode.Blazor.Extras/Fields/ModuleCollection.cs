@@ -92,4 +92,17 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         }
 
     }
+
+    internal static class ModuleHelper
+    {
+        public static async Task CopyFieldDataAsync(Module from, Module to)
+        {
+            foreach (var fromField in from.GetFields())
+            {
+                var toField = to.GetField(fromField.Design.Name);
+                if (toField == null) continue;
+                await toField.SetDataAsync(fromField.GetData());
+            }
+        }
+    }
 }

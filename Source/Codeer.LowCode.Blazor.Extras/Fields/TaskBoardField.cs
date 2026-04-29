@@ -140,7 +140,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             else
             {
                 cardMod = await this.CreateChildModuleAsync(ModuleName, ModuleLayoutType.Detail, Design.CardLayoutName);
-                await CopyFieldDataAsync(popupMod, cardMod);
+                await ModuleHelper.CopyFieldDataAsync(popupMod, cardMod);
             }
 
             _modules.Add(cardMod);
@@ -153,9 +153,8 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         {
             if (cardMod == null) return;
 
-            var sameLayout = IsSameLayout;
-            var popupMod = sameLayout ? cardMod : await this.CreateChildModuleAsync(ModuleName, ModuleLayoutType.Detail, Design.PopupLayoutName);
-            if (!sameLayout) await CopyFieldDataAsync(cardMod, popupMod);
+            var popupMod = await this.CreateChildModuleAsync(ModuleName, ModuleLayoutType.Detail, Design.PopupLayoutName);
+            await ModuleHelper.CopyFieldDataAsync(cardMod, popupMod);
 
             if (viewOnly)
             {
@@ -173,7 +172,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
                     return;
                 }
 
-                if (!sameLayout) await CopyFieldDataAsync(popupMod, cardMod);
+                await ModuleHelper.CopyFieldDataAsync(popupMod, cardMod);
 
                 var item = Items.FirstOrDefault(e => e.Module?.GetIdText() == cardMod.GetIdText());
                 if (item != null)
@@ -196,16 +195,6 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         }
 
         private bool IsSameLayout => Design.CardLayoutName == Design.PopupLayoutName;
-
-        private static async Task CopyFieldDataAsync(Module from, Module to)
-        {
-            foreach (var fromField in from.GetFields())
-            {
-                var toField = to.GetField(fromField.Design.Name);
-                if (toField == null) continue;
-                await toField.SetDataAsync(fromField.GetData());
-            }
-        }
 
         bool _moving = false;
         internal async Task MoveTaskAsync(TaskBoardItem item, string newStatusValue, int newIndex)

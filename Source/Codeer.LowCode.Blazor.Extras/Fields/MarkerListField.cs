@@ -147,40 +147,45 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             await EditAsync(m.Module, viewOnly);
         }
 
-        internal async Task EditAsync(Module? mod, bool viewOnly = false)
+        internal async Task EditAsync(Module? cardMod, bool viewOnly = false)
         {
-            if (mod == null) return;
+            if (cardMod == null) return;
+
+            var popupMod = await this.CreateChildModuleAsync(ModuleName, ModuleLayoutType.Detail, Design.DetailLayoutName);
+            await ModuleHelper.CopyFieldDataAsync(cardMod, popupMod);
 
             if (viewOnly)
             {
-                mod.IsViewOnly = true;
-                await mod.ShowDialogAsync(Properties.Resources.Cancel);
+                popupMod.IsViewOnly = true;
+                await popupMod.ShowDialogAsync(Properties.Resources.Cancel);
                 return;
             }
 
-            var dialogResult = await mod.ShowDialogAsync(Properties.Resources.Update, Properties.Resources.Delete, Properties.Resources.Cancel);
+            var dialogResult = await popupMod.ShowDialogAsync(Properties.Resources.Update, Properties.Resources.Delete, Properties.Resources.Cancel);
             if (dialogResult == Properties.Resources.Update)
             {
-                if (!await mod.ValidateInput())
+                if (!await popupMod.ValidateInput())
                 {
                     await Services.UIService.NotifyError(Properties.Resources.InputError);
                     return;
                 }
 
-                var marker = MarkerList.FirstOrDefault(e => e.Module?.GetIdText() == mod.GetIdText());
+                await ModuleHelper.CopyFieldDataAsync(popupMod, cardMod);
+
+                var marker = MarkerList.FirstOrDefault(e => e.Module?.GetIdText() == cardMod.GetIdText());
                 if (marker != null)
                 {
                     marker.Label = string.IsNullOrEmpty(Design.LabelField)
                         ? string.Empty
-                        : mod.GetField<TextField>(Design.LabelField)?.Value ?? string.Empty;
-                    marker.X = (int)(mod.GetField<NumberField>(Design.XField)?.Value ?? 0);
-                    marker.Y = (int)(mod.GetField<NumberField>(Design.YField)?.Value ?? 0);
+                        : cardMod.GetField<TextField>(Design.LabelField)?.Value ?? string.Empty;
+                    marker.X = (int)(cardMod.GetField<NumberField>(Design.XField)?.Value ?? 0);
+                    marker.Y = (int)(cardMod.GetField<NumberField>(Design.YField)?.Value ?? 0);
                 }
             }
             else if (dialogResult == Properties.Resources.Delete)
             {
-                MarkerList.RemoveAll(e => e.Module == mod);
-                _modules.Remove(mod);
+                MarkerList.RemoveAll(e => e.Module == cardMod);
+                _modules.Remove(cardMod);
             }
             else
             {
