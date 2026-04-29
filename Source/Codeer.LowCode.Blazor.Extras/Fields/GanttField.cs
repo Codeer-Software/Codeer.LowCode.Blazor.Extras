@@ -123,6 +123,13 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         }
 
         [ScriptHide]
+        public override void AcceptChanges(SubmitAcceptInfo info)
+        {
+            _tasks.AcceptChanges(info);
+            _dependencies.AcceptChanges(info);
+        }
+
+        [ScriptHide]
         public override FieldDataBase? GetData() => null;
 
         [ScriptHide]

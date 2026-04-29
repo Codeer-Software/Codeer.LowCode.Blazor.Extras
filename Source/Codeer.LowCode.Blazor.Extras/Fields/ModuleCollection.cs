@@ -27,7 +27,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
 
         public async Task<bool> ValidateInput()
         {
-            //全て確定させる必要があるのでToList()
+            //蜈ｨ縺ｦ遒ｺ螳壹＆縺帙ｋ蠢�隕√′縺ゅｋ縺ｮ縺ｧToList()
             var results = new List<bool>();
             foreach (var e in Items)
             {
@@ -89,6 +89,12 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             }
 
             return submitData;
+        }
+
+        public void AcceptChanges(SubmitAcceptInfo info)
+        {
+            _deleted.RemoveAll(e => info.ContainsDelete(e.ModuleName, e.Id));
+            foreach (var e in _items) e.AcceptChanges(info);
         }
 
     }

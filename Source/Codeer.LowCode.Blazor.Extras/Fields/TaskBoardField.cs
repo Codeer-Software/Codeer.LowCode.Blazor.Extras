@@ -70,6 +70,10 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             => _modules.GetSubmitData(this, Design.SearchCondition);
 
         [ScriptHide]
+        public override void AcceptChanges(SubmitAcceptInfo info)
+            => _modules.AcceptChanges(info);
+
+        [ScriptHide]
         public override FieldDataBase? GetData() => null;
 
         [ScriptHide]
