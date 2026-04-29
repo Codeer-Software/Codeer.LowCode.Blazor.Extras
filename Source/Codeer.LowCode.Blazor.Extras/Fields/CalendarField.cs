@@ -16,7 +16,6 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
     {
         private readonly ModuleCollection _modules = new();
         private SearchCondition? _additionalCondition;
-        private (DateTime Start, DateTime End)? _currentRange;
 
         [ScriptHide]
         public Func<Task> OnDataChangedAsync { get; set; } = () => Task.CompletedTask;
@@ -98,7 +97,6 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         {
             if (!await ConfirmDiscardChangesAsync()) return;
             SelectedDate = date;
-            _currentRange = null;
             NotifyStateChanged();
             await ReloadAsync();
         }
@@ -109,7 +107,6 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             if (!IsViewModeEnabled(mode)) return;
             if (!await ConfirmDiscardChangesAsync()) return;
             ViewMode = mode;
-            _currentRange = null;
             NotifyStateChanged();
             await ReloadAsync();
         }
@@ -120,10 +117,6 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             if (!AllowLoad) return;
 
             var (rangeStart, rangeEnd) = GetViewDateRange();
-
-            if (_currentRange is { } range && range.Start == rangeStart && range.End == rangeEnd) return;
-
-            _currentRange = (rangeStart, rangeEnd);
 
             var startVariable = new VariableName($"{Design.StartField}.Value");
             var endVariable = new VariableName($"{Design.EndField}.Value");
@@ -234,7 +227,6 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         {
             if (!await ConfirmDiscardChangesAsync()) return;
             SelectedDate = date;
-            _currentRange = null;
             NotifyStateChanged();
             await ReloadAsync();
         }
@@ -244,7 +236,6 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             if (!IsViewModeEnabled(mode)) return;
             if (!await ConfirmDiscardChangesAsync()) return;
             ViewMode = mode;
-            _currentRange = null;
             NotifyStateChanged();
             await ReloadAsync();
         }
