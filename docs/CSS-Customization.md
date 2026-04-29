@@ -76,3 +76,4 @@ Codeer.LowCode.Blazor.Extras の各フィールドは、CSSクラスを使って
 | GanttField | [GanttField CSS カスタマイズ](GanttField-CSS-Customization.md) |
 | TaskBoardField | [TaskBoardField CSS カスタマイズ](TaskBoardField-CSS-Customization.md) |
 | RichTextField | [RichTextField CSS カスタマイズ](RichTextField-CSS-Customization.md) |
+| ColorPickerField | [ColorPickerField CSS カスタマイズ](ColorPickerField-CSS-Customization.md) |
