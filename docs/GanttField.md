@@ -15,43 +15,47 @@
 
 ## デザイナー設定プロパティ
 
-### タスクモジュール設定 (SearchCondition)
+「デザイナ表示名」は Designer (日本語環境) で表示されるラベルです。
 
-| プロパティ | 型 | 説明 |
-|---|---|---|
-| DisplayName | string | フィールドの表示名 |
-| SearchCondition | SearchCondition | タスクデータの取得元モジュールと検索条件 |
-| TextField | string | タスク名として表示するフィールド (Text型) |
-| StartField | string | タスクの開始日時フィールド (DateTime型 または Date型) |
-| EndField | string | タスクの終了日時フィールド (DateTime型 または Date型) |
-| ProgressField | string | 進捗率フィールド (Number型、0〜100。省略可) |
-| IdField | string | タスクの一意識別子フィールド (Id型) |
-| ProcessingCounterField | string | 楽観ロック用カウンターフィールド (Number型、省略可) |
-| DetailLayoutName | string | 編集・追加時に表示するDetailレイアウト名 |
+### タスクモジュール設定 (SearchCondition カテゴリ)
 
-### 依存関係モジュール設定 (DependenciesModule)
+| プロパティ | デザイナ表示名 | 型 | 説明 |
+|---|---|---|---|
+| DisplayName | 表示名 | string | フィールドの表示名 |
+| SearchCondition | 検索条件 | SearchCondition | タスクデータの取得元モジュールと検索条件 |
+| TextField | テキストフィールド | string | タスク名として表示するフィールド (Text型) |
+| StartField | 開始フィールド | string | タスクの開始日時フィールド (DateTime型 または Date型) |
+| EndField | 終了フィールド | string | タスクの終了日時フィールド (DateTime型 または Date型) |
+| ProgressField | 進捗フィールド | string | 進捗率フィールド (Number型、0〜100。省略可) |
+| IdField | IDフィールド | string | タスクの一意識別子フィールド (Id型) |
+| ProcessingCounterField | 処理カウンターフィールド | string | 楽観ロック用カウンターフィールド (Number型、省略可) |
+| DetailLayoutName | 詳細レイアウト | string | 編集・追加時に表示するDetailレイアウト名 |
+
+### 依存関係モジュール設定 (DependenciesModule カテゴリ)
 
 タスク間の依存関係を管理するための別モジュールです。省略可能です。
 
-| プロパティ | 型 | 説明 |
-|---|---|---|
-| DependenciesModule | SearchCondition | 依存関係データの取得元モジュールと検索条件 |
-| DependencySourceIdField | string | 依存元タスクIDフィールド (Id型 または Link型) |
-| DependencyDestinationIdField | string | 依存先タスクIDフィールド (Id型 または Link型) |
+| プロパティ | デザイナ表示名 | 型 | 説明 |
+|---|---|---|---|
+| DependenciesModule | 依存関係モジュール | SearchCondition | 依存関係データの取得元モジュールと検索条件 |
+| DependencySourceIdField | ソースIDフィールド | string | 依存元タスクIDフィールド (Id型 または Link型) |
+| DependencyDestinationIdField | 宛先IDフィールド | string | 依存先タスクIDフィールド (Id型 または Link型) |
 
 ### 表示設定
 
-| プロパティ | 型 | 説明 |
-|---|---|---|
-| EnableDayView | bool | 日表示を有効にする (デフォルト: true) |
-| EnableWeekView | bool | 週表示を有効にする (デフォルト: true) |
-| EnableMonthView | bool | 月表示を有効にする (デフォルト: true) |
-| CustomRange | bool | カスタム範囲表示を有効にする (デフォルト: false) |
-| CustomRangeEditable | bool | カスタム範囲の開始・終了日を編集可能にする (デフォルト: true) |
-| FitToWidth | bool | タイムラインをコンテナ幅に合わせる (デフォルト: false) |
-| ShowDetailHeader | bool | タイムラインの詳細ヘッダーを表示する (デフォルト: true) |
-| ShowToolbar | bool | ツールバーを表示する (デフォルト: true) |
-| OnDataChanged | string | データ変更時に呼び出すスクリプトイベント |
+「ビューモード」「表示」「イベント」カテゴリに分かれて表示されます。
+
+| プロパティ | デザイナ表示名 | カテゴリ | 型 | 説明 |
+|---|---|---|---|---|
+| EnableDayView | 日表示を有効にする | ビューモード | bool | デフォルト: true |
+| EnableWeekView | 週表示を有効にする | ビューモード | bool | デフォルト: true |
+| EnableMonthView | 月表示を有効にする | ビューモード | bool | デフォルト: true |
+| CustomRange | カスタム範囲 | ビューモード | bool | カスタム範囲表示を有効にする (デフォルト: false) |
+| CustomRangeEditable | カスタム範囲編集可能 | ビューモード | bool | カスタム範囲の開始・終了日を編集可能にする (デフォルト: true) |
+| FitToWidth | 横幅に収める | 表示 | bool | タイムラインをコンテナ幅に合わせる (デフォルト: false) |
+| ShowDetailHeader | 詳細ヘッダーを表示 | 表示 | bool | タイムラインの詳細ヘッダーを表示する (デフォルト: true) |
+| ShowToolbar | ツールバーを表示 | 表示 | bool | ツールバーを表示する (デフォルト: true) |
+| OnDataChanged | データ変更イベント | イベント | string | データ変更時に呼び出すスクリプトイベント |
 
 ## 必要なモジュール構成
 

@@ -15,20 +15,22 @@
 
 ## デザイナー設定プロパティ
 
-| プロパティ | 型 | 説明 |
-|---|---|---|
-| DisplayName | string | フィールドの表示名 |
-| SearchCondition | SearchCondition | データ取得元のモジュールと検索条件 |
-| TextField | string | イベントのタイトルとして表示するフィールド (Text型) |
-| StartField | string | イベントの開始日時フィールド (DateTime型 または Date型) |
-| EndField | string | イベントの終了日時フィールド (DateTime型 または Date型) |
-| AllDayField | string | 終日イベントかどうかのフィールド (Boolean型、省略可) |
-| ColorField | string | イベントの色を指定するフィールド (Text型、省略可。CSSカラー値) |
-| DetailLayoutName | string | 編集・追加時に表示するDetailレイアウト名 |
-| EnableMonthView | bool | 月表示を有効にする (デフォルト: true) |
-| EnableWeekView | bool | 週表示を有効にする (デフォルト: true) |
-| EnableDayView | bool | 日表示を有効にする (デフォルト: true) |
-| OnDataChanged | string | データ変更時に呼び出すスクリプトイベント |
+「デザイナ表示名」は Designer (日本語環境) で表示されるラベルです。
+
+| プロパティ | デザイナ表示名 | 型 | 説明 |
+|---|---|---|---|
+| DisplayName | 表示名 | string | フィールドの表示名 |
+| SearchCondition | 検索条件 | SearchCondition | データ取得元のモジュールと検索条件 |
+| TextField | テキストフィールド | string | イベントのタイトルとして表示するフィールド (Text型) |
+| StartField | 開始フィールド | string | イベントの開始日時フィールド (DateTime型 または Date型) |
+| EndField | 終了フィールド | string | イベントの終了日時フィールド (DateTime型 または Date型) |
+| AllDayField | 終日フィールド | string | 終日イベントかどうかのフィールド (Boolean型、省略可) |
+| ColorField | 色フィールド | string | イベントの色を指定するフィールド (Text型、省略可。CSSカラー値) |
+| DetailLayoutName | 詳細レイアウト | string | 編集・追加時に表示するDetailレイアウト名 |
+| EnableMonthView | 月表示を有効にする | bool | デフォルト: true |
+| EnableWeekView | 週表示を有効にする | bool | デフォルト: true |
+| EnableDayView | 日表示を有効にする | bool | デフォルト: true |
+| OnDataChanged | データ変更イベント | string | データ変更時に呼び出すスクリプトイベント |
 
 ## 必要なモジュール構成
 

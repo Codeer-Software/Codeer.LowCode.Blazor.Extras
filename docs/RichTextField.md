@@ -17,9 +17,14 @@
 
 ## デザイナー設定プロパティ
 
-| プロパティ | 型 | 説明 |
-|---|---|---|
-| DbColumn | string | データを保存するDBカラム名 |
+「デザイナ表示名」は Designer (日本語環境) で表示されるラベルです。
+
+| プロパティ | デザイナ表示名 | 型 | 説明 |
+|---|---|---|---|
+| DisplayName | 表示名 | string | フィールドの表示名 (`ValueFieldDesignBase` 継承) |
+| DbColumn | DBカラム | string | データを保存するDBカラム名 |
+| IsRequired | 必須 | bool | true で未入力をバリデーションエラー (`ValueFieldDesignBase` 継承) |
+| OnDataChanged | データ変更イベント | string | データ変更時に呼び出すスクリプトイベント (`ValueFieldDesignBase` 継承) |
 
 ## 必要なDB構成
 

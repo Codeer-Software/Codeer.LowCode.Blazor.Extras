@@ -15,29 +15,31 @@
 
 ## デザイナー設定プロパティ
 
-| プロパティ | 型 | 説明 |
-|---|---|---|
-| DisplayName | string | フィールドの表示名 |
-| SearchCondition | SearchCondition | データ取得元のモジュールと検索条件 |
-| Statuses | TaskBoardStatuses | ボードのカラム定義 (後述) |
-| StatusField | string | ステータス値を持つフィールド (Select型 または Text型) |
-| CardLayoutName | string | カード上に表示するDetailレイアウト名 |
-| PopupLayoutName | string | 追加・編集ダイアログで使用するDetailレイアウト名 |
-| EnableDoubleClickPopup | bool | ダブルクリックで編集ポップアップを表示するか (デフォルト: true) |
-| SortIndexField | string | 並び順を持つフィールド (Number型) |
-| OnDataChanged | string | データ変更時に呼び出すスクリプトイベント |
+「デザイナ表示名」は Designer (日本語環境) で表示されるラベルです。
+
+| プロパティ | デザイナ表示名 | 型 | 説明 |
+|---|---|---|---|
+| DisplayName | 表示名 | string | フィールドの表示名 |
+| SearchCondition | 検索条件 | SearchCondition | データ取得元のモジュールと検索条件 |
+| Statuses | ステータス一覧 | TaskBoardStatuses | ボードのカラム定義 (後述) |
+| StatusField | ステータスフィールド | string | ステータス値を持つフィールド (Select型 または Text型) |
+| CardLayoutName | カードレイアウト | string | カード上に表示するDetailレイアウト名 |
+| PopupLayoutName | ポップアップレイアウト | string | 追加・編集ダイアログで使用するDetailレイアウト名 |
+| EnableDoubleClickPopup | ダブルクリックでポップアップ | bool | ダブルクリックで編集ポップアップを表示するか (デフォルト: true) |
+| SortIndexField | 並び順フィールド | string | 並び順を持つフィールド (Number型) |
+| OnDataChanged | データ変更イベント | string | データ変更時に呼び出すスクリプトイベント |
 
 ## ステータス設定 (TaskBoardStatuses)
 
-Statusesプロパティで、ボードに表示するカラムを定義します。各ステータスには以下の設定があります。
+Statusesプロパティで、ボードに表示するカラムを定義します。専用ダイアログで一覧編集します。各列の見出し (デザイナ表示名) は英語のプロパティ名のままです。
 
-| プロパティ | 型 | 説明 |
-|---|---|---|
-| DisplayText | string | カラムヘッダーに表示するテキスト |
-| Value | string | ステータスの値 (空の場合はDisplayTextが使われる) |
-| Color | string | ヘッダーの文字色 (CSSカラー値) |
-| BackgroundColor | string | ヘッダーの背景色 (CSSカラー値) |
-| CanAdd | bool | このカラムに新規カードを追加できるか (デフォルト: true) |
+| プロパティ | デザイナ表示名 | 型 | 説明 |
+|---|---|---|---|
+| DisplayText | DisplayText | string | カラムヘッダーに表示するテキスト |
+| Value | Value | string | ステータスの値 (空の場合はDisplayTextが使われる) |
+| Color | Color | string | ヘッダーの文字色 (CSSカラー値) |
+| BackgroundColor | BackgroundColor | string | ヘッダーの背景色 (CSSカラー値) |
+| CanAdd | CanAdd | bool | このカラムに新規カードを追加できるか (デフォルト: true) |
 
 ## 必要なモジュール構成
 

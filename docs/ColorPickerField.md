@@ -12,15 +12,17 @@
 
 ## デザイナー設定プロパティ
 
-| プロパティ | 型 | 必須 | 説明 |
-|---|---|---|---|
-| DbColumn | string | ○ | 色文字列を保存する DB カラム名 |
-| Default | string | - | 値が空のときに表示する初期色 (例: `#000000`)。デフォルトは `#000000` |
-| IsRequired | bool | - | true にすると未入力をバリデーションエラー |
-| DisplayName | string | - | フィールドの表示名 (共通) |
-| Color | string | - | 文字色 (共通、inline style として適用) |
-| BackgroundColor | string | - | 背景色 (共通、inline style として適用) |
-| OnDataChanged | script | - | 値変更時に呼ばれるスクリプトイベント |
+「デザイナ表示名」は Designer (日本語環境) で表示されるラベルです。
+
+| プロパティ | デザイナ表示名 | 型 | 必須 | 説明 |
+|---|---|---|---|---|
+| DisplayName | 表示名 | string | - | フィールドの表示名 (`ValueFieldDesignBase` 継承) |
+| DbColumn | DBカラム | string | ○ | 色文字列を保存する DB カラム名 |
+| Default | デフォルト値 | string | - | 値が空のときに表示する初期色 (例: `#000000`)。デフォルトは `#000000` |
+| IsRequired | 必須 | bool | - | true で未入力をバリデーションエラー (`ValueFieldDesignBase` 継承) |
+| OnDataChanged | データ変更イベント | string | - | 値変更時に呼ばれるスクリプトイベント (`ValueFieldDesignBase` 継承) |
+
+`Color` / `BackgroundColor` (テキストの文字色/背景色) は他フィールド共通の表示プロパティとして利用できます。
 
 ## 必要な DB 構成
 

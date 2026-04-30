@@ -14,18 +14,20 @@
 
 ## デザイナー設定プロパティ
 
-| プロパティ | 型 | 説明 |
-|---|---|---|
-| ResourcePath | string | 表示する画像のリソースパス |
-| ImageFileField | string | 画像を持つFileFieldのフィールド名 (ResourcePathの代わりに使用可) |
-| SearchCondition | SearchCondition | マーカーデータの取得元モジュールと検索条件 |
-| DetailLayoutName | string | 追加・編集時に表示するDetailレイアウト名 |
-| XField | string | マーカーのX座標を持つフィールド (Number型) |
-| YField | string | マーカーのY座標を持つフィールド (Number型) |
-| LabelField | string | マーカーのラベルとして表示するフィールド (Text型、省略可) |
-| OnDataChanged | string | データ変更時に呼び出すスクリプトイベント |
-| OnClickMarker | string | マーカークリック時のスクリプトイベント (引数: `id`) |
-| OnDoubleClickPoint | string | 画像ダブルクリック時のスクリプトイベント (引数: `x`, `y`) |
+MarkerListField は現状 DisplayName のローカライズが行われていないため、Designer 上ではプロパティ名 (英語) がそのまま表示されます。
+
+| プロパティ | デザイナ表示名 | 型 | 説明 |
+|---|---|---|---|
+| ResourcePath | ResourcePath | string | 表示する画像のリソースパス |
+| ImageFileField | ImageFileField | string | 画像を持つFileFieldのフィールド名 (ResourcePathの代わりに使用可) |
+| SearchCondition | SearchCondition | SearchCondition | マーカーデータの取得元モジュールと検索条件 |
+| DetailLayoutName | DetailLayoutName | string | 追加・編集時に表示するDetailレイアウト名 |
+| XField | XField | string | マーカーのX座標を持つフィールド (Number型) |
+| YField | YField | string | マーカーのY座標を持つフィールド (Number型) |
+| LabelField | LabelField | string | マーカーのラベルとして表示するフィールド (Text型、省略可) |
+| OnDataChanged | OnDataChanged | string | データ変更時に呼び出すスクリプトイベント |
+| OnClickMarker | OnClickMarker | string | マーカークリック時のスクリプトイベント (引数: `id`) |
+| OnDoubleClickPoint | OnDoubleClickPoint | string | 画像ダブルクリック時のスクリプトイベント (引数: `x`, `y`) |
 
 ## 画像の指定方法
 
