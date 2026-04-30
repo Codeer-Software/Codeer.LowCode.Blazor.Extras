@@ -609,9 +609,9 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
             }
         }
 
-        internal static string GanttFieldDefaultBarColor {
+        internal static string GanttFieldBarColor {
             get {
-                return ResourceManager.GetString("GanttFieldDefaultBarColor", resourceCulture);
+                return ResourceManager.GetString("GanttFieldBarColor", resourceCulture);
             }
         }
 

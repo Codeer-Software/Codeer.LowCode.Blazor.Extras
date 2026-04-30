@@ -90,8 +90,8 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         [Designer(DisplayName = "$GanttFieldShowToolbar", Category = "$GanttCategoryDisplay")]
         public bool ShowToolbar { get; set; } = true;
 
-        [Designer(CandidateType = CandidateType.Color, DisplayName = "$GanttFieldDefaultBarColor", Category = "$GanttCategoryDisplay")]
-        public string DefaultBarColor { get; set; } = string.Empty;
+        [Designer(CandidateType = CandidateType.Color, DisplayName = "$GanttFieldBarColor", Category = "$GanttCategoryDisplay")]
+        public string BarColor { get; set; } = string.Empty;
 
         [Designer(CandidateType = CandidateType.ScriptEvent, DisplayName = "$OnDataChanged", Category = "$GanttCategoryEvents")]
         public string OnDataChanged { get; set; } = string.Empty;

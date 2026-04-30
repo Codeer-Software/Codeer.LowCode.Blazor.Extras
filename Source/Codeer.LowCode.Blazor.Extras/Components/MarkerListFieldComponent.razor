@@ -51,7 +51,7 @@ else
   string GetMarkerStyle(Marker m)
   {
     var basic = $"left:{m.X}px; top:{m.Y}px;";
-    var color = Field.Design.DefaultMarkerColor;
+    var color = Field.Design.MarkerColor;
     return string.IsNullOrEmpty(color) ? basic : $"{basic} --marker-color: {color};";
   }
 

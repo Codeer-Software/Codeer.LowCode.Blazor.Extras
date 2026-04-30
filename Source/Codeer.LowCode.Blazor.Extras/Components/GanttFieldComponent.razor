@@ -232,7 +232,7 @@
   private string BuildBarStyle()
   {
     var style = string.Empty;
-    var color = Field.Design.DefaultBarColor;
+    var color = Field.Design.BarColor;
     if (!string.IsNullOrEmpty(color)) style += $"fill: {color}; fill-opacity: 0.5;";
     if (IsEditable) style += "cursor: grab;";
     return style;
@@ -240,13 +240,13 @@
 
   private string BuildProgressStyle()
   {
-    var color = Field.Design.DefaultBarColor;
+    var color = Field.Design.BarColor;
     return string.IsNullOrEmpty(color) ? string.Empty : $"fill: {color};";
   }
 
   private string BuildTextStyle()
   {
-    var color = string.IsNullOrEmpty(Field.Design.DefaultBarColor) ? DefaultBarBaseColor : Field.Design.DefaultBarColor;
+    var color = string.IsNullOrEmpty(Field.Design.BarColor) ? DefaultBarBaseColor : Field.Design.BarColor;
     return $"fill: {ComputeContrastColor(color)};";
   }
 

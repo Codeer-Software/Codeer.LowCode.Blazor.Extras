@@ -25,7 +25,7 @@ MarkerListField は現状 DisplayName のローカライズが行われていな
 | XField | XField | string | マーカーのX座標を持つフィールド (Number型) |
 | YField | YField | string | マーカーのY座標を持つフィールド (Number型) |
 | LabelField | LabelField | string | マーカーのラベルとして表示するフィールド (Text型、省略可) |
-| DefaultMarkerColor | DefaultMarkerColor | string | マーカーの色 (CSSカラー値)。空なら既定色 (赤) |
+| MarkerColor | MarkerColor | string | マーカーの色 (CSSカラー値)。空なら既定色 (赤) |
 | OnDataChanged | OnDataChanged | string | データ変更時に呼び出すスクリプトイベント |
 | OnClickMarker | OnClickMarker | string | マーカークリック時のスクリプトイベント (引数: `id`) |
 | OnDoubleClickPoint | OnDoubleClickPoint | string | 画像ダブルクリック時のスクリプトイベント (引数: `x`, `y`) |
@@ -83,6 +83,6 @@ MarkerListField は現状 DisplayName のローカライズが行われていな
 
 ## マーカー色のカスタマイズ
 
-マーカーの色は `DefaultMarkerColor` で指定します。未指定なら既定色 (赤) になります。
+マーカーの色は `MarkerColor` で指定します。未指定なら既定色 (赤) になります。
 
 マーカーは指定色で **枠線を solid + 中身を 15% の同色** に塗ります。CSS の `color-mix()` を使うため、指定色 1 つだけで枠と中身の濃淡が自動で決まります。
