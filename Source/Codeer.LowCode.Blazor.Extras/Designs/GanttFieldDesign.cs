@@ -49,6 +49,11 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         [TargetFieldType(Types = [typeof(NumberFieldDesign)])]
         public string ProcessingCounterField { get; set; } = "";
 
+        [Designer(CandidateType = CandidateType.Field, DisplayName = "$GanttFieldBarColorField", Category = nameof(SearchCondition))]
+        [ModuleMember(Member = $"{nameof(SearchCondition)}.{nameof(SearchCondition.ModuleName)}")]
+        [TargetFieldType(Types = [typeof(TextFieldDesign), typeof(ColorPickerFieldDesign)])]
+        public string BarColorField { get; set; } = "";
+
         [Designer(CandidateType = CandidateType.DetailLayout, DisplayName = "$DetailLayoutName", Category = nameof(SearchCondition))]
         [Layout(ModuleNameMember = $"{nameof(SearchCondition)}.{nameof(SearchCondition.ModuleName)}")]
         public string DetailLayoutName { get; set; } = string.Empty;
@@ -115,6 +120,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
             context.CheckFieldRelativeFieldExistence(Name, nameof(ProgressField), SearchCondition.ModuleName, ProgressField).AddTo(result);
             context.CheckFieldRelativeFieldExistence(Name, nameof(IdField), SearchCondition.ModuleName, IdField).AddTo(result);
             context.CheckFieldRelativeFieldExistence(Name, nameof(ProcessingCounterField), SearchCondition.ModuleName, ProcessingCounterField).AddTo(result);
+            context.CheckFieldRelativeFieldExistence(Name, nameof(BarColorField), SearchCondition.ModuleName, BarColorField).AddTo(result);
             context.CheckFieldRelativeModuleLayoutExistence(Name, nameof(DetailLayoutName), SearchCondition.ModuleName, DetailLayoutName).AddTo(result);
             context.CheckFieldRelativeFieldExistence(Name, nameof(DependencySourceIdField), DependenciesModule.ModuleName, DependencySourceIdField).AddTo(result);
             context.CheckFieldRelativeFieldExistence(Name, nameof(DependencyDestinationIdField), DependenciesModule.ModuleName, DependencyDestinationIdField).AddTo(result);
@@ -131,6 +137,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
             .AddField(SearchCondition.ModuleName, ProgressField, value => ProgressField = value)
             .AddField(SearchCondition.ModuleName, IdField, value => IdField = value)
             .AddField(SearchCondition.ModuleName, ProcessingCounterField, value => ProcessingCounterField = value)
+            .AddField(SearchCondition.ModuleName, BarColorField, value => BarColorField = value)
             .AddLayout(SearchCondition.ModuleName, ModuleLayoutType.Detail, DetailLayoutName,
                 value => DetailLayoutName = value)
             .AddField(DependenciesModule.ModuleName, DependencySourceIdField, value => DependencySourceIdField = value)

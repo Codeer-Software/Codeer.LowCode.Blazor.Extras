@@ -19,6 +19,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         public DateTime End { get; set; }
         public int Progress { get; set; }
         public string[] Dependencies { get; set; } = [];
+        public string BarColor { get; set; } = string.Empty;
         public Module? Module { get; set; }
     }
 
@@ -417,6 +418,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             item.Start = GetDateTimeValue(mod, Design.StartField) ?? item.Start;
             item.End = GetDateTimeValue(mod, Design.EndField) ?? item.End;
             item.Progress = GetProgressValue(mod);
+            item.BarColor = GetStringFieldValue(mod, Design.BarColorField);
         }
 
         private GanttItem ConvertToGanttItem(Module data)
@@ -444,8 +446,15 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
                 Start = s,
                 End = e,
                 Progress = GetProgressValue(data),
+                BarColor = GetStringFieldValue(data, Design.BarColorField),
                 Dependencies = DependenciesMap.TryGetValue(id, out var deps) ? deps : [],
             };
+        }
+
+        private static string GetStringFieldValue(Module data, string fieldName)
+        {
+            if (string.IsNullOrEmpty(fieldName)) return string.Empty;
+            return (data.GetField(fieldName)?.GetData() as ValueFieldDataBase<string>)?.Value ?? string.Empty;
         }
 
         private int GetProgressValue(Module data)

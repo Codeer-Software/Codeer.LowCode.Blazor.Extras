@@ -615,6 +615,12 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
             }
         }
 
+        internal static string GanttFieldBarColorField {
+            get {
+                return ResourceManager.GetString("GanttFieldBarColorField", resourceCulture);
+            }
+        }
+
         internal static string GanttFieldShowToolbar {
             get {
                 return ResourceManager.GetString("GanttFieldShowToolbar", resourceCulture);

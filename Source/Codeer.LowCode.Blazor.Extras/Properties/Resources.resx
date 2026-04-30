@@ -276,6 +276,9 @@
   <data name="GanttFieldBarColor" xml:space="preserve">
     <value>Bar Color</value>
   </data>
+  <data name="GanttFieldBarColorField" xml:space="preserve">
+    <value>Bar Color Field</value>
+  </data>
 <data name="DiscardChangesConfirmation" xml:space="preserve">
     <value>There are unsaved changes. Do you want to discard them?</value>
   </data>

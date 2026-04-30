@@ -27,6 +27,8 @@
       "XField": "X",
       "YField": "Y",
       "LabelField": "Name",
+      "MarkerColor": "",
+      "MarkerColorField": "",
       "OnDataChanged": "",
       "OnClickMarker": "",
       "OnDoubleClickPoint": "",

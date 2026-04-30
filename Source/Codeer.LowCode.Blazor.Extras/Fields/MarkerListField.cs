@@ -17,6 +17,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         public string Label { get; set; } = string.Empty;
         public int X { get; set; }
         public int Y { get; set; }
+        public string Color { get; set; } = string.Empty;
         public Module? Module { get; set; }
     }
 
@@ -184,6 +185,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
                         : cardMod.GetField<TextField>(Design.LabelField)?.Value ?? string.Empty;
                     marker.X = (int)(cardMod.GetField<NumberField>(Design.XField)?.Value ?? 0);
                     marker.Y = (int)(cardMod.GetField<NumberField>(Design.YField)?.Value ?? 0);
+                    marker.Color = GetStringFieldValue(cardMod, Design.MarkerColorField);
                 }
             }
             else if (dialogResult == Properties.Resources.Delete)
@@ -216,8 +218,15 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
                     : data.GetField<TextField>(Design.LabelField)?.Value ?? string.Empty,
                 X = (int)(data.GetField<NumberField>(Design.XField)?.Value ?? 0),
                 Y = (int)(data.GetField<NumberField>(Design.YField)?.Value ?? 0),
+                Color = GetStringFieldValue(data, Design.MarkerColorField),
                 Module = data,
             };
+        }
+
+        private static string GetStringFieldValue(Module data, string fieldName)
+        {
+            if (string.IsNullOrEmpty(fieldName)) return string.Empty;
+            return (data.GetField(fieldName)?.GetData() as ValueFieldDataBase<string>)?.Value ?? string.Empty;
         }
 
         private SearchCondition GetSearchCondition()

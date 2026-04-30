@@ -25,7 +25,8 @@ MarkerListField は現状 DisplayName のローカライズが行われていな
 | XField | XField | string | マーカーのX座標を持つフィールド (Number型) |
 | YField | YField | string | マーカーのY座標を持つフィールド (Number型) |
 | LabelField | LabelField | string | マーカーのラベルとして表示するフィールド (Text型、省略可) |
-| MarkerColor | MarkerColor | string | マーカーの色 (CSSカラー値)。空なら既定色 (赤) |
+| MarkerColor | MarkerColor | string | マーカーの色 (CSSカラー値、全マーカー共通)。空なら既定色 (赤) |
+| MarkerColorField | MarkerColorField | string | マーカー毎の色を持つフィールド (Text型 または ColorPickerField、省略可)。指定すれば MarkerColor より優先 |
 | OnDataChanged | OnDataChanged | string | データ変更時に呼び出すスクリプトイベント |
 | OnClickMarker | OnClickMarker | string | マーカークリック時のスクリプトイベント (引数: `id`) |
 | OnDoubleClickPoint | OnDoubleClickPoint | string | 画像ダブルクリック時のスクリプトイベント (引数: `x`, `y`) |
@@ -83,6 +84,12 @@ MarkerListField は現状 DisplayName のローカライズが行われていな
 
 ## マーカー色のカスタマイズ
 
-マーカーの色は `MarkerColor` で指定します。未指定なら既定色 (赤) になります。
+マーカーの色は以下の優先順位で決定されます。
+
+1. `MarkerColorField` で指定したフィールドにマーカーごとの色文字列が入っているとき → その色 (マーカー毎)
+2. `MarkerColor` (静的設定) が指定されているとき → その色 (全マーカー共通)
+3. いずれも未指定 → 既定色 (赤)
+
+`MarkerColorField` を使うと、ユーザー操作 / SQL 計算 / モジュール初期化イベント のいずれの方法でもマーカー毎の色を指定できます。
 
 マーカーは指定色で **枠線を solid + 中身を 15% の同色** に塗ります。CSS の `color-mix()` を使うため、指定色 1 つだけで枠と中身の濃淡が自動で決まります。

@@ -45,6 +45,11 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         [Designer(CandidateType = CandidateType.Color)]
         public string MarkerColor { get; set; } = string.Empty;
 
+        [Designer(CandidateType = CandidateType.Field)]
+        [ModuleMember(Member = $"{nameof(SearchCondition)}.{nameof(SearchCondition.ModuleName)}")]
+        [TargetFieldType(Types = [typeof(TextFieldDesign), typeof(ColorPickerFieldDesign)])]
+        public string MarkerColorField { get; set; } = string.Empty;
+
         [Designer(CandidateType = CandidateType.ScriptEvent)]
         public string OnDataChanged { get; set; } = string.Empty;
 
@@ -73,6 +78,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
             context.CheckFieldRelativeFieldExistence(Name, nameof(XField), SearchCondition.ModuleName, XField).AddTo(result);
             context.CheckFieldRelativeFieldExistence(Name, nameof(YField), SearchCondition.ModuleName, YField).AddTo(result);
             context.CheckFieldRelativeFieldExistence(Name, nameof(LabelField), SearchCondition.ModuleName, LabelField).AddTo(result);
+            context.CheckFieldRelativeFieldExistence(Name, nameof(MarkerColorField), SearchCondition.ModuleName, MarkerColorField).AddTo(result);
             context.CheckFieldRelativeModuleLayoutExistence(Name, nameof(DetailLayoutName), SearchCondition.ModuleName, DetailLayoutName).AddTo(result);
             context.CheckFieldFunctionExistence(Name, nameof(OnDataChanged), OnDataChanged, null).AddTo(result);
             context.CheckFieldFunctionExistence(Name, nameof(OnClickMarker), OnClickMarker, null).AddTo(result);
@@ -86,6 +92,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
             .AddField(SearchCondition.ModuleName, XField, x => XField = x)
             .AddField(SearchCondition.ModuleName, YField, x => YField = x)
             .AddField(SearchCondition.ModuleName, LabelField, x => LabelField = x)
+            .AddField(SearchCondition.ModuleName, MarkerColorField, x => MarkerColorField = x)
             .AddLayout(SearchCondition.ModuleName, ModuleLayoutType.Detail, DetailLayoutName, x => DetailLayoutName = x)
             .AddMatchCondition(SearchCondition)
             .Build();

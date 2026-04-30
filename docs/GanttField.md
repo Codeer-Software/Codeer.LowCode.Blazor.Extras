@@ -29,6 +29,7 @@
 | ProgressField | 進捗フィールド | string | 進捗率フィールド (Number型、0〜100。省略可) |
 | IdField | IDフィールド | string | タスクの一意識別子フィールド (Id型) |
 | ProcessingCounterField | 処理カウンターフィールド | string | 依存関係の追加/削除時に元タスク・先タスクで +1 されるカウンター (Number型、省略可)。詳細は [ProcessingCounterField の役割](#processingcounterfield-の役割) を参照 |
+| BarColorField | バー色フィールド | string | タスク毎のバー色を持つフィールド (Text型 または ColorPickerField、省略可)。詳細は [バー色のカスタマイズ](#バー色のカスタマイズ) を参照 |
 | DetailLayoutName | 詳細レイアウト | string | 編集・追加時に表示するDetailレイアウト名 |
 
 ### 依存関係モジュール設定 (DependenciesModule カテゴリ)
@@ -80,7 +81,17 @@
 
 ## バー色のカスタマイズ
 
-タスクバーの色は `BarColor` で指定します。未指定ならフレームワーク既定色 (薄い青) になります。
+タスクバーの色は以下の優先順位で決定されます。
+
+1. `BarColorField` で指定したフィールドにタスクごとの色文字列が入っているとき → その色 (タスク毎)
+2. `BarColor` (静的設定) が指定されているとき → その色 (全タスク共通)
+3. いずれも未指定 → フレームワーク既定色 (薄い青)
+
+`BarColorField` を使うと、以下の方法で柔軟に色を決められます。
+
+- **ユーザー操作**: タスクモジュール内に ColorPickerField を置いて、ユーザーが直接色を選ぶ
+- **SQL 計算**: クエリ側で条件式により色を返す (`CASE WHEN status = 'Done' THEN '#34a853' ...`)
+- **モジュール初期化**: タスクモジュールの `OnAfterInitialization` 等で動的にセット (件数が少なければ実用的)
 
 ### 視覚的な振る舞い
 

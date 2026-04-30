@@ -59,6 +59,7 @@
       "ProgressField": "Progress",
       "IdField": "Id",
       "ProcessingCounterField": "ProcessingCounter",
+      "BarColorField": "BackgroundColor",
       "DetailLayoutName": "Gantt用",
       "DependenciesModule": {
         "SelectFields": [],
