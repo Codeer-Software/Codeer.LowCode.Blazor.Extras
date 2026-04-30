@@ -28,7 +28,7 @@
 | EndField | 終了フィールド | string | タスクの終了日時フィールド (DateTime型 または Date型) |
 | ProgressField | 進捗フィールド | string | 進捗率フィールド (Number型、0〜100。省略可) |
 | IdField | IDフィールド | string | タスクの一意識別子フィールド (Id型) |
-| ProcessingCounterField | 処理カウンターフィールド | string | 楽観ロック用カウンターフィールド (Number型、省略可) |
+| ProcessingCounterField | 処理カウンターフィールド | string | 依存関係の追加/削除時に元タスク・先タスクで +1 されるカウンター (Number型、省略可)。詳細は [ProcessingCounterField の役割](#processingcounterfield-の役割) を参照 |
 | DetailLayoutName | 詳細レイアウト | string | 編集・追加時に表示するDetailレイアウト名 |
 
 ### 依存関係モジュール設定 (DependenciesModule カテゴリ)
@@ -68,7 +68,7 @@
 | 終了日時 | 必須 | DateTimeField または DateField |
 | タスクID | 必須 | IdField |
 | 進捗率 | 任意 | NumberField (0〜100) |
-| 処理カウンター | 任意 | NumberField |
+| 処理カウンター | 任意 | NumberField (依存関係の編集時にタスクに変更を走らせるためのカウンター。詳細は下記) |
 
 ### 依存関係モジュール (省略可)
 
@@ -76,6 +76,28 @@
 |---|---|---|
 | 依存元タスクID | 必須 | IdField または LinkField |
 | 依存先タスクID | 必須 | IdField または LinkField |
+
+## ProcessingCounterField の役割
+
+`ProcessingCounterField` 自体は楽観ロックフィールドではなく、**フレームワークの楽観ロックを依存関係の変更にも波及させるためのトリガ用カウンター** です。
+
+### なぜ必要か
+
+依存関係 (Dependency) はタスクモジュールではなく別モジュール (`DependenciesModule`) に保存されます。そのため、依存関係だけを追加・削除してもタスクモジュールのレコードは変化せず、タスクに対するフレームワークの楽観ロック (`OptimisticLockingField`) は反応しません。
+
+その結果、同じタスクを A さんが編集中、B さんが依存関係だけ変更して保存 → A さんが保存、というシナリオで、本来検出すべき競合がスルーされてしまいます。
+
+### 仕組み
+
+`ProcessingCounterField` を設定しておくと、依存関係を追加/削除する際に **依存元タスクと依存先タスクの両方の同フィールドが +1** されます。これによりタスク側のレコードに変更差分が発生し、保存時にフレームワークの楽観ロックが他セッションでの並行更新を検出できます。
+
+### モジュール構成
+
+- タスクモジュールに `OptimisticLockingField` (楽観ロックフィールド) を 1 つ
+- タスクモジュールに `NumberField` を 1 つ用意し、`ProcessingCounterField` プロパティに指定
+- 依存関係モジュールにも必要なら `OptimisticLockingField`
+
+`OptimisticLockingField` が無い構成では `ProcessingCounterField` を設定しても競合は検出されません (単に値が増えるだけです)。
 
 ## 操作方法
 
