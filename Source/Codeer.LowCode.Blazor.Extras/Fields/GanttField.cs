@@ -19,6 +19,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         public DateTime End { get; set; }
         public int Progress { get; set; }
         public string[] Dependencies { get; set; } = [];
+        public string BarColor { get; set; } = string.Empty;
         public Module? Module { get; set; }
     }
 
@@ -205,9 +206,25 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             _tasks.ApplyLoaded(items);
             Items.Clear();
             Items.AddRange(items.Select(ConvertToGanttItem).Where(e => e.Start != default).OrderBy(e => e.Start));
+            await ComputeBarColorsAsync();
 
             MakeDependencyList();
             NotifyStateChanged();
+        }
+
+        private async Task ComputeBarColorsAsync()
+        {
+            foreach (var item in Items) item.BarColor = await ComputeBarColorAsync(item);
+        }
+
+        private async Task<string> ComputeBarColorAsync(GanttItem item)
+        {
+            if (item.Module != null && !string.IsNullOrEmpty(Design.OnGetBarColor))
+            {
+                var ret = await Module.ExecuteScriptAsync(Design.OnGetBarColor, item.Module);
+                if (ret is string s && !string.IsNullOrEmpty(s)) return s;
+            }
+            return Design.DefaultBarColor ?? string.Empty;
         }
 
         // ===== View state =====
@@ -287,7 +304,9 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             }
 
             _tasks.Add(mod);
-            Items.Add(ConvertToGanttItem(mod));
+            var item = ConvertToGanttItem(mod);
+            item.BarColor = await ComputeBarColorAsync(item);
+            Items.Add(item);
             SortItems();
 
             await InvokeOnDataChangedAndNotifyAsync();
@@ -317,7 +336,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
                 }
 
                 await ModuleHelper.CopyFieldDataAsync(popupMod, cardMod);
-                UpdateItemFromModule(cardMod);
+                await UpdateItemFromModuleAsync(cardMod);
                 SortItems();
             }
             else if (dialogResult == Properties.Resources.Delete)
@@ -409,7 +428,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         private void SortItems()
             => Items.Sort((a, b) => a.Start.CompareTo(b.Start));
 
-        private void UpdateItemFromModule(Module mod)
+        private async Task UpdateItemFromModuleAsync(Module mod)
         {
             var item = Items.FirstOrDefault(e => e.Module?.GetIdText() == mod.GetIdText());
             if (item == null) return;
@@ -417,6 +436,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             item.Start = GetDateTimeValue(mod, Design.StartField) ?? item.Start;
             item.End = GetDateTimeValue(mod, Design.EndField) ?? item.End;
             item.Progress = GetProgressValue(mod);
+            item.BarColor = await ComputeBarColorAsync(item);
         }
 
         private GanttItem ConvertToGanttItem(Module data)

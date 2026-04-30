@@ -609,6 +609,18 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
             }
         }
 
+        internal static string GanttFieldDefaultBarColor {
+            get {
+                return ResourceManager.GetString("GanttFieldDefaultBarColor", resourceCulture);
+            }
+        }
+
+        internal static string GanttFieldOnGetBarColor {
+            get {
+                return ResourceManager.GetString("GanttFieldOnGetBarColor", resourceCulture);
+            }
+        }
+
         internal static string GanttFieldShowToolbar {
             get {
                 return ResourceManager.GetString("GanttFieldShowToolbar", resourceCulture);
@@ -672,6 +684,18 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
         internal static string RichTextFieldDbColumn {
             get {
                 return ResourceManager.GetString("RichTextFieldDbColumn", resourceCulture);
+            }
+        }
+
+        internal static string ColorPickerFieldDbColumn {
+            get {
+                return ResourceManager.GetString("ColorPickerFieldDbColumn", resourceCulture);
+            }
+        }
+
+        internal static string ColorPickerFieldDefault {
+            get {
+                return ResourceManager.GetString("ColorPickerFieldDefault", resourceCulture);
             }
         }
 

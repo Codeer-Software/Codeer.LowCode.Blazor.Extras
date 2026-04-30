@@ -55,7 +55,9 @@
 | FitToWidth | 横幅に収める | 表示 | bool | タイムラインをコンテナ幅に合わせる (デフォルト: false) |
 | ShowDetailHeader | 詳細ヘッダーを表示 | 表示 | bool | タイムラインの詳細ヘッダーを表示する (デフォルト: true) |
 | ShowToolbar | ツールバーを表示 | 表示 | bool | ツールバーを表示する (デフォルト: true) |
+| DefaultBarColor | デフォルトバー色 | 表示 | string | バーの既定色 (CSSカラー値)。`OnGetBarColor` が空文字を返した・未指定の場合に使用。空ならフレームワーク既定色 |
 | OnDataChanged | データ変更イベント | イベント | string | データ変更時に呼び出すスクリプトイベント |
+| OnGetBarColor | バー色取得イベント | イベント | string | タスク毎にバー色を返すスクリプトイベント (引数: `task` (Module)、戻り値: CSSカラー値文字列)。詳細は [バー色のカスタマイズ](#バー色のカスタマイズ) を参照 |
 
 ## 必要なモジュール構成
 
@@ -76,6 +78,61 @@
 |---|---|---|
 | 依存元タスクID | 必須 | IdField または LinkField |
 | 依存先タスクID | 必須 | IdField または LinkField |
+
+## バー色のカスタマイズ
+
+タスクバーの色は以下の優先順位で決定されます。
+
+1. `OnGetBarColor` スクリプトが空でない文字列を返したとき → その色
+2. `DefaultBarColor` が指定されているとき → その色
+3. いずれも未指定 → フレームワーク既定色 (薄い青)
+
+### 視覚的な振る舞い
+
+タスクバーは **同じ色を 2 段階の不透明度で塗り分け** ます。
+
+- バー全体: 指定色を `fill-opacity: 0.5` で塗る (未完了領域)
+- 進捗オーバーレイ: 指定色を `fill-opacity: 1.0` で塗る (完了領域)
+- 文字色: バー色の輝度 (YIQ) から黒系 / 白系を自動算出
+
+これによりバー色を 1 つ指定するだけで「進捗が一目でわかる + 文字も読みやすい」表示になります。
+
+### 色選びのガイドライン
+
+デフォルトのベース色は `#1a73e8` (Material Blue 700) です。`fill-opacity: 0.5` で薄まっても十分視認できる **彩度・明度の高い色** を選ぶと、デフォルトと同じ見た目の質感に揃います。
+
+- 推奨例: `#1a73e8`, `#34a853`, `#ea4335`, `#fbbc04`, `#9334e6` など (Material 系の濃い色)
+- 避けたい例: `#e0e0e0` のような低彩度のグレー、`#fce4ec` のようなパステル過ぎる色 (薄まると消えてしまう)
+
+### `OnGetBarColor` スクリプトの記述例
+
+引数 `task` はそのタスクのモジュール (Module) です。フィールド値に直接アクセスできるので、サーバ問い合わせなしに色を決められます。
+
+```javascript
+async function GetBarColor(task) {
+  // 例: 進捗率に応じて赤→黄→緑
+  const progress = task.Progress.Value;
+  if (progress >= 100) return '#34a853';
+  if (progress >= 50)  return '#fbbc04';
+  return '#ea4335';
+}
+```
+
+```javascript
+async function GetBarColor(task) {
+  // 例: ステータスフィールド (Select) で色分け
+  switch (task.Status.Value) {
+    case 'Done':       return '#34a853';
+    case 'InProgress': return '#1a73e8';
+    case 'Blocked':    return '#ea4335';
+    default:           return '';   // 空文字を返すと DefaultBarColor にフォールバック
+  }
+}
+```
+
+戻り値は `#rrggbb` / `rgb(...)` / 色名いずれの CSS カラー値でも可。空文字 / null / undefined を返すと既定色にフォールバックします。
+
+スクリプトはタスクのデータ読み込み時、新規追加時、編集後のそれぞれで呼ばれます (描画毎ではないので大量タスクでもパフォーマンスに影響しません)。
 
 ## ProcessingCounterField の役割
 

@@ -227,6 +227,57 @@
   private string Px(double v) => v.ToString("0.#", CultureInfo.InvariantCulture) + "px";
   private string F(double v) => v.ToString("0.##", CultureInfo.InvariantCulture);
 
+  private const string DefaultBarBaseColor = "#1a73e8";
+
+  private string BuildBarStyle(GanttItem item)
+  {
+    var style = string.Empty;
+    if (!string.IsNullOrEmpty(item.BarColor)) style += $"fill: {item.BarColor}; fill-opacity: 0.5;";
+    if (IsEditable) style += "cursor: grab;";
+    return style;
+  }
+
+  private static string BuildProgressStyle(GanttItem item)
+    => string.IsNullOrEmpty(item.BarColor) ? string.Empty : $"fill: {item.BarColor};";
+
+  private static string BuildTextStyle(GanttItem item)
+  {
+    var color = string.IsNullOrEmpty(item.BarColor) ? DefaultBarBaseColor : item.BarColor;
+    return $"fill: {ComputeContrastColor(color)};";
+  }
+
+  // YIQ-based contrast color: dark text on light bg, white text on dark bg
+  private static string ComputeContrastColor(string color)
+  {
+    if (!TryParseHexColor(color, out var r, out var g, out var b)) return "#1a1a1a";
+    var y = (r * 299 + g * 587 + b * 114) / 1000;
+    return y >= 128 ? "#1a1a1a" : "#ffffff";
+  }
+
+  private static bool TryParseHexColor(string color, out int r, out int g, out int b)
+  {
+    r = g = b = 0;
+    if (string.IsNullOrEmpty(color) || color[0] != '#') return false;
+    var hex = color.AsSpan(1);
+    if (hex.Length == 3)
+    {
+      if (!byte.TryParse(hex.Slice(0, 1), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out var rr)) return false;
+      if (!byte.TryParse(hex.Slice(1, 1), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out var gg)) return false;
+      if (!byte.TryParse(hex.Slice(2, 1), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out var bb)) return false;
+      r = rr * 17; g = gg * 17; b = bb * 17;
+      return true;
+    }
+    if (hex.Length == 6)
+    {
+      if (!byte.TryParse(hex.Slice(0, 2), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out var rr)) return false;
+      if (!byte.TryParse(hex.Slice(2, 2), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out var gg)) return false;
+      if (!byte.TryParse(hex.Slice(4, 2), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out var bb)) return false;
+      r = rr; g = gg; b = bb;
+      return true;
+    }
+    return false;
+  }
+
   // ===== Layout calculation =====
 
   private record LayoutParams(List<DateTime> Dates, int HeaderHeight, double ColWidth, int RowHeight,
@@ -435,7 +486,7 @@
 
       <rect x="@bar.X" y="@bar.Y" width="@bar.Width" height="@bar.Height"
             rx="4" ry="4" class="gantt-task-bar"
-            style="@(IsEditable ? "cursor: grab;" : "")"
+            style="@BuildBarStyle(item)"
             @onmousedown="e => OnBarMouseDown(e, capturedIdx, capturedItem)"
             @onmousedown:preventDefault="true"
             @onmousedown:stopPropagation="true"
@@ -447,16 +498,16 @@
       {
         var progressWidth = bar.Width * item.Progress / 100.0;
         <rect x="@bar.X" y="@bar.Y" width="@progressWidth" height="@bar.Height"
-              rx="4" ry="4" class="gantt-task-progress" />
+              rx="4" ry="4" class="gantt-task-progress" style="@BuildProgressStyle(item)" />
         if (progressWidth < bar.Width)
         {
           <rect x="@(bar.X + progressWidth - 4)" y="@bar.Y" width="4" height="@bar.Height"
-                class="gantt-task-progress" />
+                class="gantt-task-progress" style="@BuildProgressStyle(item)" />
         }
       }
 
       <g><text x="@(bar.X + 8)" y="@(bar.Y + bar.Height / 2 + 4)"
-            class="gantt-task-text" pointer-events="none">@TruncateText(item.Text, bar.Width)</text></g>
+            class="gantt-task-text" style="@BuildTextStyle(item)" pointer-events="none">@TruncateText(item.Text, bar.Width)</text></g>
 
       @if (IsEditable && bar.Width >= 20)
       {

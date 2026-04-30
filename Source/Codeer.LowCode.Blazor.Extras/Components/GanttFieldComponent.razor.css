@@ -390,12 +390,13 @@
 
 /* ===== Task Bars ===== */
 ::deep .gantt-task-bar {
-  fill: #c6dafc;
-  transition: fill 0.15s;
+  fill: #1a73e8;
+  fill-opacity: 0.5;
+  transition: fill-opacity 0.15s;
 }
 
 ::deep .gantt-task-bar:hover {
-  fill: #a8c7fa;
+  fill-opacity: 0.65;
 }
 
 ::deep .gantt-task-progress {
@@ -405,7 +406,6 @@
 
 ::deep .gantt-task-text {
   font-size: 11px;
-  fill: #1a3a5c;
   font-weight: 500;
   dominant-baseline: auto;
 }

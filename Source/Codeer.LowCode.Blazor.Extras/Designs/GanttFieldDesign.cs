@@ -90,8 +90,15 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         [Designer(DisplayName = "$GanttFieldShowToolbar", Category = "$GanttCategoryDisplay")]
         public bool ShowToolbar { get; set; } = true;
 
+        [Designer(CandidateType = CandidateType.Color, DisplayName = "$GanttFieldDefaultBarColor", Category = "$GanttCategoryDisplay")]
+        public string DefaultBarColor { get; set; } = string.Empty;
+
         [Designer(CandidateType = CandidateType.ScriptEvent, DisplayName = "$OnDataChanged", Category = "$GanttCategoryEvents")]
         public string OnDataChanged { get; set; } = string.Empty;
+
+        [Designer(CandidateType = CandidateType.ScriptEvent, DisplayName = "$GanttFieldOnGetBarColor", Category = "$GanttCategoryEvents")]
+        [ScriptMethod(ReturnType = "string", ArgumentTypes = ["Module"], ArgumentNames = ["task"])]
+        public string OnGetBarColor { get; set; } = string.Empty;
 
         public override string GetWebComponentTypeFullName() => typeof(GanttFieldComponent).FullName!;
 
@@ -116,6 +123,8 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
             context.CheckFieldRelativeFieldExistence(Name, nameof(DependencySourceIdField), DependenciesModule.ModuleName, DependencySourceIdField).AddTo(result);
             context.CheckFieldRelativeFieldExistence(Name, nameof(DependencyDestinationIdField), DependenciesModule.ModuleName, DependencyDestinationIdField).AddTo(result);
             context.CheckFieldFunctionExistence(Name, nameof(OnDataChanged), OnDataChanged, null).AddTo(result);
+            context.CheckFieldFunctionExistence(Name, nameof(OnGetBarColor), OnGetBarColor,
+                context.GetScriptMethodAttribute(GetType(), nameof(OnGetBarColor))).AddTo(result);
             result.AddRange(SearchCondition.CheckDesign(context, Name, nameof(SearchCondition)));
             result.AddRange(DependenciesModule.CheckDesign(context, Name, nameof(DependenciesModule)));
             return result;
