@@ -276,9 +276,6 @@
   <data name="GanttFieldDefaultBarColor" xml:space="preserve">
     <value>デフォルトバー色</value>
   </data>
-  <data name="GanttFieldOnGetBarColor" xml:space="preserve">
-    <value>バー色取得イベント</value>
-  </data>
 <data name="DiscardChangesConfirmation" xml:space="preserve">
     <value>未保存の変更があります。破棄しますか？</value>
   </data>

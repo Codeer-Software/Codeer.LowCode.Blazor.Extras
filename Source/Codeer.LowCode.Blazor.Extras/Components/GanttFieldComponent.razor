@@ -229,20 +229,24 @@
 
   private const string DefaultBarBaseColor = "#1a73e8";
 
-  private string BuildBarStyle(GanttItem item)
+  private string BuildBarStyle()
   {
     var style = string.Empty;
-    if (!string.IsNullOrEmpty(item.BarColor)) style += $"fill: {item.BarColor}; fill-opacity: 0.5;";
+    var color = Field.Design.DefaultBarColor;
+    if (!string.IsNullOrEmpty(color)) style += $"fill: {color}; fill-opacity: 0.5;";
     if (IsEditable) style += "cursor: grab;";
     return style;
   }
 
-  private static string BuildProgressStyle(GanttItem item)
-    => string.IsNullOrEmpty(item.BarColor) ? string.Empty : $"fill: {item.BarColor};";
-
-  private static string BuildTextStyle(GanttItem item)
+  private string BuildProgressStyle()
   {
-    var color = string.IsNullOrEmpty(item.BarColor) ? DefaultBarBaseColor : item.BarColor;
+    var color = Field.Design.DefaultBarColor;
+    return string.IsNullOrEmpty(color) ? string.Empty : $"fill: {color};";
+  }
+
+  private string BuildTextStyle()
+  {
+    var color = string.IsNullOrEmpty(Field.Design.DefaultBarColor) ? DefaultBarBaseColor : Field.Design.DefaultBarColor;
     return $"fill: {ComputeContrastColor(color)};";
   }
 
@@ -486,7 +490,7 @@
 
       <rect x="@bar.X" y="@bar.Y" width="@bar.Width" height="@bar.Height"
             rx="4" ry="4" class="gantt-task-bar"
-            style="@BuildBarStyle(item)"
+            style="@BuildBarStyle()"
             @onmousedown="e => OnBarMouseDown(e, capturedIdx, capturedItem)"
             @onmousedown:preventDefault="true"
             @onmousedown:stopPropagation="true"
@@ -498,16 +502,16 @@
       {
         var progressWidth = bar.Width * item.Progress / 100.0;
         <rect x="@bar.X" y="@bar.Y" width="@progressWidth" height="@bar.Height"
-              rx="4" ry="4" class="gantt-task-progress" style="@BuildProgressStyle(item)" />
+              rx="4" ry="4" class="gantt-task-progress" style="@BuildProgressStyle()" />
         if (progressWidth < bar.Width)
         {
           <rect x="@(bar.X + progressWidth - 4)" y="@bar.Y" width="4" height="@bar.Height"
-                class="gantt-task-progress" style="@BuildProgressStyle(item)" />
+                class="gantt-task-progress" style="@BuildProgressStyle()" />
         }
       }
 
       <g><text x="@(bar.X + 8)" y="@(bar.Y + bar.Height / 2 + 4)"
-            class="gantt-task-text" style="@BuildTextStyle(item)" pointer-events="none">@TruncateText(item.Text, bar.Width)</text></g>
+            class="gantt-task-text" style="@BuildTextStyle()" pointer-events="none">@TruncateText(item.Text, bar.Width)</text></g>
 
       @if (IsEditable && bar.Width >= 20)
       {

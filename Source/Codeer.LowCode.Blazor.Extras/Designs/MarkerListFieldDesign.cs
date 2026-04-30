@@ -42,6 +42,9 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         [TargetFieldType(Types = [typeof(TextFieldDesign)])]
         public string LabelField { get; set; } = string.Empty;
 
+        [Designer(CandidateType = CandidateType.Color)]
+        public string DefaultMarkerColor { get; set; } = string.Empty;
+
         [Designer(CandidateType = CandidateType.ScriptEvent)]
         public string OnDataChanged { get; set; } = string.Empty;
 

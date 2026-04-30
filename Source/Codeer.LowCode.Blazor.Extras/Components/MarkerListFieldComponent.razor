@@ -49,7 +49,11 @@ else
   }
 
   string GetMarkerStyle(Marker m)
-    => $"left:{m.X}px; top:{m.Y}px;";
+  {
+    var basic = $"left:{m.X}px; top:{m.Y}px;";
+    var color = Field.Design.DefaultMarkerColor;
+    return string.IsNullOrEmpty(color) ? basic : $"{basic} --marker-color: {color};";
+  }
 
   async Task HandleMarkerClick(Marker m)
     => await Field.OnMarkerClickAsync(m, !IsEditable);

@@ -30,6 +30,8 @@
     height: 0;
     white-space: nowrap;
     cursor: pointer;
+    /* デフォルトのマーカー色。インラインで上書き可能 */
+    --marker-color: red;
 }
 
 /* 円：アンカー点(0,0)を中心にする */
@@ -42,8 +44,8 @@
     width: 30px;
     height: 30px; /* 半径15px */
     border-radius: 50%;
-    border: 2px solid red;
-    background: rgba(255,0,0,0.15);
+    border: 2px solid var(--marker-color);
+    background: color-mix(in srgb, var(--marker-color) 15%, transparent);
     box-sizing: border-box;
 }
 
