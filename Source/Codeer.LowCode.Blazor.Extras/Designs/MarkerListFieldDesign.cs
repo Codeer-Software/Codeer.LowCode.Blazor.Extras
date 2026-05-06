@@ -11,7 +11,7 @@ using Codeer.LowCode.Blazor.Repository.Match;
 namespace Codeer.LowCode.Blazor.Extras.Designs
 {
     public class MarkerListFieldDesign() : FieldDesignBase(typeof(MarkerListFieldDesign).FullName!),
-        ISearchResultsViewFieldDesign, IDataDependentField
+        ISearchResultsViewFieldDesign, IDataDependentField, IFillHeightFieldDesign
     {
         [Designer(CandidateType = CandidateType.Resource)]
         public string ResourcePath { get; set; } = string.Empty;

@@ -11,7 +11,7 @@ using Codeer.LowCode.Blazor.Repository.Match;
 namespace Codeer.LowCode.Blazor.Extras.Designs
 {
     public class GanttFieldDesign() : FieldDesignBase(typeof(GanttFieldDesign).FullName!), IDisplayName,
-        ISearchResultsViewFieldDesign
+        ISearchResultsViewFieldDesign, IFillHeightFieldDesign
     {
         [Designer(DisplayName = "$DisplayName")]
         public string DisplayName { get; set; } = string.Empty;
