@@ -61,7 +61,7 @@ ExtrasServerInitializer.Initialize();
 using Codeer.LowCode.Blazor.Extras.Designer;
 
 // OnStartup メソッド内
-ExtrasDesignerInitializer.Initialize();
+ExtrasDesignerInitializer.Initialize(BlazorRuntime);
 ```
 
 ### 3. セットアップ完了

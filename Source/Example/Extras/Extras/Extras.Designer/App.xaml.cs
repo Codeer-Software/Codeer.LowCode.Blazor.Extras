@@ -34,7 +34,7 @@ namespace Extras.Designer
     {
         protected override void OnStartup(StartupEventArgs e)
         {
-            ExtrasDesignerInitializer.Initialize();
+            ExtrasDesignerInitializer.Initialize(BlazorRuntime);
 
             Codeer.LowCode.Blazor.License.LicenseManager.IsAutoUpdate =
                 bool.TryParse(ConfigurationManager.AppSettings["IsLicenseAutoUpdate"], out var val) ? val : true;
@@ -52,7 +52,6 @@ namespace Extras.Designer
             ScriptRuntimeTypeManager.AddType<GanttViewMode>();
             
             BlazorRuntime.InstallBundleCss("Extras.Client.Shared");
-            BlazorRuntime.InstallBundleCss("Codeer.LowCode.Blazor.Extras");
 
             IconCandidate.Icons.AddRange(Extras.Designer.Properties.Resources.bootstrap_icons
                 .Split(["\r\n", "\n"], StringSplitOptions.RemoveEmptyEntries).Order());
