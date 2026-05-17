@@ -16,6 +16,7 @@
 | [ColorPickerField](docs/ColorPickerField.md) | カラーピッカー。HTML5ネイティブカラーピッカーで色をHEX文字列として保存 |
 | [MarkerListField](docs/MarkerListField.md) | 画像上にマーカー(ピン)を配置・操作するフィールド |
 | [EnterFocusMoveField](docs/EnterFocusMoveField.md) | Enterキーでモジュール内の次の入力要素にフォーカスを移動させるユーティリティフィールド |
+| [PasswordHashField](docs/PasswordHashField.md) | パスワードを Submit 時にハッシュ + ソルトへ変換して DB に書き込む補助フィールド (サーバサイド実装が必要) |
 
 ## セットアップ
 
@@ -79,6 +80,7 @@ ExtrasDesignerInitializer.Initialize(BlazorRuntime);
 - [ColorPickerField - カラーピッカー](docs/ColorPickerField.md)
 - [MarkerListField - 画像マーカー](docs/MarkerListField.md)
 - [EnterFocusMoveField - Enterキーでフォーカス移動](docs/EnterFocusMoveField.md)
+- [PasswordHashField - パスワードハッシュ](docs/PasswordHashField.md)
 
 ## CSS カスタマイズ
 
