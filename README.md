@@ -17,6 +17,7 @@
 | [MarkerListField](docs/MarkerListField.md) | 画像上にマーカー(ピン)を配置・操作するフィールド |
 | [EnterFocusMoveField](docs/EnterFocusMoveField.md) | Enterキーでモジュール内の次の入力要素にフォーカスを移動させるユーティリティフィールド |
 | [PasswordHashField](docs/PasswordHashField.md) | パスワードを Submit 時にハッシュ + ソルトへ変換して DB に書き込む補助フィールド (サーバサイド実装が必要) |
+| [OrientationLockField](docs/OrientationLockField.md) | タッチ端末で画面の向き(横/縦)が指定と異なるとき、全画面オーバーレイで回転を促すフィールド |
 
 ## セットアップ
 
@@ -81,6 +82,7 @@ ExtrasDesignerInitializer.Initialize(BlazorRuntime);
 - [MarkerListField - 画像マーカー](docs/MarkerListField.md)
 - [EnterFocusMoveField - Enterキーでフォーカス移動](docs/EnterFocusMoveField.md)
 - [PasswordHashField - パスワードハッシュ](docs/PasswordHashField.md)
+- [OrientationLockField - 画面の向き制御](docs/OrientationLockField.md)
 
 ## CSS カスタマイズ
 
