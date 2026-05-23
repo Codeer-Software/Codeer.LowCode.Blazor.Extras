@@ -1,0 +1,24 @@
+@using Codeer.LowCode.Blazor.Components
+@using Codeer.LowCode.Blazor.Extras.Designs
+@using Codeer.LowCode.Blazor.Extras.Fields
+@inherits FieldComponentBase<OrientationLockField>
+
+@if (Field.Services.AppInfoService.IsDesignMode)
+{
+  <span style="color:#888; font-size:small;">OrientationLock (@Field.Design.AllowedOrientation)</span>
+}
+else
+{
+  var requireClass = Field.Design.AllowedOrientation == OrientationLockFieldDesign.OrientationKind.Landscape
+    ? "extras-orientation-overlay--require-landscape"
+    : "extras-orientation-overlay--require-portrait";
+  <div class="extras-orientation-overlay @requireClass">
+    <div class="extras-orientation-overlay__content">
+      <div class="extras-orientation-overlay__icon">⟳</div>
+      @if (!string.IsNullOrEmpty(Field.Design.Message))
+      {
+        <div class="extras-orientation-overlay__message">@Field.Design.Message</div>
+      }
+    </div>
+  </div>
+}

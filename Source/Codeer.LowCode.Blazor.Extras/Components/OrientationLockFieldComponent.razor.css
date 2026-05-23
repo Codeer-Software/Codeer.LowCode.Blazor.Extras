@@ -1,0 +1,46 @@
+.extras-orientation-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 100000;
+  background: rgba(0, 0, 0, 0.85);
+  color: white;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  font-size: 1.5rem;
+  text-align: center;
+  padding: 2rem;
+}
+
+@media (orientation: portrait) and (pointer: coarse) {
+  .extras-orientation-overlay.extras-orientation-overlay--require-landscape {
+    display: flex;
+  }
+}
+
+@media (orientation: landscape) and (pointer: coarse) {
+  .extras-orientation-overlay.extras-orientation-overlay--require-portrait {
+    display: flex;
+  }
+}
+
+.extras-orientation-overlay__content {
+  max-width: 80vw;
+}
+
+.extras-orientation-overlay__icon {
+  font-size: 4rem;
+  margin-bottom: 1rem;
+  animation: extras-orientation-rotate 2s ease-in-out infinite;
+}
+
+@keyframes extras-orientation-rotate {
+  0%, 100% { transform: rotate(0deg); }
+  50% { transform: rotate(90deg); }
+}
+
+.extras-orientation-overlay__message {
+  font-weight: bold;
+  line-height: 1.5;
+}
