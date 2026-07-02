@@ -132,8 +132,11 @@
         @RenderHeader(lp)
         @RenderGrid(lp)
         @RenderTodayLine(lp)
+        @* 当たり判定帯はバーの背面に。重なった箇所はタスクが優先される *@
+        @RenderDependencyHitAreas()
         @RenderTaskBars(lp)
-        @RenderDependencyArrows(lp)
+        @* 見た目の線は最前面 (pointer-events:none) なのでヒットを奪わない *@
+        @RenderDependencyLines()
       </svg>
     </div>
   </div>
@@ -308,7 +311,10 @@
   private BarPosition[] _barPositions = Array.Empty<BarPosition>();
   private readonly Dictionary<string, int> _itemIndexMap = new();
 
-  // markup 冒頭で呼ぶ。レイアウトを確定し、全バーの座標と id→index を先に構築する。
+  private record DepSegment(string PathD, string Key, bool IsSelected);
+  private readonly List<DepSegment> _depSegments = new();
+
+  // markup 冒頭で呼ぶ。レイアウトを確定し、全バーの座標・id→index・依存線ジオメトリを先に構築する。
   private LayoutParams PrepareRender()
   {
     var lp = CalcLayout();
@@ -320,6 +326,24 @@
       var item = Field.Items[i];
       _barPositions[i] = GetBarPosition(item, lp, i);
       _itemIndexMap[item.Id] = i;
+    }
+
+    _depSegments.Clear();
+    foreach (var dep in Field.DependencyList)
+    {
+      if (!_itemIndexMap.TryGetValue(dep.From, out var fromIdx) ||
+          !_itemIndexMap.TryGetValue(dep.To, out var toIdx)) continue;
+      var fromBar = _barPositions[fromIdx];
+      var toBar = _barPositions[toIdx];
+      if (fromBar.Width <= 0 || toBar.Width <= 0) continue;
+
+      var x1 = fromBar.X + fromBar.Width;
+      var y1 = fromBar.Y + fromBar.Height / 2;
+      var x2 = toBar.X;
+      var y2 = toBar.Y + toBar.Height / 2;
+      var midX = x1 + 12;
+      var pathD = $"M {F(x1)},{F(y1)} L {F(midX)},{F(y1)} L {F(midX)},{F(y2)} L {F(x2)},{F(y2)}";
+      _depSegments.Add(new DepSegment(pathD, dep.Key, _selectedDepKey == dep.Key));
     }
     return lp;
   }
@@ -550,15 +574,21 @@
       <g><text x="@(bar.X + 8)" y="@(bar.Y + bar.Height / 2 + 4)"
             class="gantt-task-text" style="@BuildTextStyle(item)" pointer-events="none">@TruncateText(item.Text, bar.Width)</text></g>
 
-      @if (IsEditable && bar.Width >= 20)
+      @if (IsEditable && bar.Width >= 6)
       {
-        var handleW = Math.Max(4, Math.Min(6, bar.Width * 0.2));
-        <rect x="@F(bar.X)" y="@bar.Y" width="@F(handleW)" height="@bar.Height"
+        // 端を掴みやすいよう、バー外側に少しはみ出させる (outside) + 内側にも確保 (inside)。
+        // 細いバーでも中央に最低限の移動ゾーンを残す。
+        const double outside = 3.0;
+        var inside = Math.Clamp(bar.Width * 0.25, 5.0, 9.0);
+        var maxInside = Math.Max(2.0, (bar.Width - 4.0) / 2.0);
+        if (inside > maxInside) inside = maxInside;
+        var handleW = inside + outside;
+        <rect x="@F(bar.X - outside)" y="@bar.Y" width="@F(handleW)" height="@bar.Height"
               class="gantt-resize-handle" rx="2" ry="2"
               @onmousedown="e => StartDrag(e, capturedIdx, DragMode.ResizeLeft)"
               @onmousedown:preventDefault="true"
               @onmousedown:stopPropagation="true" />
-        <rect x="@F(bar.X + bar.Width - handleW)" y="@bar.Y" width="@F(handleW)" height="@bar.Height"
+        <rect x="@F(bar.X + bar.Width - inside)" y="@bar.Y" width="@F(handleW)" height="@bar.Height"
               class="gantt-resize-handle" rx="2" ry="2"
               @onmousedown="e => StartDrag(e, capturedIdx, DragMode.ResizeRight)"
               @onmousedown:preventDefault="true"
@@ -577,33 +607,27 @@
     }
   };
 
-  private RenderFragment RenderDependencyArrows(LayoutParams lp) => __builder =>
+  // 当たり判定帯 (透明・幅広)。タスクバーより先に描画し背面へ回す。
+  private RenderFragment RenderDependencyHitAreas() => __builder =>
   {
-    foreach (var dep in Field.DependencyList)
+    foreach (var seg in _depSegments)
     {
-      if (!_itemIndexMap.TryGetValue(dep.From, out var fromIdx) ||
-          !_itemIndexMap.TryGetValue(dep.To, out var toIdx)) continue;
-
-      var fromBar = _barPositions[fromIdx];
-      var toBar = _barPositions[toIdx];
-      if (fromBar.Width <= 0 || toBar.Width <= 0) continue;
-
-      var x1 = fromBar.X + fromBar.Width;
-      var y1 = fromBar.Y + fromBar.Height / 2;
-      var x2 = toBar.X;
-      var y2 = toBar.Y + toBar.Height / 2;
-      var midX = x1 + 12;
-      var isSelected = _selectedDepKey == dep.Key;
-      var capturedKey = dep.Key;
-      var pathD = $"M {F(x1)},{F(y1)} L {F(midX)},{F(y1)} L {F(midX)},{F(y2)} L {F(x2)},{F(y2)}";
-
-      <path d="@pathD" class="gantt-dep-hit-area"
+      var capturedKey = seg.Key;
+      <path d="@seg.PathD" class="gantt-dep-hit-area"
             style="@(IsEditable ? "" : "cursor: default;")"
             @onclick="() => OnDepLineClick(capturedKey)"
             @onclick:stopPropagation="true" />
-      <path d="@pathD"
-            class="@(isSelected ? "gantt-dep-line gantt-dep-selected" : "gantt-dep-line")"
-            marker-end="@(isSelected ? "url(#dep-arrow-selected)" : "url(#dep-arrow)")"
+    }
+  };
+
+  // 見た目の線 (矢印付き)。最前面に描画するが pointer-events:none でヒットは奪わない。
+  private RenderFragment RenderDependencyLines() => __builder =>
+  {
+    foreach (var seg in _depSegments)
+    {
+      <path d="@seg.PathD"
+            class="@(seg.IsSelected ? "gantt-dep-line gantt-dep-selected" : "gantt-dep-line")"
+            marker-end="@(seg.IsSelected ? "url(#dep-arrow-selected)" : "url(#dep-arrow)")"
             pointer-events="none" />
     }
   };
