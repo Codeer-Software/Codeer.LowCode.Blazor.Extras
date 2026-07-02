@@ -89,7 +89,7 @@
   @* ===== Gantt Body ===== *@
   <div class="gantt-body">
     @{
-      var lp = CalcLayout();
+      var lp = PrepareRender();
     }
 
     @* ===== Left: Task labels ===== *@
@@ -255,12 +255,24 @@
     return $"fill: {ComputeContrastColor(color)};";
   }
 
-  // YIQ-based contrast color: dark text on light bg, white text on dark bg
-  private static string ComputeContrastColor(string color)
+  // YIQ-based contrast color: dark text on light bg, white text on dark bg.
+  // 色の種類は少なく毎描画・バー毎に呼ばれるためメモ化する。
+  private readonly Dictionary<string, string> _contrastCache = new();
+  private string ComputeContrastColor(string color)
   {
-    if (!TryParseHexColor(color, out var r, out var g, out var b)) return "#1a1a1a";
-    var y = (r * 299 + g * 587 + b * 114) / 1000;
-    return y >= 128 ? "#1a1a1a" : "#ffffff";
+    if (_contrastCache.TryGetValue(color, out var cached)) return cached;
+    string result;
+    if (!TryParseHexColor(color, out var r, out var g, out var b))
+    {
+      result = "#1a1a1a";
+    }
+    else
+    {
+      var y = (r * 299 + g * 587 + b * 114) / 1000;
+      result = y >= 128 ? "#1a1a1a" : "#ffffff";
+    }
+    _contrastCache[color] = result;
+    return result;
   }
 
   private static bool TryParseHexColor(string color, out int r, out int g, out int b)
@@ -291,6 +303,26 @@
 
   private record LayoutParams(List<DateTime> Dates, int HeaderHeight, double ColWidth, int RowHeight,
     int BodyHeight, int TotalHeight, double TimelineWidth, TimeSpan TimeUnit);
+
+  // 1描画につき1回だけ算出して、バー描画と依存線描画で共有する。
+  private BarPosition[] _barPositions = Array.Empty<BarPosition>();
+  private readonly Dictionary<string, int> _itemIndexMap = new();
+
+  // markup 冒頭で呼ぶ。レイアウトを確定し、全バーの座標と id→index を先に構築する。
+  private LayoutParams PrepareRender()
+  {
+    var lp = CalcLayout();
+    var count = Field.Items.Count;
+    if (_barPositions.Length != count) _barPositions = new BarPosition[count];
+    _itemIndexMap.Clear();
+    for (var i = 0; i < count; i++)
+    {
+      var item = Field.Items[i];
+      _barPositions[i] = GetBarPosition(item, lp, i);
+      _itemIndexMap[item.Id] = i;
+    }
+    return lp;
+  }
 
   private LayoutParams CalcLayout()
   {
@@ -487,7 +519,7 @@
     for (var idx = 0; idx < Field.Items.Count; idx++)
     {
       var item = Field.Items[idx];
-      var bar = GetBarPosition(item, lp, idx);
+      var bar = _barPositions[idx];
       if (bar.Width <= 0) continue;
 
       var capturedItem = item;
@@ -547,17 +579,13 @@
 
   private RenderFragment RenderDependencyArrows(LayoutParams lp) => __builder =>
   {
-    var itemIndexMap = new Dictionary<string, int>();
-    for (var i = 0; i < Field.Items.Count; i++)
-      itemIndexMap[Field.Items[i].Id] = i;
-
     foreach (var dep in Field.DependencyList)
     {
-      if (!itemIndexMap.TryGetValue(dep.From, out var fromIdx) ||
-          !itemIndexMap.TryGetValue(dep.To, out var toIdx)) continue;
+      if (!_itemIndexMap.TryGetValue(dep.From, out var fromIdx) ||
+          !_itemIndexMap.TryGetValue(dep.To, out var toIdx)) continue;
 
-      var fromBar = GetBarPosition(Field.Items[fromIdx], lp, fromIdx);
-      var toBar = GetBarPosition(Field.Items[toIdx], lp, toIdx);
+      var fromBar = _barPositions[fromIdx];
+      var toBar = _barPositions[toIdx];
       if (fromBar.Width <= 0 || toBar.Width <= 0) continue;
 
       var x1 = fromBar.X + fromBar.Width;
@@ -927,6 +955,7 @@
   }
 
   private double _dragPxPerSecond;
+  private long _lastDragSteps;
 
   private void StartDrag(MouseEventArgs e, int idx, DragMode mode)
   {
@@ -937,6 +966,7 @@
     _dragStartX = e.ClientX;
     _dragOrigStart = Field.Items[idx].Start;
     _dragOrigEnd = Field.Items[idx].End;
+    _lastDragSteps = 0;
 
     var lp = CalcLayout();
     var (rangeStart, rangeEnd) = Field.GetViewDateRange();
@@ -952,6 +982,9 @@
     var deltaPx = e.ClientX - _dragStartX;
     var deltaSeconds = deltaPx / _dragPxPerSecond;
     var steps = (long)Math.Round(deltaSeconds / snap.TotalSeconds);
+    // スナップ位置が前フレームと同じなら見た目は変わらないので再描画しない
+    if (steps == _lastDragSteps) return;
+    _lastDragSteps = steps;
     var delta = TimeSpan.FromTicks(snap.Ticks * steps);
     var item = Field.Items[_dragIdx];
 
