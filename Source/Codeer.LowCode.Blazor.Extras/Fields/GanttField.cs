@@ -523,10 +523,15 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
 
         private void MakeDependencyList()
         {
+            // Items を一度だけ辞書化して O(D) で参照する (従来は dep ごとに線形探索し O(D×N))
+            var byId = new Dictionary<string, GanttItem>(Items.Count);
+            foreach (var item in Items)
+                byId[item.Id] = item;
+            string TextOf(string id) => byId.TryGetValue(id, out var it) ? it.Text : string.Empty;
+
             DependencyList = DependenciesMap
                 .SelectMany(pair => pair.Value.Select(from => new DependencyListItem(
-                    Items.FirstOrDefault(e => e.Id == from)?.Text ?? "",
-                    Items.FirstOrDefault(e => e.Id == pair.Key)?.Text ?? "",
+                    TextOf(from), TextOf(pair.Key),
                     from, pair.Key, $"{from}->{pair.Key}")))
                 .OrderBy(e => e.Key)
                 .ToList();
