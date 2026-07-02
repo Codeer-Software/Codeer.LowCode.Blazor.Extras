@@ -41,6 +41,8 @@
   @* ===== Month View ===== *@
   @if (Field.ViewMode == CalendarViewMode.Month)
   {
+    var weeks = GetMonthWeeks();
+    PrepareBuckets(weeks[0][0].Date, weeks.Count * 7);
     <div class="month-view">
       <div class="month-grid">
         <div class="month-header">
@@ -49,7 +51,7 @@
             <div class="month-header-cell">@d</div>
           }
         </div>
-        @foreach (var week in GetMonthWeeks())
+        @foreach (var week in weeks)
         {
           <div class="month-row">
             @foreach (var day in week)
@@ -74,6 +76,7 @@
   @if (Field.ViewMode == CalendarViewMode.Week)
   {
     var weekDays = GetWeekDays();
+    PrepareBuckets(weekDays[0].Date, 7);
     var weekAllDay = weekDays.Select(d => GetAllDayEventsForDay(d.Date)).ToList();
     <div class="week-view">
       <div class="time-grid-scroll">
@@ -117,6 +120,7 @@
   @if (Field.ViewMode == CalendarViewMode.Day)
   {
     var dayDate = Field.SelectedDate.Date;
+    PrepareBuckets(dayDate, 1);
     var dayAllDay = GetAllDayEventsForDay(dayDate);
     <div class="day-view">
       <div class="day-header">
@@ -152,7 +156,62 @@
   const double PxPerHour = 48.0;
   const double MinEventHeight = 20.0;
 
-  private static string[] DayNames => [Resources.Sun, Resources.Mon, Resources.Tue, Resources.Wed, Resources.Thu, Resources.Fri, Resources.Sat];
+  // 表示範囲のイベントを日付キーで振り分けたバケット。描画の頭で1回だけ構築する。
+  // (従来は各セルで Field.Items 全件をスキャンしており O(セル数 × N) だった)
+  private readonly Dictionary<DateTime, List<ModuleCalendarItem>> _dayBuckets = new();
+
+  private void PrepareBuckets(DateTime start, int days)
+  {
+    _dayBuckets.Clear();
+    var rangeStart = start.Date;
+    var rangeEnd = rangeStart.AddDays(days); // exclusive
+    for (var i = 0; i < days; i++)
+      _dayBuckets[rangeStart.AddDays(i)] = new List<ModuleCalendarItem>();
+
+    foreach (var item in Field.Items)
+    {
+      if (item.Start == default) continue;
+      var s = item.Start.Date;
+      var e = (item.End ?? item.Start).Date;
+      if (e < rangeStart || s >= rangeEnd) continue;
+      var from = s < rangeStart ? rangeStart : s;
+      var to = e >= rangeEnd ? rangeEnd.AddDays(-1) : e;
+      for (var d = from; d <= to; d = d.AddDays(1))
+        if (_dayBuckets.TryGetValue(d, out var list))
+          list.Add(item);
+    }
+
+    // 各日: 終日/複数日を先頭、その後は開始時刻順。月表示のクリップ表示や整列に効く。
+    foreach (var list in _dayBuckets.Values)
+    {
+      if (list.Count > 1)
+        list.Sort((a, b) =>
+        {
+          if (a.AllDay != b.AllDay) return a.AllDay ? -1 : 1;
+          return a.Start.CompareTo(b.Start);
+        });
+    }
+  }
+
+  private List<ModuleCalendarItem> DayBucket(DateTime date)
+    => _dayBuckets.TryGetValue(date.Date, out var l) ? l : [];
+
+  // カルチャ単位でキャッシュ (getのたびの配列生成を避ける)
+  private string[]? _dayNames;
+  private string? _dayNamesCulture;
+  private string[] DayNames
+  {
+    get
+    {
+      var cn = CultureInfo.CurrentUICulture.Name;
+      if (_dayNames is null || _dayNamesCulture != cn)
+      {
+        _dayNames = [Resources.Sun, Resources.Mon, Resources.Tue, Resources.Wed, Resources.Thu, Resources.Fri, Resources.Sat];
+        _dayNamesCulture = cn;
+      }
+      return _dayNames;
+    }
+  }
 
   private CultureInfo Culture => CultureInfo.CurrentUICulture;
 
@@ -342,10 +401,7 @@
     return weeks;
   }
 
-  private List<ModuleCalendarItem> GetMonthDayEvents(DateTime date)
-    => Field.Items
-      .Where(item => item.Start != default && date.Date >= item.Start.Date && date.Date <= (item.End ?? item.Start).Date)
-      .ToList();
+  private List<ModuleCalendarItem> GetMonthDayEvents(DateTime date) => DayBucket(date);
 
   // ===== Week View helpers =====
 
@@ -359,9 +415,7 @@
   }
 
   private List<ModuleCalendarItem> GetAllDayEventsForDay(DateTime date)
-    => Field.Items
-      .Where(item => item.Start != default && item.AllDay && date.Date >= item.Start.Date && date.Date <= (item.End ?? item.Start).Date)
-      .ToList();
+    => DayBucket(date).Where(item => item.AllDay).ToList();
 
   // ===== Time grid event positioning =====
 
@@ -370,8 +424,8 @@
     var dayStart = date.Date;
     var dayEnd = dayStart.AddDays(1);
 
-    var clipped = Field.Items
-      .Where(item => item.Start != default && !item.AllDay && item.Start < dayEnd && (item.End ?? item.Start) > dayStart)
+    var clipped = DayBucket(date)
+      .Where(item => !item.AllDay && item.Start < dayEnd && (item.End ?? item.Start) > dayStart)
       .Select(item =>
       {
         var s = item.Start < dayStart ? dayStart : item.Start;
