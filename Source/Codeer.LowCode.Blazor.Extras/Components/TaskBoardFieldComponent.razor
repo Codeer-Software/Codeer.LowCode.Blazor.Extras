@@ -32,7 +32,7 @@
           {
             var capturedItem = item;
             var capturedIndex = index;
-            <div class="taskboard-card @(_dragItem == capturedItem ? "dragging" : "")"
+            <div @key="capturedItem.Module" class="taskboard-card @(_dragItem == capturedItem ? "dragging" : "")"
                  style="@(IsEditable ? "" : "cursor: default;")"
                  draggable="@(IsEditable ? "true" : "false")"
                  @ondragstart="() => OnDragStart(capturedItem, statusValue, capturedIndex)"
@@ -62,8 +62,8 @@
           }
           @if (_dragItem != null)
           {
-            <div class="taskboard-empty-drop @(_dragOverStatus == statusValue && _dragOverIndex >= columnItems.Count ? "drag-over" : "")"
-                 @ondragover="e => UpdateDragOver(statusValue, columnItems.Count, DropPosition.Before)"
+            <div class="taskboard-empty-drop @(_dragOverEndStatus == statusValue ? "drag-over" : "")"
+                 @ondragover="e => UpdateDragOverEnd(statusValue, columnItems.Count)"
                  @ondragover:preventDefault="true"
                  @ondrop="() => OnDropOnColumn(statusValue)"
                  @ondrop:stopPropagation="true">
@@ -100,6 +100,9 @@
   private string? _dragOverStatus;
   private int _dragOverIndex = -1;
   private DropPosition _dragOverPosition;
+  // 末尾ドロップゾーンのハイライト対象の列 (null = どこも光らない)。
+  // ドラッグ中に唯一「見た目が変わる」状態なので、これが変化した時だけ再描画する。
+  private string? _dragOverEndStatus;
 
   protected override bool ShouldRender()
   {
@@ -188,19 +191,39 @@
     _dragSourceStatus = null;
     _dragOverStatus = null;
     _dragOverIndex = -1;
+    _dragOverEndStatus = null;
     StateHasChanged();
   }
 
+  // カード / カード上下半分にホバー中。ドロップ先の記録は常に更新するが、
+  // 見た目が変わる (末尾ハイライトが消える) 時以外は再描画を抑制する。
   private void UpdateDragOver(string statusValue, int index, DropPosition position)
   {
-    if (_dragItem == null || (_dragOverStatus == statusValue && _dragOverIndex == index && _dragOverPosition == position))
-    {
-      _suppressRender = true;
-      return;
-    }
+    if (_dragItem == null) { _suppressRender = true; return; }
+
     _dragOverStatus = statusValue;
     _dragOverIndex = index;
     _dragOverPosition = position;
+
+    if (_dragOverEndStatus != null)
+      _dragOverEndStatus = null;  // 末尾ハイライトを消す → 再描画する
+    else
+      _suppressRender = true;     // 見た目に変化なし → 抑制
+  }
+
+  // 列末尾の空きゾーンにホバー中。ハイライト対象の列が変わる時だけ再描画する。
+  private void UpdateDragOverEnd(string statusValue, int count)
+  {
+    if (_dragItem == null) { _suppressRender = true; return; }
+
+    _dragOverStatus = statusValue;
+    _dragOverIndex = count;
+    _dragOverPosition = DropPosition.Before;
+
+    if (_dragOverEndStatus != statusValue)
+      _dragOverEndStatus = statusValue;  // ハイライト対象が変わる → 再描画する
+    else
+      _suppressRender = true;            // 既に同じ列が光っている → 抑制
   }
 
   private async Task OnDropOnColumn(string statusValue)
@@ -223,6 +246,7 @@
     _dragSourceStatus = null;
     _dragOverStatus = null;
     _dragOverIndex = -1;
+    _dragOverEndStatus = null;
 
     await Field.MoveTaskAsync(item, statusValue, newIndex);
     StateHasChanged();
