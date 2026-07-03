@@ -716,6 +716,60 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
                 return ResourceManager.GetString("No", resourceCulture);
             }
         }
+        
+        internal static string QrCodeFieldSourceField {
+            get {
+                return ResourceManager.GetString("QrCodeFieldSourceField", resourceCulture);
+            }
+        }
+        
+        internal static string QrCodeFieldText {
+            get {
+                return ResourceManager.GetString("QrCodeFieldText", resourceCulture);
+            }
+        }
+        
+        internal static string QrCodeFieldEccLevel {
+            get {
+                return ResourceManager.GetString("QrCodeFieldEccLevel", resourceCulture);
+            }
+        }
+        
+        internal static string QrCodeFieldDarkColor {
+            get {
+                return ResourceManager.GetString("QrCodeFieldDarkColor", resourceCulture);
+            }
+        }
+        
+        internal static string QrCodeFieldLightColor {
+            get {
+                return ResourceManager.GetString("QrCodeFieldLightColor", resourceCulture);
+            }
+        }
+        
+        internal static string ProgressFieldValueField {
+            get {
+                return ResourceManager.GetString("ProgressFieldValueField", resourceCulture);
+            }
+        }
+        
+        internal static string ProgressFieldColorField {
+            get {
+                return ResourceManager.GetString("ProgressFieldColorField", resourceCulture);
+            }
+        }
+        
+        internal static string ProgressFieldBarColor {
+            get {
+                return ResourceManager.GetString("ProgressFieldBarColor", resourceCulture);
+            }
+        }
+        
+        internal static string ProgressFieldShowValueLabel {
+            get {
+                return ResourceManager.GetString("ProgressFieldShowValueLabel", resourceCulture);
+            }
+        }
 
     }
 }

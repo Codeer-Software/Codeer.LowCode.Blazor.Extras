@@ -339,4 +339,31 @@
   <data name="RichTextClearFormat" xml:space="preserve">
     <value>Clear Formatting</value>
   </data>
+  <data name="QrCodeFieldSourceField" xml:space="preserve">
+    <value>Source Field</value>
+  </data>
+  <data name="QrCodeFieldText" xml:space="preserve">
+    <value>Text</value>
+  </data>
+  <data name="QrCodeFieldEccLevel" xml:space="preserve">
+    <value>Error Correction Level</value>
+  </data>
+  <data name="QrCodeFieldDarkColor" xml:space="preserve">
+    <value>Dark Color</value>
+  </data>
+  <data name="QrCodeFieldLightColor" xml:space="preserve">
+    <value>Light Color</value>
+  </data>
+  <data name="ProgressFieldValueField" xml:space="preserve">
+    <value>Value Field</value>
+  </data>
+  <data name="ProgressFieldColorField" xml:space="preserve">
+    <value>Color Field</value>
+  </data>
+  <data name="ProgressFieldBarColor" xml:space="preserve">
+    <value>Bar Color</value>
+  </data>
+  <data name="ProgressFieldShowValueLabel" xml:space="preserve">
+    <value>Show Progress Label</value>
+  </data>
 </root>

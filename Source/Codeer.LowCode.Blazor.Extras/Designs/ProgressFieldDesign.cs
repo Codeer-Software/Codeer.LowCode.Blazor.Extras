@@ -12,21 +12,21 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
     public class ProgressFieldDesign() : FieldDesignBase(typeof(ProgressFieldDesign).FullName!), IDataDependentField
     {
         /// <summary>進捗値を取得する参照フィールド (数値)。</summary>
-        [Designer(CandidateType = CandidateType.Field)]
+        [Designer(CandidateType = CandidateType.Field, DisplayName = "$ProgressFieldValueField")]
         [TargetFieldType(Types = [typeof(NumberFieldDesign)])]
         public string ValueField { get; set; } = string.Empty;
 
         /// <summary>バー色を取得する参照フィールド。空の場合は <see cref="BarColor"/> を使用。</summary>
-        [Designer(CandidateType = CandidateType.Field)]
+        [Designer(CandidateType = CandidateType.Field, DisplayName = "$ProgressFieldColorField")]
         [TargetFieldType(Types = [typeof(TextFieldDesign), typeof(ColorPickerFieldDesign)])]
         public string ColorField { get; set; } = string.Empty;
 
         /// <summary>バー色の既定値 (<see cref="ColorField"/> 未設定/空のとき使用)。</summary>
-        [Designer(CandidateType = CandidateType.Color)]
+        [Designer(CandidateType = CandidateType.Color, DisplayName = "$ProgressFieldBarColor")]
         public string BarColor { get; set; } = string.Empty;
 
         /// <summary>進捗率をバー上に表示するか。</summary>
-        [Designer]
+        [Designer(DisplayName = "$ProgressFieldShowValueLabel")]
         public bool ShowValueLabel { get; set; } = true;
 
         public override string GetWebComponentTypeFullName() => typeof(ProgressFieldComponent).FullName!;

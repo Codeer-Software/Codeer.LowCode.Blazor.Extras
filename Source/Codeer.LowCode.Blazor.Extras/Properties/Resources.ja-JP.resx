@@ -339,4 +339,31 @@
   <data name="RichTextClearFormat" xml:space="preserve">
     <value>書式クリア</value>
   </data>
+  <data name="QrCodeFieldSourceField" xml:space="preserve">
+    <value>参照フィールド</value>
+  </data>
+  <data name="QrCodeFieldText" xml:space="preserve">
+    <value>固定文字列</value>
+  </data>
+  <data name="QrCodeFieldEccLevel" xml:space="preserve">
+    <value>誤り訂正レベル</value>
+  </data>
+  <data name="QrCodeFieldDarkColor" xml:space="preserve">
+    <value>前景色</value>
+  </data>
+  <data name="QrCodeFieldLightColor" xml:space="preserve">
+    <value>背景色</value>
+  </data>
+  <data name="ProgressFieldValueField" xml:space="preserve">
+    <value>値フィールド</value>
+  </data>
+  <data name="ProgressFieldColorField" xml:space="preserve">
+    <value>色フィールド</value>
+  </data>
+  <data name="ProgressFieldBarColor" xml:space="preserve">
+    <value>バー色</value>
+  </data>
+  <data name="ProgressFieldShowValueLabel" xml:space="preserve">
+    <value>進捗率を表示</value>
+  </data>
 </root>

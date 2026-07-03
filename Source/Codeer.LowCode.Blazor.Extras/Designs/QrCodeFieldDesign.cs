@@ -16,25 +16,25 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         /// QR化する文字列を取得する参照フィールド。省略時は <see cref="Text"/> を使用。
         /// いずれもスクリプトから <c>Field.Text</c> で上書き可能。
         /// </summary>
-        [Designer(CandidateType = CandidateType.Field)]
+        [Designer(CandidateType = CandidateType.Field, DisplayName = "$QrCodeFieldSourceField")]
         public string SourceField { get; set; } = string.Empty;
 
         /// <summary>
         /// QR化する固定文字列 (<see cref="SourceField"/> 未設定時の初期値)。
         /// </summary>
-        [Designer]
+        [Designer(DisplayName = "$QrCodeFieldText")]
         public string Text { get; set; } = string.Empty;
 
         /// <summary>誤り訂正レベル。</summary>
-        [Designer]
+        [Designer(DisplayName = "$QrCodeFieldEccLevel")]
         public QrCodeEccLevel EccLevel { get; set; } = QrCodeEccLevel.M;
 
         /// <summary>前景色 (モジュールの色)。</summary>
-        [Designer(CandidateType = CandidateType.Color)]
+        [Designer(CandidateType = CandidateType.Color, DisplayName = "$QrCodeFieldDarkColor")]
         public string DarkColor { get; set; } = "#000000";
 
         /// <summary>背景色。</summary>
-        [Designer(CandidateType = CandidateType.Color)]
+        [Designer(CandidateType = CandidateType.Color, DisplayName = "$QrCodeFieldLightColor")]
         public string LightColor { get; set; } = "#FFFFFF";
 
         public override string GetWebComponentTypeFullName() => typeof(QrCodeFieldComponent).FullName!;
