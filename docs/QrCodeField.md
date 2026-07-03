@@ -15,13 +15,15 @@ QR コードの生成には [QRCoder](https://github.com/codebude/QRCoder) (MIT)
 
 ## デザイナー設定プロパティ
 
-| プロパティ | 型 | 必須 | 説明 |
-|---|---|---|---|
-| SourceField | string | - | QR 化する文字列を取得する参照フィールド名。設定すると値の変更に自動追従する。文字列系フィールド (Text / Link / Id / Select 等) と数値フィールド (Number) に対応 |
-| Text | string | - | QR 化する固定文字列。`SourceField` 未設定時の初期値として使用 |
-| EccLevel | enum (L/M/Q/H) | - | 誤り訂正レベル。既定は `M` (約15%復元)。高いほど破損に強いが情報密度が上がる |
-| DarkColor | string | - | 前景色 (モジュールの色)。既定は `#000000` |
-| LightColor | string | - | 背景色。既定は `#FFFFFF` |
+「デザイナ表示名」は Designer (日本語環境) で表示されるラベルです。
+
+| プロパティ | デザイナ表示名 | 型 | 必須 | 説明 |
+|---|---|---|---|---|
+| SourceField | 参照フィールド | string | - | QR 化する文字列を取得する参照フィールド名。設定すると値の変更に自動追従する。文字列系フィールド (Text / Link / Id / Select 等) と数値フィールド (Number) に対応 |
+| Text | 固定文字列 | string | - | QR 化する固定文字列。`SourceField` 未設定時の初期値として使用 |
+| EccLevel | 誤り訂正レベル | enum (L/M/Q/H) | - | 誤り訂正レベル。既定は `M` (約15%復元)。高いほど破損に強いが情報密度が上がる |
+| DarkColor | 前景色 | string | - | 前景色 (モジュールの色)。既定は `#000000` |
+| LightColor | 背景色 | string | - | 背景色。既定は `#FFFFFF` |
 
 ### 内容の優先順位
 

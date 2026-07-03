@@ -15,12 +15,14 @@
 
 ## デザイナー設定プロパティ
 
-| プロパティ | 型 | 必須 | 説明 |
-|---|---|---|---|
-| ValueField | string | - | 進捗値を取得する数値フィールド (`NumberFieldDesign`) |
-| ColorField | string | - | バー色を取得するフィールド (`TextFieldDesign` / `ColorPickerFieldDesign`)。空なら `BarColor` を使用 |
-| BarColor | string | - | バー色の既定値 (`ColorField` 未設定/空のとき)。空なら既定色 `#1a73e8` |
-| ShowValueLabel | bool | - | 進捗率をバー上に表示するか。既定 `true` |
+「デザイナ表示名」は Designer (日本語環境) で表示されるラベルです。
+
+| プロパティ | デザイナ表示名 | 型 | 必須 | 説明 |
+|---|---|---|---|---|
+| ValueField | 値フィールド | string | - | 進捗値を取得する数値フィールド (`NumberFieldDesign`) |
+| ColorField | 色フィールド | string | - | バー色を取得するフィールド (`TextFieldDesign` / `ColorPickerFieldDesign`)。空なら `BarColor` を使用 |
+| BarColor | バー色 | string | - | バー色の既定値 (`ColorField` 未設定/空のとき)。空なら既定色 `#1a73e8` |
+| ShowValueLabel | 進捗率を表示 | bool | - | 進捗率をバー上に表示するか。既定 `true` |
 
 `ValueField` の値は**パーセント (0〜100) としてそのまま扱い**、0〜100% にクランプして表示します (Gantt と同じ)。
 
@@ -47,6 +49,24 @@
 // 参照先の数値フィールドを更新するとバーも追従する
 async function OnStep() {
   Progress.Value = (Progress.Value ?? 0) + 10;
+}
+```
+
+## CSS クラス
+
+バーの見た目は以下のクラスで上書きできます (バー色は通常デザイナーの `BarColor` / `ColorField` で指定します)。
+
+| クラス | 対象 |
+|---|---|
+| `.progress-bar` | バー全体 (高さ・角丸など)。既定の高さは `20px` |
+| `.progress-fill` | 完了部分 (濃い同色のベタ塗り) |
+| `.progress-label` | バー上に重ねた進捗率ラベル |
+
+```css
+/* 例: バーを高くして角を丸める */
+.progress-bar {
+  height: 28px;
+  border-radius: 14px;
 }
 ```
 
