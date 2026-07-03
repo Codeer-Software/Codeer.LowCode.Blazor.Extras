@@ -9,7 +9,7 @@
   "Versions": [
     {
       "AssemblyName": "Codeer.LowCode.Blazor.Extras",
-      "Version": "0.0.18.0"
+      "Version": "0.0.20.0"
     },
     {
       "AssemblyName": "Codeer.LowCode.Blazor",

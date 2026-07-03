@@ -1,0 +1,14 @@
+@using Codeer.LowCode.Blazor.Components
+@using Codeer.LowCode.Blazor.Extras.Fields
+@inherits FieldComponentBase<QrCodeField>
+
+<div class="qrcode-root" id="@WebElementId" @ref="Element">
+  @if (!string.IsNullOrEmpty(Field.DataUrl))
+  {
+    <img class="qrcode-image" src="@Field.DataUrl" alt="QR" />
+  }
+  else
+  {
+    <div class="qrcode-empty"></div>
+  }
+</div>

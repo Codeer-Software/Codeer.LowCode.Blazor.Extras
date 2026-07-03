@@ -203,6 +203,17 @@
       "IgnoreModification": false,
       "OnValidateInput": "",
       "TypeFullName": "Codeer.LowCode.Blazor.Extras.Designs.OrientationLockFieldDesign"
+    },
+    {
+      "SourceField": "テキスト",
+      "Text": "https://github.com/Codeer-Software/Codeer.LowCode.Blazor.Extras",
+      "EccLevel": "M",
+      "DarkColor": "#000000",
+      "LightColor": "#FFFFFF",
+      "Name": "QrCode",
+      "IgnoreModification": false,
+      "OnValidateInput": "",
+      "TypeFullName": "Codeer.LowCode.Blazor.Extras.Designs.QrCodeFieldDesign"
     }
   ],
   "UserWriteCondition": {
@@ -242,6 +253,39 @@
         "ScrollDirection": "Unset",
         "OnKeyDown": "",
         "Rows": [
+          {
+            "IsWrap": false,
+            "IsAutoFillWrap": false,
+            "Margin": {},
+            "GridRowType": "Normal",
+            "CanResize": false,
+            "BackgroundColor": "",
+            "IsRowMarginRemoved": false,
+            "Columns": [
+              {
+                "Layout": {
+                  "FieldName": "QrCode",
+                  "ContextMenu": "",
+                  "ClassName": "",
+                  "FontFamily": "",
+                  "Color": "",
+                  "Name": "",
+                  "BackgroundColor": "",
+                  "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.FieldLayoutDesign"
+                },
+                "Padding": {},
+                "BackgroundColor": "",
+                "BorderStyle": {
+                  "LeftColor": "",
+                  "TopColor": "",
+                  "RightColor": "",
+                  "BottomColor": ""
+                },
+                "CanResize": false,
+                "Border": "None"
+              }
+            ]
+          },
           {
             "IsWrap": false,
             "IsAutoFillWrap": false,
