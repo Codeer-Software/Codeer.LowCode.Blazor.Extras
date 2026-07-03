@@ -79,6 +79,19 @@ dotnet build Source/Codeer.LowCode.Blazor.Extras/Codeer.LowCode.Blazor.Extras.cs
 - **インターフェース**: `ISearchResultsViewFieldDesign`, `IDataDependentField`, `IFillHeightFieldDesign`
 - **ファイル**: `Designs/MarkerListFieldDesign.cs`, `Fields/MarkerListField.cs`, `Components/MarkerListFieldComponent.razor`
 
+#### QrCodeField - QRコード
+- **状態**: 実装済み (docs/QrCodeField.md)
+- **機能**: 文字列をQRコード画像として表示する表示専用フィールド。参照フィールド(`SourceField`)の値、固定文字列(`Text`)、またはスクリプト(`Field.Text`)で内容を設定。ECCレベル・前景/背景色を指定可能
+- **依存**: `QRCoder` (MIT, 純C#・System.Drawing非依存)。C#側でPNGを生成し base64 data URI で `<img>` 表示 (JS不要)
+- **インターフェース**: `IDataDependentField` (`SourceField` 変更に自動追従)
+- **ファイル**: `Designs/QrCodeFieldDesign.cs`, `Fields/QrCodeField.cs`, `Fields/QrCodeEccLevel.cs`, `Components/QrCodeFieldComponent.razor`
+
+#### ProgressField - 進捗バー
+- **状態**: 実装済み (docs/ProgressField.md)
+- **機能**: 進捗率をガント風の角丸バーで表示する**表示専用**フィールド。値は別フィールド(`ValueField`)から、色も別フィールド(`ColorField`)または固定色(`BarColor`)から取得。進捗率をバー上に重ねて表示 (`ShowValueLabel` でON/OFF)、文字色は背景色に対する YIQ コントラスト色を自動選択 (Ganttと同じ)。リストに入れて各行の進捗表示に使える
+- **インターフェース**: `IDataDependentField` (`ValueField`/`ColorField` の変更に自動追従)
+- **ファイル**: `Designs/ProgressFieldDesign.cs`, `Fields/ProgressField.cs`, `Components/ProgressFieldComponent.razor`
+
 ### 入力系 (値を持つ / `ValueFieldDesignBase`)
 
 #### RichTextField - リッチテキストエディタ

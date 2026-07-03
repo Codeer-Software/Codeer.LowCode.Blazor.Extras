@@ -1,0 +1,21 @@
+@using System.Globalization
+@using Codeer.LowCode.Blazor.Components
+@using Codeer.LowCode.Blazor.Extras.Fields
+@inherits FieldComponentBase<ProgressField>
+
+<div class="progress-bar" style="@BarColorCss" title="@LabelText">
+  <div class="progress-fill" style="width:@FillCss"></div>
+  @if (Field.Design.ShowValueLabel)
+  {
+    <span class="progress-label" style="color:@Field.TextColor">@LabelText</span>
+  }
+</div>
+
+@code {
+  private string FillCss => Field.FillPercent.ToString("0.##", CultureInfo.InvariantCulture) + "%";
+
+  private string LabelText => Field.FillPercent.ToString("0.##", CultureInfo.InvariantCulture) + "%";
+
+  private string? BarColorCss
+    => string.IsNullOrEmpty(Field.EffectiveBarColor) ? null : $"--progress-color:{Field.EffectiveBarColor};";
+}

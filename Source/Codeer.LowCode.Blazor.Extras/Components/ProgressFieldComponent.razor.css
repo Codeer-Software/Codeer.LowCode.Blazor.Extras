@@ -1,0 +1,40 @@
+/* ガント風のずんぐりした角丸バー。全体は薄い同色、完了部分は濃い同色ベタ塗り。 */
+.progress-bar {
+  position: relative;
+  width: 100%;
+  height: 20px;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+/* 薄い同色のトラック (未完了部分) */
+.progress-bar::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--progress-color, #1a73e8);
+  opacity: 0.3;
+}
+
+/* 濃い同色の完了部分。左端はバーの角丸でクリップ、右端は直線 (ガントと同じ) */
+.progress-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  height: 100%;
+  background: var(--progress-color, #1a73e8);
+  transition: width 0.15s ease;
+}
+
+/* 進捗率をバー中央に重ねて表示。文字色は背景に対するコントラスト色を指定する。 */
+.progress-label {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  pointer-events: none;
+}

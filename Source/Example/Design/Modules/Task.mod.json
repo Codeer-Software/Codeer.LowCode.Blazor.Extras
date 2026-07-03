@@ -78,7 +78,7 @@
     {
       "DbColumn": "progress",
       "Placeholder": "",
-      "Format": "",
+      "Format": "0",
       "IsSlider": false,
       "IsUpdateProtected": false,
       "IsSimpleSearchParameter": false,
@@ -91,6 +91,16 @@
       "IgnoreModification": false,
       "OnValidateInput": "",
       "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.NumberFieldDesign"
+    },
+    {
+      "ValueField": "Progress",
+      "ColorField": "BackgroundColor",
+      "BarColor": "",
+      "ShowValueLabel": true,
+      "Name": "ProgressBar",
+      "IgnoreModification": false,
+      "OnValidateInput": "",
+      "TypeFullName": "Codeer.LowCode.Blazor.Extras.Designs.ProgressFieldDesign"
     },
     {
       "Text": "タスク",
@@ -1100,6 +1110,22 @@
             "RowSpan": 1,
             "TextWrap": "Unset",
             "CanResize": false,
+            "CanUserSort": true,
+            "ClassName": "",
+            "FontFamily": "",
+            "Color": "",
+            "BackgroundColor": "",
+            "DetailLayoutName": "",
+            "ListElementComponent": ""
+          },
+          {
+            "FieldName": "ProgressBar",
+            "ContextMenu": "",
+            "Label": "進捗",
+            "ColumnSpan": 1,
+            "RowSpan": 1,
+            "TextWrap": "Unset",
+            "CanResize": true,
             "CanUserSort": true,
             "ClassName": "",
             "FontFamily": "",
