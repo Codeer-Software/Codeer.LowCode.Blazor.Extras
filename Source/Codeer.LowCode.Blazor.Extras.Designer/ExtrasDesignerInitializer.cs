@@ -29,6 +29,10 @@ namespace Codeer.LowCode.Blazor.Extras.Designer
 
             //custom property controls.
             PropertyTypeManager.AddPropertyControl<TaskBoardStatuses, TaskBoardStatusesPropertyControl>();
+
+            //AI 用フィールドドキュメントを登録(ライブラリ本体は Designer を参照しないため、ここで吸収する)。
+            foreach (var kv in ExtrasFieldDocs.GetFieldDocs())
+                FieldCatalog.Add(kv.Key, kv.Value);
         }
     }
 }

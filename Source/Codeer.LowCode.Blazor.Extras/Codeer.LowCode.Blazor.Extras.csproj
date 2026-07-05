@@ -56,4 +56,13 @@
 		</Compile>
 	</ItemGroup>
 
+	<!-- 各フィールドの per-field AI ドキュメント(## Design/## Script/## CSS)。
+	     ExtrasFieldDocProvider(IFieldDocProvider)が LogicalName "<アセンブリ名>.FieldDocs.<型名>.md"
+	     で読み出し、同名のフィールドデザイン型へ対応付けてデザイナへ渡す。 -->
+	<ItemGroup>
+		<EmbeddedResource Include="FieldDocs\**\*.md">
+			<LogicalName>Codeer.LowCode.Blazor.Extras.FieldDocs.%(Filename)%(Extension)</LogicalName>
+		</EmbeddedResource>
+	</ItemGroup>
+
 </Project>
