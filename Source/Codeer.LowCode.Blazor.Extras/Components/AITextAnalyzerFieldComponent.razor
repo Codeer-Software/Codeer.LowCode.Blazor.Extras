@@ -5,7 +5,6 @@
 @using Codeer.LowCode.Blazor.Components.Dialog
 @using Microsoft.AspNetCore.Components.Web
 @inherits FieldComponentBase<AITextAnalyzerField>
-@inject IAITextAnalyzerCore AITextAnalyzerCore
 
 @if (IsViewMode == false) {
   <div>
@@ -48,12 +47,12 @@
   private async Task LoadFiles(InputFileChangeEventArgs e) {
     var maxAllowedSize = FileFieldDesign.DefaultMaxAllowedSize;
     var file = e.File;
-    await Field.SetDataByFileAsync(AITextAnalyzerCore, e.File.Name, new StreamContent(file.OpenReadStream(maxAllowedSize)));
+    await Field.SetDataByFileAsync(e.File.Name, new StreamContent(file.OpenReadStream(maxAllowedSize)));
   }
 
   private async Task LoadText() {
     _isOpen = false;
-    await Field.SetDataByTextAsync(AITextAnalyzerCore, _inputText);
+    await Field.SetDataByTextAsync(_inputText);
   }
 
   private void OpenTextModal()
