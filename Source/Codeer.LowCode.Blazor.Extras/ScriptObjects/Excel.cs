@@ -1,0 +1,167 @@
+using Codeer.LowCode.Blazor.OperatingModel;
+using Excel.Report.PDF;
+using ClosedXML.Excel;
+using Codeer.LowCode.Blazor.Utils;
+using Codeer.LowCode.Blazor.Script;
+using Codeer.LowCode.Blazor.Extras.Services;
+
+namespace Codeer.LowCode.Blazor.Extras.ScriptObjects
+{
+    public class ExcelCellIndex
+    {
+        public int RowIndex { get; set; }
+        public int ColumnIndex { get; set; }
+        public virtual ExcelCellIndex GetNext(int rowOffset, int columnOffset)
+            => new ExcelCellIndex { RowIndex = RowIndex + rowOffset, ColumnIndex = ColumnIndex + columnOffset };
+    }
+
+    public class Excel : IDisposable
+    {
+        private class DataGetter : IExcelSymbolConverter
+        {
+            Module? _module;
+            string _name = string.Empty;
+
+            internal DataGetter(Module module)
+                => _module = module;
+
+            DataGetter(Module? module, string name)
+            {
+                _module = module;
+                _name = name;
+            }
+
+            public IExcelSymbolConverter CreateChildExcelSymbolConverter(object? obj, string name)
+                => new DataGetter(obj as Module, name);
+
+            public virtual async Task<ExcelOverWriteCell?> GetData(string text)
+            {
+                if (_module == null)
+                    return null;
+                if (!string.IsNullOrEmpty(_name))
+                    return await GetData(_module, _name, text);
+                var value = new ObjectWrapper<object>();
+                return await _module.TryGetValueByPropertyTextAsync(text, value) ? new ExcelOverWriteCell { Value = Adjust(value.Value) } : null;
+            }
+
+            public virtual async Task<ExcelOverWriteCell?> GetData(object? x, string elementName, string text)
+            {
+                if (_module == null)
+                    return null;
+                var value = new ObjectWrapper<object>();
+                return await _module.TryGetValueByPropertyTextAsync(x, text, elementName, value) ? new ExcelOverWriteCell { Value = Adjust(value.Value) } : null;
+            }
+
+            static object? Adjust(object? value)
+                => value is DateOnly d ? d.ToDateTime(TimeOnly.MinValue) : value;
+        }
+
+        XLWorkbook _book;
+        string _fileName;
+
+        [ScriptInject]
+        public Codeer.LowCode.Blazor.RequestInterfaces.Services? Services { get; set; }
+
+        [ScriptInject]
+        public IHttpService? Http { get; set; }
+
+        [ScriptHide]
+        public static Func<MemoryStream, MemoryStream>? ConvertPdf { get; set; }
+
+        [ScriptInject]
+        public ExtrasClientOptions? Options { get; set; }
+
+        public Excel(MemoryStream? stream, string fileName)
+        {
+            _fileName = fileName;
+            _book = new XLWorkbook(stream);
+        }
+
+        [ScriptHide]
+        public virtual string FileName => _fileName;
+
+        public virtual void Dispose() => _book.Dispose();
+
+        public virtual async Task OverWrite(Module data)
+            => await _book.OverWrite(new DataGetter(data));
+
+        public virtual ExcelCellIndex? FindCellByText(string text)
+        {
+            var texts = _book.Worksheet(1).ReadAllTexts();
+            for (int i = 0; i < texts.Count; i++)
+            {
+                for (int j = 0; j < texts[i].Count; j++)
+                {
+                    if (texts[i][j].Trim() == text)
+                    {
+                        return new ExcelCellIndex { RowIndex = i + 1, ColumnIndex = j + 1 };
+                    }
+                }
+            }
+            return null;
+        }
+
+        public virtual void SetCellValue(ExcelCellIndex cell, object value)
+        {
+            var sheet = _book.Worksheets.First();
+            sheet.Cell(cell.RowIndex, cell.ColumnIndex).SetValue(XLCellValue.FromObject(value));
+        }
+
+        public virtual void CopyCells(ExcelCellIndex source, ExcelCellIndex destination, int rowCount, int colCount)
+        {
+            var sheet = _book.Worksheets.First();
+            var rangeToCopy = sheet.Range(source.RowIndex, source.ColumnIndex, source.RowIndex + rowCount, source.ColumnIndex + colCount);
+            rangeToCopy.CopyTo(sheet.Cell(destination.RowIndex, destination.ColumnIndex));
+        }
+
+        public virtual void AddImage(ExcelCellIndex cellIndex, Stream stream)
+        {
+            var sheet = _book.Worksheets.First();
+            var image = sheet.AddPicture(stream);
+            image.MoveTo(sheet.Cell(cellIndex.RowIndex, cellIndex.ColumnIndex), 2, 2);
+        }
+
+        public virtual async Task<bool> Download()
+        {
+            var stream = GetStream();
+            if (stream == null) return false;
+            return await Services!.UIService.DownloadFile(stream, Path.GetFileNameWithoutExtension(_fileName) + ".xlsx");
+        }
+
+        public virtual async Task<bool> DownloadPdf()
+        {
+            var stream = GetStream();
+            if (stream == null) return false;
+
+            MemoryStream pdfStream = default!;
+            if (ConvertPdf == null)
+            {
+                var endPoint = Options?.ExcelPdfConvertEndPoint;
+                if (Http == null || string.IsNullOrEmpty(endPoint)) return false;
+                var result = await Http.PostContent(endPoint, new StreamContent(stream));
+                if (result == null) return false;
+                pdfStream = (MemoryStream)await result.Content.ReadAsStreamAsync();
+            }
+            else
+            {
+                pdfStream = ConvertPdf(stream);
+            }
+            return await Services!.UIService.DownloadFile(pdfStream, Path.GetFileNameWithoutExtension(_fileName) + ".pdf");
+        }
+
+        [ScriptHide]
+        public virtual byte[] GetBytes()
+        {
+            using var stream = GetStream();
+            return stream?.ToArray() ?? Array.Empty<byte>();
+        }
+
+        MemoryStream? GetStream()
+        {
+            var newStream = new MemoryStream();
+            _book.SaveAs(newStream);
+            newStream.Seek(0, SeekOrigin.Begin);
+            return newStream;
+        }
+    }
+}

@@ -6,7 +6,7 @@
 		<Nullable>enable</Nullable>
 		<AddRazorSupportForMvc>true</AddRazorSupportForMvc>
 		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
-		<Version>0.1.2</Version>
+		<Version>0.2.0</Version>
 		<Authors>Codeer</Authors>
 		<Company>Codeer</Company>
 		<Description>Extra field components for Codeer.LowCode.Blazor. Includes Calendar, Gantt Chart, Task Board (Kanban), Rich Text Editor, Color Picker, Marker List, QR Code, Progress Bar, and Password Hash fields.</Description>
@@ -18,6 +18,10 @@
 		<PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
 		<PackageReleaseNotes>
+- Add client infrastructure and script objects moved from the app templates: HttpService, UIService, Logger, LocalizeService, ToasterEx, Excel, WebApi, Toaster, Mail.
+- Enhance Mail: multiple To/Cc/Bcc, HTML body, Reply-To, and attachments via a chainable MailMessage builder (Mail.CreateMessage() / Mail.Send()).
+- Add the AITextAnalyzer field and the SelectAllCheckBox list element component moved from the app templates.
+- Add ExtrasClientInitializer.Initialize overload that registers the built-in script objects.
 		</PackageReleaseNotes>
 		<PackageId>Codeer.LowCode.Blazor.Extras</PackageId>
 	</PropertyGroup>
@@ -33,6 +37,8 @@
 		<PackageReference Include="Microsoft.AspNetCore.WebUtilities" Version="8.0.8" />
 		<PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="8.0.8" />
 		<PackageReference Include="Microsoft.Extensions.Http" Version="8.0.0" />
+		<PackageReference Include="Excel.Report.PDF" Version="0.32.0" />
+		<PackageReference Include="Sotsera.Blazor.Toaster" Version="3.0.0" />
 	</ItemGroup>
 
 	<ItemGroup>

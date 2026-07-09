@@ -1,7 +1,9 @@
 using System.Globalization;
 using Codeer.LowCode.Blazor.Components.AppParts.Loading;
 using Codeer.LowCode.Blazor.RequestInterfaces;
-using Extras.Client.Shared.AITextAnalyzer;
+using Codeer.LowCode.Blazor.Extras;
+using Codeer.LowCode.Blazor.Extras.Fields;
+using Codeer.LowCode.Blazor.Extras.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Sotsera.Blazor.Toaster.Core.Models;
 
@@ -11,6 +13,15 @@ namespace Extras.Client.Shared.Services
     {
         public static void AddSharedServices(this IServiceCollection services)
         {
+            //Extras の組み込みサービスが使うエンドポイント。URL はアプリ(Controller を持つ側)の持ち物なのでここで一元定義する
+            services.AddSingleton(new ExtrasClientOptions
+            {
+                MailEndPoint = "/api/mail",
+                ExcelPdfConvertEndPoint = "api/excel/pdf",
+                AITextAnalyzeFileEndPoint = "/api/ai_text_analyze/file",
+                AITextAnalyzeTextEndPoint = "/api/ai_text_analyze/text",
+            });
+
             services.AddScoped<IAppInfoService, AppInfoService>();
             services.AddScoped<IModuleDataService, ModuleDataService>();
             services.AddScoped<IUIService, UIService>();
@@ -25,8 +36,8 @@ namespace Extras.Client.Shared.Services
                 config.ShowTransitionDuration = 10;
                 config.HideTransitionDuration = 500;
             });
-            services.AddScoped<ToasterEx>();
-            services.AddScoped<HttpService>();
+            services.AddScoped<IToasterEx, ToasterEx>();
+            services.AddScoped<IHttpService, HttpService>();
             services.AddScoped<IAITextAnalyzerCore, AITextAnalyzerCore>();
 
             var cultureName = CultureInfo.CurrentCulture.Name;

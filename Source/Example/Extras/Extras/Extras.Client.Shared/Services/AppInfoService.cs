@@ -2,14 +2,13 @@ using Codeer.LowCode.Blazor.Components.AppParts.Loading;
 using Codeer.LowCode.Blazor.DesignLogic;
 using Codeer.LowCode.Blazor.DesignLogic.Transfer;
 using Codeer.LowCode.Blazor.Extras;
-using Codeer.LowCode.Blazor.Extras.Fields;
+using Codeer.LowCode.Blazor.Extras.Services;
 using Codeer.LowCode.Blazor.Repository;
 using Codeer.LowCode.Blazor.Repository.Data;
 using Codeer.LowCode.Blazor.Repository.Match;
 using Codeer.LowCode.Blazor.RequestInterfaces;
 using Codeer.LowCode.Blazor.Script;
 using Codeer.LowCode.Blazor.Utils;
-using Extras.Client.Shared.ScriptObjects;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.SignalR.Client;
 
@@ -26,9 +25,9 @@ namespace Extras.Client.Shared.Services
     public class AppInfoService : IAppInfoServiceExtension
     {
         readonly NavigationManager _navigationManager;
-        readonly HttpService _http;
+        readonly IHttpService _http;
         readonly ScriptRuntimeTypeManager _scriptRuntimeTypeManager = new();
-        readonly ToasterEx _toaster;
+        readonly IToasterEx _toaster;
         readonly LoadingService _loadingService;
         HubConnection? _hubConnection;
         DesignData? _design;
@@ -51,25 +50,16 @@ namespace Extras.Client.Shared.Services
         public string Localize(string text)
             => _localizeService?.Localize(text) ?? text;
 
-        public AppInfoService(HttpService http, LoadingService loadingService, NavigationManager navigationManager, ILogger logger, ToasterEx toaster)
+        public AppInfoService(IHttpService http, LoadingService loadingService, NavigationManager navigationManager, ILogger logger, IToasterEx toaster, ExtrasClientOptions extrasOptions)
         {
             _http = http;
             _navigationManager = navigationManager;
             _toaster = toaster;
             _loadingService = loadingService;
-            _scriptRuntimeTypeManager.AddCustomInjector(() => http);
-            _scriptRuntimeTypeManager.AddType(typeof(ScriptObjects.Excel));
-            _scriptRuntimeTypeManager.AddType(typeof(ExcelCellIndex));
-            _scriptRuntimeTypeManager.AddType<WebApiResult>();
-            _scriptRuntimeTypeManager.AddService(new WebApiService(http, logger));
-            _scriptRuntimeTypeManager.AddService(new Toaster(toaster));
-            _scriptRuntimeTypeManager.AddService(new MailService());
             _scriptRuntimeTypeManager.AddService(loadingService);
             _scriptRuntimeTypeManager.AddType<LoadingService.LoadingScope>();
-            _scriptRuntimeTypeManager.AddType<CalendarViewMode>();
-            _scriptRuntimeTypeManager.AddType<GanttViewMode>();
             _scriptRuntimeTypeManager.UseDesignCache();
-            ExtrasClientInitializer.Initialize(this);
+            ExtrasClientInitializer.Initialize(this, http, logger, toaster, extrasOptions);
         }
         public void SetCurrentUserId(string id) => CurrentUserId = id;
 

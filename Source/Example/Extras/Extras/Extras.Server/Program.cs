@@ -3,11 +3,14 @@ using Codeer.LowCode.Blazor.Extras.Fields;
 using Codeer.LowCode.Blazor.Json;
 using Codeer.LowCode.Blazor.License;
 using Codeer.LowCode.Blazor.SystemSettings;
-using Extras.Client.Shared.Samples.AIDocumentAnalyzer;
 using Extras.Server.Services;
-using Extras.Server.Services.AI;
+using Codeer.LowCode.Blazor.Extras.Server.AI;
+using Codeer.LowCode.Blazor.Extras.Server.Excel;
+using Codeer.LowCode.Blazor.Extras.Server.Mail;
+using Codeer.LowCode.Blazor.Extras.Server.Web;
+using Microsoft.AspNetCore.SignalR;
 using Extras.Server.Services.DataChangeHistory;
-using Extras.Server.Services.FileManagement;
+using Codeer.LowCode.Blazor.Extras.Server.FileManagement;
 using Microsoft.AspNetCore.Localization;
 using PdfSharp.Fonts;
 using System.Globalization;
@@ -19,8 +22,6 @@ typeof(AITextAnalyzerField).ToString();
 ExtrasServerInitializer.Initialize();
 
 var builder = WebApplication.CreateBuilder(args);
-
-GlobalFontSettings.FontResolver = new CustomFontResolver();
 
 LicenseManager.DomainLicense = builder.Configuration.GetSection("DomainLicense").Get<string>() ?? string.Empty;
 LicenseManager.IsAutoUpdate = builder.Configuration.GetSection("IsLicenseAutoUpdate").Get<bool>();
@@ -37,6 +38,8 @@ SystemConfig.Instance.AISettings = builder.Configuration.GetSection("AISettings"
 SystemConfig.Instance.DataSources.ToList().ForEach(e => e.ConnectionString = builder.Configuration.GetConnectionString(e.Name) ?? string.Empty);
 SystemConfig.Instance.FileStorages.ToList().ForEach(e => e.ConnectionString = builder.Configuration.GetConnectionString(e.Name) ?? string.Empty);
 
+GlobalFontSettings.FontResolver = new CustomFontResolver(SystemConfig.Instance.FontFileDirectory);
+
 builder.Services.AddControllersWithViews();
 builder.Services.AddRazorPages();
 
@@ -50,7 +53,7 @@ builder.Services.AddControllers()
 if (SystemConfig.Instance.UseHotReload)
 {
     builder.Services.AddSignalR();
-    builder.Services.AddHostedService<FileWatcherService>();
+    builder.Services.AddHostedService(sp => new FileWatcherService(sp.GetRequiredService<IHubContext<HotReloadHub>>(), SystemConfig.Instance.DesignFileDirectory));
 }
 
 //Localize
