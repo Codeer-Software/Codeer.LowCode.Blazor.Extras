@@ -32,6 +32,10 @@ namespace Extras.Designer
     {
         protected override void OnStartup(StartupEventArgs e)
         {
+            //load dll. ProCodeManager 等のロード済みアセンブリスキャンより前に Extras.Client.Shared をロードしておく
+            //(これが無いとプロコードコンポーネント/モジュールがデザインチェックで「存在しません」になる)
+            typeof(global::Extras.Client.Shared.Services.AppInfoService).ToString();
+
             ExtrasDesignerInitializer.Initialize(BlazorRuntime);
 
             Codeer.LowCode.Blazor.License.LicenseManager.IsAutoUpdate =
