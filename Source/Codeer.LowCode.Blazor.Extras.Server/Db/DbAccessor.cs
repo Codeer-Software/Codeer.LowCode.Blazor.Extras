@@ -47,16 +47,16 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Db
             _dbContexts = dbContext;
         }
 
-        public virtual DataSource? GetDataSource(string dataSourceName)
+        public DataSource? GetDataSource(string dataSourceName)
             => _dataSources.FirstOrDefault(e => e.Name == dataSourceName);
 
-        public virtual void StartTransaction()
+        public void StartTransaction()
             => _transactionMode = true;
 
-        public virtual void StartDataAccess(string dataSourceName)
+        public void StartDataAccess(string dataSourceName)
             => GetConnection(dataSourceName);
 
-        public virtual async Task CommitAsync()
+        public async Task CommitAsync()
         {
             foreach (var e in _transactions)
             {
@@ -72,9 +72,9 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Db
             _dbContextTransactions.Clear();
         }
 
-        public virtual async ValueTask DisposeAsync() => await ClearAsync();
+        public async ValueTask DisposeAsync() => await ClearAsync();
 
-        public virtual async ValueTask ClearAsync()
+        public async ValueTask ClearAsync()
         {
             foreach (var e in _transactions) await e.Value.DisposeAsync();
             _transactions.Clear();
@@ -91,9 +91,9 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Db
             _dbContextTransactions.Clear();
         }
 
-        public virtual void Dispose() => Clear();
+        public void Dispose() => Clear();
 
-        public virtual void Clear()
+        public void Clear()
         {
             foreach (var e in _transactions) e.Value.Dispose();
             _transactions.Clear();
@@ -110,7 +110,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Db
             _dbContextTransactions.Clear();
         }
 
-        public virtual DbConnection GetConnection(string dataSourceName)
+        public DbConnection GetConnection(string dataSourceName)
         {
             if (_connections.TryGetValue(dataSourceName, out var ret)) return ret.Connection;
 
@@ -164,7 +164,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Db
             }
         }
 
-        public virtual IDbTransaction? GetTransaction(string dataSourceName)
+        public IDbTransaction? GetTransaction(string dataSourceName)
         {
             GetConnection(dataSourceName);
             if (_transactions.TryGetValue(dataSourceName, out var transaction)) return transaction;
@@ -172,13 +172,13 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Db
             return null;
         }
 
-        public virtual async Task<int> ExecuteAsync(string dataSourceName, string query, Dictionary<string, object?> args)
+        public async Task<int> ExecuteAsync(string dataSourceName, string query, Dictionary<string, object?> args)
         {
             var conn = GetConnection(dataSourceName);
             return await conn.ExecuteAsync(query, CreateParameter(args), GetTransaction(dataSourceName));
         }
 
-        public virtual async Task<string> InsertAsync(string dataSourceName, string query, Dictionary<string, object?> args)
+        public async Task<string> InsertAsync(string dataSourceName, string query, Dictionary<string, object?> args)
         {
             var conn = GetConnection(dataSourceName);
             var ps = CreateParameter(args);
@@ -190,7 +190,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Db
             return ret;
         }
 
-        public virtual async Task<List<IDictionary<string, object>>> QueryAsync(string dataSourceName, string query, Dictionary<string, ParamAndRawDbTypeName> args)
+        public async Task<List<IDictionary<string, object>>> QueryAsync(string dataSourceName, string query, Dictionary<string, ParamAndRawDbTypeName> args)
         {
             var conn = GetConnection(dataSourceName);
             return (await conn.QueryAsync<object>(query, CreateParameter(args), GetTransaction(dataSourceName))).Select(e => (IDictionary<string, object>)e).ToList();

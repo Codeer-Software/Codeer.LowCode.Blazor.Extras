@@ -24,14 +24,14 @@ namespace Codeer.LowCode.Blazor.Extras.ScriptObjects
         public static Func<MailMessage, Task<bool>>? SendMailAsyncCore { get; set; }
 
         [ScriptName("CreateMessage")]
-        public virtual MailMessage CreateMessage() => new();
+        public MailMessage CreateMessage() => new();
 
         [ScriptName("SendEmail")]
-        public virtual async Task<bool> SendEmailAsync(string address, string subject, string message)
+        public async Task<bool> SendEmailAsync(string address, string subject, string message)
             => await SendAsync(new MailMessage().AddTo(address).SetSubject(subject).SetBody(message));
 
         [ScriptName("Send")]
-        public virtual async Task<bool> SendAsync(MailMessage message)
+        public async Task<bool> SendAsync(MailMessage message)
         {
             if (SendMailAsyncCore != null) return await SendMailAsyncCore(message);
             var endPoint = SendMailEndPoint;

@@ -8,7 +8,7 @@ namespace Codeer.LowCode.Blazor.Extras.Services
     {
         Dictionary<string, string> _dic = new();
 
-        public virtual string Localize(string text)
+        public string Localize(string text)
             => _dic.TryGetValue(text, out var localizedText) ? localizedText : text;
 
         public static LocalizeService? Create(string localizeResourceName, MemoryStream? mem)

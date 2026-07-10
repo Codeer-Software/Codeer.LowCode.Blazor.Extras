@@ -19,7 +19,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Web
             _designFileDirectory = designFileDirectory;
         }
 
-        public virtual async Task StartAsync(CancellationToken cancellationToken)
+        public async Task StartAsync(CancellationToken cancellationToken)
         {
             Directory.CreateDirectory(_designFileDirectory);
             _fileWatcher = new FileSystemWatcher
@@ -34,7 +34,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Web
             await Task.CompletedTask;
         }
 
-        public virtual async Task StopAsync(CancellationToken cancellationToken)
+        public async Task StopAsync(CancellationToken cancellationToken)
         {
             _fileWatcher?.Dispose();
             await Task.CompletedTask;

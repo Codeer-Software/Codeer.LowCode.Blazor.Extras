@@ -1,4 +1,3 @@
-using Codeer.LowCode.Blazor;
 using Codeer.LowCode.Blazor.DataIO;
 using Codeer.LowCode.Blazor.DataIO.Db;
 using Codeer.LowCode.Blazor.SystemSettings;
@@ -15,7 +14,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.FileManagement
         {
             DataSourceType _type;
             public SqlParts(DataSourceType type) => _type = type;
-            public virtual string Blanket(string x) => _type == DataSourceType.SQLServer ? $"[{x}]" :
+            public string Blanket(string x) => _type == DataSourceType.SQLServer ? $"[{x}]" :
                                                 _type == DataSourceType.MySQL ? $"`{x}`" : $"\"{x}\"";
         }
 
@@ -26,7 +25,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.FileManagement
             _fileStorages = fileStorages;
         }
 
-        public virtual async Task ToTemporaryFile(string dataSourceName, Guid guid)
+        public async Task ToTemporaryFile(string dataSourceName, Guid guid)
         {
             var dataSource = _dbAccessor.GetDataSource(dataSourceName);
             if (dataSource == null) return;
@@ -45,7 +44,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.FileManagement
             await _dbAccessor.ExecuteAsync(dataSourceName, sql, new Dictionary<string, object?> { { p1, guid }, { p2, dateTime } });
         }
 
-        public virtual async Task FixFile(string dataSourceName, Guid? guid)
+        public async Task FixFile(string dataSourceName, Guid? guid)
         {
             var dataSource = _dbAccessor.GetDataSource(dataSourceName);
             if (dataSource == null) return;
@@ -59,9 +58,9 @@ namespace Codeer.LowCode.Blazor.Extras.Server.FileManagement
             await _dbAccessor.ExecuteAsync(dataSourceName, sql, new Dictionary<string, object?> { { p1, guid } });
         }
 
-        public virtual async Task<Codeer.LowCode.Blazor.DataIO.FileInfo> AddFileAsync(FileSaveInfo info, string? fileName, Stream stream)
+        public async Task<DataIO.FileInfo> AddFileAsync(FileSaveInfo info, string? fileName, Stream stream)
         {
-            var data = new Codeer.LowCode.Blazor.DataIO.FileInfo
+            var data = new DataIO.FileInfo
             {
                 FileName = fileName,
                 FileGuid = Guid.NewGuid(),

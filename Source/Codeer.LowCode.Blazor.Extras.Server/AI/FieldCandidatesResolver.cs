@@ -28,7 +28,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI
             _findCandidatesByAI = findCandidatesByAI;
         }
 
-        public virtual async Task GetSelectValue(string moduleName, SelectFieldDesign design, string text, SelectFieldData data)
+        public async Task GetSelectValue(string moduleName, SelectFieldDesign design, string text, SelectFieldData data)
         {
             if (design.Candidates.Any())
             {
@@ -44,7 +44,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI
             data.Value = result.Value;
         }
 
-        public virtual async Task GetLinkValue(string moduleName, LinkFieldDesign design, string text, LinkFieldData data)
+        public async Task GetLinkValue(string moduleName, LinkFieldDesign design, string text, LinkFieldData data)
         {
             var result = await GetValue(moduleName, design.Name, design.SearchCondition.ModuleName, design.DisplayTextVariable, design.ValueVariable, text);
             data.DisplayText = result.DisplayText ?? string.Empty;

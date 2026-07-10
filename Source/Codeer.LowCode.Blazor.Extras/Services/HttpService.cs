@@ -21,37 +21,37 @@ namespace Codeer.LowCode.Blazor.Extras.Services
             _loadingService = loadingService;
         }
 
-        public virtual async Task<TValue?> GetFromJsonAsync<TValue>(string url, bool loading = true) where TValue : class
+        public async Task<TValue?> GetFromJsonAsync<TValue>(string url, bool loading = true) where TValue : class
             => await ExecuteReturnJson<TValue>(async () => await _http.GetAsync(url), loading);
 
-        public virtual async Task<Stream?> GetFromStreamAsync(string url, bool loading = true)
+        public async Task<Stream?> GetFromStreamAsync(string url, bool loading = true)
             => await ExecuteReturnStream(async () => await _http.GetAsync(url), loading);
 
-        public virtual async Task<HttpResponseMessage?> GetAsync(string? requestUri, bool loading = true)
+        public async Task<HttpResponseMessage?> GetAsync(string? requestUri, bool loading = true)
              => await ExecuteReturnHttpResponseMessage(async () => await _http.GetAsync(requestUri), loading);
 
-        public virtual async Task<HttpResponseMessage?> PostAsync(string url, HttpContent data, bool loading = true)
+        public async Task<HttpResponseMessage?> PostAsync(string url, HttpContent data, bool loading = true)
              => await ExecuteReturnHttpResponseMessage(async () => await _http.PostAsync(url, data), loading);
 
-        public virtual async Task<bool> PostAsJsonAsync<TValue>(string url, TValue data, bool loading = true)
+        public async Task<bool> PostAsJsonAsync<TValue>(string url, TValue data, bool loading = true)
              => await ExecuteReturnBool(async () => await _http.PostAsJsonAsync(url, data, _jsonOptions), loading);
 
-        public virtual async Task<TResult?> PostAsJsonAsync<TValue, TResult>(string url, TValue data, bool loading = true) where TResult : class
+        public async Task<TResult?> PostAsJsonAsync<TValue, TResult>(string url, TValue data, bool loading = true) where TResult : class
              => await ExecuteReturnJson<TResult>(async () => await _http.PostAsJsonAsync(url, data, _jsonOptions), loading);
 
-        public virtual async Task<TResult?> PostContentAsJsonAsync<TResult>(string requestUri, HttpContent? content, bool loading = true) where TResult : class
+        public async Task<TResult?> PostContentAsJsonAsync<TResult>(string requestUri, HttpContent? content, bool loading = true) where TResult : class
              => await ExecuteReturnJson<TResult>(async () => await _http.PostAsync(requestUri, content), loading);
 
-        public virtual async Task<HttpResponseMessage?> PostContent(string requestUri, HttpContent? content, bool loading = true)
+        public async Task<HttpResponseMessage?> PostContent(string requestUri, HttpContent? content, bool loading = true)
              => await ExecuteReturnHttpResponseMessage(async () => await _http.PostAsync(requestUri, content), loading);
 
-        public virtual async Task<HttpResponseMessage?> PostAsJsonReturnHttpResponseAsync<TValue>(string url, TValue data, bool loading = true)
+        public async Task<HttpResponseMessage?> PostAsJsonReturnHttpResponseAsync<TValue>(string url, TValue data, bool loading = true)
              => await ExecuteReturnHttpResponseMessage(async () => await _http.PostAsJsonAsync(url, data, _jsonOptions), loading);
 
-        public virtual async Task<HttpResponseMessage?> PutAsync(string url, HttpContent data, bool loading = true)
+        public async Task<HttpResponseMessage?> PutAsync(string url, HttpContent data, bool loading = true)
              => await ExecuteReturnHttpResponseMessage(async () => await _http.PutAsync(url, data), loading);
 
-        public virtual async Task<HttpResponseMessage?> DeleteAsync(string url, bool loading = true)
+        public async Task<HttpResponseMessage?> DeleteAsync(string url, bool loading = true)
              => await ExecuteReturnHttpResponseMessage(async () => await _http.DeleteAsync(url), loading);
 
         async Task<bool> ExecuteReturnBool(Func<Task<HttpResponseMessage>> a, bool loading)
@@ -137,7 +137,7 @@ namespace Codeer.LowCode.Blazor.Extras.Services
             else await _logger.Error(message);
         }
 
-        public virtual IDisposable AddChecker(Action<HttpStatusCode, string> check)
+        public IDisposable AddChecker(Action<HttpStatusCode, string> check)
             => new ErrorCheckerScope(check, _checkers);
 
         class ErrorCheckerScope : IDisposable

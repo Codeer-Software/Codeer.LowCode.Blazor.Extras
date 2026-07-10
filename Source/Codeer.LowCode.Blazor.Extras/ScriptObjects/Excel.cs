@@ -11,7 +11,7 @@ namespace Codeer.LowCode.Blazor.Extras.ScriptObjects
     {
         public int RowIndex { get; set; }
         public int ColumnIndex { get; set; }
-        public virtual ExcelCellIndex GetNext(int rowOffset, int columnOffset)
+        public ExcelCellIndex GetNext(int rowOffset, int columnOffset)
             => new ExcelCellIndex { RowIndex = RowIndex + rowOffset, ColumnIndex = ColumnIndex + columnOffset };
     }
 
@@ -34,7 +34,7 @@ namespace Codeer.LowCode.Blazor.Extras.ScriptObjects
             public IExcelSymbolConverter CreateChildExcelSymbolConverter(object? obj, string name)
                 => new DataGetter(obj as Module, name);
 
-            public virtual async Task<ExcelOverWriteCell?> GetData(string text)
+            public async Task<ExcelOverWriteCell?> GetData(string text)
             {
                 if (_module == null)
                     return null;
@@ -44,7 +44,7 @@ namespace Codeer.LowCode.Blazor.Extras.ScriptObjects
                 return await _module.TryGetValueByPropertyTextAsync(text, value) ? new ExcelOverWriteCell { Value = Adjust(value.Value) } : null;
             }
 
-            public virtual async Task<ExcelOverWriteCell?> GetData(object? x, string elementName, string text)
+            public async Task<ExcelOverWriteCell?> GetData(object? x, string elementName, string text)
             {
                 if (_module == null)
                     return null;
@@ -82,14 +82,14 @@ namespace Codeer.LowCode.Blazor.Extras.ScriptObjects
         }
 
         [ScriptHide]
-        public virtual string FileName => _fileName;
+        public string FileName => _fileName;
 
-        public virtual void Dispose() => _book.Dispose();
+        public void Dispose() => _book.Dispose();
 
-        public virtual async Task OverWrite(Module data)
+        public async Task OverWrite(Module data)
             => await _book.OverWrite(new DataGetter(data));
 
-        public virtual ExcelCellIndex? FindCellByText(string text)
+        public ExcelCellIndex? FindCellByText(string text)
         {
             var texts = _book.Worksheet(1).ReadAllTexts();
             for (int i = 0; i < texts.Count; i++)
@@ -105,34 +105,34 @@ namespace Codeer.LowCode.Blazor.Extras.ScriptObjects
             return null;
         }
 
-        public virtual void SetCellValue(ExcelCellIndex cell, object value)
+        public void SetCellValue(ExcelCellIndex cell, object value)
         {
             var sheet = _book.Worksheets.First();
             sheet.Cell(cell.RowIndex, cell.ColumnIndex).SetValue(XLCellValue.FromObject(value));
         }
 
-        public virtual void CopyCells(ExcelCellIndex source, ExcelCellIndex destination, int rowCount, int colCount)
+        public void CopyCells(ExcelCellIndex source, ExcelCellIndex destination, int rowCount, int colCount)
         {
             var sheet = _book.Worksheets.First();
             var rangeToCopy = sheet.Range(source.RowIndex, source.ColumnIndex, source.RowIndex + rowCount, source.ColumnIndex + colCount);
             rangeToCopy.CopyTo(sheet.Cell(destination.RowIndex, destination.ColumnIndex));
         }
 
-        public virtual void AddImage(ExcelCellIndex cellIndex, Stream stream)
+        public void AddImage(ExcelCellIndex cellIndex, Stream stream)
         {
             var sheet = _book.Worksheets.First();
             var image = sheet.AddPicture(stream);
             image.MoveTo(sheet.Cell(cellIndex.RowIndex, cellIndex.ColumnIndex), 2, 2);
         }
 
-        public virtual async Task<bool> Download()
+        public async Task<bool> Download()
         {
             var stream = GetStream();
             if (stream == null) return false;
             return await Services!.UIService.DownloadFile(stream, Path.GetFileNameWithoutExtension(_fileName) + ".xlsx");
         }
 
-        public virtual async Task<bool> DownloadPdf()
+        public async Task<bool> DownloadPdf()
         {
             var stream = GetStream();
             if (stream == null) return false;
@@ -154,7 +154,7 @@ namespace Codeer.LowCode.Blazor.Extras.ScriptObjects
         }
 
         [ScriptHide]
-        public virtual byte[] GetBytes()
+        public byte[] GetBytes()
         {
             using var stream = GetStream();
             return stream?.ToArray() ?? Array.Empty<byte>();

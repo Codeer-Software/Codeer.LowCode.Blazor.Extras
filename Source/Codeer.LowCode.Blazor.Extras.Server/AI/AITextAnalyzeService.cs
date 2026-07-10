@@ -18,7 +18,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI
     /// <summary>
     /// Analyzes documents / free text with Azure Document Intelligence + Azure OpenAI
     /// and converts the result into a <see cref="ModuleData"/> that matches the module design.
-    /// Prompts can be customized by overriding the protected virtual Create*Prompt methods.
+    /// To customize (prompts, models, etc.), copy this class into your app and modify it (the source is MIT licensed).
     /// </summary>
     public class AITextAnalyzeService
     {
@@ -26,16 +26,16 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI
 
         public AITextAnalyzeService(AISettings settings) => _settings = settings;
 
-        public virtual async Task<ModuleData> FileToDataAsync(ModuleDataIO moduleDataIO, IModuleDesigns modules, string moduleName, string remarks, string? fileName, MemoryStream memoryStream)
+        public async Task<ModuleData> FileToDataAsync(ModuleDataIO moduleDataIO, IModuleDesigns modules, string moduleName, string remarks, string? fileName, MemoryStream memoryStream)
         {
             var text = await ExtractTextFromFile(memoryStream);
             return await TextToDataAsync(moduleDataIO, modules, moduleName, remarks, text, CreateFileSourcePrompt(fileName));
         }
 
-        public virtual async Task<ModuleData> TextToDataAsync(ModuleDataIO moduleDataIO, IModuleDesigns modules, string moduleName, string remarks, string text)
+        public async Task<ModuleData> TextToDataAsync(ModuleDataIO moduleDataIO, IModuleDesigns modules, string moduleName, string remarks, string text)
             => await TextToDataAsync(moduleDataIO, modules, moduleName, remarks, text, string.Empty);
 
-        public virtual async Task<ModuleData> TextToDataAsync(ModuleDataIO moduleDataIO, IModuleDesigns modules, string moduleName, string remarks, string text, string source)
+        public async Task<ModuleData> TextToDataAsync(ModuleDataIO moduleDataIO, IModuleDesigns modules, string moduleName, string remarks, string text, string source)
         {
             var json = await DocumentAnalysisByText(modules, moduleName, remarks, text, source);
             return await CreateModule(modules, moduleName,
@@ -43,14 +43,14 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI
                 JsonSerializer.Deserialize<JsonElement>(json));
         }
 
-        protected virtual string CreateFileSourcePrompt(string? fileName)
+        protected string CreateFileSourcePrompt(string? fileName)
             => $@"テキストは[{fileName}]をドキュメント解析した JSON です。
 構造: ページ配列で、各ページは lines(表の外にあるテキスト行。text と座標 rect{{t,l,b,r}}) と tables(表) を持ちます。
 表は rowCount/columnCount と rows(行×列の2次元配列) を持ちます。rows[行番号][列番号] が各セルの文字列で、空セルは "" です。
 結合セルは左上のマスにのみ値が入り、覆われた残りのマスは "" です。"" のマスは値なし(空欄)として扱い、隣や下の値で埋めないでください。
 空欄も含めて列位置は厳密に揃っているので、途中に空欄があっても列をずらさず、見出し行/見出し列との対応で値を抽出してください。";
 
-        protected virtual string CreateExtractionSystemPrompt(string source, string remarks)
+        protected string CreateExtractionSystemPrompt(string source, string remarks)
         {
             var remarksText = string.IsNullOrWhiteSpace(remarks) ? "" : $@"
 
@@ -67,7 +67,7 @@ JSON 出力では、その項目名をキーとして使用してください。
 値が見つからない項目は null にしてください。表や本文に存在しない値を推測で補完しないでください。{remarksText}";
         }
 
-        protected virtual string CreateCandidateMatchSystemPrompt()
+        protected string CreateCandidateMatchSystemPrompt()
             => @"
 提供された選択肢から最も可能性の高い一致を1つ選び、その値のみを返してください。
 一致が見つからない場合は ""???"" を返してください。

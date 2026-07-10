@@ -9,7 +9,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
 
         public SmtpMailService(MailSettings settings) => _settings = settings;
 
-        public virtual async Task<bool> SendAsync(MailMessage message)
+        public async Task<bool> SendAsync(MailMessage message)
         {
             if (string.IsNullOrEmpty(_settings.Host)) return false;
             if (!int.TryParse(_settings.Port, out var port)) return false;

@@ -13,18 +13,18 @@ namespace Codeer.LowCode.Blazor.Extras.Services
             _toaster = toaster;
         }
 
-        public virtual async Task Log(string message)
+        public async Task Log(string message)
         {
             await _jsRuntime.InvokeVoidAsync("console.log", message);
         }
 
-        public virtual async Task Warn(string message)
+        public async Task Warn(string message)
         {
             _toaster.Warn(message);
             await _jsRuntime.InvokeVoidAsync("console.warn", message);
         }
 
-        public virtual async Task Error(string message)
+        public async Task Error(string message)
         {
             _toaster.Error(message);
             await _jsRuntime.InvokeVoidAsync("console.error", message);

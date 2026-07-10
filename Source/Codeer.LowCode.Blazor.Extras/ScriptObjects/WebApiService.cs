@@ -18,19 +18,19 @@ namespace Codeer.LowCode.Blazor.Extras.ScriptObjects
         }
 
         [ScriptName("Get")]
-        public virtual async Task<WebApiResult> GetAsync(string url)
+        public async Task<WebApiResult> GetAsync(string url)
             => await ToWebResult(async ()=> await _http.GetAsync(url));
 
         [ScriptName("Post")]
-        public virtual async Task<WebApiResult> PostAsync(string url, JsonObject data)
+        public async Task<WebApiResult> PostAsync(string url, JsonObject data)
             => await ToWebResult(async () => await _http.PostAsync(url, new StringContent(JsonConverterEx.SerializeObject(data), Encoding.UTF8, "application/json")));
 
         [ScriptName("Put")]
-        public virtual async Task<WebApiResult> PutAsync(string url, JsonObject data)
+        public async Task<WebApiResult> PutAsync(string url, JsonObject data)
              => await ToWebResult(async () => await _http.PutAsync(url, new StringContent(JsonConverterEx.SerializeObject(data), Encoding.UTF8, "application/json")));
 
         [ScriptName("Delete")]
-        public virtual async Task<WebApiResult> DeleteAsync(string url)
+        public async Task<WebApiResult> DeleteAsync(string url)
              => await ToWebResult(async () => await _http.DeleteAsync(url));
 
         async Task<WebApiResult> ToWebResult(Func<Task<HttpResponseMessage?>> core)
