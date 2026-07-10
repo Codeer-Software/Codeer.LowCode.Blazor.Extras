@@ -45,10 +45,11 @@
 
 進捗値そのものは参照先フィールド (`ValueField`) 側で管理します。スクリプトで進捗を動かす場合は、参照先フィールドの値を変更してください。
 
-```javascript
+```csharp
 // 参照先の数値フィールドを更新するとバーも追従する
-async function OnStep() {
-  Progress.Value = (Progress.Value ?? 0) + 10;
+void StepButton_OnClick()
+{
+    Progress.Value = (Progress.Value ?? 0) + 10;
 }
 ```
 
