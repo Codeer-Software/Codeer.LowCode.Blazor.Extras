@@ -4,8 +4,7 @@ using Codeer.LowCode.Blazor.OperatingModel;
 using Codeer.LowCode.Blazor.Repository.Data;
 using Codeer.LowCode.Blazor.Repository.Design;
 
-//Namespace fixed for compatibility with existing design files (TypeFullName is serialized into design JSON)
-namespace Design.Samples.AIDocumentAnalyzer
+namespace Codeer.LowCode.Blazor.Extras.Designs
 {
     [ToolboxIcon(PackIconMaterialKind = "HeadSnowflakeOutline")]
     public class AITextAnalyzerFieldDesign() : FieldDesignBase(typeof(AITextAnalyzerFieldDesign).FullName!)

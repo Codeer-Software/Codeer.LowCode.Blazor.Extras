@@ -20,15 +20,16 @@ namespace Codeer.LowCode.Blazor.Extras
 
         /// <summary>
         /// Initialize including built-in script objects (Excel, WebApi, Toaster, Mail).
-        /// Endpoint URLs belong to the app, so pass them via <paramref name="options"/>.
+        /// Endpoint URLs belong to the app, so set them once at startup via the static
+        /// properties of each feature (MailService.SendMailEndPoint, Excel.ConvertPdfEndPoint,
+        /// AITextAnalyzerField.FileToModuleDataEndPoint / TextToModuleDataEndPoint).
         /// </summary>
-        public static void Initialize(IAppInfoService app, IHttpService http, ILogger logger, IToasterEx toaster, ExtrasClientOptions options)
+        public static void Initialize(IAppInfoService app, IHttpService http, ILogger logger, IToasterEx toaster)
         {
             Initialize(app);
 
             var manager = app.GetScriptRuntimeTypeManager();
             manager.AddCustomInjector(() => http);
-            manager.AddCustomInjector(() => options);
             manager.AddType(typeof(ScriptObjects.Excel));
             manager.AddType(typeof(ExcelCellIndex));
             manager.AddType<WebApiResult>();

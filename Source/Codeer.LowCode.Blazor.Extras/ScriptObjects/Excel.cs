@@ -68,8 +68,12 @@ namespace Codeer.LowCode.Blazor.Extras.ScriptObjects
         [ScriptHide]
         public static Func<MemoryStream, MemoryStream>? ConvertPdf { get; set; }
 
-        [ScriptInject]
-        public ExtrasClientOptions? Options { get; set; }
+        /// <summary>
+        /// PDF conversion endpoint. URLs belong to the app (which owns the controllers),
+        /// so set this once at startup (e.g. in ServiceInitializer). Not used when <see cref="ConvertPdf"/> is set.
+        /// </summary>
+        [ScriptHide]
+        public static string ConvertPdfEndPoint { get; set; } = string.Empty;
 
         public Excel(MemoryStream? stream, string fileName)
         {
@@ -136,7 +140,7 @@ namespace Codeer.LowCode.Blazor.Extras.ScriptObjects
             MemoryStream pdfStream = default!;
             if (ConvertPdf == null)
             {
-                var endPoint = Options?.ExcelPdfConvertEndPoint;
+                var endPoint = ConvertPdfEndPoint;
                 if (Http == null || string.IsNullOrEmpty(endPoint)) return false;
                 var result = await Http.PostContent(endPoint, new StreamContent(stream));
                 if (result == null) return false;

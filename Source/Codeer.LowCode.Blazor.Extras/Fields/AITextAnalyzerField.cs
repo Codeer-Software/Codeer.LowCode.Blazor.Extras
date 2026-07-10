@@ -3,8 +3,8 @@ using Codeer.LowCode.Blazor.Extras.Services;
 using Codeer.LowCode.Blazor.Json;
 using Codeer.LowCode.Blazor.OperatingModel;
 using Codeer.LowCode.Blazor.Repository.Data;
+using Codeer.LowCode.Blazor.Extras.Designs;
 using Codeer.LowCode.Blazor.Script;
-using Design.Samples.AIDocumentAnalyzer;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Codeer.LowCode.Blazor.Extras.Fields
@@ -13,15 +13,29 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         : FieldBase<AITextAnalyzerFieldDesign>(design)
     {
         /// <summary>
+        /// Analysis endpoint for files. URLs belong to the app (which owns the controllers),
+        /// so set this once at startup (e.g. in ServiceInitializer).
+        /// </summary>
+        [ScriptHide]
+        public static string FileToModuleDataEndPoint { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Analysis endpoint for free text. URLs belong to the app (which owns the controllers),
+        /// so set this once at startup (e.g. in ServiceInitializer).
+        /// </summary>
+        [ScriptHide]
+        public static string TextToModuleDataEndPoint { get; set; } = string.Empty;
+
+        /// <summary>
         /// Host-side hook. When set (e.g. desktop apps), the file is analyzed directly
-        /// without going through the AITextAnalyzeFileEndPoint.
+        /// without going through the FileToModuleDataEndPoint.
         /// </summary>
         [ScriptHide]
         public static Func<AITextAnalyzerField, string, StreamContent, Task<ModuleData?>>? FileToModuleDataCoreAsync { get; set; }
 
         /// <summary>
         /// Host-side hook. When set (e.g. desktop apps), the text is analyzed directly
-        /// without going through the AITextAnalyzeTextEndPoint.
+        /// without going through the TextToModuleDataEndPoint.
         /// </summary>
         [ScriptHide]
         public static Func<AITextAnalyzerField, string, Task<ModuleData?>>? TextToModuleDataCoreAsync { get; set; }
@@ -73,12 +87,11 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
 
         //ホスト(デザイナ等)には登録されていないことがあるため任意解決
         IHttpService? Http => Services.Provider.GetService<IHttpService>();
-        ExtrasClientOptions? Options => Services.Provider.GetService<ExtrasClientOptions>();
 
         async Task<ModuleData?> FileToModuleDataAsync(string fileName, StreamContent content)
         {
             if (FileToModuleDataCoreAsync != null) return await FileToModuleDataCoreAsync(this, fileName, content);
-            var endPoint = Options?.AITextAnalyzeFileEndPoint;
+            var endPoint = FileToModuleDataEndPoint;
             if (Http == null || string.IsNullOrEmpty(endPoint)) return null;
             return await Http.PostContentAsJsonAsync<ModuleData>(
                 $"{endPoint}?moduleName={Module.Design.Name}&fieldName={Design.Name}&fileName={fileName}", content);
@@ -87,7 +100,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         async Task<ModuleData?> TextToModuleDataAsync(string text)
         {
             if (TextToModuleDataCoreAsync != null) return await TextToModuleDataCoreAsync(this, text);
-            var endPoint = Options?.AITextAnalyzeTextEndPoint;
+            var endPoint = TextToModuleDataEndPoint;
             if (Http == null || string.IsNullOrEmpty(endPoint)) return null;
             var content = new FormUrlEncodedContent(new Dictionary<string, string> { { "text", text } });
             var ret = await Http.PostAsync($"{endPoint}?moduleName={Module.Design.Name}&fieldName={Design.Name}", content);

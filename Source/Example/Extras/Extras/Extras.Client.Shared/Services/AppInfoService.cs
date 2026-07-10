@@ -50,7 +50,7 @@ namespace Extras.Client.Shared.Services
         public string Localize(string text)
             => _localizeService?.Localize(text) ?? text;
 
-        public AppInfoService(IHttpService http, LoadingService loadingService, NavigationManager navigationManager, ILogger logger, IToasterEx toaster, ExtrasClientOptions extrasOptions)
+        public AppInfoService(IHttpService http, LoadingService loadingService, NavigationManager navigationManager, ILogger logger, IToasterEx toaster)
         {
             _http = http;
             _navigationManager = navigationManager;
@@ -59,7 +59,7 @@ namespace Extras.Client.Shared.Services
             _scriptRuntimeTypeManager.AddService(loadingService);
             _scriptRuntimeTypeManager.AddType<LoadingService.LoadingScope>();
             _scriptRuntimeTypeManager.UseDesignCache();
-            ExtrasClientInitializer.Initialize(this, http, logger, toaster, extrasOptions);
+            ExtrasClientInitializer.Initialize(this, http, logger, toaster);
         }
         public void SetCurrentUserId(string id) => CurrentUserId = id;
 

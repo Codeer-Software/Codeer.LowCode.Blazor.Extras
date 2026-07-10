@@ -1,9 +1,7 @@
-using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Diagnostics;
-using Microsoft.AspNetCore.Http;
 using System.Net;
 
-namespace Codeer.LowCode.Blazor.Extras.Server.Web
+namespace Extras.Server.Services
 {
     public static class ExceptionHandlerUtils
     {

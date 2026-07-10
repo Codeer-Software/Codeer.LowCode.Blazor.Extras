@@ -80,7 +80,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI
             condition.SelectFields.Add(valueName.FieldName.FullName);
             var ret = await _moduleDataIO.GetListAsync(condition, 0);
 
-            fieldCandidates = new FieldCandidates { ModuleName = moduleName, FieldName = targetModule };
+            fieldCandidates = new FieldCandidates { ModuleName = moduleName, FieldName = fieldName };
 
             foreach (var e in ret.Items)
             {

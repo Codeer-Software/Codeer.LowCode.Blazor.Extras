@@ -1,7 +1,7 @@
 using Codeer.LowCode.Blazor;
 using Codeer.LowCode.Blazor.Extras.Server.AI;
 using Codeer.LowCode.Blazor.Repository.Data;
-using Design.Samples.AIDocumentAnalyzer;
+using Codeer.LowCode.Blazor.Extras.Designs;
 using Extras.Server.Services;
 using Microsoft.AspNetCore.Mvc;
 

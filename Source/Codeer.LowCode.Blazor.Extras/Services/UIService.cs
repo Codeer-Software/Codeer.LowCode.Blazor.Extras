@@ -75,7 +75,7 @@ namespace Codeer.LowCode.Blazor.Extras.Services
             using var stream = new MemoryStream(bin);
             using var streamReference = new DotNetStreamReference(stream);
             await using var module = await jsRuntime.InvokeAsync<IJSObjectReference>("import", $"/_content/{Assembly.GetExecutingAssembly().GetName().Name}/interop/download.js");
-            var mimeType = MimeTypes.TryGetValue(fileName, out var value) ? value : string.Empty;
+            var mimeType = MimeTypes.TryGetValue(Path.GetExtension(fileName), out var value) ? value : string.Empty;
             await module.InvokeVoidAsync("download", streamReference, mimeType, fileName);
         }
     }
