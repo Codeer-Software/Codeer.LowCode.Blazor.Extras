@@ -1,6 +1,6 @@
 using Codeer.LowCode.Blazor.DataIO;
-using Extras.Server.Services.FileManagement;
-using Extras.Server.Shared;
+using Codeer.LowCode.Blazor.Extras.Server.FileManagement;
+using Codeer.LowCode.Blazor.Extras.Server.Db;
 
 namespace Extras.Server.Services
 {
@@ -13,7 +13,7 @@ namespace Extras.Server.Services
         public DataService()
         {
             DbAccess = new DbAccessor(SystemConfig.Instance.DataSources);
-            TemporaryFileManager = new TemporaryFileManager(DbAccess, SystemConfig.Instance.TemporaryFileTableInfo);
+            TemporaryFileManager = new TemporaryFileManager(DbAccess, SystemConfig.Instance.TemporaryFileTableInfo, SystemConfig.Instance.FileStorages);
             ModuleDataIO = new CustomizedModuleDataIO(DesignerService.GetDesignData(), this, DbAccess, TemporaryFileManager);
         }
 

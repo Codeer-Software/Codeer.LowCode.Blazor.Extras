@@ -1,5 +1,5 @@
-using System.Net;
 using Microsoft.AspNetCore.Diagnostics;
+using System.Net;
 
 namespace Extras.Server.Services
 {

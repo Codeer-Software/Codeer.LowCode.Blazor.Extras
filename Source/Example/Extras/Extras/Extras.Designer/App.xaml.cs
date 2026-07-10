@@ -14,12 +14,10 @@ using Codeer.LowCode.Blazor.Designer.Views.Windows;
 using Codeer.LowCode.Blazor.DesignLogic;
 using Codeer.LowCode.Blazor.Extras.Designer;
 using Codeer.LowCode.Blazor.Extras.Fields;
-using Codeer.LowCode.Blazor.Repository.Data;
 using Codeer.LowCode.Blazor.Repository.Design;
 using Codeer.LowCode.Blazor.Script;
 using Codeer.LowCode.Blazor.SystemSettings;
-using Extras.Client.Shared.AITextAnalyzer;
-using Extras.Client.Shared.ScriptObjects;
+using Codeer.LowCode.Blazor.Extras.ScriptObjects;
 using Extras.Designer.Lib;
 using Extras.Designer.Lib.DbTableToModule;
 using Extras.Designer.Lib.ExcelToModule;
@@ -34,18 +32,22 @@ namespace Extras.Designer
     {
         protected override void OnStartup(StartupEventArgs e)
         {
+            //load dll. ProCodeManager 等のロード済みアセンブリスキャンより前に Extras.Client.Shared をロードしておく
+            //(これが無いとプロコードコンポーネント/モジュールがデザインチェックで「存在しません」になる)
+            typeof(global::Extras.Client.Shared.Services.AppInfoService).ToString();
+
             ExtrasDesignerInitializer.Initialize(BlazorRuntime);
 
             Codeer.LowCode.Blazor.License.LicenseManager.IsAutoUpdate =
                 bool.TryParse(ConfigurationManager.AppSettings["IsLicenseAutoUpdate"], out var val) ? val : true;
             Services.AddSingleton<IDbAccessorFactory, DbAccessorFactory>();
-            Services.AddSingleton<IAITextAnalyzerCore, AITextAnalyzerCoreDummy>();
             ScriptRuntimeTypeManager.AddType(typeof(ExcelCellIndex));
-            ScriptRuntimeTypeManager.AddType(typeof(Extras.Client.Shared.ScriptObjects.Excel));
+            ScriptRuntimeTypeManager.AddType(typeof(Codeer.LowCode.Blazor.Extras.ScriptObjects.Excel));
             ScriptRuntimeTypeManager.AddService(new Toaster(null!));
             ScriptRuntimeTypeManager.AddService(new WebApiService(null!, null!));
             ScriptRuntimeTypeManager.AddType<WebApiResult>();
             ScriptRuntimeTypeManager.AddService(new MailService());
+            ScriptRuntimeTypeManager.AddType<MailMessage>();
             ScriptRuntimeTypeManager.AddService(new LoadingService());
             ScriptRuntimeTypeManager.AddType<LoadingService.LoadingScope>();
             ScriptRuntimeTypeManager.AddType<CalendarViewMode>();
@@ -245,15 +247,6 @@ namespace Extras.Designer
                     MessageBoxButton.OK,
                     MessageBoxImage.Error);
             }
-        }
-
-        private class AITextAnalyzerCoreDummy : IAITextAnalyzerCore
-        {
-            public Task<ModuleData?> FileToModuleDataAsync(string moduleName, string fieldName, string fileName, StreamContent content)
-                => throw new NotImplementedException();
-
-            public Task<ModuleData?> TextToModuleDataAsync(string moduleName, string fieldName, string text)
-                => throw new NotImplementedException();
         }
 
         private void ImportModulesFromExcel()

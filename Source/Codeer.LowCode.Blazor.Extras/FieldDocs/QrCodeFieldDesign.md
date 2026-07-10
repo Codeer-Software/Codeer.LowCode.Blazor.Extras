@@ -63,14 +63,16 @@ QR コードの生成には [QRCoder](https://github.com/codebude/QRCoder) (MIT)
 
 ### 使用例
 
-```javascript
+```csharp
 // 別フィールドの入力値を QR コードにする
-async function OnUrlChanged() {
-  QrCode1.Text = UrlField.Value ?? "";
+void UrlField_OnDataChanged()
+{
+    QrCode1.Text = UrlField.Value ?? "";
 }
 
 // 複数フィールドを組み合わせて QR 化 (vCard 風など)
-async function OnContactChanged() {
-  QrCode1.Text = `MECARD:N:${NameField.Value};TEL:${TelField.Value};;`;
+void TelField_OnDataChanged()
+{
+    QrCode1.Text = $"MECARD:N:{NameField.Value};TEL:{TelField.Value};;";
 }
 ```

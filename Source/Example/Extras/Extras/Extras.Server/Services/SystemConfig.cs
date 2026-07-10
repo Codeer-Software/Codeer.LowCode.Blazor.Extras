@@ -1,8 +1,9 @@
 using Codeer.LowCode.Blazor.SystemSettings;
 using Extras.Client.Shared.Services;
-using Extras.Server.Services.AI;
+using Codeer.LowCode.Blazor.Extras.Server.AI;
+using Codeer.LowCode.Blazor.Extras.Server.Mail;
 using Extras.Server.Services.DataChangeHistory;
-using Extras.Server.Services.FileManagement;
+using Codeer.LowCode.Blazor.Extras.Server.FileManagement;
 
 namespace Extras.Server.Services
 {

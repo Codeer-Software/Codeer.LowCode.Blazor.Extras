@@ -33,6 +33,10 @@ namespace Codeer.LowCode.Blazor.Extras.Designer
             //AI 用フィールドドキュメントを登録(ライブラリ本体は Designer を参照しないため、ここで吸収する)。
             foreach (var kv in ExtrasFieldDocs.GetFieldDocs())
                 FieldCatalog.Add(kv.Key, kv.Value);
+
+            //AI 用スクリプトオブジェクトドキュメント(Excel / WebApi / Toaster / Mail 等)も同様に登録する。
+            foreach (var kv in ExtrasScriptObjectDocs.GetScriptObjectDocs())
+                ScriptObjectCatalog.Add(kv.Key, kv.Value);
         }
     }
 }

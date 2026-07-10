@@ -5,12 +5,10 @@
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
   <ItemGroup>
-    <ProjectReference Include="..\Extras.Server.Shared\Extras.Server.Shared.csproj" />
+    <ProjectReference Include="..\..\..\..\Codeer.LowCode.Blazor.Extras.Server\Codeer.LowCode.Blazor.Extras.Server.csproj" />
     <ProjectReference Include="..\Extras.Client\Extras.Client.csproj" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="Azure.AI.FormRecognizer" Version="4.1.0" />
-    <PackageReference Include="Azure.AI.OpenAI" Version="2.1.0" />
     <PackageReference Include="Azure.Identity" Version="1.13.2" />
     <PackageReference Include="Azure.Storage.Blobs" Version="12.23.0" />
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="8.0.8" />

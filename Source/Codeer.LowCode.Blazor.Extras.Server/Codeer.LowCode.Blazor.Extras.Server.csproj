@@ -1,0 +1,53 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<TargetFramework>net8.0</TargetFramework>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
+		<Version>0.2.0</Version>
+		<Authors>Codeer</Authors>
+		<Company>Codeer</Company>
+		<Description>Server-side services for Codeer.LowCode.Blazor apps. Includes AI document analysis (Azure Document Intelligence + Azure OpenAI), SMTP mail sending, multi-database access (SQL Server / PostgreSQL / MySQL / Oracle / SQLite), file storage (file system / Azure Blob), and ASP.NET Core helpers (hot reload, ETag file responses).</Description>
+		<PackageProjectUrl>https://github.com/Codeer-Software/Codeer.LowCode.Blazor.Extras</PackageProjectUrl>
+		<RepositoryUrl>https://github.com/Codeer-Software/Codeer.LowCode.Blazor.Extras</RepositoryUrl>
+		<RepositoryType>git</RepositoryType>
+		<PackageTags>Blazor;LowCode;Codeer;AI;Mail;Excel;PDF</PackageTags>
+		<PackageLicenseExpression>MIT</PackageLicenseExpression>
+		<PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
+		<PackageReadmeFile>README.md</PackageReadmeFile>
+		<PackageReleaseNotes>
+- Initial release. Server-side services moved from the app templates: AI document analysis (AITextAnalyzeService), SMTP mail sending (SmtpMailService, with multiple To/Cc/Bcc, HTML body and attachments), multi-database access (DbAccessor), file storage access (StorageAccess, TemporaryFileManager), PDF font resolver (CustomFontResolver), and ASP.NET Core helpers (FileWithETag, HotReloadHub, FileWatcherService).
+		</PackageReleaseNotes>
+		<PackageId>Codeer.LowCode.Blazor.Extras.Server</PackageId>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<FrameworkReference Include="Microsoft.AspNetCore.App" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\Codeer.LowCode.Blazor.Extras\Codeer.LowCode.Blazor.Extras.csproj" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<PackageReference Include="Azure.AI.FormRecognizer" Version="4.1.0" />
+		<PackageReference Include="Azure.AI.OpenAI" Version="2.1.0" />
+		<PackageReference Include="Azure.Storage.Blobs" Version="12.23.0" />
+		<PackageReference Include="Dapper" Version="2.1.35" />
+		<PackageReference Include="Excel.Report.PDF" Version="0.32.0" />
+		<PackageReference Include="Microsoft.Data.SqlClient" Version="5.2.0" />
+		<PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.8" />
+		<PackageReference Include="Microsoft.EntityFrameworkCore" Version="8.0.8" />
+		<PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="8.0.8" />
+		<PackageReference Include="MySqlConnector" Version="2.4.0" />
+		<PackageReference Include="Npgsql" Version="8.0.8" />
+		<PackageReference Include="Oracle.ManagedDataAccess.Core" Version="23.7.0" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<None Include="..\..\README.md" Pack="true" PackagePath="\" />
+		<None Include="..\..\LICENSE" Pack="true" PackagePath="\" />
+	</ItemGroup>
+
+</Project>
