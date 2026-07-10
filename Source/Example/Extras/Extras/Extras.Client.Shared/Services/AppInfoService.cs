@@ -27,7 +27,7 @@ namespace Extras.Client.Shared.Services
         readonly NavigationManager _navigationManager;
         readonly IHttpService _http;
         readonly ScriptRuntimeTypeManager _scriptRuntimeTypeManager = new();
-        readonly IToasterEx _toaster;
+        readonly IToastService _toaster;
         readonly LoadingService _loadingService;
         HubConnection? _hubConnection;
         DesignData? _design;
@@ -50,7 +50,7 @@ namespace Extras.Client.Shared.Services
         public string Localize(string text)
             => _localizeService?.Localize(text) ?? text;
 
-        public AppInfoService(IHttpService http, LoadingService loadingService, NavigationManager navigationManager, ILogger logger, IToasterEx toaster)
+        public AppInfoService(IHttpService http, LoadingService loadingService, NavigationManager navigationManager, ILogger logger, IToastService toaster)
         {
             _http = http;
             _navigationManager = navigationManager;

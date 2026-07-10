@@ -33,7 +33,7 @@ namespace Extras.Client.Shared.Services
                 config.ShowTransitionDuration = 10;
                 config.HideTransitionDuration = 500;
             });
-            services.AddScoped<IToasterEx, ToasterEx>();
+            services.AddScoped<IToastService, ToastService>();
             services.AddScoped<IHttpService, HttpService>();
 
             var cultureName = CultureInfo.CurrentCulture.Name;

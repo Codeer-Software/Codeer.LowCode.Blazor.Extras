@@ -5,9 +5,9 @@ namespace Codeer.LowCode.Blazor.Extras.Services
     public class Logger : Codeer.LowCode.Blazor.RequestInterfaces.ILogger
     {
         readonly IJSRuntime _jsRuntime;
-        readonly IToasterEx _toaster;
+        readonly IToastService _toaster;
 
-        public Logger(IJSRuntime js, IToasterEx toaster)
+        public Logger(IJSRuntime js, IToastService toaster)
         {
             _jsRuntime = js;
             _toaster = toaster;

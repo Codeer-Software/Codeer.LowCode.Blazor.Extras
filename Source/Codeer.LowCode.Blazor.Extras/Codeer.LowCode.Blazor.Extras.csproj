@@ -18,7 +18,7 @@
 		<PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
 		<PackageReleaseNotes>
-- Add client infrastructure and script objects moved from the app templates: HttpService, UIService, Logger, LocalizeService, ToasterEx, Excel, WebApi, Toaster, Mail.
+- Add client infrastructure and script objects moved from the app templates: HttpService, UIService, Logger, LocalizeService, ToastService, Excel, WebApi, Toaster, Mail.
 - Enhance Mail: multiple To/Cc/Bcc, HTML body, Reply-To, and attachments via a chainable MailMessage builder (Mail.CreateMessage() / Mail.Send()).
 - Add the AITextAnalyzer field and the SelectAllCheckBox list element component moved from the app templates.
 - Add ExtrasClientInitializer.Initialize overload that registers the built-in script objects.

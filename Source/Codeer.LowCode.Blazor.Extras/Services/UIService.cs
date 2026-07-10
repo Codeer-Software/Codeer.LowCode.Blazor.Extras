@@ -6,11 +6,11 @@ namespace Codeer.LowCode.Blazor.Extras.Services
     public class UIService : Codeer.LowCode.Blazor.Components.UIService
     {
         private readonly IJSRuntime _jsRuntime;
-        private readonly IToasterEx _toaster;
+        private readonly IToastService _toaster;
 
         public UIService(
              IJSRuntime JSRuntime,
-             IToasterEx toaster
+             IToastService toaster
         )
         {
             _jsRuntime = JSRuntime;

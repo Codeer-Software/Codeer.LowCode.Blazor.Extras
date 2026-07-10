@@ -24,7 +24,7 @@ namespace Codeer.LowCode.Blazor.Extras
         /// properties of each feature (MailService.SendMailEndPoint, Excel.ConvertPdfEndPoint,
         /// AITextAnalyzerField.FileToModuleDataEndPoint / TextToModuleDataEndPoint).
         /// </summary>
-        public static void Initialize(IAppInfoService app, IHttpService http, ILogger logger, IToasterEx toaster)
+        public static void Initialize(IAppInfoService app, IHttpService http, ILogger logger, IToastService toaster)
         {
             Initialize(app);
 
