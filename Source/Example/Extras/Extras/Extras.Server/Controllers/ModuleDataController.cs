@@ -8,6 +8,7 @@ using Excel.Report.PDF;
 using Extras.Client.Shared.Services;
 using Extras.Server.Services;
 using Codeer.LowCode.Blazor.Extras.Server.FileManagement;
+using Codeer.LowCode.Blazor.Extras.Server.Web;
 using MessagePack;
 using Microsoft.AspNetCore.Mvc;
 
@@ -72,7 +73,7 @@ namespace Extras.Server.Controllers
         {
             var location = await _dataService.ModuleDataIO.FileFieldDataIO.GetFileLocation(moduleName!, id!, fieldName!);
             await _dataService.DbAccess.ClearAsync();
-            return Ok(await StorageAccess.ReadFileAsync(SystemConfig.Instance.FileStorages, location));
+            return this.FileWithETag((await StorageAccess.ReadFileAsync(SystemConfig.Instance.FileStorages, location)).ToArray(), "application/octet-stream");
         }
 
         [HttpPost("upload")]
