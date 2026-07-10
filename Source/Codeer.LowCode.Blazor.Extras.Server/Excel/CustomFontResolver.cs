@@ -19,7 +19,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Excel
         {
             familyName = familyName.Replace(" ", "");
             if (isBold) familyName += "#b";
-            return new FontResolverInfo(familyName.Replace(" ", ""));
+            return new FontResolverInfo(familyName);
         }
     }
 }

@@ -1,4 +1,4 @@
-using Codeer.LowCode.Blazor.Extras.Server.Excel;
+using Excel.Report.PDF;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Extras.Server.Controllers
@@ -14,7 +14,7 @@ namespace Extras.Server.Controllers
             {
                 await Request.Body.CopyToAsync(memoryStream);
                 memoryStream.Position = 0;
-                var pdfStream = ExcelPdfService.ConvertToPdf(memoryStream);
+                var pdfStream = ExcelConverter.ConvertToPdf(memoryStream);
                 return Ok(pdfStream);
             }
         }

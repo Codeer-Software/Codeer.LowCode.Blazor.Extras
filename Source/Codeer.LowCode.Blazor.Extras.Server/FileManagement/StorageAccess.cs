@@ -17,7 +17,6 @@ namespace Codeer.LowCode.Blazor.Extras.Server.FileManagement
                 var blobClient = container.GetBlobClient($"{file.Guid}");
                 var memoryStream = new MemoryStream();
                 await blobClient.DownloadToAsync(memoryStream);
-                var bin = memoryStream.ToArray();
                 memoryStream.Position = 0;
                 return memoryStream;
             }

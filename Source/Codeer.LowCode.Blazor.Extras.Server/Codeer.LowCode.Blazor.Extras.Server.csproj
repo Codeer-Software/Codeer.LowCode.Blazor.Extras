@@ -8,7 +8,7 @@
 		<Version>0.2.0</Version>
 		<Authors>Codeer</Authors>
 		<Company>Codeer</Company>
-		<Description>Server-side services for Codeer.LowCode.Blazor apps. Includes AI document analysis, SMTP mail sending, and Excel to PDF conversion.</Description>
+		<Description>Server-side services for Codeer.LowCode.Blazor apps. Includes AI document analysis, SMTP mail sending, multi-database access, and file storage.</Description>
 		<PackageProjectUrl>https://github.com/Codeer-Software/Codeer.LowCode.Blazor.Extras</PackageProjectUrl>
 		<RepositoryUrl>https://github.com/Codeer-Software/Codeer.LowCode.Blazor.Extras</RepositoryUrl>
 		<RepositoryType>git</RepositoryType>
@@ -17,7 +17,7 @@
 		<PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
 		<PackageReleaseNotes>
-- Initial release. Server-side services moved from the app templates: AI document analysis (AITextAnalyzeService), SMTP mail sending (SmtpMailService, with multiple To/Cc/Bcc, HTML body and attachments), Excel to PDF conversion (ExcelPdfService), file storage access (StorageAccess, TemporaryFileManager), PDF font resolver (CustomFontResolver), and ASP.NET Core helpers (FileWithETag, HotReloadHub, FileWatcherService).
+- Initial release. Server-side services moved from the app templates: AI document analysis (AITextAnalyzeService), SMTP mail sending (SmtpMailService, with multiple To/Cc/Bcc, HTML body and attachments), multi-database access (DbAccessor), file storage access (StorageAccess, TemporaryFileManager), PDF font resolver (CustomFontResolver), and ASP.NET Core helpers (FileWithETag, HotReloadHub, FileWatcherService).
 		</PackageReleaseNotes>
 		<PackageId>Codeer.LowCode.Blazor.Extras.Server</PackageId>
 	</PropertyGroup>
