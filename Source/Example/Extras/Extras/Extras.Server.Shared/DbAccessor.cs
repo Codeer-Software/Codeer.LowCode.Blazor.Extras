@@ -12,7 +12,7 @@ using Oracle.ManagedDataAccess.Client;
 using System.Data;
 using System.Data.Common;
 
-namespace Codeer.LowCode.Blazor.Extras.Server.Db
+namespace Extras.Server.Shared
 {
     public class DbAccessor : IDbAccessor, IDisposable
     {

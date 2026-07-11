@@ -5,10 +5,10 @@
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>enable</Nullable>
 		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
-		<Version>0.2.0</Version>
+		<Version>0.3.0</Version>
 		<Authors>Codeer</Authors>
 		<Company>Codeer</Company>
-		<Description>Server-side services for Codeer.LowCode.Blazor apps. Includes AI document analysis (Azure Document Intelligence + Azure OpenAI), SMTP mail sending, multi-database access (SQL Server / PostgreSQL / MySQL / Oracle / SQLite), file storage (file system / Azure Blob), and ASP.NET Core helpers (hot reload, ETag file responses).</Description>
+		<Description>Server-side services for Codeer.LowCode.Blazor apps. Includes AI document analysis (Azure Document Intelligence + Azure OpenAI), SMTP mail sending, file storage (file system / Azure Blob), and ASP.NET Core helpers (hot reload, ETag file responses).</Description>
 		<PackageProjectUrl>https://github.com/Codeer-Software/Codeer.LowCode.Blazor.Extras</PackageProjectUrl>
 		<RepositoryUrl>https://github.com/Codeer-Software/Codeer.LowCode.Blazor.Extras</RepositoryUrl>
 		<RepositoryType>git</RepositoryType>
@@ -17,7 +17,8 @@
 		<PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
 		<PackageReleaseNotes>
-- Initial release. Server-side services moved from the app templates: AI document analysis (AITextAnalyzeService), SMTP mail sending (SmtpMailService, with multiple To/Cc/Bcc, HTML body and attachments), multi-database access (DbAccessor), file storage access (StorageAccess, TemporaryFileManager), PDF font resolver (CustomFontResolver), and ASP.NET Core helpers (FileWithETag, HotReloadHub, FileWatcherService).
+- Breaking change: removed the multi-database access layer (DbAccessor and the Codeer.LowCode.Blazor.Extras.Server.Db namespace). It is provided as source code in the app templates (WebApp.Server.Shared) again, so that each application owns its database provider choice. Applications that used DbAccessor from this package should reference the template project instead.
+- Removed the database provider dependencies accordingly: Microsoft.Data.SqlClient, Microsoft.Data.Sqlite, MySqlConnector, Npgsql, Oracle.ManagedDataAccess.Core, Microsoft.EntityFrameworkCore(.Relational), and Dapper. This package no longer pulls database client libraries (including proprietary-licensed ones) into consuming applications.
 		</PackageReleaseNotes>
 		<PackageId>Codeer.LowCode.Blazor.Extras.Server</PackageId>
 	</PropertyGroup>
@@ -34,15 +35,7 @@
 		<PackageReference Include="Azure.AI.FormRecognizer" Version="4.1.0" />
 		<PackageReference Include="Azure.AI.OpenAI" Version="2.1.0" />
 		<PackageReference Include="Azure.Storage.Blobs" Version="12.23.0" />
-		<PackageReference Include="Dapper" Version="2.1.35" />
 		<PackageReference Include="Excel.Report.PDF" Version="0.32.0" />
-		<PackageReference Include="Microsoft.Data.SqlClient" Version="5.2.0" />
-		<PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.8" />
-		<PackageReference Include="Microsoft.EntityFrameworkCore" Version="8.0.8" />
-		<PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="8.0.8" />
-		<PackageReference Include="MySqlConnector" Version="2.4.0" />
-		<PackageReference Include="Npgsql" Version="8.0.8" />
-		<PackageReference Include="Oracle.ManagedDataAccess.Core" Version="23.7.0" />
 	</ItemGroup>
 
 	<ItemGroup>

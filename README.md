@@ -61,7 +61,6 @@
 
 - AITextAnalyzeService — Azure Document Intelligence + Azure OpenAI による帳票・テキスト解析 (AITextAnalyzerField のサーバー側)
 - SmtpMailService — MailMessage 対応の SMTP 送信
-- DbAccessor — マルチDBアクセス (SQL Server / PostgreSQL / MySQL / Oracle / SQLite)
 - StorageAccess / TemporaryFileManager — ファイルストレージ (ファイルシステム / Azure Blob) と一時ファイル管理
 - CustomFontResolver — Excel PDF 変換用のフォントリゾルバ
 - Web ヘルパ — ETag 付きファイル応答 (FileWithETag)、ホットリロード (HotReloadHub / FileWatcherService)

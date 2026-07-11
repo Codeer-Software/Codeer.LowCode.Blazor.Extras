@@ -1,7 +1,7 @@
 using Codeer.LowCode.Blazor.DataIO.Db;
 using Dapper;
 
-namespace Codeer.LowCode.Blazor.Extras.Server.Db
+namespace Extras.Server.Shared
 {
     static class ParamAndRawDbTypeNameExtensions
     {
