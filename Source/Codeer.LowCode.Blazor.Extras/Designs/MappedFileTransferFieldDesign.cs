@@ -1,4 +1,5 @@
 using Codeer.LowCode.Blazor.DesignLogic.Check;
+using Codeer.LowCode.Blazor.DesignLogic.Refactor;
 using Codeer.LowCode.Blazor.Extras.Components;
 using Codeer.LowCode.Blazor.Extras.Fields;
 using Codeer.LowCode.Blazor.OperatingModel;
@@ -91,6 +92,20 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
                 }
             }
             return result;
+        }
+
+        public override RenameResult ChangeName(RenameContext context)
+        {
+            var builder = context.Builder(base.ChangeName(context));
+            foreach (var col in Columns.Items)
+            {
+                //Field は自モジュールの "フィールド名.データメンバ名"、Conversion 系は変換表モジュールとそのフィールド
+                builder.AddVariable(col.Field, x => col.Field = x)
+                    .AddModule(col.ConversionModule, x => col.ConversionModule = x)
+                    .AddField(col.ConversionModule, col.ConversionExternalField, x => col.ConversionExternalField = x)
+                    .AddField(col.ConversionModule, col.ConversionInternalField, x => col.ConversionInternalField = x);
+            }
+            return builder.Build();
         }
     }
 }
