@@ -1,32 +1,32 @@
+using System.IO;
 using System.Reflection;
 
-namespace Codeer.LowCode.Blazor.Extras
+namespace Codeer.LowCode.Blazor.Extras.Designer
 {
     /// <summary>
     /// Extras 系スクリプトオブジェクト(Excel / WebApi / Toaster / Mail 等)の AI 用ドキュメント(Markdown)を返す。
-    /// このライブラリはデザイナ(Codeer.LowCode.Blazor.Designer)を参照しないため、ここでは登録せず
-    /// 型 → Markdown の対応だけを提供する。
-    /// 実際のデザイナへの登録は Designer 側(ExtrasDesignerInitializer)が ScriptObjectCatalog.Add で行う。
-    /// Markdown は本アセンブリの埋め込みリソース(ScriptObjectDocs/&lt;型名&gt;.md)から読み込み、同名の
-    /// public 型へ対応付ける(型を1つずつ列挙しなくてよい)。
+    /// .md の物理的な置き場は Extras 本体プロジェクト(ScriptObjectDocs/)だが、WASM に配信しないため
+    /// 埋め込み先はこの Designer 側アセンブリ(リンク EmbeddedResource)。
+    /// リソース名 "….ScriptObjectDocs.&lt;型名&gt;.md" を Extras 本体アセンブリの同名 public 型へ対応付ける
+    /// (型を1つずつ列挙しなくてよい)。登録は ExtrasDesignerInitializer が ScriptObjectCatalog.Add で行う。
     /// </summary>
-    public static class ExtrasScriptObjectDocs
+    static class ExtrasScriptObjectDocs
     {
-        static readonly Assembly Asm = typeof(ExtrasScriptObjectDocs).Assembly;
+        static readonly Assembly DocAsm = typeof(ExtrasScriptObjectDocs).Assembly;
 
         public static Dictionary<Type, string> GetScriptObjectDocs()
         {
-            var prefix = $"{Asm.GetName().Name}.ScriptObjectDocs.";
+            var prefix = $"{DocAsm.GetName().Name}.ScriptObjectDocs.";
             const string suffix = ".md";
 
-            // 型名 → 本アセンブリ内の public 型。
-            var typesByName = Asm.GetTypes()
+            // 型名 → Extras 本体アセンブリ内の public 型。
+            var typesByName = typeof(ScriptObjects.Excel).Assembly.GetTypes()
                 .Where(t => t.IsPublic && t.IsClass && !t.IsAbstract)
                 .GroupBy(t => t.Name)
                 .ToDictionary(g => g.Key, g => g.First());
 
             var result = new Dictionary<Type, string>();
-            foreach (var name in Asm.GetManifestResourceNames())
+            foreach (var name in DocAsm.GetManifestResourceNames())
             {
                 if (!name.StartsWith(prefix, StringComparison.Ordinal) || !name.EndsWith(suffix, StringComparison.Ordinal))
                     continue;
@@ -42,7 +42,7 @@ namespace Codeer.LowCode.Blazor.Extras
 
         static string? Load(string resourceName)
         {
-            using var stream = Asm.GetManifestResourceStream(resourceName);
+            using var stream = DocAsm.GetManifestResourceStream(resourceName);
             if (stream == null) return null;
             using var reader = new StreamReader(stream);
             return reader.ReadToEnd();

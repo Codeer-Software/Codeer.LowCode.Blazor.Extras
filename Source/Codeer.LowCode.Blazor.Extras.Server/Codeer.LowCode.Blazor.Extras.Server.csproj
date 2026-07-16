@@ -5,7 +5,7 @@
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>enable</Nullable>
 		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
-		<Version>0.3.0</Version>
+		<Version>0.4.0</Version>
 		<Authors>Codeer</Authors>
 		<Company>Codeer</Company>
 		<Description>Server-side services for Codeer.LowCode.Blazor apps. Includes AI document analysis (Azure Document Intelligence + Azure OpenAI), SMTP mail sending, file storage (file system / Azure Blob), and ASP.NET Core helpers (hot reload, ETag file responses).</Description>
@@ -17,8 +17,7 @@
 		<PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
 		<PackageReleaseNotes>
-- Breaking change: removed the multi-database access layer (DbAccessor and the Codeer.LowCode.Blazor.Extras.Server.Db namespace). It is provided as source code in the app templates (WebApp.Server.Shared) again, so that each application owns its database provider choice. Applications that used DbAccessor from this package should reference the template project instead.
-- Removed the database provider dependencies accordingly: Microsoft.Data.SqlClient, Microsoft.Data.Sqlite, MySqlConnector, Npgsql, Oracle.ManagedDataAccess.Core, Microsoft.EntityFrameworkCore(.Relational), and Dapper. This package no longer pulls database client libraries (including proprietary-licensed ones) into consuming applications.
+- Version bump to align the Codeer.LowCode.Blazor.Extras package family (Extras, Extras.Designer, Extras.Server) on 0.4.0. No functional changes since 0.3.0.
 		</PackageReleaseNotes>
 		<PackageId>Codeer.LowCode.Blazor.Extras.Server</PackageId>
 	</PropertyGroup>

@@ -30,11 +30,13 @@ namespace Codeer.LowCode.Blazor.Extras.Designer
             //custom property controls.
             PropertyTypeManager.AddPropertyControl<TaskBoardStatuses, TaskBoardStatusesPropertyControl>();
 
-            //AI 用フィールドドキュメントを登録(ライブラリ本体は Designer を参照しないため、ここで吸収する)。
-            foreach (var kv in ExtrasFieldDocs.GetFieldDocs())
-                FieldCatalog.Add(kv.Key, kv.Value);
+            //AI 用フィールドドキュメント。.md は Extras 本体プロジェクトにあるが、WASM に配信しないため
+            //このアセンブリに埋め込まれている (リンク EmbeddedResource)。FieldCatalog が
+            //`.FieldDocs.<型名>.md` 規約で解決できるよう、探索先として登録する。
+            FieldCatalog.AddDocAssembly(typeof(ExtrasDesignerInitializer).Assembly);
 
-            //AI 用スクリプトオブジェクトドキュメント(Excel / WebApi / Toaster / Mail 等)も同様に登録する。
+            //AI 用スクリプトオブジェクトドキュメント(Excel / WebApi / Toaster / Mail 等)も同様に
+            //このアセンブリの埋め込みから登録する。
             foreach (var kv in ExtrasScriptObjectDocs.GetScriptObjectDocs())
                 ScriptObjectCatalog.Add(kv.Key, kv.Value);
         }

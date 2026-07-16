@@ -6,7 +6,7 @@
     <UseWPF>true</UseWPF>
     <ImplicitUsings>enable</ImplicitUsings>
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
-	  <Version>0.2.0</Version>
+	  <Version>0.4.0</Version>
     <Authors>Codeer</Authors>
     <Company>Codeer</Company>
     <Description>Designer support for Codeer.LowCode.Blazor.Extras. Provides property controls and initializers for the LowCode Designer application.</Description>
@@ -18,13 +18,14 @@
     <PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageReleaseNotes>
+- AI documentation resources (field docs) are now embedded in this Designer-side assembly instead of the runtime assembly, keeping them out of the WebAssembly download.
     </PackageReleaseNotes>
     <PackageId>Codeer.LowCode.Blazor.Extras.Designer</PackageId>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Codeer.LowCode.Blazor" Version="1.3.12" />
-    <PackageReference Include="Codeer.LowCode.Blazor.Designer" Version="1.3.12" />
+    <PackageReference Include="Codeer.LowCode.Blazor" Version="1.3.15" />
+    <PackageReference Include="Codeer.LowCode.Blazor.Designer" Version="1.3.15" />
   </ItemGroup>
 
   <ItemGroup>
@@ -35,5 +36,19 @@
   <ItemGroup>
     <ProjectReference Include="..\Codeer.LowCode.Blazor.Extras\Codeer.LowCode.Blazor.Extras.csproj" />
   </ItemGroup>
+
+	<!-- AI 用ドキュメントの埋め込み。.md はこの Extras.Designer プロジェクトに物理配置する
+	     (実装ランタイムの WASM には配信しないため)。埋め込み先もこのアセンブリ。
+	     FieldDocs は FieldCatalog.AddDocAssembly、ScriptObjectDocs は ExtrasScriptObjectDocs が読む。 -->
+	<ItemGroup>
+		<None Remove="FieldDocs\**\*.md" />
+		<None Remove="ScriptObjectDocs\**\*.md" />
+		<EmbeddedResource Include="FieldDocs\**\*.md">
+			<LogicalName>Codeer.LowCode.Blazor.Extras.Designer.FieldDocs.%(Filename)%(Extension)</LogicalName>
+		</EmbeddedResource>
+		<EmbeddedResource Include="ScriptObjectDocs\**\*.md">
+			<LogicalName>Codeer.LowCode.Blazor.Extras.Designer.ScriptObjectDocs.%(Filename)%(Extension)</LogicalName>
+		</EmbeddedResource>
+	</ItemGroup>
 
 </Project>
