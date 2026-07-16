@@ -4,77 +4,137 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:viewModels="clr-namespace:Codeer.LowCode.Blazor.Extras.Designer.ViewModels"
-             mc:Ignorable="d" d:DesignHeight="400" d:DesignWidth="900"
+             xmlns:properties="clr-namespace:Codeer.LowCode.Blazor.Extras.Designer.Properties"
+             mc:Ignorable="d" d:DesignHeight="450" d:DesignWidth="700"
              d:DataContext="{d:DesignInstance viewModels:MappingColumnsViewModel}">
-  <Grid Grid.IsSharedSizeScope="True">
+  <UserControl.Resources>
+    <Style x:Key="EditorLabel" TargetType="TextBlock">
+      <Setter Property="FontWeight" Value="Bold" />
+      <Setter Property="Margin" Value="0,0,0,2" />
+    </Style>
+    <Style x:Key="DescriptionText" TargetType="TextBlock">
+      <Setter Property="TextWrapping" Value="Wrap" />
+      <Setter Property="Opacity" Value="0.65" />
+      <Setter Property="FontSize" Value="11" />
+      <Setter Property="Margin" Value="0,3,0,10" />
+    </Style>
+  </UserControl.Resources>
+  <Grid Margin="8">
     <Grid.RowDefinitions>
-      <RowDefinition Height="Auto" />
       <RowDefinition Height="*" />
-      <RowDefinition Height="Auto" />
       <RowDefinition Height="Auto" />
     </Grid.RowDefinitions>
 
-    <!-- Header -->
-    <Grid Margin="5,5,5,2">
+    <!-- 左: 列一覧 (並び順 = ファイルの列位置) / 右: 選択列の詳細 -->
+    <Grid>
       <Grid.ColumnDefinitions>
-        <ColumnDefinition SharedSizeGroup="ColExternalName" />
-        <ColumnDefinition SharedSizeGroup="ColField" />
-        <ColumnDefinition SharedSizeGroup="ColFormat" />
-        <ColumnDefinition SharedSizeGroup="ColFixedValue" />
-        <ColumnDefinition SharedSizeGroup="ColConvModule" />
-        <ColumnDefinition SharedSizeGroup="ColConvExternal" />
-        <ColumnDefinition SharedSizeGroup="ColConvInternal" />
-        <ColumnDefinition SharedSizeGroup="ColMoveUp" Width="Auto" />
-        <ColumnDefinition SharedSizeGroup="ColMoveDown" Width="Auto" />
-        <ColumnDefinition SharedSizeGroup="ColDelete" Width="Auto" />
+        <ColumnDefinition Width="230" />
+        <ColumnDefinition Width="*" />
       </Grid.ColumnDefinitions>
-      <TextBlock Text="ExternalName" FontWeight="Bold" Margin="0,0,3,0" />
-      <TextBlock Grid.Column="1" Text="Field" FontWeight="Bold" Margin="0,0,3,0" />
-      <TextBlock Grid.Column="2" Text="Format" FontWeight="Bold" Margin="0,0,3,0" />
-      <TextBlock Grid.Column="3" Text="FixedValue" FontWeight="Bold" Margin="0,0,3,0" />
-      <TextBlock Grid.Column="4" Text="ConversionModule" FontWeight="Bold" Margin="0,0,3,0" />
-      <TextBlock Grid.Column="5" Text="ConversionExternalField" FontWeight="Bold" Margin="0,0,3,0" />
-      <TextBlock Grid.Column="6" Text="ConversionInternalField" FontWeight="Bold" Margin="0,0,3,0" />
+
+      <Grid>
+        <Grid.RowDefinitions>
+          <RowDefinition Height="Auto" />
+          <RowDefinition Height="*" />
+          <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+        <TextBlock Style="{StaticResource EditorLabel}"
+                   Text="{x:Static properties:Resources.MappingColumnListHeader}" TextWrapping="Wrap" />
+        <ListBox Grid.Row="1" ItemsSource="{Binding Items}"
+                 SelectedItem="{Binding SelectedItem, Mode=TwoWay}">
+          <ListBox.ItemTemplate>
+            <DataTemplate>
+              <TextBlock Text="{Binding ListLabel, Mode=OneWay}" Margin="2" />
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+        <UniformGrid Grid.Row="2" Columns="4" Margin="0,4,0,0">
+          <Button Content="{x:Static properties:Resources.MappingAdd}" Margin="0,0,2,0" Click="AddItem" />
+          <Button Content="{x:Static properties:Resources.MappingDelete}" Margin="2,0" Click="DeleteItem" />
+          <Button FontFamily="Segoe Fluent Icons" Content="&#xE74A;" Margin="2,0"
+                  ToolTip="{x:Static properties:Resources.MappingMoveUp}" Click="MoveUpItem" />
+          <Button FontFamily="Segoe Fluent Icons" Content="&#xE74B;" Margin="2,0,0,0"
+                  ToolTip="{x:Static properties:Resources.MappingMoveDown}" Click="MoveDownItem" />
+        </UniformGrid>
+      </Grid>
+
+      <Grid Grid.Column="1" Margin="12,0,0,0">
+        <!-- 未選択時のガイド -->
+        <TextBlock Text="{x:Static properties:Resources.MappingSelectColumnHint}"
+                   HorizontalAlignment="Center" VerticalAlignment="Center"
+                   Opacity="0.6" TextWrapping="Wrap">
+          <TextBlock.Style>
+            <Style TargetType="TextBlock">
+              <Setter Property="Visibility" Value="Collapsed" />
+              <Style.Triggers>
+                <DataTrigger Binding="{Binding SelectedItem}" Value="{x:Null}">
+                  <Setter Property="Visibility" Value="Visible" />
+                </DataTrigger>
+              </Style.Triggers>
+            </Style>
+          </TextBlock.Style>
+        </TextBlock>
+
+        <!-- 選択列の詳細 -->
+        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
+                      DataContext="{Binding SelectedItem}">
+          <ScrollViewer.Style>
+            <Style TargetType="ScrollViewer">
+              <Style.Triggers>
+                <DataTrigger Binding="{Binding}" Value="{x:Null}">
+                  <Setter Property="Visibility" Value="Collapsed" />
+                </DataTrigger>
+              </Style.Triggers>
+            </Style>
+          </ScrollViewer.Style>
+          <StackPanel Margin="0,0,4,0">
+            <TextBlock Style="{StaticResource EditorLabel}" Text="{x:Static properties:Resources.MappingExternalName}" />
+            <TextBox Text="{Binding ExternalName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+            <TextBlock Style="{StaticResource DescriptionText}" Text="{x:Static properties:Resources.MappingExternalNameDescription}" />
+
+            <TextBlock Style="{StaticResource EditorLabel}" Text="{x:Static properties:Resources.MappingField}" />
+            <ComboBox IsEditable="True"
+                      ItemsSource="{Binding DataContext.FieldCandidates, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                      Text="{Binding Field, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+            <TextBlock Style="{StaticResource DescriptionText}" Text="{x:Static properties:Resources.MappingFieldDescription}" />
+
+            <TextBlock Style="{StaticResource EditorLabel}" Text="{x:Static properties:Resources.MappingFixedValue}" />
+            <TextBox Text="{Binding FixedValue, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+            <TextBlock Style="{StaticResource DescriptionText}" Text="{x:Static properties:Resources.MappingFixedValueDescription}" />
+
+            <TextBlock Style="{StaticResource EditorLabel}" Text="{x:Static properties:Resources.MappingFormat}" />
+            <TextBox Text="{Binding Format, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+            <TextBlock Style="{StaticResource DescriptionText}" Text="{x:Static properties:Resources.MappingFormatDescription}" />
+
+            <GroupBox Header="{x:Static properties:Resources.MappingCodeConversion}" Padding="8,4" Margin="0,4,0,0">
+              <StackPanel>
+                <TextBlock Style="{StaticResource DescriptionText}" Margin="0,4,0,10"
+                           Text="{x:Static properties:Resources.MappingCodeConversionDescription}" />
+
+                <TextBlock Style="{StaticResource EditorLabel}" Text="{x:Static properties:Resources.MappingConversionModule}" />
+                <ComboBox IsEditable="True"
+                          ItemsSource="{Binding DataContext.ModuleCandidates, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                          Text="{Binding ConversionModule, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+
+                <TextBlock Style="{StaticResource EditorLabel}" Margin="0,10,0,2"
+                           Text="{x:Static properties:Resources.MappingConversionExternalField}" />
+                <ComboBox IsEditable="True"
+                          ItemsSource="{Binding ConversionFieldCandidates}"
+                          Text="{Binding ConversionExternalField, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+
+                <TextBlock Style="{StaticResource EditorLabel}" Margin="0,10,0,2"
+                           Text="{x:Static properties:Resources.MappingConversionInternalField}" />
+                <ComboBox IsEditable="True"
+                          ItemsSource="{Binding ConversionFieldCandidates}"
+                          Text="{Binding ConversionInternalField, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+              </StackPanel>
+            </GroupBox>
+          </StackPanel>
+        </ScrollViewer>
+      </Grid>
     </Grid>
 
-    <!-- Items -->
-    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-      <ItemsControl ItemsSource="{Binding Items}">
-        <ItemsControl.ItemTemplate>
-          <DataTemplate>
-            <Grid Margin="5,0,5,3">
-              <Grid.ColumnDefinitions>
-                <ColumnDefinition SharedSizeGroup="ColExternalName" />
-                <ColumnDefinition SharedSizeGroup="ColField" />
-                <ColumnDefinition SharedSizeGroup="ColFormat" />
-                <ColumnDefinition SharedSizeGroup="ColFixedValue" />
-                <ColumnDefinition SharedSizeGroup="ColConvModule" />
-                <ColumnDefinition SharedSizeGroup="ColConvExternal" />
-                <ColumnDefinition SharedSizeGroup="ColConvInternal" />
-                <ColumnDefinition SharedSizeGroup="ColMoveUp" Width="Auto" />
-                <ColumnDefinition SharedSizeGroup="ColMoveDown" Width="Auto" />
-                <ColumnDefinition SharedSizeGroup="ColDelete" Width="Auto" />
-              </Grid.ColumnDefinitions>
-              <TextBox Margin="0,0,3,0" Text="{Binding ExternalName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-              <TextBox Grid.Column="1" Margin="0,0,3,0" Text="{Binding Field, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-              <TextBox Grid.Column="2" Margin="0,0,3,0" Text="{Binding Format, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-              <TextBox Grid.Column="3" Margin="0,0,3,0" Text="{Binding FixedValue, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-              <TextBox Grid.Column="4" Margin="0,0,3,0" Text="{Binding ConversionModule, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-              <TextBox Grid.Column="5" Margin="0,0,3,0" Text="{Binding ConversionExternalField, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-              <TextBox Grid.Column="6" Margin="0,0,3,0" Text="{Binding ConversionInternalField, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-              <Button Grid.Column="7" Margin="0,0,3,0" Width="24" FontFamily="Segoe Fluent Icons" Content="&#xE74A;" Command="{Binding MoveUpCommand}" ToolTip="Move Up" />
-              <Button Grid.Column="8" Margin="0,0,3,0" Width="24" FontFamily="Segoe Fluent Icons" Content="&#xE74B;" Command="{Binding MoveDownCommand}" ToolTip="Move Down" />
-              <Button Grid.Column="9" Width="24" FontFamily="Segoe Fluent Icons" Content="&#xE74D;"
-                      Click="DeleteItem" ToolTip="Delete" />
-            </Grid>
-          </DataTemplate>
-        </ItemsControl.ItemTemplate>
-      </ItemsControl>
-    </ScrollViewer>
-
-    <Button Grid.Row="2" Content="Add" Margin="5,3,5,5" Click="AddItem" />
-
-    <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right" Margin="5">
+    <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,8,0,0">
       <Button Width="100" Margin="5,0,0,0" Content="OK" Click="OkClick" />
       <Button Width="100" Margin="5,0,0,0" Content="Cancel" Click="CancelClick" />
     </StackPanel>

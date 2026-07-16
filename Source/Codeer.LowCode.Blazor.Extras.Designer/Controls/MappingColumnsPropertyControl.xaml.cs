@@ -25,7 +25,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Controls
         {
             _value = (value as MappingColumns) ?? new();
             _completion = completion;
-            DataContext = _dataContext = new MappingColumnsViewModel(_value);
+            DataContext = _dataContext = new MappingColumnsViewModel(_value, propertyItemInfo);
         }
 
         private void OkClick(object sender, RoutedEventArgs e)
@@ -34,17 +34,16 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Controls
         private void CancelClick(object sender, RoutedEventArgs e)
             => _completion!(false);
 
-        private void DeleteItem(object sender, RoutedEventArgs e)
-        {
-            if (sender is Button { DataContext: MappingColumnViewModel item })
-            {
-                _dataContext.Remove(item.Model);
-            }
-        }
-
         private void AddItem(object sender, RoutedEventArgs e)
-        {
-            _dataContext.Add(new MappingColumn());
-        }
+            => _dataContext.Add();
+
+        private void DeleteItem(object sender, RoutedEventArgs e)
+            => _dataContext.DeleteSelected();
+
+        private void MoveUpItem(object sender, RoutedEventArgs e)
+            => _dataContext.MoveSelected(-1);
+
+        private void MoveDownItem(object sender, RoutedEventArgs e)
+            => _dataContext.MoveSelected(1);
     }
 }

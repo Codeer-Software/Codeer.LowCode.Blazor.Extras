@@ -21,8 +21,6 @@ namespace Codeer.LowCode.Blazor.Extras.Server.BulkFile
     /// </summary>
     public static class BulkFileTransfer
     {
-        const int DefaultMaxRows = 500;
-
         /// <summary>一括ダウンロード。検索条件で取得した一覧をファイルバイナリにする。</summary>
         public static async Task<MemoryStream> GetListFileAsync(DesignData designData, ModuleDataIO moduleDataIO, SearchCondition condition)
         {
@@ -54,10 +52,6 @@ namespace Codeer.LowCode.Blazor.Extras.Server.BulkFile
             //外部列 → 内部テーブルテキスト (コード変換の引き当て失敗は行番号付きエラー)
             var mappedErrors = new List<string>();
             if (mapped != null) (texts, mappedErrors) = await MappedFileTransform.ToInternalAsync(texts, mapped, moduleDataIO);
-
-            //データ行数上限 (設定フィールドの MaxRows。両方あれば Mapped 優先、なければ既定)
-            var maxRows = mapped?.MaxRows ?? csv?.MaxRows ?? DefaultMaxRows;
-            if (maxRows < texts.Count - 1) return Error($"File has a maximum of {maxRows} rows.");
 
             //取込前検証 (対応しない列・型変換できないセルを行番号付きで報告)
             var validationErrors = mappedErrors

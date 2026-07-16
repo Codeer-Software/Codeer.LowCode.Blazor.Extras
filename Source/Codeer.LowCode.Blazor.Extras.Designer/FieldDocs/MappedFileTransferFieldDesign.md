@@ -28,7 +28,6 @@
 | Name | string | ○ | フィールド名 |
 | HasHeader | bool | - | ヘッダ行の有無。既定 true |
 | Columns | MappingColumns | ○ | 列マッピング (並び順 = ファイルの列位置)。専用エディタで編集 |
-| MaxRows | int | - | 一括更新の最大データ行数。既定 500 (CsvFileTransferField と両方定義した場合はこちらが優先) |
 
 ### Columns (MappingColumn) の項目
 
@@ -57,7 +56,6 @@
         "ConversionModule": "", "ConversionExternalField": "", "ConversionInternalField": "" }
     ]
   },
-  "MaxRows": 1000,
   "Name": "EdiMapping",
   "TypeFullName": "Codeer.LowCode.Blazor.Extras.Designs.MappedFileTransferFieldDesign"
 }

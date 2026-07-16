@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="MappingColumnListHeader" xml:space="preserve">
+    <value>列一覧 (並び順 = ファイルの列位置)</value>
+  </data>
+  <data name="MappingAdd" xml:space="preserve">
+    <value>追加</value>
+  </data>
+  <data name="MappingDelete" xml:space="preserve">
+    <value>削除</value>
+  </data>
+  <data name="MappingMoveUp" xml:space="preserve">
+    <value>上へ</value>
+  </data>
+  <data name="MappingMoveDown" xml:space="preserve">
+    <value>下へ</value>
+  </data>
+  <data name="MappingSelectColumnHint" xml:space="preserve">
+    <value>左の一覧から列を選択するか、[追加] で列を作成してください。</value>
+  </data>
+  <data name="MappingUnnamedColumn" xml:space="preserve">
+    <value>(未設定)</value>
+  </data>
+  <data name="MappingExternalName" xml:space="preserve">
+    <value>外部列名</value>
+  </data>
+  <data name="MappingExternalNameDescription" xml:space="preserve">
+    <value>外部ファイルでの列名。出力時にヘッダ行へ出力されます。取込は列位置で対応付けるため、表示用の名前です。</value>
+  </data>
+  <data name="MappingField" xml:space="preserve">
+    <value>フィールド</value>
+  </data>
+  <data name="MappingFieldDescription" xml:space="preserve">
+    <value>値の入出力先。「フィールド名.データメンバ名」形式 (例: Customer.Value)。空にすると取込では無視され、出力では固定値が出力されます。</value>
+  </data>
+  <data name="MappingFormat" xml:space="preserve">
+    <value>書式</value>
+  </data>
+  <data name="MappingFormatDescription" xml:space="preserve">
+    <value>日付・数値の書式 (例: yyyyMMdd、0000000)。出力時は書式化し、取込時はこの書式で解釈します。コード変換とは併用できません (変換が優先されます)。</value>
+  </data>
+  <data name="MappingFixedValue" xml:space="preserve">
+    <value>固定値</value>
+  </data>
+  <data name="MappingFixedValueDescription" xml:space="preserve">
+    <value>出力時にそのまま出力する値 (取引先コードなど)。フィールドを指定しない列で使います。</value>
+  </data>
+  <data name="MappingCodeConversion" xml:space="preserve">
+    <value>コード変換 (任意)</value>
+  </data>
+  <data name="MappingCodeConversionDescription" xml:space="preserve">
+    <value>変換表モジュールで外部コードと内部値を相互に引き当てます (出力時は内部→外部、取込時は外部→内部)。変換表はただの業務モジュールとして作成します。取込時に引き当てられない外部コードは行番号付きエラーになります。</value>
+  </data>
+  <data name="MappingConversionModule" xml:space="preserve">
+    <value>変換表モジュール</value>
+  </data>
+  <data name="MappingConversionExternalField" xml:space="preserve">
+    <value>外部コード側フィールド</value>
+  </data>
+  <data name="MappingConversionInternalField" xml:space="preserve">
+    <value>内部値側フィールド</value>
+  </data>
+</root>

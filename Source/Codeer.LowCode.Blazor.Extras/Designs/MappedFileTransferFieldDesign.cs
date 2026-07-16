@@ -12,7 +12,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
     /// </summary>
     public class MappingColumn
     {
-        /// <summary>外部ファイルでの列名 (HasHeader 時にヘッダ行へ出力される。取込は列位置で対応付ける)。</summary>
+        /// <summary>外部ファイルでの列名 (ヘッダ行あり時に出力される。取込は列位置で対応付ける)。</summary>
         public string ExternalName { get; set; } = string.Empty;
 
         /// <summary>対応する内部フィールド ("フィールド名.データメンバ名" 形式。例 "Customer.Value")。空なら取込時は無視、出力時は FixedValue を出す。</summary>
@@ -60,10 +60,6 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         /// <summary>列マッピング (並び順 = ファイルの列位置)。</summary>
         [Designer]
         public MappingColumns Columns { get; set; } = new();
-
-        /// <summary>一括更新で受け付ける最大データ行数 (ヘッダ行を除く)。</summary>
-        [Designer]
-        public int MaxRows { get; set; } = 500;
 
         public override string GetWebComponentTypeFullName() => typeof(MappedFileTransferFieldComponent).FullName!;
 

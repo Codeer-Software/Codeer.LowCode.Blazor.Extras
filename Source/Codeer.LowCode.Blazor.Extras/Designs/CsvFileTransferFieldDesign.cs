@@ -32,10 +32,6 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         [Designer]
         public string FileExtension { get; set; } = "csv";
 
-        /// <summary>一括更新で受け付ける最大データ行数 (ヘッダ行を除く)。</summary>
-        [Designer]
-        public int MaxRows { get; set; } = 500;
-
         /// <summary>一括ダウンロードのファイル拡張子。</summary>
         public string Extension => string.IsNullOrEmpty(FileExtension) ? "csv" : FileExtension;
 

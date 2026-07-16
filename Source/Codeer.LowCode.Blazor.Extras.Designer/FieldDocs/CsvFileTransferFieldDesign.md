@@ -24,7 +24,6 @@
 | Encoding | enum | - | CSV のエンコーディング。`Utf8Bom` (既定) / `Utf8` / `ShiftJis` |
 | Delimiter | string | - | 区切り文字。既定 `,`。タブは `\t` |
 | FileExtension | string | - | ダウンロードのファイル拡張子。既定 `csv` (`txt` 等に変更可) |
-| MaxRows | int | - | 一括更新で受け付ける最大データ行数 (ヘッダ行を除く)。既定 500 |
 
 ### モジュール JSON 例
 

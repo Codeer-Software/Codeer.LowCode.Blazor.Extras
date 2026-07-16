@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="MappingColumnListHeader" xml:space="preserve">
+    <value>Columns (order = position in file)</value>
+  </data>
+  <data name="MappingAdd" xml:space="preserve">
+    <value>Add</value>
+  </data>
+  <data name="MappingDelete" xml:space="preserve">
+    <value>Delete</value>
+  </data>
+  <data name="MappingMoveUp" xml:space="preserve">
+    <value>Move up</value>
+  </data>
+  <data name="MappingMoveDown" xml:space="preserve">
+    <value>Move down</value>
+  </data>
+  <data name="MappingSelectColumnHint" xml:space="preserve">
+    <value>Select a column on the left, or click Add to create one.</value>
+  </data>
+  <data name="MappingUnnamedColumn" xml:space="preserve">
+    <value>(unnamed)</value>
+  </data>
+  <data name="MappingExternalName" xml:space="preserve">
+    <value>External name</value>
+  </data>
+  <data name="MappingExternalNameDescription" xml:space="preserve">
+    <value>Column name in the external file, written to the header row on export. Import matches columns by position, so this is a display name.</value>
+  </data>
+  <data name="MappingField" xml:space="preserve">
+    <value>Field</value>
+  </data>
+  <data name="MappingFieldDescription" xml:space="preserve">
+    <value>Source/target of the value, in 'FieldName.DataMember' format (e.g. Customer.Value). Leave empty to ignore the column on import and write the fixed value on export.</value>
+  </data>
+  <data name="MappingFormat" xml:space="preserve">
+    <value>Format</value>
+  </data>
+  <data name="MappingFormatDescription" xml:space="preserve">
+    <value>Date/number format (e.g. yyyyMMdd, 0000000). Export formats the value with it, import parses the value with it. Cannot be combined with code conversion (conversion takes precedence).</value>
+  </data>
+  <data name="MappingFixedValue" xml:space="preserve">
+    <value>Fixed value</value>
+  </data>
+  <data name="MappingFixedValueDescription" xml:space="preserve">
+    <value>Written as-is on export (e.g. a partner code). Used for columns that have no field.</value>
+  </data>
+  <data name="MappingCodeConversion" xml:space="preserve">
+    <value>Code conversion (optional)</value>
+  </data>
+  <data name="MappingCodeConversionDescription" xml:space="preserve">
+    <value>Maps external codes to internal values using a conversion table, which is a normal business module. Export converts internal to external, import converts external to internal. External codes not found in the table are reported as row errors on import.</value>
+  </data>
+  <data name="MappingConversionModule" xml:space="preserve">
+    <value>Conversion table module</value>
+  </data>
+  <data name="MappingConversionExternalField" xml:space="preserve">
+    <value>External code field</value>
+  </data>
+  <data name="MappingConversionInternalField" xml:space="preserve">
+    <value>Internal value field</value>
+  </data>
+</root>
