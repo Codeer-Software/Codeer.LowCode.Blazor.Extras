@@ -30,7 +30,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.BulkFile
             if (mapped != null) texts = await MappedFileTransform.ToExternalAsync(texts, mapped, moduleDataIO);
 
             return csv != null
-                ? CsvUtils.CreateCsvBinary(texts, csv.Encoding, csv.GetDelimiterChar())
+                ? CsvUtils.CreateCsvBinary(texts, csv.Encoding, csv.Delimiter.ToChar())
                 : ExcelUtils.CreateExcelBinary(texts, "data");
         }
 
@@ -46,7 +46,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.BulkFile
 
             //ファイル → テーブルテキスト (CSV フィールドがあれば内容で CSV/xlsx を自動判定)
             var texts = csv != null
-                ? await CsvUtils.ReadAllTextsFromFileBinary(file, csv.Encoding, csv.GetDelimiterChar())
+                ? await CsvUtils.ReadAllTextsFromFileBinary(file, csv.Encoding, csv.Delimiter.ToChar())
                 : await ExcelUtils.ReadAllTextsFromExcelBinary(file);
 
             //外部列 → 内部テーブルテキスト (コード変換の引き当て失敗は行番号付きエラー)

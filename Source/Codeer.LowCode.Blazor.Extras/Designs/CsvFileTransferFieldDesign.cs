@@ -24,23 +24,16 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         [Designer]
         public CsvEncodingKind Encoding { get; set; } = CsvEncodingKind.Utf8Bom;
 
-        /// <summary>CSV の区切り文字。既定はカンマ。タブは "\t" と書く。</summary>
+        /// <summary>CSV の区切り文字。既定はカンマ。</summary>
         [Designer]
-        public string Delimiter { get; set; } = ",";
+        public CsvDelimiterKind Delimiter { get; set; } = CsvDelimiterKind.Comma;
 
         /// <summary>一括ダウンロードのファイル拡張子 (例 "csv" / "txt")。</summary>
         [Designer]
         public string FileExtension { get; set; } = "csv";
 
-        /// <summary>一括ダウンロードのファイル拡張子。</summary>
-        public string Extension => string.IsNullOrEmpty(FileExtension) ? "csv" : FileExtension;
-
-        /// <summary>区切り文字の実効値 ("\t" 表記をタブに解決。不正なら ',')。</summary>
-        public char GetDelimiterChar()
-        {
-            if (Delimiter == "\\t" || Delimiter == "\t") return '\t';
-            return string.IsNullOrEmpty(Delimiter) ? ',' : Delimiter[0];
-        }
+        //本体クライアントが一括ダウンロードのファイル名の拡張子として参照する。未設定なら "csv"
+        string IBulkFileTransferFieldDesign.Extension => string.IsNullOrEmpty(FileExtension) ? "csv" : FileExtension;
 
         public override string GetWebComponentTypeFullName() => typeof(CsvFileTransferFieldComponent).FullName!;
 

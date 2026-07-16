@@ -1,3 +1,4 @@
+using Codeer.LowCode.Blazor.Extras.Csv;
 using Codeer.LowCode.Blazor.Extras.Designs;
 using Excel.Report.PDF;
 using System.Text;
@@ -22,7 +23,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Csv
             {
                 foreach (var row in allTexts)
                 {
-                    writer.Write(string.Join(delimiter, row.Select(e => Escape(e, delimiter))));
+                    writer.Write(string.Join(delimiter, row.Select(e => CsvTextParser.Escape(e, delimiter))));
                     writer.Write("\r\n");
                 }
             }
@@ -46,7 +47,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Csv
         {
             //BOM があればそちらを優先して自動判別
             using var reader = new StreamReader(buffered, GetEncoding(encodingKind), detectEncodingFromByteOrderMarks: true);
-            return ParseCsv(reader, delimiter);
+            return CsvTextParser.Parse(reader, delimiter);
         }
 
         /// <summary>先読みできないストリームをバッファする。</summary>
@@ -66,77 +67,6 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Csv
             _ = buffered.Read(head, 0, 2);
             buffered.Position = 0;
             return head[0] == 'P' && head[1] == 'K';
-        }
-
-        //RFC 4180: 区切り・引用符・改行を含むフィールドは引用符で囲み、引用符は二重にする
-        static string Escape(string? text, char delimiter)
-        {
-            text ??= string.Empty;
-            if (text.IndexOfAny([delimiter, '"', '\r', '\n']) < 0) return text;
-            return $"\"{text.Replace("\"", "\"\"")}\"";
-        }
-
-        //RFC 4180 準拠のパース (引用符内の区切り・改行・二重引用符に対応)。全セル空の行は除外する
-        static List<List<string>> ParseCsv(TextReader reader, char delimiter)
-        {
-            var rows = new List<List<string>>();
-            var row = new List<string>();
-            var field = new StringBuilder();
-            var inQuotes = false;
-
-            int c;
-            while ((c = reader.Read()) != -1)
-            {
-                var ch = (char)c;
-                if (inQuotes)
-                {
-                    if (ch == '"')
-                    {
-                        if (reader.Peek() == '"')
-                        {
-                            field.Append('"');
-                            reader.Read();
-                        }
-                        else
-                        {
-                            inQuotes = false;
-                        }
-                    }
-                    else
-                    {
-                        field.Append(ch);
-                    }
-                    continue;
-                }
-                if (ch == delimiter)
-                {
-                    row.Add(field.ToString());
-                    field.Clear();
-                    continue;
-                }
-                switch (ch)
-                {
-                    case '"': inQuotes = true; break;
-                    case '\r': break;
-                    case '\n':
-                        row.Add(field.ToString()); field.Clear();
-                        AddRow(rows, row); row = new();
-                        break;
-                    default: field.Append(ch); break;
-                }
-            }
-            if (0 < field.Length || 0 < row.Count)
-            {
-                row.Add(field.ToString());
-                AddRow(rows, row);
-            }
-            return rows;
-        }
-
-        static void AddRow(List<List<string>> rows, List<string> row)
-        {
-            if (row.All(string.IsNullOrEmpty)) return;
-            rows.Add(row);
         }
 
         static Encoding GetEncoding(CsvEncodingKind kind) => kind switch

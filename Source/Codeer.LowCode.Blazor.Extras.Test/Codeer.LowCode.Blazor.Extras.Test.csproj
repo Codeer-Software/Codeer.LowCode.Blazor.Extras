@@ -19,6 +19,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Codeer.LowCode.Blazor.Extras\Codeer.LowCode.Blazor.Extras.csproj" />
+    <ProjectReference Include="..\Codeer.LowCode.Blazor.Extras.Server\Codeer.LowCode.Blazor.Extras.Server.csproj" />
   </ItemGroup>
 
   <ItemGroup>

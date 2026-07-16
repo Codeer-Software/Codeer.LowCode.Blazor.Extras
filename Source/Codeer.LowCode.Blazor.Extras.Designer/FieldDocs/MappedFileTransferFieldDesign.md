@@ -66,7 +66,7 @@ CSV にする場合は同じモジュールの Fields に `CsvFileTransferFieldD
 ```json
 {
   "Encoding": "ShiftJis",
-  "Delimiter": ",",
+  "Delimiter": "Comma",
   "FileExtension": "txt",
   "Name": "EdiFormat",
   "TypeFullName": "Codeer.LowCode.Blazor.Extras.Designs.CsvFileTransferFieldDesign"

@@ -1,3 +1,4 @@
+using Codeer.LowCode.Blazor.Extras.Csv;
 using Codeer.LowCode.Blazor.RequestInterfaces;
 using System.Globalization;
 using System.Text;
@@ -26,12 +27,8 @@ namespace Codeer.LowCode.Blazor.Extras.Services
 
             mem.Position = 0;
             using var reader = new StreamReader(mem, Encoding.UTF8, detectEncodingFromByteOrderMarks: true, leaveOpen: true);
-            var rows = reader.ReadToEnd()
-                .Split('\n')
-                .Select(line => line.TrimEnd('\r'))
-                .Where(line => line.Length > 0)
-                .Select(line => line.Split('\t'))
-                .ToList();
+            //引用符付きセル (タブ・改行入りの訳文) も扱えるよう CSV パーサを共用する
+            var rows = CsvTextParser.Parse(reader, '\t');
             if (rows.Count < 2) return new();
 
             var index = FindCultureIndex(rows[0]);
@@ -39,7 +36,7 @@ namespace Codeer.LowCode.Blazor.Extras.Services
             Dictionary<string, string> dic = new();
             foreach (var row in rows.Skip(1))
             {
-                if (row.Length <= index) continue;
+                if (row.Count <= index) continue;
                 var key = row[0].Trim();
                 if (key.Length == 0) continue;
                 dic[key] = row[index].Trim();
@@ -49,10 +46,9 @@ namespace Codeer.LowCode.Blazor.Extras.Services
 
         // ヘッダ行から現在のカルチャ名(例: ja-JP)の列を探す。大小文字は区別しない。
         // 見つからなければキーの右隣(列1)にフォールバックする。
-        static int FindCultureIndex(string[] header)
+        static int FindCultureIndex(List<string> header)
         {
-            var index = Array.FindIndex(
-                header,
+            var index = header.FindIndex(
                 h => h.Trim().Equals(CultureInfo.CurrentCulture.Name, StringComparison.OrdinalIgnoreCase));
             return index < 1 ? 1 : index;
         }
