@@ -1,0 +1,9 @@
+@using Codeer.LowCode.Blazor.Components
+@using Codeer.LowCode.Blazor.Extras.Fields
+@inherits FieldComponentBase<MappedFileTransferField>
+
+@* 設定用フィールドのため実行時は何も描画しない。デザイナ上でだけ目印を出す *@
+@if (Field.Services.AppInfoService.IsDesignMode)
+{
+  <span style="color:#888; font-size:small;">MappedFileTransfer (@Field.Design.Columns.Items.Count columns)</span>
+}

@@ -1,0 +1,82 @@
+<UserControl x:Class="Codeer.LowCode.Blazor.Extras.Designer.Controls.MappingColumnsPropertyControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:viewModels="clr-namespace:Codeer.LowCode.Blazor.Extras.Designer.ViewModels"
+             mc:Ignorable="d" d:DesignHeight="400" d:DesignWidth="900"
+             d:DataContext="{d:DesignInstance viewModels:MappingColumnsViewModel}">
+  <Grid Grid.IsSharedSizeScope="True">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="*" />
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="Auto" />
+    </Grid.RowDefinitions>
+
+    <!-- Header -->
+    <Grid Margin="5,5,5,2">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition SharedSizeGroup="ColExternalName" />
+        <ColumnDefinition SharedSizeGroup="ColField" />
+        <ColumnDefinition SharedSizeGroup="ColFormat" />
+        <ColumnDefinition SharedSizeGroup="ColFixedValue" />
+        <ColumnDefinition SharedSizeGroup="ColConvModule" />
+        <ColumnDefinition SharedSizeGroup="ColConvExternal" />
+        <ColumnDefinition SharedSizeGroup="ColConvInternal" />
+        <ColumnDefinition SharedSizeGroup="ColMoveUp" Width="Auto" />
+        <ColumnDefinition SharedSizeGroup="ColMoveDown" Width="Auto" />
+        <ColumnDefinition SharedSizeGroup="ColDelete" Width="Auto" />
+      </Grid.ColumnDefinitions>
+      <TextBlock Text="ExternalName" FontWeight="Bold" Margin="0,0,3,0" />
+      <TextBlock Grid.Column="1" Text="Field" FontWeight="Bold" Margin="0,0,3,0" />
+      <TextBlock Grid.Column="2" Text="Format" FontWeight="Bold" Margin="0,0,3,0" />
+      <TextBlock Grid.Column="3" Text="FixedValue" FontWeight="Bold" Margin="0,0,3,0" />
+      <TextBlock Grid.Column="4" Text="ConversionModule" FontWeight="Bold" Margin="0,0,3,0" />
+      <TextBlock Grid.Column="5" Text="ConversionExternalField" FontWeight="Bold" Margin="0,0,3,0" />
+      <TextBlock Grid.Column="6" Text="ConversionInternalField" FontWeight="Bold" Margin="0,0,3,0" />
+    </Grid>
+
+    <!-- Items -->
+    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+      <ItemsControl ItemsSource="{Binding Items}">
+        <ItemsControl.ItemTemplate>
+          <DataTemplate>
+            <Grid Margin="5,0,5,3">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition SharedSizeGroup="ColExternalName" />
+                <ColumnDefinition SharedSizeGroup="ColField" />
+                <ColumnDefinition SharedSizeGroup="ColFormat" />
+                <ColumnDefinition SharedSizeGroup="ColFixedValue" />
+                <ColumnDefinition SharedSizeGroup="ColConvModule" />
+                <ColumnDefinition SharedSizeGroup="ColConvExternal" />
+                <ColumnDefinition SharedSizeGroup="ColConvInternal" />
+                <ColumnDefinition SharedSizeGroup="ColMoveUp" Width="Auto" />
+                <ColumnDefinition SharedSizeGroup="ColMoveDown" Width="Auto" />
+                <ColumnDefinition SharedSizeGroup="ColDelete" Width="Auto" />
+              </Grid.ColumnDefinitions>
+              <TextBox Margin="0,0,3,0" Text="{Binding ExternalName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+              <TextBox Grid.Column="1" Margin="0,0,3,0" Text="{Binding Field, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+              <TextBox Grid.Column="2" Margin="0,0,3,0" Text="{Binding Format, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+              <TextBox Grid.Column="3" Margin="0,0,3,0" Text="{Binding FixedValue, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+              <TextBox Grid.Column="4" Margin="0,0,3,0" Text="{Binding ConversionModule, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+              <TextBox Grid.Column="5" Margin="0,0,3,0" Text="{Binding ConversionExternalField, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+              <TextBox Grid.Column="6" Margin="0,0,3,0" Text="{Binding ConversionInternalField, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+              <Button Grid.Column="7" Margin="0,0,3,0" Width="24" FontFamily="Segoe Fluent Icons" Content="&#xE74A;" Command="{Binding MoveUpCommand}" ToolTip="Move Up" />
+              <Button Grid.Column="8" Margin="0,0,3,0" Width="24" FontFamily="Segoe Fluent Icons" Content="&#xE74B;" Command="{Binding MoveDownCommand}" ToolTip="Move Down" />
+              <Button Grid.Column="9" Width="24" FontFamily="Segoe Fluent Icons" Content="&#xE74D;"
+                      Click="DeleteItem" ToolTip="Delete" />
+            </Grid>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </ScrollViewer>
+
+    <Button Grid.Row="2" Content="Add" Margin="5,3,5,5" Click="AddItem" />
+
+    <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right" Margin="5">
+      <Button Width="100" Margin="5,0,0,0" Content="OK" Click="OkClick" />
+      <Button Width="100" Margin="5,0,0,0" Content="Cancel" Click="CancelClick" />
+    </StackPanel>
+  </Grid>
+</UserControl>

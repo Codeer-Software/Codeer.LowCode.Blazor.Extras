@@ -29,6 +29,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designer
 
             //custom property controls.
             PropertyTypeManager.AddPropertyControl<TaskBoardStatuses, TaskBoardStatusesPropertyControl>();
+            PropertyTypeManager.AddPropertyControl<MappingColumns, MappingColumnsPropertyControl>();
 
             //AI 用フィールドドキュメント。.md は Extras 本体プロジェクトにあるが、WASM に配信しないため
             //このアセンブリに埋め込まれている (リンク EmbeddedResource)。FieldCatalog が

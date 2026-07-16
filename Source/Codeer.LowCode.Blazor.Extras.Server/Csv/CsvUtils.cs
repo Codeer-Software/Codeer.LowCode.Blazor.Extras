@@ -6,8 +6,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Csv
 {
     /// <summary>
     /// 一覧の一括ダウンロード/一括更新の CSV 対応 (Excel.Report.PDF の ExcelUtils と対になる)。
-    /// モジュールに <see cref="CsvFileTransferFieldDesign"/> が定義されている場合に
-    /// テンプレートの list_file / submit_by_file から使う。
+    /// テンプレートから移譲される BulkFileTransfer が使う。単体でも利用可。
     /// </summary>
     public static class CsvUtils
     {
@@ -15,7 +14,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Csv
             => Encoding.RegisterProvider(CodePagesEncodingProvider.Instance); //Shift_JIS 用
 
         /// <summary>テーブルテキストから CSV バイナリを作る (RFC 4180 準拠、改行は CRLF)。</summary>
-        public static MemoryStream CreateCsvBinary(List<List<string>> allTexts, CsvFileTransferFieldDesign.CsvEncodingKind encodingKind)
+        public static MemoryStream CreateCsvBinary(List<List<string>> allTexts, CsvEncodingKind encodingKind, char delimiter = ',')
         {
             var ms = new MemoryStream();
             //StreamWriter がエンコーディングのプリアンブル (UTF-8 BOM 等) を先頭に書く
@@ -23,7 +22,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Csv
             {
                 foreach (var row in allTexts)
                 {
-                    writer.Write(string.Join(",", row.Select(Escape)));
+                    writer.Write(string.Join(delimiter, row.Select(e => Escape(e, delimiter))));
                     writer.Write("\r\n");
                 }
             }
@@ -35,37 +34,50 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Csv
         /// アップロードされたファイルからテーブルテキストを読む。
         /// 内容で判定し、xlsx (ZIP = PK ヘッダ) なら Excel、それ以外は CSV としてパースする。
         /// </summary>
-        public static async Task<List<List<string>>> ReadAllTextsFromFileBinary(Stream stream, CsvFileTransferFieldDesign.CsvEncodingKind encodingKind)
+        public static async Task<List<List<string>>> ReadAllTextsFromFileBinary(Stream stream, CsvEncodingKind encodingKind, char delimiter = ',')
         {
-            //Request.Body は先読みできないので一度バッファする
+            var ms = await BufferAsync(stream);
+            if (IsExcel(ms)) return await ExcelUtils.ReadAllTextsFromExcelBinary(ms);
+            return ReadAllTextsFromCsv(ms, encodingKind, delimiter);
+        }
+
+        /// <summary>CSV としてテーブルテキストを読む (Excel 判定なし)。</summary>
+        public static List<List<string>> ReadAllTextsFromCsv(Stream buffered, CsvEncodingKind encodingKind, char delimiter = ',')
+        {
+            //BOM があればそちらを優先して自動判別
+            using var reader = new StreamReader(buffered, GetEncoding(encodingKind), detectEncodingFromByteOrderMarks: true);
+            return ParseCsv(reader, delimiter);
+        }
+
+        /// <summary>先読みできないストリームをバッファする。</summary>
+        public static async Task<MemoryStream> BufferAsync(Stream stream)
+        {
             var ms = new MemoryStream();
             await stream.CopyToAsync(ms);
             ms.Position = 0;
-
-            //xlsx は ZIP (PK) で始まる
-            if (2 <= ms.Length)
-            {
-                var head = new byte[2];
-                _ = ms.Read(head, 0, 2);
-                ms.Position = 0;
-                if (head[0] == 'P' && head[1] == 'K') return await ExcelUtils.ReadAllTextsFromExcelBinary(ms);
-            }
-
-            //BOM があればそちらを優先して自動判別
-            using var reader = new StreamReader(ms, GetEncoding(encodingKind), detectEncodingFromByteOrderMarks: true);
-            return ParseCsv(reader);
+            return ms;
         }
 
-        //RFC 4180: カンマ・引用符・改行を含むフィールドは引用符で囲み、引用符は二重にする
-        static string Escape(string? text)
+        /// <summary>xlsx (ZIP = PK ヘッダ) かどうか。位置は先頭に戻す。</summary>
+        public static bool IsExcel(MemoryStream buffered)
+        {
+            if (buffered.Length < 2) return false;
+            var head = new byte[2];
+            _ = buffered.Read(head, 0, 2);
+            buffered.Position = 0;
+            return head[0] == 'P' && head[1] == 'K';
+        }
+
+        //RFC 4180: 区切り・引用符・改行を含むフィールドは引用符で囲み、引用符は二重にする
+        static string Escape(string? text, char delimiter)
         {
             text ??= string.Empty;
-            if (text.IndexOfAny([',', '"', '\r', '\n']) < 0) return text;
+            if (text.IndexOfAny([delimiter, '"', '\r', '\n']) < 0) return text;
             return $"\"{text.Replace("\"", "\"\"")}\"";
         }
 
-        //RFC 4180 準拠のパース (引用符内のカンマ・改行・二重引用符に対応)。全セル空の行は除外する
-        static List<List<string>> ParseCsv(TextReader reader)
+        //RFC 4180 準拠のパース (引用符内の区切り・改行・二重引用符に対応)。全セル空の行は除外する
+        static List<List<string>> ParseCsv(TextReader reader, char delimiter)
         {
             var rows = new List<List<string>>();
             var row = new List<string>();
@@ -96,10 +108,15 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Csv
                     }
                     continue;
                 }
+                if (ch == delimiter)
+                {
+                    row.Add(field.ToString());
+                    field.Clear();
+                    continue;
+                }
                 switch (ch)
                 {
                     case '"': inQuotes = true; break;
-                    case ',': row.Add(field.ToString()); field.Clear(); break;
                     case '\r': break;
                     case '\n':
                         row.Add(field.ToString()); field.Clear();
@@ -122,10 +139,10 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Csv
             rows.Add(row);
         }
 
-        static Encoding GetEncoding(CsvFileTransferFieldDesign.CsvEncodingKind kind) => kind switch
+        static Encoding GetEncoding(CsvEncodingKind kind) => kind switch
         {
-            CsvFileTransferFieldDesign.CsvEncodingKind.Utf8 => new UTF8Encoding(false),
-            CsvFileTransferFieldDesign.CsvEncodingKind.ShiftJis => Encoding.GetEncoding("shift_jis"),
+            CsvEncodingKind.Utf8 => new UTF8Encoding(false),
+            CsvEncodingKind.ShiftJis => Encoding.GetEncoding("shift_jis"),
             _ => new UTF8Encoding(true),
         };
     }
