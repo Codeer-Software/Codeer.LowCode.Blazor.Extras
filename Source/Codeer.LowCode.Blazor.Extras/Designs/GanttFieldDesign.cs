@@ -10,6 +10,7 @@ using Codeer.LowCode.Blazor.Repository.Match;
 
 namespace Codeer.LowCode.Blazor.Extras.Designs
 {
+    [Designer(DisplayName = "$GanttField")]
     public class GanttFieldDesign() : FieldDesignBase(typeof(GanttFieldDesign).FullName!), IDisplayName,
         ISearchResultsViewFieldDesign, IFillHeightFieldDesign
     {

@@ -47,10 +47,11 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
     /// サーバー側 (BulkFileTransfer) が内部形式との相互変換を行う。
     /// 書式はフィールド側の設定 (Format プロパティ / IExternalTextFormatFieldDesign 実装) に従う。
     /// ファイル形式とは独立した機能で、単独なら Excel (xlsx) のまま列だけ差し替わり、
-    /// <see cref="CsvFileTransferFieldDesign"/> と併用すると CSV になる (WebEDI 向け)。
+    /// <see cref="CsvFileFormatFieldDesign"/> と併用すると CSV になる (WebEDI 向け)。
     /// このフィールドを使うアプリはサーバー側の対応実装 (BulkFileTransfer への移譲) が必要。
     /// </summary>
-    public class MappedFileTransferFieldDesign() : FieldDesignBase(typeof(MappedFileTransferFieldDesign).FullName!)
+    [Designer(DisplayName = "$FileColumnMappingField")]
+    public class FileColumnMappingFieldDesign() : FieldDesignBase(typeof(FileColumnMappingFieldDesign).FullName!)
     {
         /// <summary>ファイルにヘッダ行があるか。出力時は ExternalName を1行目に出し、取込時は1行目を読み飛ばす。</summary>
         [Designer]
@@ -60,13 +61,13 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         [Designer]
         public MappingColumns Columns { get; set; } = new();
 
-        public override string GetWebComponentTypeFullName() => typeof(MappedFileTransferFieldComponent).FullName!;
+        public override string GetWebComponentTypeFullName() => typeof(FileColumnMappingFieldComponent).FullName!;
 
         public override string GetSearchWebComponentTypeFullName() => string.Empty;
 
         public override string GetSearchControlTypeFullName() => string.Empty;
 
-        public override FieldBase CreateField() => new MappedFileTransferField(this);
+        public override FieldBase CreateField() => new FileColumnMappingField(this);
 
         public override FieldDataBase? CreateData() => null;
 

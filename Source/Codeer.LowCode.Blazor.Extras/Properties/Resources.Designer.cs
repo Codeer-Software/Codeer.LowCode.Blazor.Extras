@@ -832,5 +832,102 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
             }
         }
 
+        
+        internal static string AITextAnalyzerField {
+            get {
+                return ResourceManager.GetString("AITextAnalyzerField", resourceCulture);
+            }
+        }
+        
+        internal static string CalendarField {
+            get {
+                return ResourceManager.GetString("CalendarField", resourceCulture);
+            }
+        }
+        
+        internal static string ColorPickerField {
+            get {
+                return ResourceManager.GetString("ColorPickerField", resourceCulture);
+            }
+        }
+        
+        internal static string CsvFileFormatField {
+            get {
+                return ResourceManager.GetString("CsvFileFormatField", resourceCulture);
+            }
+        }
+        
+        internal static string EnterFocusMoveField {
+            get {
+                return ResourceManager.GetString("EnterFocusMoveField", resourceCulture);
+            }
+        }
+        
+        internal static string GanttField {
+            get {
+                return ResourceManager.GetString("GanttField", resourceCulture);
+            }
+        }
+        
+        internal static string FileColumnMappingField {
+            get {
+                return ResourceManager.GetString("FileColumnMappingField", resourceCulture);
+            }
+        }
+        
+        internal static string MarkerListField {
+            get {
+                return ResourceManager.GetString("MarkerListField", resourceCulture);
+            }
+        }
+        
+        internal static string OrientationLockField {
+            get {
+                return ResourceManager.GetString("OrientationLockField", resourceCulture);
+            }
+        }
+        
+        internal static string PasswordHashField {
+            get {
+                return ResourceManager.GetString("PasswordHashField", resourceCulture);
+            }
+        }
+        
+        internal static string ProgressField {
+            get {
+                return ResourceManager.GetString("ProgressField", resourceCulture);
+            }
+        }
+        
+        internal static string QrCodeField {
+            get {
+                return ResourceManager.GetString("QrCodeField", resourceCulture);
+            }
+        }
+        
+        internal static string RichTextField {
+            get {
+                return ResourceManager.GetString("RichTextField", resourceCulture);
+            }
+        }
+        
+        internal static string TaskBoardField {
+            get {
+                return ResourceManager.GetString("TaskBoardField", resourceCulture);
+            }
+        }
+        
+        internal static string BulkFileTransferButtonField {
+            get {
+                return ResourceManager.GetString("BulkFileTransferButtonField", resourceCulture);
+            }
+        }
+        
+        internal static string ExcelReportButtonField {
+            get {
+                return ResourceManager.GetString("ExcelReportButtonField", resourceCulture);
+            }
+        }
+
     }
 }

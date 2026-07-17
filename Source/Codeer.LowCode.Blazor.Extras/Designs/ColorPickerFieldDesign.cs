@@ -9,6 +9,7 @@ using Codeer.LowCode.Blazor.Repository.Design;
 namespace Codeer.LowCode.Blazor.Extras.Designs
 {
     [ToolboxIcon(PackIconMaterialKind = "Palette")]
+    [Designer(DisplayName = "$ColorPickerField")]
     public class ColorPickerFieldDesign() : ValueFieldDesignBase(typeof(ColorPickerFieldDesign).FullName!)
     {
         [Designer(Index = 0, CandidateType = CandidateType.DbColumn, DisplayName = "$ColorPickerFieldDbColumn"), DbColumn(nameof(ColorPickerFieldData.Value))]

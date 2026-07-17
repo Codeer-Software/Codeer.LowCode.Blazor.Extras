@@ -10,6 +10,7 @@ using Codeer.LowCode.Blazor.Repository.Match;
 
 namespace Codeer.LowCode.Blazor.Extras.Designs
 {
+    [Designer(DisplayName = "$CalendarField")]
     public class CalendarFieldDesign() : FieldDesignBase(typeof(CalendarFieldDesign).FullName!), IDisplayName,
         ISearchResultsViewFieldDesign, IFillHeightFieldDesign
     {

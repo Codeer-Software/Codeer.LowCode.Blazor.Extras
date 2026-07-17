@@ -9,7 +9,7 @@ using System.Reflection;
 namespace Codeer.LowCode.Blazor.Extras.Server.BulkFile
 {
     /// <summary>
-    /// <see cref="MappedFileTransferFieldDesign"/> による ModuleData ⇔ 外部ファイル列の相互変換。
+    /// <see cref="FileColumnMappingFieldDesign"/> による ModuleData ⇔ 外部ファイル列の相互変換。
     /// テーブルテキストを経由せず型付きの値で変換する。列位置 = マッピング定義の並び順。
     /// 書式変換はフィールドデザインに委譲する (IExternalTextFormatFieldDesign。標準では日付/日時/数値
     /// フィールドが実装し、書式は各フィールドの Format プロパティ。実装しない型は ToString / 型変換のみ)。
@@ -17,16 +17,16 @@ namespace Codeer.LowCode.Blazor.Extras.Server.BulkFile
     /// 通常は BulkFileTransfer 経由で使われるが、特殊実装 (独自の入出力経路) からは
     /// getTableTexts を差し替えるオーバーロードも利用できる。
     /// </summary>
-    public static class MappedFileTransform
+    public static class FileColumnMappingTransform
     {
         /// <summary>出力: ModuleData → 外部列。</summary>
         public static Task<List<List<string>>> ToExternalAsync(List<ModuleData> items,
-            MappedFileTransferFieldDesign design, ModuleDesign moduleDesign, ModuleDataIO moduleDataIO)
+            FileColumnMappingFieldDesign design, ModuleDesign moduleDesign, ModuleDataIO moduleDataIO)
             => ToExternalAsync(items, design, moduleDesign, moduleDataIO.GetTableTextsAsync);
 
         /// <summary>出力: ModuleData → 外部列 (変換表の取得手段を差し替え可能)。</summary>
         public static async Task<List<List<string>>> ToExternalAsync(List<ModuleData> items,
-            MappedFileTransferFieldDesign design, ModuleDesign moduleDesign,
+            FileColumnMappingFieldDesign design, ModuleDesign moduleDesign,
             Func<SearchCondition, Task<List<List<string>>>> getTableTexts)
         {
             var converter = await CodeConverter.LoadAsync(design, getTableTexts);
@@ -70,7 +70,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.BulkFile
 
         /// <summary>取込: 外部列 → ModuleData。</summary>
         public static Task<(List<ModuleData> Items, List<string> Errors)> ToInternalAsync(
-            List<List<string>> externalTexts, MappedFileTransferFieldDesign design, ModuleDesign moduleDesign,
+            List<List<string>> externalTexts, FileColumnMappingFieldDesign design, ModuleDesign moduleDesign,
             ModuleDataIO moduleDataIO)
             => ToInternalAsync(externalTexts, design, moduleDesign, moduleDataIO.GetTableTextsAsync);
 
@@ -79,7 +79,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.BulkFile
         /// コード変換で引き当てられなかった値・書式や型として解釈できなかった値は errors に行番号付きで報告する。
         /// </summary>
         public static async Task<(List<ModuleData> Items, List<string> Errors)> ToInternalAsync(
-            List<List<string>> externalTexts, MappedFileTransferFieldDesign design, ModuleDesign moduleDesign,
+            List<List<string>> externalTexts, FileColumnMappingFieldDesign design, ModuleDesign moduleDesign,
             Func<SearchCondition, Task<List<List<string>>>> getTableTexts)
         {
             var converter = await CodeConverter.LoadAsync(design, getTableTexts);
@@ -198,7 +198,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.BulkFile
         {
             readonly Dictionary<string, (Dictionary<string, string> ToExternal, Dictionary<string, string> ToInternal)> _tables = new();
 
-            internal static async Task<CodeConverter> LoadAsync(MappedFileTransferFieldDesign design,
+            internal static async Task<CodeConverter> LoadAsync(FileColumnMappingFieldDesign design,
                 Func<SearchCondition, Task<List<List<string>>>> getTableTexts)
             {
                 var converter = new CodeConverter();

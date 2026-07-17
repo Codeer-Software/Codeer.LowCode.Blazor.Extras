@@ -5,7 +5,7 @@ using Codeer.LowCode.Blazor.Repository.Data;
 
 namespace Codeer.LowCode.Blazor.Extras.Fields
 {
-    public class MappedFileTransferField(MappedFileTransferFieldDesign design) : FieldBase<MappedFileTransferFieldDesign>(design)
+    public class FileColumnMappingField(FileColumnMappingFieldDesign design) : FieldBase<FileColumnMappingFieldDesign>(design)
     {
         public override bool IsModified => false;
         public override FieldDataBase? GetData() => null;

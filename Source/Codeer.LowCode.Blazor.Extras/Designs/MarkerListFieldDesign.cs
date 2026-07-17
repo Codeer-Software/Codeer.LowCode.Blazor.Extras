@@ -10,6 +10,7 @@ using Codeer.LowCode.Blazor.Repository.Match;
 
 namespace Codeer.LowCode.Blazor.Extras.Designs
 {
+    [Designer(DisplayName = "$MarkerListField")]
     public class MarkerListFieldDesign() : FieldDesignBase(typeof(MarkerListFieldDesign).FullName!),
         ISearchResultsViewFieldDesign, IDataDependentField, IFillHeightFieldDesign
     {

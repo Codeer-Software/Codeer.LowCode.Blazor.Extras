@@ -5,7 +5,7 @@ using Codeer.LowCode.Blazor.Repository.Data;
 
 namespace Codeer.LowCode.Blazor.Extras.Fields
 {
-    public class CsvFileTransferField(CsvFileTransferFieldDesign design) : FieldBase<CsvFileTransferFieldDesign>(design)
+    public class CsvFileFormatField(CsvFileFormatFieldDesign design) : FieldBase<CsvFileFormatFieldDesign>(design)
     {
         public override bool IsModified => false;
         public override FieldDataBase? GetData() => null;

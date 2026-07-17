@@ -1,6 +1,6 @@
 一括ダウンロードをスクリプトから実行するサービス。
 一覧ページや `BulkFileTransferButtonField` の一括ダウンロードと同じサーバー処理 (`list_file`) を使うため、
-ファイル形式や列構成は対象モジュールの `CsvFileTransferField` / `MappedFileTransferField` の定義に従う
+ファイル形式や列構成は対象モジュールの `CsvFileFormatField` / `FileColumnMappingField` の定義に従う
 (どちらも未定義なら xlsx)。ファイル名は `{モジュール名}.{拡張子}`。
 
 - `Download(ModuleSearcher)` … ModuleSearcher で組んだ条件でダウンロードする (Limit/Select も条件に従う)

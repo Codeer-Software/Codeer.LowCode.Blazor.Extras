@@ -396,4 +396,52 @@
   <data name="ExcelReportButtonTemplateRequired" xml:space="preserve">
     <value>Set Template Resource Path.</value>
   </data>
+  <data name="AITextAnalyzerField" xml:space="preserve">
+    <value>AI Text Analyzer</value>
+  </data>
+  <data name="CalendarField" xml:space="preserve">
+    <value>Calendar</value>
+  </data>
+  <data name="ColorPickerField" xml:space="preserve">
+    <value>Color Picker</value>
+  </data>
+  <data name="CsvFileFormatField" xml:space="preserve">
+    <value>CSV File Format</value>
+  </data>
+  <data name="EnterFocusMoveField" xml:space="preserve">
+    <value>Enter Focus Move</value>
+  </data>
+  <data name="GanttField" xml:space="preserve">
+    <value>Gantt Chart</value>
+  </data>
+  <data name="FileColumnMappingField" xml:space="preserve">
+    <value>File Column Mapping</value>
+  </data>
+  <data name="MarkerListField" xml:space="preserve">
+    <value>Marker List</value>
+  </data>
+  <data name="OrientationLockField" xml:space="preserve">
+    <value>Orientation Lock</value>
+  </data>
+  <data name="PasswordHashField" xml:space="preserve">
+    <value>Password Hash</value>
+  </data>
+  <data name="ProgressField" xml:space="preserve">
+    <value>Progress Bar</value>
+  </data>
+  <data name="QrCodeField" xml:space="preserve">
+    <value>QR Code</value>
+  </data>
+  <data name="RichTextField" xml:space="preserve">
+    <value>Rich Text</value>
+  </data>
+  <data name="TaskBoardField" xml:space="preserve">
+    <value>Task Board</value>
+  </data>
+  <data name="BulkFileTransferButtonField" xml:space="preserve">
+    <value>Bulk File Transfer Button</value>
+  </data>
+  <data name="ExcelReportButtonField" xml:space="preserve">
+    <value>Excel Report Button</value>
+  </data>
 </root>

@@ -10,6 +10,7 @@ using Codeer.LowCode.Blazor.Repository.Design;
 namespace Codeer.LowCode.Blazor.Extras.Designs
 {
     [ToolboxIcon(PackIconMaterialKind = "Qrcode")]
+    [Designer(DisplayName = "$QrCodeField")]
     public class QrCodeFieldDesign() : FieldDesignBase(typeof(QrCodeFieldDesign).FullName!), IDataDependentField
     {
         /// <summary>

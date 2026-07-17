@@ -2,7 +2,7 @@
 
 詳細レイアウトに配置できる一括ダウンロード/一括更新 (アップロード) ボタンです。
 一覧ページの一括ダウンロード/一括更新ボタンと同じサーバー処理 (`list_file` / `submit_by_file`) を利用するため、
-ファイル形式や列構成は対象モジュールの `CsvFileTransferField` / `MappedFileTransferField` の定義に従います
+ファイル形式や列構成は対象モジュールの `CsvFileFormatField` / `FileColumnMappingField` の定義に従います
 (どちらも未定義なら従来どおり xlsx)。
 
 ### 対象の指定 (SearchFieldName / ListFieldName のどちらか一方だけを設定)
@@ -56,7 +56,7 @@
 
 一覧ページの一括ダウンロード/一括更新と同じ API (`list_file` / `submit_by_file`) を使うため、
 サーバーテンプレートの `ModuleDataController` が対応済みである必要があります
-(テンプレートの実装例は `CsvFileTransferField` のドキュメントを参照)。
+(テンプレートの実装例は `CsvFileFormatField` のドキュメントを参照)。
 
 ## Script
 

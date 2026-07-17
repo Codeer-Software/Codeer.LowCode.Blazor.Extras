@@ -58,7 +58,6 @@ namespace Extras.Client.Shared.Services
             _loadingService = loadingService;
             _scriptRuntimeTypeManager.AddService(loadingService);
             _scriptRuntimeTypeManager.AddType<LoadingService.LoadingScope>();
-            _scriptRuntimeTypeManager.UseDesignCache();
             ExtrasClientInitializer.Initialize(this, http, logger, toaster);
         }
         public void SetCurrentUserId(string id) => CurrentUserId = id;

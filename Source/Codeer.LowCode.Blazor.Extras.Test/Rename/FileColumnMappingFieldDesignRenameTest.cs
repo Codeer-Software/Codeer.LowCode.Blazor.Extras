@@ -4,9 +4,9 @@ using Codeer.LowCode.Blazor.Extras.Designs;
 
 namespace Codeer.LowCode.Blazor.Extras.Test.Rename
 {
-    public class MappedFileTransferFieldDesignRenameTest
+    public class FileColumnMappingFieldDesignRenameTest
     {
-        static MappedFileTransferFieldDesign CreateField() => new()
+        static FileColumnMappingFieldDesign CreateField() => new()
         {
             Name = "Mapping1",
             Columns = new MappingColumns

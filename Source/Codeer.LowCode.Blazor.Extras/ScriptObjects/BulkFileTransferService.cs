@@ -9,7 +9,7 @@ namespace Codeer.LowCode.Blazor.Extras.ScriptObjects
 {
     /// <summary>
     /// 一括ダウンロード (一覧ページ/BulkFileTransferButtonField と同じ list_file) をスクリプトから実行するサービス。
-    /// ファイル形式は対象モジュールの CsvFileTransferField / MappedFileTransferField の定義に従う。
+    /// ファイル形式は対象モジュールの CsvFileFormatField / FileColumnMappingField の定義に従う。
     /// このサービスを使うアプリはサーバー側の対応実装 (BulkFileTransfer への移譲) が必要。
     /// </summary>
     public class BulkFileTransferService

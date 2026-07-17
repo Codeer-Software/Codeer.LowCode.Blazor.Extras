@@ -1,9 +1,9 @@
 @using Codeer.LowCode.Blazor.Components
 @using Codeer.LowCode.Blazor.Extras.Fields
-@inherits FieldComponentBase<CsvFileTransferField>
+@inherits FieldComponentBase<FileColumnMappingField>
 
 @* 設定用フィールドのため実行時は何も描画しない。デザイナ上でだけ目印を出す *@
 @if (Field.Services.AppInfoService.IsDesignMode)
 {
-  <span style="color:#888; font-size:small;">CsvFileTransfer (@Field.Design.Encoding)</span>
+  <span style="color:#888; font-size:small;">FileColumnMapping (@Field.Design.Columns.Items.Count columns)</span>
 }

@@ -34,7 +34,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         /// <summary>アップロードボタンを表示するか。権限による出し分けはフィールドでは行わない (サーバー側の検証と、必要ならデザイン側の可視制御に委ねる)。</summary>
         internal bool CanUpload => Design.CanBulkDataUpdate;
 
-        /// <summary>条件に一致するデータを一括ダウンロードする。ファイル形式は対象モジュールの定義 (Csv/MappedFileTransferField) に従う。</summary>
+        /// <summary>条件に一致するデータを一括ダウンロードする。ファイル形式は対象モジュールの定義 (Csv/FileColumnMappingField) に従う。</summary>
         internal async Task DownloadAsync()
         {
             if (_isTransferring) return;

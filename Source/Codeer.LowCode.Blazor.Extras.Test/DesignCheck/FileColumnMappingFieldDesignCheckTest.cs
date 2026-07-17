@@ -4,9 +4,9 @@ using Codeer.LowCode.Blazor.Repository.Design;
 
 namespace Codeer.LowCode.Blazor.Extras.Test.DesignCheck
 {
-    public class MappedFileTransferFieldDesignCheckTest
+    public class FileColumnMappingFieldDesignCheckTest
     {
-        static MappedFileTransferFieldDesign CreateField() => new()
+        static FileColumnMappingFieldDesign CreateField() => new()
         {
             Name = "Mapping1",
             Columns = new MappingColumns

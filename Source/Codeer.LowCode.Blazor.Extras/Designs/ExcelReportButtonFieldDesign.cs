@@ -15,6 +15,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
     /// (PDF はサーバーの変換エンドポイント等、Excel オブジェクトと同じ仕組みを使う)。
     /// </summary>
     [ToolboxIcon(PackIconMaterialKind = "FileExcelOutline")]
+    [Designer(DisplayName = "$ExcelReportButtonField")]
     public class ExcelReportButtonFieldDesign() : FieldDesignBase(typeof(ExcelReportButtonFieldDesign).FullName!)
     {
         /// <summary>テンプレート Excel のリソースパス。テンプレート内の {{フィールド名}} が自モジュールの値で置換される。</summary>

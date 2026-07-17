@@ -13,8 +13,8 @@
 - **このフィールドを定義しない場合は従来どおり xlsx**
 
 このフィールドは**ファイル形式だけ**を切り替えます。列の並びや外部列名を相手仕様に合わせるのは
-独立した機能 `MappedFileTransferField` で、**併用すると相手仕様の CSV** (WebEDI 等) になります
-(Mapped 単独なら Excel のまま列だけ差し替わる)。
+独立した機能 `FileColumnMappingField` で、**併用すると相手仕様の CSV** (WebEDI 等) になります
+(列マッピング単独なら Excel のまま列だけ差し替わる)。
 
 ### デザイナー設定プロパティ
 
@@ -31,7 +31,7 @@
 {
   "Encoding": "Utf8Bom",
   "Name": "CsvTransfer",
-  "TypeFullName": "Codeer.LowCode.Blazor.Extras.Designs.CsvFileTransferFieldDesign"
+  "TypeFullName": "Codeer.LowCode.Blazor.Extras.Designs.CsvFileFormatFieldDesign"
 }
 ```
 
@@ -46,7 +46,7 @@
 
 ```csharp
 //一括ダウンロード/一括更新の処理本体は Extras の BulkFileTransfer に移譲
-//(モジュールデザインの CsvFileTransferField の有無で CSV / Excel を分岐する)
+//(モジュールデザインの CsvFileFormatField の有無で CSV / Excel を分岐する)
 [HttpPost("list_file")]
 public async Task<IActionResult> GetListFileAsync(SearchCondition? condition)
     => Ok(await BulkFileTransfer.GetListFileAsync(DesignerService.GetDesignData(), _dataService.ModuleDataIO, condition!));

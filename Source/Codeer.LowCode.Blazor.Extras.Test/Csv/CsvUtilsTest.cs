@@ -102,7 +102,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Csv
         {
             Assert.Multiple(() =>
             {
-                Assert.That(new CsvFileTransferFieldDesign().Delimiter.ToChar(), Is.EqualTo(',')); //既定
+                Assert.That(new CsvFileFormatFieldDesign().Delimiter.ToChar(), Is.EqualTo(',')); //既定
                 Assert.That(CsvDelimiterKind.Comma.ToChar(), Is.EqualTo(','));
                 Assert.That(CsvDelimiterKind.Tab.ToChar(), Is.EqualTo('\t'));
                 Assert.That(CsvDelimiterKind.Semicolon.ToChar(), Is.EqualTo(';'));
@@ -115,9 +115,9 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Csv
             //本体クライアントは IBulkFileTransferFieldDesign.Extension でダウンロード拡張子を決める
             Assert.Multiple(() =>
             {
-                Assert.That(((IBulkFileTransferFieldDesign)new CsvFileTransferFieldDesign()).Extension, Is.EqualTo("csv"));
-                Assert.That(((IBulkFileTransferFieldDesign)new CsvFileTransferFieldDesign { FileExtension = "" }).Extension, Is.EqualTo("csv"));
-                Assert.That(((IBulkFileTransferFieldDesign)new CsvFileTransferFieldDesign { FileExtension = "txt" }).Extension, Is.EqualTo("txt"));
+                Assert.That(((IBulkFileTransferFieldDesign)new CsvFileFormatFieldDesign()).Extension, Is.EqualTo("csv"));
+                Assert.That(((IBulkFileTransferFieldDesign)new CsvFileFormatFieldDesign { FileExtension = "" }).Extension, Is.EqualTo("csv"));
+                Assert.That(((IBulkFileTransferFieldDesign)new CsvFileFormatFieldDesign { FileExtension = "txt" }).Extension, Is.EqualTo("txt"));
             });
         }
     }

@@ -11,13 +11,14 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
     /// <summary>
     /// 詳細レイアウトに配置できる一括ダウンロード/一括更新ボタン。
     /// 一覧ページの一括ダウンロード/一括更新 (list_file / submit_by_file) と同じサーバー処理を利用する
-    /// (ファイル形式は対象モジュールの <see cref="CsvFileTransferFieldDesign"/> /
-    /// <see cref="MappedFileTransferFieldDesign"/> の定義に従う)。
+    /// (ファイル形式は対象モジュールの <see cref="CsvFileFormatFieldDesign"/> /
+    /// <see cref="FileColumnMappingFieldDesign"/> の定義に従う)。
     /// 対象データを決める条件ソースとして、<see cref="SearchFieldName"/> と <see cref="ListFieldName"/> の
     /// どちらか一方だけを設定して使う (画面に見えている検索結果/一覧が対象になる)。
     /// このフィールドを使うアプリはサーバー側の対応実装 (BulkFileTransfer への移譲) が必要。
     /// </summary>
     [ToolboxIcon(PackIconMaterialKind = "SwapVerticalBold")]
+    [Designer(DisplayName = "$BulkFileTransferButtonField")]
     public class BulkFileTransferButtonFieldDesign() : FieldDesignBase(typeof(BulkFileTransferButtonFieldDesign).FullName!)
     {
         /// <summary>条件ソース: 検索フィールド名。その検索フィールドの現在の検索条件を使う。<see cref="ListFieldName"/> とどちらか一方だけを設定する。</summary>

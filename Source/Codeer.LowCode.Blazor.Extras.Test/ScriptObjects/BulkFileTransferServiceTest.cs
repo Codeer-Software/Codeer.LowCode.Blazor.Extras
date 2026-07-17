@@ -74,11 +74,11 @@ namespace Codeer.LowCode.Blazor.Extras.Test.ScriptObjects
         }
 
         [Test]
-        public async Task CsvFileTransferFieldChangesDownloadExtension()
+        public async Task CsvFileFormatFieldChangesDownloadExtension()
         {
             var designData = CreateDesignData();
-            //対象モジュールに CsvFileTransferField を定義するとダウンロード拡張子が csv になる
-            designData.Modules.Find("Orders")!.Fields.Add(new Designs.CsvFileTransferFieldDesign { Name = "CsvTransfer" });
+            //対象モジュールに CsvFileFormatField を定義するとダウンロード拡張子が csv になる
+            designData.Modules.Find("Orders")!.Fields.Add(new Designs.CsvFileFormatFieldDesign { Name = "CsvTransfer" });
 
             var services = new TestServices(designData);
             var mod = await services.CreateModuleAsync("mod");

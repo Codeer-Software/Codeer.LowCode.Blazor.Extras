@@ -14,11 +14,11 @@ namespace Codeer.LowCode.Blazor.Extras.Server.BulkFile
     /// 一覧の一括ダウンロード/一括更新 (list_file / submit_by_file) のサーバー処理本体。
     /// テンプレートの ModuleDataController から移譲される。
     /// モジュールデザインの 2 つの独立した設定フィールドの組み合わせで動作が決まる:
-    ///   - <see cref="CsvFileTransferFieldDesign"/> … ファイル形式 (CSV 化・エンコーディング・区切り文字・拡張子)
-    ///   - <see cref="MappedFileTransferFieldDesign"/> … 列構成 (相手仕様の列並び・書式・コード変換)
-    /// なし = 従来の xlsx / Csv のみ = 内部名ヘッダの CSV / Mapped のみ = 外部列の xlsx / 両方 = 外部列の CSV (WebEDI)。
-    /// Mapped は ModuleData ⇔ 外部列の型付き変換 (テーブルテキストを経由しない)、
-    /// Mapped なしは内部名ヘッダのテーブルテキストのラウンドトリップ。
+    ///   - <see cref="CsvFileFormatFieldDesign"/> … ファイル形式 (CSV 化・エンコーディング・区切り文字・拡張子)
+    ///   - <see cref="FileColumnMappingFieldDesign"/> … 列構成 (相手仕様の列並び・書式・コード変換)
+    /// なし = 従来の xlsx / Csv のみ = 内部名ヘッダの CSV / 列マッピングのみ = 外部列の xlsx / 両方 = 外部列の CSV (WebEDI)。
+    /// 列マッピングは ModuleData ⇔ 外部列の型付き変換 (テーブルテキストを経由しない)、
+    /// 列マッピングなしは内部名ヘッダのテーブルテキストのラウンドトリップ。
     /// クライアントも同じデザインを参照してダウンロードの拡張子を切り替える。
     /// 形式の追加や外部システム連携などの拡張はここを起点に行う。
     /// </summary>
@@ -27,10 +27,10 @@ namespace Codeer.LowCode.Blazor.Extras.Server.BulkFile
         /// <summary>一括ダウンロード。検索条件で取得した一覧をファイルバイナリにする。</summary>
         public static async Task<MemoryStream> GetListFileAsync(DesignData designData, ModuleDataIO moduleDataIO, SearchCondition condition)
         {
-            var (module, csv, mapped) = FindTransferFields(designData, condition.ModuleName);
+            var (module, csv, mapping) = FindTransferFields(designData, condition.ModuleName);
 
-            var texts = mapped != null
-                ? await MappedFileTransform.ToExternalAsync((await moduleDataIO.GetListAsync(condition, 0)).Items, mapped, module!, moduleDataIO)
+            var texts = mapping != null
+                ? await FileColumnMappingTransform.ToExternalAsync((await moduleDataIO.GetListAsync(condition, 0)).Items, mapping, module!, moduleDataIO)
                 : await moduleDataIO.GetTableTextsAsync(condition);
 
             return csv != null
@@ -46,7 +46,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.BulkFile
         /// </summary>
         public static async Task<List<ModuleSubmitResult>> SubmitByFileAsync(DesignData designData, ModuleDataIO moduleDataIO, string? moduleName, Stream file, bool dryRun = false)
         {
-            var (module, csv, mapped) = FindTransferFields(designData, moduleName ?? string.Empty);
+            var (module, csv, mapping) = FindTransferFields(designData, moduleName ?? string.Empty);
 
             //ファイル → テーブルテキスト (CSV フィールドがあれば内容で CSV/xlsx を自動判定)
             var texts = csv != null
@@ -54,10 +54,10 @@ namespace Codeer.LowCode.Blazor.Extras.Server.BulkFile
                 : await ExcelUtils.ReadAllTextsFromExcelBinary(file);
 
             //相手仕様の列 → 型付きで ModuleData に変換して取込 (解釈できない値・引き当て失敗は行番号付きエラー)
-            if (mapped != null)
+            if (mapping != null)
             {
-                var (items, mappedErrors) = await MappedFileTransform.ToInternalAsync(texts, mapped, module!, moduleDataIO);
-                if (mappedErrors.Any()) return Error(string.Join(Environment.NewLine, Cap(mappedErrors)));
+                var (items, mappingErrors) = await FileColumnMappingTransform.ToInternalAsync(texts, mapping, module!, moduleDataIO);
+                if (mappingErrors.Any()) return Error(string.Join(Environment.NewLine, Cap(mappingErrors)));
                 if (dryRun) return [new ModuleSubmitResult()]; //検証のみ (エラーなし)
                 return await moduleDataIO.SubmitWithTransactionByModuleDataAsync(moduleName, items);
             }
@@ -71,13 +71,13 @@ namespace Codeer.LowCode.Blazor.Extras.Server.BulkFile
             return await moduleDataIO.SubmitWithTransactionByTableTextsAsync(moduleName, texts);
         }
 
-        static (ModuleDesign? Module, CsvFileTransferFieldDesign? Csv, MappedFileTransferFieldDesign? Mapped) FindTransferFields(
+        static (ModuleDesign? Module, CsvFileFormatFieldDesign? Csv, FileColumnMappingFieldDesign? Mapping) FindTransferFields(
             DesignData designData, string moduleName)
         {
             var module = designData.Modules.Find(moduleName);
             return (module,
-                    module?.Fields.OfType<CsvFileTransferFieldDesign>().FirstOrDefault(),
-                    module?.Fields.OfType<MappedFileTransferFieldDesign>().FirstOrDefault());
+                    module?.Fields.OfType<CsvFileFormatFieldDesign>().FirstOrDefault(),
+                    module?.Fields.OfType<FileColumnMappingFieldDesign>().FirstOrDefault());
         }
 
         static List<ModuleSubmitResult> Error(string message)

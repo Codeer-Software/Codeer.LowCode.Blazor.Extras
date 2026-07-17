@@ -4,13 +4,13 @@
 モジュールの Fields に定義するだけで有効になり、レイアウトへの配置は不要です (配置しても実行時は何も描画されません)。
 
 列の並び・外部列名・書式・固定値・コード変換を宣言でき、サーバー側が内部形式との相互変換を行います。
-**ファイル形式とは独立した機能**で、`CsvFileTransferField` との組み合わせで動作が決まります:
+**ファイル形式とは独立した機能**で、`CsvFileFormatField` との組み合わせで動作が決まります:
 
 | 定義するフィールド | 一括ダウンロード/更新 |
 |---|---|
 | なし | xlsx (内部名ヘッダ) — 従来どおり |
-| CsvFileTransferField のみ | CSV (内部名ヘッダ) |
-| MappedFileTransferField のみ | **xlsx (相手仕様の列)** |
+| CsvFileFormatField のみ | CSV (内部名ヘッダ) |
+| FileColumnMappingField のみ | **xlsx (相手仕様の列)** |
 | 両方 | **CSV (相手仕様の列)** — WebEDI 向け |
 
 ### 機能
@@ -19,7 +19,7 @@
 - **コード変換**: 変換表は**ただの業務モジュール** (例: 自社得意先コード⇔EDI取引先コード)。列ごとに変換モジュール名と外部/内部フィールド名を指定すると、出力時は内部→外部、取込時は外部→内部に引き当てる。引き当てられない外部コードは行番号付きエラー
 - **書式**: フィールド側の設定に従う。日付/日時/数値フィールドは自身の `Format` プロパティ (例 `yyyyMMdd`) で出力時は書式化、取込時はパースし、書式どおりでない値は行番号付きエラー。変換はフィールドデザインへの委譲 (`IExternalTextFormatFieldDesign`) で、和暦・右詰め空白埋めなどの特殊書式はこのインターフェースを実装した独自フィールドで対応する。EDI用に画面と別書式が必要な場合は連携用モジュール (ビュー) を分けてそちらのフィールドに書式を設定する
 - **ヘッダ有無**: `HasHeader: false` でヘッダ行なしのファイルに対応
-- エンコーディング・区切り文字・拡張子は CSV の関心事なので `CsvFileTransferField` 側で指定
+- エンコーディング・区切り文字・拡張子は CSV の関心事なので `CsvFileFormatField` 側で指定
 
 ### デザイナー設定プロパティ
 
@@ -56,14 +56,14 @@
     ]
   },
   "Name": "EdiMapping",
-  "TypeFullName": "Codeer.LowCode.Blazor.Extras.Designs.MappedFileTransferFieldDesign"
+  "TypeFullName": "Codeer.LowCode.Blazor.Extras.Designs.FileColumnMappingFieldDesign"
 }
 ```
 
 受注日を `20260717` のような書式で入出力するには、`OrderDate` フィールド (DateField) 側の `Format` に
 `yyyyMMdd` を設定します (書式は列ではなくフィールドの設定)。
 
-CSV にする場合は同じモジュールの Fields に `CsvFileTransferFieldDesign` も定義します (形式はそちらで指定):
+CSV にする場合は同じモジュールの Fields に `CsvFileFormatFieldDesign` も定義します (形式はそちらで指定):
 
 ```json
 {
@@ -71,7 +71,7 @@ CSV にする場合は同じモジュールの Fields に `CsvFileTransferFieldD
   "Delimiter": "Comma",
   "FileExtension": "txt",
   "Name": "EdiFormat",
-  "TypeFullName": "Codeer.LowCode.Blazor.Extras.Designs.CsvFileTransferFieldDesign"
+  "TypeFullName": "Codeer.LowCode.Blazor.Extras.Designs.CsvFileFormatFieldDesign"
 }
 ```
 
@@ -84,7 +84,7 @@ CSV にする場合は同じモジュールの Fields に `CsvFileTransferFieldD
 
 ### サーバー側の対応 (必須)
 
-`CsvFileTransferField` と同じく、サーバーテンプレートの `ModuleDataController` が
+`CsvFileFormatField` と同じく、サーバーテンプレートの `ModuleDataController` が
 `BulkFileTransfer` (Codeer.LowCode.Blazor.Extras.Server) に移譲済みである必要があります。
 変換はテーブルテキストを経由せず、フィールドの型付きの値 (ModuleData) と外部列を直接相互変換します。
 取込時は「書式どおりに解釈できない値・型変換できない値・引き当てられない外部コード」を行番号付きで報告し、

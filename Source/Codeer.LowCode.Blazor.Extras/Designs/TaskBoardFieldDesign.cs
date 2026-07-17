@@ -10,6 +10,7 @@ using Codeer.LowCode.Blazor.Repository.Match;
 
 namespace Codeer.LowCode.Blazor.Extras.Designs
 {
+    [Designer(DisplayName = "$TaskBoardField")]
     public class TaskBoardFieldDesign() : FieldDesignBase(typeof(TaskBoardFieldDesign).FullName!), IDisplayName,
         ISearchResultsViewFieldDesign, IFillHeightFieldDesign
     {

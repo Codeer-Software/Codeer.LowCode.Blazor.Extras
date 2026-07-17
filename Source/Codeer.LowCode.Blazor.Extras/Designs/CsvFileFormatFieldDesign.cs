@@ -14,11 +14,12 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
     /// サーバー側 (テンプレートから移譲される BulkFileTransfer) は同じモジュールデザインを参照して
     /// CSV 生成/取り込みに分岐する。
     /// 列構成は既定では内部名ヘッダ (FieldName.DataMemberName) のラウンドトリップ用。
-    /// 相手仕様固定の列 (WebEDI 等) にするには <see cref="MappedFileTransferFieldDesign"/> を併用する
-    /// (Mapped 単独なら Excel のまま列だけ差し替わる)。
+    /// 相手仕様固定の列 (WebEDI 等) にするには <see cref="FileColumnMappingFieldDesign"/> を併用する
+    /// (列マッピング単独なら Excel のまま列だけ差し替わる)。
     /// このフィールドを使うアプリはサーバー側の対応実装 (BulkFileTransfer への移譲) が必要。
     /// </summary>
-    public class CsvFileTransferFieldDesign() : FieldDesignBase(typeof(CsvFileTransferFieldDesign).FullName!), IBulkFileTransferFieldDesign
+    [Designer(DisplayName = "$CsvFileFormatField")]
+    public class CsvFileFormatFieldDesign() : FieldDesignBase(typeof(CsvFileFormatFieldDesign).FullName!), IBulkFileTransferFieldDesign
     {
         /// <summary>CSV のエンコーディング。既定は UTF-8 (BOM 付き。Excel でダブルクリックしても文字化けしない)。</summary>
         [Designer]
@@ -35,13 +36,13 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         //本体クライアントが一括ダウンロードのファイル名の拡張子として参照する。未設定なら "csv"
         string IBulkFileTransferFieldDesign.Extension => string.IsNullOrEmpty(FileExtension) ? "csv" : FileExtension;
 
-        public override string GetWebComponentTypeFullName() => typeof(CsvFileTransferFieldComponent).FullName!;
+        public override string GetWebComponentTypeFullName() => typeof(CsvFileFormatFieldComponent).FullName!;
 
         public override string GetSearchWebComponentTypeFullName() => string.Empty;
 
         public override string GetSearchControlTypeFullName() => string.Empty;
 
-        public override FieldBase CreateField() => new CsvFileTransferField(this);
+        public override FieldBase CreateField() => new CsvFileFormatField(this);
 
         public override FieldDataBase? CreateData() => null;
 

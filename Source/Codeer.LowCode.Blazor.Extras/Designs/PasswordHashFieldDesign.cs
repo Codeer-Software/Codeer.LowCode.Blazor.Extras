@@ -9,6 +9,7 @@ using Codeer.LowCode.Blazor.Repository.Design;
 namespace Codeer.LowCode.Blazor.Extras.Designs
 {
     [ToolboxIcon(PackIconMaterialKind = "ShieldKeyOutline")]
+    [Designer(DisplayName = "$PasswordHashField")]
     public class PasswordHashFieldDesign() : FieldDesignBase(typeof(PasswordHashFieldDesign).FullName!)
     {
         [Designer(Index = 2, CandidateType = CandidateType.Field, DisplayName = "PasswordField")]

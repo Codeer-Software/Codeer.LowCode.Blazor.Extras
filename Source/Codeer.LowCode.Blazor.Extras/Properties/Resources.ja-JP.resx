@@ -396,4 +396,52 @@
   <data name="ExcelReportButtonTemplateRequired" xml:space="preserve">
     <value>テンプレートリソースパスを設定してください。</value>
   </data>
+  <data name="AITextAnalyzerField" xml:space="preserve">
+    <value>AIテキスト解析</value>
+  </data>
+  <data name="CalendarField" xml:space="preserve">
+    <value>カレンダー</value>
+  </data>
+  <data name="ColorPickerField" xml:space="preserve">
+    <value>カラーピッカー</value>
+  </data>
+  <data name="CsvFileFormatField" xml:space="preserve">
+    <value>CSVファイル形式</value>
+  </data>
+  <data name="EnterFocusMoveField" xml:space="preserve">
+    <value>Enterフォーカス移動</value>
+  </data>
+  <data name="GanttField" xml:space="preserve">
+    <value>ガントチャート</value>
+  </data>
+  <data name="FileColumnMappingField" xml:space="preserve">
+    <value>ファイル列マッピング</value>
+  </data>
+  <data name="MarkerListField" xml:space="preserve">
+    <value>マーカーリスト</value>
+  </data>
+  <data name="OrientationLockField" xml:space="preserve">
+    <value>画面向きロック</value>
+  </data>
+  <data name="PasswordHashField" xml:space="preserve">
+    <value>パスワードハッシュ</value>
+  </data>
+  <data name="ProgressField" xml:space="preserve">
+    <value>プログレスバー</value>
+  </data>
+  <data name="QrCodeField" xml:space="preserve">
+    <value>QRコード</value>
+  </data>
+  <data name="RichTextField" xml:space="preserve">
+    <value>リッチテキスト</value>
+  </data>
+  <data name="TaskBoardField" xml:space="preserve">
+    <value>タスクボード</value>
+  </data>
+  <data name="BulkFileTransferButtonField" xml:space="preserve">
+    <value>一括ファイル転送ボタン</value>
+  </data>
+  <data name="ExcelReportButtonField" xml:space="preserve">
+    <value>Excel帳票ボタン</value>
+  </data>
 </root>
