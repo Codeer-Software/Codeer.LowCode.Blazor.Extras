@@ -1,91 +1,67 @@
-using System.Configuration;
-using System.Diagnostics;
-using System.IO;
-using System.IO.Compression;
-using System.Net.Http;
-using System.Windows;
+using Azure.AI.OpenAI;
 using Codeer.LowCode.Blazor.Components.AppParts.Loading;
-using Codeer.LowCode.Blazor.DataIO.Db.Definition;
 using Codeer.LowCode.Blazor.Designer;
-using Codeer.LowCode.Blazor.Designer.Extensibility;
-using Codeer.LowCode.Blazor.Designer.Extensibility.Views;
-using Codeer.LowCode.Blazor.Designer.Models;
-using Codeer.LowCode.Blazor.Designer.Views.Windows;
-using Codeer.LowCode.Blazor.DesignLogic;
+using Codeer.LowCode.Blazor.Designer.Standard;
 using Codeer.LowCode.Blazor.Extras.Designer;
-using Codeer.LowCode.Blazor.Extras.Fields;
-using Codeer.LowCode.Blazor.Repository.Design;
 using Codeer.LowCode.Blazor.Script;
-using Codeer.LowCode.Blazor.SystemSettings;
-using Codeer.LowCode.Blazor.Extras.ScriptObjects;
-using Extras.Designer.Lib;
-using Extras.Designer.Lib.DbTableToModule;
-using Extras.Designer.Lib.ExcelToModule;
-using Extras.Designer.Lib.ModuleToClass;
-using Extras.Designer.Lib.SeleniumPageObject;
+using Microsoft.Extensions.AI;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Win32;
+using System.ClientModel;
+using System.Configuration;
+using System.Windows;
 
 namespace Extras.Designer
 {
     public partial class App : DesignerApp
     {
+        //AZURE_OPENAI_* の3つが揃っているときだけ Azure OpenAI の IChatClient ファクトリを返す(欠けていればAIチャット無効)。
+        static Func<IChatClient>? CreateAzureOpenAIChatClientFactory()
+        {
+            var endpoint = Environment.GetEnvironmentVariable("AZURE_OPENAI_API_ENDPOINT");
+            var key = Environment.GetEnvironmentVariable("AZURE_OPENAI_API_KEY");
+            var model = Environment.GetEnvironmentVariable("AZURE_OPENAI_API_MODEL");
+            if (string.IsNullOrEmpty(endpoint) || string.IsNullOrEmpty(key) || string.IsNullOrEmpty(model)) return null;
+
+            return () => new AzureOpenAIClient(new Uri(endpoint), new ApiKeyCredential(key))
+                .GetChatClient(model)
+                .AsIChatClient();
+        }
+
         protected override void OnStartup(StartupEventArgs e)
         {
             //load dll. ProCodeManager 等のロード済みアセンブリスキャンより前に Extras.Client.Shared をロードしておく
             //(これが無いとプロコードコンポーネント/モジュールがデザインチェックで「存在しません」になる)
             typeof(global::Extras.Client.Shared.Services.AppInfoService).ToString();
 
+            //プロジェクトテンプレートと claude-workspace verb は headless CLI からも参照されるため、
+            //headless 分岐が走る base.OnStartup より前に登録する (冪等)。
+            DesignerStandard.SetupHeadless();
             ExtrasDesignerInitializer.Initialize(BlazorRuntime);
 
             Codeer.LowCode.Blazor.License.LicenseManager.IsAutoUpdate =
                 bool.TryParse(ConfigurationManager.AppSettings["IsLicenseAutoUpdate"], out var val) ? val : true;
+
+            //アプリ固有: サービス・スクリプト型を登録
+            //(Extras のスクリプトオブジェクト群は ExtrasDesignerInitializer.Initialize が登録する)
             Services.AddSingleton<IDbAccessorFactory, DbAccessorFactory>();
-            ScriptRuntimeTypeManager.AddType(typeof(ExcelCellIndex));
-            ScriptRuntimeTypeManager.AddType(typeof(Codeer.LowCode.Blazor.Extras.ScriptObjects.Excel));
-            ScriptRuntimeTypeManager.AddService(new Toaster(null!));
-            ScriptRuntimeTypeManager.AddService(new WebApiService(null!, null!));
-            ScriptRuntimeTypeManager.AddType<WebApiResult>();
-            ScriptRuntimeTypeManager.AddService(new MailService());
-            ScriptRuntimeTypeManager.AddType<MailMessage>();
             ScriptRuntimeTypeManager.AddService(new LoadingService());
             ScriptRuntimeTypeManager.AddType<LoadingService.LoadingScope>();
-            ScriptRuntimeTypeManager.AddType<CalendarViewMode>();
-            ScriptRuntimeTypeManager.AddType<GanttViewMode>();
-            
+
             BlazorRuntime.InstallBundleCss("Extras.Client.Shared");
-
-            IconCandidate.Icons.AddRange(Extras.Designer.Properties.Resources.bootstrap_icons
-                .Split(["\r\n", "\n"], StringSplitOptions.RemoveEmptyEntries).Order());
-
-            ProjectCatalog.Add(new ProjectCatalogEntry
-            {
-                Create = CreateGettingStandard,
-                Name = "GettingStarted",
-                Description =
-                    "The sample project reads, writes, and deletes data in the \r\n\"C:\\Codeer.LowCode.Blazor.Local\"; folder. \r\n;Please do not place any data in this folder that would be problematic if overwritten or deleted. You can change this folder later.",
-            });
-            ProjectCatalog.Add(new ProjectCatalogEntry
-            {
-                Create = CreateEmpty,
-                Name = "Empty",
-                Description = "Empty template.",
-            });
 
             base.OnStartup(e);
 
             MainWindow.Title = "Extras";
-            DesignerEnvironment.AddMainMenu(ImportModulesFromExcel, "Tools", "Import Module from Excel");
-            DesignerEnvironment.AddMainMenu(ImportModulesFromDdTables, "Tools", "Import Modules from Database");
-            DesignerEnvironment.AddMainMenu(ExportPageObject, "Tools", "Export PageObject");
 
-            DesignerEnvironment.AddSolutionExplorerMenu(CreateDDL, SolutionExplorerMenuTarget.Module, "Create DDL");
-            DesignerEnvironment.AddSolutionExplorerMenu(CreateFieldDataClass, SolutionExplorerMenuTarget.Module, "Create FieldData Class");
-            DesignerEnvironment.AddSolutionExplorerMenu(CreateEfClass, SolutionExplorerMenuTarget.Module, "Create EF Class");
-
-            DesignerEnvironment.AddSolutionExplorerMenu(ExportPrintExcelCheatSheet, SolutionExplorerMenuTarget.Module, "Export Excel Print CheatSheet");
-
-            DesignerEnvironment.AddDbColumnTransformHandler(DbColumnTransformHandler);
+            //標準実装一式 (アイコン候補 / プロジェクトテンプレート / ツールメニュー / AIチャット) を登録。
+            //一部だけ使いたい場合は DesignerStandard.Setup の中身と同じコードを個別に書ける
+            //(StandardTemplates / StandardMenus / StandardIcons / DesignerChatRegistration)。
+            //AIチャットのモデルはライブラリが IChatClient 抽象しか知らないため、
+            //プロバイダ選択(Azure OpenAI)と認証情報はアプリ側のここで持ち、ファクトリとして渡す。
+            DesignerStandard.Setup(DesignerEnvironment, new DesignerStandardOptions
+            {
+                CreateAiChatClient = CreateAzureOpenAIChatClientFactory(),
+            });
 
             DispatcherUnhandledException += App_DispatcherUnhandledException;
         }
@@ -97,253 +73,6 @@ namespace Extras.Designer
                 $"An unhandled exception occurred:  {e.Exception.Message}{Environment.NewLine}{e.Exception.StackTrace}",
                 "Error", MessageBoxButton.OK, MessageBoxImage.Error);
             e.Handled = true;
-        }
-
-        FieldDesignBase? DbColumnTransformHandler(DataSource dataSource, DbTableDefinition table, string columnName)
-        {
-            var col = table.Columns.FirstOrDefault(e => e.Name == columnName);
-            if (col == null) return null;
-            if (dataSource.DataSourceType == DataSourceType.PostgreSQL && col.Name == "xmin")
-                return new OptimisticLockingFieldDesign { Name = SystemFieldNames.OptimisticLocking, DbColumn = columnName };
-            return null;
-        }
-
-        private void ImportModulesFromDdTables()
-        {
-            if (string.IsNullOrEmpty(DesignerEnvironment.CurrentFileDirectory)) return;
-
-            //ユーザの選択をゲットする
-            var datasourceToTables = DesignerEnvironment.GetDesignerSettings().DataSources.ToDictionary(e => e.Name, e => DesignerEnvironment.GetDbInfo(e.Name));
-            var userSelected = DbTableSelectWindow.ShowDialog(datasourceToTables);
-            if (userSelected == null) return;
-
-            //モジュールに変換
-            var err = DbTableParser.Import(DesignerEnvironment, userSelected.Value.selectedDataSource, userSelected.Value.selectedTables);
-            if (!string.IsNullOrEmpty(err)) DesignerEnvironment.ShowToast(err, false);
-        }
-
-        private void CreateDDL(SolutionExplorerMenuClickEventArgs e)
-        {
-            var modName = e.Item.Split(".").First();
-            var mod = DesignerEnvironment.GetDesignData().Modules.Find(modName);
-            if (mod == null)
-            {
-                DesignerEnvironment.ShowToast("Module not found", false);
-                return;
-            }
-            var config = DesignerEnvironment.GetDesignerSettings();
-            var dataSource = config.DataSources.FirstOrDefault(e => e.Name == mod.DataSourceName);
-            if (dataSource == null)
-            {
-                DesignerEnvironment.ShowToast("Invalid Data Source", false);
-                return;
-            }
-
-            var ddl = mod.CreateDDL(dataSource.DataSourceType);
-
-            new DDLWindow
-            {
-                DesignerEnvironment = DesignerEnvironment,
-                DataSource = dataSource,
-                DisplayText = string.Join(Environment.NewLine, ddl),
-                Owner = Application.Current.MainWindow,
-                WindowStartupLocation = WindowStartupLocation.CenterOwner,
-                Title = "DDL",
-            }.Show();
-        }
-
-        private void CreateFieldDataClass(SolutionExplorerMenuClickEventArgs e)
-        {
-            var modName = e.Item.Split(".").First();
-            var mod = DesignerEnvironment.GetDesignData().Modules.Find(modName);
-            if (mod == null)
-            {
-                DesignerEnvironment.ShowToast("Module not found", false);
-                return;
-            }
-
-            var classTxt = ClassGenerator.ModuleDesignToDataFieldClass(mod);
-
-            new TextDisplayWindow
-            {
-                DisplayText = classTxt,
-                Owner = Application.Current.MainWindow,
-                WindowStartupLocation = WindowStartupLocation.CenterOwner,
-                Title = "Module to Field Data Class",
-            }.Show();
-        }
-
-        private void CreateEfClass(SolutionExplorerMenuClickEventArgs e)
-        {
-            var modName = e.Item.Split(".").First();
-            var mod = DesignerEnvironment.GetDesignData().Modules.Find(modName);
-            if (mod == null)
-            {
-                DesignerEnvironment.ShowToast("Module not found", false);
-                return;
-            }
-            var config = DesignerEnvironment.GetDesignerSettings();
-            var dataSource = config.DataSources.FirstOrDefault(e => e.Name == mod.DataSourceName);
-            if (dataSource == null)
-            {
-                DesignerEnvironment.ShowToast("Invalid Data Source", false);
-                return;
-            }
-
-            var classTxt = ClassGenerator.ModuleDesignToEfClass(mod, dataSource.DataSourceType);
-
-            new TextDisplayWindow
-            {
-                DisplayText = classTxt,
-                Owner = Application.Current.MainWindow,
-                WindowStartupLocation = WindowStartupLocation.CenterOwner,
-                Title = "Module to EF Class",
-            }.Show();
-        }
-
-        private void ExportPrintExcelCheatSheet(SolutionExplorerMenuClickEventArgs e)
-        {
-            if (string.IsNullOrEmpty(DesignerEnvironment.CurrentFileDirectory))
-            {
-                return;
-            }
-
-            var modName = e.Item.Split(".").First();
-            var designData = DesignerEnvironment.GetDesignData();
-            var module = designData.Modules.Find(modName);
-            if (module == null)
-            {
-                DesignerEnvironment.ShowToast("Module not found", false);
-                return;
-            }
-
-            var dialog = new SaveFileDialog
-            {
-                Filter = "Excel files (*.xlsx)|*.xlsx",
-                FileName = $"{module.Name}_PrintExcelCheatSheet.xlsx"
-            };
-            if (dialog.ShowDialog() != true)
-            {
-                return;
-            }
-
-            try
-            {
-                var moduleToCheatSheet = new ModuleToExcelCheatSheet();
-                var stream = moduleToCheatSheet.CreatePrintExcelCheatSheet(designData, module);
-                File.WriteAllBytes(dialog.FileName, stream.ToArray());
-                Process.Start(new ProcessStartInfo
-                {
-                    FileName = dialog.FileName,
-                    UseShellExecute = true
-                });
-                DesignerEnvironment.ShowToast("Print Excel CheatSheet exported.", true);
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show(
-                    ex.Message,
-                    "Error",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Error);
-            }
-        }
-
-        private void ImportModulesFromExcel()
-        {
-            if (string.IsNullOrEmpty(DesignerEnvironment.CurrentFileDirectory))
-            {
-                return;
-            }
-
-            var dialog = new OpenFileDialog
-            {
-                Filter = "Excel files (*.xlsx)|*.xlsx",
-            };
-            if (dialog.ShowDialog() != true) return;
-
-            try
-            {
-                var ddl = new ExcelImporter
-                {
-                    ProjectPath = DesignerEnvironment.CurrentFileDirectory
-                }.Import(dialog.FileName);
-                if (string.IsNullOrEmpty(ddl)) return;
-
-                new TextDisplayWindow
-                {
-                    DisplayText = ddl,
-                    Owner = MainWindow,
-                    WindowStartupLocation = WindowStartupLocation.CenterOwner,
-                    Title = "DDL",
-                }.Show();
-            }
-            catch (Exception e)
-            {
-                MessageBox.Show(e.Message);
-            }
-        }
-
-        private void ExportPageObject()
-        {
-            if (string.IsNullOrEmpty(DesignerEnvironment.CurrentFileDirectory))
-            {
-                return;
-            }
-
-            var nameInputDialog = new NameInputDialog
-            {
-                Owner = MainWindow,
-                WindowStartupLocation = WindowStartupLocation.CenterOwner
-            };
-            if (nameInputDialog.ShowDialog() != true)
-            {
-                return;
-            }
-
-            var ns = nameInputDialog.NameText;
-
-            var folderDialog = new OpenFolderDialog();
-            if (folderDialog.ShowDialog() != true)
-            {
-                return;
-            }
-
-            var target = folderDialog.FolderName;
-            var designData = DesignerEnvironment.GetDesignData();
-            new SeleniumPageObjectBuilder
-            {
-                TargetPath = target,
-                Namespace = ns,
-            }.Build(designData);
-
-            DesignerEnvironment.ShowToast("PageObject exported", true);
-        }
-
-        static void CreateEmpty(string path)
-        {
-            using Stream stream = new MemoryStream(Extras.Designer.Properties.Resources.EmptyTemplate);
-            ZipFile.ExtractToDirectory(stream, path);
-
-            var dbPath = "C:\\Codeer.LowCode.Blazor.Local\\Data\\sqlite_sample.db";
-            if (!File.Exists(dbPath))
-            {
-                Directory.CreateDirectory(Path.GetDirectoryName(dbPath)!);
-                File.WriteAllBytes(dbPath, Extras.Designer.Properties.Resources.sqlite_sample);
-            }
-        }
-
-        static void CreateGettingStandard(string path)
-        {
-            using Stream stream = new MemoryStream(Extras.Designer.Properties.Resources.GettingStartedTemplate);
-            ZipFile.ExtractToDirectory(stream, path);
-
-            var dbPath = "C:\\Codeer.LowCode.Blazor.Local\\Data\\sqlite_sample.db";
-            if (!File.Exists(dbPath))
-            {
-                Directory.CreateDirectory(Path.GetDirectoryName(dbPath)!);
-                File.WriteAllBytes(dbPath, Extras.Designer.Properties.Resources.sqlite_sample);
-            }
         }
     }
 }

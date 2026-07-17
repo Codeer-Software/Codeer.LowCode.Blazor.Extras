@@ -1,0 +1,30 @@
+@using Codeer.LowCode.Blazor.Components
+@using Codeer.LowCode.Blazor.Extras.Designs
+@using Codeer.LowCode.Blazor.Extras.Fields
+@using Codeer.LowCode.Blazor.OperatingModel
+@using Microsoft.AspNetCore.Components.Web
+@inherits FieldComponentBase<ExcelReportButtonField>
+
+<button type="button" class="btn btn-outline-secondary" style="@StyleString"
+        disabled="@(Field.IsDownloading || !Field.IsEnabled)"
+        @onclick="@(async () => await Field.DownloadAsync())"
+        aria-label="Excel Report" data-system="excel-report">
+  <i class="bi @IconClass" aria-hidden="true"></i>
+</button>
+
+@code {
+  string IconClass => Field.Design.Format == ExcelReportFormat.Pdf ? "bi-file-earmark-pdf" : "bi-file-earmark-excel";
+
+  //自分に明示設定されたスタイルだけ出力する (コアの GetStyleString と同じ規約)
+  string? StyleString
+  {
+    get
+    {
+      var drawStyle = Field.GetOwnStyles();
+      var style = string.Empty;
+      if (drawStyle.HasFlag(DrawStyle.BackgroundColor)) style += $"background-color: {Field.BackgroundColor};";
+      if (drawStyle.HasFlag(DrawStyle.Color)) style += $"color: {Field.Color};";
+      return style.Length == 0 ? null : style;
+    }
+  }
+}

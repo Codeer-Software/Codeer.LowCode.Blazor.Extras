@@ -29,7 +29,9 @@ namespace Extras.Client.Shared.Services
         }
 
         public async Task<List<ModuleSubmitResult>?> SubmitAsync(List<ModuleSubmitData> data)
-            => await _http.PostAsJsonAsync<List<ModuleSubmitData>, List<ModuleSubmitResult>>($"/api/module_data", data);
+            //FileFieldのDB列格納モードでファイル実体(byte[])を運ぶため、listの応答と同様にMessagePackで送る
+            => await _http.PostContentAsJsonAsync<List<ModuleSubmitResult>>($"/api/module_data",
+                new ByteArrayContent(MessagePackSerializer.Typeless.Serialize(data)));
 
         public async Task<Codeer.LowCode.Blazor.DataIO.FileInfo?> UploadFile(string moduleName, string fieldName, string fileName, StreamContent content)
             => await _http.PostContentAsJsonAsync<Codeer.LowCode.Blazor.DataIO.FileInfo>($"/api/module_data/upload?moduleName={moduleName}&fieldName={fieldName}&fileName={fileName}", content);
@@ -41,14 +43,14 @@ namespace Extras.Client.Shared.Services
             return (MemoryStream)await result.Content.ReadAsStreamAsync();
         }
 
-        public async Task<MemoryStream?> GetListByExcelFileAsync(SearchCondition condition)
+        public async Task<MemoryStream?> GetListFileAsync(SearchCondition condition)
         {
-            var result = await _http.PostAsJsonReturnHttpResponseAsync($"/api/module_data/excel_download", condition);
+            var result = await _http.PostAsJsonReturnHttpResponseAsync($"/api/module_data/list_file", condition);
             if (result == null) return null;
             return (MemoryStream)await result.Content.ReadAsStreamAsync();
         }
 
-        public async Task<List<ModuleSubmitResult>?> SubmitByExcelFileAsync(string moduleName, StreamContent content)
-            => await _http.PostContentAsJsonAsync<List<ModuleSubmitResult>>($"/api/module_data/excel_upload?moduleName={moduleName}", content);
+        public async Task<List<ModuleSubmitResult>?> SubmitByFileAsync(string moduleName, StreamContent content)
+            => await _http.PostContentAsJsonAsync<List<ModuleSubmitResult>>($"/api/module_data/submit_by_file?moduleName={moduleName}", content);
     }
 }

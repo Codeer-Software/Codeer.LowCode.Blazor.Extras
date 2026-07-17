@@ -5,12 +5,13 @@ using Codeer.LowCode.Blazor.Repository.Match;
 using Codeer.LowCode.Blazor.RequestInterfaces;
 using Codeer.LowCode.Blazor.Utils;
 using Excel.Report.PDF;
-using Extras.Client.Shared.Services;
-using Extras.Server.Services;
-using Codeer.LowCode.Blazor.Extras.Server.FileManagement;
-using Codeer.LowCode.Blazor.Extras.Server.Web;
 using MessagePack;
 using Microsoft.AspNetCore.Mvc;
+using Extras.Client.Shared.Services;
+using Extras.Server.Services;
+using Codeer.LowCode.Blazor.Extras.Server.BulkFile;
+using Codeer.LowCode.Blazor.Extras.Server.FileManagement;
+using Codeer.LowCode.Blazor.Extras.Server.Web;
 
 namespace Extras.Server.Controllers
 {
@@ -33,8 +34,9 @@ namespace Extras.Server.Controllers
         [HttpGet("design")]
         public async Task<IActionResult> GetDesignData()
         {
+            await LicenseService.UpdateAsync(Request);
             await _dataService.ModuleDataIO.CheckAppAuthorization();
-            return File(DesignerService.GetDesignDataForFront(await _dataService.ModuleDataIO.GetCurrentUser()), "application/octet-stream");
+            return this.FileWithETag(DesignerService.GetDesignDataForFront(await _dataService.ModuleDataIO.GetCurrentUser()), "application/octet-stream");
         }
 
         [HttpPost("list")]
@@ -45,28 +47,34 @@ namespace Extras.Server.Controllers
             {
                 ret.Add(await _dataService.ModuleDataIO.GetListAsync(e.Condition, e.PageIndex));
             }
-            return Ok(new MemoryStream(MessagePackSerializer.Typeless.Serialize(ret)));
+            return File(new MemoryStream(MessagePackSerializer.Typeless.Serialize(ret)), "application/octet-stream");
         }
 
         [HttpPost]
-        public async Task<List<ModuleSubmitResult>> SubmitAsync(List<ModuleSubmitData>? data)
-            => await _dataService.ModuleDataIO.SubmitWithTransactionAsync(data!);
-
-        [HttpPost("excel_download")]
-        public async Task<IActionResult> ExcelDownloadFileAsync(SearchCondition? condition)
-            => Ok(ExcelUtils.CreateExcelBinary(await _dataService.ModuleDataIO.GetTableTextsAsync(condition!), "data"));
-
-        [HttpPost("excel_upload")]
-        public async Task<List<ModuleSubmitResult>> ExcelUploadFileAsync(string? moduleName)
+        public async Task<List<ModuleSubmitResult>> SubmitAsync()
         {
-            var texts = await ExcelUtils.ReadAllTextsFromExcelBinary(Request.Body);
-            if (500 < texts.Count) throw LowCodeException.Create("Excel has a maximum of 500 rows");
-            return await _dataService.ModuleDataIO.SubmitWithTransactionByTableTextsAsync(moduleName, texts);
+            //FileFieldのDB列格納モードでファイル実体(byte[])を運ぶため、listの応答と同様にMessagePackで受ける
+            using var memory = new MemoryStream();
+            await Request.Body.CopyToAsync(memory);
+            memory.Position = 0;
+            var data = MessagePackSerializer.Typeless.Deserialize(memory) as List<ModuleSubmitData>;
+            return await _dataService.ModuleDataIO.SubmitWithTransactionAsync(data!);
         }
+
+        [HttpPost("list_file")]
+        public async Task<IActionResult> GetListFileAsync(SearchCondition? condition)
+            => Ok(await BulkFileTransfer.GetListFileAsync(DesignerService.GetDesignData(), _dataService.ModuleDataIO, condition!));
+
+        [HttpPost("submit_by_file")]
+        public async Task<List<ModuleSubmitResult>> SubmitByFileAsync(string? moduleName)
+            => await BulkFileTransfer.SubmitByFileAsync(DesignerService.GetDesignData(), _dataService.ModuleDataIO, moduleName, Request.Body);
 
         [HttpGet("resource")]
         public IActionResult GetResourceAsync(string? resource)
-            => Ok(DesignerService.GetResource(resource ?? string.Empty));
+        {
+            var mem = DesignerService.GetResource(resource ?? string.Empty);
+            return mem == null ? Ok() : this.FileWithETag(mem.ToArray(), "application/octet-stream");
+        }
 
         [HttpGet("download")]
         public async Task<IActionResult> DownloadFileAsync(string? moduleName, string? id, string? fieldName)

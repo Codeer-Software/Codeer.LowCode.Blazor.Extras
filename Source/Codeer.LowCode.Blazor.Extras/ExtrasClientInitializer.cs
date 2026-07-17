@@ -37,6 +37,7 @@ namespace Codeer.LowCode.Blazor.Extras
             manager.AddService(new WebApiService(http, logger));
             manager.AddService(new Toaster(toaster));
             manager.AddService(new MailService());
+            manager.AddService(new BulkFileTransferService());
         }
     }
 }

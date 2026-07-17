@@ -8,6 +8,7 @@
 @implements IDisposable
 @inject IAppInfoService AppInfoService
 @inject INavigationService NavigationService
+@inject Microsoft.JSInterop.IJSRuntime JSRuntime
 
 @if (_isValid)
 {
@@ -52,9 +53,9 @@ else
     await InitPage();
   }
 
-  private void PageBase_OnHotReload(object? sender, EventArgs e)
+  private async void PageBase_OnHotReload(object? sender, EventArgs e)
   {
-    NavigationService.CompleteUrl(AppInfoService, PageFrameName, ModuleDesignName);
+    await NavigationService.CompleteUrl(AppInfoService, PageFrameName, ModuleDesignName, JSRuntime);
     StateHasChanged();
   }
 
@@ -62,7 +63,7 @@ else
   {
     _isValid = false;
     await AppInfoService.AsImplement().InitializeAppAsync();
-    NavigationService.CompleteUrl(AppInfoService, PageFrameName, ModuleDesignName);
+    await NavigationService.CompleteUrl(AppInfoService, PageFrameName, ModuleDesignName, JSRuntime);
     _isValid = true;
   }
 }

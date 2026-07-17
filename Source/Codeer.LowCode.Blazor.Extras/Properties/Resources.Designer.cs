@@ -770,6 +770,67 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
                 return ResourceManager.GetString("ProgressFieldShowValueLabel", resourceCulture);
             }
         }
+        
+        internal static string BulkFileTransferButtonSearchFieldName {
+            get {
+                return ResourceManager.GetString("BulkFileTransferButtonSearchFieldName", resourceCulture);
+            }
+        }
+        
+        internal static string BulkFileTransferButtonListFieldName {
+            get {
+                return ResourceManager.GetString("BulkFileTransferButtonListFieldName", resourceCulture);
+            }
+        }
+        
+        internal static string BulkFileTransferButtonOnUploaded {
+            get {
+                return ResourceManager.GetString("BulkFileTransferButtonOnUploaded", resourceCulture);
+            }
+        }
+        
+        internal static string BulkFileTransferButtonSourceCategory {
+            get {
+                return ResourceManager.GetString("BulkFileTransferButtonSourceCategory", resourceCulture);
+            }
+        }
+        
+        internal static string BulkFileTransferButtonConditionSourceInvalid {
+            get {
+                return ResourceManager.GetString("BulkFileTransferButtonConditionSourceInvalid", resourceCulture);
+            }
+        }
+        
+        internal static string SuccessSubmit {
+            get {
+                return ResourceManager.GetString("SuccessSubmit", resourceCulture);
+            }
+        }
+
+        
+        internal static string ExcelReportButtonTemplateResourcePath {
+            get {
+                return ResourceManager.GetString("ExcelReportButtonTemplateResourcePath", resourceCulture);
+            }
+        }
+        
+        internal static string ExcelReportButtonFormat {
+            get {
+                return ResourceManager.GetString("ExcelReportButtonFormat", resourceCulture);
+            }
+        }
+        
+        internal static string ExcelReportButtonDownloadFileName {
+            get {
+                return ResourceManager.GetString("ExcelReportButtonDownloadFileName", resourceCulture);
+            }
+        }
+        
+        internal static string ExcelReportButtonTemplateRequired {
+            get {
+                return ResourceManager.GetString("ExcelReportButtonTemplateRequired", resourceCulture);
+            }
+        }
 
     }
 }

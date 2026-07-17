@@ -3,6 +3,7 @@ using Codeer.LowCode.Blazor.Extras.Designs;
 using Codeer.LowCode.Blazor.Extras.Fields;
 using Codeer.LowCode.Blazor.Designer;
 using Codeer.LowCode.Blazor.Designer.Extensibility;
+using ScriptObjects = Codeer.LowCode.Blazor.Extras.ScriptObjects;
 
 namespace Codeer.LowCode.Blazor.Extras.Designer
 {
@@ -26,6 +27,18 @@ namespace Codeer.LowCode.Blazor.Extras.Designer
             DesignerApp.ScriptRuntimeTypeManager.AddType<CalendarViewMode>();
             DesignerApp.ScriptRuntimeTypeManager.AddType<GanttViewMode>();
             DesignerApp.ScriptRuntimeTypeManager.AddType<Marker>();
+
+            //Extras のスクリプトオブジェクト/サービス (スクリプト補完・script-catalog 用)。
+            //デザイナでは実行されないため依存はダミーでよい。差し替えたいアプリは
+            //この後で同名の AddService を呼べば上書きできる (type.Name キーで後勝ち)。
+            DesignerApp.ScriptRuntimeTypeManager.AddType(typeof(ScriptObjects.Excel));
+            DesignerApp.ScriptRuntimeTypeManager.AddType<ScriptObjects.ExcelCellIndex>();
+            DesignerApp.ScriptRuntimeTypeManager.AddService(new ScriptObjects.Toaster(null!));
+            DesignerApp.ScriptRuntimeTypeManager.AddService(new ScriptObjects.WebApiService(null!, null!));
+            DesignerApp.ScriptRuntimeTypeManager.AddType<ScriptObjects.WebApiResult>();
+            DesignerApp.ScriptRuntimeTypeManager.AddService(new ScriptObjects.MailService());
+            DesignerApp.ScriptRuntimeTypeManager.AddType<ScriptObjects.MailMessage>();
+            DesignerApp.ScriptRuntimeTypeManager.AddService(new ScriptObjects.BulkFileTransferService());
 
             //custom property controls.
             PropertyTypeManager.AddPropertyControl<TaskBoardStatuses, TaskBoardStatusesPropertyControl>();

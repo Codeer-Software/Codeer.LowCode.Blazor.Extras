@@ -12,6 +12,7 @@ using Microsoft.AspNetCore.SignalR;
 using Extras.Server.Services.DataChangeHistory;
 using Codeer.LowCode.Blazor.Extras.Server.FileManagement;
 using Microsoft.AspNetCore.Localization;
+using Microsoft.AspNetCore.ResponseCompression;
 using PdfSharp.Fonts;
 using System.Globalization;
 using System.Text.Json.Serialization;
@@ -56,6 +57,18 @@ if (SystemConfig.Instance.UseHotReload)
     builder.Services.AddHostedService(sp => new FileWatcherService(sp.GetRequiredService<IHubContext<HotReloadHub>>(), SystemConfig.Instance.DesignFileDirectory));
 }
 
+// Compress dynamic responses (e.g. the design data fetched on every reload).
+// Brotli/Gzip are decoded by the browser's native network stack, so this adds
+// no decompression cost to the WASM runtime.
+builder.Services.AddResponseCompression(options =>
+{
+    options.EnableForHttps = true;
+    options.Providers.Add<BrotliCompressionProvider>();
+    options.Providers.Add<GzipCompressionProvider>();
+    options.MimeTypes = ResponseCompressionDefaults.MimeTypes
+        .Concat(["application/octet-stream"]);
+});
+
 //Localize
 builder.Services.AddLocalization(options => options.ResourcesPath = "Resources");
 builder.Services.Configure<RequestLocalizationOptions>(options =>
@@ -84,6 +97,7 @@ builder.Services.AddScoped<DataService>();
 
 var app = builder.Build();
 
+app.UseResponseCompression();
 app.UseRequestLocalization();
 
 // Configure the HTTP request pipeline.

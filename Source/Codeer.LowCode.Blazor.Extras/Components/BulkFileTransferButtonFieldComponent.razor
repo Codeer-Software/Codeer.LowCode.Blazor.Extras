@@ -1,0 +1,59 @@
+@using Codeer.LowCode.Blazor.Components
+@using Codeer.LowCode.Blazor.Extras.Fields
+@using Codeer.LowCode.Blazor.OperatingModel
+@using Codeer.LowCode.Blazor.Repository.Design
+@using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.AspNetCore.Components.Web
+@inherits FieldComponentBase<BulkFileTransferButtonField>
+
+@* 一覧ページの一括ダウンロード/一括更新ボタンと同じ見た目 (アイコンのみ) *@
+@if (Field.CanDownload)
+{
+  <button type="button" class="btn btn-outline-secondary" style="@StyleString"
+          disabled="@(Field.IsTransferring || !Field.IsEnabled)"
+          @onclick="@(async () => await Field.DownloadAsync())"
+          aria-label="Bulk Download" data-system="bulk-download">
+    <i class="bi bi-download" aria-hidden="true"></i>
+  </button>
+}
+@if (Field.CanUpload)
+{
+  if (Field.IsTransferring || !Field.IsEnabled)
+  {
+    <span class="btn btn-outline-secondary disabled @MarginClass" style="@StyleString"
+          aria-label="Bulk Upload" data-system="bulk-upload">
+      <i class="bi bi-upload" aria-hidden="true"></i>
+    </span>
+  }
+  else
+  {
+    <label class="btn btn-outline-secondary @MarginClass" style="@StyleString"
+           role="button" aria-label="Bulk Upload" data-system="bulk-upload">
+      <i class="bi bi-upload" aria-hidden="true"></i>
+      <InputFile class="form-control d-none" OnChange="OnFileChangeAsync" />
+    </label>
+  }
+}
+
+@code {
+  string MarginClass => Field.CanDownload ? "ms-1" : string.Empty;
+
+  //自分に明示設定されたスタイルだけ出力する (コアの GetStyleString と同じ規約)
+  string? StyleString
+  {
+    get
+    {
+      var drawStyle = Field.GetOwnStyles();
+      var style = string.Empty;
+      if (drawStyle.HasFlag(DrawStyle.BackgroundColor)) style += $"background-color: {Field.BackgroundColor};";
+      if (drawStyle.HasFlag(DrawStyle.Color)) style += $"color: {Field.Color};";
+      return style.Length == 0 ? null : style;
+    }
+  }
+
+  async Task OnFileChangeAsync(InputFileChangeEventArgs e)
+  {
+    await using var stream = e.File.OpenReadStream(ModuleDesign.BulkDataUpdateMaxAllowedSize);
+    await Field.UploadAsync(stream);
+  }
+}

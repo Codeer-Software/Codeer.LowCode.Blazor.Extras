@@ -366,4 +366,34 @@
   <data name="ProgressFieldShowValueLabel" xml:space="preserve">
     <value>進捗率を表示</value>
   </data>
+  <data name="BulkFileTransferButtonSearchFieldName" xml:space="preserve">
+    <value>検索フィールド名</value>
+  </data>
+  <data name="BulkFileTransferButtonListFieldName" xml:space="preserve">
+    <value>リストフィールド名</value>
+  </data>
+  <data name="BulkFileTransferButtonOnUploaded" xml:space="preserve">
+    <value>アップロード完了イベント</value>
+  </data>
+  <data name="BulkFileTransferButtonConditionSourceInvalid" xml:space="preserve">
+    <value>検索フィールド名とリストフィールド名は、どちらか一方だけを設定してください。</value>
+  </data>
+  <data name="BulkFileTransferButtonSourceCategory" xml:space="preserve">
+    <value>対象の指定 (どちらか一方)</value>
+  </data>
+  <data name="SuccessSubmit" xml:space="preserve">
+    <value>更新しました</value>
+  </data>
+  <data name="ExcelReportButtonTemplateResourcePath" xml:space="preserve">
+    <value>テンプレートリソースパス</value>
+  </data>
+  <data name="ExcelReportButtonFormat" xml:space="preserve">
+    <value>出力形式</value>
+  </data>
+  <data name="ExcelReportButtonDownloadFileName" xml:space="preserve">
+    <value>ダウンロードファイル名</value>
+  </data>
+  <data name="ExcelReportButtonTemplateRequired" xml:space="preserve">
+    <value>テンプレートリソースパスを設定してください。</value>
+  </data>
 </root>

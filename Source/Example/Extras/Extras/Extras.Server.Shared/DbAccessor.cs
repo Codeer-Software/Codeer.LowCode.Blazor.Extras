@@ -16,6 +16,9 @@ namespace Extras.Server.Shared
 {
     public class DbAccessor : IDbAccessor, IDisposable
     {
+        //DB固有型変換のTypeHandler登録(RawDbValueConverterのstaticコンストラクタ)を確実に走らせる
+        static DbAccessor() => RawDbValueConverter.Initialize();
+
         bool _transactionMode;
 
         class ConnectionOwner
@@ -195,6 +198,10 @@ namespace Extras.Server.Shared
             var conn = GetConnection(dataSourceName);
             return (await conn.QueryAsync<object>(query, CreateParameter(args), GetTransaction(dataSourceName))).Select(e => (IDictionary<string, object>)e).ToList();
         }
+
+        //未解決のDB固有型の値を実際にbindできる値へ変換する。独自の型を扱う場合はここをoverrideする
+        public virtual object? ConvertFieldValueToDbValue(string dataSourceName, string rawDbTypeName, object? value)
+            => RawDbValueConverter.ConvertFieldValueToDbValue(GetDataSource(dataSourceName)?.DataSourceType, rawDbTypeName, value);
 
         static DynamicParameters CreateParameter(Dictionary<string, ParamAndRawDbTypeName> args)
             => CreateParameter(args.ToDictionary(e => e.Key, e => e.Value.ToParameter()));

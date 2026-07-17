@@ -366,4 +366,34 @@
   <data name="ProgressFieldShowValueLabel" xml:space="preserve">
     <value>Show Progress Label</value>
   </data>
+  <data name="BulkFileTransferButtonSearchFieldName" xml:space="preserve">
+    <value>Search Field Name</value>
+  </data>
+  <data name="BulkFileTransferButtonListFieldName" xml:space="preserve">
+    <value>List Field Name</value>
+  </data>
+  <data name="BulkFileTransferButtonOnUploaded" xml:space="preserve">
+    <value>Uploaded Event</value>
+  </data>
+  <data name="BulkFileTransferButtonConditionSourceInvalid" xml:space="preserve">
+    <value>Set either Search Field Name or List Field Name (exactly one).</value>
+  </data>
+  <data name="BulkFileTransferButtonSourceCategory" xml:space="preserve">
+    <value>Target (set either one)</value>
+  </data>
+  <data name="SuccessSubmit" xml:space="preserve">
+    <value>Has been updated</value>
+  </data>
+  <data name="ExcelReportButtonTemplateResourcePath" xml:space="preserve">
+    <value>Template Resource Path</value>
+  </data>
+  <data name="ExcelReportButtonFormat" xml:space="preserve">
+    <value>Output Format</value>
+  </data>
+  <data name="ExcelReportButtonDownloadFileName" xml:space="preserve">
+    <value>Download File Name</value>
+  </data>
+  <data name="ExcelReportButtonTemplateRequired" xml:space="preserve">
+    <value>Set Template Resource Path.</value>
+  </data>
 </root>
