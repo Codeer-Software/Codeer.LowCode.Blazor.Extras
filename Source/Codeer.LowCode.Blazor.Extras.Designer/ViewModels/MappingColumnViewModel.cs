@@ -60,12 +60,6 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.ViewModels
             }
         }
 
-        public string Format
-        {
-            get => Model.Format;
-            set { if (value == Model.Format) return; Model.Format = value; OnPropertyChanged(); }
-        }
-
         public string FixedValue
         {
             get => Model.FixedValue;

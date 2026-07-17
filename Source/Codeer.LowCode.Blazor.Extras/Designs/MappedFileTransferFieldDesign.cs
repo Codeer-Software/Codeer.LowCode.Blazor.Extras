@@ -19,9 +19,6 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         /// <summary>対応する内部フィールド ("フィールド名.データメンバ名" 形式。例 "Customer.Value")。空なら取込時は無視、出力時は FixedValue を出す。</summary>
         public string Field { get; set; } = string.Empty;
 
-        /// <summary>日付/数値の書式 (例 "yyyyMMdd")。出力時は書式化、取込時は書式でパースする。コード変換と併用不可 (変換が優先)。</summary>
-        public string Format { get; set; } = string.Empty;
-
         /// <summary>出力時の固定値 (Field が空の列で使う。取引先コードなど)。</summary>
         public string FixedValue { get; set; } = string.Empty;
 
@@ -46,8 +43,9 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
 
     /// <summary>
     /// 一覧ページの一括ダウンロード/一括更新の列構成を「相手仕様固定の列」(WebEDI・他システム連携等) に切り替えるフィールド。
-    /// 列の並び・外部列名・書式・固定値・コード変換 (変換表 = ただの業務モジュール) を宣言し、
+    /// 列の並び・外部列名・固定値・コード変換 (変換表 = ただの業務モジュール) を宣言し、
     /// サーバー側 (BulkFileTransfer) が内部形式との相互変換を行う。
+    /// 書式はフィールド側の設定 (Format プロパティ / IExternalTextFormatFieldDesign 実装) に従う。
     /// ファイル形式とは独立した機能で、単独なら Excel (xlsx) のまま列だけ差し替わり、
     /// <see cref="CsvFileTransferFieldDesign"/> と併用すると CSV になる (WebEDI 向け)。
     /// このフィールドを使うアプリはサーバー側の対応実装 (BulkFileTransfer への移譲) が必要。

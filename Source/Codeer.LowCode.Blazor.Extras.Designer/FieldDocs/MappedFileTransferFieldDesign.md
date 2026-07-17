@@ -17,7 +17,7 @@
 
 - **列マッピング**: ファイルの列位置 = マッピング定義の並び順。外部列名 (ヘッダ)・対応フィールド・書式・固定値を列ごとに指定
 - **コード変換**: 変換表は**ただの業務モジュール** (例: 自社得意先コード⇔EDI取引先コード)。列ごとに変換モジュール名と外部/内部フィールド名を指定すると、出力時は内部→外部、取込時は外部→内部に引き当てる。引き当てられない外部コードは行番号付きエラー
-- **書式**: 日付/数値の書式 (例 `yyyyMMdd`)。出力時は書式化、取込時は書式でパース
+- **書式**: フィールド側の設定に従う。日付/日時/数値フィールドは自身の `Format` プロパティ (例 `yyyyMMdd`) で出力時は書式化、取込時はパースし、書式どおりでない値は行番号付きエラー。変換はフィールドデザインへの委譲 (`IExternalTextFormatFieldDesign`) で、和暦・右詰め空白埋めなどの特殊書式はこのインターフェースを実装した独自フィールドで対応する。EDI用に画面と別書式が必要な場合は連携用モジュール (ビュー) を分けてそちらのフィールドに書式を設定する
 - **ヘッダ有無**: `HasHeader: false` でヘッダ行なしのファイルに対応
 - エンコーディング・区切り文字・拡張子は CSV の関心事なので `CsvFileTransferField` 側で指定
 
@@ -35,7 +35,6 @@
 |---|---|
 | ExternalName | 外部ファイルでの列名 (HasHeader 時にヘッダへ出力。取込は列位置で対応付け) |
 | Field | 対応する内部フィールド (`フィールド名.データメンバ名`。例 `Customer.Value`)。空なら取込時は無視、出力時は FixedValue |
-| Format | 日付/数値の書式 (例 `yyyyMMdd`)。コード変換とは併用不可 (変換が優先) |
 | FixedValue | 出力時の固定値 (Field が空の列で使う。取引先コード等) |
 | ConversionModule | コード変換表のモジュール名 (空なら変換なし) |
 | ConversionExternalField | 変換表の外部コード側フィールド名 (例 `EdiCode`) |
@@ -48,11 +47,11 @@
   "HasHeader": false,
   "Columns": {
     "Items": [
-      { "ExternalName": "取引先", "Field": "", "Format": "", "FixedValue": "JP0001",
+      { "ExternalName": "取引先", "Field": "", "FixedValue": "JP0001",
         "ConversionModule": "", "ConversionExternalField": "", "ConversionInternalField": "" },
-      { "ExternalName": "得意先", "Field": "Customer.Value", "Format": "", "FixedValue": "",
+      { "ExternalName": "得意先", "Field": "Customer.Value", "FixedValue": "",
         "ConversionModule": "EdiCustomerMap", "ConversionExternalField": "EdiCode", "ConversionInternalField": "CustomerCode" },
-      { "ExternalName": "受注日", "Field": "OrderDate.Value", "Format": "yyyyMMdd", "FixedValue": "",
+      { "ExternalName": "受注日", "Field": "OrderDate.Value", "FixedValue": "",
         "ConversionModule": "", "ConversionExternalField": "", "ConversionInternalField": "" }
     ]
   },
@@ -60,6 +59,9 @@
   "TypeFullName": "Codeer.LowCode.Blazor.Extras.Designs.MappedFileTransferFieldDesign"
 }
 ```
+
+受注日を `20260717` のような書式で入出力するには、`OrderDate` フィールド (DateField) 側の `Format` に
+`yyyyMMdd` を設定します (書式は列ではなくフィールドの設定)。
 
 CSV にする場合は同じモジュールの Fields に `CsvFileTransferFieldDesign` も定義します (形式はそちらで指定):
 
@@ -84,7 +86,8 @@ CSV にする場合は同じモジュールの Fields に `CsvFileTransferFieldD
 
 `CsvFileTransferField` と同じく、サーバーテンプレートの `ModuleDataController` が
 `BulkFileTransfer` (Codeer.LowCode.Blazor.Extras.Server) に移譲済みである必要があります。
-取込時は「対応しない列・型変換できないセル・引き当てられない外部コード」を行番号付きで報告し、
+変換はテーブルテキストを経由せず、フィールドの型付きの値 (ModuleData) と外部列を直接相互変換します。
+取込時は「書式どおりに解釈できない値・型変換できない値・引き当てられない外部コード」を行番号付きで報告し、
 エラーがあれば 1 行も取り込みません。
 
 ## Script

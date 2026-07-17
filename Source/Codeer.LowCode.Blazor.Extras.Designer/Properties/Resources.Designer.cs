@@ -79,10 +79,6 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Properties
 
         public static string MappingFieldDescription => GetString("MappingFieldDescription");
 
-        public static string MappingFormat => GetString("MappingFormat");
-
-        public static string MappingFormatDescription => GetString("MappingFormatDescription");
-
         public static string MappingFixedValue => GetString("MappingFixedValue");
 
         public static string MappingFixedValueDescription => GetString("MappingFixedValueDescription");

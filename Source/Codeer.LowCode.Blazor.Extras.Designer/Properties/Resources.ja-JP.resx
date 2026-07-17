@@ -45,12 +45,6 @@
   <data name="MappingFieldDescription" xml:space="preserve">
     <value>値の入出力先。「フィールド名.データメンバ名」形式 (例: Customer.Value)。空にすると取込では無視され、出力では固定値が出力されます。</value>
   </data>
-  <data name="MappingFormat" xml:space="preserve">
-    <value>書式</value>
-  </data>
-  <data name="MappingFormatDescription" xml:space="preserve">
-    <value>日付・数値の書式 (例: yyyyMMdd、0000000)。出力時は書式化し、取込時はこの書式で解釈します。コード変換とは併用できません (変換が優先されます)。</value>
-  </data>
   <data name="MappingFixedValue" xml:space="preserve">
     <value>固定値</value>
   </data>

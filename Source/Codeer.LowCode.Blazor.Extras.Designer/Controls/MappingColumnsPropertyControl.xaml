@@ -102,10 +102,6 @@
             <TextBox Text="{Binding FixedValue, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
             <TextBlock Style="{StaticResource DescriptionText}" Text="{x:Static properties:Resources.MappingFixedValueDescription}" />
 
-            <TextBlock Style="{StaticResource EditorLabel}" Text="{x:Static properties:Resources.MappingFormat}" />
-            <TextBox Text="{Binding Format, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-            <TextBlock Style="{StaticResource DescriptionText}" Text="{x:Static properties:Resources.MappingFormatDescription}" />
-
             <GroupBox Header="{x:Static properties:Resources.MappingCodeConversion}" Padding="8,4" Margin="0,4,0,0">
               <StackPanel>
                 <TextBlock Style="{StaticResource DescriptionText}" Margin="0,4,0,10"
