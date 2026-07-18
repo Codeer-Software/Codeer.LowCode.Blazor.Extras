@@ -16,6 +16,6 @@
     <PackageReference Include="Codeer.LowCode.Blazor.Designer.Standard" Version="0.4.0" />
     <ProjectReference Include="..\..\..\..\Codeer.LowCode.Blazor.Extras.Designer\Codeer.LowCode.Blazor.Extras.Designer.csproj" />
     <ProjectReference Include="..\Extras.Client.Shared\Extras.Client.Shared.csproj" />
-    <ProjectReference Include="..\Extras.Server.Shared\Extras.Server.Shared.csproj" />
+    <PackageReference Include="Codeer.LowCode.Blazor.DbAccess" Version="0.1.0" />
   </ItemGroup>
 </Project>
