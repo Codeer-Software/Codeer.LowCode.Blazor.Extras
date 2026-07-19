@@ -23,7 +23,7 @@
 
 ### プロパティ
 
-> 共通プロパティ（Name, IgnoreModification, OnValidateInput）は [_FieldCommon.md](_FieldCommon.md) を参照。
+> 共通プロパティ（Name）は [_FieldCommon.md](_FieldCommon.md) を参照。IgnoreModification / OnValidateInput はデザイナ非表示。
 
 | プロパティ | 型 | デフォルト | 説明 |
 |---|---|---|---|
