@@ -19,6 +19,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
     /// </summary>
     [ToolboxIcon(PackIconMaterialKind = "SwapVerticalBold")]
     [Designer(DisplayName = "$BulkFileTransferButtonField")]
+    [IgnoreBaseProperties(nameof(FieldDesignBase.IgnoreModification), nameof(FieldDesignBase.OnValidateInput))]
     public class BulkFileTransferButtonFieldDesign() : FieldDesignBase(typeof(BulkFileTransferButtonFieldDesign).FullName!)
     {
         /// <summary>条件ソース: 検索フィールド名。その検索フィールドの現在の検索条件を使う。<see cref="ListFieldName"/> とどちらか一方だけを設定する。</summary>

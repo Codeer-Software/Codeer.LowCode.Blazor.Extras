@@ -16,6 +16,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
     /// </summary>
     [ToolboxIcon(PackIconMaterialKind = "FileExcelOutline")]
     [Designer(DisplayName = "$ExcelReportButtonField")]
+    [IgnoreBaseProperties(nameof(FieldDesignBase.IgnoreModification), nameof(FieldDesignBase.OnValidateInput))]
     public class ExcelReportButtonFieldDesign() : FieldDesignBase(typeof(ExcelReportButtonFieldDesign).FullName!)
     {
         /// <summary>テンプレート Excel のリソースパス。テンプレート内の {{フィールド名}} が自モジュールの値で置換される。</summary>

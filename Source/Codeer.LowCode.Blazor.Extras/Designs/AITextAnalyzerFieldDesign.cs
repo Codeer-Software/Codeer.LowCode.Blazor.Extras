@@ -8,6 +8,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
 {
     [ToolboxIcon(PackIconMaterialKind = "HeadSnowflakeOutline")]
     [Designer(DisplayName = "$AITextAnalyzerField")]
+    [IgnoreBaseProperties(nameof(FieldDesignBase.IgnoreModification), nameof(FieldDesignBase.OnValidateInput))]
     public class AITextAnalyzerFieldDesign() : FieldDesignBase(typeof(AITextAnalyzerFieldDesign).FullName!)
     {
         [Designer(CandidateType = CandidateType.MultilineString)]

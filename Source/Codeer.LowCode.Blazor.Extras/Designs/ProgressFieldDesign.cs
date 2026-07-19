@@ -10,6 +10,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
 {
     [ToolboxIcon(PackIconMaterialKind = "ProgressCheck")]
     [Designer(DisplayName = "$ProgressField")]
+    [IgnoreBaseProperties(nameof(FieldDesignBase.IgnoreModification), nameof(FieldDesignBase.OnValidateInput))]
     public class ProgressFieldDesign() : FieldDesignBase(typeof(ProgressFieldDesign).FullName!), IDataDependentField
     {
         /// <summary>進捗値を取得する参照フィールド (数値)。</summary>

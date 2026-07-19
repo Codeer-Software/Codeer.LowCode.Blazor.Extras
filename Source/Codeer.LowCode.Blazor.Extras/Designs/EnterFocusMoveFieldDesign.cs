@@ -8,6 +8,7 @@ using Codeer.LowCode.Blazor.Repository.Design;
 namespace Codeer.LowCode.Blazor.Extras.Designs
 {
     [Designer(DisplayName = "$EnterFocusMoveField")]
+    [IgnoreBaseProperties(nameof(FieldDesignBase.IgnoreModification), nameof(FieldDesignBase.OnValidateInput))]
     public class EnterFocusMoveFieldDesign() : FieldDesignBase(typeof(EnterFocusMoveFieldDesign).FullName!)
     {
         public override string GetWebComponentTypeFullName() => typeof(EnterFocusMoveFieldComponent).FullName!;

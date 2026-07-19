@@ -10,6 +10,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
 {
     [ToolboxIcon(PackIconMaterialKind = "ShieldKeyOutline")]
     [Designer(DisplayName = "$PasswordHashField")]
+    [IgnoreBaseProperties(nameof(FieldDesignBase.IgnoreModification), nameof(FieldDesignBase.OnValidateInput))]
     public class PasswordHashFieldDesign() : FieldDesignBase(typeof(PasswordHashFieldDesign).FullName!)
     {
         [Designer(Index = 2, CandidateType = CandidateType.Field, DisplayName = "PasswordField")]
