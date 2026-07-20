@@ -6,6 +6,7 @@ using Codeer.LowCode.Blazor.Script;
 
 namespace Codeer.LowCode.Blazor.Extras.Fields
 {
+#pragma warning disable CS0612 // 非推奨: フォーカス制御機能 (FocusControlMode) で代替。既存デザインのため動作は維持する
     public class EnterFocusMoveField(EnterFocusMoveFieldDesign design)
         : FieldBase<EnterFocusMoveFieldDesign>(design)
     {
@@ -24,4 +25,5 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         [ScriptHide]
         public override Task SetDataAsync(FieldDataBase? fieldDataBase) => Task.CompletedTask;
     }
+#pragma warning restore CS0612
 }

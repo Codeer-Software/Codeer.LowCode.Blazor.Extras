@@ -4,6 +4,14 @@
 
 **外部ライブラリ:** `Codeer.LowCode.Blazor.Extras`
 
+> **非推奨。新規では使わないこと。** 本体(Codeer.LowCode.Blazor)の**フォーカス制御**が後継:
+> `DetailLayoutDesign.FocusControlMode`(None/Enter/Tab/EnterAndTab)でEnter/Tabによるフォーカス遷移が有効になる。
+> 加えて `FocusOrder`(順序の明示)/`LastFieldBehavior`(末尾で循環・停止・Submit実行)/`InitialFocusField`(初期フォーカス)/
+> フィールド側 `OnFocusMoving`(遷移直前のスクリプト。bool返し、Focus()+falseで条件分岐遷移)/`IsFocusSkip`/
+> TextField `AutoTab`(最大桁で自動遷移)が使える。
+> 本体側はボタン上のEnterが実行になる・非表示/無効/ViewOnlyを状態でスキップする等、挙動も改善されている。
+> 既存モジュールに置いてある本フィールドは動作し続けるが、順次本体機能へ移行すること。
+
 モジュール内で Enter キーを押すと、次の入力要素へフォーカスを移動させるユーティリティフィールド。レイアウトに 1 つ配置するだけでモジュール全体に機能が適用される。実行時の UI は持たない（非表示の span を 1 つ出力するだけ。デザインモードでは「EnterFocusMove」というグレーのプレースホルダが表示される）。
 
 DB列へのマッピングは持たず（`CreateData()` は `null`）、検索画面用コンポーネントも持たない。
