@@ -26,7 +26,8 @@
 | TextField | テキストフィールド | string | タスク名として表示するフィールド (Text型) |
 | StartField | 開始フィールド | string | タスクの開始日時フィールド (DateTime型 または Date型) |
 | EndField | 終了フィールド | string | タスクの終了日時フィールド (DateTime型 または Date型) |
-| ProgressField | 進捗フィールド | string | 進捗率フィールド (Number型、0〜100。省略可) |
+| ProgressField | 進捗フィールド | string | 進捗率フィールド (Number型。`ProgressScale` に従って 0〜100% に換算。小数の進捗も保持。省略可) |
+| ProgressScale | 進捗のスケール | ProgressScale | 進捗値の解釈。`Percent` (値をそのまま%、100で100%) / `Ratio` (割合、1.0で100%)。既定 `Percent`。ProgressField と共通 |
 | IdField | IDフィールド | string | タスクの一意識別子フィールド (Id型) |
 | ProcessingCounterField | 処理カウンターフィールド | string | 依存関係の追加/削除時に元タスク・先タスクで +1 されるカウンター (Number型、省略可)。詳細は [ProcessingCounterField の役割](#processingcounterfield-の役割) を参照 |
 | BarColorField | バー色フィールド | string | タスク毎のバー色を持つフィールド (Text型 または ColorPickerField、省略可)。詳細は [バー色のカスタマイズ](#バー色のカスタマイズ) を参照 |
@@ -69,7 +70,7 @@
 | 開始日時 | 必須 | DateTimeField または DateField |
 | 終了日時 | 必須 | DateTimeField または DateField |
 | タスクID | 必須 | IdField |
-| 進捗率 | 任意 | NumberField (0〜100) |
+| 進捗率 | 任意 | NumberField (既定は 0〜100。`ProgressScale = Ratio` なら 0.0〜1.0) |
 | 処理カウンター | 任意 | NumberField (依存関係の編集時にタスクに変更を走らせるためのカウンター。詳細は下記) |
 
 ### 依存関係モジュール (省略可)

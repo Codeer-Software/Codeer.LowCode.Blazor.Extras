@@ -26,7 +26,7 @@
 | [ColorPickerField](docs/ColorPickerField.md) | カラーピッカー。HTML5ネイティブカラーピッカーで色をHEX文字列として保存 |
 | [MarkerListField](docs/MarkerListField.md) | 画像上にマーカー(ピン)を配置・操作するフィールド |
 | [QrCodeField](docs/QrCodeField.md) | 文字列をQRコード画像として表示する表示専用フィールド (外部ライブラリ QRCoder を使用) |
-| [ProgressField](docs/ProgressField.md) | 進捗率をガント風の角丸バーで表示する表示専用フィールド。値・色を別フィールドから参照 |
+| [ProgressField](docs/ProgressField.md) | 進捗率を横バー / 半円メーターで表示する表示専用フィールド。値・色を別フィールドから参照 |
 | [EnterFocusMoveField](docs/EnterFocusMoveField.md) | Enterキーでモジュール内の次の入力要素にフォーカスを移動させるユーティリティフィールド |
 | [PasswordHashField](docs/PasswordHashField.md) | パスワードを Submit 時にハッシュ + ソルトへ変換して DB に書き込む補助フィールド (サーバサイド実装が必要) |
 | [OrientationLockField](docs/OrientationLockField.md) | タッチ端末で画面の向き(横/縦)が指定と異なるとき、全画面オーバーレイで回転を促すフィールド |
@@ -150,7 +150,7 @@ ExtrasDesignerInitializer.Initialize(BlazorRuntime);
 - [ColorPickerField - カラーピッカー](docs/ColorPickerField.md)
 - [MarkerListField - 画像マーカー](docs/MarkerListField.md)
 - [QrCodeField - QRコード](docs/QrCodeField.md)
-- [ProgressField - 進捗バー](docs/ProgressField.md)
+- [ProgressField - 進捗バー / メーター](docs/ProgressField.md)
 - [EnterFocusMoveField - Enterキーでフォーカス移動](docs/EnterFocusMoveField.md)
 - [PasswordHashField - パスワードハッシュ](docs/PasswordHashField.md)
 - [OrientationLockField - 画面の向き制御](docs/OrientationLockField.md)
