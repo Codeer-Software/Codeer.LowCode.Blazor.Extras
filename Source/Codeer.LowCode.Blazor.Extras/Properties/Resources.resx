@@ -192,6 +192,9 @@
   <data name="GanttFieldProgressField" xml:space="preserve">
     <value>Progress Field</value>
   </data>
+  <data name="GanttFieldProgressScale" xml:space="preserve">
+    <value>Progress Scale</value>
+  </data>
   <data name="GanttFieldIdField" xml:space="preserve">
     <value>ID Field</value>
   </data>
@@ -354,8 +357,14 @@
   <data name="QrCodeFieldLightColor" xml:space="preserve">
     <value>Light Color</value>
   </data>
+  <data name="ProgressFieldDisplayType" xml:space="preserve">
+    <value>Display Type</value>
+  </data>
   <data name="ProgressFieldValueField" xml:space="preserve">
     <value>Value Field</value>
+  </data>
+  <data name="ProgressFieldScale" xml:space="preserve">
+    <value>Value Scale</value>
   </data>
   <data name="ProgressFieldColorField" xml:space="preserve">
     <value>Color Field</value>

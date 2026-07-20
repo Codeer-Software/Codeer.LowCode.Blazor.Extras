@@ -40,6 +40,10 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         [TargetFieldType(Types = [typeof(NumberFieldDesign)])]
         public string ProgressField { get; set; } = "";
 
+        /// <summary>進捗値のスケール解釈。Percent=そのまま% (100で100%)、Ratio=割合 (1.0で100%)。</summary>
+        [Designer(DisplayName = "$GanttFieldProgressScale", Category = nameof(SearchCondition))]
+        public ProgressScale ProgressScale { get; set; } = ProgressScale.Percent;
+
         [Designer(CandidateType = CandidateType.Field, DisplayName = "$GanttFieldIdField", Category = nameof(SearchCondition))]
         [ModuleMember(Member = $"{nameof(SearchCondition)}.{nameof(SearchCondition.ModuleName)}")]
         [TargetFieldType(Types = [typeof(IdFieldDesign)])]

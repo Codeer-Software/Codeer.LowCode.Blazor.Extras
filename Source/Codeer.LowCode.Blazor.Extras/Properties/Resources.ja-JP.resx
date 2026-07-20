@@ -192,6 +192,9 @@
   <data name="GanttFieldProgressField" xml:space="preserve">
     <value>進捗フィールド</value>
   </data>
+  <data name="GanttFieldProgressScale" xml:space="preserve">
+    <value>進捗のスケール</value>
+  </data>
   <data name="GanttFieldIdField" xml:space="preserve">
     <value>IDフィールド</value>
   </data>
@@ -354,8 +357,14 @@
   <data name="QrCodeFieldLightColor" xml:space="preserve">
     <value>背景色</value>
   </data>
+  <data name="ProgressFieldDisplayType" xml:space="preserve">
+    <value>表示形式</value>
+  </data>
   <data name="ProgressFieldValueField" xml:space="preserve">
     <value>値フィールド</value>
+  </data>
+  <data name="ProgressFieldScale" xml:space="preserve">
+    <value>値のスケール</value>
   </data>
   <data name="ProgressFieldColorField" xml:space="preserve">
     <value>色フィールド</value>

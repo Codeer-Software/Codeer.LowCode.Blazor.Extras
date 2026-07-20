@@ -34,7 +34,8 @@ DB列へのマッピングは持たず、表示中のタスク／依存レコー
 | `TextField` | string | `""` | タスク名に使う **TextField** のフィールド名。 |
 | `StartField` | string | `""` | タスク開始に使う **DateTimeField / DateField** のフィールド名。`DateField`（日付のみ）だと終日扱いになり Day ビューは無効化される。 |
 | `EndField` | string | `""` | タスク終了に使う **DateTimeField / DateField** のフィールド名。 |
-| `ProgressField` | string | `""` | 進捗率に使う **NumberField** のフィールド名（0〜100 にクランプ）。 |
+| `ProgressField` | string | `""` | 進捗率に使う **NumberField** のフィールド名。`ProgressScale` に従って 0〜100% に換算しクランプ。小数の進捗（例 50.5%）も保持する。 |
+| `ProgressScale` | ProgressScale | `Percent` | 進捗値のスケール。`Percent`=値をそのまま%（100で100%）、`Ratio`=割合（1.0で100%）。ProgressField と共通。 |
 | `IdField` | string | `""` | タスクの **IdField** のフィールド名（依存の対応付けに使う）。 |
 | `ProcessingCounterField` | string | `""` | 依存追加時にインクリメントされる **NumberField**（処理カウンタ）のフィールド名。 |
 | `BarColorField` | string | `""` | タスクごとのバー色に使う **TextField または ColorPickerField** のフィールド名。 |

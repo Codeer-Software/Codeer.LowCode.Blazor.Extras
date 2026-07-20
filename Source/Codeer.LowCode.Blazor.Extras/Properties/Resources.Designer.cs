@@ -525,6 +525,12 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
             }
         }
 
+        internal static string GanttFieldProgressScale {
+            get {
+                return ResourceManager.GetString("GanttFieldProgressScale", resourceCulture);
+            }
+        }
+
         internal static string GanttFieldIdField {
             get {
                 return ResourceManager.GetString("GanttFieldIdField", resourceCulture);
@@ -752,7 +758,19 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
                 return ResourceManager.GetString("ProgressFieldValueField", resourceCulture);
             }
         }
-        
+
+        internal static string ProgressFieldDisplayType {
+            get {
+                return ResourceManager.GetString("ProgressFieldDisplayType", resourceCulture);
+            }
+        }
+
+        internal static string ProgressFieldScale {
+            get {
+                return ResourceManager.GetString("ProgressFieldScale", resourceCulture);
+            }
+        }
+
         internal static string ProgressFieldColorField {
             get {
                 return ResourceManager.GetString("ProgressFieldColorField", resourceCulture);

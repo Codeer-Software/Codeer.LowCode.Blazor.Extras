@@ -13,10 +13,18 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
     [IgnoreBaseProperties(nameof(FieldDesignBase.IgnoreModification), nameof(FieldDesignBase.OnValidateInput))]
     public class ProgressFieldDesign() : FieldDesignBase(typeof(ProgressFieldDesign).FullName!), IDataDependentField
     {
+        /// <summary>表示形式 (横バー / 半円メーター)。</summary>
+        [Designer(DisplayName = "$ProgressFieldDisplayType")]
+        public ProgressDisplayType DisplayType { get; set; } = ProgressDisplayType.Bar;
+
         /// <summary>進捗値を取得する参照フィールド (数値)。</summary>
         [Designer(CandidateType = CandidateType.Field, DisplayName = "$ProgressFieldValueField")]
         [TargetFieldType(Types = [typeof(NumberFieldDesign)])]
         public string ValueField { get; set; } = string.Empty;
+
+        /// <summary>値のスケール解釈。Percent=そのまま% (100で100%)、Ratio=割合 (1.0で100%)。</summary>
+        [Designer(DisplayName = "$ProgressFieldScale")]
+        public ProgressScale Scale { get; set; } = ProgressScale.Percent;
 
         /// <summary>バー色を取得する参照フィールド。空の場合は <see cref="BarColor"/> を使用。</summary>
         [Designer(CandidateType = CandidateType.Field, DisplayName = "$ProgressFieldColorField")]

@@ -38,8 +38,8 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         /// <summary>参照フィールドから取得した進捗値。</summary>
         internal decimal? SourceValue => ReadDecimal(Design.ValueField);
 
-        /// <summary>0〜100(%) の充填率。値をそのままパーセントとして扱い、範囲外はクランプする。</summary>
-        internal double FillPercent => Math.Clamp((double)(SourceValue ?? 0m), 0d, 100d);
+        /// <summary>0〜100(%) の充填率。Scale を適用し、範囲外はクランプする。</summary>
+        internal double FillPercent => Design.Scale.ToFillPercent(SourceValue);
 
         /// <summary>有効なバー色。ColorField &gt; BarColor の順で解決 (空なら空文字)。</summary>
         internal string EffectiveBarColor
@@ -61,6 +61,9 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
                 return ComputeContrastColor(color);
             }
         }
+
+        /// <summary>メーター中央の数値色。100% 時のバーと同じ色 (EffectiveBarColor / 既定色)。</summary>
+        internal string MeterNumberColor => string.IsNullOrEmpty(EffectiveBarColor) ? DefaultBarColor : EffectiveBarColor;
 
         private decimal? ReadDecimal(string fieldName)
         {

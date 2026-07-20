@@ -38,3 +38,34 @@
   white-space: nowrap;
   pointer-events: none;
 }
+
+/* ---- 半円メーター (DisplayType=Meter) ---- */
+/* バーと同じ --progress-color を共有。SVG は viewBox でスケールするので幅測定不要。
+   横幅なりに大きくなりすぎないよう最大幅を設けて中央寄せする。 */
+.progress-meter {
+  width: 100%;
+  max-width: 200px;
+  margin: 0 auto;
+}
+
+.progress-meter-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+/* トラック (未完了部分) は同色を薄く。完了部分は同色ベタ。両端は丸める。 */
+.progress-meter-track,
+.progress-meter-fill {
+  fill: none;
+  stroke: var(--progress-color, #1a73e8);
+  stroke-width: 12;
+  stroke-linecap: round;
+}
+
+.progress-meter-track {
+  opacity: 0.3;
+}
+
+/* 中央の数値 (.progress-meter-text) は MarkupString で描画するため scoped CSS が効かない。
+   色・サイズは ProgressFieldComponent.razor の <text> の style 属性に直書きしている。 */

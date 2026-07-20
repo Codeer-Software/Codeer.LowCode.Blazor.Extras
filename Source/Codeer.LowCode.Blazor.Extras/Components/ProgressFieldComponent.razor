@@ -3,13 +3,32 @@
 @using Codeer.LowCode.Blazor.Extras.Fields
 @inherits FieldComponentBase<ProgressField>
 
-<div class="progress-bar" style="@BarColorCss" title="@LabelText">
-  <div class="progress-fill" style="width:@FillCss"></div>
-  @if (Field.Design.ShowValueLabel)
-  {
-    <span class="progress-label" style="color:@Field.TextColor">@LabelText</span>
-  }
-</div>
+@if (Field.Design.DisplayType == ProgressDisplayType.Meter)
+{
+  <div class="progress-meter" style="@BarColorCss" title="@LabelText">
+    <svg class="progress-meter-svg" viewBox="0 0 100 56" preserveAspectRatio="xMidYMid meet">
+      <path class="progress-meter-track" d="M 8 50 A 42 42 0 0 1 92 50" />
+      @if (Field.FillPercent > 0)
+      {
+        <path class="progress-meter-fill" d="@MeterArc" />
+      }
+      @if (Field.Design.ShowValueLabel)
+      {
+        @MeterText
+      }
+    </svg>
+  </div>
+}
+else
+{
+  <div class="progress-bar" style="@BarColorCss" title="@LabelText">
+    <div class="progress-fill" style="width:@FillCss"></div>
+    @if (Field.Design.ShowValueLabel)
+    {
+      <span class="progress-label" style="color:@Field.TextColor">@LabelText</span>
+    }
+  </div>
+}
 
 @code {
   private string FillCss => Field.FillPercent.ToString("0.##", CultureInfo.InvariantCulture) + "%";
@@ -18,4 +37,27 @@
 
   private string? BarColorCss
     => string.IsNullOrEmpty(Field.EffectiveBarColor) ? null : $"--progress-color:{Field.EffectiveBarColor};";
+
+  // SVG の <text> は Razor の予約タグと衝突するため MarkupString で出力する (viewBox でスケールする)。
+  // MarkupString で差し込んだ要素には scoped CSS が効かない (スコープ属性が付かない) ので、
+  // 色・サイズは style 属性に直書きする。色は 100% 時のバーと同じ色。
+  private MarkupString MeterText
+    => (MarkupString)($"<text x=\"50\" y=\"47\" text-anchor=\"middle\" " +
+       $"style=\"fill:{Field.MeterNumberColor};font-size:22px;font-weight:600;font-variant-numeric:tabular-nums\">" +
+       $"{LabelText}</text>");
+
+  // 半円ゲージの塗り円弧。中心(50,50)・半径42、左端(8,50)から FillPercent の割合ぶんだけ上側を通って描く。
+  // viewBox 座標系なので幅測定(JS Interop)不要でレスポンシブになる。
+  private string MeterArc
+  {
+    get
+    {
+      const double cx = 50, cy = 50, r = 42;
+      var theta = Math.PI * (1 - Field.FillPercent / 100d); // 左端=π, 右端=0
+      var x = cx + r * Math.Cos(theta);
+      var y = cy - r * Math.Sin(theta);
+      return string.Create(CultureInfo.InvariantCulture,
+        $"M 8 50 A {r} {r} 0 0 1 {x:0.###} {y:0.###}");
+    }
+  }
 }

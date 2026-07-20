@@ -105,7 +105,7 @@
             <span class="gantt-label-text">@item.Text</span>
             @if (item.Progress > 0)
             {
-              <span class="gantt-label-progress">@item.Progress%</span>
+              <span class="gantt-label-progress">@item.Progress.ToString("0.##", CultureInfo.InvariantCulture)%</span>
             }
           </div>
         }

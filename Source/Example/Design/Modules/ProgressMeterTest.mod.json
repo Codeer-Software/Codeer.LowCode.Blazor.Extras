@@ -1,5 +1,5 @@
 {
-  "Name": "Home",
+  "Name": "ProgressMeterTest",
   "DataSourceName": "",
   "DbTable": "",
   "CanCreate": true,
@@ -7,248 +7,167 @@
   "CanDelete": true,
   "Fields": [
     {
-      "DisplayName": "",
-      "SearchCondition": {
-        "SelectFields": [],
-        "SortConditions": [],
-        "SortFieldVariable": "",
-        "SortDescending": false,
-        "ModuleName": "Schedule",
-        "Condition": {
-          "IsOrMatch": false,
-          "IsNot": false,
-          "Children": [],
-          "Name": "",
-          "TypeFullName": "Codeer.LowCode.Blazor.Repository.Match.MultiMatchCondition"
-        }
-      },
-      "TextField": "Title",
-      "StartField": "Start",
-      "EndField": "End",
-      "AllDayField": "AllDay",
-      "ColorField": "Color",
-      "DetailLayoutName": "カレンダー用",
-      "EnableMonthView": true,
-      "EnableWeekView": true,
-      "EnableDayView": true,
-      "OnDataChanged": "",
-      "Name": "Calendar",
-      "IgnoreModification": false,
-      "OnValidateInput": "",
-      "TypeFullName": "Codeer.LowCode.Blazor.Extras.Designs.CalendarFieldDesign"
-    },
-    {
-      "DisplayName": "",
-      "SearchCondition": {
-        "SelectFields": [],
-        "SortConditions": [],
-        "SortFieldVariable": "",
-        "SortDescending": false,
-        "ModuleName": "Task",
-        "Condition": {
-          "IsOrMatch": false,
-          "IsNot": false,
-          "Children": [],
-          "Name": "",
-          "TypeFullName": "Codeer.LowCode.Blazor.Repository.Match.MultiMatchCondition"
-        }
-      },
-      "TextField": "Title",
-      "StartField": "Start",
-      "EndField": "End",
-      "ProgressField": "Progress",
-      "ProgressScale": "Percent",
-      "IdField": "Id",
-      "ProcessingCounterField": "ProcessingCounter",
-      "BarColorField": "BackgroundColor",
-      "DetailLayoutName": "Gantt用",
-      "DependenciesModule": {
-        "SelectFields": [],
-        "SortConditions": [],
-        "SortFieldVariable": "",
-        "SortDescending": false,
-        "ModuleName": "TaskDep",
-        "Condition": {
-          "IsOrMatch": false,
-          "IsNot": false,
-          "Children": [],
-          "Name": "",
-          "TypeFullName": "Codeer.LowCode.Blazor.Repository.Match.MultiMatchCondition"
-        }
-      },
-      "DependencySourceIdField": "Source",
-      "DependencyDestinationIdField": "Destination",
-      "EnableDayView": true,
-      "EnableWeekView": true,
-      "EnableMonthView": true,
-      "CustomRange": false,
-      "CustomRangeEditable": false,
-      "FitToWidth": true,
-      "ShowDetailHeader": true,
-      "ShowToolbar": true,
-      "BarColor": "",
-      "OnDataChanged": "",
-      "Name": "Gantt",
-      "IgnoreModification": false,
-      "OnValidateInput": "",
-      "TypeFullName": "Codeer.LowCode.Blazor.Extras.Designs.GanttFieldDesign"
-    },
-    {
-      "DbColumn": "",
-      "DisplayName": "",
-      "IsRequired": false,
-      "OnDataChanged": "",
-      "Name": "RichText",
-      "IgnoreModification": false,
-      "OnValidateInput": "",
-      "TypeFullName": "Codeer.LowCode.Blazor.Extras.Designs.RichTextFieldDesign"
-    },
-    {
-      "Text": "カレンダーテスト",
-      "ImageResourcePath": "",
-      "ImageResourceSet": {
-        "Default": "",
-        "Focus": "",
-        "Active": "",
-        "Hover": "",
-        "Disabled": ""
-      },
+      "Text": "ProgressField 表示形式 / スケール 確認",
       "Icon": "",
-      "Variant": "Primary",
-      "OnClick": "カレンダーテストボタン_OnClick",
-      "ShowTextInToolTip": false,
-      "IsHtml": false,
-      "Name": "カレンダーテストボタン",
+      "Style": "H2",
+      "RelativeField": "",
+      "OnClick": "",
+      "Name": "Header",
       "IgnoreModification": false,
       "OnValidateInput": "",
-      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.ButtonFieldDesign"
+      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.LabelFieldDesign"
     },
     {
-      "Text": "ガントテスト",
-      "ImageResourcePath": "",
-      "ImageResourceSet": {
-        "Default": "",
-        "Focus": "",
-        "Active": "",
-        "Hover": "",
-        "Disabled": ""
-      },
+      "Text": "パーセント (値をそのまま% ・ 100 で 100%)",
       "Icon": "",
-      "Variant": "Primary",
-      "OnClick": "ガントテストボタン_OnClick",
-      "ShowTextInToolTip": false,
-      "IsHtml": false,
-      "Name": "ガントテストボタン",
+      "Style": "Default",
+      "RelativeField": "",
+      "OnClick": "",
+      "Name": "SectionPercent",
       "IgnoreModification": false,
       "OnValidateInput": "",
-      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.ButtonFieldDesign"
-    },
-    {
-      "Text": "リッチテキストテスト",
-      "ImageResourcePath": "",
-      "ImageResourceSet": {
-        "Default": "",
-        "Focus": "",
-        "Active": "",
-        "Hover": "",
-        "Disabled": ""
-      },
-      "Icon": "",
-      "Variant": "Primary",
-      "OnClick": "リッチテキストテスト_OnClick",
-      "ShowTextInToolTip": false,
-      "IsHtml": false,
-      "Name": "リッチテキストテスト",
-      "IgnoreModification": false,
-      "OnValidateInput": "",
-      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.ButtonFieldDesign"
-    },
-    {
-      "DbColumn": "",
-      "IsMultiline": false,
-      "IsAutoFitRows": false,
-      "Placeholder": "",
-      "TextEditEmptyType": "StringEmpty",
-      "ShouldTrimAfterEdit": false,
-      "IsUpdateProtected": false,
-      "IsSimpleSearchParameter": false,
-      "AllowEmptySearch": false,
-      "OnSearchDataChanged": "",
-      "DisplayName": "",
-      "IsRequired": false,
-      "OnDataChanged": "",
-      "Name": "テキスト",
-      "IgnoreModification": false,
-      "OnValidateInput": "",
-      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.TextFieldDesign"
-    },
-    {
-      "Text": "Submit",
-      "ImageResourcePath": "",
-      "ImageResourceSet": {
-        "Default": "",
-        "Focus": "",
-        "Active": "",
-        "Hover": "",
-        "Disabled": ""
-      },
-      "Icon": "",
-      "Variant": "Primary",
-      "IsHtml": false,
-      "IsBlock": true,
-      "Name": "サブミットボタン",
-      "IgnoreModification": false,
-      "OnValidateInput": "",
-      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.SubmitButtonFieldDesign"
-    },
-    {
-      "AllowedOrientation": "Landscape",
-      "Message": "xxx",
-      "Name": "OrientationLock",
-      "IgnoreModification": false,
-      "OnValidateInput": "",
-      "TypeFullName": "Codeer.LowCode.Blazor.Extras.Designs.OrientationLockFieldDesign"
-    },
-    {
-      "SourceField": "テキスト",
-      "Text": "https://github.com/Codeer-Software/Codeer.LowCode.Blazor.Extras",
-      "EccLevel": "M",
-      "DarkColor": "#000000",
-      "LightColor": "#FFFFFF",
-      "Name": "QrCode",
-      "IgnoreModification": false,
-      "OnValidateInput": "",
-      "TypeFullName": "Codeer.LowCode.Blazor.Extras.Designs.QrCodeFieldDesign"
+      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.LabelFieldDesign"
     },
     {
       "DbColumn": "",
       "Placeholder": "",
-      "Format": "",
+      "Format": "0",
       "Min": 0,
       "Max": 100,
       "IsSlider": true,
       "Step": 1,
-      "OnInput": "",
       "IsUpdateProtected": false,
       "IsSimpleSearchParameter": false,
       "AllowEmptySearch": false,
       "OnSearchDataChanged": "",
-      "DisplayName": "進捗率(入力)",
+      "DisplayName": "値 (0〜100)",
       "IsRequired": false,
       "OnDataChanged": "",
-      "Name": "ProgressValue",
+      "Name": "Value100",
       "IgnoreModification": false,
       "OnValidateInput": "",
       "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.NumberFieldDesign"
     },
     {
+      "Text": "Bar / Percent",
+      "Icon": "",
+      "Style": "Default",
+      "RelativeField": "",
+      "OnClick": "",
+      "Name": "LabelBarPercent",
+      "IgnoreModification": false,
+      "OnValidateInput": "",
+      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.LabelFieldDesign"
+    },
+    {
       "DisplayType": "Bar",
-      "ValueField": "ProgressValue",
+      "ValueField": "Value100",
       "Scale": "Percent",
       "ColorField": "",
       "BarColor": "#1a73e8",
       "ShowValueLabel": true,
-      "Name": "ProgressBar",
+      "Name": "BarPercent",
+      "IgnoreModification": false,
+      "OnValidateInput": "",
+      "TypeFullName": "Codeer.LowCode.Blazor.Extras.Designs.ProgressFieldDesign"
+    },
+    {
+      "Text": "Meter / Percent",
+      "Icon": "",
+      "Style": "Default",
+      "RelativeField": "",
+      "OnClick": "",
+      "Name": "LabelMeterPercent",
+      "IgnoreModification": false,
+      "OnValidateInput": "",
+      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.LabelFieldDesign"
+    },
+    {
+      "DisplayType": "Meter",
+      "ValueField": "Value100",
+      "Scale": "Percent",
+      "ColorField": "",
+      "BarColor": "#1a73e8",
+      "ShowValueLabel": true,
+      "Name": "MeterPercent",
+      "IgnoreModification": false,
+      "OnValidateInput": "",
+      "TypeFullName": "Codeer.LowCode.Blazor.Extras.Designs.ProgressFieldDesign"
+    },
+    {
+      "Text": "割合 (1.0 で 100%)",
+      "Icon": "",
+      "Style": "Default",
+      "RelativeField": "",
+      "OnClick": "",
+      "Name": "SectionRatio",
+      "IgnoreModification": false,
+      "OnValidateInput": "",
+      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.LabelFieldDesign"
+    },
+    {
+      "DbColumn": "",
+      "Placeholder": "",
+      "Format": "0.00",
+      "Min": 0,
+      "Max": 1,
+      "IsSlider": true,
+      "Step": 0.01,
+      "MaxFractionDigits": 2,
+      "IsUpdateProtected": false,
+      "IsSimpleSearchParameter": false,
+      "AllowEmptySearch": false,
+      "OnSearchDataChanged": "",
+      "DisplayName": "値 (0.0〜1.0)",
+      "IsRequired": false,
+      "OnDataChanged": "",
+      "Name": "Value1",
+      "IgnoreModification": false,
+      "OnValidateInput": "",
+      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.NumberFieldDesign"
+    },
+    {
+      "Text": "Bar / Ratio",
+      "Icon": "",
+      "Style": "Default",
+      "RelativeField": "",
+      "OnClick": "",
+      "Name": "LabelBarRatio",
+      "IgnoreModification": false,
+      "OnValidateInput": "",
+      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.LabelFieldDesign"
+    },
+    {
+      "DisplayType": "Bar",
+      "ValueField": "Value1",
+      "Scale": "Ratio",
+      "ColorField": "",
+      "BarColor": "#22a06b",
+      "ShowValueLabel": true,
+      "Name": "BarRatio",
+      "IgnoreModification": false,
+      "OnValidateInput": "",
+      "TypeFullName": "Codeer.LowCode.Blazor.Extras.Designs.ProgressFieldDesign"
+    },
+    {
+      "Text": "Meter / Ratio",
+      "Icon": "",
+      "Style": "Default",
+      "RelativeField": "",
+      "OnClick": "",
+      "Name": "LabelMeterRatio",
+      "IgnoreModification": false,
+      "OnValidateInput": "",
+      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.LabelFieldDesign"
+    },
+    {
+      "DisplayType": "Meter",
+      "ValueField": "Value1",
+      "Scale": "Ratio",
+      "ColorField": "",
+      "BarColor": "#22a06b",
+      "ShowValueLabel": true,
+      "Name": "MeterRatio",
       "IgnoreModification": false,
       "OnValidateInput": "",
       "TypeFullName": "Codeer.LowCode.Blazor.Extras.Designs.ProgressFieldDesign"
@@ -269,7 +188,7 @@
   "DetailLayouts": {
     "": {
       "OnBeforeInitialization": "",
-      "OnAfterInitialization": "DetailLayoutDesign_OnAfterInitialization",
+      "OnAfterInitialization": "",
       "OnLocationChanging": "",
       "OnFieldDataChanged": "",
       "DataOnlyFields": [],
@@ -287,7 +206,7 @@
         "IsExpanderDefaultOpened": false,
         "IsFlowLayout": false,
         "IsAutoFillWrap": false,
-        "IsFillAvailable": true,
+        "IsFillAvailable": false,
         "ScrollDirection": "Unset",
         "OnKeyDown": "",
         "Rows": [
@@ -298,13 +217,11 @@
             "GridRowType": "Normal",
             "CanResize": false,
             "BackgroundColor": "",
-            "KeepInFillAvailableGrid": false,
-            "IsProportionalScale": false,
             "IsRowMarginRemoved": false,
             "Columns": [
               {
                 "Layout": {
-                  "FieldName": "ProgressValue",
+                  "FieldName": "Header",
                   "ContextMenu": "",
                   "ClassName": "",
                   "FontFamily": "",
@@ -322,7 +239,6 @@
                   "BottomColor": ""
                 },
                 "CanResize": false,
-                "AllowOverflow": false,
                 "Border": "None"
               }
             ]
@@ -334,13 +250,11 @@
             "GridRowType": "Normal",
             "CanResize": false,
             "BackgroundColor": "",
-            "KeepInFillAvailableGrid": false,
-            "IsProportionalScale": false,
             "IsRowMarginRemoved": false,
             "Columns": [
               {
                 "Layout": {
-                  "FieldName": "ProgressBar",
+                  "FieldName": "SectionPercent",
                   "ContextMenu": "",
                   "ClassName": "",
                   "FontFamily": "",
@@ -358,7 +272,6 @@
                   "BottomColor": ""
                 },
                 "CanResize": false,
-                "AllowOverflow": false,
                 "Border": "None"
               }
             ]
@@ -370,13 +283,11 @@
             "GridRowType": "Normal",
             "CanResize": false,
             "BackgroundColor": "",
-            "KeepInFillAvailableGrid": false,
-            "IsProportionalScale": false,
             "IsRowMarginRemoved": false,
             "Columns": [
               {
                 "Layout": {
-                  "FieldName": "QrCode",
+                  "FieldName": "Value100",
                   "ContextMenu": "",
                   "ClassName": "",
                   "FontFamily": "",
@@ -385,7 +296,6 @@
                   "BackgroundColor": "",
                   "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.FieldLayoutDesign"
                 },
-                "Width": 129,
                 "Padding": {},
                 "BackgroundColor": "",
                 "BorderStyle": {
@@ -395,7 +305,6 @@
                   "BottomColor": ""
                 },
                 "CanResize": false,
-                "AllowOverflow": false,
                 "Border": "None"
               }
             ]
@@ -407,13 +316,11 @@
             "GridRowType": "Normal",
             "CanResize": false,
             "BackgroundColor": "",
-            "KeepInFillAvailableGrid": false,
-            "IsProportionalScale": false,
             "IsRowMarginRemoved": false,
             "Columns": [
               {
                 "Layout": {
-                  "FieldName": "OrientationLock",
+                  "FieldName": "LabelBarPercent",
                   "ContextMenu": "",
                   "ClassName": "",
                   "FontFamily": "",
@@ -422,6 +329,7 @@
                   "BackgroundColor": "",
                   "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.FieldLayoutDesign"
                 },
+                "Width": 160,
                 "Padding": {},
                 "BackgroundColor": "",
                 "BorderStyle": {
@@ -430,13 +338,13 @@
                   "RightColor": "",
                   "BottomColor": ""
                 },
+                "VerticalAlignment": "Middle",
                 "CanResize": false,
-                "AllowOverflow": false,
                 "Border": "None"
               },
               {
                 "Layout": {
-                  "FieldName": "サブミットボタン",
+                  "FieldName": "BarPercent",
                   "ContextMenu": "",
                   "ClassName": "",
                   "FontFamily": "",
@@ -453,9 +361,8 @@
                   "RightColor": "",
                   "BottomColor": ""
                 },
-                "HorizontalAlignment": "End",
+                "VerticalAlignment": "Middle",
                 "CanResize": false,
-                "AllowOverflow": false,
                 "Border": "None"
               }
             ]
@@ -467,13 +374,11 @@
             "GridRowType": "Normal",
             "CanResize": false,
             "BackgroundColor": "",
-            "KeepInFillAvailableGrid": false,
-            "IsProportionalScale": false,
             "IsRowMarginRemoved": false,
             "Columns": [
               {
                 "Layout": {
-                  "FieldName": "テキスト",
+                  "FieldName": "LabelMeterPercent",
                   "ContextMenu": "",
                   "ClassName": "",
                   "FontFamily": "",
@@ -482,6 +387,7 @@
                   "BackgroundColor": "",
                   "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.FieldLayoutDesign"
                 },
+                "Width": 160,
                 "Padding": {},
                 "BackgroundColor": "",
                 "BorderStyle": {
@@ -490,13 +396,13 @@
                   "RightColor": "",
                   "BottomColor": ""
                 },
+                "VerticalAlignment": "Middle",
                 "CanResize": false,
-                "AllowOverflow": false,
                 "Border": "None"
               },
               {
                 "Layout": {
-                  "FieldName": "リッチテキストテスト",
+                  "FieldName": "MeterPercent",
                   "ContextMenu": "",
                   "ClassName": "",
                   "FontFamily": "",
@@ -513,9 +419,8 @@
                   "RightColor": "",
                   "BottomColor": ""
                 },
-                "HorizontalAlignment": "End",
+                "HorizontalAlignment": "Start",
                 "CanResize": false,
-                "AllowOverflow": false,
                 "Border": "None"
               }
             ]
@@ -527,13 +432,11 @@
             "GridRowType": "Normal",
             "CanResize": false,
             "BackgroundColor": "",
-            "KeepInFillAvailableGrid": false,
-            "IsProportionalScale": false,
             "IsRowMarginRemoved": false,
             "Columns": [
               {
                 "Layout": {
-                  "FieldName": "RichText",
+                  "FieldName": "SectionRatio",
                   "ContextMenu": "",
                   "ClassName": "",
                   "FontFamily": "",
@@ -551,7 +454,6 @@
                   "BottomColor": ""
                 },
                 "CanResize": false,
-                "AllowOverflow": false,
                 "Border": "None"
               }
             ]
@@ -563,13 +465,11 @@
             "GridRowType": "Normal",
             "CanResize": false,
             "BackgroundColor": "",
-            "KeepInFillAvailableGrid": false,
-            "IsProportionalScale": false,
             "IsRowMarginRemoved": false,
             "Columns": [
               {
                 "Layout": {
-                  "FieldName": "ガントテストボタン",
+                  "FieldName": "Value1",
                   "ContextMenu": "",
                   "ClassName": "",
                   "FontFamily": "",
@@ -586,9 +486,7 @@
                   "RightColor": "",
                   "BottomColor": ""
                 },
-                "HorizontalAlignment": "End",
                 "CanResize": false,
-                "AllowOverflow": false,
                 "Border": "None"
               }
             ]
@@ -600,13 +498,35 @@
             "GridRowType": "Normal",
             "CanResize": false,
             "BackgroundColor": "",
-            "KeepInFillAvailableGrid": false,
-            "IsProportionalScale": false,
             "IsRowMarginRemoved": false,
             "Columns": [
               {
                 "Layout": {
-                  "FieldName": "Gantt",
+                  "FieldName": "LabelBarRatio",
+                  "ContextMenu": "",
+                  "ClassName": "",
+                  "FontFamily": "",
+                  "Color": "",
+                  "Name": "",
+                  "BackgroundColor": "",
+                  "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.FieldLayoutDesign"
+                },
+                "Width": 160,
+                "Padding": {},
+                "BackgroundColor": "",
+                "BorderStyle": {
+                  "LeftColor": "",
+                  "TopColor": "",
+                  "RightColor": "",
+                  "BottomColor": ""
+                },
+                "VerticalAlignment": "Middle",
+                "CanResize": false,
+                "Border": "None"
+              },
+              {
+                "Layout": {
+                  "FieldName": "BarRatio",
                   "ContextMenu": "",
                   "ClassName": "",
                   "FontFamily": "",
@@ -623,8 +543,8 @@
                   "RightColor": "",
                   "BottomColor": ""
                 },
+                "VerticalAlignment": "Middle",
                 "CanResize": false,
-                "AllowOverflow": false,
                 "Border": "None"
               }
             ]
@@ -636,13 +556,11 @@
             "GridRowType": "Normal",
             "CanResize": false,
             "BackgroundColor": "",
-            "KeepInFillAvailableGrid": false,
-            "IsProportionalScale": false,
             "IsRowMarginRemoved": false,
             "Columns": [
               {
                 "Layout": {
-                  "FieldName": "カレンダーテストボタン",
+                  "FieldName": "LabelMeterRatio",
                   "ContextMenu": "",
                   "ClassName": "",
                   "FontFamily": "",
@@ -651,6 +569,7 @@
                   "BackgroundColor": "",
                   "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.FieldLayoutDesign"
                 },
+                "Width": 160,
                 "Padding": {},
                 "BackgroundColor": "",
                 "BorderStyle": {
@@ -659,27 +578,13 @@
                   "RightColor": "",
                   "BottomColor": ""
                 },
-                "HorizontalAlignment": "End",
+                "VerticalAlignment": "Middle",
                 "CanResize": false,
-                "AllowOverflow": false,
                 "Border": "None"
-              }
-            ]
-          },
-          {
-            "IsWrap": false,
-            "IsAutoFillWrap": false,
-            "Margin": {},
-            "GridRowType": "Normal",
-            "CanResize": false,
-            "BackgroundColor": "",
-            "KeepInFillAvailableGrid": false,
-            "IsProportionalScale": false,
-            "IsRowMarginRemoved": false,
-            "Columns": [
+              },
               {
                 "Layout": {
-                  "FieldName": "Calendar",
+                  "FieldName": "MeterRatio",
                   "ContextMenu": "",
                   "ClassName": "",
                   "FontFamily": "",
@@ -696,8 +601,8 @@
                   "RightColor": "",
                   "BottomColor": ""
                 },
+                "HorizontalAlignment": "Start",
                 "CanResize": false,
-                "AllowOverflow": false,
                 "Border": "None"
               }
             ]
@@ -736,73 +641,7 @@
         "IsFillAvailable": false,
         "ScrollDirection": "Unset",
         "OnKeyDown": "",
-        "Rows": [
-          {
-            "IsWrap": false,
-            "IsAutoFillWrap": false,
-            "Margin": {},
-            "GridRowType": "Normal",
-            "CanResize": false,
-            "BackgroundColor": "",
-            "KeepInFillAvailableGrid": false,
-            "IsProportionalScale": false,
-            "IsRowMarginRemoved": false,
-            "Columns": [
-              {
-                "Padding": {},
-                "BackgroundColor": "",
-                "BorderStyle": {
-                  "LeftColor": "",
-                  "TopColor": "",
-                  "RightColor": "",
-                  "BottomColor": ""
-                },
-                "CanResize": false,
-                "AllowOverflow": false,
-                "Border": "None"
-              },
-              {
-                "Padding": {},
-                "BackgroundColor": "",
-                "BorderStyle": {
-                  "LeftColor": "",
-                  "TopColor": "",
-                  "RightColor": "",
-                  "BottomColor": ""
-                },
-                "CanResize": false,
-                "AllowOverflow": false,
-                "Border": "None"
-              },
-              {
-                "Padding": {},
-                "BackgroundColor": "",
-                "BorderStyle": {
-                  "LeftColor": "",
-                  "TopColor": "",
-                  "RightColor": "",
-                  "BottomColor": ""
-                },
-                "CanResize": false,
-                "AllowOverflow": false,
-                "Border": "None"
-              },
-              {
-                "Padding": {},
-                "BackgroundColor": "",
-                "BorderStyle": {
-                  "LeftColor": "",
-                  "TopColor": "",
-                  "RightColor": "",
-                  "BottomColor": ""
-                },
-                "CanResize": false,
-                "AllowOverflow": false,
-                "Border": "None"
-              }
-            ]
-          }
-        ],
+        "Rows": [],
         "BackgroundColor": "",
         "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.SearchGridLayoutDesign"
       }
@@ -826,14 +665,13 @@
       "ModuleName": ""
     },
     "PagerPosition": "Bottom",
-    "ReplaceMode": "None",
+    "UseIndexSort": false,
     "DeleteTogether": false,
     "CanCreate": false,
     "CanUpdate": false,
     "CanDelete": false,
     "CanUserSort": true,
     "CanSelect": false,
-    "UseIndexSort": false,
     "OnDataChanged": "",
     "OnSearchDataChanged": "",
     "OnSelectedIndexChanged": "",

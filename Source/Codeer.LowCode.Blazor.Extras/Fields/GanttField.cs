@@ -17,7 +17,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         public string Text { get; set; } = string.Empty;
         public DateTime Start { get; set; }
         public DateTime End { get; set; }
-        public int Progress { get; set; }
+        public double Progress { get; set; }
         public string[] Dependencies { get; set; } = [];
         public string BarColor { get; set; } = string.Empty;
         public Module? Module { get; set; }
@@ -457,11 +457,13 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             return (data.GetField(fieldName)?.GetData() as ValueFieldDataBase<string>)?.Value ?? string.Empty;
         }
 
-        private int GetProgressValue(Module data)
+        // 進捗値を 0〜100(%) で返す。ProgressScale=Ratio のときは 1.0 を 100% とみなす。
+        // NumberField の生値 (decimal) をそのまま扱うため、小数の進捗 (例 50.5%) も保持する。
+        private double GetProgressValue(Module data)
         {
-            if (string.IsNullOrEmpty(Design.ProgressField)) return 0;
-            var val = data.GetField<NumberField>(Design.ProgressField)?.Value;
-            return int.TryParse(val?.ToString() ?? string.Empty, out var p) ? Math.Clamp(p, 0, 100) : 0;
+            if (string.IsNullOrEmpty(Design.ProgressField)) return 0d;
+            var val = (data.GetField(Design.ProgressField)?.GetData() as ValueFieldDataBase<decimal?>)?.Value;
+            return Design.ProgressScale.ToFillPercent(val);
         }
 
         private bool DetectIsDateOnly()
