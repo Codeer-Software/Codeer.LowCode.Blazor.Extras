@@ -18,6 +18,11 @@
 		<PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
 		<PackageReleaseNotes>
+- ProgressField: added a half-circle Meter display mode (DisplayType) and a value scale option (Scale: Percent / Ratio). GanttField gained the same progress scale.
+- Bulk Excel/CSV import-export: bulk download/upload buttons, a script-callable bulk transfer service, and an Excel report button.
+- CSV support: FileColumnMapping and CsvFileFormat fields.
+- EnterFocusMoveField is deprecated.
+- Unnecessary inherited properties are now hidden in the designer for the relevant fields.
 - Reduced the WebAssembly download size: AI documentation resources are no longer embedded in the runtime assembly (they now ship with the Designer-side package).
 		</PackageReleaseNotes>
 		<PackageId>Codeer.LowCode.Blazor.Extras</PackageId>

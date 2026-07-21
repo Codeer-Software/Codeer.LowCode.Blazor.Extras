@@ -18,7 +18,8 @@
     <PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageReleaseNotes>
-- AI documentation resources (field docs) are now embedded in this Designer-side assembly instead of the runtime assembly, keeping them out of the WebAssembly download.
+- Designer-side support for the new ProgressField Meter mode and value scale, the GanttField progress scale, the bulk Excel/CSV import-export fields (FileColumnMapping / CsvFileFormat), and hiding of unnecessary inherited properties.
+- AI documentation resources (field docs, script object docs) are now embedded in this Designer-side assembly instead of the runtime assembly, keeping them out of the WebAssembly download.
     </PackageReleaseNotes>
     <PackageId>Codeer.LowCode.Blazor.Extras.Designer</PackageId>
   </PropertyGroup>

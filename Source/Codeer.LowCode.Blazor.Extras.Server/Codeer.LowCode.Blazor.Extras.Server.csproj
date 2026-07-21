@@ -17,7 +17,7 @@
 		<PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
 		<PackageReleaseNotes>
-- Version bump to align the Codeer.LowCode.Blazor.Extras package family (Extras, Extras.Designer, Extras.Server) on 0.4.0. No functional changes since 0.3.0.
+- Version bump to keep the Codeer.LowCode.Blazor.Extras package family (Extras, Extras.Designer, Extras.Server) aligned on 0.4.0. No functional changes since 0.3.0.
 		</PackageReleaseNotes>
 		<PackageId>Codeer.LowCode.Blazor.Extras.Server</PackageId>
 	</PropertyGroup>
