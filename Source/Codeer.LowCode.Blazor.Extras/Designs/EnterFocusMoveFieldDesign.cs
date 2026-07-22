@@ -11,7 +11,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
     //既存デザインのため読み込み・動作は維持するが、デザイナのツールボックス/種別選択では非表示になる。
     [Obsolete]
     [Designer(DisplayName = "$EnterFocusMoveField")]
-    [IgnoreBaseProperties(nameof(FieldDesignBase.IgnoreModification), nameof(FieldDesignBase.OnValidateInput))]
+    [IgnoreBaseProperties(nameof(FieldDesignBase.IgnoreModification), nameof(FieldDesignBase.OnValidateInput), nameof(FieldDesignBase.IsFocusSkip), nameof(FieldDesignBase.OnFocusMoving), nameof(FieldDesignBase.NextFocusField))]
     public class EnterFocusMoveFieldDesign() : FieldDesignBase(typeof(EnterFocusMoveFieldDesign).FullName!)
     {
         public override string GetWebComponentTypeFullName() => typeof(EnterFocusMoveFieldComponent).FullName!;

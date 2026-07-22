@@ -11,7 +11,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
 {
     [ToolboxIcon(PackIconMaterialKind = "Qrcode")]
     [Designer(DisplayName = "$QrCodeField")]
-    [IgnoreBaseProperties(nameof(FieldDesignBase.IgnoreModification), nameof(FieldDesignBase.OnValidateInput))]
+    [IgnoreBaseProperties(nameof(FieldDesignBase.IgnoreModification), nameof(FieldDesignBase.OnValidateInput), nameof(FieldDesignBase.IsFocusSkip), nameof(FieldDesignBase.OnFocusMoving), nameof(FieldDesignBase.NextFocusField))]
     public class QrCodeFieldDesign() : FieldDesignBase(typeof(QrCodeFieldDesign).FullName!), IDataDependentField
     {
         /// <summary>

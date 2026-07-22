@@ -8,7 +8,7 @@ using Codeer.LowCode.Blazor.Repository.Design;
 namespace Codeer.LowCode.Blazor.Extras.Designs
 {
     [Designer(DisplayName = "$OrientationLockField")]
-    [IgnoreBaseProperties(nameof(FieldDesignBase.IgnoreModification), nameof(FieldDesignBase.OnValidateInput))]
+    [IgnoreBaseProperties(nameof(FieldDesignBase.IgnoreModification), nameof(FieldDesignBase.OnValidateInput), nameof(FieldDesignBase.IsFocusSkip), nameof(FieldDesignBase.OnFocusMoving), nameof(FieldDesignBase.NextFocusField))]
     public class OrientationLockFieldDesign() : FieldDesignBase(typeof(OrientationLockFieldDesign).FullName!)
     {
         public enum OrientationKind

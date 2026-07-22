@@ -19,7 +19,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
     /// このフィールドを使うアプリはサーバー側の対応実装 (BulkFileTransfer への移譲) が必要。
     /// </summary>
     [Designer(DisplayName = "$CsvFileFormatField")]
-    [IgnoreBaseProperties(nameof(FieldDesignBase.IgnoreModification), nameof(FieldDesignBase.OnValidateInput))]
+    [IgnoreBaseProperties(nameof(FieldDesignBase.IgnoreModification), nameof(FieldDesignBase.OnValidateInput), nameof(FieldDesignBase.IsFocusSkip), nameof(FieldDesignBase.OnFocusMoving), nameof(FieldDesignBase.NextFocusField))]
     public class CsvFileFormatFieldDesign() : FieldDesignBase(typeof(CsvFileFormatFieldDesign).FullName!), IBulkFileTransferFieldDesign
     {
         /// <summary>CSV のエンコーディング。既定は UTF-8 (BOM 付き。Excel でダブルクリックしても文字化けしない)。</summary>

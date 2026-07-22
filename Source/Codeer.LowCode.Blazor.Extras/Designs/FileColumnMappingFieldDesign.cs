@@ -51,7 +51,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
     /// このフィールドを使うアプリはサーバー側の対応実装 (BulkFileTransfer への移譲) が必要。
     /// </summary>
     [Designer(DisplayName = "$FileColumnMappingField")]
-    [IgnoreBaseProperties(nameof(FieldDesignBase.IgnoreModification), nameof(FieldDesignBase.OnValidateInput))]
+    [IgnoreBaseProperties(nameof(FieldDesignBase.IgnoreModification), nameof(FieldDesignBase.OnValidateInput), nameof(FieldDesignBase.IsFocusSkip), nameof(FieldDesignBase.OnFocusMoving), nameof(FieldDesignBase.NextFocusField))]
     public class FileColumnMappingFieldDesign() : FieldDesignBase(typeof(FileColumnMappingFieldDesign).FullName!)
     {
         /// <summary>ファイルにヘッダ行があるか。出力時は ExternalName を1行目に出し、取込時は1行目を読み飛ばす。</summary>
