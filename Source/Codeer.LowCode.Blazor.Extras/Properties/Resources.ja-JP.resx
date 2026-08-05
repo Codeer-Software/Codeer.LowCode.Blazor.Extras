@@ -453,6 +453,24 @@
   <data name="ExcelReportButtonField" xml:space="preserve">
     <value>Excel帳票ボタン</value>
   </data>
+  <data name="CsvFileFormatEncoding" xml:space="preserve">
+    <value>エンコーディング</value>
+  </data>
+  <data name="CsvFileFormatDelimiter" xml:space="preserve">
+    <value>区切り文字</value>
+  </data>
+  <data name="CsvFileFormatFileExtension" xml:space="preserve">
+    <value>ファイル拡張子</value>
+  </data>
+  <data name="CsvFileFormatFixedLengthWidthUnit" xml:space="preserve">
+    <value>固定長の幅の単位</value>
+  </data>
+  <data name="FileColumnMappingHasHeader" xml:space="preserve">
+    <value>ヘッダ行あり</value>
+  </data>
+  <data name="FileColumnMappingColumns" xml:space="preserve">
+    <value>列マッピング</value>
+  </data>
   <data name="CsvFileFormatFixedLengthMappingRequired" xml:space="preserve">
     <value>固定長形式 (区切り文字 None) には同じモジュールにファイル列マッピングフィールドが必要です (列幅はそちらの列ごとに設定します)。</value>
   </data>

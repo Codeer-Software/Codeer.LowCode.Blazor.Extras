@@ -26,22 +26,22 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
     public class CsvFileFormatFieldDesign() : FieldDesignBase(typeof(CsvFileFormatFieldDesign).FullName!), IBulkFileTransferFieldDesign
     {
         /// <summary>CSV のエンコーディング。既定は UTF-8 (BOM 付き。Excel でダブルクリックしても文字化けしない)。</summary>
-        [Designer]
+        [Designer(DisplayName = "$CsvFileFormatEncoding")]
         public CsvEncodingKind Encoding { get; set; } = CsvEncodingKind.Utf8Bom;
 
         /// <summary>区切り文字。既定はカンマ。None (区切り文字なし) にすると固定長形式になる。</summary>
-        [Designer]
+        [Designer(DisplayName = "$CsvFileFormatDelimiter")]
         public CsvDelimiterKind Delimiter { get; set; } = CsvDelimiterKind.Comma;
 
         /// <summary>一括ダウンロードのファイル拡張子 (例 "csv" / "txt"。固定長形式なら "dat" 等)。</summary>
-        [Designer]
+        [Designer(DisplayName = "$CsvFileFormatFileExtension")]
         public string FileExtension { get; set; } = "csv";
 
         /// <summary>
         /// 固定長形式 (Delimiter = None) での列幅の単位。既定は Byte (Shift_JIS の全角 = 2 バイト。全銀協等のレガシー固定長の典型)。
         /// 行の組み立ては併用必須の FileColumnMappingField の各列の FixedLengthWidth/Alignment/PaddingChar で行う。
         /// </summary>
-        [Designer]
+        [Designer(DisplayName = "$CsvFileFormatFixedLengthWidthUnit")]
         public FixedLengthWidthUnitKind FixedLengthWidthUnit { get; set; } = FixedLengthWidthUnitKind.Byte;
 
         //本体クライアントが一括ダウンロードのファイル名の拡張子として参照する。未設定なら "csv"

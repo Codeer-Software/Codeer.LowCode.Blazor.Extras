@@ -80,11 +80,11 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
     public class FileColumnMappingFieldDesign() : FieldDesignBase(typeof(FileColumnMappingFieldDesign).FullName!)
     {
         /// <summary>ファイルにヘッダ行があるか。出力時は ExternalName を1行目に出し、取込時は1行目を読み飛ばす。</summary>
-        [Designer]
+        [Designer(DisplayName = "$FileColumnMappingHasHeader")]
         public bool HasHeader { get; set; } = true;
 
         /// <summary>列マッピング (並び順 = ファイルの列位置)。</summary>
-        [Designer]
+        [Designer(DisplayName = "$FileColumnMappingColumns")]
         public MappingColumns Columns { get; set; } = new();
 
         public override string GetWebComponentTypeFullName() => typeof(FileColumnMappingFieldComponent).FullName!;

@@ -453,6 +453,24 @@
   <data name="ExcelReportButtonField" xml:space="preserve">
     <value>Excel Report Button</value>
   </data>
+  <data name="CsvFileFormatEncoding" xml:space="preserve">
+    <value>Encoding</value>
+  </data>
+  <data name="CsvFileFormatDelimiter" xml:space="preserve">
+    <value>Delimiter</value>
+  </data>
+  <data name="CsvFileFormatFileExtension" xml:space="preserve">
+    <value>File Extension</value>
+  </data>
+  <data name="CsvFileFormatFixedLengthWidthUnit" xml:space="preserve">
+    <value>Fixed-Length Width Unit</value>
+  </data>
+  <data name="FileColumnMappingHasHeader" xml:space="preserve">
+    <value>Has Header</value>
+  </data>
+  <data name="FileColumnMappingColumns" xml:space="preserve">
+    <value>Columns</value>
+  </data>
   <data name="CsvFileFormatFixedLengthMappingRequired" xml:space="preserve">
     <value>The fixed-length format (Delimiter: None) requires the File Column Mapping field in the same module (column widths are set per column there).</value>
   </data>

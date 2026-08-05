@@ -947,6 +947,42 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
             }
         }
 
+        internal static string CsvFileFormatEncoding {
+            get {
+                return ResourceManager.GetString("CsvFileFormatEncoding", resourceCulture);
+            }
+        }
+
+        internal static string CsvFileFormatDelimiter {
+            get {
+                return ResourceManager.GetString("CsvFileFormatDelimiter", resourceCulture);
+            }
+        }
+
+        internal static string CsvFileFormatFileExtension {
+            get {
+                return ResourceManager.GetString("CsvFileFormatFileExtension", resourceCulture);
+            }
+        }
+
+        internal static string CsvFileFormatFixedLengthWidthUnit {
+            get {
+                return ResourceManager.GetString("CsvFileFormatFixedLengthWidthUnit", resourceCulture);
+            }
+        }
+
+        internal static string FileColumnMappingHasHeader {
+            get {
+                return ResourceManager.GetString("FileColumnMappingHasHeader", resourceCulture);
+            }
+        }
+
+        internal static string FileColumnMappingColumns {
+            get {
+                return ResourceManager.GetString("FileColumnMappingColumns", resourceCulture);
+            }
+        }
+
         internal static string CsvFileFormatFixedLengthMappingRequired {
             get {
                 return ResourceManager.GetString("CsvFileFormatFixedLengthMappingRequired", resourceCulture);
