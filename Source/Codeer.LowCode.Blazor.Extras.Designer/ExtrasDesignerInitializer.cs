@@ -39,6 +39,8 @@ namespace Codeer.LowCode.Blazor.Extras.Designer
             DesignerApp.ScriptRuntimeTypeManager.AddService(new ScriptObjects.MailService());
             DesignerApp.ScriptRuntimeTypeManager.AddType<ScriptObjects.MailMessage>();
             DesignerApp.ScriptRuntimeTypeManager.AddService(new ScriptObjects.BulkFileTransferService());
+            //new BulkFileReader<XXXModule>() のイディオム (モジュール名が ctor に渡る) で使える
+            DesignerApp.ScriptRuntimeTypeManager.AddModuleGenericType(typeof(ScriptObjects.BulkFileReader));
 
             //custom property controls.
             PropertyTypeManager.AddPropertyControl<TaskBoardStatuses, TaskBoardStatusesPropertyControl>();

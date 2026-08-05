@@ -72,6 +72,12 @@ CSV の生成/パース単体は `CsvUtils` (`Codeer.LowCode.Blazor.Extras.Serve
 - 1 行目はヘッダ行 (xlsx の一括ダウンロードと同じ列構成)
 - アップロード時、全セルが空の行は無視される
 
+### スクリプトからの一括入出力
+
+一覧ページのボタン以外に、スクリプトからも同じ形式定義で入出力できる
+(取込 = `BulkFileReader`、出力 = `BulkFileTransferService.Download`。行スキップ・演算・重複チェックなどの
+行ロジックをスクリプトで書くのはこの経路)。
+
 ## Script
 
 ### スクリプト API

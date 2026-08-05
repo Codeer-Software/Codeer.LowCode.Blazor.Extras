@@ -32,6 +32,7 @@ namespace Codeer.LowCode.Blazor.Extras
             manager.AddCustomInjector(() => http);
             manager.AddType(typeof(ScriptObjects.Excel));
             manager.AddType(typeof(ExcelCellIndex));
+            manager.AddModuleGenericType(typeof(ScriptObjects.BulkFileReader));
             manager.AddType<WebApiResult>();
             manager.AddType<MailMessage>();
             manager.AddService(new WebApiService(http, logger));

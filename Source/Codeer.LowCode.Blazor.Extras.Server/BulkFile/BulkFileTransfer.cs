@@ -1,7 +1,9 @@
 using Codeer.LowCode.Blazor;
 using Codeer.LowCode.Blazor.DataIO;
 using Codeer.LowCode.Blazor.DesignLogic;
+using Codeer.LowCode.Blazor.Extras.BulkFile;
 using Codeer.LowCode.Blazor.Extras.Designs;
+using System.Reflection;
 using Codeer.LowCode.Blazor.Extras.Server.Csv;
 using Codeer.LowCode.Blazor.Repository.Data;
 using Codeer.LowCode.Blazor.Repository.Design;
@@ -82,6 +84,143 @@ namespace Codeer.LowCode.Blazor.Extras.Server.BulkFile
 
         //固定長は形式 (Delimiter = None) と列幅 (列マッピング) の両方が揃って成立する
         //(片方だけはデザインチェックエラー。実行時は従来動作へ寛容にフォールバック)
+        /// <summary>
+        /// スクリプトの一括ファイル出力 (list_file_by_data / BulkFileTransferService.Download(List&lt;Module&gt;)) 用。
+        /// クライアントで加工済みのモジュールデータ列をそのままファイル化する (検索しない点が GetListFileAsync と違う)。
+        /// 形式は一括ダウンロードと同じ分岐 (固定長/CSV/xlsx、列マッピングがあれば相手仕様の列、なければ内部名ヘッダ)。
+        /// </summary>
+        public static async Task<MemoryStream> GetListFileByDataAsync(DesignData designData, ModuleDataIO moduleDataIO, string? moduleName, List<ModuleData> items)
+        {
+            var (module, csv, mapping) = FindTransferFields(designData, moduleName ?? string.Empty);
+            if (module == null) return new MemoryStream();
+
+            var texts = mapping != null
+                ? await FileColumnMappingTransform.ToExternalAsync(items, mapping, module, moduleDataIO)
+                : ModuleDataToInternalNameTableTexts(items, module);
+
+            if (IsFixedLength(csv, mapping))
+                return FixedLengthUtils.CreateFixedLengthBinary(texts, mapping!, csv!);
+
+            return csv != null
+                ? CsvUtils.CreateCsvBinary(texts, csv.Encoding, csv.Delimiter.ToChar())
+                : ExcelUtils.CreateExcelBinary(texts, "data");
+        }
+
+        //ModuleData → 内部名ヘッダ ("フィールド名.データメンバ名") のテーブルテキスト (取込側の逆方向)。
+        //列 = デザインの DbColumn プロパティ (DataMember) 規約。値は ToString (書式なし)
+        static List<List<string>> ModuleDataToInternalNameTableTexts(List<ModuleData> items, ModuleDesign module)
+        {
+            var targets = new List<(string Header, string FieldName, System.Reflection.PropertyInfo Property)>();
+            foreach (var field in module.Fields)
+            {
+                if (field.GetType().GetCustomAttribute<DisableBulkDataUpdateAttribute>(true) != null) continue;
+                var dataType = field.CreateData()?.GetType();
+                if (dataType == null) continue;
+                foreach (var prop in field.GetType().GetProperties())
+                {
+                    var attr = prop.GetCustomAttribute<DbColumnAttribute>();
+                    if (attr == null) continue;
+                    if (string.IsNullOrEmpty(prop.GetValue(field) as string)) continue; //DB列未割当
+                    var dataProp = dataType.GetProperty(attr.DataMember);
+                    if (dataProp == null) continue;
+                    targets.Add(($"{field.Name}.{attr.DataMember}", field.Name, dataProp));
+                }
+            }
+
+            var texts = new List<List<string>> { targets.Select(t => t.Header).ToList() };
+            foreach (var item in items)
+            {
+                var row = new List<string>();
+                foreach (var t in targets)
+                {
+                    var value = item.Fields.TryGetValue(t.FieldName, out var data) ? t.Property.GetValue(data) : null;
+                    row.Add(value?.ToString() ?? string.Empty);
+                }
+                texts.Add(row);
+            }
+            return texts;
+        }
+
+        /// <summary>
+        /// スクリプトの一括ファイル取込 (parse_file / BulkFileReader) 用の解析。DB には書き込まない。
+        /// 形式は一括更新と同じ分岐 (固定長/CSV/xlsx 自動判定、列マッピングがあれば相手仕様の列、なければ内部名ヘッダ)。
+        /// 解釈できないセルは値未設定のまま Errors に載り、行は捨てない
+        /// (SubmitByFileAsync の「エラーがあれば取り込まない」と思想が違う点。トレーラ行などはスクリプト側で捨てる)。
+        /// </summary>
+        public static async Task<BulkFileParseResult> ParseFileAsync(DesignData designData, ModuleDataIO moduleDataIO, string? moduleName, Stream file)
+        {
+            var (module, csv, mapping) = FindTransferFields(designData, moduleName ?? string.Empty);
+            if (module == null) return new BulkFileParseResult();
+
+            var texts = IsFixedLength(csv, mapping)
+                ? await FixedLengthUtils.ReadAllTextsFromFileBinary(file, mapping!, csv!)
+                : csv != null
+                ? await CsvUtils.ReadAllTextsFromFileBinary(file, csv.Encoding, csv.Delimiter.ToChar())
+                : await ExcelUtils.ReadAllTextsFromExcelBinary(file);
+
+            if (mapping != null)
+            {
+                var (items, errors) = await FileColumnMappingTransform.ToInternalWithCellErrorsAsync(texts, mapping, module, moduleDataIO);
+                return new BulkFileParseResult { Items = items, Errors = errors };
+            }
+            return InternalNameTableTextsToModuleData(texts, module);
+        }
+
+        //内部名ヘッダ ("フィールド名.データメンバ名") のテーブルテキスト → ModuleData。
+        //取込本体と同じ規約 (FieldData のデータメンバ解決 + DisableBulkDataUpdate 除外) で列を解決し、
+        //解決できない列は無視、型変換できないセルはエラー (値未設定)
+        static BulkFileParseResult InternalNameTableTextsToModuleData(List<List<string>> texts, ModuleDesign module)
+        {
+            var result = new BulkFileParseResult();
+            if (texts.Count == 0) return result;
+
+            var header = texts[0];
+            var targets = new List<(int Index, string Header, FieldDesignBase Field, System.Reflection.PropertyInfo Property)>();
+            for (var i = 0; i < header.Count; i++)
+            {
+                var sp = header[i].Split('.', 2);
+                var field = module.Fields.FirstOrDefault(f => f.Name == sp[0]);
+                if (field == null) continue;
+                if (field.GetType().GetCustomAttribute<DisableBulkDataUpdateAttribute>(true) != null) continue;
+                var property = field.CreateData()?.GetType().GetProperty(sp.Length == 2 ? sp[1] : "Value");
+                if (property == null) continue;
+                targets.Add((i, header[i], field, property));
+            }
+
+            var fileRow = 1;
+            foreach (var row in texts.Skip(1))
+            {
+                fileRow++;
+                var data = new ModuleData { Name = module.Name };
+                foreach (var t in targets)
+                {
+                    var text = t.Index < row.Count ? row[t.Index] : string.Empty;
+                    if (!BulkDataTextConverter.TryConvert(text, t.Property.PropertyType, out var value))
+                    {
+                        result.Errors.Add(new BulkFileCellError
+                        {
+                            ItemIndex = result.Items.Count,
+                            FileRow = fileRow,
+                            FieldName = t.Field.Name,
+                            ColumnLabel = t.Header,
+                            Message = $"cannot convert '{text}'."
+                        });
+                        continue;
+                    }
+                    if (!data.Fields.TryGetValue(t.Field.Name, out var fieldData))
+                    {
+                        var created = t.Field.CreateData();
+                        if (created == null) continue;
+                        fieldData = created;
+                        data.Fields[t.Field.Name] = fieldData;
+                    }
+                    t.Property.SetValue(fieldData, value);
+                }
+                result.Items.Add(data);
+            }
+            return result;
+        }
+
         static bool IsFixedLength(CsvFileFormatFieldDesign? csv, FileColumnMappingFieldDesign? mapping)
             => csv != null && csv.Delimiter == CsvDelimiterKind.None && mapping != null;
 

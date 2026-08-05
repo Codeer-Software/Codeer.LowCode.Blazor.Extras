@@ -18,6 +18,8 @@ namespace Extras.Client.Shared.Services
             Codeer.LowCode.Blazor.Extras.ScriptObjects.Excel.ConvertPdfEndPoint = "api/excel/pdf";
             AITextAnalyzerField.FileToModuleDataEndPoint = "/api/ai_text_analyze/file";
             AITextAnalyzerField.TextToModuleDataEndPoint = "/api/ai_text_analyze/text";
+            Codeer.LowCode.Blazor.Extras.ScriptObjects.BulkFileReader.ParseFileEndPoint = "/api/module_data/parse_file";
+            Codeer.LowCode.Blazor.Extras.ScriptObjects.BulkFileTransferService.ListFileByDataEndPoint = "/api/module_data/list_file_by_data";
 
             services.AddScoped<IAppInfoService, AppInfoService>();
             services.AddScoped<IModuleDataService, ModuleDataService>();

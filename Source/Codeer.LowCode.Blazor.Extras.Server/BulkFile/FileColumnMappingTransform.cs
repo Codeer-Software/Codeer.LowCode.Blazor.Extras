@@ -1,5 +1,6 @@
 using Codeer.LowCode.Blazor.DataIO;
 using Codeer.LowCode.Blazor.DesignLogic;
+using Codeer.LowCode.Blazor.Extras.BulkFile;
 using Codeer.LowCode.Blazor.Extras.Designs;
 using Codeer.LowCode.Blazor.Repository.Data;
 using Codeer.LowCode.Blazor.Repository.Design;
@@ -82,6 +83,24 @@ namespace Codeer.LowCode.Blazor.Extras.Server.BulkFile
             List<List<string>> externalTexts, FileColumnMappingFieldDesign design, ModuleDesign moduleDesign,
             Func<SearchCondition, Task<List<List<string>>>> getTableTexts)
         {
+            var (items, cellErrors) = await ToInternalWithCellErrorsAsync(externalTexts, design, moduleDesign, getTableTexts);
+            return (items, cellErrors.Select(e => $"Row {e.FileRow}, {e.ColumnLabel}: {e.Message}").ToList());
+        }
+
+        /// <summary>取込: 外部列 → ModuleData (セル単位の構造化エラー。parse_file / BulkFileReader 用)。</summary>
+        public static Task<(List<ModuleData> Items, List<BulkFileCellError> Errors)> ToInternalWithCellErrorsAsync(
+            List<List<string>> externalTexts, FileColumnMappingFieldDesign design, ModuleDesign moduleDesign,
+            ModuleDataIO moduleDataIO)
+            => ToInternalWithCellErrorsAsync(externalTexts, design, moduleDesign, moduleDataIO.GetTableTextsAsync);
+
+        /// <summary>
+        /// 取込: 外部列 → ModuleData (セル単位の構造化エラー。変換表の取得手段を差し替え可能)。
+        /// 解釈できないセルは値未設定のままエラーに載せ、行自体は捨てない。
+        /// </summary>
+        public static async Task<(List<ModuleData> Items, List<BulkFileCellError> Errors)> ToInternalWithCellErrorsAsync(
+            List<List<string>> externalTexts, FileColumnMappingFieldDesign design, ModuleDesign moduleDesign,
+            Func<SearchCondition, Task<List<List<string>>>> getTableTexts)
+        {
             var converter = await CodeConverter.LoadAsync(design, getTableTexts);
             //取込対象 = Field 指定があり、一括入出力可能なフィールドに解決できた列
             var mapped = design.Columns.Items
@@ -89,7 +108,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.BulkFile
                 .Where(e => e.Target != null)
                 .ToList();
 
-            var errors = new List<string>();
+            var errors = new List<BulkFileCellError>();
             var items = new List<ModuleData>();
             var dataRows = design.HasHeader ? externalTexts.Skip(1) : externalTexts;
             var fileRow = design.HasHeader ? 1 : 0;
@@ -101,6 +120,14 @@ namespace Codeer.LowCode.Blazor.Extras.Server.BulkFile
                 {
                     var text = e.FileIndex < row.Count ? row[e.FileIndex] : string.Empty;
                     var target = e.Target!;
+                    void AddError(string message) => errors.Add(new BulkFileCellError
+                    {
+                        ItemIndex = items.Count,
+                        FileRow = fileRow,
+                        FieldName = target.FieldDesign.Name,
+                        ColumnLabel = ColumnLabel(e.Column),
+                        Message = message
+                    });
 
                     object? value;
                     if (!string.IsNullOrEmpty(e.Column.ConversionModule))
@@ -108,12 +135,12 @@ namespace Codeer.LowCode.Blazor.Extras.Server.BulkFile
                         //コード変換 (外部→内部)。引き当てられない外部コードはエラー
                         if (!converter.TryToInternal(e.Column, text, out var internalText) && !string.IsNullOrEmpty(text))
                         {
-                            errors.Add($"Row {fileRow}, {ColumnLabel(e.Column)}: code '{text}' was not found in '{e.Column.ConversionModule}'.");
+                            AddError($"code '{text}' was not found in '{e.Column.ConversionModule}'.");
                             continue;
                         }
                         if (!target.TryConvert(internalText, out value))
                         {
-                            errors.Add($"Row {fileRow}, {ColumnLabel(e.Column)}: cannot convert '{internalText}'.");
+                            AddError($"cannot convert '{internalText}'.");
                             continue;
                         }
                     }
@@ -123,7 +150,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.BulkFile
                         if (!f.TryParseExternalText(text, out value))
                         {
                             if (!string.IsNullOrEmpty(text))
-                                errors.Add($"Row {fileRow}, {ColumnLabel(e.Column)}: cannot parse '{text}'.");
+                                AddError($"cannot parse '{text}'.");
                             continue;
                         }
                     }
@@ -132,7 +159,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.BulkFile
                         //書式を持たないフィールドは型変換のみ。変換できない値はエラー
                         if (!target.TryConvert(text, out value))
                         {
-                            errors.Add($"Row {fileRow}, {ColumnLabel(e.Column)}: cannot convert '{text}'.");
+                            AddError($"cannot convert '{text}'.");
                             continue;
                         }
                     }
