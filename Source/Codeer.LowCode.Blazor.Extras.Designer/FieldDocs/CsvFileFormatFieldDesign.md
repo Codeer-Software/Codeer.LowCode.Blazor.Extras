@@ -15,15 +15,19 @@
 このフィールドは**ファイル形式だけ**を切り替えます。列の並びや外部列名を相手仕様に合わせるのは
 独立した機能 `FileColumnMappingField` で、**併用すると相手仕様の CSV** (WebEDI 等) になります
 (列マッピング単独なら Excel のまま列だけ差し替わる)。
+さらに併用時にこのフィールドの `Delimiter` を `None` (区切り文字なし) にすると**固定長形式**になり、
+列は桁位置で切られます。列幅は `FileColumnMappingField` の列ごとの設定、幅の単位 (`FixedLengthWidthUnit`)・
+エンコーディング・拡張子 (例 `dat`) はこのフィールドの指定が使われます (併用必須 = デザインチェック)。
 
 ### デザイナー設定プロパティ
 
 | プロパティ | 型 | 必須 | 説明 |
 |---|---|---|---|
 | Name | string | ○ | フィールド名 |
-| Encoding | enum | - | CSV のエンコーディング。`Utf8Bom` (既定) / `Utf8` / `ShiftJis` |
-| Delimiter | enum | - | 区切り文字。`Comma` (既定) / `Tab` / `Semicolon` |
-| FileExtension | string | - | ダウンロードのファイル拡張子。既定 `csv` (`txt` 等に変更可) |
+| Encoding | enum | - | エンコーディング。`Utf8Bom` (既定) / `Utf8` / `ShiftJis` |
+| Delimiter | enum | - | 区切り文字。`Comma` (既定) / `Tab` / `Semicolon` / `None` (区切り文字なし = **固定長形式**。`FileColumnMappingField` 併用必須) |
+| FileExtension | string | - | ダウンロードのファイル拡張子。既定 `csv` (`txt` / `dat` 等に変更可) |
+| FixedLengthWidthUnit | Byte / Char | - | 固定長形式での列幅の単位。既定 `Byte` (Shift_JIS の全角 = 2 バイト)。列幅自体は `FileColumnMappingField` の列ごと |
 
 ### モジュール JSON 例
 

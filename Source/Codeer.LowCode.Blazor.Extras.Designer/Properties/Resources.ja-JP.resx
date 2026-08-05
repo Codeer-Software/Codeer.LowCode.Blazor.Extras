@@ -66,4 +66,19 @@
   <data name="MappingConversionInternalField" xml:space="preserve">
     <value>内部値側フィールド</value>
   </data>
+  <data name="MappingFixedLength" xml:space="preserve">
+    <value>固定長形式</value>
+  </data>
+  <data name="MappingFixedLengthDescription" xml:space="preserve">
+    <value>CSVファイル形式フィールドの区切り文字が None (固定長形式) のとき使われます。出力時は列幅までパディングし (収まらない値は行番号付きエラー)、取込時は列幅で切り出します。数値のゼロ埋めはパディング文字 Zero + 右寄せで表現します。</value>
+  </data>
+  <data name="MappingWidth" xml:space="preserve">
+    <value>幅</value>
+  </data>
+  <data name="MappingAlignment" xml:space="preserve">
+    <value>寄せ</value>
+  </data>
+  <data name="MappingPaddingChar" xml:space="preserve">
+    <value>パディング文字</value>
+  </data>
 </root>

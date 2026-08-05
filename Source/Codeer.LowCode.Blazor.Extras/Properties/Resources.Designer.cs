@@ -947,5 +947,23 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
             }
         }
 
+        internal static string CsvFileFormatFixedLengthMappingRequired {
+            get {
+                return ResourceManager.GetString("CsvFileFormatFixedLengthMappingRequired", resourceCulture);
+            }
+        }
+
+        internal static string FileColumnMappingFixedLengthWidthRequired {
+            get {
+                return ResourceManager.GetString("FileColumnMappingFixedLengthWidthRequired", resourceCulture);
+            }
+        }
+
+        internal static string FileColumnMappingFixedLengthZeroPaddingRequiresRight {
+            get {
+                return ResourceManager.GetString("FileColumnMappingFixedLengthZeroPaddingRequiresRight", resourceCulture);
+            }
+        }
+
     }
 }

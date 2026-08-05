@@ -453,4 +453,13 @@
   <data name="ExcelReportButtonField" xml:space="preserve">
     <value>Excel Report Button</value>
   </data>
+  <data name="CsvFileFormatFixedLengthMappingRequired" xml:space="preserve">
+    <value>The fixed-length format (Delimiter: None) requires the File Column Mapping field in the same module (column widths are set per column there).</value>
+  </data>
+  <data name="FileColumnMappingFixedLengthWidthRequired" xml:space="preserve">
+    <value>Set a width (1 or more) for every column in the fixed-length format.</value>
+  </data>
+  <data name="FileColumnMappingFixedLengthZeroPaddingRequiresRight" xml:space="preserve">
+    <value>Zero padding requires right alignment (left-aligned zero padding cannot be distinguished from trailing zeros of the value).</value>
+  </data>
 </root>

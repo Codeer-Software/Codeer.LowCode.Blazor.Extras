@@ -8,6 +8,20 @@ using Codeer.LowCode.Blazor.Repository.Design;
 
 namespace Codeer.LowCode.Blazor.Extras.Designs
 {
+    /// <summary>固定長形式での値の寄せ (パディングは逆側に入る)。</summary>
+    public enum FixedLengthAlignmentKind
+    {
+        Left,
+        Right,
+    }
+
+    /// <summary>固定長形式でのパディング文字。数値のゼロ埋めは Zero + 右寄せで表現する。</summary>
+    public enum FixedLengthPaddingCharKind
+    {
+        Space,
+        Zero,
+    }
+
     /// <summary>
     /// マッピング列の定義。ファイル上の列位置 = <see cref="MappingColumns.Items"/> 内の並び順。
     /// </summary>
@@ -30,6 +44,15 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
 
         /// <summary>変換表の内部値側フィールド名 (例 "CustomerCode")。</summary>
         public string ConversionInternalField { get; set; } = string.Empty;
+
+        /// <summary>固定長形式での列幅 (単位は CsvFileFormatField の FixedLengthWidthUnit)。固定長形式では全列必須 (1 以上)。</summary>
+        public int FixedLengthWidth { get; set; }
+
+        /// <summary>固定長形式での値の寄せ。既定は左寄せ。</summary>
+        public FixedLengthAlignmentKind FixedLengthAlignment { get; set; } = FixedLengthAlignmentKind.Left;
+
+        /// <summary>固定長形式でのパディング文字。既定は空白。</summary>
+        public FixedLengthPaddingCharKind FixedLengthPaddingChar { get; set; } = FixedLengthPaddingCharKind.Space;
     }
 
     /// <summary>マッピング列のコレクション (デザイナのカスタムプロパティ編集用ラッパー)。</summary>
@@ -48,6 +71,8 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
     /// 書式はフィールド側の設定 (Format プロパティ / IExternalTextFormatFieldDesign 実装) に従う。
     /// ファイル形式とは独立した機能で、単独なら Excel (xlsx) のまま列だけ差し替わり、
     /// <see cref="CsvFileFormatFieldDesign"/> と併用すると CSV になる (WebEDI 向け)。
+    /// さらに CsvFileFormatField の Delimiter を None (区切り文字なし) にすると固定長形式になり、
+    /// 各列の FixedLengthWidth/Alignment/PaddingChar (列構成と不可分なためこのフィールド側) で行を組み立てる。
     /// このフィールドを使うアプリはサーバー側の対応実装 (BulkFileTransfer への移譲) が必要。
     /// </summary>
     [Designer(DisplayName = "$FileColumnMappingField")]
@@ -89,6 +114,34 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
                     context.CheckFieldModuleExistence(Name, member, col.ConversionModule).AddTo(result);
                     context.CheckFieldRelativeFieldExistence(Name, member, col.ConversionModule, col.ConversionExternalField).AddTo(result);
                     context.CheckFieldRelativeFieldExistence(Name, member, col.ConversionModule, col.ConversionInternalField).AddTo(result);
+                }
+            }
+
+            //固定長形式 (CsvFileFormatField の Delimiter が None) の列設定の整合
+            if (context.GetModuleDesign()?.Fields.OfType<CsvFileFormatFieldDesign>().FirstOrDefault()?.Delimiter == CsvDelimiterKind.None)
+            {
+                index = 0;
+                foreach (var col in Columns.Items)
+                {
+                    var member = $"{nameof(Columns)}[{index++}]";
+                    //列位置が桁位置で決まるため、ブランク列や固定値列も含め全列に幅が必要
+                    if (col.FixedLengthWidth <= 0)
+                    {
+                        result.Add(new FieldDesignCheckInfo
+                        {
+                            Location = new() { Module = context.OwnerModule, Field = Name, Member = member },
+                            Message = Properties.Resources.FileColumnMappingFixedLengthWidthRequired
+                        });
+                    }
+                    //左寄せのゼロ埋めは取込時にパディングと値末尾の 0 が区別できない ("1230" → "123" と化ける)
+                    if (col.FixedLengthPaddingChar == FixedLengthPaddingCharKind.Zero && col.FixedLengthAlignment != FixedLengthAlignmentKind.Right)
+                    {
+                        result.Add(new FieldDesignCheckInfo
+                        {
+                            Location = new() { Module = context.OwnerModule, Field = Name, Member = member },
+                            Message = Properties.Resources.FileColumnMappingFixedLengthZeroPaddingRequiresRight
+                        });
+                    }
                 }
             }
             return result;

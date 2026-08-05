@@ -92,5 +92,15 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Properties
         public static string MappingConversionExternalField => GetString("MappingConversionExternalField");
 
         public static string MappingConversionInternalField => GetString("MappingConversionInternalField");
+
+        public static string MappingFixedLength => GetString("MappingFixedLength");
+
+        public static string MappingFixedLengthDescription => GetString("MappingFixedLengthDescription");
+
+        public static string MappingWidth => GetString("MappingWidth");
+
+        public static string MappingAlignment => GetString("MappingAlignment");
+
+        public static string MappingPaddingChar => GetString("MappingPaddingChar");
     }
 }

@@ -69,7 +69,8 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Csv
             return head[0] == 'P' && head[1] == 'K';
         }
 
-        static Encoding GetEncoding(CsvEncodingKind kind) => kind switch
+        //エンコーディング種別の実効値 (固定長形式 (FixedLengthUtils) とも共用)
+        internal static Encoding GetEncoding(CsvEncodingKind kind) => kind switch
         {
             CsvEncodingKind.Utf8 => new UTF8Encoding(false),
             CsvEncodingKind.ShiftJis => Encoding.GetEncoding("shift_jis"),

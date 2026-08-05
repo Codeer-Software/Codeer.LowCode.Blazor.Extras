@@ -93,6 +93,31 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.ViewModels
             set { if (value == Model.ConversionInternalField) return; Model.ConversionInternalField = value; OnPropertyChanged(); }
         }
 
+        //固定長形式 (CsvFileFormatField の FixedLengthWidthUnit が None 以外) 用の設定
+        public int FixedLengthWidth
+        {
+            get => Model.FixedLengthWidth;
+            set { if (value == Model.FixedLengthWidth) return; Model.FixedLengthWidth = value; OnPropertyChanged(); }
+        }
+
+        public FixedLengthAlignmentKind FixedLengthAlignment
+        {
+            get => Model.FixedLengthAlignment;
+            set { if (value == Model.FixedLengthAlignment) return; Model.FixedLengthAlignment = value; OnPropertyChanged(); }
+        }
+
+        public FixedLengthPaddingCharKind FixedLengthPaddingChar
+        {
+            get => Model.FixedLengthPaddingChar;
+            set { if (value == Model.FixedLengthPaddingChar) return; Model.FixedLengthPaddingChar = value; OnPropertyChanged(); }
+        }
+
+        public static IReadOnlyList<FixedLengthAlignmentKind> AlignmentCandidates { get; } =
+            [FixedLengthAlignmentKind.Left, FixedLengthAlignmentKind.Right];
+
+        public static IReadOnlyList<FixedLengthPaddingCharKind> PaddingCharCandidates { get; } =
+            [FixedLengthPaddingCharKind.Space, FixedLengthPaddingCharKind.Zero];
+
         public event PropertyChangedEventHandler? PropertyChanged;
 
         protected virtual void OnPropertyChanged([CallerMemberName] string? propertyName = null)

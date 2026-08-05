@@ -453,4 +453,13 @@
   <data name="ExcelReportButtonField" xml:space="preserve">
     <value>Excel帳票ボタン</value>
   </data>
+  <data name="CsvFileFormatFixedLengthMappingRequired" xml:space="preserve">
+    <value>固定長形式 (区切り文字 None) には同じモジュールにファイル列マッピングフィールドが必要です (列幅はそちらの列ごとに設定します)。</value>
+  </data>
+  <data name="FileColumnMappingFixedLengthWidthRequired" xml:space="preserve">
+    <value>固定長形式では全ての列に幅 (1以上) を設定してください。</value>
+  </data>
+  <data name="FileColumnMappingFixedLengthZeroPaddingRequiresRight" xml:space="preserve">
+    <value>ゼロ埋めは右寄せの列でのみ使用できます (左寄せのゼロ埋めは値の末尾の 0 と区別できません)。</value>
+  </data>
 </root>

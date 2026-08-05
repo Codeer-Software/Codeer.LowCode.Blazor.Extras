@@ -17,6 +17,9 @@ namespace Codeer.LowCode.Blazor.Extras.Server.BulkFile
     ///   - <see cref="CsvFileFormatFieldDesign"/> … ファイル形式 (CSV 化・エンコーディング・区切り文字・拡張子)
     ///   - <see cref="FileColumnMappingFieldDesign"/> … 列構成 (相手仕様の列並び・書式・コード変換)
     /// なし = 従来の xlsx / Csv のみ = 内部名ヘッダの CSV / 列マッピングのみ = 外部列の xlsx / 両方 = 外部列の CSV (WebEDI)。
+    /// さらに Csv フィールドの Delimiter が None (区切り文字なし) なら両方の組み合わせが固定長形式になる
+    /// (形式 = 幅の単位・エンコーディング・拡張子は CsvFileFormatFieldDesign、
+    /// 列幅は列構成と不可分なため FileColumnMappingFieldDesign の各列。併用必須 = デザインチェック)。
     /// 列マッピングは ModuleData ⇔ 外部列の型付き変換 (テーブルテキストを経由しない)、
     /// 列マッピングなしは内部名ヘッダのテーブルテキストのラウンドトリップ。
     /// クライアントも同じデザインを参照してダウンロードの拡張子を切り替える。
@@ -33,6 +36,10 @@ namespace Codeer.LowCode.Blazor.Extras.Server.BulkFile
                 ? await FileColumnMappingTransform.ToExternalAsync((await moduleDataIO.GetListAsync(condition, 0)).Items, mapping, module!, moduleDataIO)
                 : await moduleDataIO.GetTableTextsAsync(condition);
 
+            //固定長形式 (幅に収まらない値は行番号付きエラーで失敗する。黙って切り詰めない)
+            if (IsFixedLength(csv, mapping))
+                return FixedLengthUtils.CreateFixedLengthBinary(texts, mapping!, csv!);
+
             return csv != null
                 ? CsvUtils.CreateCsvBinary(texts, csv.Encoding, csv.Delimiter.ToChar())
                 : ExcelUtils.CreateExcelBinary(texts, "data");
@@ -48,8 +55,10 @@ namespace Codeer.LowCode.Blazor.Extras.Server.BulkFile
         {
             var (module, csv, mapping) = FindTransferFields(designData, moduleName ?? string.Empty);
 
-            //ファイル → テーブルテキスト (CSV フィールドがあれば内容で CSV/xlsx を自動判定)
-            var texts = csv != null
+            //ファイル → テーブルテキスト (固定長/CSV は内容で xlsx との自動判定あり)
+            var texts = IsFixedLength(csv, mapping)
+                ? await FixedLengthUtils.ReadAllTextsFromFileBinary(file, mapping!, csv!)
+                : csv != null
                 ? await CsvUtils.ReadAllTextsFromFileBinary(file, csv.Encoding, csv.Delimiter.ToChar())
                 : await ExcelUtils.ReadAllTextsFromExcelBinary(file);
 
@@ -70,6 +79,11 @@ namespace Codeer.LowCode.Blazor.Extras.Server.BulkFile
 
             return await moduleDataIO.SubmitWithTransactionByTableTextsAsync(moduleName, texts);
         }
+
+        //固定長は形式 (Delimiter = None) と列幅 (列マッピング) の両方が揃って成立する
+        //(片方だけはデザインチェックエラー。実行時は従来動作へ寛容にフォールバック)
+        static bool IsFixedLength(CsvFileFormatFieldDesign? csv, FileColumnMappingFieldDesign? mapping)
+            => csv != null && csv.Delimiter == CsvDelimiterKind.None && mapping != null;
 
         static (ModuleDesign? Module, CsvFileFormatFieldDesign? Csv, FileColumnMappingFieldDesign? Mapping) FindTransferFields(
             DesignData designData, string moduleName)
