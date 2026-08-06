@@ -9,7 +9,7 @@ using Codeer.LowCode.Blazor.Script.Internal.ScriptServices;
 namespace Codeer.LowCode.Blazor.Extras.ScriptObjects
 {
     /// <summary>
-    /// 一括ダウンロード (一覧ページ/BulkFileTransferButtonField と同じ list_file) をスクリプトから実行するサービス。
+    /// 一括ダウンロード (一覧ページ/BulkFileTransferButtonField と同じ list_file) と一括保存をスクリプトから実行するサービス。
     /// ファイル形式は対象モジュールの CsvFileFormatField / FileColumnMappingField の定義に従う。
     /// このサービスを使うアプリはサーバー側の対応実装 (BulkFileTransfer への移譲) が必要。
     /// </summary>
@@ -21,6 +21,13 @@ namespace Codeer.LowCode.Blazor.Extras.ScriptObjects
         /// </summary>
         [ScriptHide]
         public static string ListFileByDataEndPoint { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Submit(List&lt;Module&gt;) が使うサーバーエンドポイント。URL はアプリ (Controller を持つ側) の
+        /// 持ち物なのでアプリの初期化 (テンプレートの ServiceInitializer) で設定する。未設定なら何もしない。
+        /// </summary>
+        [ScriptHide]
+        public static string BulkSubmitEndPoint { get; set; } = string.Empty;
 
         [ScriptInject]
         public Codeer.LowCode.Blazor.RequestInterfaces.Services? Services { get; set; }
@@ -47,6 +54,41 @@ namespace Codeer.LowCode.Blazor.Extras.ScriptObjects
         [ScriptName("Download")]
         public async Task DownloadAsync(List<Module> modules)
             => await BulkFileDownload.DownloadByDataAsync(Services, modules);
+
+        /// <summary>
+        /// 加工済みのモジュール列を一括保存する (1トランザクション。ファイル取込と同じく Id の一致で追加/更新を判定し、
+        /// 新規行がまとまっていれば multi-row INSERT で高速に挿入される)。戻り値: true=保存成功。
+        /// 保存した新規行の採番Id (テンポラリIdの解決) は返らないため、
+        /// 保存後もモジュールを使い続ける (編集して再保存する) 用途には Module.Submit を使うこと。
+        /// </summary>
+        [ScriptName("Submit")]
+        public async Task<bool> SubmitAsync(List<Module> modules)
+        {
+            if (Services == null) return false;
+            if (string.IsNullOrEmpty(BulkSubmitEndPoint)) return false;
+            if (Services.AppInfoService.IsDesignMode) return false;
+            if (modules == null || modules.Count == 0) return false;
+            var http = Services.Provider.GetService<Codeer.LowCode.Blazor.Extras.Services.IHttpService>();
+            if (http == null) return false;
+
+            var moduleName = modules[0].Design.Name;
+            var json = JsonConverterEx.SerializeObject(modules.Select(e => e.GetData()).ToList());
+            using var content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
+            var response = await http.PostContent($"{BulkSubmitEndPoint}?moduleName={moduleName}", content);
+            if (response?.IsSuccessStatusCode != true) return false;
+
+            var results = JsonConverterEx.DeserializeObject<List<Codeer.LowCode.Blazor.DataIO.ModuleSubmitResult>>(
+                await response.Content.ReadAsStringAsync()) ?? new();
+            foreach (var e in results)
+            {
+                if (!string.IsNullOrEmpty(e.ExceptionMessage))
+                {
+                    await Services.Logger.Error(e.ExceptionMessage);
+                    return false;
+                }
+            }
+            return true;
+        }
     }
 
     /// <summary>一括ダウンロードの共有ロジック (BulkFileTransferButtonField と BulkFileTransferService が使う)。</summary>

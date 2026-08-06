@@ -3,7 +3,7 @@
 
 - `Read()` … ファイル選択ダイアログを開き、選択されたファイルをサーバーで解析する。
   戻り値は「ファイルを選択して解析したか」(キャンセルは `false`)。DB には書き込まない
-- `Items` … 解析済みのモジュール列 (ファイルの行順)。書き込みは行を加工したうえで `this.Submit(Items)` で行う
+- `Items` … 解析済みのモジュール列 (ファイルの行順)。書き込みは行を加工したうえで `BulkFileTransferService.Submit(Items)` で行う
 - `HasError` / `ErrorCount` … 解釈できなかったセル (変換表に無いコード・書式不一致・型変換不能) があったか。
   スクリプトで見るのは基本ここだけ (セル単位の細かいハンドリングは書かない)
 - `ErrorText` … エラー詳細 (行番号・列・内容の一覧テキスト)。コンソールに出すなら `Logger.Error(reader.ErrorText)`
@@ -20,9 +20,10 @@
 ## 取込ページの作り方
 
 取込ボタンは **DB に結びつかない UI 専用モジュール (DbTable なし・Id フィールドなし) に置く**。
-書き込みは `this.Submit(取込リスト)` で行う。呼び出し元 (this) が Id フィールドを持たなければ
-渡したリストだけがトランザクション一括書込され、Id フィールドを持つモジュールから呼ぶと
-this 自身の新規行 (空行) も一緒に書き込まれてしまう。
+書き込みは `BulkFileTransferService.Submit(取込リスト)` で行う。リストだけが1トランザクションで書き込まれ
+(this は書き込まれない)、新規行がまとまっていれば multi-row INSERT で高速に挿入される。
+Id の一致で追加/更新を判定する (Id なしは新規)。保存した新規行の採番 Id は返らないため、
+保存後もリストのモジュールを使い続けたい場合だけ `this.Submit(取込リスト)` (1行ずつ・Id解決あり) を使う。
 
 ```csharp
 // 取込 → スクリプトで変換・検証 → 一括書き込み (取込パターンの基本形。UI専用モジュールに置く)
@@ -55,15 +56,15 @@ void Import_OnClick()
         ok.Add(m);
     }
 
-    // トランザクション一括書き込み。this (UI専用モジュール) は書き込まれず、リストだけが書き込まれる
+    // トランザクション一括書き込み (新規行は multi-row INSERT でまとめて挿入される)
     if (ok.Count == 0) { return; }
-    this.Submit(ok);
+    BulkFileTransferService.Submit(ok);
 }
 ```
 
 ## 取込の行ロジックのパターン集
 
-いずれも「`Read()` の後、`this.Submit()` の前」のループに書く (`list` = `reader.Items`)。
+いずれも「`Read()` の後、`BulkFileTransferService.Submit()` の前」のループに書く (`list` = `reader.Items`)。
 
 ### 必須チェック・検証エラー
 
@@ -110,7 +111,7 @@ foreach (var m in list)
 
 既存データも行ループの外で一度だけ取得して辞書化する。既存行を更新したい場合は、
 ファイルの値を既存モジュールへ写して既存モジュールの方を Submit する
-(Read() が返す行は Id を持たない新規なので、そのまま Submit すると常に INSERT になる)。
+(Read() が返す行は Id を持たない新規なので INSERT、既存モジュールは Id を持つので UPDATE になる)。
 
 ```csharp
 var existingSearcher = new ModuleSearcher<注文>();
@@ -132,7 +133,7 @@ foreach (var m in list)
         writes.Add(m);                          // 新規行
     }
 }
-this.Submit(writes);
+BulkFileTransferService.Submit(writes);
 ```
 
 ### マスタ引き当て (1つのコードから複数列を埋める)
@@ -160,5 +161,7 @@ foreach (var m in list)
 ## 性能の目安
 
 1000行規模なら実用域 (解析+モジュール化が1〜2秒、行ロジックのループは1秒未満)。
-支配項は書き込み (`Submit`) の DB INSERT で、1000行で数秒〜10秒程度。
-1万行を超える規模を扱う場合は、処理中の表示 (ボタンの二度押し防止や件数表示) や分割取込を検討する。
+書き込みは `BulkFileTransferService.Submit` なら新規行が multi-row INSERT でまとまるため1万行でも数秒程度
+(手入力Idモジュールは行ごとの存在チェックが残るため1000行で数秒)。
+`this.Submit` (1行ずつ・Id解決あり) は1000行で数秒〜10秒程度。
+1万行を超える規模を扱う場合は、処理中の表示 (ボタンの二度押し防止や件数表示) を検討する。

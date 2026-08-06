@@ -1,5 +1,5 @@
-一括ダウンロードをスクリプトから実行するサービス。
-一覧ページや `BulkFileTransferButtonField` の一括ダウンロードと同じサーバー処理を使うため、
+一括ダウンロードと一括保存をスクリプトから実行するサービス。
+ダウンロードは一覧ページや `BulkFileTransferButtonField` の一括ダウンロードと同じサーバー処理を使うため、
 ファイル形式や列構成は対象モジュールの `CsvFileFormatField` / `FileColumnMappingField` の定義に従う
 (どちらも未定義なら xlsx)。ファイル名は `{モジュール名}.{拡張子}`。
 
@@ -8,6 +8,10 @@
 - `Download(ListField リストフィールド)` … リストの表示中の検索条件でダウンロードする (一覧レイアウトの列・ページサイズには縛られず全列/全件)
 - `Download(List<モジュール> 一覧)` … 加工済みのモジュール列をそのままファイル化する (検索しない。サーバー処理は `list_file_by_data`)。
   スクリプトで行を変換・絞り込み・組み立てしてから出力する用途
+- `Submit(List<モジュール> 一覧)` … 加工済みのモジュール列を一括保存する (1トランザクション。サーバー処理は `bulk_submit`)。
+  Id の一致で追加/更新を判定し (Id なし・テンポラリ Id は新規)、新規行がまとまっていれば multi-row INSERT で高速に挿入される。
+  戻り値は `bool` (true=保存成功)。**保存した新規行の採番 Id (テンポラリ Id の解決) は返らない**ため、
+  保存後もモジュールを使い続ける (編集して再保存する) 用途には `Module.Submit` を使う。取込のような投げ切り保存用
 
 条件系 3 つは「サーバーで検索した結果をそのまま出力」、`List<モジュール>` 版だけが「クライアントのデータを出力」。
 スクリプトで行に手を加える必要が無ければ条件系を使う方が速くて簡単。
@@ -16,7 +20,9 @@
 (宣言的な `ConversionModule` とスクリプト変換は列ごとにどちらか一方。スクリプトで変換済みの値に
 さらに宣言的変換はかけない)。
 
-このサービスを使うアプリはサーバー側の対応実装 (`BulkFileTransfer` への移譲) が必要。`Download(List<モジュール>)` のエンドポイント URL はアプリの初期化 (ServiceInitializer の `BulkFileTransferService.ListFileByDataEndPoint`) で設定する (テンプレートは設定済み)。
+このサービスを使うアプリはサーバー側の対応実装が必要。`Download(List<モジュール>)` / `Submit(List<モジュール>)` のエンドポイント URL はアプリの初期化 (ServiceInitializer の `BulkFileTransferService.ListFileByDataEndPoint` / `BulkSubmitEndPoint`) で設定する (テンプレートは設定済み)。
+
+一括取込 (ファイル → 加工 → `Submit`) の全体像とパターン集は `BulkFileReader` を参照。
 
 ```csharp
 // 条件を組んでダウンロード (行の加工が不要ならこれが基本形)
