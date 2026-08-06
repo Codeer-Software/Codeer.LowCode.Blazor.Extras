@@ -1,5 +1,6 @@
 using Codeer.LowCode.Blazor.Json;
 using Codeer.LowCode.Blazor.OperatingModel;
+using Codeer.LowCode.Blazor.Repository.Data;
 using Microsoft.Extensions.DependencyInjection;
 using Codeer.LowCode.Blazor.Repository.Design;
 using Codeer.LowCode.Blazor.Repository.Match;
@@ -56,6 +57,14 @@ namespace Codeer.LowCode.Blazor.Extras.ScriptObjects
             => await BulkFileDownload.DownloadByDataAsync(Services, modules);
 
         /// <summary>
+        /// 加工済みのモジュールデータ列 (ModuleSearcher.ExecuteRaw / BulkFileReader.Items) をそのまま一括ダウンロードする。
+        /// Module 実体化を通らないため大量行でも軽い。
+        /// </summary>
+        [ScriptName("Download")]
+        public async Task DownloadAsync(List<ModuleData> items)
+            => await BulkFileDownload.DownloadByRawDataAsync(Services, items);
+
+        /// <summary>
         /// 加工済みのモジュール列を一括保存する (1トランザクション。ファイル取込と同じく Id の一致で追加/更新を判定し、
         /// 新規行がまとまっていれば multi-row INSERT で高速に挿入される)。戻り値: true=保存成功。
         /// 保存した新規行の採番Id (テンポラリIdの解決) は返らないため、
@@ -64,15 +73,31 @@ namespace Codeer.LowCode.Blazor.Extras.ScriptObjects
         [ScriptName("Submit")]
         public async Task<bool> SubmitAsync(List<Module> modules)
         {
+            if (modules == null || modules.Count == 0) return false;
+            return await SubmitRawAsync(modules[0].Design.Name, modules.Select(e => e.GetData()).ToList());
+        }
+
+        /// <summary>
+        /// 加工済みのモジュールデータ列 (ModuleSearcher.ExecuteRaw / BulkFileReader.Items) を一括保存する。
+        /// 保存の仕様は Submit(List&lt;Module&gt;) と同じ (Id の一致で追加/更新、採番 Id は返らない)。
+        /// Module 実体化を通らないため大量行でも軽い。
+        /// </summary>
+        [ScriptName("Submit")]
+        public async Task<bool> SubmitAsync(List<ModuleData> items)
+        {
+            if (items == null || items.Count == 0) return false;
+            return await SubmitRawAsync(items[0].Name, items);
+        }
+
+        async Task<bool> SubmitRawAsync(string moduleName, List<ModuleData> items)
+        {
             if (Services == null) return false;
             if (string.IsNullOrEmpty(BulkSubmitEndPoint)) return false;
             if (Services.AppInfoService.IsDesignMode) return false;
-            if (modules == null || modules.Count == 0) return false;
             var http = Services.Provider.GetService<Codeer.LowCode.Blazor.Extras.Services.IHttpService>();
             if (http == null) return false;
 
-            var moduleName = modules[0].Design.Name;
-            var json = JsonConverterEx.SerializeObject(modules.Select(e => e.GetData()).ToList());
+            var json = JsonConverterEx.SerializeObject(items);
             using var content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
             var response = await http.PostContent($"{BulkSubmitEndPoint}?moduleName={moduleName}", content);
             if (response?.IsSuccessStatusCode != true) return false;
@@ -109,15 +134,26 @@ namespace Codeer.LowCode.Blazor.Extras.ScriptObjects
         /// <summary>加工済みモジュール列の一括ダウンロード (検索せずクライアントのデータをそのままファイル化)。</summary>
         internal static async Task DownloadByDataAsync(Codeer.LowCode.Blazor.RequestInterfaces.Services? services, List<Module>? modules)
         {
+            if (modules == null || modules.Count == 0) return;
+            await DownloadByRawDataAsync(services, modules[0].Design.Name, modules.Select(e => e.GetData()).ToList());
+        }
+
+        /// <summary>加工済みモジュールデータ列の一括ダウンロード (Module 実体化を通らない軽量版)。</summary>
+        internal static async Task DownloadByRawDataAsync(Codeer.LowCode.Blazor.RequestInterfaces.Services? services, List<ModuleData>? items)
+        {
+            if (items == null || items.Count == 0) return;
+            await DownloadByRawDataAsync(services, items[0].Name, items);
+        }
+
+        static async Task DownloadByRawDataAsync(Codeer.LowCode.Blazor.RequestInterfaces.Services? services, string moduleName, List<ModuleData> items)
+        {
             if (services == null) return;
             if (string.IsNullOrEmpty(BulkFileTransferService.ListFileByDataEndPoint)) return;
             if (services.AppInfoService.IsDesignMode) return;
-            if (modules == null || modules.Count == 0) return;
             var http = services.Provider.GetService<Codeer.LowCode.Blazor.Extras.Services.IHttpService>();
             if (http == null) return;
 
-            var moduleName = modules[0].Design.Name;
-            var json = JsonConverterEx.SerializeObject(modules.Select(e => e.GetData()).ToList());
+            var json = JsonConverterEx.SerializeObject(items);
             using var content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
             var response = await http.PostContent($"{BulkFileTransferService.ListFileByDataEndPoint}?moduleName={moduleName}", content);
             if (response?.IsSuccessStatusCode != true) return;

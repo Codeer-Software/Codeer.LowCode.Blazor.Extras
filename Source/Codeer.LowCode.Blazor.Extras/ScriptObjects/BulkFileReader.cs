@@ -1,5 +1,6 @@
 using Codeer.LowCode.Blazor.Extras.BulkFile;
 using Codeer.LowCode.Blazor.OperatingModel;
+using Codeer.LowCode.Blazor.Repository.Data;
 using Codeer.LowCode.Blazor.Script;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.JSInterop;
@@ -11,9 +12,11 @@ namespace Codeer.LowCode.Blazor.Extras.ScriptObjects
     /// スクリプトからの一括ファイル取込。new BulkFileReader&lt;XXXModule&gt;() のイディオム
     /// (モジュール名が ctor に渡る。コアの AddModuleGenericType 登録) で使う。
     /// Read() = ファイル選択 → アップロード → サーバー解析 (CSV/固定長/列マッピング/コード変換の既存パイプライン)。
-    /// 結果は Items (解析済みモジュール列)・HasError/ErrorCount/ErrorText (解釈できなかったセルの情報) に載る。
+    /// 結果は Items (解析済みの ModuleData 列。Module 実体化を行わないため大量行でも軽い)・
+    /// HasError/ErrorCount/ErrorText (解釈できなかったセルの情報) に載る。
     /// スクリプトはエラーの有無だけを見て、詳細は DownloadErrorText() でユーザーにテキストで渡すのが基本形。
-    /// DB には書き込まない (書き込みは行を加工したうえで this.Submit(Items) で行う)。
+    /// DB には書き込まない (書き込みは行を加工したうえで BulkFileTransferService.Submit(Items) で行う)。
+    /// モジュールの機能が必要な大幅加工をするときは ToModules() でまとめて Module 化する。
     /// このオブジェクトを使うアプリはサーバー側の対応実装 (parse_file = BulkFileTransfer.ParseFileAsync への移譲) と、
     /// アプリ初期化での ParseFileEndPoint 設定が必要。
     /// </summary>
@@ -36,8 +39,8 @@ namespace Codeer.LowCode.Blazor.Extras.ScriptObjects
         /// <summary>取込先モジュール名 (ジェネリック引数で指定したモジュール)。</summary>
         public string ModuleName => _moduleName;
 
-        /// <summary>Read() で解析したモジュール列 (ファイルの行順)。解釈できなかったセルは値未設定+フィールドエラー。</summary>
-        public List<Module> Items { get; private set; } = [];
+        /// <summary>Read() で解析したモジュールデータ列 (ファイルの行順)。解釈できなかったセルは値未設定 (詳細は ErrorText)。</summary>
+        public List<ModuleData> Items { get; private set; } = [];
 
         /// <summary>Read() で解釈できなかったセルがあったか。</summary>
         public bool HasError => ErrorCount > 0;
@@ -77,23 +80,27 @@ namespace Codeer.LowCode.Blazor.Extras.ScriptObjects
                 $"{ParseFileEndPoint}?moduleName={_moduleName}", content);
             if (result == null) return false;
 
-            //モジュール化 + 解釈できなかったセルをフィールドエラーに載せる
-            var modules = new List<Module>();
-            foreach (var data in result.Items)
-            {
-                modules.Add(await ModuleCreationService.CreateModuleAsync(Services, data));
-            }
-            foreach (var e in result.Errors)
-            {
-                if (e.ItemIndex < 0 || modules.Count <= e.ItemIndex) continue;
-                modules[e.ItemIndex].GetField(e.FieldName)?.SetError(e.Message);
-            }
-
-            Items = modules;
+            //ModuleData のまま返す (Module 実体化しない)。解釈できなかったセルの情報は ErrorText に集約する
+            Items = result.Items;
             ErrorCount = result.Errors.Count;
             ErrorText = string.Join(Environment.NewLine,
                 result.Errors.Select(e => $"Row {e.FileRow}, {e.ColumnLabel}: {e.Message}"));
             return true;
+        }
+
+        /// <summary>
+        /// Items をまとめて Module 化して返す (モジュールの機能が必要な大幅加工用)。
+        /// 実体化コストがかかる (0.3ms/行 程度) ため、参照や値の書換だけなら Items をそのまま使う。
+        /// </summary>
+        public async Task<List<Module>> ToModules()
+        {
+            var modules = new List<Module>();
+            if (Services == null) return modules;
+            foreach (var data in Items)
+            {
+                modules.Add(await ModuleCreationService.CreateModuleAsync(Services, data));
+            }
+            return modules;
         }
 
         /// <summary>直前の Read() のエラー詳細をテキストファイルとしてダウンロードする (エラーが無ければ何もしない)。</summary>

@@ -13,6 +13,10 @@
   戻り値は `bool` (true=保存成功)。**保存した新規行の採番 Id (テンポラリ Id の解決) は返らない**ため、
   保存後もモジュールを使い続ける (編集して再保存する) 用途には `Module.Submit` を使う。取込のような投げ切り保存用
 
+`Download` / `Submit` は **モジュールデータ列 (`ModuleSearcher.ExecuteRaw` / `BulkFileReader.Items` の結果) も同じ書き方でそのまま渡せる**。
+Module 実体化を通らないため大量行でも軽い (参照・軽い加工はデータのまま。モジュールの機能が必要な処理は
+`ModuleSearcher.Execute()` / `BulkFileReader.ToModules()` で Module を使う)。
+
 条件系 3 つは「サーバーで検索した結果をそのまま出力」、`List<モジュール>` 版だけが「クライアントのデータを出力」。
 スクリプトで行に手を加える必要が無ければ条件系を使う方が速くて簡単。
 
