@@ -73,11 +73,13 @@ namespace Extras.Server.Controllers
         //クライアントで加工済みのモジュールデータ列をそのままファイル化する
         [HttpPost("list_file_by_data")]
         public async Task<IActionResult> GetListFileByDataAsync(string? moduleName)
-        {
-            using var reader = new StreamReader(Request.Body);
-            var items = Codeer.LowCode.Blazor.Json.JsonConverterEx.DeserializeObject<List<ModuleData>>(await reader.ReadToEndAsync()) ?? new();
-            return Ok(await BulkFileTransfer.GetListFileByDataAsync(DesignerService.GetDesignData(), _dataService.ModuleDataIO, moduleName, items));
-        }
+            => Ok(await BulkFileTransfer.GetListFileByDataAsync(DesignerService.GetDesignData(), _dataService.ModuleDataIO, moduleName, Request.Body));
+
+        //スクリプトの一括保存 (BulkFileTransferService.Submit(List<Module>)) 用。
+        //クライアントで加工済みのモジュールデータ列を一括保存する (ファイル取込と同じ追加/更新判定の経路)
+        [HttpPost("bulk_submit")]
+        public async Task<IActionResult> BulkSubmitAsync(string? moduleName)
+            => Content(await BulkFileTransfer.BulkSubmitAsync(_dataService.ModuleDataIO, moduleName, Request.Body), "application/json");
 
         //スクリプトの一括ファイル取込 (BulkFileReader) 用。ファイルを解析してモジュールデータ列を返す (DB には書き込まない)。
         //ModuleData はポリモーフィックなので JsonConverterEx で直列化して返す

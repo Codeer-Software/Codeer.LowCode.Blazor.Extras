@@ -1,6 +1,7 @@
 using Codeer.LowCode.Blazor;
 using Codeer.LowCode.Blazor.DataIO;
 using Codeer.LowCode.Blazor.DesignLogic;
+using Codeer.LowCode.Blazor.Json;
 using Codeer.LowCode.Blazor.Extras.BulkFile;
 using Codeer.LowCode.Blazor.Extras.Designs;
 using System.Reflection;
@@ -104,6 +105,32 @@ namespace Codeer.LowCode.Blazor.Extras.Server.BulkFile
             return csv != null
                 ? CsvUtils.CreateCsvBinary(texts, csv.Encoding, csv.Delimiter.ToChar())
                 : ExcelUtils.CreateExcelBinary(texts, "data");
+        }
+
+        /// <summary>
+        /// list_file_by_data のリクエストボディ (JsonConverterEx 直列化の List&lt;ModuleData&gt;) を復元して
+        /// <see cref="GetListFileByDataAsync(DesignData, ModuleDataIO, string?, List{ModuleData})"/> に移譲する。
+        /// ワイヤ形式は送信側 (BulkFileTransferService) とここで対になるため、テンプレートの Controller は移譲だけにする。
+        /// </summary>
+        public static async Task<MemoryStream> GetListFileByDataAsync(DesignData designData, ModuleDataIO moduleDataIO, string? moduleName, Stream body)
+            => await GetListFileByDataAsync(designData, moduleDataIO, moduleName, await ReadModuleDataListAsync(body));
+
+        /// <summary>
+        /// スクリプトの一括保存 (bulk_submit / BulkFileTransferService.Submit) 用。
+        /// リクエストボディ (JsonConverterEx 直列化の List&lt;ModuleData&gt;) を復元して一括保存し
+        /// (ファイル取込と同じ Id の一致で追加/更新判定・1トランザクション)、
+        /// クライアントが復元する応答 JSON (List&lt;ModuleSubmitResult&gt;) を返す。
+        /// ワイヤ形式は送信側 (BulkFileTransferService) とここで対になるため、テンプレートの Controller は移譲だけにする。
+        /// </summary>
+        public static async Task<string> BulkSubmitAsync(ModuleDataIO moduleDataIO, string? moduleName, Stream body)
+            => JsonConverterEx.SerializeObject(
+                await moduleDataIO.SubmitWithTransactionByModuleDataAsync(moduleName, await ReadModuleDataListAsync(body)));
+
+        //リクエストボディ (JsonConverterEx 直列化の List<ModuleData>) の復元
+        static async Task<List<ModuleData>> ReadModuleDataListAsync(Stream body)
+        {
+            using var reader = new StreamReader(body);
+            return JsonConverterEx.DeserializeObject<List<ModuleData>>(await reader.ReadToEndAsync()) ?? new();
         }
 
         //ModuleData → 内部名ヘッダ ("フィールド名.データメンバ名") のテーブルテキスト (取込側の逆方向)。
