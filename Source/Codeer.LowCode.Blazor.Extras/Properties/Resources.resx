@@ -480,4 +480,79 @@
   <data name="FileColumnMappingFixedLengthZeroPaddingRequiresRight" xml:space="preserve">
     <value>Zero padding requires right alignment (left-aligned zero padding cannot be distinguished from trailing zeros of the value).</value>
   </data>
+  <data name="BulkMailField" xml:space="preserve">
+    <value>Bulk Mail</value>
+  </data>
+  <data name="BulkMailRecipientListFieldName" xml:space="preserve">
+    <value>Recipient List</value>
+  </data>
+  <data name="BulkMailEmailAddressVariable" xml:space="preserve">
+    <value>Email Address</value>
+  </data>
+  <data name="BulkMailOptOutVariable" xml:space="preserve">
+    <value>Opt-Out Flag</value>
+  </data>
+  <data name="BulkMailSubjectVariable" xml:space="preserve">
+    <value>Subject Template Field</value>
+  </data>
+  <data name="BulkMailSubject" xml:space="preserve">
+    <value>Subject (Fixed)</value>
+  </data>
+  <data name="BulkMailBodyVariable" xml:space="preserve">
+    <value>Body Template Field</value>
+  </data>
+  <data name="BulkMailBody" xml:space="preserve">
+    <value>Body (Fixed)</value>
+  </data>
+  <data name="BulkMailSenderName" xml:space="preserve">
+    <value>Sender Name</value>
+  </data>
+  <data name="BulkMailIsBodyHtml" xml:space="preserve">
+    <value>HTML Body</value>
+  </data>
+  <data name="BulkMailReplyTo" xml:space="preserve">
+    <value>Reply To</value>
+  </data>
+  <data name="BulkMailButtonText" xml:space="preserve">
+    <value>Button Text</value>
+  </data>
+  <data name="BulkMailFieldDbColumn" xml:space="preserve">
+    <value>Send Summary Column</value>
+  </data>
+  <data name="BulkMailRecipientListFieldRequired" xml:space="preserve">
+    <value>Set the recipient list field.</value>
+  </data>
+  <data name="BulkMailEmailAddressVariableRequired" xml:space="preserve">
+    <value>Set the email address variable.</value>
+  </data>
+  <data name="BulkMailSubjectOrBodyRequired" xml:space="preserve">
+    <value>Both the subject and the body are empty. Set a template field or a fixed text.</value>
+  </data>
+  <data name="BulkMailVariableNotFoundFormat" xml:space="preserve">
+    <value>The variable '{0}' does not exist in the module '{1}'.</value>
+  </data>
+  <data name="BulkMailSaveBeforeSend" xml:space="preserve">
+    <value>There are unsaved changes. Save the record before sending.</value>
+  </data>
+  <data name="BulkMailTargetListInvalid" xml:space="preserve">
+    <value>The recipient list or the email address variable is not configured.</value>
+  </data>
+  <data name="BulkMailConfirmFormat" xml:space="preserve">
+    <value>Send bulk mail to {0} rows? (Rows with the exclude flag and rows without an address are skipped.)</value>
+  </data>
+  <data name="BulkMailSendAction" xml:space="preserve">
+    <value>Send</value>
+  </data>
+  <data name="BulkMailSentFormat" xml:space="preserve">
+    <value>Sent {0} mails.</value>
+  </data>
+  <data name="BulkMailSentWithFailuresFormat" xml:space="preserve">
+    <value>Sent {0} of {1} mails. Check the log for failures.</value>
+  </data>
+  <data name="BulkMailDefaultButtonText" xml:space="preserve">
+    <value>Send Bulk Mail</value>
+  </data>
+  <data name="BulkMailLastSentFormat" xml:space="preserve">
+    <value>Last sent: {0}  success {1}/{2}</value>
+  </data>
 </root>

@@ -37,8 +37,6 @@ namespace Codeer.LowCode.Blazor.Extras.Designer
             DesignerApp.ScriptRuntimeTypeManager.AddService(new ScriptObjects.WebApiService(null!, null!));
             DesignerApp.ScriptRuntimeTypeManager.AddType<ScriptObjects.WebApiResult>();
             DesignerApp.ScriptRuntimeTypeManager.AddType<ScriptObjects.Mail>();
-            DesignerApp.ScriptRuntimeTypeManager.AddType<ScriptObjects.BulkMail>();
-            DesignerApp.ScriptRuntimeTypeManager.AddType<ScriptObjects.MailRecipient>();
             DesignerApp.ScriptRuntimeTypeManager.AddType<Codeer.LowCode.Blazor.Extras.Mail.MailSendResult>();
             DesignerApp.ScriptRuntimeTypeManager.AddType<Codeer.LowCode.Blazor.Extras.Mail.MailSendFailure>();
             DesignerApp.ScriptRuntimeTypeManager.AddService(new ScriptObjects.BulkFileTransferService());

@@ -12,22 +12,20 @@ namespace Codeer.LowCode.Blazor.Extras.Mail
         /// <summary>= POST SendMailEndPoint</summary>
         Task<MailSendResult> SendAsync(MailSendRequest request);
 
-        /// <summary>= POST BulkMailEndPoint</summary>
-        Task<MailSendResult> SendBulkAsync(MailBulkRequest request);
-
         /// <summary>= POST BulkSearchMailEndPoint</summary>
         Task<MailSendResult> SendBulkSearchAsync(MailBulkSearchRequest request);
     }
 
     /// <summary>
-    /// Static transport wiring for the mail script objects (Mail / BulkMail).
+    /// Static transport wiring for the Mail script object and the BulkMailField.
     /// Web apps set the endpoint URLs once at startup (URLs belong to the app, which owns the
     /// controllers). Desktop apps set <see cref="Handler"/> instead and send directly without HTTP.
+    /// Bulk sends go through the search-based path only (recipients are resolved on the server,
+    /// addresses never travel to the client).
     /// </summary>
     public static class MailTransport
     {
         public static string SendMailEndPoint { get; set; } = string.Empty;
-        public static string BulkMailEndPoint { get; set; } = string.Empty;
         public static string BulkSearchMailEndPoint { get; set; } = string.Empty;
 
         /// <summary>When set, all sends go through this handler instead of the HTTP endpoints.</summary>
@@ -35,9 +33,6 @@ namespace Codeer.LowCode.Blazor.Extras.Mail
 
         internal static async Task<MailSendResult> SendAsync(IHttpService? http, MailSendRequest request)
             => await PostAsync(http, SendMailEndPoint, request, static (handler, r) => handler.SendAsync(r));
-
-        internal static async Task<MailSendResult> SendBulkAsync(IHttpService? http, MailBulkRequest request)
-            => await PostAsync(http, BulkMailEndPoint, request, static (handler, r) => handler.SendBulkAsync(r));
 
         internal static async Task<MailSendResult> SendBulkSearchAsync(IHttpService? http, MailBulkSearchRequest request)
             => await PostAsync(http, BulkSearchMailEndPoint, request, static (handler, r) => handler.SendBulkSearchAsync(r));

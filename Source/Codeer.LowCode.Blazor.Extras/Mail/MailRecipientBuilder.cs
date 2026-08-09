@@ -1,12 +1,12 @@
-using Codeer.LowCode.Blazor.Extras.ScriptObjects;
+﻿using Codeer.LowCode.Blazor.Extras.ScriptObjects;
 using Codeer.LowCode.Blazor.Repository.Data;
 using Codeer.LowCode.Blazor.Repository.Design;
 
 namespace Codeer.LowCode.Blazor.Extras.Mail
 {
     /// <summary>
-    /// Builds bulk mail recipients from module rows: opt-out flag rows (excludeField) and rows
-    /// without an address (toField) are skipped, and the template variables are resolved as
+    /// Builds bulk mail recipients from module rows: opt-out flag rows (optOutVariable) and rows
+    /// without an address (emailAddressVariable) are skipped, and the template variables are resolved as
     /// display strings. Shared by the client (row lists) and the server (search-based sends).
     /// </summary>
     internal static class MailRecipientBuilder
@@ -24,14 +24,15 @@ namespace Codeer.LowCode.Blazor.Extras.Mail
         /// Builds one recipient from a row. Returns null when the row is excluded (opt-out) or has
         /// no address. {RecordUrl} is provided only when recordUrlBase is set (server-side path).
         /// </summary>
-        public static MailBulkRecipient? TryBuild(ModuleDesign? design, ModuleData row, string toField, string excludeField,
-            IReadOnlyCollection<string> names, string recordUrlBase = "", string mainPageFrame = "")
+        public static MailBulkRecipient? TryBuild(ModuleDesign? design, ModuleData row, string emailAddressVariable, string optOutVariable,
+            IReadOnlyCollection<string> names, string recordUrlBase = "", string mainPageFrame = "",
+            Func<string, ModuleDesign?>? findModule = null)
         {
-            if (MailVariableResolver.GetBooleanValue(row, excludeField)) return null; //オプトアウト
-            var to = MailVariableResolver.GetValueText(row, toField);
+            if (MailVariableResolver.GetBooleanValue(row, optOutVariable)) return null; //オプトアウト
+            var to = MailVariableResolver.GetValueText(row, emailAddressVariable);
             if (string.IsNullOrEmpty(to)) return null;
 
-            var variables = MailVariableResolver.Resolve(design, row, names.Where(e => e != RecordUrlVariable));
+            var variables = MailVariableResolver.Resolve(design, row, names.Where(e => e != RecordUrlVariable), findModule);
             if (names.Contains(RecordUrlVariable) && !string.IsNullOrEmpty(recordUrlBase))
             {
                 var id = (row.Fields.GetValueOrDefault(Codeer.LowCode.Blazor.DesignLogic.SystemFieldNames.Id) as IdFieldData)?.Value ?? string.Empty;

@@ -1001,5 +1001,155 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
             }
         }
 
+        internal static string BulkMailField {
+            get {
+                return ResourceManager.GetString("BulkMailField", resourceCulture);
+            }
+        }
+
+        internal static string BulkMailRecipientListFieldName {
+            get {
+                return ResourceManager.GetString("BulkMailRecipientListFieldName", resourceCulture);
+            }
+        }
+
+        internal static string BulkMailEmailAddressVariable {
+            get {
+                return ResourceManager.GetString("BulkMailEmailAddressVariable", resourceCulture);
+            }
+        }
+
+        internal static string BulkMailOptOutVariable {
+            get {
+                return ResourceManager.GetString("BulkMailOptOutVariable", resourceCulture);
+            }
+        }
+
+        internal static string BulkMailSubjectVariable {
+            get {
+                return ResourceManager.GetString("BulkMailSubjectVariable", resourceCulture);
+            }
+        }
+
+        internal static string BulkMailSubject {
+            get {
+                return ResourceManager.GetString("BulkMailSubject", resourceCulture);
+            }
+        }
+
+        internal static string BulkMailBodyVariable {
+            get {
+                return ResourceManager.GetString("BulkMailBodyVariable", resourceCulture);
+            }
+        }
+
+        internal static string BulkMailBody {
+            get {
+                return ResourceManager.GetString("BulkMailBody", resourceCulture);
+            }
+        }
+
+        internal static string BulkMailSenderName {
+            get {
+                return ResourceManager.GetString("BulkMailSenderName", resourceCulture);
+            }
+        }
+
+        internal static string BulkMailIsBodyHtml {
+            get {
+                return ResourceManager.GetString("BulkMailIsBodyHtml", resourceCulture);
+            }
+        }
+
+        internal static string BulkMailReplyTo {
+            get {
+                return ResourceManager.GetString("BulkMailReplyTo", resourceCulture);
+            }
+        }
+
+        internal static string BulkMailButtonText {
+            get {
+                return ResourceManager.GetString("BulkMailButtonText", resourceCulture);
+            }
+        }
+
+        internal static string BulkMailFieldDbColumn {
+            get {
+                return ResourceManager.GetString("BulkMailFieldDbColumn", resourceCulture);
+            }
+        }
+
+        internal static string BulkMailRecipientListFieldRequired {
+            get {
+                return ResourceManager.GetString("BulkMailRecipientListFieldRequired", resourceCulture);
+            }
+        }
+
+        internal static string BulkMailEmailAddressVariableRequired {
+            get {
+                return ResourceManager.GetString("BulkMailEmailAddressVariableRequired", resourceCulture);
+            }
+        }
+
+        internal static string BulkMailSubjectOrBodyRequired {
+            get {
+                return ResourceManager.GetString("BulkMailSubjectOrBodyRequired", resourceCulture);
+            }
+        }
+
+        internal static string BulkMailVariableNotFoundFormat {
+            get {
+                return ResourceManager.GetString("BulkMailVariableNotFoundFormat", resourceCulture);
+            }
+        }
+
+        internal static string BulkMailSaveBeforeSend {
+            get {
+                return ResourceManager.GetString("BulkMailSaveBeforeSend", resourceCulture);
+            }
+        }
+
+        internal static string BulkMailTargetListInvalid {
+            get {
+                return ResourceManager.GetString("BulkMailTargetListInvalid", resourceCulture);
+            }
+        }
+
+        internal static string BulkMailConfirmFormat {
+            get {
+                return ResourceManager.GetString("BulkMailConfirmFormat", resourceCulture);
+            }
+        }
+
+        internal static string BulkMailSendAction {
+            get {
+                return ResourceManager.GetString("BulkMailSendAction", resourceCulture);
+            }
+        }
+
+        internal static string BulkMailSentFormat {
+            get {
+                return ResourceManager.GetString("BulkMailSentFormat", resourceCulture);
+            }
+        }
+
+        internal static string BulkMailSentWithFailuresFormat {
+            get {
+                return ResourceManager.GetString("BulkMailSentWithFailuresFormat", resourceCulture);
+            }
+        }
+
+        internal static string BulkMailDefaultButtonText {
+            get {
+                return ResourceManager.GetString("BulkMailDefaultButtonText", resourceCulture);
+            }
+        }
+
+        internal static string BulkMailLastSentFormat {
+            get {
+                return ResourceManager.GetString("BulkMailLastSentFormat", resourceCulture);
+            }
+        }
+
     }
 }

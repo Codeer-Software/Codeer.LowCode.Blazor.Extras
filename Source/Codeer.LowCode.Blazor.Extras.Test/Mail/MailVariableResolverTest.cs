@@ -60,5 +60,68 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Mail
         [TestCase("", new string[0])]
         public void GetVariableNames(string template, string[] expected)
             => Assert.That(MailTemplateEngine.GetVariableNames(template), Is.EqualTo(expected));
+
+        [TestCase("Email", "Email", "")]
+        [TestCase("Email.Value", "Email", "Value")]
+        [TestCase("Rank.DisplayText", "Rank", "DisplayText")]
+        [TestCase("Contact.Email", "Contact.Email", "")]          //末尾が既知メンバーでなければ全体がフィールドパス
+        [TestCase("Contact.Email.Value", "Contact.Email", "Value")]
+        [TestCase("", "", "")]
+        public void ParseToken(string token, string fieldPath, string member)
+            => Assert.That(MailVariableResolver.ParseToken(token), Is.EqualTo((fieldPath, member)));
+
+        [Test]
+        public void Resolve_メンバー指定で解決される()
+        {
+            var variables = MailVariableResolver.Resolve(CreateDesign(), CreateData(),
+                new[] { "Name.Value", "Amount.Value", "Rank.Value", "Rank.DisplayText", "Name.DisplayText" });
+
+            Assert.That(variables["Name.Value"], Is.EqualTo("田中"));
+            Assert.That(variables["Amount.Value"], Is.EqualTo("12,345"));   //Valueでも外部テキスト書式(メールはテキスト媒体)
+            Assert.That(variables["Rank.Value"], Is.EqualTo("1"));          //.Value明示はコード値
+            Assert.That(variables["Rank.DisplayText"], Is.EqualTo("ゴールド"));
+            Assert.That(variables["Name.DisplayText"], Is.EqualTo(string.Empty)); //表示テキストを持たない型
+        }
+
+        [Test]
+        public void Resolve_リンクパスはデータのリンクキーで解決される()
+        {
+            //リスト取得データはリンク先の値を "Contact.Xxx" キーで持つ(LinkedDataIOの分配形式)
+            var design = new ModuleDesign { Name = "CampaignMember" };
+            design.Fields.Add(new LinkFieldDesign { Name = "Contact", SearchCondition = { ModuleName = "Person" } });
+
+            var personDesign = new ModuleDesign { Name = "Person" };
+            personDesign.Fields.Add(new TextFieldDesign { Name = "Email" });
+            personDesign.Fields.Add(new DateFieldDesign { Name = "JoinedAt", Format = "yyyy/MM/dd" });
+
+            var data = new ModuleData { Name = "CampaignMember" };
+            data.Fields["Contact"] = new LinkFieldData { Value = "p1", DisplayText = "田中" };
+            data.Fields["Contact.Email"] = new TextFieldData { Value = "a@example.com" };
+            data.Fields["Contact.JoinedAt"] = new DateFieldData { Value = new DateOnly(2026, 8, 9) };
+
+            ModuleDesign? FindModule(string name) => name == "Person" ? personDesign : null;
+
+            Assert.That(MailVariableResolver.ResolveOne(design, data, "Contact"), Is.EqualTo("田中"));            //Linkは表示テキスト
+            Assert.That(MailVariableResolver.ResolveOne(design, data, "Contact.Value"), Is.EqualTo("p1"));        //.Value明示はキー値
+            Assert.That(MailVariableResolver.ResolveOne(design, data, "Contact.Email"), Is.EqualTo("a@example.com"));
+            Assert.That(MailVariableResolver.ResolveOne(design, data, "Contact.Email.Value"), Is.EqualTo("a@example.com"));
+            Assert.That(MailVariableResolver.ResolveOne(design, data, "Contact.JoinedAt.Value", FindModule),
+                Is.EqualTo("2026/08/09")); //リンク先デザインを辿って書式整形
+            Assert.That(MailVariableResolver.ResolveOne(design, data, "Contact.Unknown"), Is.EqualTo(string.Empty));
+        }
+
+        [Test]
+        public void GetValueText_はValue付き表記とリンクパスを受ける()
+        {
+            var data = CreateData();
+            Assert.That(MailVariableResolver.GetValueText(data, "Email.Value"), Is.EqualTo("a@example.com"));
+
+            var row = new ModuleData { Name = "CampaignMember" };
+            row.Fields["Contact.Email"] = new TextFieldData { Value = "b@example.com" };
+            row.Fields["除外"] = new BooleanFieldData { Value = true };
+            Assert.That(MailVariableResolver.GetValueText(row, "Contact.Email"), Is.EqualTo("b@example.com"));
+            Assert.That(MailVariableResolver.GetValueText(row, "Contact.Email.Value"), Is.EqualTo("b@example.com"));
+            Assert.That(MailVariableResolver.GetBooleanValue(row, "除外.Value"), Is.True);
+        }
     }
 }

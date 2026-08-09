@@ -59,17 +59,6 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
         public async Task<MailSendResult> SendAsync(MailSendRequest request)
             => await SendAsync(request.SenderName, request.Message, CreateSource(request.SourceModule, request.SourceId));
 
-        /// <summary>Sends the bulk wire request (POST /api/mail/bulk) as-is. Controllers stay thin.</summary>
-        public async Task<MailSendResult> SendBulkAsync(MailBulkRequest request)
-            => await SendBulkAsync(request.SenderName, new MailBulkTemplate
-            {
-                Subject = request.Subject,
-                Body = request.Body,
-                IsBodyHtml = request.IsBodyHtml,
-                ReplyTo = request.ReplyTo,
-                Attachments = request.Attachments,
-            }, request.Recipients, CreateSource(request.SourceModule, request.SourceId));
-
         internal static MailHistorySource? CreateSource(string sourceModule, string sourceId)
             => string.IsNullOrEmpty(sourceModule)
                 ? null

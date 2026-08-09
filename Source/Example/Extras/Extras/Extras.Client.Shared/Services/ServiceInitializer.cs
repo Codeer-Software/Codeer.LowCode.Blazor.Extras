@@ -16,7 +16,6 @@ namespace Extras.Client.Shared.Services
         {
             //Extras の組み込みサービスが使うエンドポイント。URL はアプリ(Controller を持つ側)の持ち物なのでここで一元定義する
             MailTransport.SendMailEndPoint = "/api/mail";
-            MailTransport.BulkMailEndPoint = "/api/mail/bulk";
             MailTransport.BulkSearchMailEndPoint = "/api/mail/bulk_search";
             Codeer.LowCode.Blazor.Extras.ScriptObjects.Excel.ConvertPdfEndPoint = "api/excel/pdf";
             AITextAnalyzerField.FileToModuleDataEndPoint = "/api/ai_text_analyze/file";

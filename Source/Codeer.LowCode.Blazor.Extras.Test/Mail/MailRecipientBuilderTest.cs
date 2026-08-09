@@ -56,5 +56,32 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Mail
                 "Email", "OptOut", new[] { "RecordUrl" });
             Assert.That(recipient!.Variables.ContainsKey("RecordUrl"), Is.False); //未解決={Name}と同じく空文字扱い
         }
+
+        [Test]
+        public void TryBuild_リンクパスの宛先と除外で組み立てる()
+        {
+            //名簿(CampaignMember)方式: 宛先アドレスはリンク先("Contact.Email")、除外フラグは行の Boolean
+            var design = new ModuleDesign { Name = "CampaignMember" };
+            design.Fields.Add(new LinkFieldDesign { Name = "Contact", SearchCondition = { ModuleName = "Person" } });
+            design.Fields.Add(new BooleanFieldDesign { Name = "除外" });
+
+            ModuleData CreateMember(string email, bool exclude)
+            {
+                var row = new ModuleData { Name = "CampaignMember" };
+                row.Fields["Contact"] = new LinkFieldData { Value = "p1", DisplayText = "田中" };
+                row.Fields["Contact.Email"] = new TextFieldData { Value = email };
+                row.Fields["除外"] = new BooleanFieldData { Value = exclude };
+                return row;
+            }
+
+            var names = new[] { "Contact" };
+            Assert.That(MailRecipientBuilder.TryBuild(design, CreateMember("a@example.com", exclude: true),
+                "Contact.Email.Value", "除外.Value", names), Is.Null);
+
+            var recipient = MailRecipientBuilder.TryBuild(design, CreateMember("a@example.com", exclude: false),
+                "Contact.Email.Value", "除外.Value", names);
+            Assert.That(recipient!.To, Is.EqualTo("a@example.com"));
+            Assert.That(recipient.Variables["Contact"], Is.EqualTo("田中"));
+        }
     }
 }

@@ -19,9 +19,9 @@ namespace Codeer.LowCode.Blazor.Extras
         }
 
         /// <summary>
-        /// Initialize including built-in script objects (Excel, WebApi, Toaster, Mail/BulkMail).
+        /// Initialize including built-in script objects (Excel, WebApi, Toaster, Mail).
         /// Endpoint URLs belong to the app, so set them once at startup via the static
-        /// properties of each feature (MailTransport.SendMailEndPoint / BulkMailEndPoint /
+        /// properties of each feature (MailTransport.SendMailEndPoint /
         /// BulkSearchMailEndPoint, Excel.ConvertPdfEndPoint,
         /// AITextAnalyzerField.FileToModuleDataEndPoint / TextToModuleDataEndPoint).
         /// </summary>
@@ -36,8 +36,6 @@ namespace Codeer.LowCode.Blazor.Extras
             manager.AddModuleGenericType(typeof(ScriptObjects.BulkFileReader));
             manager.AddType<WebApiResult>();
             manager.AddType<ScriptObjects.Mail>();
-            manager.AddType<BulkMail>();
-            manager.AddType<MailRecipient>();
             manager.AddType<Codeer.LowCode.Blazor.Extras.Mail.MailSendResult>();
             manager.AddType<Codeer.LowCode.Blazor.Extras.Mail.MailSendFailure>();
             manager.AddService(new WebApiService(http, logger));

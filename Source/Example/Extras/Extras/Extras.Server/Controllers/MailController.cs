@@ -26,16 +26,13 @@ namespace Extras.Server.Controllers
         public async Task<MailSendResult> SendEmailAsync(MailSendRequest request)
             => await CreateDispatcher().SendAsync(request);
 
-        //一斉送信(クライアントで解決済みの宛先リスト)
-        [HttpPost("bulk")]
-        public async Task<MailSendResult> SendBulkAsync(MailBulkRequest request)
-            => await CreateDispatcher().SendBulkAsync(request);
-
         //一斉送信(宛先はサーバーで検索条件から解決。読み取り権限が効き、宛先一覧はクライアントに渡らない)
+        //BulkMailFieldのサマリ書き戻しは履歴と同じくシステムの記録なので内部経路で書く
         [HttpPost("bulk_search")]
         public async Task<MailSendResult> SendBulkSearchAsync(MailBulkSearchRequest request)
             => await MailBulkSearch.SendAsync(CreateDispatcher(), _dataService.ModuleDataIO,
-                DesignerService.GetDesignData(), SystemConfig.Instance.Mail, request);
+                DesignerService.GetDesignData(), SystemConfig.Instance.Mail, request,
+                data => _dataService.ModuleDataIO.UpdateSystemRecordAsync(data), e => _logger.LogError("{Error}", e));
 
         MailDispatcher CreateDispatcher()
         {
