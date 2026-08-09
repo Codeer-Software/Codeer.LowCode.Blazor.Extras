@@ -20,6 +20,7 @@ namespace Extras.Server.Services
         public string DesignFileDirectory { get; set; } = string.Empty;
         public string FontFileDirectory { get; set; } = string.Empty;
         public MailSettings MailSettings { get; set; } = new();
+        public MailConfig Mail { get; set; } = new();
         public AISettings AISettings { get; set; } = new();
         public SystemConfigForFront ForFront() => new SystemConfigForFront { CanScriptDebug = CanScriptDebug, UseHotReload = UseHotReload };
     }

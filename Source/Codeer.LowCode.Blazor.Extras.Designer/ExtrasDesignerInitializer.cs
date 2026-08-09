@@ -36,8 +36,11 @@ namespace Codeer.LowCode.Blazor.Extras.Designer
             DesignerApp.ScriptRuntimeTypeManager.AddService(new ScriptObjects.Toaster(null!));
             DesignerApp.ScriptRuntimeTypeManager.AddService(new ScriptObjects.WebApiService(null!, null!));
             DesignerApp.ScriptRuntimeTypeManager.AddType<ScriptObjects.WebApiResult>();
-            DesignerApp.ScriptRuntimeTypeManager.AddService(new ScriptObjects.MailService());
-            DesignerApp.ScriptRuntimeTypeManager.AddType<ScriptObjects.MailMessage>();
+            DesignerApp.ScriptRuntimeTypeManager.AddType<ScriptObjects.Mail>();
+            DesignerApp.ScriptRuntimeTypeManager.AddType<ScriptObjects.BulkMail>();
+            DesignerApp.ScriptRuntimeTypeManager.AddType<ScriptObjects.MailRecipient>();
+            DesignerApp.ScriptRuntimeTypeManager.AddType<Codeer.LowCode.Blazor.Extras.Mail.MailSendResult>();
+            DesignerApp.ScriptRuntimeTypeManager.AddType<Codeer.LowCode.Blazor.Extras.Mail.MailSendFailure>();
             DesignerApp.ScriptRuntimeTypeManager.AddService(new ScriptObjects.BulkFileTransferService());
             //new BulkFileReader<XXXModule>() のイディオム (モジュール名が ctor に渡る) で使える
             DesignerApp.ScriptRuntimeTypeManager.AddModuleGenericType(typeof(ScriptObjects.BulkFileReader));

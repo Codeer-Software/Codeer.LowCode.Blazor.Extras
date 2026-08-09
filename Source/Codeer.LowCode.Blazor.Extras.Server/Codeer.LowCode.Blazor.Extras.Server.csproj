@@ -5,7 +5,7 @@
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>enable</Nullable>
 		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
-		<Version>0.5.0</Version>
+		<Version>0.6.0</Version>
 		<Authors>Codeer</Authors>
 		<Company>Codeer</Company>
 		<Description>Server-side services for Codeer.LowCode.Blazor apps. Includes AI document analysis (Azure Document Intelligence + Azure OpenAI), SMTP mail sending, file storage (file system / Azure Blob), and ASP.NET Core helpers (hot reload, ETag file responses).</Description>
@@ -40,6 +40,7 @@
 		<PackageReference Include="Azure.AI.OpenAI" Version="2.1.0" />
 		<PackageReference Include="Azure.Storage.Blobs" Version="12.23.0" />
 		<PackageReference Include="Excel.Report.PDF" Version="0.32.0" />
+		<PackageReference Include="MailKit" Version="4.17.0" />
 		<PackageReference Include="System.Text.Encoding.CodePages" Version="8.0.0" />
 	</ItemGroup>
 

@@ -34,5 +34,10 @@ namespace Extras.Server.Services
             PasswordHashHelper.ApplyPasswordHash(moduleDesign, data);
             await base.UpdateAsync(transactionId, moduleSubmitId, data);
         }
+        //メール送信履歴などシステムの記録を、操作ユーザーの書き込み権限に依存せず追加する内部経路。
+        //クライアントから直接は呼ばれない(サーバー内部の記録専用)
+        internal async Task AddSystemRecordAsync(ModuleData data)
+            => await AddAsync(Guid.NewGuid(), Guid.NewGuid(), data);
+
     }
 }
