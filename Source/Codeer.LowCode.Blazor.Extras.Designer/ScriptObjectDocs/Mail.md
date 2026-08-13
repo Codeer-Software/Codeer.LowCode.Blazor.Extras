@@ -1,9 +1,10 @@
 メールを1通送る。`new Mail()` で作り、プロパティを設定して `Send()`。
-送信インフラは `appsettings.json` の `Mail.Senders` (SMTP / Microsoft Graph / SendGrid を名前付きで定義。旧 `MailSettings` も既定センダーとして有効)。
+送信インフラは `appsettings.json` の `Mail.Senders` (SMTP / Microsoft Graph / SendGrid / Gmail を名前付きで定義。旧 `MailSettings` も既定センダーとして有効)。
+センダーを併用するシステムでは `Mail.DefaultSenderName` (単発の既定) / `Mail.DefaultBulkSenderName` (一斉の既定) を設定し、送信箇所ではセンダー名を書かないのが基本 (例外の送信箇所だけ明示)。
 
 | プロパティ | 説明 |
 |---|---|
-| `Sender` | 使うセンダー名 (`Mail.Senders` の Name)。省略時は先頭 |
+| `Sender` | 使うセンダー名 (`Mail.Senders` の Name)。省略時は `Mail.DefaultSenderName`、無ければ先頭 |
 | `Subject` / `Body` | 件名・本文 |
 | `IsBodyHtml` | HTML本文か (既定 false) |
 | `ReplyTo` | 返信先 |

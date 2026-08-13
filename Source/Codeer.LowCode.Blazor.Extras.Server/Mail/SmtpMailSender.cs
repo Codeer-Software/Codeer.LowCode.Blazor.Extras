@@ -77,8 +77,12 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
             return result;
         }
 
-        /// <summary>Resolves a bulk template for one recipient into a plain message.</summary>
-        internal static MailMessage CreateResolvedMessage(MailBulkTemplate template, MailBulkRecipient recipient)
+        /// <summary>
+        /// Resolves a bulk template for one recipient into a plain message.
+        /// Public for custom <see cref="IMailSender"/> implementations without a native bulk API
+        /// (the template engine itself is internal) - see GraphApiMailSender for the usage pattern.
+        /// </summary>
+        public static MailMessage CreateResolvedMessage(MailBulkTemplate template, MailBulkRecipient recipient)
             => new()
             {
                 To = { recipient.To },

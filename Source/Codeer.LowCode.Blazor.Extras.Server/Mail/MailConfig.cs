@@ -2,7 +2,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
 {
     /// <summary>
     /// "Mail" section of appsettings.json. Named senders with different infrastructures
-    /// (SMTP / Microsoft Graph / SendGrid) plus app-wide options.
+    /// (SMTP / Microsoft Graph / SendGrid / Gmail) plus app-wide options.
     /// </summary>
     public class MailConfig
     {
@@ -24,6 +24,18 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
         public string HistoryModuleName { get; set; } = string.Empty;
 
         public List<MailSenderSettings> Senders { get; set; } = new();
+
+        /// <summary>
+        /// Sender used when a single send does not specify one. Empty = the first sender.
+        /// Typically the notification infrastructure (Graph / SMTP).
+        /// </summary>
+        public string DefaultSenderName { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Sender used when a bulk send does not specify one. Empty = <see cref="DefaultSenderName"/>
+        /// (then the first sender). Typically a delivery service (SendGrid).
+        /// </summary>
+        public string DefaultBulkSenderName { get; set; } = string.Empty;
 
         /// <summary>
         /// Merges the legacy single-SMTP "MailSettings" section as a sender named "Default"
@@ -57,6 +69,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
         public const string Smtp = "Smtp";
         public const string GraphApi = "GraphApi";
         public const string SendGrid = "SendGrid";
+        public const string GmailApi = "GmailApi";
     }
 
     /// <summary>One named sender. The set of used properties depends on <see cref="Type"/>.</summary>
@@ -66,7 +79,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
 
         public string Name { get; set; } = string.Empty;
 
-        /// <summary>Smtp / GraphApi / SendGrid. See <see cref="MailSenderTypes"/>.</summary>
+        /// <summary>Smtp / GraphApi / SendGrid / GmailApi. See <see cref="MailSenderTypes"/>.</summary>
         public string Type { get; set; } = string.Empty;
 
         public string SenderMailAddress { get; set; } = string.Empty;
@@ -86,6 +99,8 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
         //GraphApi (client credentials)
         public string TenantId { get; set; } = string.Empty;
         public string ClientId { get; set; } = string.Empty;
+
+        /// <summary>GraphApi: the client secret. GmailApi: the service account JSON key (file path, or the JSON text itself).</summary>
         public string ClientSecret { get; set; } = string.Empty;
 
         //SendGrid

@@ -109,7 +109,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
                 }
 
                 var currentJson = (record.Fields.GetValueOrDefault(request.SummaryFieldName) as ValueFieldDataBase<string>)?.Value;
-                var senderName = dispatcher.ResolveSenderSettings(request.SenderName).Name;
+                var senderName = dispatcher.ResolveBulkSenderSettings(request.SenderName).Name;
                 summaryData.Value = BulkMailSummary.Prepend(currentJson,
                     BulkMailSummary.CreateEntry(senderName, request.Subject, result, DateTime.Now));
 

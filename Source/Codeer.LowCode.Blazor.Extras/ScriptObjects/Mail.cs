@@ -9,7 +9,7 @@ namespace Codeer.LowCode.Blazor.Extras.ScriptObjects
     /// Single mail built and sent from scripts:
     /// <code>
     /// var mail = new Mail();
-    /// mail.Sender = "Notify";           //Mail.Senders の名前(省略時は先頭)
+    /// mail.Sender = "Notify";           //Mail.Senders の名前(省略時は DefaultSenderName、無ければ先頭)
     /// mail.AddTo("a@example.com");
     /// mail.Subject = "件名";
     /// mail.Body = "本文";
@@ -25,7 +25,7 @@ namespace Codeer.LowCode.Blazor.Extras.ScriptObjects
         [ScriptHide, ScriptInject]
         public IHttpService? Http { get; set; }
 
-        /// <summary>Sender name configured in appsettings (Mail.Senders). Empty = the first sender.</summary>
+        /// <summary>Sender name configured in appsettings (Mail.Senders). Empty = Mail.DefaultSenderName (then the first sender).</summary>
         public string Sender { get; set; } = string.Empty;
 
         public string Subject { get; set; } = string.Empty;

@@ -56,6 +56,65 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Mail
             Assert.That(() => dispatcher.ResolveSenderSettings(null), Throws.InvalidOperationException);
         }
 
+        static MailDispatcher CreateWithDefaults(string defaultSender, string defaultBulkSender)
+            => new(new MailConfig
+            {
+                DefaultSenderName = defaultSender,
+                DefaultBulkSenderName = defaultBulkSender,
+                Senders =
+                {
+                    new MailSenderSettings { Name = "Main" },
+                    new MailSenderSettings { Name = "Notify" },
+                    new MailSenderSettings { Name = "Campaign" },
+                }
+            });
+
+        [Test]
+        public void ResolveSenderSettings_省略時は用途別デフォルト_明示指定が最優先()
+        {
+            var dispatcher = CreateWithDefaults("Notify", "Campaign");
+            Assert.That(dispatcher.ResolveSenderSettings(null).Name, Is.EqualTo("Notify"));
+            Assert.That(dispatcher.ResolveBulkSenderSettings(null).Name, Is.EqualTo("Campaign"));
+            Assert.That(dispatcher.ResolveSenderSettings("Campaign").Name, Is.EqualTo("Campaign"));
+            Assert.That(dispatcher.ResolveBulkSenderSettings("Notify").Name, Is.EqualTo("Notify"));
+        }
+
+        [Test]
+        public void ResolveBulkSenderSettings_Bulk既定なしは単発既定_両方なしは先頭()
+        {
+            Assert.That(CreateWithDefaults("Notify", "").ResolveBulkSenderSettings(null).Name, Is.EqualTo("Notify"));
+            Assert.That(CreateWithDefaults("", "").ResolveBulkSenderSettings(null).Name, Is.EqualTo("Main"));
+        }
+
+        [Test]
+        public void ResolveSenderSettings_デフォルト名が不明でも黙って先頭に落ちずエラー()
+        {
+            Assert.That(() => CreateWithDefaults("Nothing", "").ResolveSenderSettings(null), Throws.InvalidOperationException);
+            Assert.That(() => CreateWithDefaults("", "Nothing").ResolveBulkSenderSettings(null), Throws.InvalidOperationException);
+        }
+
+        [Test]
+        public void SendBulk_センダー省略時はBulk既定のセンダーで送られる()
+        {
+            var fake = new FakeMailSender();
+            var config = new MailConfig
+            {
+                DefaultSenderName = "Notify",
+                DefaultBulkSenderName = "Campaign",
+                Senders =
+                {
+                    new MailSenderSettings { Name = "Notify" },
+                    new MailSenderSettings { Name = "Campaign", MaxBulkCount = 1 },
+                }
+            };
+            var dispatcher = new MailDispatcher(config, _ => fake);
+
+            //Campaign(MaxBulkCount=1)が選ばれている証拠として2件で超過エラーになる
+            Assert.That(async () => await dispatcher.SendBulkAsync(null, new MailBulkTemplate(),
+                [new MailBulkRecipient { To = "a@example.com" }, new MailBulkRecipient { To = "b@example.com" }]),
+                Throws.InvalidOperationException.With.Message.Contains("Campaign"));
+        }
+
         [Test]
         public async Task Send_宛先なしは失敗を返す()
         {

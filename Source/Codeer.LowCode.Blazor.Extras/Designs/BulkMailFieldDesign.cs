@@ -70,7 +70,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         [Designer(Index = 7, CandidateType = CandidateType.MultilineString, DisplayName = "$BulkMailBody")]
         public string Body { get; set; } = string.Empty;
 
-        /// <summary>送信者名 (appsettings の Mail.Senders の名前)。空なら先頭のセンダー。</summary>
+        /// <summary>送信者名 (appsettings の Mail.Senders の名前)。空なら既定 (Mail.DefaultBulkSenderName → DefaultSenderName → 先頭)。</summary>
         [Designer(Index = 8, DisplayName = "$BulkMailSenderName")]
         public string SenderName { get; set; } = string.Empty;
 

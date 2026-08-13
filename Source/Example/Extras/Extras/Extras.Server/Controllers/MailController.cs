@@ -42,7 +42,18 @@ namespace Extras.Server.Controllers
                 ? null
                 : new MailHistoryWriter(mail.HistoryModuleName, DesignerService.GetDesignData(),
                     data => _dataService.ModuleDataIO.AddSystemRecordAsync(data), e => _logger.LogError("{Error}", e));
-            return new MailDispatcher(mail, historyWriter: historyWriter);
+            return new MailDispatcher(mail, CreateSender, historyWriter);
         }
+
+        //センダー設定(Type)→送信インフラ実装の対応表。独自インフラ(IMailSenderの実装)を使うときはここに追記する
+        static IMailSender? CreateSender(MailSenderSettings settings)
+            => settings.Type switch
+            {
+                MailSenderTypes.Smtp or "" => new SmtpMailSender(settings),
+                MailSenderTypes.GraphApi => new GraphApiMailSender(settings),
+                MailSenderTypes.SendGrid => new SendGridMailSender(settings),
+                MailSenderTypes.GmailApi => new GmailApiMailSender(settings),
+                _ => null, //null は製品組み込みの解決に委ねる(未知の Type はそこでエラーになる)
+            };
     }
 }

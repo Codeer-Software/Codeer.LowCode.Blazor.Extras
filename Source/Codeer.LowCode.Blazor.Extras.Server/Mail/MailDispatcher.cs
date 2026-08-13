@@ -32,13 +32,23 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
             _historyWriter = historyWriter;
         }
 
-        /// <summary>Resolves sender settings by name. Empty name means the first configured sender.</summary>
+        /// <summary>Resolves the sender of a single send: explicit name → DefaultSenderName → the first sender.</summary>
         public MailSenderSettings ResolveSenderSettings(string? senderName)
+            => ResolveCore(senderName, _config.DefaultSenderName);
+
+        /// <summary>Resolves the sender of a bulk send: explicit name → DefaultBulkSenderName → DefaultSenderName → the first sender.</summary>
+        public MailSenderSettings ResolveBulkSenderSettings(string? senderName)
+            => ResolveCore(senderName, string.IsNullOrEmpty(_config.DefaultBulkSenderName)
+                ? _config.DefaultSenderName : _config.DefaultBulkSenderName);
+
+        //a configured default that matches nothing throws, same as an explicit name - config errors must not fall back silently
+        MailSenderSettings ResolveCore(string? senderName, string defaultName)
         {
             if (!_config.Senders.Any()) throw new InvalidOperationException("No mail senders are configured (Mail.Senders).");
-            if (string.IsNullOrEmpty(senderName)) return _config.Senders[0];
-            return _config.Senders.FirstOrDefault(e => e.Name == senderName)
-                ?? throw new InvalidOperationException($"Mail sender '{senderName}' is not configured.");
+            var name = string.IsNullOrEmpty(senderName) ? defaultName : senderName;
+            if (string.IsNullOrEmpty(name)) return _config.Senders[0];
+            return _config.Senders.FirstOrDefault(e => e.Name == name)
+                ?? throw new InvalidOperationException($"Mail sender '{name}' is not configured.");
         }
 
         public IMailSender CreateSender(MailSenderSettings settings)
@@ -49,6 +59,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
             {
                 MailSenderTypes.GraphApi => new GraphApiMailSender(settings),
                 MailSenderTypes.SendGrid => new SendGridMailSender(settings),
+                MailSenderTypes.GmailApi => new GmailApiMailSender(settings),
                 //empty type = legacy configs are SMTP
                 MailSenderTypes.Smtp or "" => new SmtpMailSender(settings),
                 _ => throw new InvalidOperationException($"Unknown mail sender type '{settings.Type}'."),
@@ -84,7 +95,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
         /// </summary>
         public async Task<MailSendResult> SendBulkAsync(string? senderName, MailBulkTemplate template, List<MailBulkRecipient> recipients, MailHistorySource? source = null)
         {
-            var settings = ResolveSenderSettings(senderName);
+            var settings = ResolveBulkSenderSettings(senderName);
             if (recipients.Count > settings.MaxBulkCount)
                 throw new InvalidOperationException(
                     $"Bulk send of {recipients.Count} mails exceeds MaxBulkCount ({settings.MaxBulkCount}) of mail sender '{settings.Name}'.");

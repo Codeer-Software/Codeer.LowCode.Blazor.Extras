@@ -47,7 +47,7 @@
 | Subject | string | - | 件名テンプレート (固定文字列) |
 | BodyVariable | string | - | 本文テンプレートを持つ自モジュールの変数 (`Body.Value`)。空なら Body を使う |
 | Body | string | - | 本文テンプレート (固定文字列・複数行) |
-| SenderName | string | - | 送信者名 (appsettings の Mail.Senders の名前)。空なら先頭のセンダー |
+| SenderName | string | - | 送信者名 (appsettings の Mail.Senders の名前)。空なら既定 (Mail.DefaultBulkSenderName → DefaultSenderName → 先頭) |
 | IsBodyHtml | bool | - | 本文を HTML として送るか (変数値は HTML エスケープされる) |
 | ReplyTo | string | - | 返信先アドレス |
 | ButtonText | string | - | ボタンの表示テキスト。空なら既定の文言 |
