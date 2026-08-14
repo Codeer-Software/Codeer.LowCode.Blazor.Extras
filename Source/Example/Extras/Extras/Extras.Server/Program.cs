@@ -96,6 +96,12 @@ builder.Services.Configure<RequestLocalizationOptions>(options =>
 
 builder.Services.AddScoped<DataService>();
 
+//デモ用の簡易ログイン (パスワードなしのユーザー切替。AccountController / login.html)。
+//承認フローなど操作ユーザーが必要な機能をサンプルで確認するためのもので、実運用の認証ではない
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddAuthentication(Microsoft.AspNetCore.Authentication.Cookies.CookieAuthenticationDefaults.AuthenticationScheme)
+    .AddCookie(options => options.Cookie.Name = "ExtrasExample.Auth");
+
 var app = builder.Build();
 
 app.UseResponseCompression();
@@ -119,6 +125,19 @@ app.UseBlazorFrameworkFiles();
 app.UseStaticFiles();
 
 app.UseRouting();
+
+app.UseAuthentication();
+
+//未ログインでアプリのルートを開いたらデモログインページへ (簡易実装)
+app.Use(async (context, next) =>
+{
+    if (context.Request.Path == "/" && context.User.Identity?.IsAuthenticated != true)
+    {
+        context.Response.Redirect("/login.html");
+        return;
+    }
+    await next();
+});
 
 if (SystemConfig.Instance.UseHotReload)
 {

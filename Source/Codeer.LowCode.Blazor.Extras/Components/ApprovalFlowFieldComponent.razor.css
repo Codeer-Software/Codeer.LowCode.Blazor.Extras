@@ -1,0 +1,169 @@
+.approval-flow {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.approval-not-submitted {
+  color: var(--bs-secondary-color, #6c757d);
+  font-size: 0.9rem;
+}
+
+.approval-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.approval-status-badge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 10px;
+  font-size: 0.85rem;
+  background-color: #e9ecef;
+  color: #333;
+}
+
+.approval-status-inprogress {
+  background-color: #cfe2ff;
+  color: #084298;
+}
+
+.approval-status-completed {
+  background-color: #d1e7dd;
+  color: #0a5239;
+}
+
+.approval-status-rejected {
+  background-color: #f8d7da;
+  color: #842029;
+}
+
+.approval-status-returned,
+.approval-status-withdrawn {
+  background-color: #fff3cd;
+  color: #664d03;
+}
+
+.approval-status-cancelled {
+  background-color: #e9ecef;
+  color: #6c757d;
+}
+
+.approval-attempt {
+  font-size: 0.8rem;
+  color: var(--bs-secondary-color, #6c757d);
+}
+
+.approval-steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: stretch;
+}
+
+.approval-step {
+  border: 1px solid #dee2e6;
+  border-radius: 6px;
+  padding: 6px 10px;
+  min-width: 120px;
+  background-color: transparent;
+}
+
+.approval-step.current {
+  border-color: #0d6efd;
+  box-shadow: 0 0 0 1px #0d6efd inset;
+}
+
+.approval-step-name {
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+
+.approval-step-type {
+  font-size: 0.75rem;
+  font-weight: 400;
+  color: var(--bs-secondary-color, #6c757d);
+  margin-left: 4px;
+}
+
+.approval-members {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.approval-member {
+  font-size: 0.85rem;
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+}
+
+.approval-member-mark {
+  display: inline-block;
+  width: 1em;
+}
+
+.approval-member.status-approved .approval-member-mark,
+.approval-member.status-confirmed .approval-member-mark {
+  color: #198754;
+}
+
+.approval-member.status-rejected .approval-member-mark {
+  color: #dc3545;
+}
+
+.approval-member.status-waiting .approval-member-mark {
+  color: #0d6efd;
+}
+
+.approval-member.status-skipped {
+  color: var(--bs-secondary-color, #6c757d);
+}
+
+.approval-comment {
+  max-width: 480px;
+}
+
+.approval-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.approval-history-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.approval-history ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.approval-history li {
+  font-size: 0.85rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 2px 0;
+  border-bottom: 1px dotted #dee2e6;
+}
+
+.approval-history-when {
+  color: var(--bs-secondary-color, #6c757d);
+  white-space: nowrap;
+}
+
+.approval-history-action {
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.approval-history-comment {
+  color: #333;
+  overflow-wrap: anywhere;
+}

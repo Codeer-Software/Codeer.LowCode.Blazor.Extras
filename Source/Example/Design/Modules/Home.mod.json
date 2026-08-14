@@ -252,6 +252,13 @@
       "IgnoreModification": false,
       "OnValidateInput": "",
       "TypeFullName": "Codeer.LowCode.Blazor.Extras.Designs.ProgressFieldDesign"
+    },
+    {
+      "Name": "SwitchUserLink",
+      "TitleText": "ログイン切替(デモ)",
+      "Url": "/login.html",
+      "Icon": "bi bi-person-circle",
+      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.AnchorTagFieldDesign"
     }
   ],
   "UserWriteCondition": {
@@ -291,6 +298,16 @@
         "ScrollDirection": "Unset",
         "OnKeyDown": "",
         "Rows": [
+          {
+            "Columns": [
+              {
+                "Layout": {
+                  "FieldName": "SwitchUserLink",
+                  "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.FieldLayoutDesign"
+                }
+              }
+            ]
+          },
           {
             "IsWrap": false,
             "IsAutoFillWrap": false,

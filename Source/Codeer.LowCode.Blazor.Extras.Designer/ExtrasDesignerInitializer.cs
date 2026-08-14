@@ -42,6 +42,11 @@ namespace Codeer.LowCode.Blazor.Extras.Designer
             DesignerApp.ScriptRuntimeTypeManager.AddService(new ScriptObjects.BulkFileTransferService());
             //new BulkFileReader<XXXModule>() のイディオム (モジュール名が ctor に渡る) で使える
             DesignerApp.ScriptRuntimeTypeManager.AddModuleGenericType(typeof(ScriptObjects.BulkFileReader));
+            //承認フロー (経路のスクリプト組み立てと command API の応答)
+            DesignerApp.ScriptRuntimeTypeManager.AddType<Extras.Approval.ApprovalRouteData>();
+            DesignerApp.ScriptRuntimeTypeManager.AddType<Extras.Approval.ApprovalStepData>();
+            DesignerApp.ScriptRuntimeTypeManager.AddType<Extras.Approval.ApprovalMemberData>();
+            DesignerApp.ScriptRuntimeTypeManager.AddType<Extras.Approval.ApprovalActionResult>();
 
             //custom property controls.
             PropertyTypeManager.AddPropertyControl<TaskBoardStatuses, TaskBoardStatusesPropertyControl>();

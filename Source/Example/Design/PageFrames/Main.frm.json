@@ -836,6 +836,26 @@
           "LayoutName": "",
           "UrlParameter": ""
         }
+      },
+      {
+        "Title": "経費申請",
+        "Module": "ExpenseRequest"
+      },
+      {
+        "Title": "購買申請",
+        "Module": "PurchaseRequest"
+      },
+      {
+        "Title": "承認待ち一覧",
+        "Module": "ApprovalFlowMember"
+      },
+      {
+        "Title": "承認フロー管理",
+        "Module": "ApprovalFlow"
+      },
+      {
+        "Title": "ユーザー",
+        "Module": "AppUser"
       }
     ],
     "FontFamily": "",

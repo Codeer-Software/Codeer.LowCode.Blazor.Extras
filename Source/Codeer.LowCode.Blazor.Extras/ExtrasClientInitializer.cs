@@ -38,6 +38,11 @@ namespace Codeer.LowCode.Blazor.Extras
             manager.AddType<ScriptObjects.Mail>();
             manager.AddType<Codeer.LowCode.Blazor.Extras.Mail.MailSendResult>();
             manager.AddType<Codeer.LowCode.Blazor.Extras.Mail.MailSendFailure>();
+            //承認フロー (経路のスクリプト組み立てと command API の応答)
+            manager.AddType<Approval.ApprovalRouteData>();
+            manager.AddType<Approval.ApprovalStepData>();
+            manager.AddType<Approval.ApprovalMemberData>();
+            manager.AddType<Approval.ApprovalActionResult>();
             manager.AddService(new WebApiService(http, logger));
             manager.AddService(new Toaster(toaster));
             manager.AddService(new BulkFileTransferService());

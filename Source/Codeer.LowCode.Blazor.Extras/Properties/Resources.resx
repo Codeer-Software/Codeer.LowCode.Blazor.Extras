@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <root>
   <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
     <xsd:element name="root" msdata:IsDataSet="true">
@@ -554,5 +554,164 @@
   </data>
   <data name="BulkMailLastSentFormat" xml:space="preserve">
     <value>Last sent: {0}  success {1}/{2}</value>
+  </data>
+  <data name="ApprovalFlowField" xml:space="preserve">
+    <value>Approval Flow</value>
+  </data>
+  <data name="DbColumn" xml:space="preserve">
+    <value>DB Column</value>
+  </data>
+  <data name="ApprovalFlowModuleName" xml:space="preserve">
+    <value>Approval Flow Module</value>
+  </data>
+  <data name="ApprovalMemberModuleName" xml:space="preserve">
+    <value>Approval Member Module</value>
+  </data>
+  <data name="ApprovalHistoryModuleName" xml:space="preserve">
+    <value>Approval History Module</value>
+  </data>
+  <data name="ApprovalAllowScriptRoute" xml:space="preserve">
+    <value>Allow Script Route</value>
+  </data>
+  <data name="ApprovalShowProgress" xml:space="preserve">
+    <value>Show Progress</value>
+  </data>
+  <data name="ApprovalShowHistory" xml:space="preserve">
+    <value>Show History</value>
+  </data>
+  <data name="ApprovalShowComment" xml:space="preserve">
+    <value>Show Comment Box</value>
+  </data>
+  <data name="ApprovalCheck_RequiredFieldMissingFormat" xml:space="preserve">
+    <value>The approval flow requires the field '{1}' in module '{0}'.</value>
+  </data>
+  <data name="ApprovalInputInvalid" xml:space="preserve">
+    <value>There are input errors.</value>
+  </data>
+  <data name="ApprovalNotSubmittedText" xml:space="preserve">
+    <value>Not submitted.</value>
+  </data>
+  <data name="ApprovalAction_Submit" xml:space="preserve">
+    <value>Submit</value>
+  </data>
+  <data name="ApprovalAction_Approve" xml:space="preserve">
+    <value>Approve</value>
+  </data>
+  <data name="ApprovalAction_Reject" xml:space="preserve">
+    <value>Reject</value>
+  </data>
+  <data name="ApprovalAction_Return" xml:space="preserve">
+    <value>Return</value>
+  </data>
+  <data name="ApprovalAction_Withdraw" xml:space="preserve">
+    <value>Withdraw</value>
+  </data>
+  <data name="ApprovalAction_Resubmit" xml:space="preserve">
+    <value>Resubmit</value>
+  </data>
+  <data name="ApprovalAction_Confirm" xml:space="preserve">
+    <value>Confirm</value>
+  </data>
+  <data name="ApprovalCommentPlaceholder" xml:space="preserve">
+    <value>Comment</value>
+  </data>
+  <data name="ApprovalCommentRequired" xml:space="preserve">
+    <value>A comment is required.</value>
+  </data>
+  <data name="ApprovalDoneFormat" xml:space="preserve">
+    <value>{0} completed.</value>
+  </data>
+  <data name="ApprovalHistoryTitle" xml:space="preserve">
+    <value>History</value>
+  </data>
+  <data name="ApprovalStatus_InProgress" xml:space="preserve">
+    <value>In Progress</value>
+  </data>
+  <data name="ApprovalStatus_Completed" xml:space="preserve">
+    <value>Approved</value>
+  </data>
+  <data name="ApprovalStatus_Rejected" xml:space="preserve">
+    <value>Rejected</value>
+  </data>
+  <data name="ApprovalStatus_Returned" xml:space="preserve">
+    <value>Returned</value>
+  </data>
+  <data name="ApprovalStatus_Withdrawn" xml:space="preserve">
+    <value>Withdrawn</value>
+  </data>
+  <data name="ApprovalError_RouteRequired" xml:space="preserve">
+    <value>A route is required to submit.</value>
+  </data>
+  <data name="ApprovalError_ScriptRouteNotAllowed" xml:space="preserve">
+    <value>This field does not allow script-built routes.</value>
+  </data>
+  <data name="ApprovalError_InvalidRouteFormat" xml:space="preserve">
+    <value>The route is invalid: {0}</value>
+  </data>
+  <data name="ApprovalError_FlowNotFound" xml:space="preserve">
+    <value>The approval flow was not found.</value>
+  </data>
+  <data name="ApprovalError_InvalidState" xml:space="preserve">
+    <value>This action is not allowed in the current state.</value>
+  </data>
+  <data name="ApprovalError_VersionMismatch" xml:space="preserve">
+    <value>Another user has updated the flow. Reload and try again.</value>
+  </data>
+  <data name="ApprovalError_NotApprover" xml:space="preserve">
+    <value>You are not an approver of the current step.</value>
+  </data>
+  <data name="ApprovalError_NotApplicant" xml:space="preserve">
+    <value>Only the applicant can perform this action.</value>
+  </data>
+  <data name="ApprovalError_ReturnNotAllowed" xml:space="preserve">
+    <value>Returning to that step is not allowed.</value>
+  </data>
+  <data name="ApprovalError_AlreadySubmitted" xml:space="preserve">
+    <value>The record has already been submitted.</value>
+  </data>
+  <data name="ApprovalError_DesignNotFound" xml:space="preserve">
+    <value>The approval flow field configuration was not found.</value>
+  </data>
+  <data name="ApprovalError_TargetSaveFailedFormat" xml:space="preserve">
+    <value>Failed to save the record: {0}</value>
+  </data>
+  <data name="ApprovalError_NoConfirmation" xml:space="preserve">
+    <value>There is nothing to confirm.</value>
+  </data>
+  <data name="ApprovalError_WithdrawNotAllowed" xml:space="preserve">
+    <value>Cannot withdraw because approval has already started. Ask an approver to return the request.</value>
+  </data>
+  <data name="ApprovalOnStateChanged" xml:space="preserve">
+    <value>On State Changed</value>
+  </data>
+  <data name="ApprovalWithdrawPolicy" xml:space="preserve">
+    <value>Withdraw Policy</value>
+  </data>
+  <data name="ApprovalShowActions" xml:space="preserve">
+    <value>Show Action Buttons</value>
+  </data>
+  <data name="ApprovalHiddenActions" xml:space="preserve">
+    <value>Hidden Actions</value>
+  </data>
+  <data name="ApprovalCommentFieldName" xml:space="preserve">
+    <value>Comment Source Field</value>
+  </data>
+  <data name="ApprovalOnBuildRoute" xml:space="preserve">
+    <value>On Build Route</value>
+  </data>
+  <data name="ApprovalCheck_UnknownActionFormat" xml:space="preserve">
+    <value>Unknown action name '{0}'.</value>
+  </data>
+  <data name="ApprovalStateDbColumn" xml:space="preserve">
+    <value>State Copy Column</value>
+  </data>
+  <data name="ApprovalApplicantDbColumn" xml:space="preserve">
+    <value>Applicant Copy Column</value>
+  </data>
+  <data name="ApprovalMembersListFieldName" xml:space="preserve">
+    <value>Members List Field</value>
+  </data>
+  <data name="ApprovalCheck_MembersListFieldMismatchFormat" xml:space="preserve">
+    <value>The members list field '{0}' must be a list field that shows the approval member module '{1}'.</value>
   </data>
 </root>

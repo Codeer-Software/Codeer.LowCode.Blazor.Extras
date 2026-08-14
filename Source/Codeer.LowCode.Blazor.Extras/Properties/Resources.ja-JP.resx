@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <root>
   <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
     <xsd:element name="root" msdata:IsDataSet="true">
@@ -554,5 +554,164 @@
   </data>
   <data name="BulkMailLastSentFormat" xml:space="preserve">
     <value>最終送信: {0}  成功 {1}/{2}</value>
+  </data>
+  <data name="ApprovalFlowField" xml:space="preserve">
+    <value>承認フロー</value>
+  </data>
+  <data name="DbColumn" xml:space="preserve">
+    <value>DB列</value>
+  </data>
+  <data name="ApprovalFlowModuleName" xml:space="preserve">
+    <value>承認フローモジュール</value>
+  </data>
+  <data name="ApprovalMemberModuleName" xml:space="preserve">
+    <value>承認メンバーモジュール</value>
+  </data>
+  <data name="ApprovalHistoryModuleName" xml:space="preserve">
+    <value>承認履歴モジュール</value>
+  </data>
+  <data name="ApprovalAllowScriptRoute" xml:space="preserve">
+    <value>スクリプト経路を許可</value>
+  </data>
+  <data name="ApprovalShowProgress" xml:space="preserve">
+    <value>進捗を表示</value>
+  </data>
+  <data name="ApprovalShowHistory" xml:space="preserve">
+    <value>履歴を表示</value>
+  </data>
+  <data name="ApprovalShowComment" xml:space="preserve">
+    <value>コメント欄を表示</value>
+  </data>
+  <data name="ApprovalCheck_RequiredFieldMissingFormat" xml:space="preserve">
+    <value>承認フローにはモジュール '{0}' にフィールド '{1}' が必要です。</value>
+  </data>
+  <data name="ApprovalInputInvalid" xml:space="preserve">
+    <value>入力にエラーがあります</value>
+  </data>
+  <data name="ApprovalNotSubmittedText" xml:space="preserve">
+    <value>未申請</value>
+  </data>
+  <data name="ApprovalAction_Submit" xml:space="preserve">
+    <value>申請</value>
+  </data>
+  <data name="ApprovalAction_Approve" xml:space="preserve">
+    <value>承認</value>
+  </data>
+  <data name="ApprovalAction_Reject" xml:space="preserve">
+    <value>却下</value>
+  </data>
+  <data name="ApprovalAction_Return" xml:space="preserve">
+    <value>差し戻し</value>
+  </data>
+  <data name="ApprovalAction_Withdraw" xml:space="preserve">
+    <value>取り下げ</value>
+  </data>
+  <data name="ApprovalAction_Resubmit" xml:space="preserve">
+    <value>再申請</value>
+  </data>
+  <data name="ApprovalAction_Confirm" xml:space="preserve">
+    <value>確認</value>
+  </data>
+  <data name="ApprovalCommentPlaceholder" xml:space="preserve">
+    <value>コメント</value>
+  </data>
+  <data name="ApprovalCommentRequired" xml:space="preserve">
+    <value>コメントを入力してください</value>
+  </data>
+  <data name="ApprovalDoneFormat" xml:space="preserve">
+    <value>{0}しました</value>
+  </data>
+  <data name="ApprovalHistoryTitle" xml:space="preserve">
+    <value>履歴</value>
+  </data>
+  <data name="ApprovalStatus_InProgress" xml:space="preserve">
+    <value>承認中</value>
+  </data>
+  <data name="ApprovalStatus_Completed" xml:space="preserve">
+    <value>承認済み</value>
+  </data>
+  <data name="ApprovalStatus_Rejected" xml:space="preserve">
+    <value>却下</value>
+  </data>
+  <data name="ApprovalStatus_Returned" xml:space="preserve">
+    <value>差し戻し</value>
+  </data>
+  <data name="ApprovalStatus_Withdrawn" xml:space="preserve">
+    <value>取り下げ</value>
+  </data>
+  <data name="ApprovalError_RouteRequired" xml:space="preserve">
+    <value>経路が指定されていません</value>
+  </data>
+  <data name="ApprovalError_ScriptRouteNotAllowed" xml:space="preserve">
+    <value>このフィールドはスクリプトで組み立てた経路を許可していません</value>
+  </data>
+  <data name="ApprovalError_InvalidRouteFormat" xml:space="preserve">
+    <value>経路が不正です: {0}</value>
+  </data>
+  <data name="ApprovalError_FlowNotFound" xml:space="preserve">
+    <value>承認フローが見つかりません</value>
+  </data>
+  <data name="ApprovalError_InvalidState" xml:space="preserve">
+    <value>現在の状態ではこの操作はできません</value>
+  </data>
+  <data name="ApprovalError_VersionMismatch" xml:space="preserve">
+    <value>他のユーザーが先に操作しました。最新の状態を確認してください</value>
+  </data>
+  <data name="ApprovalError_NotApprover" xml:space="preserve">
+    <value>このステップの承認者ではありません</value>
+  </data>
+  <data name="ApprovalError_NotApplicant" xml:space="preserve">
+    <value>申請者のみ操作できます</value>
+  </data>
+  <data name="ApprovalError_ReturnNotAllowed" xml:space="preserve">
+    <value>そのステップへは差し戻せません</value>
+  </data>
+  <data name="ApprovalError_AlreadySubmitted" xml:space="preserve">
+    <value>既に申請済みです</value>
+  </data>
+  <data name="ApprovalError_DesignNotFound" xml:space="preserve">
+    <value>承認フローフィールドの設定が見つかりません</value>
+  </data>
+  <data name="ApprovalError_TargetSaveFailedFormat" xml:space="preserve">
+    <value>申請書の保存に失敗しました: {0}</value>
+  </data>
+  <data name="ApprovalError_NoConfirmation" xml:space="preserve">
+    <value>確認対象の回覧がありません</value>
+  </data>
+  <data name="ApprovalError_WithdrawNotAllowed" xml:space="preserve">
+    <value>承認が始まっているため取り下げできません。承認者に差し戻しを依頼してください</value>
+  </data>
+  <data name="ApprovalOnStateChanged" xml:space="preserve">
+    <value>状態変化時</value>
+  </data>
+  <data name="ApprovalWithdrawPolicy" xml:space="preserve">
+    <value>取り下げ許可範囲</value>
+  </data>
+  <data name="ApprovalShowActions" xml:space="preserve">
+    <value>アクションボタンを表示</value>
+  </data>
+  <data name="ApprovalHiddenActions" xml:space="preserve">
+    <value>非表示アクション</value>
+  </data>
+  <data name="ApprovalCommentFieldName" xml:space="preserve">
+    <value>コメント入力フィールド</value>
+  </data>
+  <data name="ApprovalOnBuildRoute" xml:space="preserve">
+    <value>経路組み立て</value>
+  </data>
+  <data name="ApprovalCheck_UnknownActionFormat" xml:space="preserve">
+    <value>不明なアクション名です: '{0}'</value>
+  </data>
+  <data name="ApprovalStateDbColumn" xml:space="preserve">
+    <value>状態コピー列</value>
+  </data>
+  <data name="ApprovalApplicantDbColumn" xml:space="preserve">
+    <value>申請者コピー列</value>
+  </data>
+  <data name="ApprovalMembersListFieldName" xml:space="preserve">
+    <value>承認メンバー一覧フィールド</value>
+  </data>
+  <data name="ApprovalCheck_MembersListFieldMismatchFormat" xml:space="preserve">
+    <value>承認メンバー一覧フィールド '{0}' は承認メンバーモジュール '{1}' を表示する一覧フィールドにしてください。</value>
   </data>
 </root>

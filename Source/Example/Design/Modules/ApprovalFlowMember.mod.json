@@ -1,0 +1,147 @@
+{
+  "Name": "ApprovalFlowMember",
+  "DataSourceName": "SampleSQLite",
+  "DbTable": "approval_flow_members",
+  "CanCreate": true,
+  "CanUpdate": true,
+  "CanDelete": true,
+  "Fields": [
+    {
+      "Name": "Id",
+      "DbColumn": "id",
+      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.IdFieldDesign"
+    },
+    {
+      "Name": "Flow",
+      "DbColumn": "flow_id",
+      "SearchCondition": {
+        "ModuleName": "ApprovalFlow",
+        "TypeFullName": "Codeer.LowCode.Blazor.Repository.Match.SearchCondition"
+      },
+      "ValueVariable": "Id.Value",
+      "DisplayTextVariable": "Status.Value",
+      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.LinkFieldDesign"
+    },
+    {
+      "Name": "AttemptNo",
+      "DbColumn": "attempt_no",
+      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.NumberFieldDesign"
+    },
+    {
+      "Name": "StepNo",
+      "DbColumn": "step_no",
+      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.NumberFieldDesign"
+    },
+    {
+      "Name": "StepName",
+      "DbColumn": "step_name",
+      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.TextFieldDesign"
+    },
+    {
+      "Name": "StepType",
+      "DbColumn": "step_type",
+      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.TextFieldDesign"
+    },
+    {
+      "Name": "CompletionPolicy",
+      "DbColumn": "completion_policy",
+      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.TextFieldDesign"
+    },
+    {
+      "Name": "IsCommentRequiredOnReject",
+      "DbColumn": "is_comment_required_on_reject",
+      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.BooleanFieldDesign"
+    },
+    {
+      "Name": "ReturnScope",
+      "DbColumn": "return_scope",
+      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.TextFieldDesign"
+    },
+    {
+      "Name": "ApproverUser",
+      "DbColumn": "approver_user",
+      "SearchCondition": {
+        "ModuleName": "AppUser",
+        "TypeFullName": "Codeer.LowCode.Blazor.Repository.Match.SearchCondition"
+      },
+      "ValueVariable": "Id.Value",
+      "DisplayTextVariable": "Name.Value",
+      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.LinkFieldDesign"
+    },
+    {
+      "Name": "IsRequired",
+      "DbColumn": "is_required",
+      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.BooleanFieldDesign"
+    },
+    {
+      "Name": "IsFinalStep",
+      "DbColumn": "is_final_step",
+      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.BooleanFieldDesign"
+    },
+    {
+      "Name": "Status",
+      "DbColumn": "status",
+      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.TextFieldDesign"
+    },
+    {
+      "Name": "ActedAt",
+      "DbColumn": "acted_at",
+      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.DateTimeFieldDesign"
+    },
+    {
+      "Name": "OpenRequestButton",
+      "Text": "開く",
+      "OnClick": "OpenRequest_OnClick",
+      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.ButtonFieldDesign"
+    }
+  ],
+  "UserWriteCondition": {
+    "ModuleName": "AppUser",
+    "Condition": {
+      "SearchTargetVariable": "Id.Value",
+      "Comparison": "Equal",
+      "Value": {
+        "Value": "__nobody__",
+        "TypeFullName": "Codeer.LowCode.Blazor.Repository.StringValue"
+      },
+      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Match.FieldValueMatchCondition"
+    }
+  },
+  "ListLayouts": {
+    "": {
+      "Elements": [
+        [
+          {
+            "FieldName": "StepName",
+            "Label": "ステップ"
+          },
+          {
+            "FieldName": "ApproverUser",
+            "Label": "承認者"
+          },
+          {
+            "FieldName": "Status",
+            "Label": "状態"
+          },
+          {
+            "FieldName": "ActedAt",
+            "Label": "処理日時"
+          },
+          {
+            "FieldName": "AttemptNo",
+            "Label": "試行"
+          },
+          {
+            "FieldName": "OpenRequestButton",
+            "Label": ""
+          }
+        ]
+      ],
+      "OnAfterInitialization": "OnAfterInitialization",
+      "DataOnlyFields": [
+        "StepType",
+        "IsFinalStep"
+      ]
+    }
+  }
+}

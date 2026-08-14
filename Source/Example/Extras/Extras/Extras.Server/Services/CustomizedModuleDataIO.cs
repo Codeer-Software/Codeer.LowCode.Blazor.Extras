@@ -35,8 +35,8 @@ namespace Extras.Server.Services
             await base.UpdateAsync(transactionId, moduleSubmitId, data);
         }
         //メール送信履歴などシステムの記録を、操作ユーザーの書き込み権限に依存せず追加する内部経路。
-        //クライアントから直接は呼ばれない(サーバー内部の記録専用)
-        internal async Task AddSystemRecordAsync(ModuleData data)
+        //クライアントから直接は呼ばれない(サーバー内部の記録専用)。戻り値は採番された Id (承認フローが使う)
+        internal async Task<string> AddSystemRecordAsync(ModuleData data)
             => await AddAsync(Guid.NewGuid(), Guid.NewGuid(), data);
 
         //BulkMailFieldの送信結果サマリなど、既存レコードへのシステムの記録の書き戻し用内部経路。

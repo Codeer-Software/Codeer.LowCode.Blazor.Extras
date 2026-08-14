@@ -1,0 +1,247 @@
+{
+  "Name": "ExpenseRequest",
+  "DataSourceName": "SampleSQLite",
+  "DbTable": "expense_requests",
+  "CanCreate": true,
+  "CanUpdate": true,
+  "CanDelete": true,
+  "Fields": [
+    {
+      "Name": "Id",
+      "DbColumn": "id",
+      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.IdFieldDesign"
+    },
+    {
+      "Name": "Title",
+      "DbColumn": "title",
+      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.TextFieldDesign",
+      "Placeholder": "件名",
+      "IsRequired": true
+    },
+    {
+      "Name": "Amount",
+      "DbColumn": "amount",
+      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.NumberFieldDesign",
+      "Placeholder": "金額"
+    },
+    {
+      "Name": "Approver1",
+      "DbColumn": "approver1",
+      "SearchCondition": {
+        "ModuleName": "AppUser",
+        "TypeFullName": "Codeer.LowCode.Blazor.Repository.Match.SearchCondition"
+      },
+      "ValueVariable": "Id.Value",
+      "DisplayTextVariable": "Name.Value",
+      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.LinkFieldDesign"
+    },
+    {
+      "Name": "Approver2",
+      "DbColumn": "approver2",
+      "SearchCondition": {
+        "ModuleName": "AppUser",
+        "TypeFullName": "Codeer.LowCode.Blazor.Repository.Match.SearchCondition"
+      },
+      "ValueVariable": "Id.Value",
+      "DisplayTextVariable": "Name.Value",
+      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.LinkFieldDesign"
+    },
+    {
+      "Name": "Approval",
+      "DbColumn": "approval_id",
+      "AllowScriptRoute": true,
+      "FlowModuleName": "ApprovalFlow",
+      "MemberModuleName": "ApprovalFlowMember",
+      "HistoryModuleName": "ApprovalHistory",
+      "TypeFullName": "Codeer.LowCode.Blazor.Extras.Designs.ApprovalFlowFieldDesign",
+      "OnStateChanged": "OnApprovalStateChanged",
+      "OnBuildRoute": "OnBuildRoute",
+      "StateDbColumn": "approval_state",
+      "ApplicantDbColumn": "approval_applicant"
+    },
+    {
+      "Name": "Approval.Status",
+      "DbColumn": "status",
+      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.TextFieldDesign"
+    },
+    {
+      "Name": "TitleLabel",
+      "Text": "件名",
+      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.LabelFieldDesign"
+    },
+    {
+      "Name": "AmountLabel",
+      "Text": "金額",
+      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.LabelFieldDesign"
+    },
+    {
+      "Name": "Approver1Label",
+      "Text": "一次承認者",
+      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.LabelFieldDesign"
+    },
+    {
+      "Name": "Approver2Label",
+      "Text": "二次承認者(任意)",
+      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.LabelFieldDesign"
+    }
+  ],
+  "PageTitle": "経費申請",
+  "DataWriteCondition": {
+    "ModuleName": "ExpenseRequest",
+    "Condition": {
+      "IsOrMatch": true,
+      "Children": [
+        {
+          "FieldName": "Approval",
+          "IsOrMatch": true,
+          "Children": [
+            {
+              "SearchTargetVariable": "Approval.State",
+              "Comparison": "Equal",
+              "Value": {
+                "TypeFullName": "Codeer.LowCode.Blazor.Repository.NullValue"
+              },
+              "TypeFullName": "Codeer.LowCode.Blazor.Repository.Match.FieldValueMatchCondition"
+            },
+            {
+              "SearchTargetVariable": "Approval.State",
+              "Comparison": "Equal",
+              "Value": {
+                "Value": "Returned",
+                "TypeFullName": "Codeer.LowCode.Blazor.Repository.StringValue"
+              },
+              "TypeFullName": "Codeer.LowCode.Blazor.Repository.Match.FieldValueMatchCondition"
+            },
+            {
+              "SearchTargetVariable": "Approval.State",
+              "Comparison": "Equal",
+              "Value": {
+                "Value": "Withdrawn",
+                "TypeFullName": "Codeer.LowCode.Blazor.Repository.StringValue"
+              },
+              "TypeFullName": "Codeer.LowCode.Blazor.Repository.Match.FieldValueMatchCondition"
+            },
+            {
+              "SearchTargetVariable": "Approval.State",
+              "Comparison": "Equal",
+              "Value": {
+                "Value": "Rejected",
+                "TypeFullName": "Codeer.LowCode.Blazor.Repository.StringValue"
+              },
+              "TypeFullName": "Codeer.LowCode.Blazor.Repository.Match.FieldValueMatchCondition"
+            }
+          ],
+          "TypeFullName": "Codeer.LowCode.Blazor.Repository.Match.FieldMatchCondition"
+        }
+      ],
+      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Match.MultiMatchCondition"
+    }
+  },
+  "DetailLayouts": {
+    "": {
+      "Layout": {
+        "Rows": [
+          {
+            "Columns": [
+              {
+                "Layout": {
+                  "FieldName": "TitleLabel",
+                  "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.FieldLayoutDesign"
+                },
+                "Width": 140
+              },
+              {
+                "Layout": {
+                  "FieldName": "Title",
+                  "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.FieldLayoutDesign"
+                }
+              }
+            ]
+          },
+          {
+            "Columns": [
+              {
+                "Layout": {
+                  "FieldName": "AmountLabel",
+                  "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.FieldLayoutDesign"
+                },
+                "Width": 140
+              },
+              {
+                "Layout": {
+                  "FieldName": "Amount",
+                  "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.FieldLayoutDesign"
+                }
+              }
+            ]
+          },
+          {
+            "Columns": [
+              {
+                "Layout": {
+                  "FieldName": "Approver1Label",
+                  "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.FieldLayoutDesign"
+                },
+                "Width": 140
+              },
+              {
+                "Layout": {
+                  "FieldName": "Approver1",
+                  "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.FieldLayoutDesign"
+                }
+              }
+            ]
+          },
+          {
+            "Columns": [
+              {
+                "Layout": {
+                  "FieldName": "Approver2Label",
+                  "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.FieldLayoutDesign"
+                },
+                "Width": 140
+              },
+              {
+                "Layout": {
+                  "FieldName": "Approver2",
+                  "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.FieldLayoutDesign"
+                }
+              }
+            ]
+          },
+          {
+            "Columns": [
+              {
+                "Layout": {
+                  "FieldName": "Approval",
+                  "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.FieldLayoutDesign"
+                }
+              }
+            ]
+          }
+        ],
+        "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.GridLayoutDesign"
+      }
+    }
+  },
+  "ListLayouts": {
+    "": {
+      "Elements": [
+        [
+          {
+            "FieldName": "Title",
+            "Label": "件名"
+          },
+          {
+            "FieldName": "Amount",
+            "Label": "金額"
+          },
+          {
+            "FieldName": "Approval.Status",
+            "Label": "承認状態"
+          }
+        ]
+      ]
+    }
+  }
+}

@@ -1,0 +1,91 @@
+{
+  "Name": "ApprovalFlow",
+  "DataSourceName": "SampleSQLite",
+  "DbTable": "approval_flows",
+  "CanCreate": true,
+  "CanUpdate": true,
+  "CanDelete": true,
+  "Fields": [
+    {
+      "Name": "Id",
+      "DbColumn": "id",
+      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.IdFieldDesign"
+    },
+    {
+      "Name": "Status",
+      "DbColumn": "status",
+      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.TextFieldDesign"
+    },
+    {
+      "Name": "TargetModuleName",
+      "DbColumn": "target_module_name",
+      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.TextFieldDesign"
+    },
+    {
+      "Name": "TargetId",
+      "DbColumn": "target_id",
+      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.TextFieldDesign"
+    },
+    {
+      "Name": "RouteName",
+      "DbColumn": "route_name",
+      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.TextFieldDesign"
+    },
+    {
+      "Name": "AttemptNo",
+      "DbColumn": "attempt_no",
+      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.NumberFieldDesign"
+    },
+    {
+      "Name": "CurrentStepNo",
+      "DbColumn": "current_step_no",
+      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.NumberFieldDesign"
+    },
+    {
+      "Name": "OptimisticLocking",
+      "DbColumn": "version",
+      "IncrementVersion": true,
+      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.OptimisticLockingFieldDesign"
+    }
+  ],
+  "UserWriteCondition": {
+    "ModuleName": "AppUser",
+    "Condition": {
+      "SearchTargetVariable": "Id.Value",
+      "Comparison": "Equal",
+      "Value": {
+        "Value": "__nobody__",
+        "TypeFullName": "Codeer.LowCode.Blazor.Repository.StringValue"
+      },
+      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Match.FieldValueMatchCondition"
+    }
+  },
+  "ListLayouts": {
+    "": {
+      "Elements": [
+        [
+          {
+            "FieldName": "Status",
+            "Label": "状態"
+          },
+          {
+            "FieldName": "TargetModuleName",
+            "Label": "申請書"
+          },
+          {
+            "FieldName": "TargetId",
+            "Label": "Id"
+          },
+          {
+            "FieldName": "RouteName",
+            "Label": "経路"
+          },
+          {
+            "FieldName": "AttemptNo",
+            "Label": "試行"
+          }
+        ]
+      ]
+    }
+  }
+}
