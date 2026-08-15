@@ -1,4 +1,5 @@
 using Codeer.LowCode.Blazor.DesignLogic;
+using Codeer.LowCode.Blazor.DesignLogic.Check;
 using Codeer.LowCode.Blazor.Extras.Approval;
 using Codeer.LowCode.Blazor.Extras.Designs;
 using Codeer.LowCode.Blazor.Repository;
@@ -55,6 +56,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Approval
             Assert.That(field.Name, Is.EqualTo("Approval"));
             Assert.That(field.DbColumn, Is.EqualTo("approval_id"));
             Assert.That(field.FlowModuleName, Is.EqualTo("ApprovalFlow"));
+            Assert.That(field.RouteModuleName, Is.EqualTo("ApprovalRoute"));
 
             //dotted リンク列はレイアウト使用から自動合成される (フロー側の Select+enum のクローンになる)
             var statusClone = request.Fields.FirstOrDefault(e => e.Name == "Approval.Status");
@@ -76,6 +78,40 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Approval
         }
 
         [Test]
+        public void 経路マスタモジュールの構造()
+        {
+            var d = Load();
+
+            //経路モジュール: 管理画面は通常のローコード (Steps は普通の ListField = ListInList 構成)
+            var route = d.Modules.Find("ApprovalRoute")!;
+            Assert.That(route, Is.Not.Null);
+            Assert.That(route.Fields.OfType<ApprovalRouteContractFieldDesign>().Count(), Is.EqualTo(1));
+            var steps = (ListFieldDesign)route.Fields.First(e => e.Name == "Steps");
+            Assert.That(steps.SearchCondition.ModuleName, Is.EqualTo("ApprovalRouteStep"));
+            Assert.That(steps.SearchCondition.SortConditions.Single().Variable, Is.EqualTo("StepNo.Value"));
+
+            //ステップモジュール: 契約 + StepType/CompletionPolicy/ReturnScope はコード定義 enum の Select
+            var step = d.Modules.Find("ApprovalRouteStep")!;
+            Assert.That(step.Fields.OfType<ApprovalRouteStepContractFieldDesign>().Count(), Is.EqualTo(1));
+            Assert.That(((SelectFieldDesign)step.Fields.First(e => e.Name == "StepType")).EnumName, Is.EqualTo("ApprovalStepType"));
+            Assert.That(((SelectFieldDesign)step.Fields.First(e => e.Name == "CompletionPolicy")).EnumName, Is.EqualTo("ApprovalCompletionPolicy"));
+            Assert.That(((SelectFieldDesign)step.Fields.First(e => e.Name == "ReturnScope")).EnumName, Is.EqualTo("ApprovalReturnScope"));
+
+            //承認者モジュール: 契約あり
+            var member = d.Modules.Find("ApprovalRouteStepMember")!;
+            Assert.That(member.Fields.OfType<ApprovalRouteStepMemberContractFieldDesign>().Count(), Is.EqualTo(1));
+
+            //契約チェックが全部通ること (役割フィールド存在 + 一覧役割の連鎖)
+            var ds = new Dictionary<string, List<Codeer.LowCode.Blazor.DataIO.Db.Definition.DbTableDefinition>>();
+            Assert.That(route.Fields.OfType<ApprovalRouteContractFieldDesign>().Single()
+                .CheckDesign(new DesignCheckContext("ApprovalRoute", d, ds)), Is.Empty);
+            Assert.That(step.Fields.OfType<ApprovalRouteStepContractFieldDesign>().Single()
+                .CheckDesign(new DesignCheckContext("ApprovalRouteStep", d, ds)), Is.Empty);
+            Assert.That(member.Fields.OfType<ApprovalRouteStepMemberContractFieldDesign>().Single()
+                .CheckDesign(new DesignCheckContext("ApprovalRouteStepMember", d, ds)), Is.Empty);
+        }
+
+        [Test]
         public void フローモジュールがメンバー一覧と履歴一覧を持つ()
         {
             //メンバー一覧はフローモジュール側の予約名 "Members"。
@@ -84,15 +120,25 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Approval
             var d = Load();
             var flow = d.Modules.Find("ApprovalFlow")!;
 
+            //バインド条件は条件エディタの正準形 (Multi 直下に葉)。bare の葉をルートに置くと
+            //エディタが解釈できず、デザイナ保存で空条件に潰される (実機で実証済みの罠)
+            static FieldVariableMatchCondition Binding(ListFieldDesign list)
+                => (FieldVariableMatchCondition)((MultiMatchCondition)list.SearchCondition.Condition!).Children.Single();
+
             var members = flow.Fields.OfType<ListFieldDesign>().Single(e => e.Name == "Members");
             Assert.That(members.SearchCondition.ModuleName, Is.EqualTo("ApprovalFlowMember"));
-            var binding = members.SearchCondition.Condition as FieldVariableMatchCondition;
-            Assert.That(binding, Is.Not.Null);
-            Assert.That(binding!.SearchTargetVariable, Is.EqualTo("Flow.Value"));
-            Assert.That(binding.Variable, Is.EqualTo("Id.Value"));
+            Assert.That(Binding(members).SearchTargetVariable, Is.EqualTo("Flow.Value"));
+            Assert.That(Binding(members).Variable, Is.EqualTo("Id.Value"));
 
             var histories = flow.Fields.OfType<ListFieldDesign>().Single(e => e.Name == "Histories");
             Assert.That(histories.SearchCondition.ModuleName, Is.EqualTo("ApprovalHistory"));
+            Assert.That(Binding(histories).SearchTargetVariable, Is.EqualTo("Flow.Value"));
+
+            //経路マスタの一覧バインドも同じ正準形
+            var routeSteps = (ListFieldDesign)d.Modules.Find("ApprovalRoute")!.Fields.First(e => e.Name == "Steps");
+            Assert.That(Binding(routeSteps).SearchTargetVariable, Is.EqualTo("Route.Value"));
+            var stepMembers = (ListFieldDesign)d.Modules.Find("ApprovalRouteStep")!.Fields.First(e => e.Name == "Members");
+            Assert.That(Binding(stepMembers).SearchTargetVariable, Is.EqualTo("Step.Value"));
         }
 
         [Test]

@@ -696,6 +696,21 @@
   <data name="ApprovalHistoryContractField" xml:space="preserve">
     <value>承認履歴契約</value>
   </data>
+  <data name="ApprovalRouteContractField" xml:space="preserve">
+    <value>承認経路契約</value>
+  </data>
+  <data name="ApprovalRouteStepContractField" xml:space="preserve">
+    <value>承認経路ステップ契約</value>
+  </data>
+  <data name="ApprovalRouteStepMemberContractField" xml:space="preserve">
+    <value>承認経路承認者契約</value>
+  </data>
+  <data name="ApprovalRouteModuleName" xml:space="preserve">
+    <value>経路マスタモジュール</value>
+  </data>
+  <data name="ApprovalCheck_StepApproverRoleRequired" xml:space="preserve">
+    <value>役割 'Members' (複数人) か 'ApproverUser' (ステップ直付け1人) のどちらかを設定してください</value>
+  </data>
   <data name="ApprovalCheck_ContractFieldMissingFormat" xml:space="preserve">
     <value>モジュール '{0}' に契約フィールド ({1}) がありません。役割マッピングを宣言する契約フィールドを配置してください。</value>
   </data>

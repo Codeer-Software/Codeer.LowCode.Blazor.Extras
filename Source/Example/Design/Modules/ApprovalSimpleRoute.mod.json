@@ -1,0 +1,133 @@
+{
+  "Name": "ApprovalSimpleRoute",
+  "DataSourceName": "SampleSQLite",
+  "DbTable": "approval_simple_routes",
+  "CanCreate": true,
+  "CanUpdate": true,
+  "CanDelete": true,
+  "Fields": [
+    {
+      "Name": "Id",
+      "DbColumn": "id",
+      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.IdFieldDesign"
+    },
+    {
+      "Name": "RouteName",
+      "DbColumn": "route_name",
+      "Placeholder": "経路名",
+      "IsRequired": true,
+      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.TextFieldDesign"
+    },
+    {
+      "Name": "Steps",
+      "SearchCondition": {
+        "ModuleName": "ApprovalSimpleRouteStep",
+        "Condition": {
+          "IsOrMatch": false,
+          "IsNot": false,
+          "Children": [
+            {
+              "SearchTargetVariable": "Route.Value",
+              "Comparison": "Equal",
+              "Variable": "Id.Value",
+              "TypeFullName": "Codeer.LowCode.Blazor.Repository.Match.FieldVariableMatchCondition"
+            }
+          ],
+          "TypeFullName": "Codeer.LowCode.Blazor.Repository.Match.MultiMatchCondition"
+        },
+        "SortConditions": [
+          {
+            "Variable": "StepNo.Value",
+            "TypeFullName": "Codeer.LowCode.Blazor.Repository.Match.SortCondition"
+          }
+        ],
+        "TypeFullName": "Codeer.LowCode.Blazor.Repository.Match.SearchCondition"
+      },
+      "CanCreate": true,
+      "CanUpdate": true,
+      "CanDelete": true,
+      "DeleteTogether": true,
+      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.ListFieldDesign"
+    },
+    {
+      "Name": "Contract",
+      "TypeFullName": "Codeer.LowCode.Blazor.Extras.Designs.ApprovalRouteContractFieldDesign"
+    },
+    {
+      "Name": "RouteNameLabel",
+      "Text": "経路名",
+      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.LabelFieldDesign"
+    },
+    {
+      "Name": "SubmitButton",
+      "Text": "保存",
+      "Variant": "Primary",
+      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.SubmitButtonFieldDesign"
+    }
+  ],
+  "PageTitle": "承認経路マスタ (シンプル)",
+  "DetailLayouts": {
+    "": {
+      "Layout": {
+        "Rows": [
+          {
+            "Columns": [
+              {
+                "Layout": {
+                  "FieldName": "RouteNameLabel",
+                  "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.FieldLayoutDesign"
+                },
+                "Width": 140
+              },
+              {
+                "Layout": {
+                  "FieldName": "RouteName",
+                  "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.FieldLayoutDesign"
+                }
+              }
+            ]
+          },
+          {
+            "Margin": {
+              "Top": 12
+            },
+            "Columns": [
+              {
+                "Layout": {
+                  "FieldName": "Steps",
+                  "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.FieldLayoutDesign"
+                }
+              }
+            ]
+          },
+          {
+            "Margin": {
+              "Top": 12
+            },
+            "Columns": [
+              {
+                "Layout": {
+                  "FieldName": "SubmitButton",
+                  "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.FieldLayoutDesign"
+                }
+              }
+            ]
+          }
+        ],
+        "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.GridLayoutDesign"
+      }
+    }
+  },
+  "ListLayouts": {
+    "": {
+      "Elements": [
+        [
+          {
+            "FieldName": "RouteName",
+            "Label": "経路名"
+          }
+        ]
+      ]
+    }
+  }
+}

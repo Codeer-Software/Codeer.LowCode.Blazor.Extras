@@ -243,4 +243,120 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         [Designer(Index = 11, CandidateType = CandidateType.Field)]
         public string ActedAt { get; set; } = nameof(ActedAt);
     }
+
+    /// <summary>
+    /// 経路マスタ (経路) モジュールの契約。Steps の一覧の先がステップモジュールになる。
+    /// 経路マスタはただのユーザー定義モジュールで、エンジンは関与しない
+    /// (スクリプトの LoadRoute がこの契約で読む材料。管理画面も通常のローコードで作る)。
+    /// </summary>
+    [Designer(DisplayName = "$ApprovalRouteContractField")]
+    [ToolboxIcon(PackIconMaterialKind = "CheckDecagramOutline")]
+    public class ApprovalRouteContractFieldDesign : ApprovalContractFieldDesignBase
+    {
+        public ApprovalRouteContractFieldDesign() : base(typeof(ApprovalRouteContractFieldDesign).FullName!) { }
+
+        /// <summary>経路名 (LoadRoute の引数と照合するキー)。</summary>
+        [Designer(Index = 3, CandidateType = CandidateType.Field)]
+        public string RouteName { get; set; } = nameof(RouteName);
+
+        /// <summary>ステップ一覧 (経路モジュール上の List フィールド)。ステップモジュールはこの一覧の参照先として決まる。</summary>
+        [Designer(Index = 4, CandidateType = CandidateType.Field)]
+        public string Steps { get; set; } = nameof(Steps);
+
+        public override List<DesignCheckInfo> CheckDesign(DesignCheckContext context)
+        {
+            var result = base.CheckDesign(context);
+            CheckListRole<ApprovalRouteStepContractFieldDesign>(context, result, nameof(Steps), Steps);
+            return result;
+        }
+    }
+
+    /// <summary>
+    /// 経路マスタ (ステップ) モジュールの契約。Members の一覧の先が承認者モジュールになる。
+    /// 役割を空にすると「使わない」宣言 (チェック対象外・LoadRoute は既定値に倒す)。
+    /// 承認者は2形態: Members (1:N の承認者モジュール = 複数人) か、ApproverUser (ステップ行に直付けの
+    /// Link = 1ステップ1人のシンプル構成)。どちらか一方を設定する (両方空はデザインチェックがエラーにする)。
+    /// </summary>
+    [Designer(DisplayName = "$ApprovalRouteStepContractField")]
+    [ToolboxIcon(PackIconMaterialKind = "CheckDecagramOutline")]
+    public class ApprovalRouteStepContractFieldDesign : ApprovalContractFieldDesignBase
+    {
+        public ApprovalRouteStepContractFieldDesign() : base(typeof(ApprovalRouteStepContractFieldDesign).FullName!) { }
+
+        /// <summary>経路行への FK (Link)。</summary>
+        [Designer(Index = 3, CandidateType = CandidateType.Field)]
+        public string Route { get; set; } = nameof(Route);
+
+        /// <summary>ステップの並び順 (数値)。</summary>
+        [Designer(Index = 4, CandidateType = CandidateType.Field)]
+        public string StepNo { get; set; } = nameof(StepNo);
+
+        [Designer(Index = 5, CandidateType = CandidateType.Field)]
+        public string StepName { get; set; } = nameof(StepName);
+
+        /// <summary>Approval / Confirmation (空 = Approval)。</summary>
+        [Designer(Index = 6, CandidateType = CandidateType.Field)]
+        public string StepType { get; set; } = nameof(StepType);
+
+        /// <summary>RequiredMembers / All / Any (空 = RequiredMembers)。</summary>
+        [Designer(Index = 7, CandidateType = CandidateType.Field)]
+        public string CompletionPolicy { get; set; } = nameof(CompletionPolicy);
+
+        [Designer(Index = 8, CandidateType = CandidateType.Field)]
+        public string IsCommentRequiredOnReject { get; set; } = nameof(IsCommentRequiredOnReject);
+
+        /// <summary>ApplicantOnly / AnyPreviousStep (空 = ApplicantOnly)。</summary>
+        [Designer(Index = 9, CandidateType = CandidateType.Field)]
+        public string ReturnScope { get; set; } = nameof(ReturnScope);
+
+        /// <summary>承認者一覧 (ステップモジュール上の List フィールド)。承認者モジュールはこの一覧の参照先として決まる。</summary>
+        [Designer(Index = 10, CandidateType = CandidateType.Field)]
+        public string Members { get; set; } = nameof(Members);
+
+        /// <summary>
+        /// ステップ行に直付けの承認者 (ユーザーへの Link)。1ステップ1人のシンプル構成用で、
+        /// 使う場合は Members を空にしてこちらを設定する (既定は空 = 使わない)。
+        /// </summary>
+        [Designer(Index = 11, CandidateType = CandidateType.Field)]
+        public string ApproverUser { get; set; } = string.Empty;
+
+        public override List<DesignCheckInfo> CheckDesign(DesignCheckContext context)
+        {
+            var result = base.CheckDesign(context);
+            if (!string.IsNullOrEmpty(Members))
+            {
+                CheckListRole<ApprovalRouteStepMemberContractFieldDesign>(context, result, nameof(Members), Members);
+            }
+            if (string.IsNullOrEmpty(Members) && string.IsNullOrEmpty(ApproverUser))
+            {
+                result.Add(new FieldDesignCheckInfo
+                {
+                    Location = new FieldDesignDataLocation
+                    { Module = context.OwnerModule, Field = Name, Member = nameof(Members) },
+                    Message = Properties.Resources.ApprovalCheck_StepApproverRoleRequired,
+                });
+            }
+            return result;
+        }
+    }
+
+    /// <summary>経路マスタ (ステップ承認者) モジュールの契約。</summary>
+    [Designer(DisplayName = "$ApprovalRouteStepMemberContractField")]
+    [ToolboxIcon(PackIconMaterialKind = "CheckDecagramOutline")]
+    public class ApprovalRouteStepMemberContractFieldDesign : ApprovalContractFieldDesignBase
+    {
+        public ApprovalRouteStepMemberContractFieldDesign() : base(typeof(ApprovalRouteStepMemberContractFieldDesign).FullName!) { }
+
+        /// <summary>ステップ行への FK (Link)。</summary>
+        [Designer(Index = 3, CandidateType = CandidateType.Field)]
+        public string Step { get; set; } = nameof(Step);
+
+        /// <summary>承認者ユーザー (User モジュールへの Link)。</summary>
+        [Designer(Index = 4, CandidateType = CandidateType.Field)]
+        public string ApproverUser { get; set; } = nameof(ApproverUser);
+
+        /// <summary>必須承認者か (空 = 必須)。</summary>
+        [Designer(Index = 5, CandidateType = CandidateType.Field)]
+        public string IsRequired { get; set; } = nameof(IsRequired);
+    }
 }

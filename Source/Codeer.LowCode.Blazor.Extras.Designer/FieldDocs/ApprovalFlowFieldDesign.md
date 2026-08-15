@@ -38,6 +38,7 @@
 |---|---|
 | DB列 | 承認フロー行への FK 列 (このフィールドが自テーブルに持つ列はこの1本だけ) |
 | 承認フローモジュール | フロー本体のモジュール名 (既定 ApprovalFlow)。メンバー・履歴モジュールはフロー契約の Members / Histories 一覧の参照先として決まるため指定不要 |
+| 経路マスタモジュール | 経路マスタ (経路) のモジュール名 (任意)。指定するとスクリプトの `LoadRoute(経路名)` でマスタから経路を読める。マスタの作り方は ApprovalRouteContractField のドキュメント参照 |
 | 取り下げ許可範囲 | BeforeFirstApproval (既定・承認が始まる前のみ) / Anytime (進行中ならいつでも)。業務ポリシー |
 | 進捗を表示 / 履歴を表示 / コメント欄を表示 / アクションボタンを表示 | 標準 UI の表示切り替え。アクションボタンを OFF にすると ButtonField ＋ スクリプト API でアプリ独自の承認 UI に置き換えられる (サーバーの検証はどの UI からでも同じ) |
 | 経路組み立て | ApprovalRouteData を返すスクリプト (null で申請中止)。設定すると組み込みの申請・再申請ボタンが出て、スクリプト API の Submit() / Resubmit() も使える |
@@ -169,6 +170,14 @@ if (!result.IsSuccess) Logger.Error(result.ErrorMessage);
 // 経路を自前で渡す形も可
 承認.SubmitWithRoute(route);
 承認.ResubmitWithRoute(route);
+
+// 経路マスタから読む (デザインの「経路マスタモジュール」が必要。見つからなければ null = 申請中止に使える)
+ApprovalRouteData OnBuildRouteFromMaster()
+{
+    var route = 承認.LoadRoute("経費ルート");   // 読んだ後に AddStep / AddMember で加工してもよい
+    if (route == null) Logger.Error("経路マスタに『経費ルート』がありません");
+    return route;
+}
 
 // コメント (組み込みコメント欄と同じ値。外付けボタンから使う場合に設定/参照)
 承認.Comment = "至急お願いします";

@@ -1,7 +1,7 @@
 {
-  "Name": "ApprovalFlowMember",
+  "Name": "ApprovalRouteStep",
   "DataSourceName": "SampleSQLite",
-  "DbTable": "approval_flow_members",
+  "DbTable": "approval_route_steps",
   "CanCreate": true,
   "CanUpdate": true,
   "CanDelete": true,
@@ -33,7 +33,7 @@
         "SortConditions": [],
         "SortFieldVariable": "",
         "SortDescending": false,
-        "ModuleName": "ApprovalFlow",
+        "ModuleName": "ApprovalRoute",
         "Condition": {
           "IsOrMatch": false,
           "IsNot": false,
@@ -43,8 +43,8 @@
         }
       },
       "ValueVariable": "Id.Value",
-      "DisplayTextVariable": "Status.Value",
-      "DbColumn": "flow_id",
+      "DisplayTextVariable": "RouteName.Value",
+      "DbColumn": "approval_route_id",
       "ListLayoutName": "",
       "SearchLayoutName": "",
       "OnSearchButtonClicked": "",
@@ -55,34 +55,13 @@
       "DisplayName": "",
       "IsRequired": false,
       "OnDataChanged": "",
-      "Name": "Flow",
+      "Name": "Route",
       "IgnoreModification": false,
       "OnValidateInput": "",
       "IsFocusSkip": false,
       "NextFocusField": "",
       "OnFocusMoving": "",
       "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.LinkFieldDesign"
-    },
-    {
-      "DbColumn": "attempt_no",
-      "Placeholder": "",
-      "Format": "",
-      "IsSlider": false,
-      "OnInput": "",
-      "IsUpdateProtected": false,
-      "IsSimpleSearchParameter": false,
-      "AllowEmptySearch": false,
-      "OnSearchDataChanged": "",
-      "DisplayName": "",
-      "IsRequired": false,
-      "OnDataChanged": "",
-      "Name": "AttemptNo",
-      "IgnoreModification": false,
-      "OnValidateInput": "",
-      "IsFocusSkip": false,
-      "NextFocusField": "",
-      "OnFocusMoving": "",
-      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.NumberFieldDesign"
     },
     {
       "DbColumn": "step_no",
@@ -109,7 +88,7 @@
       "DbColumn": "step_name",
       "IsMultiline": false,
       "IsAutoFitRows": false,
-      "Placeholder": "",
+      "Placeholder": "ステップ名",
       "TextEditEmptyType": "StringEmpty",
       "ShouldTrimAfterEdit": false,
       "AutoTab": false,
@@ -118,7 +97,7 @@
       "AllowEmptySearch": false,
       "OnSearchDataChanged": "",
       "DisplayName": "",
-      "IsRequired": false,
+      "IsRequired": true,
       "OnDataChanged": "",
       "Name": "StepName",
       "IgnoreModification": false,
@@ -166,13 +145,27 @@
       "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.SelectFieldDesign"
     },
     {
+      "EnumName": "ApprovalCompletionPolicy",
+      "Candidates": [],
+      "SearchCondition": {
+        "SelectFields": [],
+        "SortConditions": [],
+        "SortFieldVariable": "",
+        "SortDescending": false,
+        "ModuleName": "",
+        "Condition": {
+          "IsOrMatch": false,
+          "IsNot": false,
+          "Children": [],
+          "Name": "",
+          "TypeFullName": "Codeer.LowCode.Blazor.Repository.Match.MultiMatchCondition"
+        }
+      },
+      "ValueVariable": "",
+      "DisplayTextVariable": "",
       "DbColumn": "completion_policy",
-      "IsMultiline": false,
-      "IsAutoFitRows": false,
-      "Placeholder": "",
-      "TextEditEmptyType": "StringEmpty",
-      "ShouldTrimAfterEdit": false,
-      "AutoTab": false,
+      "EmptyCandidateType": "StringEmpty",
+      "AllowOrSearch": false,
       "IsUpdateProtected": false,
       "IsSimpleSearchParameter": false,
       "AllowEmptySearch": false,
@@ -186,11 +179,11 @@
       "IsFocusSkip": false,
       "NextFocusField": "",
       "OnFocusMoving": "",
-      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.TextFieldDesign"
+      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.SelectFieldDesign"
     },
     {
       "Text": "Boolean",
-      "DbColumn": "is_comment_required_on_reject",
+      "DbColumn": "is_comment_required",
       "UIType": "CheckBox",
       "TrueText": "",
       "FalseText": "",
@@ -210,108 +203,7 @@
       "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.BooleanFieldDesign"
     },
     {
-      "DbColumn": "return_scope",
-      "IsMultiline": false,
-      "IsAutoFitRows": false,
-      "Placeholder": "",
-      "TextEditEmptyType": "StringEmpty",
-      "ShouldTrimAfterEdit": false,
-      "AutoTab": false,
-      "IsUpdateProtected": false,
-      "IsSimpleSearchParameter": false,
-      "AllowEmptySearch": false,
-      "OnSearchDataChanged": "",
-      "DisplayName": "",
-      "IsRequired": false,
-      "OnDataChanged": "",
-      "Name": "ReturnScope",
-      "IgnoreModification": false,
-      "OnValidateInput": "",
-      "IsFocusSkip": false,
-      "NextFocusField": "",
-      "OnFocusMoving": "",
-      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.TextFieldDesign"
-    },
-    {
-      "SearchCondition": {
-        "SelectFields": [],
-        "SortConditions": [],
-        "SortFieldVariable": "",
-        "SortDescending": false,
-        "ModuleName": "AppUser",
-        "Condition": {
-          "IsOrMatch": false,
-          "IsNot": false,
-          "Children": [],
-          "Name": "",
-          "TypeFullName": "Codeer.LowCode.Blazor.Repository.Match.MultiMatchCondition"
-        }
-      },
-      "ValueVariable": "Id.Value",
-      "DisplayTextVariable": "Name.Value",
-      "DbColumn": "approver_user",
-      "ListLayoutName": "",
-      "SearchLayoutName": "",
-      "OnSearchButtonClicked": "",
-      "IsUpdateProtected": false,
-      "IsSimpleSearchParameter": false,
-      "AllowEmptySearch": false,
-      "OnSearchDataChanged": "",
-      "DisplayName": "",
-      "IsRequired": false,
-      "OnDataChanged": "",
-      "Name": "ApproverUser",
-      "IgnoreModification": false,
-      "OnValidateInput": "",
-      "IsFocusSkip": false,
-      "NextFocusField": "",
-      "OnFocusMoving": "",
-      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.LinkFieldDesign"
-    },
-    {
-      "Text": "Boolean",
-      "DbColumn": "is_required",
-      "UIType": "CheckBox",
-      "TrueText": "",
-      "FalseText": "",
-      "IsUpdateProtected": false,
-      "IsSimpleSearchParameter": false,
-      "AllowEmptySearch": false,
-      "OnSearchDataChanged": "",
-      "DisplayName": "",
-      "IsRequired": false,
-      "OnDataChanged": "",
-      "Name": "IsRequired",
-      "IgnoreModification": false,
-      "OnValidateInput": "",
-      "IsFocusSkip": false,
-      "NextFocusField": "",
-      "OnFocusMoving": "",
-      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.BooleanFieldDesign"
-    },
-    {
-      "Text": "Boolean",
-      "DbColumn": "is_final_step",
-      "UIType": "CheckBox",
-      "TrueText": "",
-      "FalseText": "",
-      "IsUpdateProtected": false,
-      "IsSimpleSearchParameter": false,
-      "AllowEmptySearch": false,
-      "OnSearchDataChanged": "",
-      "DisplayName": "",
-      "IsRequired": false,
-      "OnDataChanged": "",
-      "Name": "IsFinalStep",
-      "IgnoreModification": false,
-      "OnValidateInput": "",
-      "IsFocusSkip": false,
-      "NextFocusField": "",
-      "OnFocusMoving": "",
-      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.BooleanFieldDesign"
-    },
-    {
-      "EnumName": "ApprovalMemberStatus",
+      "EnumName": "ApprovalReturnScope",
       "Candidates": [],
       "SearchCondition": {
         "SelectFields": [],
@@ -329,7 +221,7 @@
       },
       "ValueVariable": "",
       "DisplayTextVariable": "",
-      "DbColumn": "status",
+      "DbColumn": "return_scope",
       "EmptyCandidateType": "StringEmpty",
       "AllowOrSearch": false,
       "IsUpdateProtected": false,
@@ -339,7 +231,7 @@
       "DisplayName": "",
       "IsRequired": false,
       "OnDataChanged": "",
-      "Name": "Status",
+      "Name": "ReturnScope",
       "IgnoreModification": false,
       "OnValidateInput": "",
       "IsFocusSkip": false,
@@ -348,81 +240,76 @@
       "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.SelectFieldDesign"
     },
     {
-      "SaveAsUtc": false,
-      "Format": "",
-      "DbColumn": "acted_at",
-      "IsUpdateProtected": false,
-      "IsSimpleSearchParameter": false,
-      "AllowEmptySearch": false,
-      "OnSearchDataChanged": "",
+      "LayoutName": "",
+      "CanNavigateToDetail": false,
+      "NavigateModuleUrlSegment": "",
+      "CanCustomizeColumns": false,
+      "FixedColumnCount": 0,
+      "ApplyBackgroundToBoxInput": false,
       "DisplayName": "",
-      "IsRequired": false,
-      "OnDataChanged": "",
-      "Name": "ActedAt",
-      "IgnoreModification": false,
-      "OnValidateInput": "",
-      "IsFocusSkip": false,
-      "NextFocusField": "",
-      "OnFocusMoving": "",
-      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.DateTimeFieldDesign"
-    },
-    {
-      "Text": "開く",
-      "ImageResourcePath": "",
-      "ImageResourceSet": {
-        "Default": "",
-        "Focus": "",
-        "Active": "",
-        "Hover": "",
-        "Disabled": ""
+      "SearchCondition": {
+        "SelectFields": [],
+        "SortConditions": [],
+        "SortFieldVariable": "",
+        "SortDescending": false,
+        "ModuleName": "ApprovalRouteStepMember",
+        "Condition": {
+          "IsOrMatch": false,
+          "IsNot": false,
+          "Children": [
+            {
+              "SearchTargetVariable": "Step.Value",
+              "Comparison": "Equal",
+              "Variable": "Id.Value",
+              "TypeFullName": "Codeer.LowCode.Blazor.Repository.Match.FieldVariableMatchCondition"
+            }
+          ],
+          "Name": "",
+          "TypeFullName": "Codeer.LowCode.Blazor.Repository.Match.MultiMatchCondition"
+        }
       },
-      "Icon": "",
-      "Variant": "Primary",
-      "OnClick": "OpenRequest_OnClick",
-      "ShowTextInToolTip": false,
-      "IsHtml": false,
-      "Name": "OpenRequestButton",
+      "PagerPosition": "Top",
+      "ReplaceMode": "None",
+      "DeleteTogether": true,
+      "CanCreate": true,
+      "CanUpdate": true,
+      "CanDelete": true,
+      "CanUserSort": true,
+      "CanSelect": false,
+      "UseIndexSort": false,
+      "OnDataChanged": "",
+      "OnSearchDataChanged": "",
+      "OnSelectedIndexChanged": "",
+      "OnSelectedIndexChanging": "",
+      "OnDoubleClickRow": "",
+      "Name": "Members",
       "IgnoreModification": false,
       "OnValidateInput": "",
       "IsFocusSkip": false,
       "NextFocusField": "",
       "OnFocusMoving": "",
-      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.ButtonFieldDesign"
+      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.ListFieldDesign"
     },
     {
-      "Flow": "Flow",
-      "AttemptNo": "AttemptNo",
+      "Route": "Route",
       "StepNo": "StepNo",
       "StepName": "StepName",
       "StepType": "StepType",
       "CompletionPolicy": "CompletionPolicy",
       "IsCommentRequiredOnReject": "IsCommentRequiredOnReject",
       "ReturnScope": "ReturnScope",
-      "ApproverUser": "ApproverUser",
-      "IsRequired": "IsRequired",
-      "IsFinalStep": "IsFinalStep",
-      "Status": "Status",
-      "ActedAt": "ActedAt",
+      "Members": "Members",
       "Name": "Contract",
       "IgnoreModification": false,
       "OnValidateInput": "",
       "IsFocusSkip": false,
       "NextFocusField": "",
       "OnFocusMoving": "",
-      "TypeFullName": "Codeer.LowCode.Blazor.Extras.Designs.ApprovalMemberContractFieldDesign"
+      "TypeFullName": "Codeer.LowCode.Blazor.Extras.Designs.ApprovalRouteStepContractFieldDesign"
     }
   ],
   "UserWriteCondition": {
-    "ModuleName": "AppUser",
-    "Condition": {
-      "SearchTargetVariable": "Id.Value",
-      "Comparison": "Equal",
-      "Value": {
-        "Value": "__nobody__",
-        "TypeFullName": "Codeer.LowCode.Blazor.Repository.StringValue"
-      },
-      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Match.FieldValueMatchCondition"
-    }
+    "ModuleName": ""
   },
   "UserReadCondition": {
     "ModuleName": ""
@@ -534,123 +421,79 @@
         "BackgroundColor": "",
         "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.GridLayoutDesign"
       }
+    },
+    "ステップ編集": {
+      "DataOnlyFields": [],
+      "Layout": {
+        "Padding": {
+          "Left": 4,
+          "Top": 4,
+          "Right": 4,
+          "Bottom": 4
+        },
+        "Rows": [
+          {
+            "Columns": [
+              {
+                "Layout": {
+                  "FieldName": "StepName",
+                  "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.FieldLayoutDesign"
+                }
+              },
+              {
+                "Layout": {
+                  "FieldName": "StepType",
+                  "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.FieldLayoutDesign"
+                },
+                "Width": 160
+              },
+              {
+                "Layout": {
+                  "FieldName": "CompletionPolicy",
+                  "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.FieldLayoutDesign"
+                },
+                "Width": 180
+              }
+            ]
+          },
+          {
+            "Margin": {
+              "Top": 8
+            },
+            "Columns": [
+              {
+                "Layout": {
+                  "FieldName": "Members",
+                  "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.FieldLayoutDesign"
+                }
+              }
+            ]
+          }
+        ],
+        "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.GridLayoutDesign"
+      }
     }
   },
   "ListLayouts": {
     "": {
       "HeaderTitle": "",
-      "DataOnlyFields": [
-        "StepType",
-        "IsFinalStep"
-      ],
+      "DataOnlyFields": [],
       "FocusControlMode": "Inherit",
       "IsFocusWrap": false,
       "OnBeforeInitialization": "",
-      "OnAfterInitialization": "OnAfterInitialization",
+      "OnAfterInitialization": "",
       "OnFieldDataChanged": "",
       "Elements": [
         [
           {
+            "FieldName": "StepNo",
+            "Label": "順序",
+            "Width": 80
+          },
+          {
             "FieldName": "StepName",
-            "ContextMenu": "",
             "Label": "ステップ",
-            "IsMaxWidthFixed": false,
-            "ColumnSpan": 1,
-            "RowSpan": 1,
-            "TextWrap": "Unset",
-            "CanResize": false,
-            "CanUserSort": true,
-            "ClassName": "",
-            "FontFamily": "",
-            "Color": "",
-            "BackgroundColor": "",
-            "DetailLayoutName": "",
-            "ListElementComponent": ""
-          },
-          {
-            "FieldName": "ApproverUser",
-            "ContextMenu": "",
-            "Label": "承認者",
-            "IsMaxWidthFixed": false,
-            "ColumnSpan": 1,
-            "RowSpan": 1,
-            "TextWrap": "Unset",
-            "CanResize": false,
-            "CanUserSort": true,
-            "ClassName": "",
-            "FontFamily": "",
-            "Color": "",
-            "BackgroundColor": "",
-            "DetailLayoutName": "",
-            "ListElementComponent": ""
-          },
-          {
-            "FieldName": "Status",
-            "ContextMenu": "",
-            "Label": "状態",
-            "IsMaxWidthFixed": false,
-            "ColumnSpan": 1,
-            "RowSpan": 1,
-            "TextWrap": "Unset",
-            "CanResize": false,
-            "CanUserSort": true,
-            "ClassName": "",
-            "FontFamily": "",
-            "Color": "",
-            "BackgroundColor": "",
-            "DetailLayoutName": "",
-            "ListElementComponent": ""
-          },
-          {
-            "FieldName": "ActedAt",
-            "ContextMenu": "",
-            "Label": "処理日時",
-            "IsMaxWidthFixed": false,
-            "ColumnSpan": 1,
-            "RowSpan": 1,
-            "TextWrap": "Unset",
-            "CanResize": false,
-            "CanUserSort": true,
-            "ClassName": "",
-            "FontFamily": "",
-            "Color": "",
-            "BackgroundColor": "",
-            "DetailLayoutName": "",
-            "ListElementComponent": ""
-          },
-          {
-            "FieldName": "AttemptNo",
-            "ContextMenu": "",
-            "Label": "試行",
-            "IsMaxWidthFixed": false,
-            "ColumnSpan": 1,
-            "RowSpan": 1,
-            "TextWrap": "Unset",
-            "CanResize": false,
-            "CanUserSort": true,
-            "ClassName": "",
-            "FontFamily": "",
-            "Color": "",
-            "BackgroundColor": "",
-            "DetailLayoutName": "",
-            "ListElementComponent": ""
-          },
-          {
-            "FieldName": "OpenRequestButton",
-            "ContextMenu": "",
-            "Label": "",
-            "IsMaxWidthFixed": false,
-            "ColumnSpan": 1,
-            "RowSpan": 1,
-            "TextWrap": "Unset",
-            "CanResize": false,
-            "CanUserSort": true,
-            "ClassName": "",
-            "FontFamily": "",
-            "Color": "",
-            "BackgroundColor": "",
-            "DetailLayoutName": "",
-            "ListElementComponent": ""
+            "DetailLayoutName": "ステップ編集"
           }
         ]
       ]

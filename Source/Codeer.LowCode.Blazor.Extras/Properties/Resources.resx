@@ -696,6 +696,21 @@
   <data name="ApprovalHistoryContractField" xml:space="preserve">
     <value>Approval History Contract</value>
   </data>
+  <data name="ApprovalRouteContractField" xml:space="preserve">
+    <value>Approval Route Contract</value>
+  </data>
+  <data name="ApprovalRouteStepContractField" xml:space="preserve">
+    <value>Approval Route Step Contract</value>
+  </data>
+  <data name="ApprovalRouteStepMemberContractField" xml:space="preserve">
+    <value>Approval Route Step Member Contract</value>
+  </data>
+  <data name="ApprovalRouteModuleName" xml:space="preserve">
+    <value>Route Master Module</value>
+  </data>
+  <data name="ApprovalCheck_StepApproverRoleRequired" xml:space="preserve">
+    <value>Set either the 'Members' role (multiple approvers) or the 'ApproverUser' role (a single approver on the step row).</value>
+  </data>
   <data name="ApprovalCheck_ContractFieldMissingFormat" xml:space="preserve">
     <value>Module '{0}' does not have a contract field ({1}). Place the contract field that declares the role mapping.</value>
   </data>

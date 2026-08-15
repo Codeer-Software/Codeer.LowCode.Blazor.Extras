@@ -1,0 +1,82 @@
+{
+  "Name": "ApprovalSimpleRouteStep",
+  "DataSourceName": "SampleSQLite",
+  "DbTable": "approval_simple_route_steps",
+  "CanCreate": true,
+  "CanUpdate": true,
+  "CanDelete": true,
+  "Fields": [
+    {
+      "Name": "Id",
+      "DbColumn": "id",
+      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.IdFieldDesign"
+    },
+    {
+      "Name": "Route",
+      "DbColumn": "approval_route_id",
+      "SearchCondition": {
+        "ModuleName": "ApprovalSimpleRoute",
+        "TypeFullName": "Codeer.LowCode.Blazor.Repository.Match.SearchCondition"
+      },
+      "ValueVariable": "Id.Value",
+      "DisplayTextVariable": "RouteName.Value",
+      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.LinkFieldDesign"
+    },
+    {
+      "Name": "StepNo",
+      "DbColumn": "step_no",
+      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.NumberFieldDesign"
+    },
+    {
+      "Name": "StepName",
+      "DbColumn": "step_name",
+      "Placeholder": "ステップ名",
+      "IsRequired": true,
+      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.TextFieldDesign"
+    },
+    {
+      "Name": "Approver",
+      "DbColumn": "approver_user",
+      "SearchCondition": {
+        "ModuleName": "AppUser",
+        "TypeFullName": "Codeer.LowCode.Blazor.Repository.Match.SearchCondition"
+      },
+      "ValueVariable": "Id.Value",
+      "DisplayTextVariable": "Name.Value",
+      "IsRequired": true,
+      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.LinkFieldDesign"
+    },
+    {
+      "Name": "Contract",
+      "StepType": "",
+      "CompletionPolicy": "",
+      "IsCommentRequiredOnReject": "",
+      "ReturnScope": "",
+      "Members": "",
+      "ApproverUser": "Approver",
+      "TypeFullName": "Codeer.LowCode.Blazor.Extras.Designs.ApprovalRouteStepContractFieldDesign"
+    }
+  ],
+  "ListLayouts": {
+    "": {
+      "Elements": [
+        [
+          {
+            "FieldName": "StepNo",
+            "Label": "順序",
+            "Width": 80
+          },
+          {
+            "FieldName": "StepName",
+            "Label": "ステップ名"
+          },
+          {
+            "FieldName": "Approver",
+            "Label": "承認者",
+            "Width": 220
+          }
+        ]
+      ]
+    }
+  }
+}

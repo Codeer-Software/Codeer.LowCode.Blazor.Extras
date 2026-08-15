@@ -1435,6 +1435,37 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
             }
         }
 
+        internal static string ApprovalRouteContractField {
+            get {
+                return ResourceManager.GetString("ApprovalRouteContractField", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalRouteStepContractField {
+            get {
+                return ResourceManager.GetString("ApprovalRouteStepContractField", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalRouteStepMemberContractField {
+            get {
+                return ResourceManager.GetString("ApprovalRouteStepMemberContractField", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalRouteModuleName {
+            get {
+                return ResourceManager.GetString("ApprovalRouteModuleName", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalCheck_StepApproverRoleRequired {
+            get {
+                return ResourceManager.GetString("ApprovalCheck_StepApproverRoleRequired", resourceCulture);
+            }
+        }
+
+
         internal static string ApprovalCheck_ContractFieldMissingFormat {
             get {
                 return ResourceManager.GetString("ApprovalCheck_ContractFieldMissingFormat", resourceCulture);

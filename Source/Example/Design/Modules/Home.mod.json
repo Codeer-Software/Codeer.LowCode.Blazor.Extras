@@ -44,7 +44,7 @@
         "SortConditions": [],
         "SortFieldVariable": "",
         "SortDescending": false,
-        "ModuleName": "Task",
+        "ModuleName": "GanttTask",
         "Condition": {
           "IsOrMatch": false,
           "IsNot": false,

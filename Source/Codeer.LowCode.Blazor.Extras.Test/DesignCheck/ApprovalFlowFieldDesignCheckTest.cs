@@ -60,6 +60,51 @@ namespace Codeer.LowCode.Blazor.Extras.Test.DesignCheck
             return module;
         }
 
+        static ModuleDesign CreateRouteModule(string name = "ApprovalRoute", string stepModuleName = "ApprovalRouteStep")
+        {
+            var route = Utilities.CreateModule(name);
+            route.Fields.Add(new IdFieldDesign { Name = "Id", DbColumn = "DbColumn" });
+            route.Fields.Add(new TextFieldDesign { Name = nameof(ApprovalRouteContractFieldDesign.RouteName), DbColumn = "DbColumn" });
+            route.Fields.Add(new ListFieldDesign
+            {
+                Name = nameof(ApprovalRouteContractFieldDesign.Steps),
+                SearchCondition = new Repository.Match.SearchCondition { ModuleName = stepModuleName },
+            });
+            route.Fields.Add(new ApprovalRouteContractFieldDesign { Name = "Contract" });
+            return route;
+        }
+
+        static ModuleDesign CreateRouteStepModule(string name = "ApprovalRouteStep", string memberModuleName = "ApprovalRouteStepMember")
+        {
+            var step = Utilities.CreateModule(name);
+            step.Fields.Add(new IdFieldDesign { Name = "Id", DbColumn = "DbColumn" });
+            step.Fields.Add(new LinkFieldDesign { Name = nameof(ApprovalRouteStepContractFieldDesign.Route), DbColumn = "DbColumn" });
+            step.Fields.Add(new NumberFieldDesign { Name = nameof(ApprovalRouteStepContractFieldDesign.StepNo), DbColumn = "DbColumn" });
+            step.Fields.Add(new TextFieldDesign { Name = nameof(ApprovalRouteStepContractFieldDesign.StepName), DbColumn = "DbColumn" });
+            step.Fields.Add(new TextFieldDesign { Name = nameof(ApprovalRouteStepContractFieldDesign.StepType), DbColumn = "DbColumn" });
+            step.Fields.Add(new TextFieldDesign { Name = nameof(ApprovalRouteStepContractFieldDesign.CompletionPolicy), DbColumn = "DbColumn" });
+            step.Fields.Add(new BooleanFieldDesign { Name = nameof(ApprovalRouteStepContractFieldDesign.IsCommentRequiredOnReject), DbColumn = "DbColumn" });
+            step.Fields.Add(new TextFieldDesign { Name = nameof(ApprovalRouteStepContractFieldDesign.ReturnScope), DbColumn = "DbColumn" });
+            step.Fields.Add(new ListFieldDesign
+            {
+                Name = nameof(ApprovalRouteStepContractFieldDesign.Members),
+                SearchCondition = new Repository.Match.SearchCondition { ModuleName = memberModuleName },
+            });
+            step.Fields.Add(new ApprovalRouteStepContractFieldDesign { Name = "Contract" });
+            return step;
+        }
+
+        static ModuleDesign CreateRouteStepMemberModule(string name = "ApprovalRouteStepMember")
+        {
+            var member = Utilities.CreateModule(name);
+            member.Fields.Add(new IdFieldDesign { Name = "Id", DbColumn = "DbColumn" });
+            member.Fields.Add(new LinkFieldDesign { Name = nameof(ApprovalRouteStepMemberContractFieldDesign.Step), DbColumn = "DbColumn" });
+            member.Fields.Add(new LinkFieldDesign { Name = nameof(ApprovalRouteStepMemberContractFieldDesign.ApproverUser), DbColumn = "DbColumn" });
+            member.Fields.Add(new BooleanFieldDesign { Name = nameof(ApprovalRouteStepMemberContractFieldDesign.IsRequired), DbColumn = "DbColumn" });
+            member.Fields.Add(new ApprovalRouteStepMemberContractFieldDesign { Name = "Contract" });
+            return member;
+        }
+
         [Test]
         public void フローモジュール不在は指摘される()
         {
@@ -196,6 +241,125 @@ namespace Codeer.LowCode.Blazor.Extras.Test.DesignCheck
 
             var duplicated = ret.Where(e => e.Message.Contains(nameof(ApprovalFlowContractFieldDesign))).ToList();
             Assert.That(duplicated.Count, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void 経路マスタ指定で契約が無ければ指摘される()
+        {
+            var d = CreateDesignData(out var owner);
+            var field = new ApprovalFlowFieldDesign { Name = "Approval", DbColumn = "DbColumn", RouteModuleName = "ApprovalRoute" };
+            owner.Fields.Add(field);
+            d.AddModule(CreateFlowModule());
+            d.AddModule(CreateMemberModule());
+            d.AddModule(CreateHistoryModule());
+
+            var route = CreateRouteModule();
+            route.Fields.RemoveAll(e => e is ApprovalRouteContractFieldDesign);
+            d.AddModule(route);
+            d.AddModule(CreateRouteStepModule());
+            d.AddModule(CreateRouteStepMemberModule());
+
+            var ret = field.CheckDesign(new DesignCheckContext("Request", d, Utilities.CreateDataSource()));
+
+            Assert.That(ret.Count, Is.EqualTo(1));
+            Assert.That(ret[0].Message, Does.Contain(nameof(ApprovalRouteContractFieldDesign)));
+            ret[0].AssertFieldLocation("Request", "Approval", nameof(ApprovalFlowFieldDesign.RouteModuleName));
+        }
+
+        [Test]
+        public void 経路マスタの契約が揃っていれば指摘なし()
+        {
+            var d = CreateDesignData(out var owner);
+            var field = new ApprovalFlowFieldDesign { Name = "Approval", DbColumn = "DbColumn", RouteModuleName = "ApprovalRoute" };
+            owner.Fields.Add(field);
+            d.AddModule(CreateFlowModule());
+            d.AddModule(CreateMemberModule());
+            d.AddModule(CreateHistoryModule());
+            d.AddModule(CreateRouteModule());
+            d.AddModule(CreateRouteStepModule());
+            d.AddModule(CreateRouteStepMemberModule());
+
+            var ret = field.CheckDesign(new DesignCheckContext("Request", d, Utilities.CreateDataSource()));
+            Assert.That(ret, Is.Empty);
+
+            //契約フィールド側のチェックも全部通ること (役割フィールド存在 + 一覧役割の連鎖)
+            var routeContract = d.Modules.Find("ApprovalRoute")!.Fields.OfType<ApprovalRouteContractFieldDesign>().First();
+            Assert.That(routeContract.CheckDesign(new DesignCheckContext("ApprovalRoute", d, Utilities.CreateDataSource())), Is.Empty);
+            var stepContract = d.Modules.Find("ApprovalRouteStep")!.Fields.OfType<ApprovalRouteStepContractFieldDesign>().First();
+            Assert.That(stepContract.CheckDesign(new DesignCheckContext("ApprovalRouteStep", d, Utilities.CreateDataSource())), Is.Empty);
+            var memberContract = d.Modules.Find("ApprovalRouteStepMember")!.Fields.OfType<ApprovalRouteStepMemberContractFieldDesign>().First();
+            Assert.That(memberContract.CheckDesign(new DesignCheckContext("ApprovalRouteStepMember", d, Utilities.CreateDataSource())), Is.Empty);
+        }
+
+        [Test]
+        public void 経路マスタのシンプル形態_ステップ直付け承認者で指摘なし()
+        {
+            //役割を空にすると「使わない」宣言。Members を空にして ApproverUser 直付けの1人構成にする
+            var d = CreateDesignData(out _);
+            var step = Utilities.CreateModule("SimpleRouteStep");
+            step.Fields.Add(new IdFieldDesign { Name = "Id", DbColumn = "DbColumn" });
+            step.Fields.Add(new LinkFieldDesign { Name = "Route", DbColumn = "DbColumn" });
+            step.Fields.Add(new NumberFieldDesign { Name = "StepNo", DbColumn = "DbColumn" });
+            step.Fields.Add(new TextFieldDesign { Name = "StepName", DbColumn = "DbColumn" });
+            step.Fields.Add(new LinkFieldDesign { Name = "Approver", DbColumn = "DbColumn" });
+            var contract = new ApprovalRouteStepContractFieldDesign
+            {
+                Name = "Contract",
+                Members = "",
+                ApproverUser = "Approver",
+                StepType = "",
+                CompletionPolicy = "",
+                IsCommentRequiredOnReject = "",
+                ReturnScope = "",
+            };
+            step.Fields.Add(contract);
+            d.AddModule(step);
+
+            var ret = contract.CheckDesign(new DesignCheckContext("SimpleRouteStep", d, Utilities.CreateDataSource()));
+            Assert.That(ret, Is.Empty);
+
+            //Members も ApproverUser も空は指摘される
+            contract.ApproverUser = "";
+            var ret2 = contract.CheckDesign(new DesignCheckContext("SimpleRouteStep", d, Utilities.CreateDataSource()));
+            Assert.That(ret2.Count, Is.EqualTo(1));
+            Assert.That(ret2[0].Message, Does.Contain("ApproverUser"));
+        }
+
+        [Test]
+        public void 経路マスタのステップ一覧の先に契約が無ければ指摘される()
+        {
+            var d = CreateDesignData(out _);
+            d.AddModule(CreateRouteModule());
+            var step = CreateRouteStepModule();
+            step.Fields.RemoveAll(e => e is ApprovalRouteStepContractFieldDesign);
+            d.AddModule(step);
+            d.AddModule(CreateRouteStepMemberModule());
+
+            var routeContract = d.Modules.Find("ApprovalRoute")!.Fields.OfType<ApprovalRouteContractFieldDesign>().First();
+            var ret = routeContract.CheckDesign(new DesignCheckContext("ApprovalRoute", d, Utilities.CreateDataSource()));
+
+            Assert.That(ret.Count, Is.EqualTo(1));
+            Assert.That(ret[0].Message, Does.Contain(nameof(ApprovalRouteStepContractFieldDesign)));
+        }
+
+        [Test]
+        public void フローフィールドは経路マスタのモジュールリネームに追従する()
+        {
+            var d = new DesignData();
+            var field = new ApprovalFlowFieldDesign { Name = "Approval", RouteModuleName = "ApprovalRoute" };
+
+            var context = new RenameContext(d)
+            {
+                Type = RenameType.Module,
+                ModuleName = "ApprovalRoute",
+                OwnerModule = "Request",
+                Source = "ApprovalRoute",
+                Destination = "SharedRoute",
+            };
+            var result = field.ChangeName(context);
+            Assert.That(result.RenameNeeded, Is.True);
+            result.RenameAction();
+            Assert.That(field.RouteModuleName, Is.EqualTo("SharedRoute"));
         }
 
         [Test]

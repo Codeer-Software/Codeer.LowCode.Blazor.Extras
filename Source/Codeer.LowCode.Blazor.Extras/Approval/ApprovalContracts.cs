@@ -29,5 +29,21 @@ namespace Codeer.LowCode.Blazor.Extras.Approval
 
         public static string GetHistoryModuleName(ModuleDesign? flowModule)
             => GetListRoleModuleName(flowModule, Flow(flowModule)?.Histories ?? string.Empty);
+
+        //経路マスタ (経路 / ステップ / ステップ承認者)。ステップ・承認者モジュールは一覧役割の参照先として決まる
+        public static ApprovalRouteContractFieldDesign? Route(ModuleDesign? routeModule)
+            => routeModule?.Fields.OfType<ApprovalRouteContractFieldDesign>().FirstOrDefault();
+
+        public static ApprovalRouteStepContractFieldDesign? RouteStep(ModuleDesign? stepModule)
+            => stepModule?.Fields.OfType<ApprovalRouteStepContractFieldDesign>().FirstOrDefault();
+
+        public static ApprovalRouteStepMemberContractFieldDesign? RouteStepMember(ModuleDesign? memberModule)
+            => memberModule?.Fields.OfType<ApprovalRouteStepMemberContractFieldDesign>().FirstOrDefault();
+
+        public static string GetRouteStepModuleName(ModuleDesign? routeModule)
+            => GetListRoleModuleName(routeModule, Route(routeModule)?.Steps ?? string.Empty);
+
+        public static string GetRouteStepMemberModuleName(ModuleDesign? stepModule)
+            => GetListRoleModuleName(stepModule, RouteStep(stepModule)?.Members ?? string.Empty);
     }
 }

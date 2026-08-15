@@ -1,7 +1,7 @@
 {
-  "Name": "ApprovalFlow",
+  "Name": "ApprovalRoute",
   "DataSourceName": "SampleSQLite",
-  "DbTable": "approval_flows",
+  "DbTable": "approval_routes",
   "CanCreate": true,
   "CanUpdate": true,
   "CanDelete": true,
@@ -28,93 +28,10 @@
       "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.IdFieldDesign"
     },
     {
-      "EnumName": "ApprovalFlowStatus",
-      "Candidates": [],
-      "SearchCondition": {
-        "SelectFields": [],
-        "SortConditions": [],
-        "SortFieldVariable": "",
-        "SortDescending": false,
-        "ModuleName": "",
-        "Condition": {
-          "IsOrMatch": false,
-          "IsNot": false,
-          "Children": [],
-          "Name": "",
-          "TypeFullName": "Codeer.LowCode.Blazor.Repository.Match.MultiMatchCondition"
-        }
-      },
-      "ValueVariable": "",
-      "DisplayTextVariable": "",
-      "DbColumn": "status",
-      "EmptyCandidateType": "StringEmpty",
-      "AllowOrSearch": false,
-      "IsUpdateProtected": false,
-      "IsSimpleSearchParameter": false,
-      "AllowEmptySearch": true,
-      "OnSearchDataChanged": "",
-      "DisplayName": "",
-      "IsRequired": false,
-      "OnDataChanged": "",
-      "Name": "Status",
-      "IgnoreModification": false,
-      "OnValidateInput": "",
-      "IsFocusSkip": false,
-      "NextFocusField": "",
-      "OnFocusMoving": "",
-      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.SelectFieldDesign"
-    },
-    {
-      "DbColumn": "target_module_name",
-      "IsMultiline": false,
-      "IsAutoFitRows": false,
-      "Placeholder": "",
-      "TextEditEmptyType": "StringEmpty",
-      "ShouldTrimAfterEdit": false,
-      "AutoTab": false,
-      "IsUpdateProtected": false,
-      "IsSimpleSearchParameter": false,
-      "AllowEmptySearch": false,
-      "OnSearchDataChanged": "",
-      "DisplayName": "",
-      "IsRequired": false,
-      "OnDataChanged": "",
-      "Name": "TargetModuleName",
-      "IgnoreModification": false,
-      "OnValidateInput": "",
-      "IsFocusSkip": false,
-      "NextFocusField": "",
-      "OnFocusMoving": "",
-      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.TextFieldDesign"
-    },
-    {
-      "DbColumn": "target_id",
-      "IsMultiline": false,
-      "IsAutoFitRows": false,
-      "Placeholder": "",
-      "TextEditEmptyType": "StringEmpty",
-      "ShouldTrimAfterEdit": false,
-      "AutoTab": false,
-      "IsUpdateProtected": false,
-      "IsSimpleSearchParameter": false,
-      "AllowEmptySearch": false,
-      "OnSearchDataChanged": "",
-      "DisplayName": "",
-      "IsRequired": false,
-      "OnDataChanged": "",
-      "Name": "TargetId",
-      "IgnoreModification": false,
-      "OnValidateInput": "",
-      "IsFocusSkip": false,
-      "NextFocusField": "",
-      "OnFocusMoving": "",
-      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.TextFieldDesign"
-    },
-    {
       "DbColumn": "route_name",
       "IsMultiline": false,
       "IsAutoFitRows": false,
-      "Placeholder": "",
+      "Placeholder": "経路名",
       "TextEditEmptyType": "StringEmpty",
       "ShouldTrimAfterEdit": false,
       "AutoTab": false,
@@ -123,7 +40,7 @@
       "AllowEmptySearch": false,
       "OnSearchDataChanged": "",
       "DisplayName": "",
-      "IsRequired": false,
+      "IsRequired": true,
       "OnDataChanged": "",
       "Name": "RouteName",
       "IgnoreModification": false,
@@ -134,84 +51,6 @@
       "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.TextFieldDesign"
     },
     {
-      "SearchCondition": {
-        "SelectFields": [],
-        "SortConditions": [],
-        "SortFieldVariable": "",
-        "SortDescending": false,
-        "ModuleName": "AppUser",
-        "Condition": {
-          "IsOrMatch": false,
-          "IsNot": false,
-          "Children": [],
-          "Name": "",
-          "TypeFullName": "Codeer.LowCode.Blazor.Repository.Match.MultiMatchCondition"
-        }
-      },
-      "ValueVariable": "Id.Value",
-      "DisplayTextVariable": "Name.Value",
-      "DbColumn": "applicant",
-      "ListLayoutName": "",
-      "SearchLayoutName": "",
-      "OnSearchButtonClicked": "",
-      "IsUpdateProtected": false,
-      "IsSimpleSearchParameter": false,
-      "AllowEmptySearch": false,
-      "OnSearchDataChanged": "",
-      "DisplayName": "",
-      "IsRequired": false,
-      "OnDataChanged": "",
-      "Name": "Applicant",
-      "IgnoreModification": false,
-      "OnValidateInput": "",
-      "IsFocusSkip": false,
-      "NextFocusField": "",
-      "OnFocusMoving": "",
-      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.LinkFieldDesign"
-    },
-    {
-      "DbColumn": "attempt_no",
-      "Placeholder": "",
-      "Format": "",
-      "IsSlider": false,
-      "OnInput": "",
-      "IsUpdateProtected": false,
-      "IsSimpleSearchParameter": false,
-      "AllowEmptySearch": false,
-      "OnSearchDataChanged": "",
-      "DisplayName": "",
-      "IsRequired": false,
-      "OnDataChanged": "",
-      "Name": "AttemptNo",
-      "IgnoreModification": false,
-      "OnValidateInput": "",
-      "IsFocusSkip": false,
-      "NextFocusField": "",
-      "OnFocusMoving": "",
-      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.NumberFieldDesign"
-    },
-    {
-      "DbColumn": "current_step_no",
-      "Placeholder": "",
-      "Format": "",
-      "IsSlider": false,
-      "OnInput": "",
-      "IsUpdateProtected": false,
-      "IsSimpleSearchParameter": false,
-      "AllowEmptySearch": false,
-      "OnSearchDataChanged": "",
-      "DisplayName": "",
-      "IsRequired": false,
-      "OnDataChanged": "",
-      "Name": "CurrentStepNo",
-      "IgnoreModification": false,
-      "OnValidateInput": "",
-      "IsFocusSkip": false,
-      "NextFocusField": "",
-      "OnFocusMoving": "",
-      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.NumberFieldDesign"
-    },
-    {
       "LayoutName": "",
       "CanNavigateToDetail": false,
       "NavigateModuleUrlSegment": "",
@@ -221,16 +60,21 @@
       "DisplayName": "",
       "SearchCondition": {
         "SelectFields": [],
-        "SortConditions": [],
+        "SortConditions": [
+          {
+            "Variable": "StepNo.Value",
+            "IsDescending": false
+          }
+        ],
         "SortFieldVariable": "",
         "SortDescending": false,
-        "ModuleName": "ApprovalFlowMember",
+        "ModuleName": "ApprovalRouteStep",
         "Condition": {
           "IsOrMatch": false,
           "IsNot": false,
           "Children": [
             {
-              "SearchTargetVariable": "Flow.Value",
+              "SearchTargetVariable": "Route.Value",
               "Comparison": "Equal",
               "Variable": "Id.Value",
               "TypeFullName": "Codeer.LowCode.Blazor.Repository.Match.FieldVariableMatchCondition"
@@ -242,10 +86,10 @@
       },
       "PagerPosition": "Top",
       "ReplaceMode": "None",
-      "DeleteTogether": false,
-      "CanCreate": false,
-      "CanUpdate": false,
-      "CanDelete": false,
+      "DeleteTogether": true,
+      "CanCreate": true,
+      "CanUpdate": true,
+      "CanDelete": true,
       "CanUserSort": true,
       "CanSelect": false,
       "UseIndexSort": false,
@@ -254,7 +98,7 @@
       "OnSelectedIndexChanged": "",
       "OnSelectedIndexChanging": "",
       "OnDoubleClickRow": "",
-      "Name": "Members",
+      "Name": "Steps",
       "IgnoreModification": false,
       "OnValidateInput": "",
       "IsFocusSkip": false,
@@ -263,97 +107,56 @@
       "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.ListFieldDesign"
     },
     {
-      "LayoutName": "",
-      "CanNavigateToDetail": false,
-      "NavigateModuleUrlSegment": "",
-      "CanCustomizeColumns": false,
-      "FixedColumnCount": 0,
-      "ApplyBackgroundToBoxInput": false,
-      "DisplayName": "",
-      "SearchCondition": {
-        "SelectFields": [],
-        "SortConditions": [],
-        "SortFieldVariable": "",
-        "SortDescending": false,
-        "ModuleName": "ApprovalHistory",
-        "Condition": {
-          "IsOrMatch": false,
-          "IsNot": false,
-          "Children": [
-            {
-              "SearchTargetVariable": "Flow.Value",
-              "Comparison": "Equal",
-              "Variable": "Id.Value",
-              "TypeFullName": "Codeer.LowCode.Blazor.Repository.Match.FieldVariableMatchCondition"
-            }
-          ],
-          "Name": "",
-          "TypeFullName": "Codeer.LowCode.Blazor.Repository.Match.MultiMatchCondition"
-        }
-      },
-      "PagerPosition": "Top",
-      "ReplaceMode": "None",
-      "DeleteTogether": false,
-      "CanCreate": false,
-      "CanUpdate": false,
-      "CanDelete": false,
-      "CanUserSort": true,
-      "CanSelect": false,
-      "UseIndexSort": false,
-      "OnDataChanged": "",
-      "OnSearchDataChanged": "",
-      "OnSelectedIndexChanged": "",
-      "OnSelectedIndexChanging": "",
-      "OnDoubleClickRow": "",
-      "Name": "Histories",
-      "IgnoreModification": false,
-      "OnValidateInput": "",
-      "IsFocusSkip": false,
-      "NextFocusField": "",
-      "OnFocusMoving": "",
-      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.ListFieldDesign"
-    },
-    {
-      "DbColumn": "version",
-      "IncrementVersion": true,
-      "Name": "OptimisticLocking",
-      "IgnoreModification": false,
-      "OnValidateInput": "",
-      "IsFocusSkip": false,
-      "NextFocusField": "",
-      "OnFocusMoving": "",
-      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.OptimisticLockingFieldDesign"
-    },
-    {
-      "Status": "Status",
-      "TargetModuleName": "TargetModuleName",
-      "TargetId": "TargetId",
       "RouteName": "RouteName",
-      "Applicant": "Applicant",
-      "AttemptNo": "AttemptNo",
-      "CurrentStepNo": "CurrentStepNo",
-      "Members": "Members",
-      "Histories": "Histories",
+      "Steps": "Steps",
       "Name": "Contract",
       "IgnoreModification": false,
       "OnValidateInput": "",
       "IsFocusSkip": false,
       "NextFocusField": "",
       "OnFocusMoving": "",
-      "TypeFullName": "Codeer.LowCode.Blazor.Extras.Designs.ApprovalFlowContractFieldDesign"
+      "TypeFullName": "Codeer.LowCode.Blazor.Extras.Designs.ApprovalRouteContractFieldDesign"
+    },
+    {
+      "Text": "経路名",
+      "Icon": "",
+      "IsHtml": false,
+      "Style": "Default",
+      "RelativeField": "",
+      "OnClick": "",
+      "Name": "RouteNameLabel",
+      "IgnoreModification": false,
+      "OnValidateInput": "",
+      "IsFocusSkip": false,
+      "NextFocusField": "",
+      "OnFocusMoving": "",
+      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.LabelFieldDesign"
+    },
+    {
+      "Text": "保存",
+      "ImageResourcePath": "",
+      "ImageResourceSet": {
+        "Default": "",
+        "Focus": "",
+        "Active": "",
+        "Hover": "",
+        "Disabled": ""
+      },
+      "Icon": "",
+      "Variant": "Primary",
+      "IsHtml": false,
+      "IsBlock": true,
+      "Name": "SubmitButton",
+      "IgnoreModification": false,
+      "OnValidateInput": "",
+      "IsFocusSkip": false,
+      "NextFocusField": "",
+      "OnFocusMoving": "",
+      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.SubmitButtonFieldDesign"
     }
   ],
   "UserWriteCondition": {
-    "ModuleName": "AppUser",
-    "Condition": {
-      "SearchTargetVariable": "Id.Value",
-      "Comparison": "Equal",
-      "Value": {
-        "Value": "__nobody__",
-        "TypeFullName": "Codeer.LowCode.Blazor.Repository.StringValue"
-      },
-      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Match.FieldValueMatchCondition"
-    }
+    "ModuleName": ""
   },
   "UserReadCondition": {
     "ModuleName": ""
@@ -404,6 +207,17 @@
             "IsRowMarginRemoved": false,
             "Columns": [
               {
+                "Layout": {
+                  "FieldName": "RouteNameLabel",
+                  "ContextMenu": "",
+                  "ClassName": "",
+                  "FontFamily": "",
+                  "Color": "",
+                  "Name": "",
+                  "BackgroundColor": "",
+                  "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.FieldLayoutDesign"
+                },
+                "Width": 140,
                 "IgnoreContentWidth": false,
                 "Padding": {},
                 "BackgroundColor": "",
@@ -418,6 +232,16 @@
                 "Border": "None"
               },
               {
+                "Layout": {
+                  "FieldName": "RouteName",
+                  "ContextMenu": "",
+                  "ClassName": "",
+                  "FontFamily": "",
+                  "Color": "",
+                  "Name": "",
+                  "BackgroundColor": "",
+                  "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.FieldLayoutDesign"
+                },
                 "IgnoreContentWidth": false,
                 "Padding": {},
                 "BackgroundColor": "",
@@ -430,8 +254,33 @@
                 "CanResize": false,
                 "AllowOverflow": false,
                 "Border": "None"
-              },
+              }
+            ]
+          },
+          {
+            "IsWrap": false,
+            "IsAutoFillWrap": false,
+            "Margin": {
+              "Top": 12
+            },
+            "GridRowType": "Normal",
+            "CanResize": false,
+            "BackgroundColor": "",
+            "KeepInFillAvailableGrid": false,
+            "IsProportionalScale": false,
+            "IsRowMarginRemoved": false,
+            "Columns": [
               {
+                "Layout": {
+                  "FieldName": "Steps",
+                  "ContextMenu": "",
+                  "ClassName": "",
+                  "FontFamily": "",
+                  "Color": "",
+                  "Name": "",
+                  "BackgroundColor": "",
+                  "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.FieldLayoutDesign"
+                },
                 "IgnoreContentWidth": false,
                 "Padding": {},
                 "BackgroundColor": "",
@@ -444,8 +293,33 @@
                 "CanResize": false,
                 "AllowOverflow": false,
                 "Border": "None"
-              },
+              }
+            ]
+          },
+          {
+            "IsWrap": false,
+            "IsAutoFillWrap": false,
+            "Margin": {
+              "Top": 12
+            },
+            "GridRowType": "Normal",
+            "CanResize": false,
+            "BackgroundColor": "",
+            "KeepInFillAvailableGrid": false,
+            "IsProportionalScale": false,
+            "IsRowMarginRemoved": false,
+            "Columns": [
               {
+                "Layout": {
+                  "FieldName": "SubmitButton",
+                  "ContextMenu": "",
+                  "ClassName": "",
+                  "FontFamily": "",
+                  "Color": "",
+                  "Name": "",
+                  "BackgroundColor": "",
+                  "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.FieldLayoutDesign"
+                },
                 "IgnoreContentWidth": false,
                 "Padding": {},
                 "BackgroundColor": "",
@@ -479,77 +353,9 @@
       "Elements": [
         [
           {
-            "FieldName": "Status",
-            "ContextMenu": "",
-            "Label": "状態",
-            "IsMaxWidthFixed": false,
-            "ColumnSpan": 1,
-            "RowSpan": 1,
-            "TextWrap": "Unset",
-            "CanResize": false,
-            "CanUserSort": true,
-            "ClassName": "",
-            "FontFamily": "",
-            "Color": "",
-            "BackgroundColor": "",
-            "DetailLayoutName": "",
-            "ListElementComponent": ""
-          },
-          {
-            "FieldName": "TargetModuleName",
-            "ContextMenu": "",
-            "Label": "申請書",
-            "IsMaxWidthFixed": false,
-            "ColumnSpan": 1,
-            "RowSpan": 1,
-            "TextWrap": "Unset",
-            "CanResize": false,
-            "CanUserSort": true,
-            "ClassName": "",
-            "FontFamily": "",
-            "Color": "",
-            "BackgroundColor": "",
-            "DetailLayoutName": "",
-            "ListElementComponent": ""
-          },
-          {
-            "FieldName": "TargetId",
-            "ContextMenu": "",
-            "Label": "Id",
-            "IsMaxWidthFixed": false,
-            "ColumnSpan": 1,
-            "RowSpan": 1,
-            "TextWrap": "Unset",
-            "CanResize": false,
-            "CanUserSort": true,
-            "ClassName": "",
-            "FontFamily": "",
-            "Color": "",
-            "BackgroundColor": "",
-            "DetailLayoutName": "",
-            "ListElementComponent": ""
-          },
-          {
             "FieldName": "RouteName",
             "ContextMenu": "",
-            "Label": "経路",
-            "IsMaxWidthFixed": false,
-            "ColumnSpan": 1,
-            "RowSpan": 1,
-            "TextWrap": "Unset",
-            "CanResize": false,
-            "CanUserSort": true,
-            "ClassName": "",
-            "FontFamily": "",
-            "Color": "",
-            "BackgroundColor": "",
-            "DetailLayoutName": "",
-            "ListElementComponent": ""
-          },
-          {
-            "FieldName": "AttemptNo",
-            "ContextMenu": "",
-            "Label": "試行",
+            "Label": "経路名",
             "IsMaxWidthFixed": false,
             "ColumnSpan": 1,
             "RowSpan": 1,
@@ -705,5 +511,5 @@
   },
   "CanBulkDataUpdate": false,
   "CanBulkDataDownload": false,
-  "PageTitle": ""
+  "PageTitle": "承認経路マスタ"
 }
