@@ -1169,21 +1169,21 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
             }
         }
 
-        internal static string ApprovalMemberModuleName {
+        internal static string ApprovalHistoryField {
             get {
-                return ResourceManager.GetString("ApprovalMemberModuleName", resourceCulture);
+                return ResourceManager.GetString("ApprovalHistoryField", resourceCulture);
             }
         }
 
-        internal static string ApprovalHistoryModuleName {
+        internal static string ApprovalFieldName {
             get {
-                return ResourceManager.GetString("ApprovalHistoryModuleName", resourceCulture);
+                return ResourceManager.GetString("ApprovalFieldName", resourceCulture);
             }
         }
 
-        internal static string ApprovalAllowScriptRoute {
+        internal static string ApprovalCheck_NotApprovalFlowFieldFormat {
             get {
-                return ResourceManager.GetString("ApprovalAllowScriptRoute", resourceCulture);
+                return ResourceManager.GetString("ApprovalCheck_NotApprovalFlowFieldFormat", resourceCulture);
             }
         }
 
@@ -1327,12 +1327,6 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
             }
         }
 
-        internal static string ApprovalError_ScriptRouteNotAllowed {
-            get {
-                return ResourceManager.GetString("ApprovalError_ScriptRouteNotAllowed", resourceCulture);
-            }
-        }
-
         internal static string ApprovalError_InvalidRouteFormat {
             get {
                 return ResourceManager.GetString("ApprovalError_InvalidRouteFormat", resourceCulture);
@@ -1405,12 +1399,6 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
             }
         }
 
-        internal static string ApprovalOnStateChanged {
-            get {
-                return ResourceManager.GetString("ApprovalOnStateChanged", resourceCulture);
-            }
-        }
-
         internal static string ApprovalWithdrawPolicy {
             get {
                 return ResourceManager.GetString("ApprovalWithdrawPolicy", resourceCulture);
@@ -1423,51 +1411,153 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
             }
         }
 
-        internal static string ApprovalHiddenActions {
-            get {
-                return ResourceManager.GetString("ApprovalHiddenActions", resourceCulture);
-            }
-        }
-
-        internal static string ApprovalCommentFieldName {
-            get {
-                return ResourceManager.GetString("ApprovalCommentFieldName", resourceCulture);
-            }
-        }
-
         internal static string ApprovalOnBuildRoute {
             get {
                 return ResourceManager.GetString("ApprovalOnBuildRoute", resourceCulture);
             }
         }
 
-        internal static string ApprovalCheck_UnknownActionFormat {
+        internal static string ApprovalFlowContractField {
             get {
-                return ResourceManager.GetString("ApprovalCheck_UnknownActionFormat", resourceCulture);
+                return ResourceManager.GetString("ApprovalFlowContractField", resourceCulture);
             }
         }
 
-        internal static string ApprovalStateDbColumn {
+        internal static string ApprovalMemberContractField {
             get {
-                return ResourceManager.GetString("ApprovalStateDbColumn", resourceCulture);
+                return ResourceManager.GetString("ApprovalMemberContractField", resourceCulture);
             }
         }
 
-        internal static string ApprovalApplicantDbColumn {
+        internal static string ApprovalHistoryContractField {
             get {
-                return ResourceManager.GetString("ApprovalApplicantDbColumn", resourceCulture);
+                return ResourceManager.GetString("ApprovalHistoryContractField", resourceCulture);
             }
         }
 
-        internal static string ApprovalMembersListFieldName {
+        internal static string ApprovalCheck_ContractFieldMissingFormat {
             get {
-                return ResourceManager.GetString("ApprovalMembersListFieldName", resourceCulture);
+                return ResourceManager.GetString("ApprovalCheck_ContractFieldMissingFormat", resourceCulture);
             }
         }
 
-        internal static string ApprovalCheck_MembersListFieldMismatchFormat {
+        internal static string ApprovalCheck_ContractFieldDuplicatedFormat {
             get {
-                return ResourceManager.GetString("ApprovalCheck_MembersListFieldMismatchFormat", resourceCulture);
+                return ResourceManager.GetString("ApprovalCheck_ContractFieldDuplicatedFormat", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalCheck_RoleMustBeListFormat {
+            get {
+                return ResourceManager.GetString("ApprovalCheck_RoleMustBeListFormat", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalFlowStatus_InProgress {
+            get {
+                return ResourceManager.GetString("ApprovalFlowStatus_InProgress", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalFlowStatus_Completed {
+            get {
+                return ResourceManager.GetString("ApprovalFlowStatus_Completed", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalFlowStatus_Rejected {
+            get {
+                return ResourceManager.GetString("ApprovalFlowStatus_Rejected", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalFlowStatus_Returned {
+            get {
+                return ResourceManager.GetString("ApprovalFlowStatus_Returned", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalFlowStatus_Withdrawn {
+            get {
+                return ResourceManager.GetString("ApprovalFlowStatus_Withdrawn", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalMemberStatus_Pending {
+            get {
+                return ResourceManager.GetString("ApprovalMemberStatus_Pending", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalMemberStatus_Waiting {
+            get {
+                return ResourceManager.GetString("ApprovalMemberStatus_Waiting", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalMemberStatus_Approved {
+            get {
+                return ResourceManager.GetString("ApprovalMemberStatus_Approved", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalMemberStatus_Rejected {
+            get {
+                return ResourceManager.GetString("ApprovalMemberStatus_Rejected", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalMemberStatus_Confirmed {
+            get {
+                return ResourceManager.GetString("ApprovalMemberStatus_Confirmed", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalMemberStatus_Skipped {
+            get {
+                return ResourceManager.GetString("ApprovalMemberStatus_Skipped", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalStepType_Approval {
+            get {
+                return ResourceManager.GetString("ApprovalStepType_Approval", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalStepType_Confirmation {
+            get {
+                return ResourceManager.GetString("ApprovalStepType_Confirmation", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalCompletionPolicy_RequiredMembers {
+            get {
+                return ResourceManager.GetString("ApprovalCompletionPolicy_RequiredMembers", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalCompletionPolicy_All {
+            get {
+                return ResourceManager.GetString("ApprovalCompletionPolicy_All", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalCompletionPolicy_Any {
+            get {
+                return ResourceManager.GetString("ApprovalCompletionPolicy_Any", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalReturnScope_ApplicantOnly {
+            get {
+                return ResourceManager.GetString("ApprovalReturnScope_ApplicantOnly", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalReturnScope_AnyPreviousStep {
+            get {
+                return ResourceManager.GetString("ApprovalReturnScope_AnyPreviousStep", resourceCulture);
             }
         }
 

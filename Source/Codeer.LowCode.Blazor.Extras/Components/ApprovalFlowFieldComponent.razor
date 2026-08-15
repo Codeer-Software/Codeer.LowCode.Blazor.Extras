@@ -1,4 +1,5 @@
 @using Codeer.LowCode.Blazor.Components
+@using Codeer.LowCode.Blazor.DesignLogic
 @using Codeer.LowCode.Blazor.Extras.Approval
 @using Codeer.LowCode.Blazor.Extras.Fields
 @using Microsoft.AspNetCore.Components.Web
@@ -8,7 +9,7 @@
 {
   <div data-system="approval-flow" class="approval-flow">
     <span class="approval-not-submitted">@R.ApprovalNotSubmittedText</span>
-    @if (Field.Design.ShowActions && Field.CanSubmit && Field.IsActionVisible(ApprovalActions.Submit))
+    @if (Field.Design.ShowActions && Field.CanSubmit)
     {
       @if (ShowCommentBox)
       {
@@ -43,7 +44,7 @@ else
           <div class="approval-step @(step.IsCurrent ? "current" : "")">
             <div class="approval-step-name">
               @step.StepName
-              @if (step.StepType == ApprovalStepTypes.Confirmation)
+              @if (step.StepType == ApprovalStepType.Confirmation.ToDesignValue())
               {
                 <span class="approval-step-type">@R.ApprovalAction_Confirm</span>
               }
@@ -74,33 +75,24 @@ else
       <div class="approval-actions">
         @if (Field.CanApprove)
         {
-          @if (Field.IsActionVisible(ApprovalActions.Approve))
-          {
-            <button type="button" class="btn btn-primary" disabled="@Field.IsBusy"
-                    @onclick="@(async () => await ExecuteAsync(ApprovalActions.Approve))">@R.ApprovalAction_Approve</button>
-          }
-          @if (Field.IsActionVisible(ApprovalActions.Reject))
-          {
-            <button type="button" class="btn btn-outline-danger" disabled="@Field.IsBusy"
-                    @onclick="@(async () => await ExecuteAsync(ApprovalActions.Reject))">@R.ApprovalAction_Reject</button>
-          }
-          @if (Field.IsActionVisible(ApprovalActions.Return))
-          {
-            <button type="button" class="btn btn-outline-secondary" disabled="@Field.IsBusy"
-                    @onclick="@(async () => await ExecuteAsync(ApprovalActions.Return))">@R.ApprovalAction_Return</button>
-          }
+          <button type="button" class="btn btn-primary" disabled="@Field.IsBusy"
+                  @onclick="@(async () => await ExecuteAsync(ApprovalAction.Approve.ToDesignValue()))">@R.ApprovalAction_Approve</button>
+          <button type="button" class="btn btn-outline-danger" disabled="@Field.IsBusy"
+                  @onclick="@(async () => await ExecuteAsync(ApprovalAction.Reject.ToDesignValue()))">@R.ApprovalAction_Reject</button>
+          <button type="button" class="btn btn-outline-secondary" disabled="@Field.IsBusy"
+                  @onclick="@(async () => await ExecuteAsync(ApprovalAction.Return.ToDesignValue()))">@R.ApprovalAction_Return</button>
         }
-        @if (Field.CanConfirm && Field.IsActionVisible(ApprovalActions.Confirm))
+        @if (Field.CanConfirm)
         {
           <button type="button" class="btn btn-outline-primary" disabled="@Field.IsBusy"
-                  @onclick="@(async () => await ExecuteAsync(ApprovalActions.Confirm))">@R.ApprovalAction_Confirm</button>
+                  @onclick="@(async () => await ExecuteAsync(ApprovalAction.Confirm.ToDesignValue()))">@R.ApprovalAction_Confirm</button>
         }
-        @if (Field.CanWithdraw && Field.IsActionVisible(ApprovalActions.Withdraw))
+        @if (Field.CanWithdraw)
         {
           <button type="button" class="btn btn-outline-secondary" disabled="@Field.IsBusy"
-                  @onclick="@(async () => await ExecuteAsync(ApprovalActions.Withdraw))">@R.ApprovalAction_Withdraw</button>
+                  @onclick="@(async () => await ExecuteAsync(ApprovalAction.Withdraw.ToDesignValue()))">@R.ApprovalAction_Withdraw</button>
         }
-        @if (Field.CanResubmitNow && Field.IsActionVisible(ApprovalActions.Resubmit))
+        @if (Field.CanResubmitNow)
         {
           <button type="button" class="btn btn-primary" disabled="@Field.IsBusy"
                   @onclick="@(async () => await SubmitAsync(isResubmit: true))">@R.ApprovalAction_Resubmit</button>
@@ -140,8 +132,7 @@ else
 
   bool HasAnyAction => Field.CanApprove || Field.CanConfirm || Field.CanWithdraw || Field.CanResubmitNow;
 
-  //コメント入力元フィールドが指定されている場合は組み込みコメント欄を出さない (入力 UI はアプリの持ち物)
-  bool ShowCommentBox => Field.Design.ShowComment && string.IsNullOrEmpty(Field.Design.CommentFieldName);
+  bool ShowCommentBox => Field.Design.ShowComment;
 
   async Task SubmitAsync(bool isResubmit)
   {
@@ -150,7 +141,7 @@ else
     {
       await Field.Services.UIService.NotifySuccess(string.Format(
         Codeer.LowCode.Blazor.Extras.Properties.Resources.ApprovalDoneFormat,
-        ActionText(isResubmit ? ApprovalActions.Resubmit : ApprovalActions.Submit)));
+        ActionText(isResubmit ? ApprovalAction.Resubmit.ToDesignValue() : ApprovalAction.Submit.ToDesignValue())));
     }
     else if (!string.IsNullOrEmpty(result.ErrorMessage))
     {
@@ -158,60 +149,50 @@ else
     }
   }
 
-  string FlowStatusText => Field.FlowStatus switch
+  string FlowStatusText => Enum.TryParse<ApprovalFlowStatus>(Field.FlowStatus, out var status) ? status switch
   {
-    ApprovalFlowStatuses.InProgress => Codeer.LowCode.Blazor.Extras.Properties.Resources.ApprovalStatus_InProgress,
-    ApprovalFlowStatuses.Completed => Codeer.LowCode.Blazor.Extras.Properties.Resources.ApprovalStatus_Completed,
-    ApprovalFlowStatuses.Rejected => Codeer.LowCode.Blazor.Extras.Properties.Resources.ApprovalStatus_Rejected,
-    ApprovalFlowStatuses.Returned => Codeer.LowCode.Blazor.Extras.Properties.Resources.ApprovalStatus_Returned,
-    ApprovalFlowStatuses.Withdrawn => Codeer.LowCode.Blazor.Extras.Properties.Resources.ApprovalStatus_Withdrawn,
+    ApprovalFlowStatus.InProgress => Codeer.LowCode.Blazor.Extras.Properties.Resources.ApprovalStatus_InProgress,
+    ApprovalFlowStatus.Completed => Codeer.LowCode.Blazor.Extras.Properties.Resources.ApprovalStatus_Completed,
+    ApprovalFlowStatus.Rejected => Codeer.LowCode.Blazor.Extras.Properties.Resources.ApprovalStatus_Rejected,
+    ApprovalFlowStatus.Returned => Codeer.LowCode.Blazor.Extras.Properties.Resources.ApprovalStatus_Returned,
+    ApprovalFlowStatus.Withdrawn => Codeer.LowCode.Blazor.Extras.Properties.Resources.ApprovalStatus_Withdrawn,
     _ => Field.FlowStatus,
-  };
+  } : Field.FlowStatus;
 
-  string ActionText(string action) => action switch
-  {
-    ApprovalActions.Submit => Codeer.LowCode.Blazor.Extras.Properties.Resources.ApprovalAction_Submit,
-    ApprovalActions.Approve => Codeer.LowCode.Blazor.Extras.Properties.Resources.ApprovalAction_Approve,
-    ApprovalActions.Reject => Codeer.LowCode.Blazor.Extras.Properties.Resources.ApprovalAction_Reject,
-    ApprovalActions.Return => Codeer.LowCode.Blazor.Extras.Properties.Resources.ApprovalAction_Return,
-    ApprovalActions.Withdraw => Codeer.LowCode.Blazor.Extras.Properties.Resources.ApprovalAction_Withdraw,
-    ApprovalActions.Resubmit => Codeer.LowCode.Blazor.Extras.Properties.Resources.ApprovalAction_Resubmit,
-    ApprovalActions.Confirm => Codeer.LowCode.Blazor.Extras.Properties.Resources.ApprovalAction_Confirm,
-    _ => action,
-  };
+  string ActionText(string action) => ApprovalDisplayText.ActionText(action);
 
-  string MemberMark(ApprovalMemberView member, ApprovalStepView step) => member.Status switch
+  string MemberMark(ApprovalMemberView member, ApprovalStepView step)
+    => Enum.TryParse<ApprovalMemberStatus>(member.Status, out var status) ? status switch
   {
-    ApprovalMemberStatuses.Approved => "✓",
-    ApprovalMemberStatuses.Confirmed => "✓",
-    ApprovalMemberStatuses.Rejected => "✗",
-    ApprovalMemberStatuses.Skipped => "—",
+    ApprovalMemberStatus.Approved or ApprovalMemberStatus.Confirmed => "✓",
+    ApprovalMemberStatus.Rejected => "✗",
+    ApprovalMemberStatus.Skipped => "—",
     //Waiting = 本当に今待っている人 (未到達は Pending で無印)
-    ApprovalMemberStatuses.Waiting when step.StepType == ApprovalStepTypes.Approval => "▶",
+    ApprovalMemberStatus.Waiting when step.StepType == ApprovalStepType.Approval.ToDesignValue() => "▶",
     _ => "",
-  };
+  } : "";
 
   async Task ExecuteAsync(string action)
   {
-    var comment = Field.GetActionComment();
+    var comment = Field.Comment;
 
     //却下・差し戻しのコメント必須はクライアントでも先に案内する (強制はサーバー)
-    if ((action == ApprovalActions.Reject || action == ApprovalActions.Return)
+    if ((action == ApprovalAction.Reject.ToDesignValue() || action == ApprovalAction.Return.ToDesignValue())
         && Field.IsCommentRequiredOnReject && string.IsNullOrWhiteSpace(comment))
     {
       await Field.Services.UIService.NotifyError(Codeer.LowCode.Blazor.Extras.Properties.Resources.ApprovalCommentRequired);
       return;
     }
 
-    var result = action switch
+    var result = Enum.TryParse<ApprovalAction>(action, out var a) ? a switch
     {
-      ApprovalActions.Approve => await Field.ApproveAsync(comment),
-      ApprovalActions.Reject => await Field.RejectAsync(comment),
-      ApprovalActions.Return => await Field.ReturnToApplicantAsync(comment),
-      ApprovalActions.Withdraw => await Field.WithdrawAsync(comment),
-      ApprovalActions.Confirm => await Field.ConfirmAsync(comment),
+      ApprovalAction.Approve => await Field.ApproveAsync(comment),
+      ApprovalAction.Reject => await Field.RejectAsync(comment),
+      ApprovalAction.Return => await Field.ReturnToApplicantAsync(comment),
+      ApprovalAction.Withdraw => await Field.WithdrawAsync(comment),
+      ApprovalAction.Confirm => await Field.ConfirmAsync(comment),
       _ => ApprovalActionResult.Failure(string.Empty),
-    };
+    } : ApprovalActionResult.Failure(string.Empty);
 
     if (result.IsSuccess)
     {

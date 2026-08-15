@@ -558,20 +558,20 @@
   <data name="ApprovalFlowField" xml:space="preserve">
     <value>承認フロー</value>
   </data>
+  <data name="ApprovalHistoryField" xml:space="preserve">
+    <value>承認履歴</value>
+  </data>
+  <data name="ApprovalFieldName" xml:space="preserve">
+    <value>承認フィールド</value>
+  </data>
+  <data name="ApprovalCheck_NotApprovalFlowFieldFormat" xml:space="preserve">
+    <value>'{0}' は承認フローフィールドではありません</value>
+  </data>
   <data name="DbColumn" xml:space="preserve">
     <value>DB列</value>
   </data>
   <data name="ApprovalFlowModuleName" xml:space="preserve">
     <value>承認フローモジュール</value>
-  </data>
-  <data name="ApprovalMemberModuleName" xml:space="preserve">
-    <value>承認メンバーモジュール</value>
-  </data>
-  <data name="ApprovalHistoryModuleName" xml:space="preserve">
-    <value>承認履歴モジュール</value>
-  </data>
-  <data name="ApprovalAllowScriptRoute" xml:space="preserve">
-    <value>スクリプト経路を許可</value>
   </data>
   <data name="ApprovalShowProgress" xml:space="preserve">
     <value>進捗を表示</value>
@@ -642,9 +642,6 @@
   <data name="ApprovalError_RouteRequired" xml:space="preserve">
     <value>経路が指定されていません</value>
   </data>
-  <data name="ApprovalError_ScriptRouteNotAllowed" xml:space="preserve">
-    <value>このフィールドはスクリプトで組み立てた経路を許可していません</value>
-  </data>
   <data name="ApprovalError_InvalidRouteFormat" xml:space="preserve">
     <value>経路が不正です: {0}</value>
   </data>
@@ -681,37 +678,85 @@
   <data name="ApprovalError_WithdrawNotAllowed" xml:space="preserve">
     <value>承認が始まっているため取り下げできません。承認者に差し戻しを依頼してください</value>
   </data>
-  <data name="ApprovalOnStateChanged" xml:space="preserve">
-    <value>状態変化時</value>
-  </data>
   <data name="ApprovalWithdrawPolicy" xml:space="preserve">
     <value>取り下げ許可範囲</value>
   </data>
   <data name="ApprovalShowActions" xml:space="preserve">
     <value>アクションボタンを表示</value>
   </data>
-  <data name="ApprovalHiddenActions" xml:space="preserve">
-    <value>非表示アクション</value>
-  </data>
-  <data name="ApprovalCommentFieldName" xml:space="preserve">
-    <value>コメント入力フィールド</value>
-  </data>
   <data name="ApprovalOnBuildRoute" xml:space="preserve">
     <value>経路組み立て</value>
   </data>
-  <data name="ApprovalCheck_UnknownActionFormat" xml:space="preserve">
-    <value>不明なアクション名です: '{0}'</value>
+  <data name="ApprovalFlowContractField" xml:space="preserve">
+    <value>承認フロー契約</value>
   </data>
-  <data name="ApprovalStateDbColumn" xml:space="preserve">
-    <value>状態コピー列</value>
+  <data name="ApprovalMemberContractField" xml:space="preserve">
+    <value>承認メンバー契約</value>
   </data>
-  <data name="ApprovalApplicantDbColumn" xml:space="preserve">
-    <value>申請者コピー列</value>
+  <data name="ApprovalHistoryContractField" xml:space="preserve">
+    <value>承認履歴契約</value>
   </data>
-  <data name="ApprovalMembersListFieldName" xml:space="preserve">
-    <value>承認メンバー一覧フィールド</value>
+  <data name="ApprovalCheck_ContractFieldMissingFormat" xml:space="preserve">
+    <value>モジュール '{0}' に契約フィールド ({1}) がありません。役割マッピングを宣言する契約フィールドを配置してください。</value>
   </data>
-  <data name="ApprovalCheck_MembersListFieldMismatchFormat" xml:space="preserve">
-    <value>承認メンバー一覧フィールド '{0}' は承認メンバーモジュール '{1}' を表示する一覧フィールドにしてください。</value>
+  <data name="ApprovalCheck_ContractFieldDuplicatedFormat" xml:space="preserve">
+    <value>契約フィールド ({0}) が複数あります。1つにしてください。</value>
+  </data>
+  <data name="ApprovalCheck_RoleMustBeListFormat" xml:space="preserve">
+    <value>'{0}' には一覧フィールドを指定してください。</value>
+  </data>
+  <data name="ApprovalFlowStatus_InProgress" xml:space="preserve">
+    <value>承認中</value>
+  </data>
+  <data name="ApprovalFlowStatus_Completed" xml:space="preserve">
+    <value>承認済み</value>
+  </data>
+  <data name="ApprovalFlowStatus_Rejected" xml:space="preserve">
+    <value>却下</value>
+  </data>
+  <data name="ApprovalFlowStatus_Returned" xml:space="preserve">
+    <value>差し戻し</value>
+  </data>
+  <data name="ApprovalFlowStatus_Withdrawn" xml:space="preserve">
+    <value>取り下げ</value>
+  </data>
+  <data name="ApprovalMemberStatus_Pending" xml:space="preserve">
+    <value>未到達</value>
+  </data>
+  <data name="ApprovalMemberStatus_Waiting" xml:space="preserve">
+    <value>承認待ち</value>
+  </data>
+  <data name="ApprovalMemberStatus_Approved" xml:space="preserve">
+    <value>承認</value>
+  </data>
+  <data name="ApprovalMemberStatus_Rejected" xml:space="preserve">
+    <value>却下</value>
+  </data>
+  <data name="ApprovalMemberStatus_Confirmed" xml:space="preserve">
+    <value>確認済み</value>
+  </data>
+  <data name="ApprovalMemberStatus_Skipped" xml:space="preserve">
+    <value>スキップ</value>
+  </data>
+  <data name="ApprovalStepType_Approval" xml:space="preserve">
+    <value>承認</value>
+  </data>
+  <data name="ApprovalStepType_Confirmation" xml:space="preserve">
+    <value>回覧</value>
+  </data>
+  <data name="ApprovalCompletionPolicy_RequiredMembers" xml:space="preserve">
+    <value>必須全員</value>
+  </data>
+  <data name="ApprovalCompletionPolicy_All" xml:space="preserve">
+    <value>全員</value>
+  </data>
+  <data name="ApprovalCompletionPolicy_Any" xml:space="preserve">
+    <value>誰か1人</value>
+  </data>
+  <data name="ApprovalReturnScope_ApplicantOnly" xml:space="preserve">
+    <value>申請者のみ</value>
+  </data>
+  <data name="ApprovalReturnScope_AnyPreviousStep" xml:space="preserve">
+    <value>任意の前ステップ</value>
   </data>
 </root>

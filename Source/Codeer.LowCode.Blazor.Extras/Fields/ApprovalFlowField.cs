@@ -7,6 +7,7 @@ using Codeer.LowCode.Blazor.Extras.Services;
 using Codeer.LowCode.Blazor.OperatingModel;
 using Codeer.LowCode.Blazor.Repository;
 using Codeer.LowCode.Blazor.Repository.Data;
+using Codeer.LowCode.Blazor.Repository.Design;
 using Codeer.LowCode.Blazor.Repository.Match;
 using Codeer.LowCode.Blazor.RequestInterfaces;
 using Codeer.LowCode.Blazor.Script;
@@ -19,7 +20,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
     {
         public int StepNo { get; internal set; }
         public string StepName { get; internal set; } = string.Empty;
-        public string StepType { get; internal set; } = ApprovalStepTypes.Approval;
+        public string StepType { get; internal set; } = ApprovalStepType.Approval.ToDesignValue();
         public bool IsCurrent { get; internal set; }
         public List<ApprovalMemberView> Members { get; } = new();
     }
@@ -31,7 +32,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         public string UserId { get; internal set; } = string.Empty;
         public string UserDisplayText { get; internal set; } = string.Empty;
         public bool IsRequired { get; internal set; }
-        public string Status { get; internal set; } = ApprovalMemberStatuses.Waiting;
+        public string Status { get; internal set; } = ApprovalMemberStatus.Waiting.ToDesignValue();
         public DateTime? ActedAt { get; internal set; }
     }
 
@@ -53,10 +54,20 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
     public class ApprovalFlowField(ApprovalFlowFieldDesign design) : FieldBase<ApprovalFlowFieldDesign>(design)
     {
         string _flowId = string.Empty;
-        string? _state;
-        string? _applicant;
         bool _isLoaded;
         bool _isBusy;
+
+        //契約(役割→フィールド名のマッピング)の解決。メンバー・履歴モジュールは
+        //フロー契約の Members / Histories 一覧の参照先として決まる。
+        //契約フィールドが無い壊れたデザインでも表示側は既定名で保守的に動く(サーバーは厳格に拒否する)
+        ModuleDesign? FlowModuleDesign => Services.AppInfoService.GetDesignData().Modules.Find(Design.FlowModuleName);
+        ApprovalFlowContractFieldDesign FlowNames => ApprovalContracts.Flow(FlowModuleDesign) ?? new();
+        ApprovalMemberContractFieldDesign MemberNames
+            => ApprovalContracts.Member(Services.AppInfoService.GetDesignData().Modules.Find(MemberModuleName)) ?? new();
+        ApprovalHistoryContractFieldDesign HistoryNames
+            => ApprovalContracts.History(Services.AppInfoService.GetDesignData().Modules.Find(HistoryModuleName)) ?? new();
+        string MemberModuleName => ApprovalContracts.GetMemberModuleName(FlowModuleDesign);
+        string HistoryModuleName => ApprovalContracts.GetHistoryModuleName(FlowModuleDesign);
 
         /// <summary>承認フロー行の Id (未申請は空)。</summary>
         public string FlowId => _flowId;
@@ -64,7 +75,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         /// <summary>申請済みか。</summary>
         public bool IsSubmitted => !string.IsNullOrEmpty(_flowId);
 
-        /// <summary>フロー全体の状態 (ApprovalFlowStatuses。未申請は空)。</summary>
+        /// <summary>フロー全体の状態 (ApprovalFlowStatus の保存値。未申請は空)。</summary>
         public string FlowStatus { get; private set; } = string.Empty;
 
         [ScriptHide]
@@ -89,10 +100,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         [ScriptHide]
         public List<ApprovalHistoryView> History { get; } = new();
 
-        /// <summary>
-        /// アクションに添えるコメント (組み込みコメント欄がバインドする。スクリプトからも設定可能)。
-        /// CommentFieldName が設定されている場合はそのフィールドの値が優先される。
-        /// </summary>
+        /// <summary>アクションに添えるコメント (組み込みコメント欄がバインドする。スクリプトからも設定可能)。</summary>
         public string Comment { get; set; } = string.Empty;
 
         /// <summary>通信中か (二重実行防止)。</summary>
@@ -111,8 +119,6 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         {
             var data = fieldDataBase as ApprovalFlowFieldData;
             _flowId = data?.Id ?? string.Empty;
-            _state = data?.State;
-            _applicant = data?.Applicant;
             _isLoaded = false;
             FlowStatus = string.Empty;
             Steps.Clear();
@@ -128,13 +134,11 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         }
 
         //Id は未申請なら null (空文字だと 1:N バインド条件が null 検索にならない)。
-        //State/Applicant はコピー列の値を土台データから素通しする (条件のクライアント評価が参照する)
+        //状態・申請者はフロー行が正 (条件はリンク越し参照 "(フィールド名).Status" 等で読む)
         [ScriptHide]
         public override FieldDataBase? GetData() => new ApprovalFlowFieldData
         {
             Id = string.IsNullOrEmpty(_flowId) ? null : _flowId,
-            State = _state,
-            Applicant = _applicant,
         };
 
         //FK はクライアントから送信しない (サーバーの command API だけが書く)
@@ -146,41 +150,37 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             => await InitializeDataAsync(fieldDataBase);
 
         /// <summary>
-        /// 現在ユーザーが承認待ちメンバーか (表示制御用。強制はサーバー)。
+        /// 現在ユーザーが承認待ちメンバーか (組み込み・外付けボタンの表示制御用。強制はサーバー)。
         /// Waiting = 本当に今待っている人だけ、が正規化で保証されているので単純に探すだけでよい。
         /// </summary>
-        [ScriptHide]
         public bool CanApprove
-            => FlowStatus == ApprovalFlowStatuses.InProgress
-               && Steps.Where(e => e.StepType == ApprovalStepTypes.Approval)
+            => FlowStatus == ApprovalFlowStatus.InProgress.ToDesignValue()
+               && Steps.Where(e => e.StepType == ApprovalStepType.Approval.ToDesignValue())
                    .SelectMany(e => e.Members)
-                   .Any(e => e.Status == ApprovalMemberStatuses.Waiting
+                   .Any(e => e.Status == ApprovalMemberStatus.Waiting.ToDesignValue()
                        && e.UserId == Services.AppInfoService.CurrentUserId);
 
         /// <summary>現在ユーザーに未確認の回覧があるか (表示制御用)。</summary>
-        [ScriptHide]
         public bool CanConfirm
-            => Steps.Where(e => e.StepType == ApprovalStepTypes.Confirmation)
+            => Steps.Where(e => e.StepType == ApprovalStepType.Confirmation.ToDesignValue())
                 .SelectMany(e => e.Members)
-                .Any(e => e.Status == ApprovalMemberStatuses.Waiting
+                .Any(e => e.Status == ApprovalMemberStatus.Waiting.ToDesignValue()
                     && e.UserId == Services.AppInfoService.CurrentUserId);
 
         /// <summary>現在ユーザーが申請者か (表示制御用。強制はサーバー)。</summary>
-        [ScriptHide]
         public bool IsApplicant
             => !string.IsNullOrEmpty(ApplicantUserId) && ApplicantUserId == Services.AppInfoService.CurrentUserId;
 
         /// <summary>取り下げできるか (申請者・進行中・WithdrawPolicy の範囲内。表示制御用。強制はサーバー)。</summary>
-        [ScriptHide]
         public bool CanWithdraw
-            => IsApplicant && FlowStatus == ApprovalFlowStatuses.InProgress
+            => IsApplicant && FlowStatus == ApprovalFlowStatus.InProgress.ToDesignValue()
                && (Design.WithdrawPolicy == ApprovalWithdrawPolicy.Anytime
-                   || !Steps.Any(s => s.StepType == ApprovalStepTypes.Approval
-                       && s.Members.Any(m => m.Status == ApprovalMemberStatuses.Approved)));
+                   || !Steps.Any(s => s.StepType == ApprovalStepType.Approval.ToDesignValue()
+                       && s.Members.Any(m => m.Status == ApprovalMemberStatus.Approved.ToDesignValue())));
 
         /// <summary>現在の差し戻し許可範囲 (現在ステップのスナップショット値)。</summary>
         [ScriptHide]
-        public string CurrentReturnScope { get; private set; } = ApprovalReturnScopes.ApplicantOnly;
+        public string CurrentReturnScope { get; private set; } = ApprovalReturnScope.ApplicantOnly.ToDesignValue();
 
         /// <summary>現在ステップの却下・差し戻しコメント必須設定。</summary>
         [ScriptHide]
@@ -188,19 +188,12 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
 
 
         /// <summary>申請ボタンを出せるか (未申請・OnBuildRoute 設定済み。表示制御用)。</summary>
-        [ScriptHide]
         public bool CanSubmit
             => !IsSubmitted && !string.IsNullOrEmpty(Design.OnBuildRoute);
 
         /// <summary>再申請ボタンを出せるか (再申請可能状態・申請者・OnBuildRoute 設定済み。表示制御用)。</summary>
-        [ScriptHide]
         public bool CanResubmitNow
-            => ApprovalFlowStatuses.CanResubmit(FlowStatus) && IsApplicant && !string.IsNullOrEmpty(Design.OnBuildRoute);
-
-        /// <summary>組み込みボタンにアクションを表示するか (HiddenActions で除外できる)。</summary>
-        [ScriptHide]
-        public bool IsActionVisible(string action)
-            => !Design.SplitHiddenActions().Contains(action);
+            => ApprovalFlowStatusLogic.CanResubmit(FlowStatus) && IsApplicant && !string.IsNullOrEmpty(Design.OnBuildRoute);
 
         /// <summary>経路の組み立てを開始する (スクリプト用)。</summary>
         [ScriptName("NewRoute")]
@@ -232,7 +225,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
 
         /// <summary>
         /// 申請する (申請書の保存と同一トランザクション)。成功時は確定したレコードへ遷移する。
-        /// 経路はスクリプトで組み立てたものを渡す (デザインの AllowScriptRoute が必要)。
+        /// 経路はスクリプトで組み立てたものを渡す。
         /// </summary>
         [ScriptName("SubmitWithRoute")]
         public async Task<ApprovalActionResult> SubmitWithRouteAsync(ApprovalRouteData route)
@@ -246,32 +239,32 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         /// <summary>承認する。</summary>
         [ScriptName("Approve")]
         public async Task<ApprovalActionResult> ApproveAsync(string comment)
-            => await ExecuteCoreAsync(ApprovalActions.Approve, comment, null);
+            => await ExecuteCoreAsync(ApprovalAction.Approve.ToDesignValue(), comment, null);
 
         /// <summary>却下する。</summary>
         [ScriptName("Reject")]
         public async Task<ApprovalActionResult> RejectAsync(string comment)
-            => await ExecuteCoreAsync(ApprovalActions.Reject, comment, null);
+            => await ExecuteCoreAsync(ApprovalAction.Reject.ToDesignValue(), comment, null);
 
         /// <summary>申請者へ差し戻す。</summary>
         [ScriptName("ReturnToApplicant")]
         public async Task<ApprovalActionResult> ReturnToApplicantAsync(string comment)
-            => await ExecuteCoreAsync(ApprovalActions.Return, comment, null);
+            => await ExecuteCoreAsync(ApprovalAction.Return.ToDesignValue(), comment, null);
 
         /// <summary>過去のステップへ差し戻す (ステップ設定の ReturnScope が許す場合)。</summary>
         [ScriptName("ReturnToStep")]
         public async Task<ApprovalActionResult> ReturnToStepAsync(int stepNo, string comment)
-            => await ExecuteCoreAsync(ApprovalActions.Return, comment, stepNo);
+            => await ExecuteCoreAsync(ApprovalAction.Return.ToDesignValue(), comment, stepNo);
 
         /// <summary>取り下げる (申請者。承認が始まる前のみ。編集して再申請できる)。</summary>
         [ScriptName("Withdraw")]
         public async Task<ApprovalActionResult> WithdrawAsync(string comment)
-            => await ExecuteCoreAsync(ApprovalActions.Withdraw, comment, null);
+            => await ExecuteCoreAsync(ApprovalAction.Withdraw.ToDesignValue(), comment, null);
 
         /// <summary>回覧を確認済みにする。</summary>
         [ScriptName("Confirm")]
         public async Task<ApprovalActionResult> ConfirmAsync(string comment)
-            => await ExecuteCoreAsync(ApprovalActions.Confirm, comment, null);
+            => await ExecuteCoreAsync(ApprovalAction.Confirm.ToDesignValue(), comment, null);
 
         async Task<ApprovalActionResult> SubmitCoreAsync(ApprovalRouteData route, bool isResubmit)
         {
@@ -280,7 +273,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             if (!await Module.ValidateInput()) return ApprovalActionResult.Failure(Properties.Resources.ApprovalInputInvalid);
 
             _isBusy = true;
-            NotifyStateChanged();
+            NotifyViewStateChanged();
             try
             {
                 var request = new ApprovalSubmitRequest
@@ -289,7 +282,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
                     FieldName = Design.Name,
                     TargetSubmitData = Module.GetSubmitData(),
                     Route = route,
-                    Comment = GetActionComment(),
+                    Comment = Comment,
                     FlowId = isResubmit ? _flowId : string.Empty,
                     ExpectedVersion = isResubmit ? Version : string.Empty,
                 };
@@ -298,11 +291,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
                 {
                     Comment = string.Empty;
                     //再申請は同一 URL のため NavigateTo が no-op になる。フィールド表示は自前で最新化する
-                    if (isResubmit)
-                    {
-                        await ReloadAsync();
-                        await NotifyStateChangedScriptAsync();
-                    }
+                    if (isResubmit) await ReloadAsync();
                     //保存が確定したレコードへ遷移して再初期化する (FK・編集ロック状態を含めて最新化)
                     Services.NavigationService.NavigateTo(
                         Services.NavigationService.GetModuleDataUrl(Module.Design.Name, result.TargetId));
@@ -312,7 +301,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             finally
             {
                 _isBusy = false;
-                NotifyStateChanged();
+                NotifyViewStateChanged();
             }
         }
 
@@ -322,7 +311,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             if (Module == null || _isBusy || !IsSubmitted) return ApprovalActionResult.Failure("The field is not ready.");
 
             _isBusy = true;
-            NotifyStateChanged();
+            NotifyViewStateChanged();
             try
             {
                 var request = new ApprovalActionRequest
@@ -339,14 +328,13 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
                 {
                     Comment = string.Empty;
                     await ReloadAsync();
-                    await NotifyStateChangedScriptAsync();
                 }
                 return result;
             }
             finally
             {
                 _isBusy = false;
-                NotifyStateChanged();
+                NotifyViewStateChanged();
             }
         }
 
@@ -365,7 +353,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
 
             if (!IsSubmitted || Services.AppInfoService.IsDesignMode)
             {
-                NotifyStateChanged();
+                NotifyViewStateChanged();
                 return;
             }
 
@@ -376,21 +364,21 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
                 new() { Condition = CreateHistoryCondition() },
             };
             var pages = await Services.ModuleDataService.GetListAsync(requests);
-            if (pages.Count != 3) { NotifyStateChanged(); return; }
+            if (pages.Count != 3) { NotifyViewStateChanged(); return; }
 
             var flow = pages[0].Items.FirstOrDefault();
             if (flow != null)
             {
-                FlowStatus = GetString(flow, ApprovalFieldNames.Flow.Status) ?? string.Empty;
-                AttemptNo = GetInt(flow, ApprovalFieldNames.Flow.AttemptNo);
-                CurrentStepNo = GetInt(flow, ApprovalFieldNames.Flow.CurrentStepNo);
+                FlowStatus = GetString(flow, FlowNames.Status) ?? string.Empty;
+                AttemptNo = GetInt(flow, FlowNames.AttemptNo);
+                CurrentStepNo = GetInt(flow, FlowNames.CurrentStepNo);
                 Version = (flow.Fields.GetValueOrDefault(SystemFieldNames.OptimisticLocking) as OptimisticLockingFieldData)
                     ?.GetValue()?.ToString() ?? string.Empty;
             }
 
             BuildStepViews(pages[1].Items);
             BuildHistoryViews(pages[2].Items);
-            NotifyStateChanged();
+            NotifyViewStateChanged();
         }
 
         SearchCondition CreateFlowCondition() => new()
@@ -405,42 +393,42 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             SelectFields =
             [
                 SystemFieldNames.Id, SystemFieldNames.OptimisticLocking,
-                ApprovalFieldNames.Flow.Status, ApprovalFieldNames.Flow.AttemptNo,
-                ApprovalFieldNames.Flow.CurrentStepNo,
+                FlowNames.Status, FlowNames.AttemptNo,
+                FlowNames.CurrentStepNo,
             ],
         };
 
         SearchCondition CreateMemberCondition() => new()
         {
-            ModuleName = Design.MemberModuleName,
+            ModuleName = MemberModuleName,
             Condition = new FieldValueMatchCondition
             {
-                SearchTargetVariable = $"{ApprovalFieldNames.Member.Flow}.Value",
+                SearchTargetVariable = $"{MemberNames.Flow}.Value",
                 Comparison = MatchComparison.Equal,
                 Value = MultiTypeValue.Create(_flowId),
             },
             SortConditions =
             [
-                new SortCondition { Variable = $"{ApprovalFieldNames.Member.StepNo}.Value" },
+                new SortCondition { Variable = $"{MemberNames.StepNo}.Value" },
                 new SortCondition { Variable = $"{SystemFieldNames.Id}.Value" },
             ],
             SelectFields =
             [
                 SystemFieldNames.Id,
-                ApprovalFieldNames.Member.AttemptNo, ApprovalFieldNames.Member.StepNo,
-                ApprovalFieldNames.Member.StepName, ApprovalFieldNames.Member.StepType,
-                ApprovalFieldNames.Member.ReturnScope, ApprovalFieldNames.Member.IsCommentRequiredOnReject,
-                ApprovalFieldNames.Member.ApproverUser, ApprovalFieldNames.Member.IsRequired,
-                ApprovalFieldNames.Member.Status, ApprovalFieldNames.Member.ActedAt,
+                MemberNames.AttemptNo, MemberNames.StepNo,
+                MemberNames.StepName, MemberNames.StepType,
+                MemberNames.ReturnScope, MemberNames.IsCommentRequiredOnReject,
+                MemberNames.ApproverUser, MemberNames.IsRequired,
+                MemberNames.Status, MemberNames.ActedAt,
             ],
         };
 
         SearchCondition CreateHistoryCondition() => new()
         {
-            ModuleName = Design.HistoryModuleName,
+            ModuleName = HistoryModuleName,
             Condition = new FieldValueMatchCondition
             {
-                SearchTargetVariable = $"{ApprovalFieldNames.History.Flow}.Value",
+                SearchTargetVariable = $"{HistoryNames.Flow}.Value",
                 Comparison = MatchComparison.Equal,
                 Value = MultiTypeValue.Create(_flowId),
             },
@@ -448,46 +436,46 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             SelectFields =
             [
                 SystemFieldNames.Id,
-                ApprovalFieldNames.History.AttemptNo, ApprovalFieldNames.History.Action,
-                ApprovalFieldNames.History.ActorUser, ApprovalFieldNames.History.Comment,
-                ApprovalFieldNames.History.ActedAt,
+                HistoryNames.AttemptNo, HistoryNames.Action,
+                HistoryNames.ActorUser, HistoryNames.Comment,
+                HistoryNames.ActedAt,
             ],
         };
 
         void BuildStepViews(List<ModuleData> members)
         {
             //現在の試行のみ表示 (過去の試行は履歴で追える)
-            foreach (var member in members.Where(e => GetInt(e, ApprovalFieldNames.Member.AttemptNo) == AttemptNo))
+            foreach (var member in members.Where(e => GetInt(e, MemberNames.AttemptNo) == AttemptNo))
             {
-                var stepNo = GetInt(member, ApprovalFieldNames.Member.StepNo);
+                var stepNo = GetInt(member, MemberNames.StepNo);
                 var step = Steps.FirstOrDefault(e => e.StepNo == stepNo);
                 if (step == null)
                 {
                     step = new ApprovalStepView
                     {
                         StepNo = stepNo,
-                        StepName = GetString(member, ApprovalFieldNames.Member.StepName) ?? string.Empty,
-                        StepType = GetString(member, ApprovalFieldNames.Member.StepType) ?? ApprovalStepTypes.Approval,
-                        IsCurrent = FlowStatus == ApprovalFlowStatuses.InProgress && stepNo == CurrentStepNo,
+                        StepName = GetString(member, MemberNames.StepName) ?? string.Empty,
+                        StepType = GetString(member, MemberNames.StepType) ?? ApprovalStepType.Approval.ToDesignValue(),
+                        IsCurrent = FlowStatus == ApprovalFlowStatus.InProgress.ToDesignValue() && stepNo == CurrentStepNo,
                     };
                     Steps.Add(step);
                 }
 
-                var approver = member.Fields.GetValueOrDefault(ApprovalFieldNames.Member.ApproverUser) as LinkFieldData;
+                var approver = member.Fields.GetValueOrDefault(MemberNames.ApproverUser) as LinkFieldData;
                 step.Members.Add(new ApprovalMemberView
                 {
                     MemberId = GetString(member, SystemFieldNames.Id) ?? string.Empty,
                     UserId = approver?.Value ?? string.Empty,
                     UserDisplayText = string.IsNullOrEmpty(approver?.DisplayText) ? approver?.Value ?? string.Empty : approver.DisplayText,
-                    IsRequired = GetBool(member, ApprovalFieldNames.Member.IsRequired),
-                    Status = GetString(member, ApprovalFieldNames.Member.Status) ?? ApprovalMemberStatuses.Waiting,
-                    ActedAt = GetDateTime(member, ApprovalFieldNames.Member.ActedAt),
+                    IsRequired = GetBool(member, MemberNames.IsRequired),
+                    Status = GetString(member, MemberNames.Status) ?? ApprovalMemberStatus.Waiting.ToDesignValue(),
+                    ActedAt = GetDateTime(member, MemberNames.ActedAt),
                 });
 
                 if (step.IsCurrent)
                 {
-                    CurrentReturnScope = GetString(member, ApprovalFieldNames.Member.ReturnScope) ?? ApprovalReturnScopes.ApplicantOnly;
-                    IsCommentRequiredOnReject = GetBool(member, ApprovalFieldNames.Member.IsCommentRequiredOnReject);
+                    CurrentReturnScope = GetString(member, MemberNames.ReturnScope) ?? ApprovalReturnScope.ApplicantOnly.ToDesignValue();
+                    IsCommentRequiredOnReject = GetBool(member, MemberNames.IsCommentRequiredOnReject);
                 }
             }
         }
@@ -496,39 +484,32 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         {
             foreach (var history in histories)
             {
-                var actor = history.Fields.GetValueOrDefault(ApprovalFieldNames.History.ActorUser) as LinkFieldData;
+                var actor = history.Fields.GetValueOrDefault(HistoryNames.ActorUser) as LinkFieldData;
                 var entry = new ApprovalHistoryView
                 {
-                    AttemptNo = GetInt(history, ApprovalFieldNames.History.AttemptNo),
-                    Action = GetString(history, ApprovalFieldNames.History.Action) ?? string.Empty,
+                    AttemptNo = GetInt(history, HistoryNames.AttemptNo),
+                    Action = GetString(history, HistoryNames.Action) ?? string.Empty,
                     ActorDisplayText = string.IsNullOrEmpty(actor?.DisplayText) ? actor?.Value ?? string.Empty : actor.DisplayText,
-                    Comment = GetString(history, ApprovalFieldNames.History.Comment) ?? string.Empty,
-                    ActedAt = GetDateTime(history, ApprovalFieldNames.History.ActedAt),
+                    Comment = GetString(history, HistoryNames.Comment) ?? string.Empty,
+                    ActedAt = GetDateTime(history, HistoryNames.ActedAt),
                 };
                 History.Add(entry);
 
                 //申請者 = 最初の Submit の実行者 (履歴は新しい順で読むので最後に見つかったものが最古)
-                if (entry.Action == ApprovalActions.Submit) ApplicantUserId = actor?.Value ?? string.Empty;
+                if (entry.Action == ApprovalAction.Submit.ToDesignValue()) ApplicantUserId = actor?.Value ?? string.Empty;
             }
         }
 
-        //フロー状態の変化をモジュールスクリプトに伝える (ボタン出し分け等の表示更新用)
-        async Task NotifyStateChangedScriptAsync()
-        {
-            if (Module == null || string.IsNullOrEmpty(Design.OnStateChanged)) return;
-            await Module.ExecuteScriptAsync(Design.OnStateChanged);
-        }
-
         /// <summary>
-        /// アクションに添えるコメント。CommentFieldName 指定時はそのフィールドの値を使う
-        /// (RichTextField 等でコメント UI を差し替えられる。クリアはアプリ側の自由)。
+        /// 承認表示のサテライトフィールド (ApprovalHistoryField 等) が購読する再描画通知。
+        /// FieldBase の StateChangedReceiver は自コンポーネント占有のため別口で公開する。
         /// </summary>
-        [ScriptHide]
-        public string GetActionComment()
+        internal event Action? ViewStateChanged;
+
+        void NotifyViewStateChanged()
         {
-            if (string.IsNullOrEmpty(Design.CommentFieldName)) return Comment;
-            var fieldData = Module?.GetField<FieldBase>(Design.CommentFieldName)?.GetData();
-            return (fieldData as ValueFieldDataBase<string>)?.Value ?? string.Empty;
+            NotifyStateChanged();
+            ViewStateChanged?.Invoke();
         }
 
         IHttpService? GetHttpService() => Services.Provider?.GetService<IHttpService>();

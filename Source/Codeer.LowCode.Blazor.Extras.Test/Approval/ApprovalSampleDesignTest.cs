@@ -54,31 +54,75 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Approval
             var field = request.Fields.OfType<ApprovalFlowFieldDesign>().Single();
             Assert.That(field.Name, Is.EqualTo("Approval"));
             Assert.That(field.DbColumn, Is.EqualTo("approval_id"));
-            Assert.That(field.StateDbColumn, Is.EqualTo("approval_state"));
-            Assert.That(field.ApplicantDbColumn, Is.EqualTo("approval_applicant"));
-            Assert.That(field.AllowScriptRoute, Is.True);
             Assert.That(field.FlowModuleName, Is.EqualTo("ApprovalFlow"));
 
-            //dotted リンク列は一覧の表示列として残す (JSON の静かな読込失敗をここで検出する)
-            Assert.That(request.Fields.Any(e => e.Name == "Approval.Status"), Is.True);
+            //dotted リンク列はレイアウト使用から自動合成される (フロー側の Select+enum のクローンになる)
+            var statusClone = request.Fields.FirstOrDefault(e => e.Name == "Approval.Status");
+            Assert.That(statusClone, Is.InstanceOf<SelectFieldDesign>());
+            Assert.That(((SelectFieldDesign)statusClone!).EnumName, Is.EqualTo("ApprovalFlowStatus"));
 
-            //編集ロック条件は専用検索コントロールの正準形:
-            //1行 = FieldMatchCondition("Approval") に状態の Or (null = 未申請 + 編集可能3状態)
+            //編集ロック条件は汎用条件エディタの行モデル (1行 = 1ターゲット):
+            //Or 直下に "Approval.Status" への葉条件4つ (null = 未申請 + 編集可能3状態)
             var condition = request.DataWriteCondition.Condition as MultiMatchCondition;
             Assert.That(condition, Is.Not.Null);
             Assert.That(condition!.IsOrMatch, Is.True);
-            var stateRow = condition.Children.OfType<FieldMatchCondition>().Single();
-            Assert.That(stateRow.FieldName, Is.EqualTo("Approval"));
-            Assert.That(stateRow.IsOrMatch, Is.True);
-            Assert.That(stateRow.Children.Count, Is.EqualTo(4));
-            Assert.That(stateRow.Children.OfType<FieldValueMatchCondition>()
-                .All(e => e.SearchTargetVariable == "Approval.State"), Is.True);
-            Assert.That(stateRow.Children.OfType<FieldValueMatchCondition>()
-                .Count(e => e.Value is NullValue), Is.EqualTo(1));
+            var stateLeaves = condition.Children.OfType<FieldValueMatchCondition>().ToList();
+            Assert.That(stateLeaves.Count, Is.EqualTo(4));
+            Assert.That(stateLeaves.All(e => e.SearchTargetVariable == "Approval.Status.Value"), Is.True);
+            Assert.That(stateLeaves.Count(e => e.Value is NullValue), Is.EqualTo(1));
 
-            //条件エディタが専用検索コントロールを出せる (Extras.Designer 側の WPF コントロール)
-            Assert.That(field.GetSearchControlTypeFullName(), Is.Not.Empty);
-            Assert.That(field.MembersListFieldName, Is.EqualTo("ApprovalMembers"));
+            //専用の検索コントロールは持たない (条件は汎用エディタでリンク越しパスとして書く)
+            Assert.That(field.GetSearchControlTypeFullName(), Is.Empty);
+        }
+
+        [Test]
+        public void フローモジュールがメンバー一覧と履歴一覧を持つ()
+        {
+            //メンバー一覧はフローモジュール側の予約名 "Members"。
+            //申請書側の条件は "(フィールド名).Members.～" のリンク越し存在条件で参照する
+            //(申請書モジュールごとに一覧フィールドを複製しない)
+            var d = Load();
+            var flow = d.Modules.Find("ApprovalFlow")!;
+
+            var members = flow.Fields.OfType<ListFieldDesign>().Single(e => e.Name == "Members");
+            Assert.That(members.SearchCondition.ModuleName, Is.EqualTo("ApprovalFlowMember"));
+            var binding = members.SearchCondition.Condition as FieldVariableMatchCondition;
+            Assert.That(binding, Is.Not.Null);
+            Assert.That(binding!.SearchTargetVariable, Is.EqualTo("Flow.Value"));
+            Assert.That(binding.Variable, Is.EqualTo("Id.Value"));
+
+            var histories = flow.Fields.OfType<ListFieldDesign>().Single(e => e.Name == "Histories");
+            Assert.That(histories.SearchCondition.ModuleName, Is.EqualTo("ApprovalHistory"));
+        }
+
+        [Test]
+        public void 状態系フィールドはデザインenumで型付けされている()
+        {
+            //汎用の条件エディタで値候補(承認中/承認待ち等)が出るように、SelectField+enumにする
+            var d = Load();
+
+            var flowStatus = d.Modules.Find("ApprovalFlow")!.Fields.OfType<SelectFieldDesign>()
+                .Single(e => e.Name == "Status");
+            Assert.That(flowStatus.EnumName, Is.EqualTo("ApprovalFlowStatus"));
+
+            var member = d.Modules.Find("ApprovalFlowMember")!;
+            Assert.That(member.Fields.OfType<SelectFieldDesign>().Single(e => e.Name == "Status").EnumName,
+                Is.EqualTo("ApprovalMemberStatus"));
+            Assert.That(member.Fields.OfType<SelectFieldDesign>().Single(e => e.Name == "StepType").EnumName,
+                Is.EqualTo("ApprovalStepType"));
+
+            //enum は Extras のコード定義 ([DesignEnum] 付き C# enum) から合成される (enum 定義ファイルは不要)
+            foreach (var name in new[] { "ApprovalFlowStatus", "ApprovalMemberStatus", "ApprovalStepType" })
+            {
+                Assert.That(d.Enums.Any(e => e.Name == name && e.IsCodeDefined), Is.True, name);
+            }
+
+            //保存値 = メンバー名 (エンジンの文字列プロトコル値と一致)、表示名はリソースから解決される
+            var flowStatusEnum = d.Enums.First(e => e.Name == "ApprovalFlowStatus");
+            Assert.That(flowStatusEnum.FindMemberByName("InProgress")!.GetValue(),
+                Is.EqualTo(ApprovalFlowStatus.InProgress.ToDesignValue()));
+            Assert.That(flowStatusEnum.FindMemberByName("InProgress")!.GetDisplayText(flowStatusEnum.ValueType),
+                Is.EqualTo("承認中").Or.EqualTo("In Progress"));
         }
 
         [Test]
@@ -87,36 +131,31 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Approval
             var d = Load();
             var request = d.Modules.Find("PurchaseRequest")!;
 
-            //承認メンバーの埋め込みリスト (exists 条件のクライアント評価にも使う)
-            var members = request.Fields.OfType<ListFieldDesign>().Single(e => e.Name == "ApprovalMembers");
-            Assert.That(members.SearchCondition.ModuleName, Is.EqualTo("ApprovalFlowMember"));
-            var binding = members.SearchCondition.Condition as FieldVariableMatchCondition;
-            Assert.That(binding, Is.Not.Null);
-            Assert.That(binding!.SearchTargetVariable, Is.EqualTo("Flow.Value"));
-            Assert.That(binding.Variable, Is.EqualTo("Approval.Id"));
+            //申請書側に一覧フィールドの複製は無い (フロー側 Members へのリンク越し参照に一本化)
+            Assert.That(request.Fields.Any(e => e.Name == "ApprovalMembers"), Is.False);
 
-            //査定額の権限 = 最終承認の番 (専用検索コントロールの正準形: FieldMatchCondition の And 行)
+            //査定額の権限 = 最終承認の番 (汎用条件エディタの行モデル: And 直下に葉条件4つ。
+            //And で同じ一覧を指す条件は同一行 exists に自動合成される)
             var permission = request.Fields.OfType<PermissionFieldDesign>()
                 .Single(e => e.Name == "AssessedAmountPermission");
-            var turn = (permission.WriteCondition.Condition as MultiMatchCondition)?
-                .Children.OfType<FieldMatchCondition>().Single();
+            var turn = permission.WriteCondition.Condition as MultiMatchCondition;
             Assert.That(turn, Is.Not.Null);
-            Assert.That(turn!.FieldName, Is.EqualTo("Approval"));
-            Assert.That(turn.IsOrMatch, Is.False);
+            Assert.That(turn!.IsOrMatch, Is.False);
+            Assert.That(turn.Children.Count, Is.EqualTo(4));
             Assert.That(turn.Children.OfType<FieldValueMatchCondition>()
-                .Any(e => e.SearchTargetVariable == "Approval.State"), Is.True);
+                .Any(e => e.SearchTargetVariable == "Approval.Status.Value"), Is.True);
             var isFinal = turn.Children.OfType<FieldValueMatchCondition>()
-                .Single(e => e.SearchTargetVariable == "ApprovalMembers.IsFinalStep.Value");
+                .Single(e => e.SearchTargetVariable == "Approval.Members.IsFinalStep.Value");
             Assert.That((isFinal.Value as BooleanValue)?.Value, Is.True);
             Assert.That(turn.Children.OfType<FieldVariableMatchCondition>()
-                .Single().SearchTargetVariable, Is.EqualTo("ApprovalMembers.ApproverUser.Value"));
+                .Single().SearchTargetVariable, Is.EqualTo("Approval.Members.ApproverUser.Value"));
 
-            //申請内容の権限 = 未申請 or 申請者本人 (コピー列 Applicant)
+            //申請内容の権限 = 未申請 or 申請者本人 (フロー行の Applicant へのリンク越し参照)
             var requestFields = request.Fields.OfType<PermissionFieldDesign>()
                 .Single(e => e.Name == "RequestFieldsPermission");
             var owner = requestFields.WriteCondition.Condition as MultiMatchCondition;
             Assert.That(owner!.Children.OfType<FieldVariableMatchCondition>()
-                .Single().SearchTargetVariable, Is.EqualTo("Approval.Applicant"));
+                .Single().SearchTargetVariable, Is.EqualTo("Approval.Applicant.Value"));
 
             //メンバーモジュール側: 条件が参照するフィールドをリストロードに同梱している
             var member = d.Modules.Find("ApprovalFlowMember")!;

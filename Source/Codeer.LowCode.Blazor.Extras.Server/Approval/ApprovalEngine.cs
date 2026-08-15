@@ -1,4 +1,4 @@
-﻿using Codeer.LowCode.Blazor.DataIO;
+using Codeer.LowCode.Blazor.DataIO;
 using Codeer.LowCode.Blazor.DataIO.Db;
 using Codeer.LowCode.Blazor.DesignLogic;
 using Codeer.LowCode.Blazor.Extras.Approval;
@@ -68,11 +68,12 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Approval
                 //フロー生成 (申請時スナップショット)
                 var flowId = await CreateFlowAsync(ctx, route, targetId, attemptNo: 1);
                 await CreateMembersAsync(ctx, route, flowId, attemptNo: 1);
-                await AddHistoryAsync(ctx, flowId, 1, 0, ApprovalActions.Submit, string.Empty,
-                    ApprovalFlowStatuses.InProgress, request.Comment);
+                await AddHistoryAsync(ctx, flowId, 1, 0, ApprovalAction.Submit.ToDesignValue(), string.Empty,
+                    ApprovalFlowStatus.InProgress.ToDesignValue(), request.Comment);
 
-                //親レコードに FK と State/Applicant コピーを書く (システム経路。クライアントは送信できない)
-                await UpdateTargetStateAsync(ctx, targetId, flowId, ApprovalFlowStatuses.InProgress, ctx.ActorId);
+                //親レコードに FK を書く (システム経路。クライアントは送信できない)。
+                //状態・申請者はフロー行が正で、条件はリンク越し参照 ((フィールド名).Status 等) で読む
+                await UpdateTargetFlowIdAsync(ctx, targetId, flowId);
 
                 await _db.CommitAsync();
                 return ApprovalActionResult.Success(flowId, targetId);
@@ -101,10 +102,9 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Approval
                 var flow = await LoadFlowAsync(ctx, request.FlowId);
                 if (flow == null) { await _db.RollbackAsync(); return ApprovalActionResult.Failure(Resources.ApprovalError_FlowNotFound); }
                 if (flow.Version != request.ExpectedVersion) { await _db.RollbackAsync(); return ApprovalActionResult.Failure(Resources.ApprovalError_VersionMismatch); }
-                if (!ApprovalFlowStatuses.CanResubmit(flow.Status)) { await _db.RollbackAsync(); return ApprovalActionResult.Failure(Resources.ApprovalError_InvalidState); }
+                if (!ApprovalFlowStatusLogic.CanResubmit(flow.Status)) { await _db.RollbackAsync(); return ApprovalActionResult.Failure(Resources.ApprovalError_InvalidState); }
 
-                var applicantId = await LoadApplicantIdAsync(ctx, flow.Id);
-                if (string.IsNullOrEmpty(ctx.ActorId) || ctx.ActorId != applicantId)
+                if (string.IsNullOrEmpty(ctx.ActorId) || ctx.ActorId != flow.Applicant)
                 {
                     await _db.RollbackAsync();
                     return ApprovalActionResult.Failure(Resources.ApprovalError_NotApplicant);
@@ -122,15 +122,14 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Approval
                 await CreateMembersAsync(ctx, route, flow.Id, newAttempt);
 
                 var flowUpdate = CreateFlowUpdate(ctx, flow);
-                SetString(ctx.FlowModule, flowUpdate, ApprovalFieldNames.Flow.Status, ApprovalFlowStatuses.InProgress);
-                SetString(ctx.FlowModule, flowUpdate, ApprovalFieldNames.Flow.RouteName, route.Name);
-                SetNumber(ctx.FlowModule, flowUpdate, ApprovalFieldNames.Flow.AttemptNo, newAttempt);
-                SetNumber(ctx.FlowModule, flowUpdate, ApprovalFieldNames.Flow.CurrentStepNo, FirstApprovalStepNo(route));
+                SetString(ctx.FlowModule, flowUpdate, ctx.Flow.Status, ApprovalFlowStatus.InProgress.ToDesignValue());
+                SetString(ctx.FlowModule, flowUpdate, ctx.Flow.RouteName, route.Name);
+                SetNumber(ctx.FlowModule, flowUpdate, ctx.Flow.AttemptNo, newAttempt);
+                SetNumber(ctx.FlowModule, flowUpdate, ctx.Flow.CurrentStepNo, FirstApprovalStepNo(route));
                 await _updateInternalAsync(flowUpdate);
-                await UpdateTargetStateAsync(ctx, targetId, flow.Id, ApprovalFlowStatuses.InProgress, applicantId);
 
-                await AddHistoryAsync(ctx, flow.Id, newAttempt, 0, ApprovalActions.Resubmit, flow.Status,
-                    ApprovalFlowStatuses.InProgress, request.Comment);
+                await AddHistoryAsync(ctx, flow.Id, newAttempt, 0, ApprovalAction.Resubmit.ToDesignValue(), flow.Status,
+                    ApprovalFlowStatus.InProgress.ToDesignValue(), request.Comment);
 
                 await _db.CommitAsync();
                 return ApprovalActionResult.Success(flow.Id, targetId);
@@ -156,15 +155,15 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Approval
                 if (flow.Version != request.ExpectedVersion) { await _db.RollbackAsync(); return ApprovalActionResult.Failure(Resources.ApprovalError_VersionMismatch); }
 
                 var members = await LoadMembersAsync(ctx, flow.Id, flow.AttemptNo);
-                var result = action switch
+                var result = Enum.TryParse<ApprovalAction>(action, out var parsedAction) ? parsedAction switch
                 {
-                    ApprovalActions.Approve => await ApproveAsync(ctx, flow, members, request),
-                    ApprovalActions.Reject => await RejectAsync(ctx, flow, members, request),
-                    ApprovalActions.Return => await ReturnAsync(ctx, flow, members, request),
-                    ApprovalActions.Withdraw => await WithdrawAsync(ctx, flow, members, request),
-                    ApprovalActions.Confirm => await ConfirmAsync(ctx, flow, members, request),
+                    ApprovalAction.Approve => await ApproveAsync(ctx, flow, members, request),
+                    ApprovalAction.Reject => await RejectAsync(ctx, flow, members, request),
+                    ApprovalAction.Return => await ReturnAsync(ctx, flow, members, request),
+                    ApprovalAction.Withdraw => await WithdrawAsync(ctx, flow, members, request),
+                    ApprovalAction.Confirm => await ConfirmAsync(ctx, flow, members, request),
                     _ => ApprovalActionResult.Failure(Resources.ApprovalError_InvalidState),
-                };
+                } : ApprovalActionResult.Failure(Resources.ApprovalError_InvalidState);
 
                 if (result.IsSuccess) await _db.CommitAsync();
                 else await _db.RollbackAsync();
@@ -183,39 +182,34 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Approval
 
         async Task<ApprovalActionResult> ApproveAsync(Context ctx, FlowRow flow, List<MemberRow> members, ApprovalActionRequest request)
         {
-            if (flow.Status != ApprovalFlowStatuses.InProgress) return ApprovalActionResult.Failure(Resources.ApprovalError_InvalidState);
+            if (flow.Status != ApprovalFlowStatus.InProgress.ToDesignValue()) return ApprovalActionResult.Failure(Resources.ApprovalError_InvalidState);
 
             var currentStepNo = GetCurrentStepNo(members);
             var member = FindWaitingApprover(members, ctx.ActorId);
             if (member == null) return ApprovalActionResult.Failure(Resources.ApprovalError_NotApprover);
 
-            await UpdateMemberStatusAsync(ctx, member, ApprovalMemberStatuses.Approved, DateTime.Now);
-            member.Status = ApprovalMemberStatuses.Approved;
+            await UpdateMemberStatusAsync(ctx, member, ApprovalMemberStatus.Approved.ToDesignValue(), DateTime.Now);
+            member.Status = ApprovalMemberStatus.Approved.ToDesignValue();
 
             //次ステップのメンバーを Waiting に昇格 (回覧も到達したら Waiting になる)
             await NormalizeMemberStatusesAsync(ctx, members);
 
             var nextStepNo = GetCurrentStepNo(members);
-            var newStatus = nextStepNo == 0 ? ApprovalFlowStatuses.Completed : flow.Status;
+            var newStatus = nextStepNo == 0 ? ApprovalFlowStatus.Completed.ToDesignValue() : flow.Status;
 
             var flowUpdate = CreateFlowUpdate(ctx, flow);
-            SetString(ctx.FlowModule, flowUpdate, ApprovalFieldNames.Flow.Status, newStatus);
-            SetNumber(ctx.FlowModule, flowUpdate, ApprovalFieldNames.Flow.CurrentStepNo, nextStepNo == 0 ? currentStepNo : nextStepNo);
+            SetString(ctx.FlowModule, flowUpdate, ctx.Flow.Status, newStatus);
+            SetNumber(ctx.FlowModule, flowUpdate, ctx.Flow.CurrentStepNo, nextStepNo == 0 ? currentStepNo : nextStepNo);
             await _updateInternalAsync(flowUpdate);
 
-            if (newStatus != flow.Status)
-            {
-                await UpdateTargetStateAsync(ctx, flow.TargetId, flow.Id, newStatus, await LoadApplicantIdAsync(ctx, flow.Id));
-            }
-
-            await AddHistoryAsync(ctx, flow.Id, flow.AttemptNo, currentStepNo, ApprovalActions.Approve,
+            await AddHistoryAsync(ctx, flow.Id, flow.AttemptNo, currentStepNo, ApprovalAction.Approve.ToDesignValue(),
                 flow.Status, newStatus, request.Comment);
             return ApprovalActionResult.Success(flow.Id, flow.TargetId);
         }
 
         async Task<ApprovalActionResult> RejectAsync(Context ctx, FlowRow flow, List<MemberRow> members, ApprovalActionRequest request)
         {
-            if (flow.Status != ApprovalFlowStatuses.InProgress) return ApprovalActionResult.Failure(Resources.ApprovalError_InvalidState);
+            if (flow.Status != ApprovalFlowStatus.InProgress.ToDesignValue()) return ApprovalActionResult.Failure(Resources.ApprovalError_InvalidState);
 
             var currentStepNo = GetCurrentStepNo(members);
             var member = FindWaitingApprover(members, ctx.ActorId);
@@ -223,24 +217,22 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Approval
             if (member.IsCommentRequired && string.IsNullOrWhiteSpace(request.Comment))
                 return ApprovalActionResult.Failure(Resources.ApprovalCommentRequired);
 
-            await UpdateMemberStatusAsync(ctx, member, ApprovalMemberStatuses.Rejected, DateTime.Now);
-            member.Status = ApprovalMemberStatuses.Rejected;
+            await UpdateMemberStatusAsync(ctx, member, ApprovalMemberStatus.Rejected.ToDesignValue(), DateTime.Now);
+            member.Status = ApprovalMemberStatus.Rejected.ToDesignValue();
             await SkipWaitingMembersAsync(ctx, members);
 
             var flowUpdate = CreateFlowUpdate(ctx, flow);
-            SetString(ctx.FlowModule, flowUpdate, ApprovalFieldNames.Flow.Status, ApprovalFlowStatuses.Rejected);
+            SetString(ctx.FlowModule, flowUpdate, ctx.Flow.Status, ApprovalFlowStatus.Rejected.ToDesignValue());
             await _updateInternalAsync(flowUpdate);
-            await UpdateTargetStateAsync(ctx, flow.TargetId, flow.Id, ApprovalFlowStatuses.Rejected,
-                await LoadApplicantIdAsync(ctx, flow.Id));
 
-            await AddHistoryAsync(ctx, flow.Id, flow.AttemptNo, currentStepNo, ApprovalActions.Reject,
-                flow.Status, ApprovalFlowStatuses.Rejected, request.Comment);
+            await AddHistoryAsync(ctx, flow.Id, flow.AttemptNo, currentStepNo, ApprovalAction.Reject.ToDesignValue(),
+                flow.Status, ApprovalFlowStatus.Rejected.ToDesignValue(), request.Comment);
             return ApprovalActionResult.Success(flow.Id, flow.TargetId);
         }
 
         async Task<ApprovalActionResult> ReturnAsync(Context ctx, FlowRow flow, List<MemberRow> members, ApprovalActionRequest request)
         {
-            if (flow.Status != ApprovalFlowStatuses.InProgress) return ApprovalActionResult.Failure(Resources.ApprovalError_InvalidState);
+            if (flow.Status != ApprovalFlowStatus.InProgress.ToDesignValue()) return ApprovalActionResult.Failure(Resources.ApprovalError_InvalidState);
 
             var currentStepNo = GetCurrentStepNo(members);
             var member = FindWaitingApprover(members, ctx.ActorId);
@@ -251,28 +243,29 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Approval
             if (request.TargetStepNo is int targetStepNo)
             {
                 //過去ステップへの差し戻し (現在ステップの ReturnScope が許す場合のみ)
-                if (member.ReturnScope != ApprovalReturnScopes.AnyPreviousStep)
+                if (member.ReturnScope != ApprovalReturnScope.AnyPreviousStep.ToDesignValue())
                     return ApprovalActionResult.Failure(Resources.ApprovalError_ReturnNotAllowed);
                 var validTarget = targetStepNo >= 1 && targetStepNo < currentStepNo
-                    && members.Any(e => e.StepNo == targetStepNo && e.StepType == ApprovalStepTypes.Approval);
+                    && members.Any(e => e.StepNo == targetStepNo && e.StepType == ApprovalStepType.Approval.ToDesignValue());
                 if (!validTarget) return ApprovalActionResult.Failure(Resources.ApprovalError_ReturnNotAllowed);
 
                 //対象〜現在の承認メンバーを未処理へ戻し、到達状態は正規化に任せる
                 //(対象ステップ = Waiting、それ以降 = Pending になる)
-                foreach (var m in members.Where(e => e.StepType == ApprovalStepTypes.Approval
+                foreach (var m in members.Where(e => e.StepType == ApprovalStepType.Approval.ToDesignValue()
                     && e.StepNo >= targetStepNo && e.StepNo <= currentStepNo
-                    && e.Status is ApprovalMemberStatuses.Approved or ApprovalMemberStatuses.Waiting))
+                    && (e.Status == ApprovalMemberStatus.Approved.ToDesignValue() ||
+                        e.Status == ApprovalMemberStatus.Waiting.ToDesignValue())))
                 {
-                    await UpdateMemberStatusAsync(ctx, m, ApprovalMemberStatuses.Pending, null);
-                    m.Status = ApprovalMemberStatuses.Pending;
+                    await UpdateMemberStatusAsync(ctx, m, ApprovalMemberStatus.Pending.ToDesignValue(), null);
+                    m.Status = ApprovalMemberStatus.Pending.ToDesignValue();
                 }
                 await NormalizeMemberStatusesAsync(ctx, members);
 
                 var stepUpdate = CreateFlowUpdate(ctx, flow);
-                SetNumber(ctx.FlowModule, stepUpdate, ApprovalFieldNames.Flow.CurrentStepNo, targetStepNo);
+                SetNumber(ctx.FlowModule, stepUpdate, ctx.Flow.CurrentStepNo, targetStepNo);
                 await _updateInternalAsync(stepUpdate);
 
-                await AddHistoryAsync(ctx, flow.Id, flow.AttemptNo, currentStepNo, ApprovalActions.Return,
+                await AddHistoryAsync(ctx, flow.Id, flow.AttemptNo, currentStepNo, ApprovalAction.Return.ToDesignValue(),
                     flow.Status, flow.Status, request.Comment);
                 return ApprovalActionResult.Success(flow.Id, flow.TargetId);
             }
@@ -282,27 +275,24 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Approval
             await SkipWaitingMembersAsync(ctx, members);
 
             var flowUpdate = CreateFlowUpdate(ctx, flow);
-            SetString(ctx.FlowModule, flowUpdate, ApprovalFieldNames.Flow.Status, ApprovalFlowStatuses.Returned);
+            SetString(ctx.FlowModule, flowUpdate, ctx.Flow.Status, ApprovalFlowStatus.Returned.ToDesignValue());
             await _updateInternalAsync(flowUpdate);
-            await UpdateTargetStateAsync(ctx, flow.TargetId, flow.Id, ApprovalFlowStatuses.Returned,
-                await LoadApplicantIdAsync(ctx, flow.Id));
 
-            await AddHistoryAsync(ctx, flow.Id, flow.AttemptNo, currentStepNo, ApprovalActions.Return,
-                flow.Status, ApprovalFlowStatuses.Returned, request.Comment);
+            await AddHistoryAsync(ctx, flow.Id, flow.AttemptNo, currentStepNo, ApprovalAction.Return.ToDesignValue(),
+                flow.Status, ApprovalFlowStatus.Returned.ToDesignValue(), request.Comment);
             return ApprovalActionResult.Success(flow.Id, flow.TargetId);
         }
 
         async Task<ApprovalActionResult> WithdrawAsync(Context ctx, FlowRow flow, List<MemberRow> members, ApprovalActionRequest request)
         {
-            if (flow.Status != ApprovalFlowStatuses.InProgress) return ApprovalActionResult.Failure(Resources.ApprovalError_InvalidState);
-            var applicantId = await LoadApplicantIdAsync(ctx, flow.Id);
-            if (string.IsNullOrEmpty(ctx.ActorId) || ctx.ActorId != applicantId)
+            if (flow.Status != ApprovalFlowStatus.InProgress.ToDesignValue()) return ApprovalActionResult.Failure(Resources.ApprovalError_InvalidState);
+            if (string.IsNullOrEmpty(ctx.ActorId) || ctx.ActorId != flow.Applicant)
                 return ApprovalActionResult.Failure(Resources.ApprovalError_NotApplicant);
 
             //取り下げの許可範囲は業務ポリシー (デザインで可変)。既定は承認が始まる前だけ
             //(Garoon 等の「取り戻し」と同じ。承認後は承認者に差し戻してもらう)
             if (ctx.FieldDesign.WithdrawPolicy == ApprovalWithdrawPolicy.BeforeFirstApproval
-                && members.Any(e => e.StepType == ApprovalStepTypes.Approval && e.Status == ApprovalMemberStatuses.Approved))
+                && members.Any(e => e.StepType == ApprovalStepType.Approval.ToDesignValue() && e.Status == ApprovalMemberStatus.Approved.ToDesignValue()))
             {
                 return ApprovalActionResult.Failure(Resources.ApprovalError_WithdrawNotAllowed);
             }
@@ -310,30 +300,29 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Approval
             await SkipWaitingMembersAsync(ctx, members);
 
             var flowUpdate = CreateFlowUpdate(ctx, flow);
-            SetString(ctx.FlowModule, flowUpdate, ApprovalFieldNames.Flow.Status, ApprovalFlowStatuses.Withdrawn);
+            SetString(ctx.FlowModule, flowUpdate, ctx.Flow.Status, ApprovalFlowStatus.Withdrawn.ToDesignValue());
             await _updateInternalAsync(flowUpdate);
-            await UpdateTargetStateAsync(ctx, flow.TargetId, flow.Id, ApprovalFlowStatuses.Withdrawn, applicantId);
 
-            await AddHistoryAsync(ctx, flow.Id, flow.AttemptNo, 0, ApprovalActions.Withdraw,
-                flow.Status, ApprovalFlowStatuses.Withdrawn, request.Comment);
+            await AddHistoryAsync(ctx, flow.Id, flow.AttemptNo, 0, ApprovalAction.Withdraw.ToDesignValue(),
+                flow.Status, ApprovalFlowStatus.Withdrawn.ToDesignValue(), request.Comment);
             return ApprovalActionResult.Success(flow.Id, flow.TargetId);
         }
 
         async Task<ApprovalActionResult> ConfirmAsync(Context ctx, FlowRow flow, List<MemberRow> members, ApprovalActionRequest request)
         {
             //回覧は到達済み (= 正規化で Waiting になっている) なら確認できる。フロー終了後も可
-            var member = members.FirstOrDefault(e => e.StepType == ApprovalStepTypes.Confirmation
-                && e.Status == ApprovalMemberStatuses.Waiting
+            var member = members.FirstOrDefault(e => e.StepType == ApprovalStepType.Confirmation.ToDesignValue()
+                && e.Status == ApprovalMemberStatus.Waiting.ToDesignValue()
                 && e.ApproverUserId == ctx.ActorId);
             if (member == null) return ApprovalActionResult.Failure(Resources.ApprovalError_NoConfirmation);
 
-            await UpdateMemberStatusAsync(ctx, member, ApprovalMemberStatuses.Confirmed, DateTime.Now);
+            await UpdateMemberStatusAsync(ctx, member, ApprovalMemberStatus.Confirmed.ToDesignValue(), DateTime.Now);
 
             //確認はフロー状態を変えないが、楽観ロックの版だけ進めて操作を直列化する
             var flowUpdate = CreateFlowUpdate(ctx, flow);
             await _updateInternalAsync(flowUpdate);
 
-            await AddHistoryAsync(ctx, flow.Id, flow.AttemptNo, member.StepNo, ApprovalActions.Confirm,
+            await AddHistoryAsync(ctx, flow.Id, flow.AttemptNo, member.StepNo, ApprovalAction.Confirm.ToDesignValue(),
                 flow.Status, flow.Status, request.Comment);
             return ApprovalActionResult.Success(flow.Id, flow.TargetId);
         }
@@ -349,6 +338,12 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Approval
             public ModuleDesign FlowModule { get; init; } = null!;
             public ModuleDesign MemberModule { get; init; } = null!;
             public ModuleDesign HistoryModule { get; init; } = null!;
+
+            //契約(役割→フィールド名のマッピング)。エンジンはフィールド名をこの解決経由で読む
+            public ApprovalFlowContractFieldDesign Flow { get; init; } = null!;
+            public ApprovalMemberContractFieldDesign Member { get; init; } = null!;
+            public ApprovalHistoryContractFieldDesign History { get; init; } = null!;
+
             public string ActorId { get; init; } = string.Empty;
         }
 
@@ -361,11 +356,19 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Approval
             if (targetModule == null || fieldDesign == null || string.IsNullOrEmpty(fieldDesign.DbColumn))
                 return (null, Resources.ApprovalError_DesignNotFound);
 
+            //メンバー・履歴モジュールはフロー契約の Members / Histories 一覧の参照先として決まる
             var flowModule = _designData.Modules.Find(fieldDesign.FlowModuleName);
-            var memberModule = _designData.Modules.Find(fieldDesign.MemberModuleName);
-            var historyModule = _designData.Modules.Find(fieldDesign.HistoryModuleName);
-            if (flowModule == null || memberModule == null || historyModule == null)
+            var flowContract = ApprovalContracts.Flow(flowModule);
+            var memberModule = _designData.Modules.Find(ApprovalContracts.GetMemberModuleName(flowModule));
+            var historyModule = _designData.Modules.Find(ApprovalContracts.GetHistoryModuleName(flowModule));
+            var memberContract = ApprovalContracts.Member(memberModule);
+            var historyContract = ApprovalContracts.History(historyModule);
+            if (flowModule == null || flowContract == null ||
+                memberModule == null || memberContract == null ||
+                historyModule == null || historyContract == null)
+            {
                 return (null, Resources.ApprovalError_DesignNotFound);
+            }
 
             var currentUser = await _io.GetCurrentUser();
             var actorId = currentUser == null ? string.Empty : GetId(currentUser);
@@ -377,28 +380,31 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Approval
                 FlowModule = flowModule,
                 MemberModule = memberModule,
                 HistoryModule = historyModule,
+                Flow = flowContract,
+                Member = memberContract,
+                History = historyContract,
                 ActorId = actorId,
             }, string.Empty);
         }
 
         static string? ValidateRoute(Context ctx, ApprovalRouteData? route)
         {
-            //v1 の経路ソースはスクリプト組み立てのみ。デザインの明示オプトインが必要
+            //v1 の経路ソースはスクリプト組み立てのみ。誰が経路を組んだかは履歴に不変記録される
             if (route == null) return Resources.ApprovalError_RouteRequired;
-            if (!ctx.FieldDesign.AllowScriptRoute) return Resources.ApprovalError_ScriptRouteNotAllowed;
 
             if (route.Steps.Count == 0)
                 return string.Format(Resources.ApprovalError_InvalidRouteFormat, "no steps");
-            if (!route.Steps.Any(e => e.StepType == ApprovalStepTypes.Approval))
+            if (!route.Steps.Any(e => e.StepType == ApprovalStepType.Approval.ToDesignValue()))
                 return string.Format(Resources.ApprovalError_InvalidRouteFormat, "no approval step");
 
             foreach (var step in route.Steps)
             {
-                if (step.StepType is not (ApprovalStepTypes.Approval or ApprovalStepTypes.Confirmation))
+                if (step.StepType != ApprovalStepType.Approval.ToDesignValue() &&
+                    step.StepType != ApprovalStepType.Confirmation.ToDesignValue())
                     return string.Format(Resources.ApprovalError_InvalidRouteFormat, $"unknown step type '{step.StepType}'");
-                if (step.CompletionPolicy is not (ApprovalCompletionPolicies.RequiredMembers or ApprovalCompletionPolicies.All or ApprovalCompletionPolicies.Any))
+                if (!Enum.TryParse<ApprovalCompletionPolicy>(step.CompletionPolicy, out _))
                     return string.Format(Resources.ApprovalError_InvalidRouteFormat, $"unknown completion policy '{step.CompletionPolicy}'");
-                if (step.ReturnScope is not (ApprovalReturnScopes.ApplicantOnly or ApprovalReturnScopes.AnyPreviousStep))
+                if (!Enum.TryParse<ApprovalReturnScope>(step.ReturnScope, out _))
                     return string.Format(Resources.ApprovalError_InvalidRouteFormat, $"unknown return scope '{step.ReturnScope}'");
                 if (step.Members.Count == 0)
                     return string.Format(Resources.ApprovalError_InvalidRouteFormat, $"step '{step.Name}' has no members");
@@ -417,6 +423,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Approval
             public string Id { get; init; } = string.Empty;
             public string Status { get; init; } = string.Empty;
             public string TargetId { get; init; } = string.Empty;
+            public string Applicant { get; init; } = string.Empty;
             public int AttemptNo { get; init; }
             public string Version { get; init; } = string.Empty;
             public OptimisticLockingFieldData? OptimisticLocking { get; init; }
@@ -426,13 +433,13 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Approval
         {
             public string Id { get; init; } = string.Empty;
             public int StepNo { get; init; }
-            public string StepType { get; init; } = ApprovalStepTypes.Approval;
-            public string CompletionPolicy { get; init; } = ApprovalCompletionPolicies.RequiredMembers;
+            public string StepType { get; init; } = ApprovalStepType.Approval.ToDesignValue();
+            public string CompletionPolicy { get; init; } = ApprovalCompletionPolicy.RequiredMembers.ToDesignValue();
             public bool IsCommentRequired { get; init; }
-            public string ReturnScope { get; init; } = ApprovalReturnScopes.ApplicantOnly;
+            public string ReturnScope { get; init; } = ApprovalReturnScope.ApplicantOnly.ToDesignValue();
             public string ApproverUserId { get; init; } = string.Empty;
             public bool IsRequired { get; init; }
-            public string Status { get; set; } = ApprovalMemberStatuses.Waiting;
+            public string Status { get; set; } = ApprovalMemberStatus.Waiting.ToDesignValue();
         }
 
         async Task<FlowRow?> LoadFlowAsync(Context ctx, string flowId)
@@ -445,12 +452,12 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Approval
                 SelectFields =
                 [
                     SystemFieldNames.Id, SystemFieldNames.OptimisticLocking,
-                    ApprovalFieldNames.Flow.Status, ApprovalFieldNames.Flow.TargetId,
-                    ApprovalFieldNames.Flow.AttemptNo,
+                    ctx.Flow.Status, ctx.Flow.TargetId,
+                    ctx.Flow.Applicant, ctx.Flow.AttemptNo,
                 ],
             };
             var row = (await _io.GetListAsync(condition, 0)).Items.FirstOrDefault();
-            return row == null ? null : CreateFlowRow(row);
+            return row == null ? null : CreateFlowRow(ctx, row);
         }
 
         async Task<FlowRow?> LoadFlowByTargetAsync(Context ctx, string targetId)
@@ -462,22 +469,23 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Approval
                 {
                     Children =
                     [
-                        EqualsCondition($"{ApprovalFieldNames.Flow.TargetModuleName}.Value", ctx.TargetModule.Name),
-                        EqualsCondition($"{ApprovalFieldNames.Flow.TargetId}.Value", targetId),
+                        EqualsCondition($"{ctx.Flow.TargetModuleName}.Value", ctx.TargetModule.Name),
+                        EqualsCondition($"{ctx.Flow.TargetId}.Value", targetId),
                     ],
                 },
-                SelectFields = [SystemFieldNames.Id, ApprovalFieldNames.Flow.Status, ApprovalFieldNames.Flow.AttemptNo, ApprovalFieldNames.Flow.TargetId],
+                SelectFields = [SystemFieldNames.Id, ctx.Flow.Status, ctx.Flow.AttemptNo, ctx.Flow.TargetId, ctx.Flow.Applicant],
             };
             var row = (await _io.GetListAsync(condition, 0)).Items.FirstOrDefault();
-            return row == null ? null : CreateFlowRow(row);
+            return row == null ? null : CreateFlowRow(ctx, row);
         }
 
-        static FlowRow CreateFlowRow(ModuleData row) => new()
+        static FlowRow CreateFlowRow(Context ctx, ModuleData row) => new()
         {
             Id = GetId(row),
-            Status = GetString(row, ApprovalFieldNames.Flow.Status),
-            TargetId = GetString(row, ApprovalFieldNames.Flow.TargetId),
-            AttemptNo = GetInt(row, ApprovalFieldNames.Flow.AttemptNo),
+            Status = GetString(row, ctx.Flow.Status),
+            TargetId = GetString(row, ctx.Flow.TargetId),
+            Applicant = (row.Fields.GetValueOrDefault(ctx.Flow.Applicant) as ValueFieldDataBase<string>)?.Value ?? string.Empty,
+            AttemptNo = GetInt(row, ctx.Flow.AttemptNo),
             Version = (row.Fields.GetValueOrDefault(SystemFieldNames.OptimisticLocking) as OptimisticLockingFieldData)?.GetValue()?.ToString() ?? string.Empty,
             OptimisticLocking = row.Fields.GetValueOrDefault(SystemFieldNames.OptimisticLocking) as OptimisticLockingFieldData,
         };
@@ -486,58 +494,39 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Approval
         {
             var condition = new SearchCondition
             {
-                ModuleName = ctx.FieldDesign.MemberModuleName,
+                ModuleName = ctx.MemberModule.Name,
                 Condition = new MultiMatchCondition
                 {
                     Children =
                     [
-                        EqualsCondition($"{ApprovalFieldNames.Member.Flow}.Value", flowId),
-                        EqualsCondition($"{ApprovalFieldNames.Member.AttemptNo}.Value", attemptNo.ToString()),
+                        EqualsCondition($"{ctx.Member.Flow}.Value", flowId),
+                        EqualsCondition($"{ctx.Member.AttemptNo}.Value", attemptNo.ToString()),
                     ],
                 },
-                SortConditions = [new SortCondition { Variable = $"{ApprovalFieldNames.Member.StepNo}.Value" }],
+                SortConditions = [new SortCondition { Variable = $"{ctx.Member.StepNo}.Value" }],
                 SelectFields =
                 [
                     SystemFieldNames.Id,
-                    ApprovalFieldNames.Member.StepNo, ApprovalFieldNames.Member.StepType,
-                    ApprovalFieldNames.Member.CompletionPolicy, ApprovalFieldNames.Member.IsCommentRequiredOnReject,
-                    ApprovalFieldNames.Member.ReturnScope, ApprovalFieldNames.Member.ApproverUser,
-                    ApprovalFieldNames.Member.IsRequired, ApprovalFieldNames.Member.Status,
+                    ctx.Member.StepNo, ctx.Member.StepType,
+                    ctx.Member.CompletionPolicy, ctx.Member.IsCommentRequiredOnReject,
+                    ctx.Member.ReturnScope, ctx.Member.ApproverUser,
+                    ctx.Member.IsRequired, ctx.Member.Status,
                 ],
             };
             return (await _io.GetListAsync(condition, 0)).Items.Select(e => new MemberRow
             {
                 Id = GetId(e),
-                StepNo = GetInt(e, ApprovalFieldNames.Member.StepNo),
-                StepType = GetString(e, ApprovalFieldNames.Member.StepType),
-                CompletionPolicy = GetString(e, ApprovalFieldNames.Member.CompletionPolicy),
-                IsCommentRequired = GetBool(e, ApprovalFieldNames.Member.IsCommentRequiredOnReject),
-                ReturnScope = GetString(e, ApprovalFieldNames.Member.ReturnScope),
-                ApproverUserId = (e.Fields.GetValueOrDefault(ApprovalFieldNames.Member.ApproverUser) as ValueFieldDataBase<string>)?.Value ?? string.Empty,
-                IsRequired = GetBool(e, ApprovalFieldNames.Member.IsRequired),
-                Status = GetString(e, ApprovalFieldNames.Member.Status),
+                StepNo = GetInt(e, ctx.Member.StepNo),
+                StepType = GetString(e, ctx.Member.StepType),
+                CompletionPolicy = GetString(e, ctx.Member.CompletionPolicy),
+                IsCommentRequired = GetBool(e, ctx.Member.IsCommentRequiredOnReject),
+                ReturnScope = GetString(e, ctx.Member.ReturnScope),
+                ApproverUserId = (e.Fields.GetValueOrDefault(ctx.Member.ApproverUser) as ValueFieldDataBase<string>)?.Value ?? string.Empty,
+                IsRequired = GetBool(e, ctx.Member.IsRequired),
+                Status = GetString(e, ctx.Member.Status),
             }).ToList();
         }
 
-        async Task<string> LoadApplicantIdAsync(Context ctx, string flowId)
-        {
-            var condition = new SearchCondition
-            {
-                ModuleName = ctx.FieldDesign.HistoryModuleName,
-                Condition = new MultiMatchCondition
-                {
-                    Children =
-                    [
-                        EqualsCondition($"{ApprovalFieldNames.History.Flow}.Value", flowId),
-                        EqualsCondition($"{ApprovalFieldNames.History.Action}.Value", ApprovalActions.Submit),
-                    ],
-                },
-                SortConditions = [new SortCondition { Variable = $"{SystemFieldNames.Id}.Value" }],
-                SelectFields = [SystemFieldNames.Id, ApprovalFieldNames.History.ActorUser],
-            };
-            var row = (await _io.GetListAsync(condition, 0)).Items.FirstOrDefault();
-            return (row?.Fields.GetValueOrDefault(ApprovalFieldNames.History.ActorUser) as ValueFieldDataBase<string>)?.Value ?? string.Empty;
-        }
 
         //====================================================================
         // 状態機械
@@ -546,7 +535,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Approval
         /// <summary>現在の承認ステップ番号。0 = 全承認ステップ完了。</summary>
         static int GetCurrentStepNo(List<MemberRow> members)
         {
-            foreach (var group in members.Where(e => e.StepType == ApprovalStepTypes.Approval)
+            foreach (var group in members.Where(e => e.StepType == ApprovalStepType.Approval.ToDesignValue())
                          .GroupBy(e => e.StepNo).OrderBy(e => e.Key))
             {
                 if (!IsStepCompleted(group.ToList())) return group.Key;
@@ -556,20 +545,21 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Approval
 
         static bool IsStepCompleted(List<MemberRow> stepMembers)
         {
-            var active = stepMembers.Where(e => e.Status != ApprovalMemberStatuses.Skipped).ToList();
+            var active = stepMembers.Where(e => e.Status != ApprovalMemberStatus.Skipped.ToDesignValue()).ToList();
             if (active.Count == 0) return true;
-            switch (stepMembers[0].CompletionPolicy)
+            Enum.TryParse<ApprovalCompletionPolicy>(stepMembers[0].CompletionPolicy, out var policy);
+            switch (policy)
             {
-                case ApprovalCompletionPolicies.All:
-                    return active.All(e => e.Status == ApprovalMemberStatuses.Approved);
-                case ApprovalCompletionPolicies.Any:
-                    return active.Any(e => e.Status == ApprovalMemberStatuses.Approved);
+                case ApprovalCompletionPolicy.All:
+                    return active.All(e => e.Status == ApprovalMemberStatus.Approved.ToDesignValue());
+                case ApprovalCompletionPolicy.Any:
+                    return active.Any(e => e.Status == ApprovalMemberStatus.Approved.ToDesignValue());
                 default:
                     //必須全員承認。必須ゼロなら任意1人 (現行テンプレート互換)
                     var required = active.Where(e => e.IsRequired).ToList();
                     return required.Count > 0
-                        ? required.All(e => e.Status == ApprovalMemberStatuses.Approved)
-                        : active.Any(e => e.Status == ApprovalMemberStatuses.Approved);
+                        ? required.All(e => e.Status == ApprovalMemberStatus.Approved.ToDesignValue())
+                        : active.Any(e => e.Status == ApprovalMemberStatus.Approved.ToDesignValue());
             }
         }
 
@@ -577,8 +567,8 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Approval
         {
             //正規化により Waiting の承認メンバー = 現在ステップの承認待ち、が保証されている
             if (string.IsNullOrEmpty(actorId)) return null;
-            return members.FirstOrDefault(e => e.StepType == ApprovalStepTypes.Approval
-                && e.Status == ApprovalMemberStatuses.Waiting
+            return members.FirstOrDefault(e => e.StepType == ApprovalStepType.Approval.ToDesignValue()
+                && e.Status == ApprovalMemberStatus.Waiting.ToDesignValue()
                 && e.ApproverUserId == actorId);
         }
 
@@ -586,7 +576,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Approval
         {
             for (var i = 0; i < route.Steps.Count; i++)
             {
-                if (route.Steps[i].StepType == ApprovalStepTypes.Approval) return i + 1;
+                if (route.Steps[i].StepType == ApprovalStepType.Approval.ToDesignValue()) return i + 1;
             }
             return 1;
         }
@@ -611,12 +601,13 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Approval
         async Task<string> CreateFlowAsync(Context ctx, ApprovalRouteData route, string targetId, int attemptNo)
         {
             var data = new ModuleData { Name = ctx.FieldDesign.FlowModuleName };
-            SetString(ctx.FlowModule, data, ApprovalFieldNames.Flow.Status, ApprovalFlowStatuses.InProgress);
-            SetString(ctx.FlowModule, data, ApprovalFieldNames.Flow.TargetModuleName, ctx.TargetModule.Name);
-            SetString(ctx.FlowModule, data, ApprovalFieldNames.Flow.TargetId, targetId);
-            SetString(ctx.FlowModule, data, ApprovalFieldNames.Flow.RouteName, route.Name);
-            SetNumber(ctx.FlowModule, data, ApprovalFieldNames.Flow.AttemptNo, attemptNo);
-            SetNumber(ctx.FlowModule, data, ApprovalFieldNames.Flow.CurrentStepNo, FirstApprovalStepNo(route));
+            SetString(ctx.FlowModule, data, ctx.Flow.Status, ApprovalFlowStatus.InProgress.ToDesignValue());
+            SetString(ctx.FlowModule, data, ctx.Flow.TargetModuleName, ctx.TargetModule.Name);
+            SetString(ctx.FlowModule, data, ctx.Flow.TargetId, targetId);
+            SetString(ctx.FlowModule, data, ctx.Flow.RouteName, route.Name);
+            SetLink(ctx.FlowModule, data, ctx.Flow.Applicant, ctx.ActorId);
+            SetNumber(ctx.FlowModule, data, ctx.Flow.AttemptNo, attemptNo);
+            SetNumber(ctx.FlowModule, data, ctx.Flow.CurrentStepNo, FirstApprovalStepNo(route));
             return await _addInternalAsync(data);
         }
 
@@ -626,7 +617,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Approval
             var lastApprovalStepNo = 0;
             for (var i = 0; i < route.Steps.Count; i++)
             {
-                if (route.Steps[i].StepType == ApprovalStepTypes.Approval) lastApprovalStepNo = i + 1;
+                if (route.Steps[i].StepType == ApprovalStepType.Approval.ToDesignValue()) lastApprovalStepNo = i + 1;
             }
 
             for (var i = 0; i < route.Steps.Count; i++)
@@ -636,25 +627,25 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Approval
 
                 //Waiting は「本当に今待っている人」だけ。自分より前に未完了の承認ステップが
                 //あるうちは Pending (前のステップが完了したら正規化で Waiting に昇格する)
-                var reached = route.Steps.Take(i).All(e => e.StepType != ApprovalStepTypes.Approval);
-                var status = reached ? ApprovalMemberStatuses.Waiting : ApprovalMemberStatuses.Pending;
+                var reached = route.Steps.Take(i).All(e => e.StepType != ApprovalStepType.Approval.ToDesignValue());
+                var status = reached ? ApprovalMemberStatus.Waiting.ToDesignValue() : ApprovalMemberStatus.Pending.ToDesignValue();
 
                 foreach (var member in step.Members)
                 {
-                    var data = new ModuleData { Name = ctx.FieldDesign.MemberModuleName };
-                    SetLink(ctx.MemberModule, data, ApprovalFieldNames.Member.Flow, flowId);
-                    SetNumber(ctx.MemberModule, data, ApprovalFieldNames.Member.AttemptNo, attemptNo);
-                    SetNumber(ctx.MemberModule, data, ApprovalFieldNames.Member.StepNo, stepNo);
-                    SetString(ctx.MemberModule, data, ApprovalFieldNames.Member.StepName, step.Name);
-                    SetString(ctx.MemberModule, data, ApprovalFieldNames.Member.StepType, step.StepType);
-                    SetString(ctx.MemberModule, data, ApprovalFieldNames.Member.CompletionPolicy, step.CompletionPolicy);
-                    SetBool(ctx.MemberModule, data, ApprovalFieldNames.Member.IsCommentRequiredOnReject, step.IsCommentRequiredOnReject);
-                    SetString(ctx.MemberModule, data, ApprovalFieldNames.Member.ReturnScope, step.ReturnScope);
-                    SetLink(ctx.MemberModule, data, ApprovalFieldNames.Member.ApproverUser, member.UserId);
-                    SetBool(ctx.MemberModule, data, ApprovalFieldNames.Member.IsRequired, member.IsRequired);
-                    SetBool(ctx.MemberModule, data, ApprovalFieldNames.Member.IsFinalStep,
-                        step.StepType == ApprovalStepTypes.Approval && stepNo == lastApprovalStepNo);
-                    SetString(ctx.MemberModule, data, ApprovalFieldNames.Member.Status, status);
+                    var data = new ModuleData { Name = ctx.MemberModule.Name };
+                    SetLink(ctx.MemberModule, data, ctx.Member.Flow, flowId);
+                    SetNumber(ctx.MemberModule, data, ctx.Member.AttemptNo, attemptNo);
+                    SetNumber(ctx.MemberModule, data, ctx.Member.StepNo, stepNo);
+                    SetString(ctx.MemberModule, data, ctx.Member.StepName, step.Name);
+                    SetString(ctx.MemberModule, data, ctx.Member.StepType, step.StepType);
+                    SetString(ctx.MemberModule, data, ctx.Member.CompletionPolicy, step.CompletionPolicy);
+                    SetBool(ctx.MemberModule, data, ctx.Member.IsCommentRequiredOnReject, step.IsCommentRequiredOnReject);
+                    SetString(ctx.MemberModule, data, ctx.Member.ReturnScope, step.ReturnScope);
+                    SetLink(ctx.MemberModule, data, ctx.Member.ApproverUser, member.UserId);
+                    SetBool(ctx.MemberModule, data, ctx.Member.IsRequired, member.IsRequired);
+                    SetBool(ctx.MemberModule, data, ctx.Member.IsFinalStep,
+                        step.StepType == ApprovalStepType.Approval.ToDesignValue() && stepNo == lastApprovalStepNo);
+                    SetString(ctx.MemberModule, data, ctx.Member.Status, status);
                     await _addInternalAsync(data);
                 }
             }
@@ -666,13 +657,14 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Approval
         async Task NormalizeMemberStatusesAsync(Context ctx, List<MemberRow> members)
         {
             foreach (var member in members.Where(e =>
-                e.Status is ApprovalMemberStatuses.Pending or ApprovalMemberStatuses.Waiting))
+                e.Status == ApprovalMemberStatus.Pending.ToDesignValue() ||
+                e.Status == ApprovalMemberStatus.Waiting.ToDesignValue()))
             {
                 var reached = members
-                    .Where(e => e.StepType == ApprovalStepTypes.Approval && e.StepNo < member.StepNo)
+                    .Where(e => e.StepType == ApprovalStepType.Approval.ToDesignValue() && e.StepNo < member.StepNo)
                     .GroupBy(e => e.StepNo)
                     .All(g => IsStepCompleted(g.ToList()));
-                var status = reached ? ApprovalMemberStatuses.Waiting : ApprovalMemberStatuses.Pending;
+                var status = reached ? ApprovalMemberStatus.Waiting.ToDesignValue() : ApprovalMemberStatus.Pending.ToDesignValue();
                 if (member.Status == status) continue;
                 await UpdateMemberStatusAsync(ctx, member, status, null);
                 member.Status = status;
@@ -682,49 +674,49 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Approval
         async Task AddHistoryAsync(Context ctx, string flowId, int attemptNo, int stepNo,
             string action, string fromStatus, string toStatus, string comment)
         {
-            var data = new ModuleData { Name = ctx.FieldDesign.HistoryModuleName };
-            SetLink(ctx.HistoryModule, data, ApprovalFieldNames.History.Flow, flowId);
-            SetNumber(ctx.HistoryModule, data, ApprovalFieldNames.History.AttemptNo, attemptNo);
-            SetNumber(ctx.HistoryModule, data, ApprovalFieldNames.History.StepNo, stepNo);
-            SetString(ctx.HistoryModule, data, ApprovalFieldNames.History.Action, action);
-            SetLink(ctx.HistoryModule, data, ApprovalFieldNames.History.ActorUser, ctx.ActorId);
-            SetString(ctx.HistoryModule, data, ApprovalFieldNames.History.FromStatus, fromStatus);
-            SetString(ctx.HistoryModule, data, ApprovalFieldNames.History.ToStatus, toStatus);
-            SetString(ctx.HistoryModule, data, ApprovalFieldNames.History.Comment, comment);
-            SetDateTime(ctx.HistoryModule, data, ApprovalFieldNames.History.ActedAt, DateTime.Now);
+            var data = new ModuleData { Name = ctx.HistoryModule.Name };
+            SetLink(ctx.HistoryModule, data, ctx.History.Flow, flowId);
+            SetNumber(ctx.HistoryModule, data, ctx.History.AttemptNo, attemptNo);
+            SetNumber(ctx.HistoryModule, data, ctx.History.StepNo, stepNo);
+            SetString(ctx.HistoryModule, data, ctx.History.Action, action);
+            SetLink(ctx.HistoryModule, data, ctx.History.ActorUser, ctx.ActorId);
+            SetString(ctx.HistoryModule, data, ctx.History.FromStatus, fromStatus);
+            SetString(ctx.HistoryModule, data, ctx.History.ToStatus, toStatus);
+            SetString(ctx.HistoryModule, data, ctx.History.Comment, comment);
+            SetDateTime(ctx.HistoryModule, data, ctx.History.ActedAt, DateTime.Now);
             await _addInternalAsync(data);
         }
 
         async Task UpdateMemberStatusAsync(Context ctx, MemberRow member, string status, DateTime? actedAt)
         {
-            var data = new ModuleData { Name = ctx.FieldDesign.MemberModuleName };
+            var data = new ModuleData { Name = ctx.MemberModule.Name };
             data.Fields[SystemFieldNames.Id] = new IdFieldData { Value = member.Id };
-            SetString(ctx.MemberModule, data, ApprovalFieldNames.Member.Status, status);
-            SetDateTime(ctx.MemberModule, data, ApprovalFieldNames.Member.ActedAt, actedAt);
+            SetString(ctx.MemberModule, data, ctx.Member.Status, status);
+            SetDateTime(ctx.MemberModule, data, ctx.Member.ActedAt, actedAt);
             await _updateInternalAsync(data);
         }
 
         async Task SkipWaitingMembersAsync(Context ctx, List<MemberRow> members)
         {
             foreach (var member in members.Where(e =>
-                e.Status is ApprovalMemberStatuses.Waiting or ApprovalMemberStatuses.Pending))
+                e.Status == ApprovalMemberStatus.Waiting.ToDesignValue() ||
+                e.Status == ApprovalMemberStatus.Pending.ToDesignValue()))
             {
-                await UpdateMemberStatusAsync(ctx, member, ApprovalMemberStatuses.Skipped, null);
-                member.Status = ApprovalMemberStatuses.Skipped;
+                await UpdateMemberStatusAsync(ctx, member, ApprovalMemberStatus.Skipped.ToDesignValue(), null);
+                member.Status = ApprovalMemberStatus.Skipped.ToDesignValue();
             }
         }
 
         //親レコードの FK と State/Applicant コピー列を書き戻す (コピー列はデザインで
         //列名が設定されているときだけ実際に書かれる = FieldData 経由の列マッピング)
-        async Task UpdateTargetStateAsync(Context ctx, string targetId, string flowId, string state, string applicantId)
+        //申請時に親レコードへフロー行の FK を書く (唯一の親書き込み。以降の状態遷移で親は触らない)
+        async Task UpdateTargetFlowIdAsync(Context ctx, string targetId, string flowId)
         {
             var data = new ModuleData { Name = ctx.TargetModule.Name };
             data.Fields[SystemFieldNames.Id] = new IdFieldData { Value = targetId };
             var fieldData = ctx.FieldDesign.CreateData() as Codeer.LowCode.Blazor.Extras.Data.ApprovalFlowFieldData
                 ?? throw new InvalidOperationException("invalid field data");
             fieldData.Id = flowId;
-            fieldData.State = state;
-            fieldData.Applicant = applicantId;
             data.Fields[ctx.FieldDesign.Name] = fieldData;
             await _updateInternalAsync(data);
         }

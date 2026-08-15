@@ -558,20 +558,20 @@
   <data name="ApprovalFlowField" xml:space="preserve">
     <value>Approval Flow</value>
   </data>
+  <data name="ApprovalHistoryField" xml:space="preserve">
+    <value>Approval History</value>
+  </data>
+  <data name="ApprovalFieldName" xml:space="preserve">
+    <value>Approval Field</value>
+  </data>
+  <data name="ApprovalCheck_NotApprovalFlowFieldFormat" xml:space="preserve">
+    <value>'{0}' is not an approval flow field.</value>
+  </data>
   <data name="DbColumn" xml:space="preserve">
     <value>DB Column</value>
   </data>
   <data name="ApprovalFlowModuleName" xml:space="preserve">
     <value>Approval Flow Module</value>
-  </data>
-  <data name="ApprovalMemberModuleName" xml:space="preserve">
-    <value>Approval Member Module</value>
-  </data>
-  <data name="ApprovalHistoryModuleName" xml:space="preserve">
-    <value>Approval History Module</value>
-  </data>
-  <data name="ApprovalAllowScriptRoute" xml:space="preserve">
-    <value>Allow Script Route</value>
   </data>
   <data name="ApprovalShowProgress" xml:space="preserve">
     <value>Show Progress</value>
@@ -642,9 +642,6 @@
   <data name="ApprovalError_RouteRequired" xml:space="preserve">
     <value>A route is required to submit.</value>
   </data>
-  <data name="ApprovalError_ScriptRouteNotAllowed" xml:space="preserve">
-    <value>This field does not allow script-built routes.</value>
-  </data>
   <data name="ApprovalError_InvalidRouteFormat" xml:space="preserve">
     <value>The route is invalid: {0}</value>
   </data>
@@ -681,37 +678,85 @@
   <data name="ApprovalError_WithdrawNotAllowed" xml:space="preserve">
     <value>Cannot withdraw because approval has already started. Ask an approver to return the request.</value>
   </data>
-  <data name="ApprovalOnStateChanged" xml:space="preserve">
-    <value>On State Changed</value>
-  </data>
   <data name="ApprovalWithdrawPolicy" xml:space="preserve">
     <value>Withdraw Policy</value>
   </data>
   <data name="ApprovalShowActions" xml:space="preserve">
     <value>Show Action Buttons</value>
   </data>
-  <data name="ApprovalHiddenActions" xml:space="preserve">
-    <value>Hidden Actions</value>
-  </data>
-  <data name="ApprovalCommentFieldName" xml:space="preserve">
-    <value>Comment Source Field</value>
-  </data>
   <data name="ApprovalOnBuildRoute" xml:space="preserve">
     <value>On Build Route</value>
   </data>
-  <data name="ApprovalCheck_UnknownActionFormat" xml:space="preserve">
-    <value>Unknown action name '{0}'.</value>
+  <data name="ApprovalFlowContractField" xml:space="preserve">
+    <value>Approval Flow Contract</value>
   </data>
-  <data name="ApprovalStateDbColumn" xml:space="preserve">
-    <value>State Copy Column</value>
+  <data name="ApprovalMemberContractField" xml:space="preserve">
+    <value>Approval Member Contract</value>
   </data>
-  <data name="ApprovalApplicantDbColumn" xml:space="preserve">
-    <value>Applicant Copy Column</value>
+  <data name="ApprovalHistoryContractField" xml:space="preserve">
+    <value>Approval History Contract</value>
   </data>
-  <data name="ApprovalMembersListFieldName" xml:space="preserve">
-    <value>Members List Field</value>
+  <data name="ApprovalCheck_ContractFieldMissingFormat" xml:space="preserve">
+    <value>Module '{0}' does not have a contract field ({1}). Place the contract field that declares the role mapping.</value>
   </data>
-  <data name="ApprovalCheck_MembersListFieldMismatchFormat" xml:space="preserve">
-    <value>The members list field '{0}' must be a list field that shows the approval member module '{1}'.</value>
+  <data name="ApprovalCheck_ContractFieldDuplicatedFormat" xml:space="preserve">
+    <value>There are multiple contract fields ({0}). Keep only one.</value>
+  </data>
+  <data name="ApprovalCheck_RoleMustBeListFormat" xml:space="preserve">
+    <value>'{0}' must be a list field.</value>
+  </data>
+  <data name="ApprovalFlowStatus_InProgress" xml:space="preserve">
+    <value>In Progress</value>
+  </data>
+  <data name="ApprovalFlowStatus_Completed" xml:space="preserve">
+    <value>Completed</value>
+  </data>
+  <data name="ApprovalFlowStatus_Rejected" xml:space="preserve">
+    <value>Rejected</value>
+  </data>
+  <data name="ApprovalFlowStatus_Returned" xml:space="preserve">
+    <value>Returned</value>
+  </data>
+  <data name="ApprovalFlowStatus_Withdrawn" xml:space="preserve">
+    <value>Withdrawn</value>
+  </data>
+  <data name="ApprovalMemberStatus_Pending" xml:space="preserve">
+    <value>Pending</value>
+  </data>
+  <data name="ApprovalMemberStatus_Waiting" xml:space="preserve">
+    <value>Waiting</value>
+  </data>
+  <data name="ApprovalMemberStatus_Approved" xml:space="preserve">
+    <value>Approved</value>
+  </data>
+  <data name="ApprovalMemberStatus_Rejected" xml:space="preserve">
+    <value>Rejected</value>
+  </data>
+  <data name="ApprovalMemberStatus_Confirmed" xml:space="preserve">
+    <value>Confirmed</value>
+  </data>
+  <data name="ApprovalMemberStatus_Skipped" xml:space="preserve">
+    <value>Skipped</value>
+  </data>
+  <data name="ApprovalStepType_Approval" xml:space="preserve">
+    <value>Approval</value>
+  </data>
+  <data name="ApprovalStepType_Confirmation" xml:space="preserve">
+    <value>Confirmation</value>
+  </data>
+  <data name="ApprovalCompletionPolicy_RequiredMembers" xml:space="preserve">
+    <value>All Required Members</value>
+  </data>
+  <data name="ApprovalCompletionPolicy_All" xml:space="preserve">
+    <value>All Members</value>
+  </data>
+  <data name="ApprovalCompletionPolicy_Any" xml:space="preserve">
+    <value>Any Member</value>
+  </data>
+  <data name="ApprovalReturnScope_ApplicantOnly" xml:space="preserve">
+    <value>Applicant Only</value>
+  </data>
+  <data name="ApprovalReturnScope_AnyPreviousStep" xml:space="preserve">
+    <value>Any Previous Step</value>
   </data>
 </root>

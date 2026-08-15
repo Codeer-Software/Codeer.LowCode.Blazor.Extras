@@ -14,7 +14,9 @@
     {
       "Name": "Status",
       "DbColumn": "status",
-      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.TextFieldDesign"
+      "EnumName": "ApprovalFlowStatus",
+      "AllowEmptySearch": true,
+      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.SelectFieldDesign"
     },
     {
       "Name": "TargetModuleName",
@@ -32,6 +34,17 @@
       "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.TextFieldDesign"
     },
     {
+      "Name": "Applicant",
+      "DbColumn": "applicant",
+      "SearchCondition": {
+        "ModuleName": "AppUser",
+        "TypeFullName": "Codeer.LowCode.Blazor.Repository.Match.SearchCondition"
+      },
+      "ValueVariable": "Id.Value",
+      "DisplayTextVariable": "Name.Value",
+      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.LinkFieldDesign"
+    },
+    {
       "Name": "AttemptNo",
       "DbColumn": "attempt_no",
       "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.NumberFieldDesign"
@@ -42,10 +55,42 @@
       "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.NumberFieldDesign"
     },
     {
+      "Name": "Members",
+      "SearchCondition": {
+        "ModuleName": "ApprovalFlowMember",
+        "Condition": {
+          "SearchTargetVariable": "Flow.Value",
+          "Comparison": "Equal",
+          "Variable": "Id.Value",
+          "TypeFullName": "Codeer.LowCode.Blazor.Repository.Match.FieldVariableMatchCondition"
+        },
+        "TypeFullName": "Codeer.LowCode.Blazor.Repository.Match.SearchCondition"
+      },
+      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.ListFieldDesign"
+    },
+    {
+      "Name": "Histories",
+      "SearchCondition": {
+        "ModuleName": "ApprovalHistory",
+        "Condition": {
+          "SearchTargetVariable": "Flow.Value",
+          "Comparison": "Equal",
+          "Variable": "Id.Value",
+          "TypeFullName": "Codeer.LowCode.Blazor.Repository.Match.FieldVariableMatchCondition"
+        },
+        "TypeFullName": "Codeer.LowCode.Blazor.Repository.Match.SearchCondition"
+      },
+      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.ListFieldDesign"
+    },
+    {
       "Name": "OptimisticLocking",
       "DbColumn": "version",
       "IncrementVersion": true,
       "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.OptimisticLockingFieldDesign"
+    },
+    {
+      "Name": "Contract",
+      "TypeFullName": "Codeer.LowCode.Blazor.Extras.Designs.ApprovalFlowContractFieldDesign"
     }
   ],
   "UserWriteCondition": {

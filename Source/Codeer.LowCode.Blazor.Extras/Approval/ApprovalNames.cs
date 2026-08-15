@@ -1,60 +1,93 @@
-﻿namespace Codeer.LowCode.Blazor.Extras.Approval
+﻿using Codeer.LowCode.Blazor.Repository.Design;
+
+namespace Codeer.LowCode.Blazor.Extras.Approval
 {
     /// <summary>
-    /// フロー全体の状態 (ApprovalFlow モジュールの Status 値)。
+    /// フロー全体の状態 (承認フローモジュールの Status 値)。
+    /// [DesignEnum] によりデザイン enum として公開される (enum 定義ファイル不要。
+    /// SelectField の EnumName・条件エディタの値候補・スクリプトから使える)。
+    /// メンバー名 = DB 保存値のプロトコル値のため変更不可。
     /// 「取消」状態は持たない (完全にやめたい場合は取り下げてレコードを削除する)。
     /// </summary>
-    public static class ApprovalFlowStatuses
+    [DesignEnum]
+    public enum ApprovalFlowStatus
     {
-        public const string InProgress = nameof(InProgress);
-        public const string Completed = nameof(Completed);
-        public const string Rejected = nameof(Rejected);
-        public const string Returned = nameof(Returned);
-        public const string Withdrawn = nameof(Withdrawn);
+        [DesignEnumMember(DisplayText = "$ApprovalFlowStatus_InProgress")]
+        InProgress,
+        [DesignEnumMember(DisplayText = "$ApprovalFlowStatus_Completed")]
+        Completed,
+        [DesignEnumMember(DisplayText = "$ApprovalFlowStatus_Rejected")]
+        Rejected,
+        [DesignEnumMember(DisplayText = "$ApprovalFlowStatus_Returned")]
+        Returned,
+        [DesignEnumMember(DisplayText = "$ApprovalFlowStatus_Withdrawn")]
+        Withdrawn,
+    }
 
+    /// <summary>フロー状態 (保存値 = 文字列) に対する判定。</summary>
+    public static class ApprovalFlowStatusLogic
+    {
         /// <summary>申請内容を編集して再申請できる状態か。</summary>
         public static bool CanResubmit(string? status)
-            => status is Rejected or Returned or Withdrawn;
+            => Enum.TryParse<ApprovalFlowStatus>(status, out var s) &&
+               s is ApprovalFlowStatus.Rejected or ApprovalFlowStatus.Returned or ApprovalFlowStatus.Withdrawn;
     }
 
     /// <summary>
-    /// 承認メンバーの状態 (ApprovalFlowMember モジュールの Status 値)。
+    /// 承認メンバーの状態 (承認メンバーモジュールの Status 値)。デザイン enum として公開。
     /// Waiting は「本当に今待っている人」だけ (未到達ステップは Pending)。
     /// 承認待ち一覧は Status = Waiting を検索するだけで正確になる。
     /// </summary>
-    public static class ApprovalMemberStatuses
+    [DesignEnum]
+    public enum ApprovalMemberStatus
     {
         /// <summary>未到達 (前の承認ステップが完了したら Waiting に昇格する)。</summary>
-        public const string Pending = nameof(Pending);
-
-        public const string Waiting = nameof(Waiting);
-        public const string Approved = nameof(Approved);
-        public const string Rejected = nameof(Rejected);
-        public const string Confirmed = nameof(Confirmed);
-        public const string Skipped = nameof(Skipped);
+        [DesignEnumMember(DisplayText = "$ApprovalMemberStatus_Pending")]
+        Pending,
+        [DesignEnumMember(DisplayText = "$ApprovalMemberStatus_Waiting")]
+        Waiting,
+        [DesignEnumMember(DisplayText = "$ApprovalMemberStatus_Approved")]
+        Approved,
+        [DesignEnumMember(DisplayText = "$ApprovalMemberStatus_Rejected")]
+        Rejected,
+        [DesignEnumMember(DisplayText = "$ApprovalMemberStatus_Confirmed")]
+        Confirmed,
+        [DesignEnumMember(DisplayText = "$ApprovalMemberStatus_Skipped")]
+        Skipped,
     }
 
-    /// <summary>ステップ種別。Confirmation (回覧) はフローの進行をブロックしない。</summary>
-    public static class ApprovalStepTypes
+    /// <summary>ステップ種別。デザイン enum として公開。Confirmation (回覧) はフローの進行をブロックしない。</summary>
+    [DesignEnum]
+    public enum ApprovalStepType
     {
-        public const string Approval = nameof(Approval);
-        public const string Confirmation = nameof(Confirmation);
+        [DesignEnumMember(DisplayText = "$ApprovalStepType_Approval")]
+        Approval,
+        [DesignEnumMember(DisplayText = "$ApprovalStepType_Confirmation")]
+        Confirmation,
     }
 
-    /// <summary>ステップの完了条件。</summary>
-    public static class ApprovalCompletionPolicies
+
+    /// <summary>ステップの完了条件 (メンバー行に保存)。デザイン enum として公開。</summary>
+    [DesignEnum]
+    public enum ApprovalCompletionPolicy
     {
         /// <summary>必須メンバー全員承認。必須ゼロなら任意1人 (現行テンプレート互換)。</summary>
-        public const string RequiredMembers = nameof(RequiredMembers);
-        public const string All = nameof(All);
-        public const string Any = nameof(Any);
+        [DesignEnumMember(DisplayText = "$ApprovalCompletionPolicy_RequiredMembers")]
+        RequiredMembers,
+        [DesignEnumMember(DisplayText = "$ApprovalCompletionPolicy_All")]
+        All,
+        [DesignEnumMember(DisplayText = "$ApprovalCompletionPolicy_Any")]
+        Any,
     }
 
-    /// <summary>差し戻し先の許可範囲 (ステップ設定)。</summary>
-    public static class ApprovalReturnScopes
+    /// <summary>差し戻し先の許可範囲 (ステップ設定。メンバー行に保存)。デザイン enum として公開。</summary>
+    [DesignEnum]
+    public enum ApprovalReturnScope
     {
-        public const string ApplicantOnly = nameof(ApplicantOnly);
-        public const string AnyPreviousStep = nameof(AnyPreviousStep);
+        [DesignEnumMember(DisplayText = "$ApprovalReturnScope_ApplicantOnly")]
+        ApplicantOnly,
+        [DesignEnumMember(DisplayText = "$ApprovalReturnScope_AnyPreviousStep")]
+        AnyPreviousStep,
     }
 
     /// <summary>
@@ -69,71 +102,29 @@
         Anytime,
     }
 
-    /// <summary>アクション名 (command API のパスセグメント / 履歴の Action 値)。</summary>
-    public static class ApprovalActions
+    /// <summary>
+    /// アクション名 (command API のパスセグメント / 履歴の Action 値)。デザイン enum として公開。
+    /// 表示名はアクションボタンのリソースを共用する。
+    /// </summary>
+    [DesignEnum]
+    public enum ApprovalAction
     {
-        public const string Submit = nameof(Submit);
-        public const string Approve = nameof(Approve);
-        public const string Reject = nameof(Reject);
-        public const string Return = nameof(Return);
+        [DesignEnumMember(DisplayText = "$ApprovalAction_Submit")]
+        Submit,
+        [DesignEnumMember(DisplayText = "$ApprovalAction_Approve")]
+        Approve,
+        [DesignEnumMember(DisplayText = "$ApprovalAction_Reject")]
+        Reject,
+        [DesignEnumMember(DisplayText = "$ApprovalAction_Return")]
+        Return,
 
         /// <summary>取り下げ (承認が始まる前のみ。編集して再申請できる)。</summary>
-        public const string Withdraw = nameof(Withdraw);
+        [DesignEnumMember(DisplayText = "$ApprovalAction_Withdraw")]
+        Withdraw,
 
-        public const string Resubmit = nameof(Resubmit);
-        public const string Confirm = nameof(Confirm);
-    }
-
-    /// <summary>
-    /// 承認データモジュールの既定フィールド名。
-    /// v1 はこの名前で固定 (モジュール名のみフィールドのプロパティで指定可能)。
-    /// 役割→フィールド名のマッピング指定は自動生成機能と合わせて拡張予定。
-    /// </summary>
-    public static class ApprovalFieldNames
-    {
-        /// <summary>ApprovalFlow モジュール。</summary>
-        public static class Flow
-        {
-            public const string Status = nameof(Status);
-            public const string TargetModuleName = nameof(TargetModuleName);
-            public const string TargetId = nameof(TargetId);
-            public const string RouteName = nameof(RouteName);
-            public const string AttemptNo = nameof(AttemptNo);
-            public const string CurrentStepNo = nameof(CurrentStepNo);
-        }
-
-        /// <summary>ApprovalFlowMember モジュール (ステップ情報は行に非正規化スナップショット)。</summary>
-        public static class Member
-        {
-            public const string Flow = nameof(Flow);
-            public const string AttemptNo = nameof(AttemptNo);
-            public const string StepNo = nameof(StepNo);
-            public const string StepName = nameof(StepName);
-            public const string StepType = nameof(StepType);
-            public const string CompletionPolicy = nameof(CompletionPolicy);
-            public const string IsCommentRequiredOnReject = nameof(IsCommentRequiredOnReject);
-            public const string ReturnScope = nameof(ReturnScope);
-            public const string ApproverUser = nameof(ApproverUser);
-            public const string IsRequired = nameof(IsRequired);
-
-            /// <summary>最終承認ステップのメンバーか (条件式で「最終承認者」を表すためのスナップショット)。</summary>
-            public const string IsFinalStep = nameof(IsFinalStep);
-            public const string Status = nameof(Status);
-            public const string ActedAt = nameof(ActedAt);
-        }
-
-        /// <summary>ApprovalHistory モジュール (不変。エンジンは INSERT のみ)。</summary>
-        public static class History
-        {
-            public const string Flow = nameof(Flow);
-            public const string AttemptNo = nameof(AttemptNo);
-            public const string StepNo = nameof(StepNo);
-            public const string Action = nameof(Action);
-            public const string ActorUser = nameof(ActorUser);
-            public const string FromStatus = nameof(FromStatus);
-            public const string ToStatus = nameof(ToStatus);
-            public const string Comment = nameof(Comment);
-            public const string ActedAt = nameof(ActedAt);
-        }
+        [DesignEnumMember(DisplayText = "$ApprovalAction_Resubmit")]
+        Resubmit,
+        [DesignEnumMember(DisplayText = "$ApprovalAction_Confirm")]
+        Confirm,
     }
 }

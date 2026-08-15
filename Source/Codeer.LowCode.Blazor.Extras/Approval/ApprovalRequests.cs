@@ -17,7 +17,7 @@ namespace Codeer.LowCode.Blazor.Extras.Approval
         /// <summary>申請書の保存データ (Module.GetSubmitData)。</summary>
         public ModuleSubmitData? TargetSubmitData { get; set; }
 
-        /// <summary>スクリプトで組み立てた経路 (AllowScriptRoute が有効なフィールドのみ受理される)。</summary>
+        /// <summary>スクリプトで組み立てた経路。誰が組んだかは履歴に不変記録される。</summary>
         public ApprovalRouteData? Route { get; set; }
 
         public string Comment { get; set; } = string.Empty;

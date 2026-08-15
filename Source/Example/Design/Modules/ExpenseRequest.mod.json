@@ -49,20 +49,9 @@
     {
       "Name": "Approval",
       "DbColumn": "approval_id",
-      "AllowScriptRoute": true,
       "FlowModuleName": "ApprovalFlow",
-      "MemberModuleName": "ApprovalFlowMember",
-      "HistoryModuleName": "ApprovalHistory",
       "TypeFullName": "Codeer.LowCode.Blazor.Extras.Designs.ApprovalFlowFieldDesign",
-      "OnStateChanged": "OnApprovalStateChanged",
-      "OnBuildRoute": "OnBuildRoute",
-      "StateDbColumn": "approval_state",
-      "ApplicantDbColumn": "approval_applicant"
-    },
-    {
-      "Name": "Approval.Status",
-      "DbColumn": "status",
-      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.TextFieldDesign"
+      "OnBuildRoute": "OnBuildRoute"
     },
     {
       "Name": "TitleLabel",
@@ -92,46 +81,39 @@
       "IsOrMatch": true,
       "Children": [
         {
-          "FieldName": "Approval",
-          "IsOrMatch": true,
-          "Children": [
-            {
-              "SearchTargetVariable": "Approval.State",
-              "Comparison": "Equal",
-              "Value": {
-                "TypeFullName": "Codeer.LowCode.Blazor.Repository.NullValue"
-              },
-              "TypeFullName": "Codeer.LowCode.Blazor.Repository.Match.FieldValueMatchCondition"
-            },
-            {
-              "SearchTargetVariable": "Approval.State",
-              "Comparison": "Equal",
-              "Value": {
-                "Value": "Returned",
-                "TypeFullName": "Codeer.LowCode.Blazor.Repository.StringValue"
-              },
-              "TypeFullName": "Codeer.LowCode.Blazor.Repository.Match.FieldValueMatchCondition"
-            },
-            {
-              "SearchTargetVariable": "Approval.State",
-              "Comparison": "Equal",
-              "Value": {
-                "Value": "Withdrawn",
-                "TypeFullName": "Codeer.LowCode.Blazor.Repository.StringValue"
-              },
-              "TypeFullName": "Codeer.LowCode.Blazor.Repository.Match.FieldValueMatchCondition"
-            },
-            {
-              "SearchTargetVariable": "Approval.State",
-              "Comparison": "Equal",
-              "Value": {
-                "Value": "Rejected",
-                "TypeFullName": "Codeer.LowCode.Blazor.Repository.StringValue"
-              },
-              "TypeFullName": "Codeer.LowCode.Blazor.Repository.Match.FieldValueMatchCondition"
-            }
-          ],
-          "TypeFullName": "Codeer.LowCode.Blazor.Repository.Match.FieldMatchCondition"
+          "SearchTargetVariable": "Approval.Status.Value",
+          "Comparison": "Equal",
+          "Value": {
+            "TypeFullName": "Codeer.LowCode.Blazor.Repository.NullValue"
+          },
+          "TypeFullName": "Codeer.LowCode.Blazor.Repository.Match.FieldValueMatchCondition"
+        },
+        {
+          "SearchTargetVariable": "Approval.Status.Value",
+          "Comparison": "Equal",
+          "Value": {
+            "Value": "Returned",
+            "TypeFullName": "Codeer.LowCode.Blazor.Repository.StringValue"
+          },
+          "TypeFullName": "Codeer.LowCode.Blazor.Repository.Match.FieldValueMatchConditionNonNull"
+        },
+        {
+          "SearchTargetVariable": "Approval.Status.Value",
+          "Comparison": "Equal",
+          "Value": {
+            "Value": "Withdrawn",
+            "TypeFullName": "Codeer.LowCode.Blazor.Repository.StringValue"
+          },
+          "TypeFullName": "Codeer.LowCode.Blazor.Repository.Match.FieldValueMatchConditionNonNull"
+        },
+        {
+          "SearchTargetVariable": "Approval.Status.Value",
+          "Comparison": "Equal",
+          "Value": {
+            "Value": "Rejected",
+            "TypeFullName": "Codeer.LowCode.Blazor.Repository.StringValue"
+          },
+          "TypeFullName": "Codeer.LowCode.Blazor.Repository.Match.FieldValueMatchConditionNonNull"
         }
       ],
       "TypeFullName": "Codeer.LowCode.Blazor.Repository.Match.MultiMatchCondition"
@@ -139,6 +121,9 @@
   },
   "DetailLayouts": {
     "": {
+      "DataOnlyFields": [
+        "Approval.Status"
+      ],
       "Layout": {
         "Rows": [
           {

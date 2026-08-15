@@ -1,3 +1,4 @@
+using Codeer.LowCode.Blazor.DesignLogic;
 using Codeer.LowCode.Blazor.Script;
 
 namespace Codeer.LowCode.Blazor.Extras.Approval
@@ -28,16 +29,16 @@ namespace Codeer.LowCode.Blazor.Extras.Approval
         public string Name { get; set; } = string.Empty;
 
         /// <summary>Approval / Confirmation。Confirmation はフローの進行をブロックしない回覧。</summary>
-        public string StepType { get; set; } = ApprovalStepTypes.Approval;
+        public string StepType { get; set; } = ApprovalStepType.Approval.ToDesignValue();
 
         /// <summary>RequiredMembers / All / Any。</summary>
-        public string CompletionPolicy { get; set; } = ApprovalCompletionPolicies.RequiredMembers;
+        public string CompletionPolicy { get; set; } = ApprovalCompletionPolicy.RequiredMembers.ToDesignValue();
 
         /// <summary>却下・差し戻し時にコメントを必須にするか。</summary>
         public bool IsCommentRequiredOnReject { get; set; } = true;
 
         /// <summary>ApplicantOnly / AnyPreviousStep。</summary>
-        public string ReturnScope { get; set; } = ApprovalReturnScopes.ApplicantOnly;
+        public string ReturnScope { get; set; } = ApprovalReturnScope.ApplicantOnly.ToDesignValue();
 
         public List<ApprovalMemberData> Members { get; set; } = new();
 

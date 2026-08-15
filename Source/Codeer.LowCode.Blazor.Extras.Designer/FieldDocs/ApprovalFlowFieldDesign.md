@@ -10,17 +10,23 @@
 - 状態遷移はすべてサーバーの command API (`/api/approval/*`) が検証・実行する。
   クライアントの表示制御はスクリプトで外せるが、サーバーが拒否する (権限と同じ大原則)。
 - 承認データは通常のモジュール (フロー / メンバー / 履歴の3つ) に保存される。
-  フィールド名は既定名で固定 (下記の必須フィールド)。モジュール名はプロパティで変更できる。
+  各承認モジュールには**契約フィールド** (ApprovalXxxContractField) を1つ置き、
+  「役割 → 自モジュールのフィールド名」のマッピングを宣言する (初期値は既定名。後からリネーム可)。
+  申請書側で指定するのはフローモジュール名だけで、メンバー・履歴モジュールは
+  フロー契約の Members / Histories 一覧の参照先として自動的に決まる。
 - 複数の申請書モジュールが同じ承認モジュールを共有するのが標準。
   承認待ち一覧はメンバーモジュールの ListPage (`ApproverUser = ログインユーザー AND Status = Waiting`) で
   全申請種別を横断して作れる。
-- 経路 (誰が承認するか) は申請時にスクリプトで組み立てて渡す (`AllowScriptRoute` が必要)。
-  メンバーは解決済みのユーザー Id を渡す。
+- 経路 (誰が承認するか) は申請時にスクリプトで組み立てて渡す。
+  メンバーは解決済みのユーザー Id を渡す。指定した経路は履歴に不変記録される。
 - FK (承認フロー行への参照) はサーバーだけが書く。クライアントからは送信されない。
 
 ### 動作
 
 - 申請 = 申請書の保存 + フロー生成 + FK 設定 + 履歴を同一トランザクションで実行
+- 組み込みボタンのアクション成功後はフィールド表示だけを再読込する。編集ロックの表示
+  (クライアント評価はページ読込時のデータ基準) は開き直しで反映される。
+  その場で表示を切り替えたいアプリはボタンを外付けにして自分のスクリプトで行う (下記 Script 参照)
 - ステップは直列。ステップ内は複数承認者 (完了条件 = RequiredMembers / All / Any)
 - `Confirmation` (回覧) ステップはフローの進行をブロックしない
 - 再申請は経路を再解決し、試行番号 (AttemptNo) で世代を分けて旧メンバーを温存する
@@ -30,56 +36,84 @@
 
 | プロパティ | 説明 |
 |---|---|
-| DB列 | 承認フロー行への FK 列 |
-| 状態コピー列 | フロー状態のコピーを保存する自テーブルの列 (任意)。設定するとエンジンが遷移のたびに書き戻し、条件式・検索・一覧列で変数 `Approval.State` が JOIN なしで使える (null = 未申請) |
-| 申請者コピー列 | 申請者ユーザー Id のコピー列 (任意)。変数 `Approval.Applicant` が使える (申請者本人の判定用) |
-| 承認メンバー一覧フィールド | 承認メンバーを表示する同一モジュール上の ListField 名 (既定 ApprovalMembers)。条件エディタの「現在の承認待ち」「最終承認の番」がこの一覧への存在条件を組み立てる |
-| 承認フローモジュール | フロー本体のモジュール名 (既定 ApprovalFlow) |
-| 承認メンバーモジュール | 承認者スナップショットのモジュール名 (既定 ApprovalFlowMember) |
-| 承認履歴モジュール | 監査履歴のモジュール名 (既定 ApprovalHistory)。エンジンは INSERT のみ |
-| スクリプト経路を許可 | スクリプトで組み立てた経路の受け入れ (既定 false)。有効化 = 申請側スクリプトが承認者を指定できる |
+| DB列 | 承認フロー行への FK 列 (このフィールドが自テーブルに持つ列はこの1本だけ) |
+| 承認フローモジュール | フロー本体のモジュール名 (既定 ApprovalFlow)。メンバー・履歴モジュールはフロー契約の Members / Histories 一覧の参照先として決まるため指定不要 |
 | 取り下げ許可範囲 | BeforeFirstApproval (既定・承認が始まる前のみ) / Anytime (進行中ならいつでも)。業務ポリシー |
 | 進捗を表示 / 履歴を表示 / コメント欄を表示 / アクションボタンを表示 | 標準 UI の表示切り替え。アクションボタンを OFF にすると ButtonField ＋ スクリプト API でアプリ独自の承認 UI に置き換えられる (サーバーの検証はどの UI からでも同じ) |
 | 経路組み立て | ApprovalRouteData を返すスクリプト (null で申請中止)。設定すると組み込みの申請・再申請ボタンが出て、スクリプト API の Submit() / Resubmit() も使える |
-| 状態変化時 | フロー状態が変わった後に呼ぶスクリプト (承認・取り下げ等の成功後)。編集可否の表示更新に使う |
-| 非表示アクション | 組み込みボタンから隠すアクション (カンマ区切り。例 "Withdraw,Return")。一部だけ外付けにする用 |
-| コメント入力フィールド | コメントの入力元フィールド。指定すると組み込みコメント欄は出ず、そのフィールド値がコメントになる (RichTextField 等に差し替え可) |
 
-### 必須フィールド (既定名・綴り固定)
+### 契約フィールド (インターフェイス) と必須フィールド
 
-- フローモジュール: `Status` / `TargetModuleName` / `TargetId` / `RouteName` / `AttemptNo` / `CurrentStepNo` と
-  `OptimisticLocking` (OptimisticLockingField、IncrementVersion 推奨)
-- メンバーモジュール: `Flow` (Link→フロー) / `AttemptNo` / `StepNo` / `StepName` / `StepType` / `CompletionPolicy` /
+各承認モジュールに契約フィールドを1つ置く (UI もデータも持たない設定フィールド。DB列不要):
+
+- フローモジュール: `ApprovalFlowContractFieldDesign`
+- メンバーモジュール: `ApprovalMemberContractFieldDesign`
+- 履歴モジュール: `ApprovalHistoryContractFieldDesign`
+
+契約フィールドの各プロパティ (役割) に自モジュールのフィールド名をマッピングする。
+初期値は既定名なので、既定名でフィールドを作れば設定は不要。フィールド名を変えたい場合は
+マッピングも合わせて変える (フィールドのリネームには自動追従する)。
+役割のフィールドがモジュールに無ければデザインチェックがエラーにする (= 契約の実装漏れ検出)。
+
+役割一覧 (括弧は推奨フィールド型。名前は変更可):
+
+- フロー契約: `Status` (SelectField 推奨) / `TargetModuleName` / `TargetId` / `RouteName` /
+  `Applicant` (ユーザーモジュールへの LinkField。申請時にエンジンが書き込む) /
+  `AttemptNo` / `CurrentStepNo` (Number) /
+  `Members` / `Histories` (それぞれメンバー・履歴モジュールの ListField。バインド `Flow.Value == Id.Value`)。
+  ほかに `OptimisticLocking` (OptimisticLockingField、IncrementVersion 推奨) が必須
+- メンバー契約: `Flow` (Link→フロー) / `AttemptNo` / `StepNo` / `StepName` / `StepType` / `CompletionPolicy` /
   `IsCommentRequiredOnReject` / `ReturnScope` / `ApproverUser` (Link→ユーザー) / `IsRequired` / `IsFinalStep` / `Status` / `ActedAt`
-- 履歴モジュール: `Flow` / `AttemptNo` / `StepNo` / `Action` / `ActorUser` (Link→ユーザー) / `FromStatus` / `ToStatus` / `Comment` / `ActedAt`
+- 履歴契約: `Flow` / `AttemptNo` / `StepNo` / `Action` / `ActorUser` (Link→ユーザー) / `FromStatus` / `ToStatus` / `Comment` / `ActedAt`
+
+デザインファイル (JSON) では次の1エントリを Fields に足すだけ (マッピングは既定値):
+
+```json
+{ "Name": "Contract", "TypeFullName": "Codeer.LowCode.Blazor.Extras.Designs.ApprovalFlowContractFieldDesign" }
+```
 
 ### 権限設定 (必須)
 
 - 承認モジュール3つの「書き込み可能ユーザー条件」は誰も満たさない条件にする
   (承認データはサーバーの内部経路だけが書く。未設定だと正規の保存 API で改ざんできてしまう)
-- 「状態コピー列」を設定し、申請書モジュールの「データによる認可 書き込み」に編集ロックを宣言する:
-  `Approval.State が null (未申請・null 検索) / Returned / Withdrawn / Rejected` のときだけ書き込み可。
-  自テーブルの列なので dotted リンク宣言は不要 (dotted 列 `Approval.Status` は一覧の状態列表示にだけ使う)
+- 申請書モジュールの「データによる認可 書き込み」に編集ロックを宣言する:
+  `(フィールド名).Status.Value が null (未申請 = フロー行なし・null 検索) / Returned / Withdrawn / Rejected`
+  のときだけ書き込み可。状態・申請者はフロー行が正で、条件は**リンク越し参照**
+  (`Approval.Status.Value` / `Approval.Applicant.Value`) で書く。フィールド宣言は不要
+  (条件で使えばドット列が自動合成される)
+- クライアント側でも権限の見た目を正しく出すには、申請書詳細レイアウトの DataOnlyFields に
+  条件で使うパス (`Approval.Status` / `Approval.Applicant` / `Approval.Members`) を登録する
+  (未登録でもサーバー強制は正しい。クライアント表示が保守側に倒れるだけ)
 - アプリの Current User Module 設定が必須 (承認者・申請者の判定に使う)
 
-### 条件エディタでの書き方 (専用検索コントロール)
+### 条件エディタでの書き方
 
-条件エディタで対象にこのフィールドを選ぶと、専用の検索コントロールが出る。種類を選ぶだけで
-内部値 (Waiting 等) やリストのパスを書かずに条件を組み立てられる:
+条件エディタの対象フィールド候補には、フロー行へのリンク越しパスが並ぶ。専用の UI は無く、
+他のフィールドと同じ操作で条件を組み立てる:
 
-- **状態**: 未申請 / 承認中 / 承認済み / 却下 / 差し戻し / 取り下げ の複数選択 (未申請 = null 検索)。
-  「状態コピー列」の設定が必要
-- **申請者**: 申請者と変数の比較 (既定 = 現在ユーザーの Id)。「申請者コピー列」の設定が必要
-- **現在の承認待ち**: 指定ユーザーが今まさに承認待ち (承認中 + メンバー一覧への同一行存在条件)
-- **最終承認の番**: 最終承認ステップの番が指定ユーザーに回っている (査定額のような
-  「最終承認者だけが記入できるフィールド」の PermissionField に使う)
+- **状態**: 対象 = `(フィールド名).Status`。値は InProgress / Completed / Rejected / Returned / Withdrawn。
+  **未申請 = フロー行なし = null 検索** (`Status` が null)。
+  状態値の enum (ApprovalFlowStatus / ApprovalMemberStatus / ApprovalStepType) は
+  **Extras に組み込みのコード定義 enum** で、enum 定義ファイルなしで使える。
+  フローの `Status`・メンバーの `Status` / `StepType` を `EnumName` 付きの SelectField にすれば、
+  条件エディタで値候補 (承認中/承認待ち 等) が選べる (サンプルはこの構成)
+- **申請者**: 対象 = `(フィールド名).Applicant`、変数 `CurrentUser.Id.Value` との比較
+- **現在の承認待ち**: And グループに
+  `Status == "InProgress"` / `Members.StepType == "Approval"` / `Members.Status == "Waiting"` /
+  `Members.ApproverUser == CurrentUser.Id.Value` を並べる
+  (And で同じ一覧を指す条件は自動的に「同一行が全条件を満たす」存在条件になる)
+- **最終承認の番**: 上の `StepType == "Approval"` を `Members.IsFinalStep == true` に替える
+  (査定額のような「最終承認者だけが記入できるフィールド」の PermissionField に使う)
 
-「現在の承認待ち」「最終承認の番」は「承認メンバー一覧フィールド」の ListField が必要:
+「現在の承認待ち」「最終承認の番」はフローモジュールの `Members` 一覧へのリンク越し存在条件
+(`Approval.Members.～`) として組み立てられる。申請書モジュール側に一覧フィールドを複製する必要はない:
 
-- ListField `ApprovalMembers`: 検索条件 = メンバーモジュール、バインド `Flow.Value == Approval.Id`。
-  詳細レイアウトの DataOnlyFields に登録する
+- フローモジュールの ListField `Members` (必須フィールド) が参照先。バインド `Flow.Value == Id.Value`
+- クライアント側でも権限の見た目を正しく出すには、申請書モジュールの詳細レイアウトの
+  DataOnlyFields に `(フィールド名).Members` (例 `Approval.Members`) を登録する
+  (サーバーがメンバー行を応答に同梱し、クライアントの条件評価が使う。未登録でもサーバー強制は正しい)
 - メンバーモジュールのリストレイアウトの DataOnlyFields に `StepType` / `IsFinalStep` を登録する
-  (埋め込みリストのロード列はリンク先レイアウトで決まるため。
+  (同梱される列はリンク先レイアウトで決まるため。
   未登録だとクライアント評価が false に倒れ、承認者の番でも見た目が読み取り専用になる)
 
 ### 応用: 状態・役割による細かい編集制御 (購買申請サンプルの構成)
@@ -90,15 +124,17 @@
 - 申請時のデータ正当性チェックは OnBuildRoute で行い、null を返して申請を中止する
   (フィールド必須は IsRequired、複合条件・業務ルールは OnBuildRoute、の分担)
 
-デザインファイル (JSON) を直接書く場合は正準形にする (条件エディタが1行として表示・編集できる形):
+デザインファイル (JSON) を直接書く場合は条件エディタの行モデルにする
+(1行 = 1ターゲットの葉条件。`FieldMatchCondition` で複数ターゲットを包まない):
 
-- 状態の複数選択 = `FieldMatchCondition` (`FieldName` = 承認フィールド名) に
-  `Approval.State` への `FieldValueMatchCondition` (未申請は `NullValue`) を Or で並べる
-- 現在の承認待ち / 最終承認の番 = `FieldMatchCondition` の And で
-  `[Approval.State == "InProgress", (StepType == "Approval" または IsFinalStep == true),
-  ApprovalMembers.Status.Value == "Waiting", ApprovalMembers.ApproverUser.Value == CurrentUser.Id.Value]`。
-  And で同じ一覧を指す条件は「同一行が全条件を満たす」= SQL の exists と同じ意味で評価される
-- 申請者 = `FieldVariableMatchCondition` (`Approval.Applicant` と `CurrentUser.Id.Value`)
+- 状態 = `MultiMatchCondition` (Or) の直下に `Approval.Status.Value` への葉条件を状態の数だけ並べる。
+  値ありは `FieldValueMatchConditionNonNull`、未申請 (null 検索) だけ `FieldValueMatchCondition`+`NullValue`
+- 現在の承認待ち / 最終承認の番 = `MultiMatchCondition` (And) の直下に
+  `[Approval.Status.Value == "InProgress", (Approval.Members.StepType.Value == "Approval" または
+  Approval.Members.IsFinalStep.Value == true),
+  Approval.Members.Status.Value == "Waiting", Approval.Members.ApproverUser.Value == CurrentUser.Id.Value]`
+  の葉条件を並べる。And で同じ一覧を指す条件は「同一行が全条件を満たす」= SQL の exists と同じ意味で評価される
+- 申請者 = `FieldVariableMatchCondition` (`Approval.Applicant.Value` と `CurrentUser.Id.Value`)
 
 ### 状態値
 
@@ -130,7 +166,7 @@ var result = 承認.Submit();                       // OnBuildRoute を呼んで
 承認.Resubmit();                                  // 再申請 (差し戻し・取り下げ・却下後)
 if (!result.IsSuccess) Logger.Error(result.ErrorMessage);
 
-// 経路を自前で渡す形も可 (AllowScriptRoute が必要なのは全経路共通)
+// 経路を自前で渡す形も可
 承認.SubmitWithRoute(route);
 承認.ResubmitWithRoute(route);
 
@@ -150,15 +186,17 @@ if (!result.IsSuccess) Logger.Error(result.ErrorMessage);
 var status = 承認.FlowStatus;                     // "InProgress" 等 (未申請は空文字)
 var submitted = 承認.IsSubmitted;
 
-// 状態変化時スクリプト (プロパティ「状態変化時」に設定) の定番:
-// その場アクション後は編集ロックのクライアント評価が古いままなので、ここで表示を切り替える
-void OnApprovalStateChanged()
-{
-    var s = 承認.FlowStatus;
-    申請ボタン.IsVisible = !承認.IsSubmitted;
-    再申請ボタン.IsVisible = s == "Rejected" || s == "Returned" || s == "Withdrawn";
-    IsViewOnly = s == "InProgress" || s == "Completed";  // サーバー側は DataWriteCondition が正
-}
+// 外付けボタンの出し分け (資格プロパティ。表示制御用で、強制は常にサーバー)
+申請ボタン.IsVisible = 承認.CanSubmit;
+承認ボタン.IsVisible = 承認.CanApprove;
+確認ボタン.IsVisible = 承認.CanConfirm;
+取り下げボタン.IsVisible = 承認.CanWithdraw;
+再申請ボタン.IsVisible = 承認.CanResubmitNow;
+
+// 外付けボタンの OnClick は、アクション後の表示更新まで自分のスクリプトでやる。
+// 編集ロックのクライアント評価はページ読込時のデータ基準のため、その場では変わらない
+var r = 承認.Withdraw("");
+if (r.IsSuccess) IsViewOnly = false;              // サーバー側は DataWriteCondition が正
 ```
 
 - ステップのプロパティ: `StepType` (Approval/Confirmation) / `CompletionPolicy` (RequiredMembers/All/Any) /

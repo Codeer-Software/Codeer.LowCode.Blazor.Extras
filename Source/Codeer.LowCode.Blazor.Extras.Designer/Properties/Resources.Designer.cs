@@ -102,25 +102,5 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Properties
         public static string MappingAlignment => GetString("MappingAlignment");
 
         public static string MappingPaddingChar => GetString("MappingPaddingChar");
-        public static string ApprovalSearch_Kind_State => GetString("ApprovalSearch_Kind_State");
-
-        public static string ApprovalSearch_Kind_Applicant => GetString("ApprovalSearch_Kind_Applicant");
-
-        public static string ApprovalSearch_Kind_CurrentApprover => GetString("ApprovalSearch_Kind_CurrentApprover");
-
-        public static string ApprovalSearch_Kind_FinalApprover => GetString("ApprovalSearch_Kind_FinalApprover");
-
-        public static string ApprovalSearch_State_NotSubmitted => GetString("ApprovalSearch_State_NotSubmitted");
-
-        public static string ApprovalSearch_State_InProgress => GetString("ApprovalSearch_State_InProgress");
-
-        public static string ApprovalSearch_State_Completed => GetString("ApprovalSearch_State_Completed");
-
-        public static string ApprovalSearch_State_Rejected => GetString("ApprovalSearch_State_Rejected");
-
-        public static string ApprovalSearch_State_Returned => GetString("ApprovalSearch_State_Returned");
-
-        public static string ApprovalSearch_State_Withdrawn => GetString("ApprovalSearch_State_Withdrawn");
-
     }
 }

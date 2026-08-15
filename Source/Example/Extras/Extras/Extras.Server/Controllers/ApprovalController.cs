@@ -1,3 +1,4 @@
+using Codeer.LowCode.Blazor.DesignLogic;
 using Codeer.LowCode.Blazor.Extras.Approval;
 using Codeer.LowCode.Blazor.Extras.Server.Approval;
 using Extras.Server.Services;
@@ -31,23 +32,23 @@ namespace Extras.Server.Controllers
 
         [HttpPost("approve")]
         public async Task<ApprovalActionResult> ApproveAsync(ApprovalActionRequest request)
-            => await CreateEngine().ExecuteAsync(ApprovalActions.Approve, request);
+            => await CreateEngine().ExecuteAsync(ApprovalAction.Approve.ToDesignValue(), request);
 
         [HttpPost("reject")]
         public async Task<ApprovalActionResult> RejectAsync(ApprovalActionRequest request)
-            => await CreateEngine().ExecuteAsync(ApprovalActions.Reject, request);
+            => await CreateEngine().ExecuteAsync(ApprovalAction.Reject.ToDesignValue(), request);
 
         [HttpPost("return")]
         public async Task<ApprovalActionResult> ReturnAsync(ApprovalActionRequest request)
-            => await CreateEngine().ExecuteAsync(ApprovalActions.Return, request);
+            => await CreateEngine().ExecuteAsync(ApprovalAction.Return.ToDesignValue(), request);
 
         [HttpPost("withdraw")]
         public async Task<ApprovalActionResult> WithdrawAsync(ApprovalActionRequest request)
-            => await CreateEngine().ExecuteAsync(ApprovalActions.Withdraw, request);
+            => await CreateEngine().ExecuteAsync(ApprovalAction.Withdraw.ToDesignValue(), request);
 
         [HttpPost("confirm")]
         public async Task<ApprovalActionResult> ConfirmAsync(ApprovalActionRequest request)
-            => await CreateEngine().ExecuteAsync(ApprovalActions.Confirm, request);
+            => await CreateEngine().ExecuteAsync(ApprovalAction.Confirm.ToDesignValue(), request);
 
         //承認データの書き込みはシステムの記録なので、操作ユーザーの書き込み権限に依存しない内部経路で行う
         ApprovalEngine CreateEngine()

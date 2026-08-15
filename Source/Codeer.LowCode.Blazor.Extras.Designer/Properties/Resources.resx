@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <root>
   <resheader name="resmimetype">
     <value>text/microsoft-resx</value>
@@ -80,35 +80,5 @@
   </data>
   <data name="MappingPaddingChar" xml:space="preserve">
     <value>Padding character</value>
-  </data>
-  <data name="ApprovalSearch_Kind_State" xml:space="preserve">
-    <value>State</value>
-  </data>
-  <data name="ApprovalSearch_Kind_Applicant" xml:space="preserve">
-    <value>Applicant</value>
-  </data>
-  <data name="ApprovalSearch_Kind_CurrentApprover" xml:space="preserve">
-    <value>Current approver</value>
-  </data>
-  <data name="ApprovalSearch_Kind_FinalApprover" xml:space="preserve">
-    <value>Final approver's turn</value>
-  </data>
-  <data name="ApprovalSearch_State_NotSubmitted" xml:space="preserve">
-    <value>Not submitted</value>
-  </data>
-  <data name="ApprovalSearch_State_InProgress" xml:space="preserve">
-    <value>In progress</value>
-  </data>
-  <data name="ApprovalSearch_State_Completed" xml:space="preserve">
-    <value>Approved</value>
-  </data>
-  <data name="ApprovalSearch_State_Rejected" xml:space="preserve">
-    <value>Rejected</value>
-  </data>
-  <data name="ApprovalSearch_State_Returned" xml:space="preserve">
-    <value>Returned</value>
-  </data>
-  <data name="ApprovalSearch_State_Withdrawn" xml:space="preserve">
-    <value>Withdrawn</value>
   </data>
 </root>

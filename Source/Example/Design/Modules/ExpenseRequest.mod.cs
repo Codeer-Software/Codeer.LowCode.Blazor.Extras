@@ -19,12 +19,3 @@ ApprovalRouteData OnBuildRoute()
     }
     return route;
 }
-
-// フロー状態が変わったとき (承認・取り下げ等の後) にフィールドから呼ばれる。
-// その場アクションでは編集ロックのクライアント評価 (ページ読込時のデータ基準) が
-// 更新されないため、編集可否の表示をここで切り替える (サーバー側は DataWriteCondition が正)
-void OnApprovalStateChanged()
-{
-    var status = Approval.FlowStatus;
-    IsViewOnly = status == "InProgress" || status == "Completed";
-}

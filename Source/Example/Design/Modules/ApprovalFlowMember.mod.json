@@ -40,7 +40,8 @@
     {
       "Name": "StepType",
       "DbColumn": "step_type",
-      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.TextFieldDesign"
+      "EnumName": "ApprovalStepType",
+      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.SelectFieldDesign"
     },
     {
       "Name": "CompletionPolicy",
@@ -81,7 +82,8 @@
     {
       "Name": "Status",
       "DbColumn": "status",
-      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.TextFieldDesign"
+      "EnumName": "ApprovalMemberStatus",
+      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.SelectFieldDesign"
     },
     {
       "Name": "ActedAt",
@@ -93,6 +95,10 @@
       "Text": "開く",
       "OnClick": "OpenRequest_OnClick",
       "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.ButtonFieldDesign"
+    },
+    {
+      "Name": "Contract",
+      "TypeFullName": "Codeer.LowCode.Blazor.Extras.Designs.ApprovalMemberContractFieldDesign"
     }
   ],
   "UserWriteCondition": {

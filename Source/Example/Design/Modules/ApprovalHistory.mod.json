@@ -67,6 +67,10 @@
       "Name": "ActedAt",
       "DbColumn": "acted_at",
       "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.DateTimeFieldDesign"
+    },
+    {
+      "Name": "Contract",
+      "TypeFullName": "Codeer.LowCode.Blazor.Extras.Designs.ApprovalHistoryContractFieldDesign"
     }
   ],
   "UserWriteCondition": {

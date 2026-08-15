@@ -49,20 +49,9 @@
     {
       "Name": "Approval",
       "DbColumn": "approval_id",
-      "AllowScriptRoute": true,
       "FlowModuleName": "ApprovalFlow",
-      "MemberModuleName": "ApprovalFlowMember",
-      "HistoryModuleName": "ApprovalHistory",
       "TypeFullName": "Codeer.LowCode.Blazor.Extras.Designs.ApprovalFlowFieldDesign",
-      "OnStateChanged": "OnApprovalStateChanged",
-      "OnBuildRoute": "OnBuildRoute",
-      "StateDbColumn": "approval_state",
-      "ApplicantDbColumn": "approval_applicant"
-    },
-    {
-      "Name": "Approval.Status",
-      "DbColumn": "status",
-      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.TextFieldDesign"
+      "OnBuildRoute": "OnBuildRoute"
     },
     {
       "Name": "TitleLabel",
@@ -114,7 +103,7 @@
           "IsOrMatch": true,
           "Children": [
             {
-              "SearchTargetVariable": "Approval.State",
+              "SearchTargetVariable": "Approval.Status.Value",
               "Comparison": "Equal",
               "Value": {
                 "TypeFullName": "Codeer.LowCode.Blazor.Repository.NullValue"
@@ -122,7 +111,7 @@
               "TypeFullName": "Codeer.LowCode.Blazor.Repository.Match.FieldValueMatchCondition"
             },
             {
-              "SearchTargetVariable": "Approval.Applicant",
+              "SearchTargetVariable": "Approval.Applicant.Value",
               "Comparison": "Equal",
               "Variable": "CurrentUser.Id.Value",
               "TypeFullName": "Codeer.LowCode.Blazor.Repository.Match.FieldVariableMatchCondition"
@@ -144,64 +133,43 @@
           "IsOrMatch": false,
           "Children": [
             {
-              "FieldName": "Approval",
-              "IsOrMatch": false,
-              "Children": [
-                {
-                  "SearchTargetVariable": "Approval.State",
-                  "Comparison": "Equal",
-                  "Value": {
-                    "Value": "InProgress",
-                    "TypeFullName": "Codeer.LowCode.Blazor.Repository.StringValue"
-                  },
-                  "TypeFullName": "Codeer.LowCode.Blazor.Repository.Match.FieldValueMatchCondition"
-                },
-                {
-                  "SearchTargetVariable": "ApprovalMembers.IsFinalStep.Value",
-                  "Comparison": "Equal",
-                  "Value": {
-                    "Value": true,
-                    "TypeFullName": "Codeer.LowCode.Blazor.Repository.BooleanValue"
-                  },
-                  "TypeFullName": "Codeer.LowCode.Blazor.Repository.Match.FieldValueMatchCondition"
-                },
-                {
-                  "SearchTargetVariable": "ApprovalMembers.Status.Value",
-                  "Comparison": "Equal",
-                  "Value": {
-                    "Value": "Waiting",
-                    "TypeFullName": "Codeer.LowCode.Blazor.Repository.StringValue"
-                  },
-                  "TypeFullName": "Codeer.LowCode.Blazor.Repository.Match.FieldValueMatchCondition"
-                },
-                {
-                  "SearchTargetVariable": "ApprovalMembers.ApproverUser.Value",
-                  "Comparison": "Equal",
-                  "Variable": "CurrentUser.Id.Value",
-                  "TypeFullName": "Codeer.LowCode.Blazor.Repository.Match.FieldVariableMatchCondition"
-                }
-              ],
-              "TypeFullName": "Codeer.LowCode.Blazor.Repository.Match.FieldMatchCondition"
+              "SearchTargetVariable": "Approval.Status.Value",
+              "Comparison": "Equal",
+              "Value": {
+                "Value": "InProgress",
+                "TypeFullName": "Codeer.LowCode.Blazor.Repository.StringValue"
+              },
+              "TypeFullName": "Codeer.LowCode.Blazor.Repository.Match.FieldValueMatchConditionNonNull"
+            },
+            {
+              "SearchTargetVariable": "Approval.Members.IsFinalStep.Value",
+              "Comparison": "Equal",
+              "Value": {
+                "Value": true,
+                "TypeFullName": "Codeer.LowCode.Blazor.Repository.BooleanValue"
+              },
+              "TypeFullName": "Codeer.LowCode.Blazor.Repository.Match.FieldValueMatchConditionNonNull"
+            },
+            {
+              "SearchTargetVariable": "Approval.Members.Status.Value",
+              "Comparison": "Equal",
+              "Value": {
+                "Value": "Waiting",
+                "TypeFullName": "Codeer.LowCode.Blazor.Repository.StringValue"
+              },
+              "TypeFullName": "Codeer.LowCode.Blazor.Repository.Match.FieldValueMatchConditionNonNull"
+            },
+            {
+              "SearchTargetVariable": "Approval.Members.ApproverUser.Value",
+              "Comparison": "Equal",
+              "Variable": "CurrentUser.Id.Value",
+              "TypeFullName": "Codeer.LowCode.Blazor.Repository.Match.FieldVariableMatchCondition"
             }
           ],
           "TypeFullName": "Codeer.LowCode.Blazor.Repository.Match.MultiMatchCondition"
         }
       },
       "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.PermissionFieldDesign"
-    },
-    {
-      "Name": "ApprovalMembers",
-      "SearchCondition": {
-        "ModuleName": "ApprovalFlowMember",
-        "Condition": {
-          "SearchTargetVariable": "Flow.Value",
-          "Comparison": "Equal",
-          "Variable": "Approval.Id",
-          "TypeFullName": "Codeer.LowCode.Blazor.Repository.Match.FieldVariableMatchCondition"
-        },
-        "TypeFullName": "Codeer.LowCode.Blazor.Repository.Match.SearchCondition"
-      },
-      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.ListFieldDesign"
     }
   ],
   "PageTitle": "購買申請",
@@ -211,86 +179,78 @@
       "IsOrMatch": true,
       "Children": [
         {
-          "FieldName": "Approval",
-          "IsOrMatch": true,
-          "Children": [
-            {
-              "SearchTargetVariable": "Approval.State",
-              "Comparison": "Equal",
-              "Value": {
-                "TypeFullName": "Codeer.LowCode.Blazor.Repository.NullValue"
-              },
-              "TypeFullName": "Codeer.LowCode.Blazor.Repository.Match.FieldValueMatchCondition"
-            },
-            {
-              "SearchTargetVariable": "Approval.State",
-              "Comparison": "Equal",
-              "Value": {
-                "Value": "Returned",
-                "TypeFullName": "Codeer.LowCode.Blazor.Repository.StringValue"
-              },
-              "TypeFullName": "Codeer.LowCode.Blazor.Repository.Match.FieldValueMatchCondition"
-            },
-            {
-              "SearchTargetVariable": "Approval.State",
-              "Comparison": "Equal",
-              "Value": {
-                "Value": "Withdrawn",
-                "TypeFullName": "Codeer.LowCode.Blazor.Repository.StringValue"
-              },
-              "TypeFullName": "Codeer.LowCode.Blazor.Repository.Match.FieldValueMatchCondition"
-            },
-            {
-              "SearchTargetVariable": "Approval.State",
-              "Comparison": "Equal",
-              "Value": {
-                "Value": "Rejected",
-                "TypeFullName": "Codeer.LowCode.Blazor.Repository.StringValue"
-              },
-              "TypeFullName": "Codeer.LowCode.Blazor.Repository.Match.FieldValueMatchCondition"
-            }
-          ],
-          "TypeFullName": "Codeer.LowCode.Blazor.Repository.Match.FieldMatchCondition"
+          "SearchTargetVariable": "Approval.Status.Value",
+          "Comparison": "Equal",
+          "Value": {
+            "TypeFullName": "Codeer.LowCode.Blazor.Repository.NullValue"
+          },
+          "TypeFullName": "Codeer.LowCode.Blazor.Repository.Match.FieldValueMatchCondition"
         },
         {
-          "FieldName": "Approval",
+          "SearchTargetVariable": "Approval.Status.Value",
+          "Comparison": "Equal",
+          "Value": {
+            "Value": "Returned",
+            "TypeFullName": "Codeer.LowCode.Blazor.Repository.StringValue"
+          },
+          "TypeFullName": "Codeer.LowCode.Blazor.Repository.Match.FieldValueMatchConditionNonNull"
+        },
+        {
+          "SearchTargetVariable": "Approval.Status.Value",
+          "Comparison": "Equal",
+          "Value": {
+            "Value": "Withdrawn",
+            "TypeFullName": "Codeer.LowCode.Blazor.Repository.StringValue"
+          },
+          "TypeFullName": "Codeer.LowCode.Blazor.Repository.Match.FieldValueMatchConditionNonNull"
+        },
+        {
+          "SearchTargetVariable": "Approval.Status.Value",
+          "Comparison": "Equal",
+          "Value": {
+            "Value": "Rejected",
+            "TypeFullName": "Codeer.LowCode.Blazor.Repository.StringValue"
+          },
+          "TypeFullName": "Codeer.LowCode.Blazor.Repository.Match.FieldValueMatchConditionNonNull"
+        },
+        {
           "IsOrMatch": false,
           "Children": [
             {
-              "SearchTargetVariable": "Approval.State",
+              "SearchTargetVariable": "Approval.Status.Value",
               "Comparison": "Equal",
               "Value": {
                 "Value": "InProgress",
                 "TypeFullName": "Codeer.LowCode.Blazor.Repository.StringValue"
               },
-              "TypeFullName": "Codeer.LowCode.Blazor.Repository.Match.FieldValueMatchCondition"
+              "TypeFullName": "Codeer.LowCode.Blazor.Repository.Match.FieldValueMatchConditionNonNull"
             },
             {
-              "SearchTargetVariable": "ApprovalMembers.StepType.Value",
+              "SearchTargetVariable": "Approval.Members.StepType.Value",
               "Comparison": "Equal",
               "Value": {
                 "Value": "Approval",
                 "TypeFullName": "Codeer.LowCode.Blazor.Repository.StringValue"
               },
-              "TypeFullName": "Codeer.LowCode.Blazor.Repository.Match.FieldValueMatchCondition"
+              "TypeFullName": "Codeer.LowCode.Blazor.Repository.Match.FieldValueMatchConditionNonNull"
             },
             {
-              "SearchTargetVariable": "ApprovalMembers.Status.Value",
+              "SearchTargetVariable": "Approval.Members.Status.Value",
               "Comparison": "Equal",
               "Value": {
                 "Value": "Waiting",
                 "TypeFullName": "Codeer.LowCode.Blazor.Repository.StringValue"
               },
-              "TypeFullName": "Codeer.LowCode.Blazor.Repository.Match.FieldValueMatchCondition"
+              "TypeFullName": "Codeer.LowCode.Blazor.Repository.Match.FieldValueMatchConditionNonNull"
             },
             {
-              "SearchTargetVariable": "ApprovalMembers.ApproverUser.Value",
+              "SearchTargetVariable": "Approval.Members.ApproverUser.Value",
               "Comparison": "Equal",
               "Variable": "CurrentUser.Id.Value",
               "TypeFullName": "Codeer.LowCode.Blazor.Repository.Match.FieldVariableMatchCondition"
             }
           ],
-          "TypeFullName": "Codeer.LowCode.Blazor.Repository.Match.FieldMatchCondition"
+          "TypeFullName": "Codeer.LowCode.Blazor.Repository.Match.MultiMatchCondition"
         }
       ],
       "TypeFullName": "Codeer.LowCode.Blazor.Repository.Match.MultiMatchCondition"
@@ -409,7 +369,9 @@
         "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.GridLayoutDesign"
       },
       "DataOnlyFields": [
-        "ApprovalMembers"
+        "Approval.Members",
+        "Approval.Status",
+        "Approval.Applicant"
       ]
     }
   },
