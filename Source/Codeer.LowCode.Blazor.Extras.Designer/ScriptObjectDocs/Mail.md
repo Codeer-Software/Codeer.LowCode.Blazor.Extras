@@ -1,4 +1,5 @@
 メールを1通送る。`new Mail()` で作り、プロパティを設定して `Send()`。
+単発でもこのレコードに紐づく定型送信なら MailField (デザイン宣言+チェック+リネーム追従が効く) を推奨。Mail オブジェクトは宛先も文面も完全に動的な送信用。
 送信インフラは `appsettings.json` の `Mail.Senders` (SMTP / Microsoft Graph / SendGrid / Gmail を名前付きで定義。旧 `MailSettings` も既定センダーとして有効)。
 センダーを併用するシステムでは `Mail.DefaultSenderName` (単発の既定) / `Mail.DefaultBulkSenderName` (一斉の既定) を設定し、送信箇所ではセンダー名を書かないのが基本 (例外の送信箇所だけ明示)。
 

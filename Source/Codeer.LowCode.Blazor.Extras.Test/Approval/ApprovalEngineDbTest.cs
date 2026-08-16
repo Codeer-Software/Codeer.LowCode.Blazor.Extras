@@ -1,4 +1,4 @@
-using Codeer.LowCode.Blazor.DataIO;
+﻿using Codeer.LowCode.Blazor.DataIO;
 using Codeer.LowCode.Blazor.DataIO.Db;
 using Codeer.LowCode.Blazor.DbAccess;
 using Codeer.LowCode.Blazor.DesignLogic;
@@ -693,10 +693,10 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Approval
             foreach (var f in module.Fields)
             {
                 if (f.Name == "Id" || f.Name == SystemFieldNames.OptimisticLocking) continue;
-                if (f is ApprovalContractFieldDesignBase) continue;
+                if (f is ContractFieldDesignBase) continue;
                 f.Name = "X" + f.Name;
             }
-            var contract = module.Fields.OfType<ApprovalContractFieldDesignBase>().First();
+            var contract = module.Fields.OfType<ContractFieldDesignBase>().First();
             foreach (var role in contract.GetRoleProperties())
                 role.SetValue(contract, "X" + role.GetValue(contract));
         }

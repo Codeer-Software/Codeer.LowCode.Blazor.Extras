@@ -14,22 +14,14 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
 
     /// <summary>
     /// Writes one history record per send operation into the module named by Mail.HistoryModuleName.
-    /// Reserved field names are mapped by spelling; only the fields that exist in the module are written.
+    /// Field names are resolved through the MailHistoryContractField on the history module
+    /// (roles left empty are not recorded); a module without the contract uses the default role names.
     /// Writing goes through an internal add delegate so it does not depend on the operating user's
     /// write permission (history is the system's record). A broken history configuration is reported
     /// via logError and never fails the send itself.
     /// </summary>
     public class MailHistoryWriter
     {
-        public const string SentAtField = "SentAt";
-        public const string SenderNameField = "SenderName";
-        public const string SubjectField = "Subject";
-        public const string TotalCountField = "TotalCount";
-        public const string SuccessCountField = "SuccessCount";
-        public const string FailureDetailsField = "FailureDetails";
-        public const string SourceModuleField = "SourceModule";
-        public const string SourceIdField = "SourceId";
-
         readonly string _historyModuleName;
         readonly DesignData _designData;
         readonly Func<ModuleData, Task> _addInternalAsync;
@@ -55,9 +47,13 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
                     return;
                 }
 
+                //フィールド名は履歴モジュール上の契約で解決する (契約が無ければ既定名。空の役割 = 記録しない)
+                var names = MailContracts.History(design) ?? new Designs.MailHistoryContractFieldDesign();
+
                 var data = new ModuleData { Name = _historyModuleName };
                 void Set(string fieldName, Action<FieldDataBase> setValue)
                 {
+                    if (string.IsNullOrEmpty(fieldName)) return;
                     var fieldDesign = design.Fields.FirstOrDefault(e => e.Name == fieldName);
                     var fieldData = fieldDesign?.CreateData();
                     if (fieldData == null) return;
@@ -72,12 +68,12 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
                     }
                 }
 
-                Set(SentAtField, e => ((DateTimeFieldData)e).Value = DateTime.Now);
-                Set(SenderNameField, e => ((TextFieldData)e).Value = senderName);
-                Set(SubjectField, e => ((TextFieldData)e).Value = subject);
-                Set(TotalCountField, e => ((NumberFieldData)e).Value = result.TotalCount);
-                Set(SuccessCountField, e => ((NumberFieldData)e).Value = result.SuccessCount);
-                Set(FailureDetailsField, e =>
+                Set(names.SentAt, e => ((DateTimeFieldData)e).Value = DateTime.Now);
+                Set(names.SenderName, e => ((TextFieldData)e).Value = senderName);
+                Set(names.Subject, e => ((TextFieldData)e).Value = subject);
+                Set(names.TotalCount, e => ((NumberFieldData)e).Value = result.TotalCount);
+                Set(names.SuccessCount, e => ((NumberFieldData)e).Value = result.SuccessCount);
+                Set(names.FailureDetails, e =>
                 {
                     var json = JsonSerializer.Serialize(result.Failures);
                     if (e is JsonFieldData jsonData) jsonData.Value = json;
@@ -85,13 +81,13 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
                 });
                 if (source != null)
                 {
-                    Set(SourceModuleField, e => ((TextFieldData)e).Value = source.SourceModule);
-                    Set(SourceIdField, e => ((TextFieldData)e).Value = source.SourceId);
+                    Set(names.SourceModule, e => ((TextFieldData)e).Value = source.SourceModule);
+                    Set(names.SourceId, e => ((TextFieldData)e).Value = source.SourceId);
                 }
 
                 if (!data.Fields.Any())
                 {
-                    _logError?.Invoke($"Mail history module '{_historyModuleName}' has none of the reserved fields.");
+                    _logError?.Invoke($"Mail history module '{_historyModuleName}' has none of the contract role fields.");
                     return;
                 }
                 await _addInternalAsync(data);

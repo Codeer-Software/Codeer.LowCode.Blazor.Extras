@@ -1007,6 +1007,96 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
             }
         }
 
+        internal static string MailField {
+            get {
+                return ResourceManager.GetString("MailField", resourceCulture);
+            }
+        }
+
+        internal static string MailFieldToVariable {
+            get {
+                return ResourceManager.GetString("MailFieldToVariable", resourceCulture);
+            }
+        }
+
+        internal static string MailFieldTo {
+            get {
+                return ResourceManager.GetString("MailFieldTo", resourceCulture);
+            }
+        }
+
+        internal static string MailFieldCcVariable {
+            get {
+                return ResourceManager.GetString("MailFieldCcVariable", resourceCulture);
+            }
+        }
+
+        internal static string MailFieldCc {
+            get {
+                return ResourceManager.GetString("MailFieldCc", resourceCulture);
+            }
+        }
+
+        internal static string MailFieldSubjectVariable {
+            get {
+                return ResourceManager.GetString("MailFieldSubjectVariable", resourceCulture);
+            }
+        }
+
+        internal static string MailFieldSubject {
+            get {
+                return ResourceManager.GetString("MailFieldSubject", resourceCulture);
+            }
+        }
+
+        internal static string MailFieldBodyVariable {
+            get {
+                return ResourceManager.GetString("MailFieldBodyVariable", resourceCulture);
+            }
+        }
+
+        internal static string MailFieldBody {
+            get {
+                return ResourceManager.GetString("MailFieldBody", resourceCulture);
+            }
+        }
+
+        internal static string MailFieldSenderName {
+            get {
+                return ResourceManager.GetString("MailFieldSenderName", resourceCulture);
+            }
+        }
+
+        internal static string MailFieldIsBodyHtml {
+            get {
+                return ResourceManager.GetString("MailFieldIsBodyHtml", resourceCulture);
+            }
+        }
+
+        internal static string MailFieldReplyTo {
+            get {
+                return ResourceManager.GetString("MailFieldReplyTo", resourceCulture);
+            }
+        }
+
+        internal static string MailFieldToRequired {
+            get {
+                return ResourceManager.GetString("MailFieldToRequired", resourceCulture);
+            }
+        }
+
+        internal static string MailFieldNoRecipient {
+            get {
+                return ResourceManager.GetString("MailFieldNoRecipient", resourceCulture);
+            }
+        }
+
+        internal static string MailHistoryContractField {
+            get {
+                return ResourceManager.GetString("MailHistoryContractField", resourceCulture);
+            }
+        }
+
         internal static string BulkMailRecipientListFieldName {
             get {
                 return ResourceManager.GetString("BulkMailRecipientListFieldName", resourceCulture);

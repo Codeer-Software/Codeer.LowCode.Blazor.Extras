@@ -483,6 +483,51 @@
   <data name="BulkMailField" xml:space="preserve">
     <value>一斉メール送信</value>
   </data>
+  <data name="MailField" xml:space="preserve">
+    <value>メール送信</value>
+  </data>
+  <data name="MailFieldToVariable" xml:space="preserve">
+    <value>宛先変数</value>
+  </data>
+  <data name="MailFieldTo" xml:space="preserve">
+    <value>宛先</value>
+  </data>
+  <data name="MailFieldCcVariable" xml:space="preserve">
+    <value>Cc変数</value>
+  </data>
+  <data name="MailFieldCc" xml:space="preserve">
+    <value>Cc</value>
+  </data>
+  <data name="MailFieldSubjectVariable" xml:space="preserve">
+    <value>件名変数</value>
+  </data>
+  <data name="MailFieldSubject" xml:space="preserve">
+    <value>件名</value>
+  </data>
+  <data name="MailFieldBodyVariable" xml:space="preserve">
+    <value>本文変数</value>
+  </data>
+  <data name="MailFieldBody" xml:space="preserve">
+    <value>本文</value>
+  </data>
+  <data name="MailFieldSenderName" xml:space="preserve">
+    <value>送信者名</value>
+  </data>
+  <data name="MailFieldIsBodyHtml" xml:space="preserve">
+    <value>HTML本文</value>
+  </data>
+  <data name="MailFieldReplyTo" xml:space="preserve">
+    <value>返信先</value>
+  </data>
+  <data name="MailFieldToRequired" xml:space="preserve">
+    <value>宛先が空です。宛先変数か固定アドレスを設定してください。</value>
+  </data>
+  <data name="MailFieldNoRecipient" xml:space="preserve">
+    <value>宛先が解決できませんでした</value>
+  </data>
+  <data name="MailHistoryContractField" xml:space="preserve">
+    <value>メール履歴契約</value>
+  </data>
   <data name="BulkMailRecipientListFieldName" xml:space="preserve">
     <value>宛先リスト</value>
   </data>

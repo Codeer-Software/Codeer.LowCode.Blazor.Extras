@@ -133,6 +133,20 @@
       "NextFocusField": "",
       "OnFocusMoving": "",
       "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.LabelFieldDesign"
+    },
+    {
+      "Name": "ReceiptMail",
+      "To": "applicant@example.com",
+      "Subject": "経費申請: {Title.Value}",
+      "Body": "{Title.Value} (金額 {Amount.Value}) を受け付けました。",
+      "TypeFullName": "Codeer.LowCode.Blazor.Extras.Designs.MailFieldDesign"
+    },
+    {
+      "Name": "SendMailButton",
+      "Text": "受付メールを送る (要 Mail 設定)",
+      "Variant": "OutlineSecondary",
+      "OnClick": "SendReceiptMail",
+      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.ButtonFieldDesign"
     }
   ],
   "UserWriteCondition": {
@@ -378,6 +392,19 @@
                 "CanResize": false,
                 "AllowOverflow": false,
                 "Border": "None"
+              }
+            ]
+          },
+          {
+            "Margin": {
+              "Top": 8
+            },
+            "Columns": [
+              {
+                "Layout": {
+                  "FieldName": "SendMailButton",
+                  "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.FieldLayoutDesign"
+                }
               }
             ]
           },

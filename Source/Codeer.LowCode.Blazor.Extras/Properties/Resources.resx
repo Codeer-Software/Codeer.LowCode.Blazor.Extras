@@ -483,6 +483,51 @@
   <data name="BulkMailField" xml:space="preserve">
     <value>Bulk Mail</value>
   </data>
+  <data name="MailField" xml:space="preserve">
+    <value>Mail</value>
+  </data>
+  <data name="MailFieldToVariable" xml:space="preserve">
+    <value>To Variable</value>
+  </data>
+  <data name="MailFieldTo" xml:space="preserve">
+    <value>To</value>
+  </data>
+  <data name="MailFieldCcVariable" xml:space="preserve">
+    <value>Cc Variable</value>
+  </data>
+  <data name="MailFieldCc" xml:space="preserve">
+    <value>Cc</value>
+  </data>
+  <data name="MailFieldSubjectVariable" xml:space="preserve">
+    <value>Subject Variable</value>
+  </data>
+  <data name="MailFieldSubject" xml:space="preserve">
+    <value>Subject</value>
+  </data>
+  <data name="MailFieldBodyVariable" xml:space="preserve">
+    <value>Body Variable</value>
+  </data>
+  <data name="MailFieldBody" xml:space="preserve">
+    <value>Body</value>
+  </data>
+  <data name="MailFieldSenderName" xml:space="preserve">
+    <value>Sender Name</value>
+  </data>
+  <data name="MailFieldIsBodyHtml" xml:space="preserve">
+    <value>HTML Body</value>
+  </data>
+  <data name="MailFieldReplyTo" xml:space="preserve">
+    <value>Reply To</value>
+  </data>
+  <data name="MailFieldToRequired" xml:space="preserve">
+    <value>The recipient is empty. Set the To variable or a fixed address.</value>
+  </data>
+  <data name="MailFieldNoRecipient" xml:space="preserve">
+    <value>No recipient address could be resolved.</value>
+  </data>
+  <data name="MailHistoryContractField" xml:space="preserve">
+    <value>Mail History Contract</value>
+  </data>
   <data name="BulkMailRecipientListFieldName" xml:space="preserve">
     <value>Recipient List</value>
   </data>
