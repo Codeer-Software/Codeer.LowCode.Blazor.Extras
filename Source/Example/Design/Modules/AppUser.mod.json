@@ -1,4 +1,4 @@
-{
+﻿{
   "Name": "AppUser",
   "DataSourceName": "SampleSQLite",
   "DbTable": "app_users",
@@ -21,6 +21,17 @@
       "Name": "NameLabel",
       "Text": "氏名",
       "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.LabelFieldDesign"
+    },
+    {
+      "Name": "EmailLabel",
+      "Text": "メール",
+      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.LabelFieldDesign"
+    },
+    {
+      "Name": "Email",
+      "DbColumn": "email",
+      "Placeholder": "メールアドレス",
+      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.TextFieldDesign"
     }
   ],
   "DetailLayouts": {
@@ -43,6 +54,23 @@
                 }
               }
             ]
+          },
+          {
+            "Columns": [
+              {
+                "Layout": {
+                  "FieldName": "EmailLabel",
+                  "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.FieldLayoutDesign"
+                },
+                "Width": 140
+              },
+              {
+                "Layout": {
+                  "FieldName": "Email",
+                  "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.FieldLayoutDesign"
+                }
+              }
+            ]
           }
         ],
         "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.GridLayoutDesign"
@@ -56,6 +84,10 @@
           {
             "FieldName": "Name",
             "Label": "氏名"
+          },
+          {
+            "FieldName": "Email",
+            "Label": "メール"
           }
         ]
       ]

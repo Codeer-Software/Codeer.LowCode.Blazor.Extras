@@ -107,6 +107,35 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
 
         [Designer(Index = 15, CandidateType = CandidateType.Field)]
         public string ActedAt { get; set; } = nameof(ActedAt);
+
+        /// <summary>
+        /// 順番到達通知メール (任意)。自モジュールの MailField 名。
+        /// 設定すると、承認の順番が回ってきたメンバーへエンジンが通知メールを送る。空 = 通知しない。
+        /// </summary>
+        [Designer(Index = 16, CandidateType = CandidateType.Field)]
+        public string TurnNotifyMail { get; set; } = string.Empty;
+
+        public override List<DesignCheckInfo> CheckDesign(DesignCheckContext context)
+        {
+            var result = base.CheckDesign(context);
+
+            //TurnNotifyMail は MailField であること (存在チェックは基底の役割チェックが行う)
+            if (!string.IsNullOrEmpty(TurnNotifyMail))
+            {
+                var ownModule = context.DesignData.Modules.Find(context.OwnerModule);
+                var field = ownModule?.Fields.FirstOrDefault(e => e.Name == TurnNotifyMail);
+                if (field != null && field is not MailFieldDesign)
+                {
+                    result.Add(new FieldDesignCheckInfo
+                    {
+                        Location = new FieldDesignDataLocation
+                        { Module = context.OwnerModule, Field = Name, Member = nameof(TurnNotifyMail) },
+                        Message = string.Format(Properties.Resources.ApprovalCheck_RoleMustBeMailFieldFormat, TurnNotifyMail),
+                    });
+                }
+            }
+            return result;
+        }
     }
 
     /// <summary>承認履歴モジュールの契約。</summary>

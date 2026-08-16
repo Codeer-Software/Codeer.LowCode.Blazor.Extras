@@ -3,6 +3,7 @@ using Codeer.LowCode.Blazor.DataIO.Db;
 using Codeer.LowCode.Blazor.DesignLogic;
 using Codeer.LowCode.Blazor.Extras.Approval;
 using Codeer.LowCode.Blazor.Extras.Designs;
+using Codeer.LowCode.Blazor.Extras.Mail;
 using Codeer.LowCode.Blazor.Extras.Properties;
 using Codeer.LowCode.Blazor.Repository;
 using Codeer.LowCode.Blazor.Repository.Data;
@@ -34,6 +35,15 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Approval
             _addInternalAsync = addInternalAsync;
             _updateInternalAsync = updateInternalAsync;
         }
+
+        /// <summary>
+        /// 通知メールの送信口 (任意)。設定すると、メンバー契約の TurnNotifyMail (MailField) を使って
+        /// 承認の順番が回ってきたメンバーへ通知メールを送る。未設定 = 通知しない。
+        /// </summary>
+        public Mail.MailDispatcher? MailDispatcher { get; set; }
+
+        /// <summary>通知メールの失敗などのログ (任意)。通知の失敗は承認操作を失敗させない。</summary>
+        public Action<string>? LogError { get; set; }
 
         /// <summary>申請。親保存 → 経路検証 → フロー生成 → FK 設定 → 履歴 を同一トランザクションで行う。</summary>
         public async Task<ApprovalActionResult> SubmitAsync(ApprovalSubmitRequest request)
@@ -76,6 +86,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Approval
                 await UpdateTargetFlowIdAsync(ctx, targetId, flowId);
 
                 await _db.CommitAsync();
+                await NotifyTurnAsync(ctx, flowId, attemptNo: 1, onlyMemberIds: null);
                 return ApprovalActionResult.Success(flowId, targetId);
             }
             catch (Exception ex)
@@ -132,6 +143,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Approval
                     ApprovalFlowStatus.InProgress.ToDesignValue(), request.Comment);
 
                 await _db.CommitAsync();
+                await NotifyTurnAsync(ctx, flow.Id, newAttempt, onlyMemberIds: null);
                 return ApprovalActionResult.Success(flow.Id, targetId);
             }
             catch (Exception ex)
@@ -155,6 +167,9 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Approval
                 if (flow.Version != request.ExpectedVersion) { await _db.RollbackAsync(); return ApprovalActionResult.Failure(Resources.ApprovalError_VersionMismatch); }
 
                 var members = await LoadMembersAsync(ctx, flow.Id, flow.AttemptNo);
+                var waitingBefore = members
+                    .Where(e => e.Status == ApprovalMemberStatus.Waiting.ToDesignValue())
+                    .Select(e => e.Id).ToHashSet();
                 var result = Enum.TryParse<ApprovalAction>(action, out var parsedAction) ? parsedAction switch
                 {
                     ApprovalAction.Approve => await ApproveAsync(ctx, flow, members, request),
@@ -167,6 +182,15 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Approval
 
                 if (result.IsSuccess) await _db.CommitAsync();
                 else await _db.RollbackAsync();
+
+                if (result.IsSuccess)
+                {
+                    //この操作で順番が回ってきた (Waiting へ昇格した) メンバーだけに通知する
+                    var newlyWaiting = members
+                        .Where(e => e.Status == ApprovalMemberStatus.Waiting.ToDesignValue() && !waitingBefore.Contains(e.Id))
+                        .Select(e => e.Id).ToHashSet();
+                    if (newlyWaiting.Count > 0) await NotifyTurnAsync(ctx, flow.Id, flow.AttemptNo, newlyWaiting);
+                }
                 return result;
             }
             catch (Exception ex)
@@ -706,6 +730,93 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Approval
                 member.Status = ApprovalMemberStatus.Skipped.ToDesignValue();
             }
         }
+
+        //====================================================================
+        // 通知メール (順番到達)
+        //====================================================================
+
+        //承認の順番が回ってきた (Waiting になった) メンバーへ通知メールを送る。
+        //テンプレートはメンバー契約の TurnNotifyMail が指す自モジュールの MailField。
+        //コミット後に同期送信し、通知の失敗は承認操作を失敗させない (ログのみ)
+        async Task NotifyTurnAsync(Context ctx, string flowId, int attemptNo, HashSet<string>? onlyMemberIds)
+        {
+            try
+            {
+                var dispatcher = MailDispatcher;
+                if (dispatcher == null) return;
+                if (string.IsNullOrEmpty(ctx.Member.TurnNotifyMail)) return;
+                if (ctx.MemberModule.Fields.FirstOrDefault(e => e.Name == ctx.Member.TurnNotifyMail)
+                    is not MailFieldDesign mail) return;
+
+                //テンプレート解決に必要なフィールドパス (リンクパス可)
+                var paths = MailTemplateEngine.GetVariableNames(mail.Subject)
+                    .Concat(MailTemplateEngine.GetVariableNames(mail.Body))
+                    .Concat([mail.ToVariable, mail.CcVariable, mail.SubjectVariable, mail.BodyVariable])
+                    .Where(e => !string.IsNullOrEmpty(e))
+                    .Select(e => MailVariableResolver.ParseToken(e).FieldPath)
+                    .Where(e => !string.IsNullOrEmpty(e))
+                    .Distinct().ToList();
+                //自モジュール分 (リンクパスはルートの FK) を取得し、リンク先は後段で一括解決する
+                var selectFields = paths
+                    .Select(e => new FieldName(e).Root)
+                    .Append(SystemFieldNames.Id)
+                    .Distinct().ToList();
+
+                var condition = new SearchCondition
+                {
+                    ModuleName = ctx.MemberModule.Name,
+                    Condition = new MultiMatchCondition
+                    {
+                        Children =
+                        [
+                            EqualsCondition($"{ctx.Member.Flow}.Value", flowId),
+                            EqualsCondition($"{ctx.Member.AttemptNo}.Value", attemptNo.ToString()),
+                            EqualsCondition($"{ctx.Member.Status}.Value", ApprovalMemberStatus.Waiting.ToDesignValue()),
+                        ],
+                    },
+                    SelectFields = selectFields,
+                };
+                var rows = (await _io.GetListAsync(condition, 0)).Items;
+                await Mail.MailLinkPathLoader.LoadAsync(_io, _designData, ctx.MemberModule, rows, paths);
+                foreach (var row in rows)
+                {
+                    var memberId = GetId(row);
+                    if (onlyMemberIds != null && !onlyMemberIds.Contains(memberId)) continue;
+
+                    var to = SplitAddresses(ResolveMailText(row, mail.ToVariable, mail.To));
+                    if (to.Count == 0) continue; //アドレスの無いメンバーはスキップ
+
+                    //MailField と同じ規則: 変数指定があればそのフィールド値、無ければ固定文字列をテンプレートにする
+                    var subjectTemplate = ResolveMailText(row, mail.SubjectVariable, mail.Subject);
+                    var bodyTemplate = ResolveMailText(row, mail.BodyVariable, mail.Body);
+                    var names = MailTemplateEngine.GetVariableNames(subjectTemplate)
+                        .Concat(MailTemplateEngine.GetVariableNames(bodyTemplate)).Distinct().ToList();
+                    var variables = MailVariableResolver.Resolve(ctx.MemberModule, row, names, _designData.Modules.Find);
+
+                    var result = await dispatcher.SendAsync(mail.SenderName, new MailMessage
+                    {
+                        To = to,
+                        Cc = SplitAddresses(ResolveMailText(row, mail.CcVariable, mail.Cc)),
+                        Subject = MailTemplateEngine.Fill(subjectTemplate, variables),
+                        Body = MailTemplateEngine.Fill(bodyTemplate, variables),
+                        IsBodyHtml = mail.IsBodyHtml,
+                        ReplyTo = mail.ReplyTo,
+                    }, Mail.MailDispatcher.CreateSource(ctx.MemberModule.Name, memberId));
+                    if (!result.IsSuccess)
+                        LogError?.Invoke($"Approval turn notification failed: {result.Failures.FirstOrDefault()?.Error}");
+                }
+            }
+            catch (Exception ex)
+            {
+                LogError?.Invoke($"Approval turn notification failed: {ex.Message}");
+            }
+        }
+
+        static string ResolveMailText(ModuleData data, string variable, string literal)
+            => string.IsNullOrEmpty(variable) ? literal : MailVariableResolver.GetValueText(data, variable);
+
+        static List<string> SplitAddresses(string addresses)
+            => addresses.Split([',', ';', '\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
 
         //親レコードの FK と State/Applicant コピー列を書き戻す (コピー列はデザインで
         //列名が設定されているときだけ実際に書かれる = FieldData 経由の列マッピング)

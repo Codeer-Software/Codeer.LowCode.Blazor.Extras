@@ -5,7 +5,9 @@ using Codeer.LowCode.Blazor.DesignLogic;
 using Codeer.LowCode.Blazor.Extras.Approval;
 using Codeer.LowCode.Blazor.Extras.Designs;
 using Codeer.LowCode.Blazor.Extras.Server.Approval;
+using Codeer.LowCode.Blazor.Extras.Mail;
 using Codeer.LowCode.Blazor.Extras.Server.FileManagement;
+using Codeer.LowCode.Blazor.Extras.Server.Mail;
 using Codeer.LowCode.Blazor.Repository;
 using Codeer.LowCode.Blazor.Repository.Data;
 using Codeer.LowCode.Blazor.Repository.Design;
@@ -48,8 +50,8 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Approval
             };
             _db = new DbAccessor(dataSources);
 
-            await _db.ExecuteAsync(Ds, "CREATE TABLE AppUsers (Id TEXT PRIMARY KEY, Name TEXT)", new());
-            await _db.ExecuteAsync(Ds, "INSERT INTO AppUsers VALUES ('1','申請者'),('2','課長'),('3','部長'),('4','部外者')", new());
+            await _db.ExecuteAsync(Ds, "CREATE TABLE AppUsers (Id TEXT PRIMARY KEY, Name TEXT, Email TEXT)", new());
+            await _db.ExecuteAsync(Ds, "INSERT INTO AppUsers VALUES ('1','申請者','user1@example.com'),('2','課長','user2@example.com'),('3','部長','user3@example.com'),('4','部外者','')", new());
             await _db.ExecuteAsync(Ds, "CREATE TABLE Requests (Id INTEGER PRIMARY KEY AUTOINCREMENT, Title TEXT, ApprovalId INTEGER)", new());
             await _db.ExecuteAsync(Ds,
                 "CREATE TABLE ApprovalFlows (Id INTEGER PRIMARY KEY AUTOINCREMENT, Status TEXT, TargetModuleName TEXT, TargetId TEXT, RouteName TEXT, Applicant TEXT, AttemptNo INTEGER, CurrentStepNo INTEGER, Version INTEGER)", new());
@@ -60,6 +62,9 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Approval
 
             _designData = CreateDesignData();
             _currentUserId = "1";
+            _sentMails.Clear();
+            _mailErrors.Clear();
+            _mailSenderThrows = false;
         }
 
         [TearDown]
@@ -90,7 +95,31 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Approval
         {
             _currentUserId = userId;
             var io = CreateIO();
-            return new ApprovalEngine(_designData, io, _db, io.AddSystemAsync, io.UpdateSystemAsync);
+            return new ApprovalEngine(_designData, io, _db, io.AddSystemAsync, io.UpdateSystemAsync)
+            {
+                //通知メールは常に結線する (契約の TurnNotifyMail が空なら送られない)
+                MailDispatcher = new MailDispatcher(
+                    new MailConfig { Senders = { new MailSenderSettings { Name = "Test", Type = MailSenderTypes.Smtp } } },
+                    _ => new FakeMailSender(this)),
+                LogError = _mailErrors.Add,
+            };
+        }
+
+        readonly List<MailMessage> _sentMails = new();
+        readonly List<string> _mailErrors = new();
+        bool _mailSenderThrows;
+
+        class FakeMailSender(ApprovalEngineDbTest owner) : IMailSender
+        {
+            public Task<MailSendResult> SendAsync(MailMessage message)
+            {
+                if (owner._mailSenderThrows) throw new InvalidOperationException("mail infrastructure down");
+                owner._sentMails.Add(message);
+                return Task.FromResult(new MailSendResult { TotalCount = 1, SuccessCount = 1 });
+            }
+
+            public Task<MailSendResult> SendBulkAsync(MailBulkTemplate template, List<MailBulkRecipient> recipients)
+                => throw new NotSupportedException();
         }
 
         SystemIO CreateIO() => new(_designData, this, _db, new TemporaryFileManager(_db, [], []));
@@ -103,6 +132,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Approval
             var user = new ModuleDesign { Name = "AppUser", DataSourceName = Ds, DbTable = "AppUsers" };
             user.Fields.Add(new IdFieldDesign { Name = "Id", DbColumn = "Id" });
             user.Fields.Add(new TextFieldDesign { Name = "Name", DbColumn = "Name" });
+            user.Fields.Add(new TextFieldDesign { Name = "Email", DbColumn = "Email" });
             d.AddModule(user);
 
             var request = new ModuleDesign
@@ -202,7 +232,14 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Approval
             member.Fields.Add(new BooleanFieldDesign { Name = nameof(ApprovalMemberContractFieldDesign.IsFinalStep), DbColumn = "IsFinalStep" });
             member.Fields.Add(new TextFieldDesign { Name = nameof(ApprovalMemberContractFieldDesign.Status), DbColumn = "Status" });
             member.Fields.Add(new DateTimeFieldDesign { Name = nameof(ApprovalMemberContractFieldDesign.ActedAt), DbColumn = "ActedAt" });
-            member.Fields.Add(new ApprovalMemberContractFieldDesign { Name = "Contract" });
+            member.Fields.Add(new MailFieldDesign
+            {
+                Name = "TurnMail",
+                ToVariable = "ApproverUser.Email.Value",
+                Subject = "承認依頼: {StepName.Value}",
+                Body = "{ApproverUser.Name.Value} さん ステップ{StepNo.Value}の承認をお願いします",
+            });
+            member.Fields.Add(new ApprovalMemberContractFieldDesign { Name = "Contract", TurnNotifyMail = "TurnMail" });
             d.AddModule(member);
 
             var history = new ModuleDesign { Name = "ApprovalHistory", DataSourceName = Ds, DbTable = "ApprovalHistories", UserWriteCondition = nobody };
@@ -749,6 +786,91 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Approval
                 $"SELECT Action FROM ApprovalHistories WHERE FlowId = {submit.FlowId} ORDER BY Id", new());
             Assert.That(actions.Select(e => e.Values.First()?.ToString()),
                 Is.EqualTo(new[] { ApprovalAction.Submit.ToDesignValue(), ApprovalAction.Approve.ToDesignValue(), ApprovalAction.Approve.ToDesignValue() }));
+        }
+
+        //================= 順番到達の通知メール =================
+
+        [Test]
+        public async Task 通知_申請時に最初のステップの承認者へメールが飛ぶ()
+        {
+            var submit = await SubmitAsync();
+
+            Assert.That(_sentMails.Count, Is.EqualTo(1));
+            Assert.That(_sentMails[0].To, Is.EqualTo(new[] { "user2@example.com" }));
+            Assert.That(_sentMails[0].Subject, Is.EqualTo("承認依頼: 課長承認"));
+            Assert.That(_sentMails[0].Body, Does.Contain("課長 さん").And.Contain("ステップ1"));
+        }
+
+        [Test]
+        public async Task 通知_承認で次のステップの承認者へメールが飛ぶ()
+        {
+            var submit = await SubmitAsync();
+            _sentMails.Clear();
+
+            var approve = await ExecuteAsync("2", ApprovalAction.Approve.ToDesignValue(), submit.FlowId);
+            Assert.That(approve.IsSuccess, Is.True, approve.ErrorMessage);
+
+            Assert.That(_sentMails.Count, Is.EqualTo(1));
+            Assert.That(_sentMails[0].To, Is.EqualTo(new[] { "user3@example.com" }));
+            Assert.That(_sentMails[0].Subject, Is.EqualTo("承認依頼: 部長承認"));
+
+            //最終承認の完了では新しい順番は生まれない = 通知なし
+            _sentMails.Clear();
+            var approve2 = await ExecuteAsync("3", ApprovalAction.Approve.ToDesignValue(), submit.FlowId);
+            Assert.That(approve2.IsSuccess, Is.True, approve2.ErrorMessage);
+            Assert.That(_sentMails, Is.Empty);
+        }
+
+        [Test]
+        public async Task 通知_却下では飛ばず_過去ステップ差し戻しで再度飛ぶ()
+        {
+            var route = new ApprovalRouteData { Name = "TestRoute" };
+            route.AddStep("課長承認").AddMember("2", true);
+            var step2 = route.AddStep("部長承認");
+            step2.ReturnScope = ApprovalReturnScope.AnyPreviousStep.ToDesignValue();
+            step2.AddMember("3", true);
+            var submit = await SubmitAsync(route: route);
+            var approve = await ExecuteAsync("2", ApprovalAction.Approve.ToDesignValue(), submit.FlowId);
+            Assert.That(approve.IsSuccess, Is.True, approve.ErrorMessage);
+            _sentMails.Clear();
+
+            //ステップ1への差し戻し → 課長の順番が再度回ってくる = 通知
+            var back = await ExecuteAsync("3", ApprovalAction.Return.ToDesignValue(), submit.FlowId, comment: "やり直し", targetStepNo: 1);
+            Assert.That(back.IsSuccess, Is.True, back.ErrorMessage);
+            Assert.That(_sentMails.Count, Is.EqualTo(1));
+            Assert.That(_sentMails[0].To, Is.EqualTo(new[] { "user2@example.com" }));
+
+            //却下では新しい順番は生まれない = 通知なし
+            _sentMails.Clear();
+            var reject = await ExecuteAsync("2", ApprovalAction.Reject.ToDesignValue(), submit.FlowId, comment: "却下");
+            Assert.That(reject.IsSuccess, Is.True, reject.ErrorMessage);
+            Assert.That(_sentMails, Is.Empty);
+        }
+
+        [Test]
+        public async Task 通知_アドレスの無い承認者はスキップされる()
+        {
+            var route = new ApprovalRouteData { Name = "TestRoute" };
+            var step = route.AddStep("承認");
+            step.AddMember("2", true);
+            step.AddMember("4", true); //Email 空
+            await SubmitAsync(route: route);
+
+            Assert.That(_sentMails.Count, Is.EqualTo(1));
+            Assert.That(_sentMails[0].To, Is.EqualTo(new[] { "user2@example.com" }));
+        }
+
+        [Test]
+        public async Task 通知_送信基盤の失敗は承認操作を失敗させない()
+        {
+            _mailSenderThrows = true;
+
+            var submit = await SubmitAsync(); //Assert内蔵 = 申請自体は成功
+            var approve = await ExecuteAsync("2", ApprovalAction.Approve.ToDesignValue(), submit.FlowId);
+            Assert.That(approve.IsSuccess, Is.True, approve.ErrorMessage);
+
+            Assert.That(_sentMails, Is.Empty);
+            Assert.That(_mailErrors, Is.Not.Empty);
         }
     }
 }

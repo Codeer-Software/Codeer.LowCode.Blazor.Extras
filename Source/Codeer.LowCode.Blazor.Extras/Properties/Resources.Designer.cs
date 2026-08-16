@@ -1574,6 +1574,12 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
             }
         }
 
+        internal static string ApprovalCheck_RoleMustBeMailFieldFormat {
+            get {
+                return ResourceManager.GetString("ApprovalCheck_RoleMustBeMailFieldFormat", resourceCulture);
+            }
+        }
+
         internal static string ApprovalFlowStatus_InProgress {
             get {
                 return ResourceManager.GetString("ApprovalFlowStatus_InProgress", resourceCulture);

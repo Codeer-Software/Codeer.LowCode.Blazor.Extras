@@ -1,6 +1,7 @@
 using Codeer.LowCode.Blazor.DesignLogic;
 using Codeer.LowCode.Blazor.Extras.Approval;
 using Codeer.LowCode.Blazor.Extras.Server.Approval;
+using Codeer.LowCode.Blazor.Extras.Server.Mail;
 using Extras.Server.Services;
 using Microsoft.AspNetCore.Mvc;
 
@@ -13,10 +14,12 @@ namespace Extras.Server.Controllers
     public class ApprovalController : ControllerBase, IAsyncDisposable
     {
         readonly DataService _dataService;
+        readonly ILogger<ApprovalController> _logger;
 
-        public ApprovalController(DataService dataService)
+        public ApprovalController(DataService dataService, ILogger<ApprovalController> logger)
         {
             _dataService = dataService;
+            _logger = logger;
         }
 
         public async ValueTask DisposeAsync()
@@ -52,8 +55,21 @@ namespace Extras.Server.Controllers
 
         //承認データの書き込みはシステムの記録なので、操作ユーザーの書き込み権限に依存しない内部経路で行う
         ApprovalEngine CreateEngine()
-            => new(DesignerService.GetDesignData(), _dataService.ModuleDataIO, _dataService.DbAccess,
+        {
+            var mail = SystemConfig.Instance.Mail;
+            //送信履歴はシステムの記録なので内部経路で書く (MailController と同じ)
+            var historyWriter = string.IsNullOrEmpty(mail.HistoryModuleName)
+                ? null
+                : new MailHistoryWriter(mail.HistoryModuleName, DesignerService.GetDesignData(),
+                    data => _dataService.ModuleDataIO.AddSystemRecordAsync(data), e => _logger.LogError("{Error}", e));
+            return new(DesignerService.GetDesignData(), _dataService.ModuleDataIO, _dataService.DbAccess,
                 data => _dataService.ModuleDataIO.AddSystemRecordAsync(data),
-                data => _dataService.ModuleDataIO.UpdateSystemRecordAsync(data));
+                data => _dataService.ModuleDataIO.UpdateSystemRecordAsync(data))
+            {
+                //順番到達の通知メール (メンバー契約の TurnNotifyMail が設定されているときだけ送られる)
+                MailDispatcher = new MailDispatcher(mail, historyWriter: historyWriter),
+                LogError = e => _logger.LogError("{Error}", e),
+            };
+        }
     }
 }

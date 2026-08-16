@@ -765,6 +765,9 @@
   <data name="ApprovalCheck_RoleMustBeListFormat" xml:space="preserve">
     <value>'{0}' must be a list field.</value>
   </data>
+  <data name="ApprovalCheck_RoleMustBeMailFieldFormat" xml:space="preserve">
+    <value>'{0}' must be a mail field (MailField).</value>
+  </data>
   <data name="ApprovalFlowStatus_InProgress" xml:space="preserve">
     <value>In Progress</value>
   </data>

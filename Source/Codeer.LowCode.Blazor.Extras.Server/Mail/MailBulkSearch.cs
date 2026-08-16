@@ -28,23 +28,27 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
                 throw new InvalidOperationException("EmailAddressVariable is required for search-based bulk send.");
 
             //テンプレ変数+宛先/除外+Id(RecordUrl用)だけ取得する。
-            //リンクパス("Contact.Email")はルートのLink/SelectFieldがあればデータ層がJOIN/INで解決する
+            //リンクパス("Contact.Email")はルートの FK を取得し、リンク先は後段で一括解決する
             var names = MailRecipientBuilder.GetVariableNames(request.Subject, request.Body);
-            var searchCondition = request.Condition.JsonClone();
-            searchCondition.LimitCount = null; //全件(上限はMaxBulkCountが守る)
-            searchCondition.SelectFields = names
+            var paths = names
                 .Select(e => MailVariableResolver.ParseToken(e).FieldPath)
                 .Where(e => design.Fields.Any(f => f.Name == new FieldName(e).Root))
                 .Concat(new[]
                 {
                     MailVariableResolver.ParseToken(request.EmailAddressVariable).FieldPath,
                     MailVariableResolver.ParseToken(request.OptOutVariable).FieldPath,
-                    SystemFieldNames.Id,
                 })
                 .Where(e => !string.IsNullOrEmpty(e))
                 .Distinct().ToList();
+            var searchCondition = request.Condition.JsonClone();
+            searchCondition.LimitCount = null; //全件(上限はMaxBulkCountが守る)
+            searchCondition.SelectFields = paths
+                .Select(e => new FieldName(e).Root)
+                .Append(SystemFieldNames.Id)
+                .Distinct().ToList();
 
             var rows = (await moduleDataIO.GetListAsync(searchCondition, 0)).Items;
+            await MailLinkPathLoader.LoadAsync(moduleDataIO, designData, design, rows, paths);
 
             var recipients = rows
                 .Select(row => MailRecipientBuilder.TryBuild(design, row, request.EmailAddressVariable, request.OptOutVariable, names,
