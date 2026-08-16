@@ -1,15 +1,15 @@
-using System.Text;
+﻿using System.Text;
 
 namespace Codeer.LowCode.Blazor.Extras.Mail
 {
     /// <summary>
-    /// Low level mail template engine shared by the client (preview) and the server (bulk sending).
-    /// Replaces {Name} tokens with variable values. Use {{ and }} for literal braces.
-    /// Unknown variables resolve to an empty string, and unclosed braces are kept as-is.
+    /// メールテンプレートエンジンの低レイヤ (クライアントのプレビューとサーバーの一斉送信で共有)。
+    /// {変数} を変数値へ差し込む。リテラルの中括弧は {{ }}。
+    /// 未知の変数は空文字になり、閉じていない中括弧はそのまま残る。
     /// </summary>
     internal static class MailTemplateEngine
     {
-        /// <summary>Extracts the distinct {Name} variable names used in the template (literal {{ }} excluded).</summary>
+        /// <summary>テンプレートで使われている {変数} 名の一覧を返す (重複なし。リテラルの {{ }} は除く)。</summary>
         public static List<string> GetVariableNames(string? template)
         {
             var names = new List<string>();

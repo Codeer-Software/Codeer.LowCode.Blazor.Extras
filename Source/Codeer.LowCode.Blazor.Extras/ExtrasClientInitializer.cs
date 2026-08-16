@@ -1,4 +1,4 @@
-using Codeer.LowCode.Blazor.Extras.Designs;
+﻿using Codeer.LowCode.Blazor.Extras.Designs;
 using Codeer.LowCode.Blazor.Extras.Fields;
 using Codeer.LowCode.Blazor.Extras.ScriptObjects;
 using Codeer.LowCode.Blazor.Extras.Services;
@@ -19,11 +19,10 @@ namespace Codeer.LowCode.Blazor.Extras
         }
 
         /// <summary>
-        /// Initialize including built-in script objects (Excel, WebApi, Toaster, Mail).
-        /// Endpoint URLs belong to the app, so set them once at startup via the static
-        /// properties of each feature (MailTransport.SendMailEndPoint /
-        /// BulkSearchMailEndPoint, Excel.ConvertPdfEndPoint,
-        /// AITextAnalyzerField.FileToModuleDataEndPoint / TextToModuleDataEndPoint).
+        /// 組み込みスクリプトオブジェクト (Excel, WebApi, Toaster, Mail) 込みの初期化。
+        /// エンドポイント URL はアプリの持ち物なので、各機能の静的プロパティで起動時に一度設定する
+        /// (MailTransport.SendMailEndPoint / BulkSearchMailEndPoint、Excel.ConvertPdfEndPoint、
+        /// AITextAnalyzerField.FileToModuleDataEndPoint / TextToModuleDataEndPoint)。
         /// </summary>
         public static void Initialize(IAppInfoService app, IHttpService http, ILogger logger, IToastService toaster)
         {

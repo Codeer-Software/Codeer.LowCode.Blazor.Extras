@@ -3,9 +3,9 @@
 namespace Codeer.LowCode.Blazor.Extras.Server.Mail
 {
     /// <summary>
-    /// Legacy single-SMTP entry point kept for backward compatibility.
-    /// Internally delegates to <see cref="SmtpMailSender"/> (MailKit).
-    /// New code should use <see cref="MailDispatcher"/> with named senders.
+    /// 後方互換のために残している旧形式の単一 SMTP 送信の入口。
+    /// 内部では <see cref="SmtpMailSender"/> (MailKit) へ委譲する。
+    /// 新しいコードは名前付きインフラの <see cref="MailDispatcher"/> を使うこと。
     /// </summary>
     public class SmtpMailService
     {

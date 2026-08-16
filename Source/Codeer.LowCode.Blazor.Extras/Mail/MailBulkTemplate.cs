@@ -1,8 +1,8 @@
-namespace Codeer.LowCode.Blazor.Extras.Mail
+﻿namespace Codeer.LowCode.Blazor.Extras.Mail
 {
     /// <summary>
-    /// The part of a bulk send that is common to all recipients (IMailSender contract).
-    /// The server builds this from the bulk requests; it does not travel on the wire itself.
+    /// 一斉送信の全宛先共通部分 (IMailSender のコントラクト)。
+    /// サーバーが一斉送信リクエストから組み立てる (これ自体は通信に乗らない)。
     /// </summary>
     public class MailBulkTemplate
     {
@@ -12,9 +12,9 @@ namespace Codeer.LowCode.Blazor.Extras.Mail
         /// <summary>差出人表示名 (From 指定時のみ使われる)。</summary>
         public string FromDisplayName { get; set; } = string.Empty;
 
-        /// <summary>Subject template. {Name} tokens are replaced per recipient.</summary>
+        /// <summary>件名テンプレート。{変数} は宛先ごとに差し込まれる。</summary>
         public string Subject { get; set; } = string.Empty;
-        /// <summary>Body template. {Name} tokens are replaced per recipient.</summary>
+        /// <summary>本文テンプレート。{変数} は宛先ごとに差し込まれる。</summary>
         public string Body { get; set; } = string.Empty;
         public bool IsBodyHtml { get; set; }
         public string ReplyTo { get; set; } = string.Empty;

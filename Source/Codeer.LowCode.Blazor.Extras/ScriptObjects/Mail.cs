@@ -6,7 +6,7 @@ using Codeer.LowCode.Blazor.Script;
 namespace Codeer.LowCode.Blazor.Extras.ScriptObjects
 {
     /// <summary>
-    /// Single mail built and sent from scripts:
+    /// スクリプトから組み立てて送る単発メール:
     /// <code>
     /// var mail = new Mail();
     /// mail.MailInfraName = "Notify";       //Mail.Infras の設定名(省略時は DefaultInfraName、無ければ先頭)
@@ -25,7 +25,7 @@ namespace Codeer.LowCode.Blazor.Extras.ScriptObjects
         [ScriptHide, ScriptInject]
         public IHttpService? Http { get; set; }
 
-        /// <summary>Sender settings name configured in appsettings (Mail.Infras). Empty = Mail.DefaultInfraName (then the first sender).</summary>
+        /// <summary>appsettings (Mail.Infras) のメールインフラ名。空 = Mail.DefaultInfraName (無ければ先頭)。</summary>
         public string MailInfraName { get; set; } = string.Empty;
 
         /// <summary>差出人アドレス (任意)。空 = 送信者設定の差出人。AllowedFromDomains で許可されたドメインのみ。</summary>
@@ -39,7 +39,7 @@ namespace Codeer.LowCode.Blazor.Extras.ScriptObjects
         public bool IsBodyHtml { get; set; }
         public string ReplyTo { get; set; } = string.Empty;
 
-        /// <summary>Record this send originates from. Recorded as SourceModule/SourceId in the send history.</summary>
+        /// <summary>この送信の元レコード。送信履歴に SourceModule/SourceId として記録される。</summary>
         public Module? Source { get; set; }
 
         readonly MailMessage _message = new();

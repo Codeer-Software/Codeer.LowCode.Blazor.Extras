@@ -1,6 +1,6 @@
-namespace Codeer.LowCode.Blazor.Extras.Mail
+﻿namespace Codeer.LowCode.Blazor.Extras.Mail
 {
-    /// <summary>Result of a send operation. Partial failures are reported per recipient.</summary>
+    /// <summary>送信結果。部分的な失敗は宛先ごとに報告される。</summary>
     public class MailSendResult
     {
         public int TotalCount { get; set; }

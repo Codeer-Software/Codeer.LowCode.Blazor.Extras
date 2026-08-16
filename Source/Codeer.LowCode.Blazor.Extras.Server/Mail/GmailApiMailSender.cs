@@ -8,13 +8,12 @@ using System.Text.Json;
 namespace Codeer.LowCode.Blazor.Extras.Server.Mail
 {
     /// <summary>
-    /// Gmail API (users.messages.send) implementation of <see cref="IMailSender"/>.
-    /// Service account + domain-wide delegation (Google Workspace), plain REST (no SDK) -
-    /// sends as the <see cref="MailInfraSettings.SenderMailAddress"/> user.
-    /// Settings: SenderMailAddress = the delegated sender user,
-    /// ClientSecret = the service account JSON key (file path, or the JSON text itself).
-    /// Suited for notification mails (Workspace sending limits are around 2000 mails/day);
-    /// use a delivery service for large bulk sends.
+    /// <see cref="IMailSender"/> の Gmail API (users.messages.send) 実装。
+    /// サービスアカウント + ドメイン全体の委任 (Google Workspace)、素の REST (SDK なし)。
+    /// <see cref="MailInfraSettings.SenderMailAddress"/> のユーザーとして送信する。
+    /// 設定: SenderMailAddress = 委任された送信ユーザー、
+    /// ClientSecret = サービスアカウントの JSON キー (ファイルパスか JSON 文字列そのもの)。
+    /// 通知メール向き (Workspace の送信上限は 2000通/日 程度)。大量の一斉送信は配信サービスを使うこと。
     /// </summary>
     public class GmailApiMailSender : IMailSender
     {
@@ -65,8 +64,8 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
 
         async Task SendCoreAsync(MailMessage message)
         {
-            //Gmail takes the full MIME as base64url "raw". This JSON endpoint is limited to a few MB -
-            //larger attachments would need the separate upload endpoint.
+            //Gmail は MIME 全体を base64url の "raw" で受け取る。この JSON エンドポイントは数MB 上限のため、
+            //それを超える添付は別のアップロードエンドポイントが必要になる。
             var payload = JsonSerializer.Serialize(new { raw = Base64Url(await CreateRawMimeAsync(message)) });
             for (var retry = 0; ; retry++)
             {
@@ -80,7 +79,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
                 var response = await _http.SendAsync(request);
                 if (response.IsSuccessStatusCode) return;
 
-                //rate limited - honor Retry-After
+                //レート制限時は Retry-After に従って再試行
                 if (response.StatusCode == (HttpStatusCode)429 && retry < MaxRetryCount)
                 {
                     var wait = response.Headers.RetryAfter?.Delta ?? TimeSpan.FromSeconds(2);
@@ -120,7 +119,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
             return token;
         }
 
-        //JWT (RS256) signed with the service account private key. sub = the delegated user to send as.
+        //サービスアカウントの秘密鍵で署名した JWT (RS256)。sub = 成り代わって送る委任ユーザー。
         string CreateAssertion(string sendAsUser)
         {
             var (clientEmail, privateKeyPem) = LoadServiceAccountKey();

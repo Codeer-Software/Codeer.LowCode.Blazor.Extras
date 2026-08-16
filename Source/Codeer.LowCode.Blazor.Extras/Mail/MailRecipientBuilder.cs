@@ -5,24 +5,24 @@ using Codeer.LowCode.Blazor.Repository.Design;
 namespace Codeer.LowCode.Blazor.Extras.Mail
 {
     /// <summary>
-    /// Builds bulk mail recipients from module rows: opt-out flag rows (optOutVariable) and rows
-    /// without an address (emailAddressVariable) are skipped, and the template variables are resolved as
-    /// display strings. Shared by the client (row lists) and the server (search-based sends).
+    /// モジュール行から一斉送信の宛先を組み立てる: 配信停止フラグの行 (optOutVariable) と
+    /// アドレスの無い行 (emailAddressVariable) はスキップし、テンプレート変数を表示文字列として
+    /// 解決する。クライアント (行リスト) とサーバー (検索ベース送信) で共有。
     /// </summary>
     internal static class MailRecipientBuilder
     {
-        /// <summary>Resolved to a record deep link on the server-side search path (needs Mail.AppBaseUrl).</summary>
+        /// <summary>サーバー解決経路でレコードへのディープリンクに解決される (Mail.AppBaseUrl が必要)。</summary>
         public const string RecordUrlVariable = "RecordUrl";
 
-        /// <summary>Distinct variable names used in the subject and body templates.</summary>
+        /// <summary>件名・本文テンプレートで使われている変数名の一覧 (重複なし)。</summary>
         public static List<string> GetVariableNames(string subject, string body)
             => MailTemplateEngine.GetVariableNames(subject)
                 .Concat(MailTemplateEngine.GetVariableNames(body))
                 .Distinct().ToList();
 
         /// <summary>
-        /// Builds one recipient from a row. Returns null when the row is excluded (opt-out) or has
-        /// no address. {RecordUrl} is provided only when recordUrlBase is set (server-side path).
+        /// 行から宛先1件を組み立てる。除外 (配信停止) やアドレス無しの行は null を返す。
+        /// {RecordUrl} は recordUrlBase 設定時 (サーバー解決経路) のみ提供される。
         /// </summary>
         public static MailBulkRecipient? TryBuild(ModuleDesign? design, ModuleData row, string emailAddressVariable, string optOutVariable,
             IReadOnlyCollection<string> names, string recordUrlBase = "", string mainPageFrame = "",

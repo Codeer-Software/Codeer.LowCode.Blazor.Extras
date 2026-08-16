@@ -5,16 +5,16 @@ using System.Net;
 namespace Codeer.LowCode.Blazor.Extras.Server.Mail
 {
     /// <summary>
-    /// Provider-independent send layer: resolves named senders, applies the redirect-all
-    /// safety net and the bulk count limit, then dispatches to <see cref="IMailSender"/>.
-    /// Custom infrastructures can be plugged in via the customSenderFactory constructor argument.
+    /// プロバイダ非依存の送信レイヤ。名前付きインフラの解決・RedirectAllTo の誤送信防止・
+    /// 一斉送信の件数上限を適用してから <see cref="IMailSender"/> へ委譲する。
+    /// 独自インフラはコンストラクタ引数 customSenderFactory で差し込める。
     /// </summary>
     public class MailDispatcher
     {
-        /// <summary>Header recording the original recipients when RedirectAllTo is active.</summary>
+        /// <summary>RedirectAllTo 有効時に元の宛先を記録するヘッダ。</summary>
         public const string OriginalToHeader = "X-CLB-Original-To";
 
-        /// <summary>Header recording the original recipient count of a redirected bulk send.</summary>
+        /// <summary>リダイレクトされた一斉送信の元の宛先件数を記録するヘッダ。</summary>
         public const string OriginalTotalHeader = "X-CLB-Original-Total";
 
         //redirected bulk sends are clipped so that a staging environment never sends thousands of mails
@@ -32,16 +32,16 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
             _historyWriter = historyWriter;
         }
 
-        /// <summary>Resolves the sender of a single send: explicit name → DefaultInfraName → the first sender.</summary>
+        /// <summary>単発送信のインフラ解決: 明示名 → DefaultInfraName → 先頭。</summary>
         public MailInfraSettings ResolveInfraSettings(string? mailInfraName)
             => ResolveCore(mailInfraName, _config.DefaultInfraName);
 
-        /// <summary>Resolves the sender of a bulk send: explicit name → DefaultBulkInfraName → DefaultInfraName → the first sender.</summary>
+        /// <summary>一斉送信のインフラ解決: 明示名 → DefaultBulkInfraName → DefaultInfraName → 先頭。</summary>
         public MailInfraSettings ResolveBulkInfraSettings(string? mailInfraName)
             => ResolveCore(mailInfraName, string.IsNullOrEmpty(_config.DefaultBulkInfraName)
                 ? _config.DefaultInfraName : _config.DefaultBulkInfraName);
 
-        //a configured default that matches nothing throws, same as an explicit name - config errors must not fall back silently
+        //設定された既定名がどれにも一致しない場合は明示名と同じく例外にする (設定ミスを黙って先頭に落とさない)
         MailInfraSettings ResolveCore(string? mailInfraName, string defaultName)
         {
             if (!_config.Infras.Any()) throw new InvalidOperationException("No mail senders are configured (Mail.Infras).");
@@ -73,13 +73,13 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
                 MailInfraTypes.GraphApi => new GraphApiMailSender(settings),
                 MailInfraTypes.SendGrid => new SendGridMailSender(settings),
                 MailInfraTypes.GmailApi => new GmailApiMailSender(settings),
-                //empty type = legacy configs are SMTP
+                //Type 空 = 旧形式の設定は SMTP
                 MailInfraTypes.Smtp or "" => new SmtpMailSender(settings),
                 _ => throw new InvalidOperationException($"Unknown mail sender type '{settings.Type}'."),
             };
         }
 
-        /// <summary>Sends the single-send wire request (POST /api/mail) as-is. Controllers stay thin.</summary>
+        /// <summary>単発送信のワイヤリクエスト (POST /api/mail) をそのまま送る。Controller を薄く保つための入口。</summary>
         public async Task<MailSendResult> SendAsync(MailSendRequest request)
             => await SendAsync(request.MailInfraName, request.Message, CreateSource(request.SourceModule, request.SourceId));
 
@@ -109,9 +109,9 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
         }
 
         /// <summary>
-        /// Sends one template to many recipients. Exceeding the sender's MaxBulkCount throws
-        /// (never silently truncates). For HTML templates the variable values are HTML-encoded
-        /// once here so native bulk (SendGrid) and sequential fallbacks behave the same.
+        /// 1つのテンプレートを多数の宛先へ送る。MaxBulkCount 超過は例外 (黙って切り詰めない)。
+        /// HTML テンプレートの変数値はここで一度だけ HTML エスケープする
+        /// (ネイティブ一斉送信 (SendGrid) と逐次送信フォールバックの挙動を揃えるため)。
         /// </summary>
         public async Task<MailSendResult> SendBulkAsync(string? mailInfraName, MailBulkTemplate template, List<MailBulkRecipient> recipients, MailHistorySource? source = null)
         {
@@ -141,7 +141,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
             return result;
         }
 
-        //injection guard: variable values may contain user input
+        //インジェクション対策: 変数値にはユーザー入力が入りうる
         static MailBulkRecipient EncodeHtmlVariables(MailBulkRecipient recipient)
             => new()
             {

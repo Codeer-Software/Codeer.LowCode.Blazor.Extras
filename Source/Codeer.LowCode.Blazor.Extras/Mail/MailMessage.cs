@@ -7,8 +7,8 @@
     }
 
     /// <summary>
-    /// Mail message data carried between the Mail script object, the mail endpoint and
-    /// the IMailSender infrastructures.
+    /// メールメッセージ。Mail スクリプトオブジェクト・メールエンドポイント・
+    /// 送信インフラ (IMailSender) の間で受け渡す。
     /// </summary>
     public class MailMessage
     {
@@ -31,8 +31,8 @@
         public List<MailAttachment> Attachments { get; set; } = new();
 
         /// <summary>
-        /// Additional message headers (e.g. X-CLB-Original-To set by the redirect-all safety net).
-        /// Header names should start with "X-".
+        /// 追加のメッセージヘッダ (例: RedirectAllTo の退避時に付く X-CLB-Original-To)。
+        /// ヘッダ名は "X-" で始めること。
         /// </summary>
         public Dictionary<string, string> Headers { get; set; } = new();
     }

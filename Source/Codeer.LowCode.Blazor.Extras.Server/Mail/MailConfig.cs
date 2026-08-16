@@ -10,37 +10,37 @@
         public string AppBaseUrl { get; set; } = string.Empty;
 
         /// <summary>
-        /// When set, every mail is redirected to this address instead of the real recipients
-        /// (safety net for development/staging). Original recipients are recorded in the
-        /// X-CLB-Original-To header. Bulk sends are clipped to the first 10 mails.
+        /// 設定すると、全メールが実際の宛先の代わりにこのアドレスへリダイレクトされる
+        /// (開発・ステージングの誤送信防止)。元の宛先は X-CLB-Original-To ヘッダに記録される。
+        /// 一斉送信は先頭10通に切り詰められる。
         /// </summary>
         public string RedirectAllTo { get; set; } = string.Empty;
 
         /// <summary>
-        /// Module that records one row per send operation (reserved field names: SentAt / MailInfraName /
-        /// Subject / TotalCount / SuccessCount / FailureDetails / SourceModule / SourceId).
-        /// Empty = no history. Validated at runtime; a broken history never fails the send itself.
+        /// 送信操作1回につき1行を記録する履歴モジュール名 (役割は MailHistoryContractField:
+        /// SentAt / MailInfraName / Subject / TotalCount / SuccessCount / FailureDetails / SourceModule / SourceId)。
+        /// 空 = 履歴なし。検証は実行時。履歴の異常が送信自体を失敗させることはない。
         /// </summary>
         public string HistoryModuleName { get; set; } = string.Empty;
 
         public List<MailInfraSettings> Infras { get; set; } = new();
 
         /// <summary>
-        /// Sender used when a single send does not specify one. Empty = the first sender.
-        /// Typically the notification infrastructure (Graph / SMTP).
+        /// 単発送信でインフラ名を省略したときの既定。空 = 先頭のインフラ。
+        /// 通知系インフラ (Graph / SMTP) を指すのが典型。
         /// </summary>
         public string DefaultInfraName { get; set; } = string.Empty;
 
         /// <summary>
-        /// Sender used when a bulk send does not specify one. Empty = <see cref="DefaultInfraName"/>
-        /// (then the first sender). Typically a delivery service (SendGrid).
+        /// 一斉送信でインフラ名を省略したときの既定。空 = <see cref="DefaultInfraName"/>
+        /// (無ければ先頭)。配信サービス (SendGrid) を指すのが典型。
         /// </summary>
         public string DefaultBulkInfraName { get; set; } = string.Empty;
 
         /// <summary>
-        /// Merges the legacy single-SMTP "MailSettings" section as a sender named "Default"
-        /// so that existing apps keep working without config changes.
-        /// The legacy sender is appended only when no sender with the same name exists.
+        /// 旧形式の単一 SMTP 設定 "MailSettings" を "Default" という名前のインフラとして統合する
+        /// (既存アプリが設定変更なしで動き続けるための後方互換)。
+        /// 同名のインフラが既にある場合は追加しない。
         /// </summary>
         public static MailConfig Normalize(MailConfig? config, MailSettings? legacySettings)
         {
@@ -72,14 +72,14 @@
         public const string GmailApi = "GmailApi";
     }
 
-    /// <summary>One named sender. The set of used properties depends on <see cref="Type"/>.</summary>
+    /// <summary>名前付きメールインフラ1件。使われるプロパティは <see cref="Type"/> によって異なる。</summary>
     public class MailInfraSettings
     {
         internal const string LegacyDefaultName = "Default";
 
         public string Name { get; set; } = string.Empty;
 
-        /// <summary>Smtp / GraphApi / SendGrid / GmailApi. See <see cref="MailInfraTypes"/>.</summary>
+        /// <summary>Smtp / GraphApi / SendGrid / GmailApi。<see cref="MailInfraTypes"/> 参照。</summary>
         public string Type { get; set; } = string.Empty;
 
         public string SenderMailAddress { get; set; } = string.Empty;
@@ -91,14 +91,14 @@
         /// </summary>
         public List<string> AllowedFromDomains { get; set; } = new();
 
-        /// <summary>Upper limit for one bulk send. Exceeding it is an error (never silently truncated).</summary>
+        /// <summary>一斉送信1回の件数上限。超過はエラー (黙って切り詰めない)。</summary>
         public int MaxBulkCount { get; set; } = 10000;
 
         //Smtp
         public string Host { get; set; } = string.Empty;
         public string Port { get; set; } = string.Empty;
         public string SSL { get; set; } = string.Empty;
-        /// <summary>SMTP auth user. When empty, <see cref="SenderMailAddress"/> is used.</summary>
+        /// <summary>SMTP 認証ユーザー。空なら <see cref="SenderMailAddress"/> を使う。</summary>
         public string UserName { get; set; } = string.Empty;
         public string Password { get; set; } = string.Empty;
 
@@ -106,7 +106,7 @@
         public string TenantId { get; set; } = string.Empty;
         public string ClientId { get; set; } = string.Empty;
 
-        /// <summary>GraphApi: the client secret. GmailApi: the service account JSON key (file path, or the JSON text itself).</summary>
+        /// <summary>GraphApi: クライアントシークレット。GmailApi: サービスアカウントの JSON キー (ファイルパスか JSON 文字列そのもの)。</summary>
         public string ClientSecret { get; set; } = string.Empty;
 
         //SendGrid

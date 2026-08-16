@@ -13,12 +13,11 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
     }
 
     /// <summary>
-    /// Writes one history record per send operation into the module named by Mail.HistoryModuleName.
-    /// Field names are resolved through the MailHistoryContractField on the history module
+    /// Mail.HistoryModuleName のモジュールへ、送信操作1回につき1行の履歴を書く。
+    /// フィールド名は履歴モジュール上の MailHistoryContractField 経由で解決する
     /// (roles left empty are not recorded); a module without the contract uses the default role names.
-    /// Writing goes through an internal add delegate so it does not depend on the operating user's
-    /// write permission (history is the system's record). A broken history configuration is reported
-    /// via logError and never fails the send itself.
+    /// 書き込みは内部 add デリゲート経由で、操作ユーザーの書き込み権限に依存しない (履歴はシステムの記録)。
+    /// 履歴設定の異常は logError で報告し、送信自体は失敗させない。
     /// </summary>
     public class MailHistoryWriter
     {

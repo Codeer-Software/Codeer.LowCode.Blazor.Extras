@@ -8,10 +8,9 @@ using System.Text.Json.Nodes;
 namespace Codeer.LowCode.Blazor.Extras.Server.Mail
 {
     /// <summary>
-    /// Microsoft Graph (sendMail) implementation of <see cref="IMailSender"/>.
-    /// Uses client credentials + plain REST (no SDK). Suited for notification mails
-    /// sent from an organization mailbox; Exchange Online rate limits make it
-    /// unsuitable for large bulk sends.
+    /// <see cref="IMailSender"/> の Microsoft Graph (sendMail) 実装。
+    /// クライアントクレデンシャル + 素の REST (SDK なし)。組織のメールボックスから送る
+    /// 通知メール向き。Exchange Online のレート制限があるため大量の一斉送信には不向き。
     /// </summary>
     public class GraphApiMailSender : IMailSender
     {
@@ -72,7 +71,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
                 var response = await _http.SendAsync(request);
                 if (response.StatusCode == HttpStatusCode.Accepted) return;
 
-                //throttled - honor Retry-After
+                //スロットリング時は Retry-After に従って再試行
                 if (response.StatusCode == (HttpStatusCode)429 && retry < MaxRetryCount)
                 {
                     var wait = response.Headers.RetryAfter?.Delta ?? TimeSpan.FromSeconds(2);
@@ -117,7 +116,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
             }
             if (message.Headers.Any())
             {
-                //Graph only allows custom headers starting with "x-"/"X-"
+                //Graph が許すカスタムヘッダは "x-"/"X-" 始まりのみ
                 graphMessage["internetMessageHeaders"] = new JsonArray(message.Headers
                     .Where(e => e.Key.StartsWith("x-", StringComparison.OrdinalIgnoreCase))
                     .Select(e => (JsonNode)new JsonObject { ["name"] = e.Key, ["value"] = e.Value }).ToArray());

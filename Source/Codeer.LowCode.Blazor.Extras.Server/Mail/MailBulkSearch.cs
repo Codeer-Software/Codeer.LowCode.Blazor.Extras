@@ -9,12 +9,11 @@ using Codeer.LowCode.Blazor.Repository.Match;
 namespace Codeer.LowCode.Blazor.Extras.Server.Mail
 {
     /// <summary>
-    /// Server-side recipient resolution for bulk sends: runs the search condition through
-    /// ModuleDataIO (so the user's read permissions and row conditions apply), builds the
-    /// per-recipient variables as display strings, then dispatches. Addresses never travel
-    /// to the client on this path, which also makes it the choice for large sends.
-    /// When the request names a summary field (BulkMailField), the send result is written back
-    /// to that field's DB column through the internal update path after the send.
+    /// 一斉送信の宛先をサーバー側で解決する: 検索条件を ModuleDataIO に通し
+    /// (ユーザーの読み取り権限・行条件が効く)、宛先ごとの変数を表示文字列として組み立てて
+    /// ディスパッチする。この経路ではアドレスがクライアントに渡らないため、大量送信もこちらを使う。
+    /// リクエストにサマリフィールド (BulkMailField) が指定されていれば、送信後に
+    /// そのフィールドの DB 列へ内部更新経路で結果を書き戻す。
     /// </summary>
     public static class MailBulkSearch
     {

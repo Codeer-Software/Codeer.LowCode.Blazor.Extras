@@ -1,27 +1,27 @@
-using Codeer.LowCode.Blazor.DesignLogic;
+﻿using Codeer.LowCode.Blazor.DesignLogic;
 using Codeer.LowCode.Blazor.Repository.Data;
 using Codeer.LowCode.Blazor.Repository.Design;
 
 namespace Codeer.LowCode.Blazor.Extras.Mail
 {
     /// <summary>
-    /// Resolves mail template variables from module data.
-    /// Tokens follow the design variable notation: a field path (link paths like "Contact.Email" allowed
-    /// because list data holds them as "Contact.Email" keys) plus an optional trailing member.
-    /// - No member / ".DisplayText": display string (Select/Link use their display text, formatted fields
-    ///   use the design's external text format).
-    /// - ".Value": the value itself (Select/Link give the code value; formatted fields still use the
-    ///   external text format because mail is a plain-text medium with no cell format).
-    /// Missing fields and null values resolve to an empty string.
+    /// メールテンプレート変数をモジュールデータから解決する。
+    /// トークンはデザインの変数表記: フィールドパス (リスト取得データが "Contact.Email" キーで持つため
+    /// リンクパス可) + 省略可能な末尾メンバー。
+    /// - メンバー省略 / ".DisplayText": 表示文字列 (Select/Link は表示テキスト、書式付きフィールドは
+    ///   デザインの外部テキスト書式)。
+    /// - ".Value": 値そのもの (Select/Link はコード値。書式付きフィールドは外部テキスト書式のまま =
+    ///   メールはセル書式の無いプレーンテキスト媒体のため)。
+    /// フィールド不在・null 値は空文字になる。
     /// </summary>
     internal static class MailVariableResolver
     {
         static readonly string[] KnownMembers = { "Value", "DisplayText" };
 
         /// <summary>
-        /// Splits a token into the field path (= ModuleData.Fields key) and the member.
-        /// The last segment is a member only when it is a known member name, so both
-        /// "Contact.Email" (field path) and "Contact.Email.Value" (path + member) parse correctly.
+        /// トークンをフィールドパス (= ModuleData.Fields のキー) とメンバーに分解する。
+        /// 末尾セグメントは既知のメンバー名のときだけメンバー扱いにするため、
+        /// "Contact.Email" (パスのみ) も "Contact.Email.Value" (パス+メンバー) も正しく読める。
         /// </summary>
         public static (string FieldPath, string Member) ParseToken(string token)
         {

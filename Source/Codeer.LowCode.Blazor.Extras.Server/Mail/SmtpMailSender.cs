@@ -6,8 +6,8 @@ using MimeKit;
 namespace Codeer.LowCode.Blazor.Extras.Server.Mail
 {
     /// <summary>
-    /// SMTP implementation of <see cref="IMailSender"/> (MailKit).
-    /// Bulk sends resolve the template per recipient and send sequentially on one connection.
+    /// <see cref="IMailSender"/> の SMTP 実装 (MailKit)。
+    /// 一斉送信は宛先ごとにテンプレートを解決し、1つの接続で逐次送信する。
     /// </summary>
     public class SmtpMailSender : IMailSender
     {
@@ -78,9 +78,9 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
         }
 
         /// <summary>
-        /// Resolves a bulk template for one recipient into a plain message.
-        /// Public for custom <see cref="IMailSender"/> implementations without a native bulk API
-        /// (the template engine itself is internal) - see GraphApiMailSender for the usage pattern.
+        /// 一斉送信テンプレート+宛先1件を通常のメッセージに解決する。
+        /// ネイティブ一斉送信 API を持たない独自 <see cref="IMailSender"/> 実装向けに public
+        /// (テンプレートエンジン自体は internal)。使い方は GraphApiMailSender 参照。
         /// </summary>
         public static MailMessage CreateResolvedMessage(MailBulkTemplate template, MailBulkRecipient recipient)
             => new()

@@ -1,11 +1,10 @@
-using System.Text.Json;
+﻿using System.Text.Json;
 
 namespace Codeer.LowCode.Blazor.Extras.Mail
 {
     /// <summary>
-    /// One send recorded in a BulkMailField's DB column. The column holds a JSON array of these,
-    /// newest first. Failures keep only the first few details (the full audit lives in the
-    /// history module when Mail.HistoryModuleName is configured).
+    /// BulkMailField の DB 列に記録される送信1件。列はこの JSON 配列 (新しい順) を持つ。
+    /// 失敗の明細は先頭数件だけ残す (全量の監査記録は Mail.HistoryModuleName 設定時の履歴モジュール)。
     /// </summary>
     public class BulkMailSummaryEntry
     {
@@ -19,8 +18,8 @@ namespace Codeer.LowCode.Blazor.Extras.Mail
     }
 
     /// <summary>
-    /// Serialization for the BulkMailField summary column. Shared by the server (authoritative write
-    /// after a send) and the client (optimistic local refresh and display).
+    /// BulkMailField サマリ列のシリアライズ。サーバー (送信後の正値書き込み) と
+    /// クライアント (楽観的なローカル表示更新) で共有。
     /// </summary>
     internal static class BulkMailSummary
     {

@@ -1,11 +1,11 @@
-using Codeer.LowCode.Blazor.Extras.Services;
+﻿using Codeer.LowCode.Blazor.Extras.Services;
 
 namespace Codeer.LowCode.Blazor.Extras.Mail
 {
     /// <summary>
-    /// Replaces the HTTP POST of the mail script objects. Receives exactly what would be posted
-    /// to the endpoints. Set by hosts that do not go through HTTP (desktop apps send directly
-    /// via MailDispatcher).
+    /// メール系スクリプトオブジェクトの HTTP POST を置き換えるハンドラ。エンドポイントに
+    /// POST されるものと同じ内容を受け取る。HTTP を介さないホスト (デスクトップアプリ =
+    /// MailDispatcher 直呼び) が設定する。
     /// </summary>
     public interface IMailTransportHandler
     {
@@ -17,18 +17,17 @@ namespace Codeer.LowCode.Blazor.Extras.Mail
     }
 
     /// <summary>
-    /// Static transport wiring for the Mail script object and the BulkMailField.
-    /// Web apps set the endpoint URLs once at startup (URLs belong to the app, which owns the
-    /// controllers). Desktop apps set <see cref="Handler"/> instead and send directly without HTTP.
-    /// Bulk sends go through the search-based path only (recipients are resolved on the server,
-    /// addresses never travel to the client).
+    /// Mail スクリプトオブジェクトと BulkMailField の静的な送信経路の結線。
+    /// Web アプリは起動時にエンドポイント URL を一度設定する (URL は Controller を持つアプリの持ち物)。
+    /// デスクトップアプリは代わりに <see cref="Handler"/> を設定し、HTTP を介さず直接送る。
+    /// 一斉送信は検索ベースの経路のみ (宛先はサーバーで解決し、アドレスはクライアントに渡らない)。
     /// </summary>
     public static class MailTransport
     {
         public static string SendMailEndPoint { get; set; } = string.Empty;
         public static string BulkSearchMailEndPoint { get; set; } = string.Empty;
 
-        /// <summary>When set, all sends go through this handler instead of the HTTP endpoints.</summary>
+        /// <summary>設定すると、全送信が HTTP エンドポイントの代わりにこのハンドラを通る。</summary>
         public static IMailTransportHandler? Handler { get; set; }
 
         internal static async Task<MailSendResult> SendAsync(IHttpService? http, MailSendRequest request)

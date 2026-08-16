@@ -1,6 +1,6 @@
 ﻿namespace Codeer.LowCode.Blazor.Extras.Mail
 {
-    /// <summary>Wire format of POST /api/mail (single send).</summary>
+    /// <summary>POST /api/mail (単発送信) のワイヤ形式。</summary>
     public class MailSendRequest
     {
         public string MailInfraName { get; set; } = string.Empty;

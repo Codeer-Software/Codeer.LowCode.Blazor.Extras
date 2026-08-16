@@ -7,9 +7,9 @@ using System.Text.Json.Nodes;
 namespace Codeer.LowCode.Blazor.Extras.Server.Mail
 {
     /// <summary>
-    /// SendGrid (v3 mail/send) implementation of <see cref="IMailSender"/>. Plain REST, no SDK.
-    /// Bulk sends map to native personalizations (up to 1000 recipients per request),
-    /// which makes this the recommended infrastructure for large sends.
+    /// <see cref="IMailSender"/> の SendGrid (v3 mail/send) 実装。素の REST (SDK なし)。
+    /// 一斉送信はネイティブの personalizations (1リクエスト最大1000宛先) に対応させているため、
+    /// 大量送信にはこのインフラを推奨。
     /// </summary>
     public class SendGridMailSender : IMailSender
     {
@@ -67,7 +67,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
                     if (r.Bcc.Any()) personalization["bcc"] = Addresses(r.Bcc);
                     if (r.Variables.Any())
                     {
-                        //substitutions replace {Name} tokens in subject and content on SendGrid's side
+                        //substitutions により件名・本文の {変数} は SendGrid 側で差し込まれる
                         var substitutions = new JsonObject();
                         foreach (var v in r.Variables) substitutions["{" + v.Key + "}"] = v.Value;
                         personalization["substitutions"] = substitutions;
@@ -101,7 +101,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
             {
                 ["from"] = from,
                 ["subject"] = subject,
-                //SendGrid rejects empty content
+                //SendGrid は空の content を拒否する
                 ["content"] = new JsonArray(new JsonObject
                 {
                     ["type"] = isBodyHtml ? "text/html" : "text/plain",
