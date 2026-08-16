@@ -63,6 +63,9 @@ namespace Extras.Designer
                 CreateAiChatClient = CreateAzureOpenAIChatClientFactory(),
             });
 
+            //Extras のセットアップメニュー (承認フロー / メール履歴)
+            ExtrasDesignerInitializer.Setup(DesignerEnvironment);
+
             DispatcherUnhandledException += App_DispatcherUnhandledException;
         }
 

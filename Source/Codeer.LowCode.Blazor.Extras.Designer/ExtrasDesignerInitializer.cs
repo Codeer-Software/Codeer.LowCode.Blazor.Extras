@@ -1,4 +1,5 @@
 using Codeer.LowCode.Blazor.Extras.Designer.Controls;
+using Codeer.LowCode.Blazor.Extras.Designer.Setup;
 using Codeer.LowCode.Blazor.Extras.Designs;
 using Codeer.LowCode.Blazor.Extras.Fields;
 using Codeer.LowCode.Blazor.Designer;
@@ -18,10 +19,21 @@ namespace Codeer.LowCode.Blazor.Extras.Designer
         [Obsolete("Use Initialize(BlazorRuntime) instead. Without it, scoped CSS for Extras components is not installed.")]
         public static void Initialize() => InitializeCore();
 
+        /// <summary>
+        /// GUI 起動後の登録 (Tools メニュー: 承認フローのセットアップ / メール履歴モジュールの生成)。
+        /// アプリの OnStartup で base.OnStartup(e) の後に呼ぶ (DesignerStandard.Setup と同じタイミング)。
+        /// </summary>
+        public static void Setup(DesignerEnvironment designerEnvironment)
+            => ExtrasSetupMenus.AddAll(designerEnvironment);
+
         static void InitializeCore()
         {
             //load dll.
             typeof(TaskBoardFieldDesign).ToString();
+
+            //headless CLI verb (approval-setup / mail-history-setup)。CCFD からも同じ生成を呼べる。
+            //headless 分岐は base.OnStartup の先頭で走るため、ここ (base.OnStartup より前) で登録する
+            SetupCli.Register();
 
             //script runtime types.
             DesignerApp.ScriptRuntimeTypeManager.AddType<CalendarViewMode>();

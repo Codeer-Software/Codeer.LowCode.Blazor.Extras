@@ -17,7 +17,7 @@
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
     <PackageReadmeFile>README.md</PackageReadmeFile>
-    <PackageReleaseNotes></PackageReleaseNotes>
+    <PackageReleaseNotes>Add setup commands that generate the approval flow module set and the mail history module from templates, wire them into a request module, and emit table DDL. Available from the designer Tools menu (ExtrasDesignerInitializer.Setup) and as headless CLI verbs (approval-setup / mail-history-setup).</PackageReleaseNotes>
     <PackageId>Codeer.LowCode.Blazor.Extras.Designer</PackageId>
   </PropertyGroup>
 
@@ -50,6 +50,15 @@
 		</EmbeddedResource>
 		<EmbeddedResource Include="ListElementComponentDocs\**\*.md">
 			<LogicalName>Codeer.LowCode.Blazor.Extras.Designer.ListElementComponentDocs.%(Filename)%(Extension)</LogicalName>
+		</EmbeddedResource>
+	</ItemGroup>
+
+	<!-- セットアップ用モジュールテンプレート。正本は Example のデザイン (実機確認済み) で、
+	     ここからリンク埋め込みする (SetupTemplates.Load と連動)。Example の承認モジュールを変更すると
+	     生成されるテンプレートも変わる = Example がテンプレートの回帰テストを兼ねる。 -->
+	<ItemGroup>
+		<EmbeddedResource Include="..\Example\Design\Modules\ApprovalFlow.mod.json;..\Example\Design\Modules\ApprovalFlowMember.mod.json;..\Example\Design\Modules\ApprovalFlowMember.mod.cs;..\Example\Design\Modules\ApprovalHistory.mod.json;..\Example\Design\Modules\ApprovalRoute.mod.json;..\Example\Design\Modules\ApprovalRouteStep.mod.json;..\Example\Design\Modules\ApprovalRouteStepMember.mod.json;..\Example\Design\Modules\ApprovalSimpleRoute.mod.json;..\Example\Design\Modules\ApprovalSimpleRouteStep.mod.json">
+			<LogicalName>Codeer.LowCode.Blazor.Extras.Designer.SetupTemplates.%(Filename)%(Extension)</LogicalName>
 		</EmbeddedResource>
 	</ItemGroup>
 

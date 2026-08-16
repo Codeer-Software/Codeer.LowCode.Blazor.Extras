@@ -124,9 +124,16 @@ ExtrasServerInitializer.Initialize();
 ```csharp
 using Codeer.LowCode.Blazor.Extras.Designer;
 
-// OnStartup メソッド内
+// OnStartup メソッド内 (base.OnStartup(e) より前)
 ExtrasDesignerInitializer.Initialize(BlazorRuntime);
+
+// base.OnStartup(e) の後 (Tools メニュー: 承認フローのセットアップ / メール履歴モジュールの生成)
+ExtrasDesignerInitializer.Setup(DesignerEnvironment);
 ```
+
+セットアップメニューは承認フロー・メール履歴に必要なモジュール群をテンプレートから生成し、
+申請書モジュールへの結線とテーブル作成 DDL の提示まで行います
+(headless CLI の `approval-setup` / `mail-history-setup` verb からも同じ生成を実行できます)。
 
 ### 3. セットアップ完了
 

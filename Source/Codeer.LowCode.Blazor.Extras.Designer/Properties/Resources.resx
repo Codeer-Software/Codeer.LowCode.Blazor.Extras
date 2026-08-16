@@ -81,4 +81,88 @@
   <data name="MappingPaddingChar" xml:space="preserve">
     <value>Padding character</value>
   </data>
+  <data name="SetupMenuApprovalFlow" xml:space="preserve">
+    <value>Approval Flow Setup</value>
+  </data>
+  <data name="SetupMenuMailHistory" xml:space="preserve">
+    <value>Mail History Module Setup</value>
+  </data>
+  <data name="SetupTargetModule" xml:space="preserve">
+    <value>Target request module</value>
+  </data>
+  <data name="SetupTargetNone" xml:space="preserve">
+    <value>(generate modules only)</value>
+  </data>
+  <data name="SetupFieldName" xml:space="preserve">
+    <value>Approval field name</value>
+  </data>
+  <data name="SetupDbColumn" xml:space="preserve">
+    <value>FK column</value>
+  </data>
+  <data name="SetupPrefix" xml:space="preserve">
+    <value>Prefix (for a separate set)</value>
+  </data>
+  <data name="SetupDataSource" xml:space="preserve">
+    <value>Data source</value>
+  </data>
+  <data name="SetupUserModule" xml:space="preserve">
+    <value>User module</value>
+  </data>
+  <data name="SetupUserNameField" xml:space="preserve">
+    <value>User display name field</value>
+  </data>
+  <data name="SetupUserEmailField" xml:space="preserve">
+    <value>User email field</value>
+  </data>
+  <data name="SetupRouteMaster" xml:space="preserve">
+    <value>Route master</value>
+  </data>
+  <data name="SetupRouteStandard" xml:space="preserve">
+    <value>Standard (route + step + member)</value>
+  </data>
+  <data name="SetupRouteSimple" xml:space="preserve">
+    <value>Simple (route + step)</value>
+  </data>
+  <data name="SetupRouteNone" xml:space="preserve">
+    <value>None (build routes by script)</value>
+  </data>
+  <data name="SetupTurnMail" xml:space="preserve">
+    <value>Include turn notification mail</value>
+  </data>
+  <data name="SetupPageFrame" xml:space="preserve">
+    <value>Add page links to the page frame</value>
+  </data>
+  <data name="SetupModuleName" xml:space="preserve">
+    <value>Module name</value>
+  </data>
+  <data name="SetupResultTitle" xml:space="preserve">
+    <value>Setup Result</value>
+  </data>
+  <data name="SetupDdlHeader" xml:space="preserve">
+    <value>Generated DDL (run to create the tables)</value>
+  </data>
+  <data name="SetupRun" xml:space="preserve">
+    <value>Run DDL</value>
+  </data>
+  <data name="SetupCopy" xml:space="preserve">
+    <value>Copy</value>
+  </data>
+  <data name="SetupClose" xml:space="preserve">
+    <value>Close</value>
+  </data>
+  <data name="SetupCreatedFormat" xml:space="preserve">
+    <value>Created: {0}</value>
+  </data>
+  <data name="SetupSkippedFormat" xml:space="preserve">
+    <value>Skipped (reused existing): {0}</value>
+  </data>
+  <data name="SetupParentWiredFormat" xml:space="preserve">
+    <value>Wired ApprovalFlowField into {0}.</value>
+  </data>
+  <data name="SetupReloadNote" xml:space="preserve">
+    <value>Reopen the project to see the generated modules.</value>
+  </data>
+  <data name="SetupDdlDone" xml:space="preserve">
+    <value>Completed</value>
+  </data>
 </root>

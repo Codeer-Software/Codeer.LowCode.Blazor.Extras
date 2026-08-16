@@ -3,6 +3,21 @@
 申請書モジュールに1つ置くと、申請・承認・却下・差し戻し・取り下げ・再申請・回覧確認と、
 ステッパー形式の進捗表示・コメント・履歴表示を提供するフィールド。
 
+## セットアップ (承認モジュール群の自動生成)
+
+動作には承認データモジュール群 (フロー / メンバー / 履歴、任意で経路マスタ) が必要。
+手で作らず**セットアップコマンドで生成する**:
+
+- デザイナ: メニュー Tools > 承認フローのセットアップ
+- CLI (headless): `<designer.exe> approval-setup "<projectDir>" [--target <申請書モジュール>] [--prefix <P>]
+  [--route standard|simple|none] [--user-module <ユーザーモジュール>] [--user-name-field Name] [--user-email-field Email]
+  [--no-turn-mail] [--no-pageframe] [--ddl-out <path.sql>]`
+
+生成内容: 承認モジュール群 (.mod.json) + 申請書への結線 (ApprovalFlowField 追加・編集ロックの
+DataWriteCondition・DataOnlyFields・OnBuildRoute 雛形) + PageFrame のページリンク + テーブル作成 DDL。
+**冪等**: 既存モジュールは生成せず結線だけを行う (2個目以降の申請書は同じ承認モジュールを共有する)。
+DDL は自動実行されないため、生成後にテーブルを作成すること。
+
 ## Design
 
 ### 考え方

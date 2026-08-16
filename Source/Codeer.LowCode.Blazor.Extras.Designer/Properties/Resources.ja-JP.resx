@@ -81,4 +81,88 @@
   <data name="MappingPaddingChar" xml:space="preserve">
     <value>パディング文字</value>
   </data>
+  <data name="SetupMenuApprovalFlow" xml:space="preserve">
+    <value>承認フローのセットアップ</value>
+  </data>
+  <data name="SetupMenuMailHistory" xml:space="preserve">
+    <value>メール履歴モジュールの生成</value>
+  </data>
+  <data name="SetupTargetModule" xml:space="preserve">
+    <value>結線する申請書モジュール</value>
+  </data>
+  <data name="SetupTargetNone" xml:space="preserve">
+    <value>(モジュール生成のみ)</value>
+  </data>
+  <data name="SetupFieldName" xml:space="preserve">
+    <value>承認フィールド名</value>
+  </data>
+  <data name="SetupDbColumn" xml:space="preserve">
+    <value>FK列名</value>
+  </data>
+  <data name="SetupPrefix" xml:space="preserve">
+    <value>プレフィックス (別セットを作る場合)</value>
+  </data>
+  <data name="SetupDataSource" xml:space="preserve">
+    <value>データソース</value>
+  </data>
+  <data name="SetupUserModule" xml:space="preserve">
+    <value>ユーザーモジュール</value>
+  </data>
+  <data name="SetupUserNameField" xml:space="preserve">
+    <value>ユーザー表示名フィールド</value>
+  </data>
+  <data name="SetupUserEmailField" xml:space="preserve">
+    <value>ユーザーメールアドレスフィールド</value>
+  </data>
+  <data name="SetupRouteMaster" xml:space="preserve">
+    <value>経路マスタ</value>
+  </data>
+  <data name="SetupRouteStandard" xml:space="preserve">
+    <value>標準 (経路+ステップ+承認者)</value>
+  </data>
+  <data name="SetupRouteSimple" xml:space="preserve">
+    <value>シンプル (経路+ステップ)</value>
+  </data>
+  <data name="SetupRouteNone" xml:space="preserve">
+    <value>なし (スクリプトで組み立て)</value>
+  </data>
+  <data name="SetupTurnMail" xml:space="preserve">
+    <value>順番到達通知メールを含める</value>
+  </data>
+  <data name="SetupPageFrame" xml:space="preserve">
+    <value>PageFrame にページリンクを追加</value>
+  </data>
+  <data name="SetupModuleName" xml:space="preserve">
+    <value>モジュール名</value>
+  </data>
+  <data name="SetupResultTitle" xml:space="preserve">
+    <value>セットアップ結果</value>
+  </data>
+  <data name="SetupDdlHeader" xml:space="preserve">
+    <value>生成された DDL (実行してテーブルを作成してください)</value>
+  </data>
+  <data name="SetupRun" xml:space="preserve">
+    <value>DDL を実行</value>
+  </data>
+  <data name="SetupCopy" xml:space="preserve">
+    <value>コピー</value>
+  </data>
+  <data name="SetupClose" xml:space="preserve">
+    <value>閉じる</value>
+  </data>
+  <data name="SetupCreatedFormat" xml:space="preserve">
+    <value>生成: {0}</value>
+  </data>
+  <data name="SetupSkippedFormat" xml:space="preserve">
+    <value>スキップ (既存を使いまわし): {0}</value>
+  </data>
+  <data name="SetupParentWiredFormat" xml:space="preserve">
+    <value>{0} に ApprovalFlowField を結線しました。</value>
+  </data>
+  <data name="SetupReloadNote" xml:space="preserve">
+    <value>生成したモジュールを表示するには、プロジェクトを開き直してください。</value>
+  </data>
+  <data name="SetupDdlDone" xml:space="preserve">
+    <value>完了しました</value>
+  </data>
 </root>

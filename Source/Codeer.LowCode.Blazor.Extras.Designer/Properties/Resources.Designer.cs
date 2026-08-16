@@ -102,5 +102,61 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Properties
         public static string MappingAlignment => GetString("MappingAlignment");
 
         public static string MappingPaddingChar => GetString("MappingPaddingChar");
+
+        public static string SetupMenuApprovalFlow => GetString("SetupMenuApprovalFlow");
+
+        public static string SetupMenuMailHistory => GetString("SetupMenuMailHistory");
+
+        public static string SetupTargetModule => GetString("SetupTargetModule");
+
+        public static string SetupTargetNone => GetString("SetupTargetNone");
+
+        public static string SetupFieldName => GetString("SetupFieldName");
+
+        public static string SetupDbColumn => GetString("SetupDbColumn");
+
+        public static string SetupPrefix => GetString("SetupPrefix");
+
+        public static string SetupDataSource => GetString("SetupDataSource");
+
+        public static string SetupUserModule => GetString("SetupUserModule");
+
+        public static string SetupUserNameField => GetString("SetupUserNameField");
+
+        public static string SetupUserEmailField => GetString("SetupUserEmailField");
+
+        public static string SetupRouteMaster => GetString("SetupRouteMaster");
+
+        public static string SetupRouteStandard => GetString("SetupRouteStandard");
+
+        public static string SetupRouteSimple => GetString("SetupRouteSimple");
+
+        public static string SetupRouteNone => GetString("SetupRouteNone");
+
+        public static string SetupTurnMail => GetString("SetupTurnMail");
+
+        public static string SetupPageFrame => GetString("SetupPageFrame");
+
+        public static string SetupModuleName => GetString("SetupModuleName");
+
+        public static string SetupResultTitle => GetString("SetupResultTitle");
+
+        public static string SetupDdlHeader => GetString("SetupDdlHeader");
+
+        public static string SetupRun => GetString("SetupRun");
+
+        public static string SetupCopy => GetString("SetupCopy");
+
+        public static string SetupClose => GetString("SetupClose");
+
+        public static string SetupCreatedFormat => GetString("SetupCreatedFormat");
+
+        public static string SetupSkippedFormat => GetString("SetupSkippedFormat");
+
+        public static string SetupParentWiredFormat => GetString("SetupParentWiredFormat");
+
+        public static string SetupReloadNote => GetString("SetupReloadNote");
+
+        public static string SetupDdlDone => GetString("SetupDdlDone");
     }
 }

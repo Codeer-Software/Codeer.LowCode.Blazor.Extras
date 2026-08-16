@@ -3,6 +3,16 @@
 メール送信履歴モジュールに1つ置き、「役割 → 自モジュールのフィールド名」のマッピングを
 宣言するフィールド。UI もデータも持たない (DB列不要)。
 
+## セットアップ (履歴モジュールの自動生成)
+
+履歴モジュールは手で作らず**セットアップコマンドで生成できる** (契約フィールド・保護条件・一覧同梱):
+
+- デザイナ: メニュー Tools > メール履歴モジュールの生成
+- CLI (headless): `<designer.exe> mail-history-setup "<projectDir>" [--name MailHistory] [--data-source <name>] [--ddl-out <path.sql>]`
+
+生成後、サーバーの appsettings に `"Mail": { "HistoryModuleName": "<モジュール名>" }` を設定し、
+DDL でテーブルを作成すると全送信が自動記録される。
+
 ## Design
 
 - どのモジュールが履歴かの指定はサーバー設定 (appsettings の `Mail.HistoryModuleName`)

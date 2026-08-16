@@ -1,7 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
+    <!-- Extras.Designer (WPF) を参照するため net8.0-windows -->
+    <TargetFramework>net8.0-windows</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
 
@@ -23,6 +24,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Codeer.LowCode.Blazor.Extras\Codeer.LowCode.Blazor.Extras.csproj" />
     <ProjectReference Include="..\Codeer.LowCode.Blazor.Extras.Server\Codeer.LowCode.Blazor.Extras.Server.csproj" />
+    <ProjectReference Include="..\Codeer.LowCode.Blazor.Extras.Designer\Codeer.LowCode.Blazor.Extras.Designer.csproj" />
   </ItemGroup>
 
   <ItemGroup>
