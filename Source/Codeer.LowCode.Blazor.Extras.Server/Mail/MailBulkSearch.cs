@@ -59,13 +59,15 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
 
             var template = new MailBulkTemplate
             {
+                From = request.From,
+                FromDisplayName = request.FromDisplayName,
                 Subject = request.Subject,
                 Body = request.Body,
                 IsBodyHtml = request.IsBodyHtml,
                 ReplyTo = request.ReplyTo,
                 Attachments = request.Attachments,
             };
-            var result = await dispatcher.SendBulkAsync(request.SenderName, template, recipients,
+            var result = await dispatcher.SendBulkAsync(request.MailInfraName, template, recipients,
                 MailDispatcher.CreateSource(request.SourceModule, request.SourceId));
 
             await WriteSummaryAsync(dispatcher, moduleDataIO, designData, request, result,
@@ -113,9 +115,9 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
                 }
 
                 var currentJson = (record.Fields.GetValueOrDefault(request.SummaryFieldName) as ValueFieldDataBase<string>)?.Value;
-                var senderName = dispatcher.ResolveBulkSenderSettings(request.SenderName).Name;
+                var mailInfraName = dispatcher.ResolveBulkInfraSettings(request.MailInfraName).Name;
                 summaryData.Value = BulkMailSummary.Prepend(currentJson,
-                    BulkMailSummary.CreateEntry(senderName, request.Subject, result, DateTime.Now));
+                    BulkMailSummary.CreateEntry(mailInfraName, request.Subject, result, DateTime.Now));
 
                 var update = new ModuleData { Name = request.SourceModule };
                 update.Fields[SystemFieldNames.Id] = record.Fields[SystemFieldNames.Id];

@@ -1,4 +1,4 @@
-using Codeer.LowCode.Blazor.DesignLogic;
+﻿using Codeer.LowCode.Blazor.DesignLogic;
 using Codeer.LowCode.Blazor.Extras.Mail;
 using Codeer.LowCode.Blazor.Repository.Data;
 using System.Text.Json;
@@ -36,7 +36,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
             _logError = logError;
         }
 
-        public async Task WriteAsync(string senderName, string subject, MailSendResult result, MailHistorySource? source)
+        public async Task WriteAsync(string mailInfraName, string subject, MailSendResult result, MailHistorySource? source)
         {
             try
             {
@@ -69,7 +69,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
                 }
 
                 Set(names.SentAt, e => ((DateTimeFieldData)e).Value = DateTime.Now);
-                Set(names.SenderName, e => ((TextFieldData)e).Value = senderName);
+                Set(names.MailInfraName, e => ((TextFieldData)e).Value = mailInfraName);
                 Set(names.Subject, e => ((TextFieldData)e).Value = subject);
                 Set(names.TotalCount, e => ((NumberFieldData)e).Value = result.TotalCount);
                 Set(names.SuccessCount, e => ((NumberFieldData)e).Value = result.SuccessCount);

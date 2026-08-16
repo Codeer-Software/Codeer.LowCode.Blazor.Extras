@@ -1061,9 +1061,9 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
             }
         }
 
-        internal static string MailFieldSenderName {
+        internal static string MailInfraName {
             get {
-                return ResourceManager.GetString("MailFieldSenderName", resourceCulture);
+                return ResourceManager.GetString("MailInfraName", resourceCulture);
             }
         }
 
@@ -1076,6 +1076,18 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
         internal static string MailFieldReplyTo {
             get {
                 return ResourceManager.GetString("MailFieldReplyTo", resourceCulture);
+            }
+        }
+
+        internal static string MailFieldFromVariable {
+            get {
+                return ResourceManager.GetString("MailFieldFromVariable", resourceCulture);
+            }
+        }
+
+        internal static string MailFieldFromDisplayNameVariable {
+            get {
+                return ResourceManager.GetString("MailFieldFromDisplayNameVariable", resourceCulture);
             }
         }
 
@@ -1136,12 +1148,6 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
         internal static string BulkMailBody {
             get {
                 return ResourceManager.GetString("BulkMailBody", resourceCulture);
-            }
-        }
-
-        internal static string BulkMailSenderName {
-            get {
-                return ResourceManager.GetString("BulkMailSenderName", resourceCulture);
             }
         }
 

@@ -1,4 +1,4 @@
-using Codeer.LowCode.Blazor.Extras.ScriptObjects;
+﻿using Codeer.LowCode.Blazor.Extras.ScriptObjects;
 using Codeer.LowCode.Blazor.Extras.Mail;
 using Codeer.LowCode.Blazor.Extras.Server.Mail;
 using System.Net;
@@ -11,10 +11,10 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Mail
     public class GmailApiMailSenderTest
     {
         //テスト用に生成したRSA鍵でサービスアカウントJSONキーを偽装する(ClientSecret=JSON文字列の経路も兼ねる)
-        static readonly MailSenderSettings Settings = new()
+        static readonly MailInfraSettings Settings = new()
         {
             Name = "Gmail",
-            Type = MailSenderTypes.GmailApi,
+            Type = MailInfraTypes.GmailApi,
             SenderMailAddress = "notify@example.com",
             SenderDisplayName = "業務システム",
             ClientSecret = JsonSerializer.Serialize(new

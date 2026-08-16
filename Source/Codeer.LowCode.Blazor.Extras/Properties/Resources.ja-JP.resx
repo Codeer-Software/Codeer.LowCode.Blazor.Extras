@@ -510,14 +510,20 @@
   <data name="MailFieldBody" xml:space="preserve">
     <value>本文</value>
   </data>
-  <data name="MailFieldSenderName" xml:space="preserve">
-    <value>送信者名</value>
+  <data name="MailInfraName" xml:space="preserve">
+    <value>メールインフラ名</value>
   </data>
   <data name="MailFieldIsBodyHtml" xml:space="preserve">
     <value>HTML本文</value>
   </data>
   <data name="MailFieldReplyTo" xml:space="preserve">
     <value>返信先</value>
+  </data>
+  <data name="MailFieldFromVariable" xml:space="preserve">
+    <value>差出人変数</value>
+  </data>
+  <data name="MailFieldFromDisplayNameVariable" xml:space="preserve">
+    <value>差出人表示名変数</value>
   </data>
   <data name="MailFieldToRequired" xml:space="preserve">
     <value>宛先が空です。宛先変数か固定アドレスを設定してください。</value>
@@ -548,9 +554,6 @@
   </data>
   <data name="BulkMailBody" xml:space="preserve">
     <value>本文 (固定)</value>
-  </data>
-  <data name="BulkMailSenderName" xml:space="preserve">
-    <value>送信者名</value>
   </data>
   <data name="BulkMailIsBodyHtml" xml:space="preserve">
     <value>HTML本文</value>

@@ -1,4 +1,4 @@
-using Codeer.LowCode.Blazor.Extras.Mail;
+﻿using Codeer.LowCode.Blazor.Extras.Mail;
 using Codeer.LowCode.Blazor.Extras.Server.Mail;
 
 namespace Codeer.LowCode.Blazor.Extras.Test.Mail
@@ -19,10 +19,10 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Mail
             };
             var config = MailConfig.Normalize(null, legacy);
 
-            Assert.That(config.Senders, Has.Count.EqualTo(1));
-            var sender = config.Senders[0];
+            Assert.That(config.Infras, Has.Count.EqualTo(1));
+            var sender = config.Infras[0];
             Assert.That(sender.Name, Is.EqualTo("Default"));
-            Assert.That(sender.Type, Is.EqualTo(MailSenderTypes.Smtp));
+            Assert.That(sender.Type, Is.EqualTo(MailInfraTypes.Smtp));
             Assert.That(sender.Host, Is.EqualTo("smtp.example.com"));
             Assert.That(sender.SenderMailAddress, Is.EqualTo("noreply@example.com"));
         }
@@ -32,11 +32,11 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Mail
         {
             var config = new MailConfig
             {
-                Senders = { new MailSenderSettings { Name = "Notify", Type = MailSenderTypes.GraphApi } }
+                Infras = { new MailInfraSettings { Name = "Notify", Type = MailInfraTypes.GraphApi } }
             };
             var result = MailConfig.Normalize(config, new MailSettings { Host = "smtp.example.com" });
 
-            Assert.That(result.Senders.Select(e => e.Name), Is.EqualTo(new[] { "Notify", "Default" }));
+            Assert.That(result.Infras.Select(e => e.Name), Is.EqualTo(new[] { "Notify", "Default" }));
         }
 
         [Test]
@@ -44,19 +44,19 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Mail
         {
             var config = new MailConfig
             {
-                Senders = { new MailSenderSettings { Name = "Default", Type = MailSenderTypes.SendGrid } }
+                Infras = { new MailInfraSettings { Name = "Default", Type = MailInfraTypes.SendGrid } }
             };
             var result = MailConfig.Normalize(config, new MailSettings { Host = "smtp.example.com" });
 
-            Assert.That(result.Senders, Has.Count.EqualTo(1));
-            Assert.That(result.Senders[0].Type, Is.EqualTo(MailSenderTypes.SendGrid));
+            Assert.That(result.Infras, Has.Count.EqualTo(1));
+            Assert.That(result.Infras[0].Type, Is.EqualTo(MailInfraTypes.SendGrid));
         }
 
         [Test]
         public void Normalize_両方nullでも空設定が返る()
         {
             var result = MailConfig.Normalize(null, null);
-            Assert.That(result.Senders, Is.Empty);
+            Assert.That(result.Infras, Is.Empty);
         }
     }
 }

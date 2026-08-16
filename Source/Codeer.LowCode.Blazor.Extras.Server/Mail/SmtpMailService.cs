@@ -1,4 +1,4 @@
-using Codeer.LowCode.Blazor.Extras.Mail;
+﻿using Codeer.LowCode.Blazor.Extras.Mail;
 
 namespace Codeer.LowCode.Blazor.Extras.Server.Mail
 {
@@ -18,10 +18,10 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
             if (string.IsNullOrEmpty(_settings.Host)) return false;
             if (!message.To.Any()) return false;
 
-            var sender = new SmtpMailSender(new MailSenderSettings
+            var sender = new SmtpMailSender(new MailInfraSettings
             {
-                Name = MailSenderSettings.LegacyDefaultName,
-                Type = MailSenderTypes.Smtp,
+                Name = MailInfraSettings.LegacyDefaultName,
+                Type = MailInfraTypes.Smtp,
                 Host = _settings.Host,
                 Port = _settings.Port,
                 SSL = _settings.SSL,

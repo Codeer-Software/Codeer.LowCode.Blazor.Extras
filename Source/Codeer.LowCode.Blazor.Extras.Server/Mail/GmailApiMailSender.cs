@@ -1,4 +1,4 @@
-using Codeer.LowCode.Blazor.Extras.Mail;
+﻿using Codeer.LowCode.Blazor.Extras.Mail;
 using Codeer.LowCode.Blazor.Extras.ScriptObjects;
 using System.Net;
 using System.Security.Cryptography;
@@ -10,7 +10,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
     /// <summary>
     /// Gmail API (users.messages.send) implementation of <see cref="IMailSender"/>.
     /// Service account + domain-wide delegation (Google Workspace), plain REST (no SDK) -
-    /// sends as the <see cref="MailSenderSettings.SenderMailAddress"/> user.
+    /// sends as the <see cref="MailInfraSettings.SenderMailAddress"/> user.
     /// Settings: SenderMailAddress = the delegated sender user,
     /// ClientSecret = the service account JSON key (file path, or the JSON text itself).
     /// Suited for notification mails (Workspace sending limits are around 2000 mails/day);
@@ -21,12 +21,12 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
         static readonly HttpClient _sharedClient = new();
         const int MaxRetryCount = 3;
 
-        readonly MailSenderSettings _settings;
+        readonly MailInfraSettings _settings;
         readonly HttpClient _http;
-        string? _token;
-        DateTime _tokenExpiresAtUtc;
+        //委任ユーザー (sub) ごとのトークンキャッシュ (動的 From はそのユーザーとして送るため)
+        readonly Dictionary<string, (string Token, DateTime ExpiresAtUtc)> _tokens = new();
 
-        public GmailApiMailSender(MailSenderSettings settings, HttpClient? httpClient = null)
+        public GmailApiMailSender(MailInfraSettings settings, HttpClient? httpClient = null)
         {
             _settings = settings;
             _http = httpClient ?? _sharedClient;
@@ -72,7 +72,9 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
             {
                 var request = new HttpRequestMessage(HttpMethod.Post,
                     "https://gmail.googleapis.com/gmail/v1/users/me/messages/send");
-                request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", await GetTokenAsync());
+                //動的 From はそのユーザーとして送る (ドメイン全体の委任が対象ユーザーを含むこと。許可ドメインは MailDispatcher が検証済み)
+                var sendAsUser = string.IsNullOrEmpty(message.From) ? _settings.SenderMailAddress : message.From;
+                request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", await GetTokenAsync(sendAsUser));
                 request.Content = new StringContent(payload, Encoding.UTF8, "application/json");
 
                 var response = await _http.SendAsync(request);
@@ -97,29 +99,29 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
             return stream.ToArray();
         }
 
-        async Task<string> GetTokenAsync()
+        async Task<string> GetTokenAsync(string sendAsUser)
         {
-            if (_token != null && DateTime.UtcNow < _tokenExpiresAtUtc) return _token;
+            if (_tokens.TryGetValue(sendAsUser, out var cached) && DateTime.UtcNow < cached.ExpiresAtUtc) return cached.Token;
 
             var response = await _http.PostAsync("https://oauth2.googleapis.com/token",
                 new FormUrlEncodedContent(new Dictionary<string, string>
                 {
                     ["grant_type"] = "urn:ietf:params:oauth:grant-type:jwt-bearer",
-                    ["assertion"] = CreateAssertion(),
+                    ["assertion"] = CreateAssertion(sendAsUser),
                 }));
             var text = await response.Content.ReadAsStringAsync();
             if (!response.IsSuccessStatusCode)
                 throw new InvalidOperationException($"Gmail token request failed ({(int)response.StatusCode}): {text}");
 
             using var json = JsonDocument.Parse(text);
-            _token = json.RootElement.GetProperty("access_token").GetString()!;
+            var token = json.RootElement.GetProperty("access_token").GetString()!;
             var expiresIn = json.RootElement.TryGetProperty("expires_in", out var e) ? e.GetInt32() : 300;
-            _tokenExpiresAtUtc = DateTime.UtcNow.AddSeconds(Math.Max(60, expiresIn - 60));
-            return _token;
+            _tokens[sendAsUser] = (token, DateTime.UtcNow.AddSeconds(Math.Max(60, expiresIn - 60)));
+            return token;
         }
 
         //JWT (RS256) signed with the service account private key. sub = the delegated user to send as.
-        string CreateAssertion()
+        string CreateAssertion(string sendAsUser)
         {
             var (clientEmail, privateKeyPem) = LoadServiceAccountKey();
             var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
@@ -127,7 +129,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
             var claims = Base64Url(JsonSerializer.SerializeToUtf8Bytes(new
             {
                 iss = clientEmail,
-                sub = _settings.SenderMailAddress,
+                sub = sendAsUser,
                 scope = "https://www.googleapis.com/auth/gmail.send",
                 aud = "https://oauth2.googleapis.com/token",
                 iat = now,

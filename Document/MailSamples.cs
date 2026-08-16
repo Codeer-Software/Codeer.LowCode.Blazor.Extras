@@ -1,4 +1,4 @@
-//=====================================================================
+﻿//=====================================================================
 // メール送信サンプル (CLBスクリプト)
 // メール送信機能仕様.md の補足。
 // 一斉送信は BulkMailField (仕様書§8。デザイナで配置・設定) に一本化されている。
@@ -11,7 +11,7 @@
 void SendNotification_OnClick()
 {
     var mail = new Mail();
-    mail.Sender = "Notify";                         // appsettings の Mail.Senders の名前(省略時は先頭)
+    mail.MailInfraName = "Notify";                     // appsettings の Mail.Infras の設定名(省略時は先頭)
     mail.AddTo(CustomerEmail.Value);                // ";"区切りで複数可。AddCc/AddBccも同様
     mail.Subject = "注文確認";
     mail.Body = "注文番号: " + OrderId.Value;

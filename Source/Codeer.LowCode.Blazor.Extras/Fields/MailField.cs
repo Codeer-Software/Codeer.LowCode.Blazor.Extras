@@ -1,4 +1,4 @@
-using Codeer.LowCode.Blazor.DataIO;
+﻿using Codeer.LowCode.Blazor.DataIO;
 using Codeer.LowCode.Blazor.Extras.Designs;
 using Codeer.LowCode.Blazor.Extras.Mail;
 using Codeer.LowCode.Blazor.OperatingModel;
@@ -57,11 +57,13 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
 
             var request = new MailSendRequest
             {
-                SenderName = Design.SenderName,
+                MailInfraName = Design.MailInfraName,
                 SourceModule = Module.Design.Name,
                 SourceId = MailVariableResolver.GetValueText(data, Codeer.LowCode.Blazor.DesignLogic.SystemFieldNames.Id),
                 Message = new MailMessage
                 {
+                    From = string.IsNullOrEmpty(Design.FromVariable) ? string.Empty : MailVariableResolver.GetValueText(data, Design.FromVariable),
+                    FromDisplayName = string.IsNullOrEmpty(Design.FromDisplayNameVariable) ? string.Empty : MailVariableResolver.GetValueText(data, Design.FromDisplayNameVariable),
                     To = to,
                     Cc = SplitAddresses(ResolveAddress(data, Design.CcVariable, Design.Cc)),
                     Subject = MailTemplateEngine.Fill(subjectTemplate, variables),

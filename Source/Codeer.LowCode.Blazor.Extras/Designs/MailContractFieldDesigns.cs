@@ -1,4 +1,4 @@
-using Codeer.LowCode.Blazor.Repository.Design;
+﻿using Codeer.LowCode.Blazor.Repository.Design;
 
 namespace Codeer.LowCode.Blazor.Extras.Designs
 {
@@ -19,7 +19,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         public string SentAt { get; set; } = nameof(SentAt);
 
         [Designer(Index = 4, CandidateType = CandidateType.Field)]
-        public string SenderName { get; set; } = nameof(SenderName);
+        public string MailInfraName { get; set; } = nameof(MailInfraName);
 
         [Designer(Index = 5, CandidateType = CandidateType.Field)]
         public string Subject { get; set; } = nameof(Subject);

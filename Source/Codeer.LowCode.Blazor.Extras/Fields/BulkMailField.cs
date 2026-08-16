@@ -105,7 +105,9 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
 
                 var request = new MailBulkSearchRequest
                 {
-                    SenderName = Design.SenderName,
+                    MailInfraName = Design.MailInfraName,
+                    From = ResolveOwnValue(Design.FromVariable),
+                    FromDisplayName = ResolveOwnValue(Design.FromDisplayNameVariable),
                     Subject = subject,
                     Body = body,
                     IsBodyHtml = Design.IsBodyHtml,
@@ -124,7 +126,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
                 if (!string.IsNullOrEmpty(Design.DbColumn))
                 {
                     var json = BulkMailSummary.Prepend(Value,
-                        BulkMailSummary.CreateEntry(Design.SenderName, subject, result, DateTime.Now));
+                        BulkMailSummary.CreateEntry(Design.MailInfraName, subject, result, DateTime.Now));
                     await InitializeDataAsync(new BulkMailFieldData { Value = json });
                     NotifyStateChanged();
                 }
@@ -143,5 +145,9 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             if (string.IsNullOrEmpty(variable)) return literal;
             return MailVariableResolver.GetValueText(Module!.GetData(), variable);
         }
+
+        //自レコードの変数値 (差出人等)。未指定は空
+        string ResolveOwnValue(string variable)
+            => string.IsNullOrEmpty(variable) ? string.Empty : MailVariableResolver.GetValueText(Module!.GetData(), variable);
     }
 }

@@ -1,4 +1,4 @@
-namespace Codeer.LowCode.Blazor.Extras.Server.Mail
+﻿namespace Codeer.LowCode.Blazor.Extras.Server.Mail
 {
     /// <summary>
     /// "Mail" section of appsettings.json. Named senders with different infrastructures
@@ -17,25 +17,25 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
         public string RedirectAllTo { get; set; } = string.Empty;
 
         /// <summary>
-        /// Module that records one row per send operation (reserved field names: SentAt / SenderName /
+        /// Module that records one row per send operation (reserved field names: SentAt / MailInfraName /
         /// Subject / TotalCount / SuccessCount / FailureDetails / SourceModule / SourceId).
         /// Empty = no history. Validated at runtime; a broken history never fails the send itself.
         /// </summary>
         public string HistoryModuleName { get; set; } = string.Empty;
 
-        public List<MailSenderSettings> Senders { get; set; } = new();
+        public List<MailInfraSettings> Infras { get; set; } = new();
 
         /// <summary>
         /// Sender used when a single send does not specify one. Empty = the first sender.
         /// Typically the notification infrastructure (Graph / SMTP).
         /// </summary>
-        public string DefaultSenderName { get; set; } = string.Empty;
+        public string DefaultInfraName { get; set; } = string.Empty;
 
         /// <summary>
-        /// Sender used when a bulk send does not specify one. Empty = <see cref="DefaultSenderName"/>
+        /// Sender used when a bulk send does not specify one. Empty = <see cref="DefaultInfraName"/>
         /// (then the first sender). Typically a delivery service (SendGrid).
         /// </summary>
-        public string DefaultBulkSenderName { get; set; } = string.Empty;
+        public string DefaultBulkInfraName { get; set; } = string.Empty;
 
         /// <summary>
         /// Merges the legacy single-SMTP "MailSettings" section as a sender named "Default"
@@ -46,12 +46,12 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
         {
             var result = config ?? new MailConfig();
             if (!string.IsNullOrEmpty(legacySettings?.Host) &&
-                !result.Senders.Any(e => e.Name == MailSenderSettings.LegacyDefaultName))
+                !result.Infras.Any(e => e.Name == MailInfraSettings.LegacyDefaultName))
             {
-                result.Senders.Add(new MailSenderSettings
+                result.Infras.Add(new MailInfraSettings
                 {
-                    Name = MailSenderSettings.LegacyDefaultName,
-                    Type = MailSenderTypes.Smtp,
+                    Name = MailInfraSettings.LegacyDefaultName,
+                    Type = MailInfraTypes.Smtp,
                     Host = legacySettings.Host,
                     Port = legacySettings.Port,
                     SSL = legacySettings.SSL,
@@ -64,7 +64,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
         }
     }
 
-    public static class MailSenderTypes
+    public static class MailInfraTypes
     {
         public const string Smtp = "Smtp";
         public const string GraphApi = "GraphApi";
@@ -73,17 +73,23 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
     }
 
     /// <summary>One named sender. The set of used properties depends on <see cref="Type"/>.</summary>
-    public class MailSenderSettings
+    public class MailInfraSettings
     {
         internal const string LegacyDefaultName = "Default";
 
         public string Name { get; set; } = string.Empty;
 
-        /// <summary>Smtp / GraphApi / SendGrid / GmailApi. See <see cref="MailSenderTypes"/>.</summary>
+        /// <summary>Smtp / GraphApi / SendGrid / GmailApi. See <see cref="MailInfraTypes"/>.</summary>
         public string Type { get; set; } = string.Empty;
 
         public string SenderMailAddress { get; set; } = string.Empty;
         public string SenderDisplayName { get; set; } = string.Empty;
+
+        /// <summary>
+        /// 動的な差出人 (MailMessage.From) を許可するドメイン。空 (既定) = 動的 From 不許可。
+        /// SPF/DKIM/DMARC と送信インフラの SendAs 権限が整合するドメインだけを登録すること。
+        /// </summary>
+        public List<string> AllowedFromDomains { get; set; } = new();
 
         /// <summary>Upper limit for one bulk send. Exceeding it is an error (never silently truncated).</summary>
         public int MaxBulkCount { get; set; } = 10000;

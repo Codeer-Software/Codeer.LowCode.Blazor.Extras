@@ -1,4 +1,4 @@
-using Codeer.LowCode.Blazor.Extras.Mail;
+﻿using Codeer.LowCode.Blazor.Extras.Mail;
 using Codeer.LowCode.Blazor.Extras.Services;
 using Codeer.LowCode.Blazor.OperatingModel;
 using Codeer.LowCode.Blazor.Script;
@@ -9,7 +9,7 @@ namespace Codeer.LowCode.Blazor.Extras.ScriptObjects
     /// Single mail built and sent from scripts:
     /// <code>
     /// var mail = new Mail();
-    /// mail.Sender = "Notify";           //Mail.Senders の名前(省略時は DefaultSenderName、無ければ先頭)
+    /// mail.MailInfraName = "Notify";       //Mail.Infras の設定名(省略時は DefaultInfraName、無ければ先頭)
     /// mail.AddTo("a@example.com");
     /// mail.Subject = "件名";
     /// mail.Body = "本文";
@@ -25,8 +25,14 @@ namespace Codeer.LowCode.Blazor.Extras.ScriptObjects
         [ScriptHide, ScriptInject]
         public IHttpService? Http { get; set; }
 
-        /// <summary>Sender name configured in appsettings (Mail.Senders). Empty = Mail.DefaultSenderName (then the first sender).</summary>
-        public string Sender { get; set; } = string.Empty;
+        /// <summary>Sender settings name configured in appsettings (Mail.Infras). Empty = Mail.DefaultInfraName (then the first sender).</summary>
+        public string MailInfraName { get; set; } = string.Empty;
+
+        /// <summary>差出人アドレス (任意)。空 = 送信者設定の差出人。AllowedFromDomains で許可されたドメインのみ。</summary>
+        public string From { get; set; } = string.Empty;
+
+        /// <summary>差出人表示名 (From 指定時のみ使われる)。</summary>
+        public string FromDisplayName { get; set; } = string.Empty;
 
         public string Subject { get; set; } = string.Empty;
         public string Body { get; set; } = string.Empty;
@@ -79,13 +85,15 @@ namespace Codeer.LowCode.Blazor.Extras.ScriptObjects
         [ScriptName("Send")]
         public async Task<MailSendResult> SendAsync()
         {
+            _message.From = From;
+            _message.FromDisplayName = FromDisplayName;
             _message.Subject = Subject;
             _message.Body = Body;
             _message.IsBodyHtml = IsBodyHtml;
             _message.ReplyTo = ReplyTo;
             var request = new MailSendRequest
             {
-                SenderName = Sender,
+                MailInfraName = MailInfraName,
                 Message = _message,
                 SourceModule = Source?.Design.Name ?? string.Empty,
                 SourceId = Source?.GetIdText() ?? string.Empty,

@@ -1,4 +1,4 @@
-using Codeer.LowCode.Blazor.Extras.ScriptObjects;
+﻿using Codeer.LowCode.Blazor.Extras.ScriptObjects;
 using Codeer.LowCode.Blazor.Extras.Mail;
 using Codeer.LowCode.Blazor.Extras.Server.Mail;
 using MimeKit;
@@ -10,10 +10,10 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Mail
     /// </summary>
     public class SmtpMailSenderTest
     {
-        static readonly MailSenderSettings Settings = new()
+        static readonly MailInfraSettings Settings = new()
         {
             Name = "Local",
-            Type = MailSenderTypes.Smtp,
+            Type = MailInfraTypes.Smtp,
             Host = "smtp.example.com",
             Port = "587",
             SenderMailAddress = "noreply@example.com",
@@ -44,6 +44,33 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Mail
             Assert.That(mime.Subject, Is.EqualTo("件名"));
             Assert.That(mime.TextBody, Is.EqualTo("本文"));
             Assert.That(mime.Headers["X-CLB-Original-To"], Is.EqualTo("orig@example.com"));
+        }
+
+        [Test]
+        public void CreateMimeMessage_動的Fromの上書き()
+        {
+            var mime = SmtpMailSender.CreateMimeMessage(Settings, new MailMessage
+            {
+                From = "sales@example.com",
+                FromDisplayName = "営業 太郎",
+                To = { "a@example.com" },
+                Subject = "件名",
+                Body = "本文",
+            });
+
+            var from = (MailboxAddress)mime.From.Single();
+            Assert.That(from.Address, Is.EqualTo("sales@example.com"));
+            Assert.That(from.Name, Is.EqualTo("営業 太郎"));
+        }
+
+        [Test]
+        public void CreateResolvedMessage_テンプレートのFromが引き継がれる()
+        {
+            var message = SmtpMailSender.CreateResolvedMessage(
+                new MailBulkTemplate { From = "sales@example.com", FromDisplayName = "営業 太郎", Subject = "s", Body = "b" },
+                new MailBulkRecipient { To = "a@example.com" });
+            Assert.That(message.From, Is.EqualTo("sales@example.com"));
+            Assert.That(message.FromDisplayName, Is.EqualTo("営業 太郎"));
         }
 
         [Test]

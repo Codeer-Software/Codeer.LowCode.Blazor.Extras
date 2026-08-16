@@ -1,4 +1,4 @@
-using Codeer.LowCode.Blazor.DesignLogic;
+﻿using Codeer.LowCode.Blazor.DesignLogic;
 using Codeer.LowCode.Blazor.Extras.Mail;
 using Codeer.LowCode.Blazor.Extras.Server.Mail;
 using Codeer.LowCode.Blazor.Repository.Data;
@@ -44,7 +44,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Mail
                     SentAt = "送信日時",
                     Subject = "件名",
                     SuccessCount = "成功数",
-                    SenderName = "",
+                    MailInfraName = "",
                     TotalCount = "",
                     FailureDetails = "",
                     SourceModule = "",
@@ -69,7 +69,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Mail
         {
             var designData = CreateDesignData(
                 new DateTimeFieldDesign { Name = "SentAt" },
-                new TextFieldDesign { Name = "SenderName" },
+                new TextFieldDesign { Name = "MailInfraName" },
                 new TextFieldDesign { Name = "Subject" },
                 new NumberFieldDesign { Name = "TotalCount" },
                 new NumberFieldDesign { Name = "SuccessCount" },
@@ -84,7 +84,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Mail
                 new MailHistorySource { SourceModule = "Campaign", SourceId = "42" });
 
             Assert.That(written, Is.Not.Null);
-            Assert.That(((TextFieldData)written!.Fields["SenderName"]).Value, Is.EqualTo("Campaign"));
+            Assert.That(((TextFieldData)written!.Fields["MailInfraName"]).Value, Is.EqualTo("Campaign"));
             Assert.That(((TextFieldData)written.Fields["Subject"]).Value, Is.EqualTo("8月のご案内"));
             Assert.That(((NumberFieldData)written.Fields["TotalCount"]).Value, Is.EqualTo(10));
             Assert.That(((NumberFieldData)written.Fields["SuccessCount"]).Value, Is.EqualTo(8));

@@ -1,4 +1,4 @@
-using Codeer.LowCode.Blazor.Extras.ScriptObjects;
+﻿using Codeer.LowCode.Blazor.Extras.ScriptObjects;
 using Codeer.LowCode.Blazor.Extras.Mail;
 using Codeer.LowCode.Blazor.Extras.Server.Mail;
 using System.Net;
@@ -8,10 +8,10 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Mail
 {
     public class SendGridMailSenderTest
     {
-        static readonly MailSenderSettings Settings = new()
+        static readonly MailInfraSettings Settings = new()
         {
             Name = "Campaign",
-            Type = MailSenderTypes.SendGrid,
+            Type = MailInfraTypes.SendGrid,
             ApiKey = "SG.test",
             SenderMailAddress = "info@example.com",
             SenderDisplayName = "Info",

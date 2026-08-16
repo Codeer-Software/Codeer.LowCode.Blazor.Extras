@@ -1,4 +1,4 @@
-## Design
+﻿## Design
 
 詳細レイアウトに配置できる一斉メール送信ボタンです (Salesforce のキャンペーン + リストメールと同型)。
 同一モジュール上のリストフィールド (List/DetailList/TileList) を宛先リストとして参照し、
@@ -47,9 +47,11 @@
 | Subject | string | - | 件名テンプレート (固定文字列) |
 | BodyVariable | string | - | 本文テンプレートを持つ自モジュールの変数 (`Body.Value`)。空なら Body を使う |
 | Body | string | - | 本文テンプレート (固定文字列・複数行) |
-| SenderName | string | - | 送信者名 (appsettings の Mail.Senders の名前)。空なら既定 (Mail.DefaultBulkSenderName → DefaultSenderName → 先頭) |
+| MailInfraName | string | - | メールインフラ名 (appsettings の Mail.Infras の設定名 = どの送信インフラ・既定差出人を使うか)。空なら既定 (Mail.DefaultBulkInfraName → DefaultInfraName → 先頭)。差出人アドレスを変えるのは FromVariable の方 |
 | IsBodyHtml | bool | - | 本文を HTML として送るか (変数値は HTML エスケープされる) |
 | ReplyTo | string | - | 返信先アドレス |
+| FromVariable | string | - | 差出人アドレスの変数 (自モジュールの変数・リンクパス可)。空なら送信インフラ設定の差出人。サーバー設定 (AllowedFromDomains) で許可されたドメインのみ |
+| FromDisplayNameVariable | string | - | 差出人表示名の変数 (FromVariable 指定時のみ使われる) |
 | ButtonText | string | - | ボタンの表示テキスト。空なら既定の文言 |
 | DbColumn | string | - | 送信結果サマリ (JSON) の保存列。空ならサマリを保存しない |
 

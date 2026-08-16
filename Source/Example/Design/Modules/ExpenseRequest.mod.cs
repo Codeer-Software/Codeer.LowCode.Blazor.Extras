@@ -1,4 +1,4 @@
-// 承認フロー実機確認サンプル (シンプル版)。
+﻿// 承認フロー実機確認サンプル (シンプル版)。
 // 経路は経路マスタ (承認経路マスタ画面で管理) の「経費ルート」を使う。
 // 申請・再申請ボタンはフィールドの標準 UI (経路の取得だけがアプリの責務)
 
@@ -14,7 +14,7 @@ ApprovalRouteData OnBuildRoute()
     return route;
 }
 
-// 受付メールを送る (MailField のデモ。実送信には appsettings の Mail.Senders 設定が必要)
+// 受付メールを送る (MailField のデモ。実送信には appsettings の Mail.Infras 設定が必要)
 void SendReceiptMail()
 {
     var result = ReceiptMail.Send();

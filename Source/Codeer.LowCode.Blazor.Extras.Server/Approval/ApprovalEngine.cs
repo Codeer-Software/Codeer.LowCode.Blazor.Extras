@@ -1,4 +1,4 @@
-using Codeer.LowCode.Blazor.DataIO;
+﻿using Codeer.LowCode.Blazor.DataIO;
 using Codeer.LowCode.Blazor.DataIO.Db;
 using Codeer.LowCode.Blazor.DesignLogic;
 using Codeer.LowCode.Blazor.Extras.Approval;
@@ -751,7 +751,8 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Approval
                 //テンプレート解決に必要なフィールドパス (リンクパス可)
                 var paths = MailTemplateEngine.GetVariableNames(mail.Subject)
                     .Concat(MailTemplateEngine.GetVariableNames(mail.Body))
-                    .Concat([mail.ToVariable, mail.CcVariable, mail.SubjectVariable, mail.BodyVariable])
+                    .Concat([mail.ToVariable, mail.CcVariable, mail.SubjectVariable, mail.BodyVariable,
+                        mail.FromVariable, mail.FromDisplayNameVariable])
                     .Where(e => !string.IsNullOrEmpty(e))
                     .Select(e => MailVariableResolver.ParseToken(e).FieldPath)
                     .Where(e => !string.IsNullOrEmpty(e))
@@ -793,8 +794,10 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Approval
                         .Concat(MailTemplateEngine.GetVariableNames(bodyTemplate)).Distinct().ToList();
                     var variables = MailVariableResolver.Resolve(ctx.MemberModule, row, names, _designData.Modules.Find);
 
-                    var result = await dispatcher.SendAsync(mail.SenderName, new MailMessage
+                    var result = await dispatcher.SendAsync(mail.MailInfraName, new MailMessage
                     {
+                        From = string.IsNullOrEmpty(mail.FromVariable) ? string.Empty : MailVariableResolver.GetValueText(row, mail.FromVariable),
+                        FromDisplayName = string.IsNullOrEmpty(mail.FromDisplayNameVariable) ? string.Empty : MailVariableResolver.GetValueText(row, mail.FromDisplayNameVariable),
                         To = to,
                         Cc = SplitAddresses(ResolveMailText(row, mail.CcVariable, mail.Cc)),
                         Subject = MailTemplateEngine.Fill(subjectTemplate, variables),

@@ -70,9 +70,9 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         [Designer(Index = 7, CandidateType = CandidateType.MultilineString, DisplayName = "$BulkMailBody")]
         public string Body { get; set; } = string.Empty;
 
-        /// <summary>送信者名 (appsettings の Mail.Senders の名前)。空なら既定 (Mail.DefaultBulkSenderName → DefaultSenderName → 先頭)。</summary>
-        [Designer(Index = 8, DisplayName = "$BulkMailSenderName")]
-        public string SenderName { get; set; } = string.Empty;
+        /// <summary>メールインフラ名 (appsettings の Mail.Infras の設定名 = どの送信インフラ・既定差出人を使うか)。空なら既定 (Mail.DefaultBulkInfraName → DefaultInfraName → 先頭)。</summary>
+        [Designer(Index = 8, DisplayName = "$MailInfraName")]
+        public string MailInfraName { get; set; } = string.Empty;
 
         /// <summary>本文を HTML として送るか。</summary>
         [Designer(Index = 9, DisplayName = "$BulkMailIsBodyHtml")]
@@ -85,6 +85,14 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         /// <summary>ボタンの表示テキスト。空なら既定の文言。</summary>
         [Designer(Index = 11, DisplayName = "$BulkMailButtonText")]
         public string ButtonText { get; set; } = string.Empty;
+
+        /// <summary>差出人アドレスの変数 (任意・自モジュールの変数。リンクパス可)。空 = 送信者設定の差出人。許可ドメインはサーバー設定 (AllowedFromDomains)。</summary>
+        [Designer(Index = 13, CandidateType = CandidateType.Variable, DisplayName = "$MailFieldFromVariable")]
+        public string FromVariable { get; set; } = string.Empty;
+
+        /// <summary>差出人表示名の変数 (任意・FromVariable 指定時のみ使われる)。</summary>
+        [Designer(Index = 14, CandidateType = CandidateType.Variable, DisplayName = "$MailFieldFromDisplayNameVariable")]
+        public string FromDisplayNameVariable { get; set; } = string.Empty;
 
         /// <summary>送信結果サマリ (JSON) の保存列。空ならサマリを保存しない (履歴モジュールの全量記録は別途 Mail.HistoryModuleName)。</summary>
         [Designer(Index = 12, CandidateType = CandidateType.DbColumn, DisplayName = "$BulkMailFieldDbColumn")]
@@ -125,6 +133,8 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
             //テンプレートは変数参照(自モジュール)を検証。固定文字列とどちらも空なら知らせる
             context.CheckFieldVariableExistence(Name, nameof(SubjectVariable), SubjectVariable).AddTo(result);
             context.CheckFieldVariableExistence(Name, nameof(BodyVariable), BodyVariable).AddTo(result);
+            context.CheckFieldVariableExistence(Name, nameof(FromVariable), FromVariable).AddTo(result);
+            context.CheckFieldVariableExistence(Name, nameof(FromDisplayNameVariable), FromDisplayNameVariable).AddTo(result);
             if (string.IsNullOrEmpty(SubjectVariable) && string.IsNullOrEmpty(Subject) &&
                 string.IsNullOrEmpty(BodyVariable) && string.IsNullOrEmpty(Body))
             {
@@ -138,7 +148,9 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
             var builder = context.Builder(base.ChangeName(context))
                 .AddField(RecipientListFieldName, x => RecipientListFieldName = x)
                 .AddVariable(SubjectVariable, x => SubjectVariable = x)
-                .AddVariable(BodyVariable, x => BodyVariable = x);
+                .AddVariable(BodyVariable, x => BodyVariable = x)
+                .AddVariable(FromVariable, x => FromVariable = x)
+                .AddVariable(FromDisplayNameVariable, x => FromDisplayNameVariable = x);
 
             //宛先モジュールの単純変数はリネーム追従する(リンクパスは非追従=既存のリンク越し変数と同じ制限)
             var targetModuleName = (context.GetFieldDesign(RecipientListFieldName) as IListFieldDesign)?.SearchCondition.ModuleName;

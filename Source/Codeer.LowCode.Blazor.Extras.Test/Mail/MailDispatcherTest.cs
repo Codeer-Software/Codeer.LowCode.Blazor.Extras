@@ -1,4 +1,4 @@
-using Codeer.LowCode.Blazor.Extras.ScriptObjects;
+﻿using Codeer.LowCode.Blazor.Extras.ScriptObjects;
 using Codeer.LowCode.Blazor.Extras.Mail;
 using Codeer.LowCode.Blazor.Extras.Server.Mail;
 
@@ -31,66 +31,66 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Mail
             var config = new MailConfig
             {
                 RedirectAllTo = redirectAllTo,
-                Senders =
+                Infras =
                 {
-                    new MailSenderSettings { Name = "Main", Type = MailSenderTypes.Smtp, MaxBulkCount = maxBulkCount },
-                    new MailSenderSettings { Name = "Sub", Type = MailSenderTypes.SendGrid },
+                    new MailInfraSettings { Name = "Main", Type = MailInfraTypes.Smtp, MaxBulkCount = maxBulkCount },
+                    new MailInfraSettings { Name = "Sub", Type = MailInfraTypes.SendGrid },
                 }
             };
             return (new MailDispatcher(config, _ => fake), fake);
         }
 
         [Test]
-        public void ResolveSenderSettings_省略は先頭_名前指定は一致_不明はエラー()
+        public void ResolveInfraSettings_省略は先頭_名前指定は一致_不明はエラー()
         {
             var (dispatcher, _) = Create();
-            Assert.That(dispatcher.ResolveSenderSettings(null).Name, Is.EqualTo("Main"));
-            Assert.That(dispatcher.ResolveSenderSettings("Sub").Name, Is.EqualTo("Sub"));
-            Assert.That(() => dispatcher.ResolveSenderSettings("Nothing"), Throws.InvalidOperationException);
+            Assert.That(dispatcher.ResolveInfraSettings(null).Name, Is.EqualTo("Main"));
+            Assert.That(dispatcher.ResolveInfraSettings("Sub").Name, Is.EqualTo("Sub"));
+            Assert.That(() => dispatcher.ResolveInfraSettings("Nothing"), Throws.InvalidOperationException);
         }
 
         [Test]
-        public void ResolveSenderSettings_設定なしはエラー()
+        public void ResolveInfraSettings_設定なしはエラー()
         {
             var dispatcher = new MailDispatcher(new MailConfig());
-            Assert.That(() => dispatcher.ResolveSenderSettings(null), Throws.InvalidOperationException);
+            Assert.That(() => dispatcher.ResolveInfraSettings(null), Throws.InvalidOperationException);
         }
 
         static MailDispatcher CreateWithDefaults(string defaultSender, string defaultBulkSender)
             => new(new MailConfig
             {
-                DefaultSenderName = defaultSender,
-                DefaultBulkSenderName = defaultBulkSender,
-                Senders =
+                DefaultInfraName = defaultSender,
+                DefaultBulkInfraName = defaultBulkSender,
+                Infras =
                 {
-                    new MailSenderSettings { Name = "Main" },
-                    new MailSenderSettings { Name = "Notify" },
-                    new MailSenderSettings { Name = "Campaign" },
+                    new MailInfraSettings { Name = "Main" },
+                    new MailInfraSettings { Name = "Notify" },
+                    new MailInfraSettings { Name = "Campaign" },
                 }
             });
 
         [Test]
-        public void ResolveSenderSettings_省略時は用途別デフォルト_明示指定が最優先()
+        public void ResolveInfraSettings_省略時は用途別デフォルト_明示指定が最優先()
         {
             var dispatcher = CreateWithDefaults("Notify", "Campaign");
-            Assert.That(dispatcher.ResolveSenderSettings(null).Name, Is.EqualTo("Notify"));
-            Assert.That(dispatcher.ResolveBulkSenderSettings(null).Name, Is.EqualTo("Campaign"));
-            Assert.That(dispatcher.ResolveSenderSettings("Campaign").Name, Is.EqualTo("Campaign"));
-            Assert.That(dispatcher.ResolveBulkSenderSettings("Notify").Name, Is.EqualTo("Notify"));
+            Assert.That(dispatcher.ResolveInfraSettings(null).Name, Is.EqualTo("Notify"));
+            Assert.That(dispatcher.ResolveBulkInfraSettings(null).Name, Is.EqualTo("Campaign"));
+            Assert.That(dispatcher.ResolveInfraSettings("Campaign").Name, Is.EqualTo("Campaign"));
+            Assert.That(dispatcher.ResolveBulkInfraSettings("Notify").Name, Is.EqualTo("Notify"));
         }
 
         [Test]
-        public void ResolveBulkSenderSettings_Bulk既定なしは単発既定_両方なしは先頭()
+        public void ResolveBulkInfraSettings_Bulk既定なしは単発既定_両方なしは先頭()
         {
-            Assert.That(CreateWithDefaults("Notify", "").ResolveBulkSenderSettings(null).Name, Is.EqualTo("Notify"));
-            Assert.That(CreateWithDefaults("", "").ResolveBulkSenderSettings(null).Name, Is.EqualTo("Main"));
+            Assert.That(CreateWithDefaults("Notify", "").ResolveBulkInfraSettings(null).Name, Is.EqualTo("Notify"));
+            Assert.That(CreateWithDefaults("", "").ResolveBulkInfraSettings(null).Name, Is.EqualTo("Main"));
         }
 
         [Test]
-        public void ResolveSenderSettings_デフォルト名が不明でも黙って先頭に落ちずエラー()
+        public void ResolveInfraSettings_デフォルト名が不明でも黙って先頭に落ちずエラー()
         {
-            Assert.That(() => CreateWithDefaults("Nothing", "").ResolveSenderSettings(null), Throws.InvalidOperationException);
-            Assert.That(() => CreateWithDefaults("", "Nothing").ResolveBulkSenderSettings(null), Throws.InvalidOperationException);
+            Assert.That(() => CreateWithDefaults("Nothing", "").ResolveInfraSettings(null), Throws.InvalidOperationException);
+            Assert.That(() => CreateWithDefaults("", "Nothing").ResolveBulkInfraSettings(null), Throws.InvalidOperationException);
         }
 
         [Test]
@@ -99,12 +99,12 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Mail
             var fake = new FakeMailSender();
             var config = new MailConfig
             {
-                DefaultSenderName = "Notify",
-                DefaultBulkSenderName = "Campaign",
-                Senders =
+                DefaultInfraName = "Notify",
+                DefaultBulkInfraName = "Campaign",
+                Infras =
                 {
-                    new MailSenderSettings { Name = "Notify" },
-                    new MailSenderSettings { Name = "Campaign", MaxBulkCount = 1 },
+                    new MailInfraSettings { Name = "Notify" },
+                    new MailInfraSettings { Name = "Campaign", MaxBulkCount = 1 },
                 }
             };
             var dispatcher = new MailDispatcher(config, _ => fake);
@@ -218,7 +218,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Mail
             var fake = new FakeMailSender();
             var config = new MailConfig
             {
-                Senders = { new MailSenderSettings { Name = "Custom", Type = "MyGateway" } }
+                Infras = { new MailInfraSettings { Name = "Custom", Type = "MyGateway" } }
             };
             var dispatcher = new MailDispatcher(config, s => s.Type == "MyGateway" ? fake : null);
 
@@ -232,10 +232,94 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Mail
         {
             var dispatcher = new MailDispatcher(new MailConfig
             {
-                Senders = { new MailSenderSettings { Name = "X", Type = "Unknown" } }
+                Infras = { new MailInfraSettings { Name = "X", Type = "Unknown" } }
             });
             Assert.That(async () => await dispatcher.SendAsync("X", new MailMessage { To = { "a@example.com" } }),
                 Throws.InvalidOperationException);
+        }
+
+        //================= 動的 From (AllowedFromDomains) =================
+
+        static (MailDispatcher dispatcher, FakeMailSender fake) CreateWithFromDomains(params string[] domains)
+        {
+            var fake = new FakeMailSender();
+            var config = new MailConfig
+            {
+                Infras = { new MailInfraSettings { Name = "Main", Type = MailInfraTypes.Smtp, AllowedFromDomains = domains.ToList() } },
+            };
+            return (new MailDispatcher(config, _ => fake), fake);
+        }
+
+        [Test]
+        public async Task From_許可ドメインなら送られる()
+        {
+            var (dispatcher, fake) = CreateWithFromDomains("example.com");
+            var result = await dispatcher.SendAsync(null, new MailMessage
+            { From = "sales@Example.COM", FromDisplayName = "営業", To = { "to@example.com" }, Subject = "s" });
+
+            Assert.That(result.IsSuccess, Is.True);
+            Assert.That(fake.Sent.Single().From, Is.EqualTo("sales@Example.COM"));
+            Assert.That(fake.Sent.Single().FromDisplayName, Is.EqualTo("営業"));
+        }
+
+        [Test]
+        public async Task From_許可ドメイン外は送信されず失敗()
+        {
+            var (dispatcher, fake) = CreateWithFromDomains("example.com");
+            var result = await dispatcher.SendAsync(null, new MailMessage
+            { From = "spoof@evil.com", To = { "to@example.com" }, Subject = "s" });
+
+            Assert.That(result.IsSuccess, Is.False);
+            Assert.That(result.Failures.Single().Error, Does.Contain("AllowedFromDomains"));
+            Assert.That(fake.Sent, Is.Empty);
+        }
+
+        [Test]
+        public async Task From_許可ドメイン未設定の送信者では常に拒否()
+        {
+            var (dispatcher, fake) = Create();
+            var result = await dispatcher.SendAsync(null, new MailMessage
+            { From = "sales@example.com", To = { "to@example.com" }, Subject = "s" });
+
+            Assert.That(result.IsSuccess, Is.False);
+            Assert.That(fake.Sent, Is.Empty);
+        }
+
+        [Test]
+        public async Task From_一斉送信でも検証され_許可時はテンプレートに残る()
+        {
+            var (dispatcher, fake) = CreateWithFromDomains("example.com");
+            var recipients = new List<MailBulkRecipient> { new() { To = "a@example.com" }, new() { To = "b@example.com" } };
+
+            var deny = await dispatcher.SendBulkAsync(null,
+                new MailBulkTemplate { From = "spoof@evil.com", Subject = "s", Body = "b" }, recipients);
+            Assert.That(deny.IsSuccess, Is.False);
+            Assert.That(deny.Failures.Count, Is.EqualTo(2));
+            Assert.That(fake.BulkSent, Is.Empty);
+
+            var ok = await dispatcher.SendBulkAsync(null,
+                new MailBulkTemplate { From = "sales@example.com", FromDisplayName = "営業", Subject = "s", Body = "b" }, recipients);
+            Assert.That(ok.IsSuccess, Is.True);
+            Assert.That(fake.BulkSent.Single().Template.From, Is.EqualTo("sales@example.com"));
+        }
+
+        [Test]
+        public async Task From_リダイレクト時も維持される()
+        {
+            var fake = new FakeMailSender();
+            var config = new MailConfig
+            {
+                RedirectAllTo = "test@example.com",
+                Infras = { new MailInfraSettings { Name = "Main", AllowedFromDomains = { "example.com" } } },
+            };
+            var dispatcher = new MailDispatcher(config, _ => fake);
+
+            var result = await dispatcher.SendAsync(null, new MailMessage
+            { From = "sales@example.com", To = { "customer@other.com" }, Subject = "s" });
+
+            Assert.That(result.IsSuccess, Is.True);
+            Assert.That(fake.Sent.Single().To, Is.EqualTo(new[] { "test@example.com" }));
+            Assert.That(fake.Sent.Single().From, Is.EqualTo("sales@example.com"));
         }
     }
 }

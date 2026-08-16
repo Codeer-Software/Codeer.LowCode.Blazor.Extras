@@ -1,4 +1,4 @@
-using Codeer.LowCode.Blazor.Extras.Mail;
+﻿using Codeer.LowCode.Blazor.Extras.Mail;
 using Codeer.LowCode.Blazor.Extras.ScriptObjects;
 using System.Net;
 
@@ -21,10 +21,10 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
         internal const int RedirectBulkClipCount = 10;
 
         readonly MailConfig _config;
-        readonly Func<MailSenderSettings, IMailSender?>? _customSenderFactory;
+        readonly Func<MailInfraSettings, IMailSender?>? _customSenderFactory;
         readonly MailHistoryWriter? _historyWriter;
 
-        public MailDispatcher(MailConfig config, Func<MailSenderSettings, IMailSender?>? customSenderFactory = null,
+        public MailDispatcher(MailConfig config, Func<MailInfraSettings, IMailSender?>? customSenderFactory = null,
             MailHistoryWriter? historyWriter = null)
         {
             _config = config;
@@ -32,55 +32,75 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
             _historyWriter = historyWriter;
         }
 
-        /// <summary>Resolves the sender of a single send: explicit name → DefaultSenderName → the first sender.</summary>
-        public MailSenderSettings ResolveSenderSettings(string? senderName)
-            => ResolveCore(senderName, _config.DefaultSenderName);
+        /// <summary>Resolves the sender of a single send: explicit name → DefaultInfraName → the first sender.</summary>
+        public MailInfraSettings ResolveInfraSettings(string? mailInfraName)
+            => ResolveCore(mailInfraName, _config.DefaultInfraName);
 
-        /// <summary>Resolves the sender of a bulk send: explicit name → DefaultBulkSenderName → DefaultSenderName → the first sender.</summary>
-        public MailSenderSettings ResolveBulkSenderSettings(string? senderName)
-            => ResolveCore(senderName, string.IsNullOrEmpty(_config.DefaultBulkSenderName)
-                ? _config.DefaultSenderName : _config.DefaultBulkSenderName);
+        /// <summary>Resolves the sender of a bulk send: explicit name → DefaultBulkInfraName → DefaultInfraName → the first sender.</summary>
+        public MailInfraSettings ResolveBulkInfraSettings(string? mailInfraName)
+            => ResolveCore(mailInfraName, string.IsNullOrEmpty(_config.DefaultBulkInfraName)
+                ? _config.DefaultInfraName : _config.DefaultBulkInfraName);
 
         //a configured default that matches nothing throws, same as an explicit name - config errors must not fall back silently
-        MailSenderSettings ResolveCore(string? senderName, string defaultName)
+        MailInfraSettings ResolveCore(string? mailInfraName, string defaultName)
         {
-            if (!_config.Senders.Any()) throw new InvalidOperationException("No mail senders are configured (Mail.Senders).");
-            var name = string.IsNullOrEmpty(senderName) ? defaultName : senderName;
-            if (string.IsNullOrEmpty(name)) return _config.Senders[0];
-            return _config.Senders.FirstOrDefault(e => e.Name == name)
+            if (!_config.Infras.Any()) throw new InvalidOperationException("No mail senders are configured (Mail.Infras).");
+            var name = string.IsNullOrEmpty(mailInfraName) ? defaultName : mailInfraName;
+            if (string.IsNullOrEmpty(name)) return _config.Infras[0];
+            return _config.Infras.FirstOrDefault(e => e.Name == name)
                 ?? throw new InvalidOperationException($"Mail sender '{name}' is not configured.");
         }
 
-        public IMailSender CreateSender(MailSenderSettings settings)
+        //動的 From の許可判定。空 = null (許可)。AllowedFromDomains 未設定の送信者では動的 From を常に拒否する
+        static string? ValidateFrom(MailInfraSettings settings, string from)
+        {
+            if (string.IsNullOrEmpty(from)) return null;
+            var domain = from.Split('@').Length == 2 ? from.Split('@')[1] : string.Empty;
+            if (!string.IsNullOrEmpty(domain) &&
+                settings.AllowedFromDomains.Any(e => string.Equals(e, domain, StringComparison.OrdinalIgnoreCase)))
+            {
+                return null;
+            }
+            return $"From '{from}' is not allowed. Add the domain to AllowedFromDomains of mail sender '{settings.Name}'.";
+        }
+
+        public IMailSender CreateSender(MailInfraSettings settings)
         {
             var custom = _customSenderFactory?.Invoke(settings);
             if (custom != null) return custom;
             return settings.Type switch
             {
-                MailSenderTypes.GraphApi => new GraphApiMailSender(settings),
-                MailSenderTypes.SendGrid => new SendGridMailSender(settings),
-                MailSenderTypes.GmailApi => new GmailApiMailSender(settings),
+                MailInfraTypes.GraphApi => new GraphApiMailSender(settings),
+                MailInfraTypes.SendGrid => new SendGridMailSender(settings),
+                MailInfraTypes.GmailApi => new GmailApiMailSender(settings),
                 //empty type = legacy configs are SMTP
-                MailSenderTypes.Smtp or "" => new SmtpMailSender(settings),
+                MailInfraTypes.Smtp or "" => new SmtpMailSender(settings),
                 _ => throw new InvalidOperationException($"Unknown mail sender type '{settings.Type}'."),
             };
         }
 
         /// <summary>Sends the single-send wire request (POST /api/mail) as-is. Controllers stay thin.</summary>
         public async Task<MailSendResult> SendAsync(MailSendRequest request)
-            => await SendAsync(request.SenderName, request.Message, CreateSource(request.SourceModule, request.SourceId));
+            => await SendAsync(request.MailInfraName, request.Message, CreateSource(request.SourceModule, request.SourceId));
 
         internal static MailHistorySource? CreateSource(string sourceModule, string sourceId)
             => string.IsNullOrEmpty(sourceModule)
                 ? null
                 : new MailHistorySource { SourceModule = sourceModule, SourceId = sourceId };
 
-        public async Task<MailSendResult> SendAsync(string? senderName, MailMessage message, MailHistorySource? source = null)
+        public async Task<MailSendResult> SendAsync(string? mailInfraName, MailMessage message, MailHistorySource? source = null)
         {
             if (!message.To.Any() && !message.Cc.Any() && !message.Bcc.Any())
                 return MailSendResult.Failure(string.Empty, "No recipients.");
 
-            var settings = ResolveSenderSettings(senderName);
+            var settings = ResolveInfraSettings(mailInfraName);
+            var fromError = ValidateFrom(settings, message.From);
+            if (fromError != null)
+            {
+                var failure = MailSendResult.Failure(string.Join(";", message.To), fromError);
+                if (_historyWriter != null) await _historyWriter.WriteAsync(settings.Name, message.Subject, failure, source);
+                return failure;
+            }
             var sender = CreateSender(settings);
             var sendMessage = string.IsNullOrEmpty(_config.RedirectAllTo) ? message : Redirect(message);
             var result = await sender.SendAsync(sendMessage);
@@ -93,9 +113,20 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
         /// (never silently truncates). For HTML templates the variable values are HTML-encoded
         /// once here so native bulk (SendGrid) and sequential fallbacks behave the same.
         /// </summary>
-        public async Task<MailSendResult> SendBulkAsync(string? senderName, MailBulkTemplate template, List<MailBulkRecipient> recipients, MailHistorySource? source = null)
+        public async Task<MailSendResult> SendBulkAsync(string? mailInfraName, MailBulkTemplate template, List<MailBulkRecipient> recipients, MailHistorySource? source = null)
         {
-            var settings = ResolveBulkSenderSettings(senderName);
+            var settings = ResolveBulkInfraSettings(mailInfraName);
+            var bulkFromError = ValidateFrom(settings, template.From);
+            if (bulkFromError != null)
+            {
+                var failure = new MailSendResult
+                {
+                    TotalCount = recipients.Count,
+                    Failures = recipients.Select(e => new MailSendFailure { To = e.To, Error = bulkFromError }).ToList(),
+                };
+                if (_historyWriter != null) await _historyWriter.WriteAsync(settings.Name, template.Subject, failure, source);
+                return failure;
+            }
             if (recipients.Count > settings.MaxBulkCount)
                 throw new InvalidOperationException(
                     $"Bulk send of {recipients.Count} mails exceeds MaxBulkCount ({settings.MaxBulkCount}) of mail sender '{settings.Name}'.");
@@ -125,6 +156,8 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
             var originalTo = $"to: {string.Join(";", src.To)} cc: {string.Join(";", src.Cc)} bcc: {string.Join(";", src.Bcc)}";
             var redirected = new MailMessage
             {
+                From = src.From,
+                FromDisplayName = src.FromDisplayName,
                 To = { _config.RedirectAllTo },
                 Subject = src.Subject,
                 Body = src.Body,

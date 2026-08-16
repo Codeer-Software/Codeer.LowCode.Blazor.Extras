@@ -1,4 +1,4 @@
-using Codeer.LowCode.Blazor.Extras.Mail;
+﻿using Codeer.LowCode.Blazor.Extras.Mail;
 using Codeer.LowCode.Blazor.Extras.ScriptObjects;
 using System.Net;
 using System.Text;
@@ -18,12 +18,12 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
         static readonly HttpClient _sharedClient = new();
         const int MaxRetryCount = 3;
 
-        readonly MailSenderSettings _settings;
+        readonly MailInfraSettings _settings;
         readonly HttpClient _http;
         string? _token;
         DateTime _tokenExpiresAtUtc;
 
-        public GraphApiMailSender(MailSenderSettings settings, HttpClient? httpClient = null)
+        public GraphApiMailSender(MailInfraSettings settings, HttpClient? httpClient = null)
         {
             _settings = settings;
             _http = httpClient ?? _sharedClient;
@@ -65,7 +65,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
             for (var retry = 0; ; retry++)
             {
                 var request = new HttpRequestMessage(HttpMethod.Post,
-                    $"https://graph.microsoft.com/v1.0/users/{Uri.EscapeDataString(_settings.SenderMailAddress)}/sendMail");
+                    $"https://graph.microsoft.com/v1.0/users/{Uri.EscapeDataString(GetSendAsUser(message))}/sendMail");
                 request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", await GetTokenAsync());
                 request.Content = new StringContent(CreateSendMailPayload(message).ToJsonString(), Encoding.UTF8, "application/json");
 
@@ -82,6 +82,11 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
                 throw new InvalidOperationException($"Graph sendMail failed ({(int)response.StatusCode}): {await response.Content.ReadAsStringAsync()}");
             }
         }
+
+        //動的 From はそのユーザーのメールボックスから送る (アプリケーション権限 Mail.Send はテナント内の全ユーザーで送れる。
+        //許可ドメインは MailDispatcher が検証済み)。送信済みアイテムも本人に残る
+        internal string GetSendAsUser(MailMessage message)
+            => string.IsNullOrEmpty(message.From) ? _settings.SenderMailAddress : message.From;
 
         internal JsonObject CreateSendMailPayload(MailMessage message)
         {

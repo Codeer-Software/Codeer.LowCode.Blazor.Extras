@@ -1,4 +1,4 @@
-using Codeer.LowCode.Blazor.DesignLogic;
+﻿using Codeer.LowCode.Blazor.DesignLogic;
 using Codeer.LowCode.Blazor.DesignLogic.Check;
 using Codeer.LowCode.Blazor.DesignLogic.Location;
 using Codeer.LowCode.Blazor.DesignLogic.Refactor;
@@ -54,9 +54,9 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         [Designer(Index = 8, CandidateType = CandidateType.MultilineString, DisplayName = "$MailFieldBody")]
         public string Body { get; set; } = string.Empty;
 
-        /// <summary>送信者名 (appsettings の Mail.Senders の名前)。空なら既定 (Mail.DefaultSenderName → 先頭)。</summary>
-        [Designer(Index = 9, DisplayName = "$MailFieldSenderName")]
-        public string SenderName { get; set; } = string.Empty;
+        /// <summary>メールインフラ名 (appsettings の Mail.Infras の名前)。空なら既定 (Mail.DefaultInfraName → 先頭)。</summary>
+        [Designer(Index = 9, DisplayName = "$MailInfraName")]
+        public string MailInfraName { get; set; } = string.Empty;
 
         /// <summary>本文を HTML として送るか。</summary>
         [Designer(Index = 10, DisplayName = "$MailFieldIsBodyHtml")]
@@ -65,6 +65,14 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         /// <summary>返信先アドレス。</summary>
         [Designer(Index = 11, DisplayName = "$MailFieldReplyTo")]
         public string ReplyTo { get; set; } = string.Empty;
+
+        /// <summary>差出人アドレスの変数 (任意・リンクパス可)。空 = 送信者設定の差出人。許可ドメインはサーバー設定 (AllowedFromDomains)。</summary>
+        [Designer(Index = 12, CandidateType = CandidateType.Variable, DisplayName = "$MailFieldFromVariable")]
+        public string FromVariable { get; set; } = string.Empty;
+
+        /// <summary>差出人表示名の変数 (任意・FromVariable 指定時のみ使われる)。</summary>
+        [Designer(Index = 13, CandidateType = CandidateType.Variable, DisplayName = "$MailFieldFromDisplayNameVariable")]
+        public string FromDisplayNameVariable { get; set; } = string.Empty;
 
         public override string GetWebComponentTypeFullName() => string.Empty;
 
@@ -94,6 +102,8 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
             context.CheckFieldVariableExistence(Name, nameof(CcVariable), CcVariable).AddTo(result);
             context.CheckFieldVariableExistence(Name, nameof(SubjectVariable), SubjectVariable).AddTo(result);
             context.CheckFieldVariableExistence(Name, nameof(BodyVariable), BodyVariable).AddTo(result);
+            context.CheckFieldVariableExistence(Name, nameof(FromVariable), FromVariable).AddTo(result);
+            context.CheckFieldVariableExistence(Name, nameof(FromDisplayNameVariable), FromDisplayNameVariable).AddTo(result);
 
             if (string.IsNullOrEmpty(SubjectVariable) && string.IsNullOrEmpty(Subject) &&
                 string.IsNullOrEmpty(BodyVariable) && string.IsNullOrEmpty(Body))
@@ -113,6 +123,8 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
             .AddVariable(CcVariable, x => CcVariable = x)
             .AddVariable(SubjectVariable, x => SubjectVariable = x)
             .AddVariable(BodyVariable, x => BodyVariable = x)
+            .AddVariable(FromVariable, x => FromVariable = x)
+            .AddVariable(FromDisplayNameVariable, x => FromDisplayNameVariable = x)
             .Build();
     }
 }

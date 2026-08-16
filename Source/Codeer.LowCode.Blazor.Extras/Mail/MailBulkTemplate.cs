@@ -6,6 +6,12 @@ namespace Codeer.LowCode.Blazor.Extras.Mail
     /// </summary>
     public class MailBulkTemplate
     {
+        /// <summary>差出人アドレス (任意)。空 = 送信者設定の差出人。AllowedFromDomains の検証は単発送信と同じ。</summary>
+        public string From { get; set; } = string.Empty;
+
+        /// <summary>差出人表示名 (From 指定時のみ使われる)。</summary>
+        public string FromDisplayName { get; set; } = string.Empty;
+
         /// <summary>Subject template. {Name} tokens are replaced per recipient.</summary>
         public string Subject { get; set; } = string.Empty;
         /// <summary>Body template. {Name} tokens are replaced per recipient.</summary>

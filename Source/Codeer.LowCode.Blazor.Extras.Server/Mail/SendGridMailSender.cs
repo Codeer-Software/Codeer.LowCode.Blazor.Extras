@@ -1,4 +1,4 @@
-using Codeer.LowCode.Blazor.Extras.Mail;
+﻿using Codeer.LowCode.Blazor.Extras.Mail;
 using Codeer.LowCode.Blazor.Extras.ScriptObjects;
 using System.Net;
 using System.Text;
@@ -17,10 +17,10 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
         internal const int PersonalizationsPerRequest = 1000;
         const string Endpoint = "https://api.sendgrid.com/v3/mail/send";
 
-        readonly MailSenderSettings _settings;
+        readonly MailInfraSettings _settings;
         readonly HttpClient _http;
 
-        public SendGridMailSender(MailSenderSettings settings, HttpClient? httpClient = null)
+        public SendGridMailSender(MailInfraSettings settings, HttpClient? httpClient = null)
         {
             _settings = settings;
             _http = httpClient ?? _sharedClient;
@@ -32,7 +32,8 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
             if (message.Cc.Any()) personalization["cc"] = Addresses(message.Cc);
             if (message.Bcc.Any()) personalization["bcc"] = Addresses(message.Bcc);
 
-            var payload = CreatePayloadBase(message.Subject, message.Body, message.IsBodyHtml, message.ReplyTo, message.Attachments);
+            var payload = CreatePayloadBase(message.Subject, message.Body, message.IsBodyHtml, message.ReplyTo, message.Attachments,
+                message.From, message.FromDisplayName);
             payload["personalizations"] = new JsonArray(personalization);
             if (message.Headers.Any())
             {
@@ -57,7 +58,8 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
             var result = new MailSendResult { TotalCount = recipients.Count };
             foreach (var chunk in recipients.Chunk(PersonalizationsPerRequest))
             {
-                var payload = CreatePayloadBase(template.Subject, template.Body, template.IsBodyHtml, template.ReplyTo, template.Attachments);
+                var payload = CreatePayloadBase(template.Subject, template.Body, template.IsBodyHtml, template.ReplyTo, template.Attachments,
+                    template.From, template.FromDisplayName);
                 payload["personalizations"] = new JsonArray(chunk.Select(r =>
                 {
                     var personalization = new JsonObject { ["to"] = Addresses(new[] { r.To }) };
@@ -86,10 +88,14 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
             return result;
         }
 
-        JsonObject CreatePayloadBase(string subject, string body, bool isBodyHtml, string replyTo, List<MailAttachment> attachments)
+        JsonObject CreatePayloadBase(string subject, string body, bool isBodyHtml, string replyTo, List<MailAttachment> attachments,
+            string fromOverride, string fromDisplayNameOverride)
         {
-            var from = new JsonObject { ["email"] = _settings.SenderMailAddress };
-            if (!string.IsNullOrEmpty(_settings.SenderDisplayName)) from["name"] = _settings.SenderDisplayName;
+            //動的 From (許可ドメインは MailDispatcher が検証済み。ドメイン認証済みなら送信可)。空なら送信者設定の差出人
+            var fromAddress = string.IsNullOrEmpty(fromOverride) ? _settings.SenderMailAddress : fromOverride;
+            var fromName = string.IsNullOrEmpty(fromOverride) ? _settings.SenderDisplayName : fromDisplayNameOverride;
+            var from = new JsonObject { ["email"] = fromAddress };
+            if (!string.IsNullOrEmpty(fromName)) from["name"] = fromName;
 
             var payload = new JsonObject
             {

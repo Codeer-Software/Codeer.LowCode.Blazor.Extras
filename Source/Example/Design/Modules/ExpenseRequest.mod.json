@@ -1,4 +1,4 @@
-{
+﻿{
   "Name": "ExpenseRequest",
   "DataSourceName": "SampleSQLite",
   "DbTable": "expense_requests",
@@ -143,7 +143,7 @@
       "Subject": "経費申請: {Title.Value}",
       "BodyVariable": "",
       "Body": "{Title.Value} (金額 {Amount.Value}) を受け付けました。",
-      "SenderName": "",
+      "MailInfraName": "",
       "IsBodyHtml": false,
       "ReplyTo": "",
       "Name": "ReceiptMail",

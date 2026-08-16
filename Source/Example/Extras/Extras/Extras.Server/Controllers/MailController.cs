@@ -1,4 +1,4 @@
-using Codeer.LowCode.Blazor.Extras.Mail;
+﻿using Codeer.LowCode.Blazor.Extras.Mail;
 using Codeer.LowCode.Blazor.Extras.Server.Mail;
 using Microsoft.AspNetCore.Mvc;
 using Extras.Server.Services;
@@ -46,13 +46,13 @@ namespace Extras.Server.Controllers
         }
 
         //センダー設定(Type)→送信インフラ実装の対応表。独自インフラ(IMailSenderの実装)を使うときはここに追記する
-        static IMailSender? CreateSender(MailSenderSettings settings)
+        static IMailSender? CreateSender(MailInfraSettings settings)
             => settings.Type switch
             {
-                MailSenderTypes.Smtp or "" => new SmtpMailSender(settings),
-                MailSenderTypes.GraphApi => new GraphApiMailSender(settings),
-                MailSenderTypes.SendGrid => new SendGridMailSender(settings),
-                MailSenderTypes.GmailApi => new GmailApiMailSender(settings),
+                MailInfraTypes.Smtp or "" => new SmtpMailSender(settings),
+                MailInfraTypes.GraphApi => new GraphApiMailSender(settings),
+                MailInfraTypes.SendGrid => new SendGridMailSender(settings),
+                MailInfraTypes.GmailApi => new GmailApiMailSender(settings),
                 _ => null, //null は製品組み込みの解決に委ねる(未知の Type はそこでエラーになる)
             };
     }

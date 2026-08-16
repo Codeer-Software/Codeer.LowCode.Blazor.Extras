@@ -1,4 +1,4 @@
-using Codeer.LowCode.Blazor.DesignLogic;
+﻿using Codeer.LowCode.Blazor.DesignLogic;
 using Codeer.LowCode.Blazor.DesignLogic.Check;
 using Codeer.LowCode.Blazor.Extras.Designs;
 using Codeer.LowCode.Blazor.Extras.Fields;
@@ -39,7 +39,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Mail
                 ToVariable = "Email.Value",
                 Subject = "申請 {Title.Value}",
                 Body = "{Title.Value} を受け付けました",
-                SenderName = "notify",
+                MailInfraName = "notify",
             };
             customize?.Invoke(mail);
             mod.Fields.Add(mail);
@@ -74,7 +74,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Mail
             }
 
             var sent = handler.Sent!;
-            Assert.That(sent.SenderName, Is.EqualTo("notify"));
+            Assert.That(sent.MailInfraName, Is.EqualTo("notify"));
             Assert.That(sent.SourceModule, Is.EqualTo("Request"));
             Assert.That(sent.Message.To, Is.EqualTo(new[] { "a@example.com", "b@example.com" }));
             Assert.That(sent.Message.Subject, Is.EqualTo("申請 経費精算"));

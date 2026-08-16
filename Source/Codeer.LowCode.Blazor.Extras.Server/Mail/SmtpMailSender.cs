@@ -1,4 +1,4 @@
-using Codeer.LowCode.Blazor.Extras.Mail;
+﻿using Codeer.LowCode.Blazor.Extras.Mail;
 using Codeer.LowCode.Blazor.Extras.ScriptObjects;
 using MailKit.Security;
 using MimeKit;
@@ -11,9 +11,9 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
     /// </summary>
     public class SmtpMailSender : IMailSender
     {
-        readonly MailSenderSettings _settings;
+        readonly MailInfraSettings _settings;
 
-        public SmtpMailSender(MailSenderSettings settings) => _settings = settings;
+        public SmtpMailSender(MailInfraSettings settings) => _settings = settings;
 
         public async Task<MailSendResult> SendAsync(MailMessage message)
         {
@@ -85,6 +85,8 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
         public static MailMessage CreateResolvedMessage(MailBulkTemplate template, MailBulkRecipient recipient)
             => new()
             {
+                From = template.From,
+                FromDisplayName = template.FromDisplayName,
                 To = { recipient.To },
                 Cc = recipient.Cc.ToList(),
                 Bcc = recipient.Bcc.ToList(),
@@ -119,10 +121,13 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
             }
         }
 
-        internal static MimeMessage CreateMimeMessage(MailSenderSettings settings, MailMessage message)
+        internal static MimeMessage CreateMimeMessage(MailInfraSettings settings, MailMessage message)
         {
             var mime = new MimeMessage();
-            mime.From.Add(new MailboxAddress(settings.SenderDisplayName, settings.SenderMailAddress));
+            //動的 From (許可ドメインは MailDispatcher が検証済み)。空なら送信者設定の差出人
+            mime.From.Add(string.IsNullOrEmpty(message.From)
+                ? new MailboxAddress(settings.SenderDisplayName, settings.SenderMailAddress)
+                : new MailboxAddress(message.FromDisplayName, message.From));
             foreach (var e in message.To) mime.To.Add(MailboxAddress.Parse(e));
             foreach (var e in message.Cc) mime.Cc.Add(MailboxAddress.Parse(e));
             foreach (var e in message.Bcc) mime.Bcc.Add(MailboxAddress.Parse(e));

@@ -510,14 +510,20 @@
   <data name="MailFieldBody" xml:space="preserve">
     <value>Body</value>
   </data>
-  <data name="MailFieldSenderName" xml:space="preserve">
-    <value>Sender Name</value>
+  <data name="MailInfraName" xml:space="preserve">
+    <value>Mail Infrastructure Name</value>
   </data>
   <data name="MailFieldIsBodyHtml" xml:space="preserve">
     <value>HTML Body</value>
   </data>
   <data name="MailFieldReplyTo" xml:space="preserve">
     <value>Reply To</value>
+  </data>
+  <data name="MailFieldFromVariable" xml:space="preserve">
+    <value>From Variable</value>
+  </data>
+  <data name="MailFieldFromDisplayNameVariable" xml:space="preserve">
+    <value>From Display Name Variable</value>
   </data>
   <data name="MailFieldToRequired" xml:space="preserve">
     <value>The recipient is empty. Set the To variable or a fixed address.</value>
@@ -548,9 +554,6 @@
   </data>
   <data name="BulkMailBody" xml:space="preserve">
     <value>Body (Fixed)</value>
-  </data>
-  <data name="BulkMailSenderName" xml:space="preserve">
-    <value>Sender Name</value>
   </data>
   <data name="BulkMailIsBodyHtml" xml:space="preserve">
     <value>HTML Body</value>

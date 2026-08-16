@@ -1,4 +1,4 @@
-namespace Codeer.LowCode.Blazor.Extras.Mail
+﻿namespace Codeer.LowCode.Blazor.Extras.Mail
 {
     public class MailAttachment
     {
@@ -12,6 +12,15 @@ namespace Codeer.LowCode.Blazor.Extras.Mail
     /// </summary>
     public class MailMessage
     {
+        /// <summary>
+        /// 差出人アドレス (任意)。空 = 送信者設定 (Mail.Infras) の SenderMailAddress。
+        /// 動的な From は送信者設定の AllowedFromDomains で許可されたドメインのみ (サーバーが検証する)。
+        /// </summary>
+        public string From { get; set; } = string.Empty;
+
+        /// <summary>差出人表示名 (From 指定時のみ使われる)。</summary>
+        public string FromDisplayName { get; set; } = string.Empty;
+
         public List<string> To { get; set; } = new();
         public List<string> Cc { get; set; } = new();
         public List<string> Bcc { get; set; } = new();

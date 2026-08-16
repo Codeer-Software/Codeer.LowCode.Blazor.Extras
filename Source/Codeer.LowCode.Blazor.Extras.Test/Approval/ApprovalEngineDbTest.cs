@@ -99,7 +99,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Approval
             {
                 //通知メールは常に結線する (契約の TurnNotifyMail が空なら送られない)
                 MailDispatcher = new MailDispatcher(
-                    new MailConfig { Senders = { new MailSenderSettings { Name = "Test", Type = MailSenderTypes.Smtp } } },
+                    new MailConfig { Infras = { new MailInfraSettings { Name = "Test", Type = MailInfraTypes.Smtp, AllowedFromDomains = { "example.com" } } } },
                     _ => new FakeMailSender(this)),
                 LogError = _mailErrors.Add,
             };
@@ -236,6 +236,8 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Approval
             {
                 Name = "TurnMail",
                 ToVariable = "ApproverUser.Email.Value",
+                FromVariable = "Flow.Applicant.Email.Value", //申請者から送る (リンク2段 = 再帰解決)
+                FromDisplayNameVariable = "Flow.Applicant.Name.Value",
                 Subject = "承認依頼: {StepName.Value}",
                 Body = "{ApproverUser.Name.Value} さん ステップ{StepNo.Value}の承認をお願いします",
             });
@@ -871,6 +873,16 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Approval
 
             Assert.That(_sentMails, Is.Empty);
             Assert.That(_mailErrors, Is.Not.Empty);
+        }
+
+        [Test]
+        public async Task 通知_差出人は申請者になる()
+        {
+            await SubmitAsync();
+
+            Assert.That(_sentMails.Count, Is.EqualTo(1));
+            Assert.That(_sentMails[0].From, Is.EqualTo("user1@example.com"));
+            Assert.That(_sentMails[0].FromDisplayName, Is.EqualTo("申請者"));
         }
     }
 }
