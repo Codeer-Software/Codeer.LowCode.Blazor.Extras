@@ -1,4 +1,4 @@
-﻿using Codeer.LowCode.Blazor.Extras.Mail;
+using Codeer.LowCode.Blazor.Extras.Mail;
 using Codeer.LowCode.Blazor.Extras.ScriptObjects;
 using System.Net;
 using System.Security.Cryptography;
@@ -8,17 +8,25 @@ using System.Text.Json;
 namespace Codeer.LowCode.Blazor.Extras.Server.Mail
 {
     /// <summary>
-    /// <see cref="IMailSender"/> の Gmail API (users.messages.send) 実装。
-    /// サービスアカウント + ドメイン全体の委任 (Google Workspace)、素の REST (SDK なし)。
-    /// <see cref="MailInfraSettings.SenderMailAddress"/> のユーザーとして送信する。
-    /// 設定: SenderMailAddress = 委任された送信ユーザー、
-    /// ClientSecret = サービスアカウントの JSON キー (ファイルパスか JSON 文字列そのもの)。
+    /// <see cref="IMailSender"/> の Gmail API (users.messages.send) 実装。素の REST (SDK なし)。
+    /// <see cref="MailInfraSettings.ClientSecret"/> の JSON の種類で認証モードが決まる:
+    ///
+    /// ① サービスアカウントキー (client_email/private_key) = ドメイン全体の委任 (Google Workspace・管理者設定が必要)。
+    ///    <see cref="MailInfraSettings.SenderMailAddress"/> のユーザーとして送信し、動的 From はそのユーザーに成り代わる。
+    /// ② OAuth クライアント (installed/web) = ユーザー同意モード (管理者不要)。
+    ///    本人がブラウザで 1 回同意して得たリフレッシュトークン (<see cref="MailInfraSettings.TokenSecret"/>) で、
+    ///    **同意したユーザー本人として**送信する。営業担当者などが自分のアドレスで送るための経路。
+    ///    動的 From はそのアカウントの Gmail 側で送信者エイリアス (Send As) が設定されている場合のみ有効
+    ///    (未設定なら Gmail が本人アドレスに書き換える)。
+    ///
     /// 通知メール向き (Workspace の送信上限は 2000通/日 程度)。大量の一斉送信は配信サービスを使うこと。
     /// </summary>
     public class GmailApiMailSender : IMailSender
     {
         static readonly HttpClient _sharedClient = new();
         const int MaxRetryCount = 3;
+        //ユーザー同意モードのトークンキャッシュキー (委任モードは委任ユーザーごと)
+        const string OAuthUserCacheKey = "(oauth-user)";
 
         readonly MailInfraSettings _settings;
         readonly HttpClient _http;
@@ -71,7 +79,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
             {
                 var request = new HttpRequestMessage(HttpMethod.Post,
                     "https://gmail.googleapis.com/gmail/v1/users/me/messages/send");
-                //動的 From はそのユーザーとして送る (ドメイン全体の委任が対象ユーザーを含むこと。許可ドメインは MailDispatcher が検証済み)
+                //動的 From はそのユーザーとして送る (委任モードのみ。ドメイン全体の委任が対象ユーザーを含むこと。許可ドメインは MailDispatcher が検証済み)
                 var sendAsUser = string.IsNullOrEmpty(message.From) ? _settings.SenderMailAddress : message.From;
                 request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", await GetTokenAsync(sendAsUser));
                 request.Content = new StringContent(payload, Encoding.UTF8, "application/json");
@@ -100,14 +108,26 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
 
         async Task<string> GetTokenAsync(string sendAsUser)
         {
-            if (_tokens.TryGetValue(sendAsUser, out var cached) && DateTime.UtcNow < cached.ExpiresAtUtc) return cached.Token;
+            var key = LoadKey();
+            var cacheKey = key.IsServiceAccount ? sendAsUser : OAuthUserCacheKey;
+            if (_tokens.TryGetValue(cacheKey, out var cached) && DateTime.UtcNow < cached.ExpiresAtUtc) return cached.Token;
 
-            var response = await _http.PostAsync("https://oauth2.googleapis.com/token",
-                new FormUrlEncodedContent(new Dictionary<string, string>
+            //委任モード = サービスアカウント鍵で署名した JWT を交換 / ユーザー同意モード = リフレッシュトークンを交換
+            var form = key.IsServiceAccount
+                ? new Dictionary<string, string>
                 {
                     ["grant_type"] = "urn:ietf:params:oauth:grant-type:jwt-bearer",
-                    ["assertion"] = CreateAssertion(sendAsUser),
-                }));
+                    ["assertion"] = CreateAssertion(key.ClientEmail, key.PrivateKeyPem, sendAsUser),
+                }
+                : new Dictionary<string, string>
+                {
+                    ["grant_type"] = "refresh_token",
+                    ["client_id"] = key.ClientId,
+                    ["client_secret"] = key.ClientSecret,
+                    ["refresh_token"] = LoadRefreshToken(),
+                };
+
+            var response = await _http.PostAsync("https://oauth2.googleapis.com/token", new FormUrlEncodedContent(form));
             var text = await response.Content.ReadAsStringAsync();
             if (!response.IsSuccessStatusCode)
                 throw new InvalidOperationException($"Gmail token request failed ({(int)response.StatusCode}): {text}");
@@ -115,14 +135,13 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
             using var json = JsonDocument.Parse(text);
             var token = json.RootElement.GetProperty("access_token").GetString()!;
             var expiresIn = json.RootElement.TryGetProperty("expires_in", out var e) ? e.GetInt32() : 300;
-            _tokens[sendAsUser] = (token, DateTime.UtcNow.AddSeconds(Math.Max(60, expiresIn - 60)));
+            _tokens[cacheKey] = (token, DateTime.UtcNow.AddSeconds(Math.Max(60, expiresIn - 60)));
             return token;
         }
 
         //サービスアカウントの秘密鍵で署名した JWT (RS256)。sub = 成り代わって送る委任ユーザー。
-        string CreateAssertion(string sendAsUser)
+        string CreateAssertion(string clientEmail, string privateKeyPem, string sendAsUser)
         {
-            var (clientEmail, privateKeyPem) = LoadServiceAccountKey();
             var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
             var header = Base64Url(JsonSerializer.SerializeToUtf8Bytes(new { alg = "RS256", typ = "JWT" }));
             var claims = Base64Url(JsonSerializer.SerializeToUtf8Bytes(new
@@ -141,15 +160,41 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
             return $"{header}.{claims}.{signature}";
         }
 
-        (string ClientEmail, string PrivateKeyPem) LoadServiceAccountKey()
+        record GmailKey(bool IsServiceAccount, string ClientEmail, string PrivateKeyPem, string ClientId, string ClientSecret);
+
+        //ClientSecret の JSON の種類で認証モードを判定する
+        GmailKey LoadKey()
         {
-            var text = _settings.ClientSecret.TrimStart().StartsWith('{')
-                ? _settings.ClientSecret
-                : File.ReadAllText(_settings.ClientSecret);
-            using var json = JsonDocument.Parse(text);
-            return (json.RootElement.GetProperty("client_email").GetString()!,
-                json.RootElement.GetProperty("private_key").GetString()!);
+            using var json = JsonDocument.Parse(ReadPathOrJson(_settings.ClientSecret));
+            var root = json.RootElement;
+
+            //サービスアカウントキー (ドメイン全体の委任モード)
+            if (root.TryGetProperty("client_email", out var email) && root.TryGetProperty("private_key", out var privateKey))
+                return new(true, email.GetString()!, privateKey.GetString()!, string.Empty, string.Empty);
+
+            //OAuth クライアント (ユーザー同意モード)。installed (デスクトップ) / web どちらの形式も受ける
+            if (root.TryGetProperty("installed", out var app) || root.TryGetProperty("web", out app))
+                return new(false, string.Empty, string.Empty,
+                    app.GetProperty("client_id").GetString()!, app.GetProperty("client_secret").GetString()!);
+
+            throw new InvalidOperationException(
+                "Gmail ClientSecret is neither a service account key (client_email/private_key) nor an OAuth client secret (installed/web).");
         }
+
+        string LoadRefreshToken()
+        {
+            if (string.IsNullOrEmpty(_settings.TokenSecret))
+                throw new InvalidOperationException(
+                    "Gmail TokenSecret is not configured. The OAuth client mode needs a refresh token JSON ({\"refresh_token\":\"...\"}) obtained by the user's one-time consent.");
+
+            using var json = JsonDocument.Parse(ReadPathOrJson(_settings.TokenSecret));
+            if (json.RootElement.TryGetProperty("refresh_token", out var token) && token.GetString() is { Length: > 0 } value)
+                return value;
+            throw new InvalidOperationException("Gmail TokenSecret JSON does not contain \"refresh_token\".");
+        }
+
+        static string ReadPathOrJson(string value)
+            => value.TrimStart().StartsWith('{') ? value : File.ReadAllText(value);
 
         static string Base64Url(byte[] bytes)
             => Convert.ToBase64String(bytes).TrimEnd('=').Replace('+', '-').Replace('/', '_');

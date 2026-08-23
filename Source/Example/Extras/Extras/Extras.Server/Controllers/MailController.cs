@@ -31,7 +31,7 @@ namespace Extras.Server.Controllers
         [HttpPost("bulk_search")]
         public async Task<MailSendResult> SendBulkSearchAsync(MailBulkSearchRequest request)
             => await MailBulkSearch.SendAsync(CreateDispatcher(), _dataService.ModuleDataIO,
-                DesignerService.GetDesignData(), SystemConfig.Instance.Mail, request,
+                DesignerService.GetDesignData(), request,
                 data => _dataService.ModuleDataIO.UpdateSystemRecordAsync(data), e => _logger.LogError("{Error}", e));
 
         MailDispatcher CreateDispatcher()

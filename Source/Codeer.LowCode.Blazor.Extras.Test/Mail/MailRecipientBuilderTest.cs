@@ -28,33 +28,26 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Mail
 
         [Test]
         public void GetVariableNames_件名と本文の変数を重複なしで取る()
-            => Assert.That(MailRecipientBuilder.GetVariableNames("{Name} 様", "こちらから: {RecordUrl} ({Name})"),
-                Is.EqualTo(new[] { "Name", "RecordUrl" }));
+            => Assert.That(MailRecipientBuilder.GetVariableNames("{Name} 様", "こちらから: {Id.Value} ({Name})"),
+                Is.EqualTo(new[] { "Name", "Id.Value" }));
 
         [Test]
-        public void TryBuild_除外と宛先なしはnullでRecordUrlが入る()
+        public void TryBuild_除外と宛先なしはnullで変数が解決される()
         {
             var design = CreateDesign();
-            var names = new[] { "Name", "RecordUrl" };
+            var names = new[] { "Name", "Id.Value" };
 
             Assert.That(MailRecipientBuilder.TryBuild(design, CreateRow("2", "鈴木", "b@example.com", optOut: true),
                 "Email", "OptOut", names), Is.Null); //オプトアウト
             Assert.That(MailRecipientBuilder.TryBuild(design, CreateRow("3", "佐藤", ""),
                 "Email", "OptOut", names), Is.Null); //宛先なし
 
+            //レコードへのリンクはテンプレートに URL を直書きして {Id.Value} を混ぜる想定 (専用変数は無い)
             var recipient = MailRecipientBuilder.TryBuild(design, CreateRow("1", "田中", "a@example.com"),
-                "Email", "OptOut", names, "https://app.example.com/", "main");
+                "Email", "OptOut", names);
             Assert.That(recipient!.To, Is.EqualTo("a@example.com"));
             Assert.That(recipient.Variables["Name"], Is.EqualTo("田中"));
-            Assert.That(recipient.Variables["RecordUrl"], Is.EqualTo("https://app.example.com/main/Customer/1"));
-        }
-
-        [Test]
-        public void TryBuild_AppBaseUrl未設定ならRecordUrlは解決しない()
-        {
-            var recipient = MailRecipientBuilder.TryBuild(CreateDesign(), CreateRow("1", "田中", "a@example.com"),
-                "Email", "OptOut", new[] { "RecordUrl" });
-            Assert.That(recipient!.Variables.ContainsKey("RecordUrl"), Is.False); //未解決={Name}と同じく空文字扱い
+            Assert.That(recipient.Variables["Id.Value"], Is.EqualTo("1"));
         }
 
         [Test]

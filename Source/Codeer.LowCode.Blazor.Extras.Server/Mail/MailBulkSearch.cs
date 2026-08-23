@@ -18,7 +18,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
     public static class MailBulkSearch
     {
         public static async Task<MailSendResult> SendAsync(MailDispatcher dispatcher, ModuleDataIO moduleDataIO,
-            DesignData designData, MailConfig config, MailBulkSearchRequest request,
+            DesignData designData, MailBulkSearchRequest request,
             Func<ModuleData, Task>? updateRecordInternalAsync = null, Action<string>? logError = null)
         {
             var design = designData.Modules.Find(request.Condition.ModuleName)
@@ -26,7 +26,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
             if (string.IsNullOrEmpty(request.EmailAddressVariable))
                 throw new InvalidOperationException("EmailAddressVariable is required for search-based bulk send.");
 
-            //テンプレ変数+宛先/除外+Id(RecordUrl用)だけ取得する。
+            //テンプレ変数+宛先/除外+Idだけ取得する。
             //リンクパス("Contact.Email")はルートの FK を取得し、リンク先は後段で一括解決する
             var names = MailRecipientBuilder.GetVariableNames(request.Subject, request.Body);
             var paths = names
@@ -51,7 +51,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
 
             var recipients = rows
                 .Select(row => MailRecipientBuilder.TryBuild(design, row, request.EmailAddressVariable, request.OptOutVariable, names,
-                    config.AppBaseUrl, designData.PageFrames.ResolvedMainPageFrameName, designData.Modules.Find))
+                    designData.Modules.Find))
                 .Where(e => e != null)
                 .Select(e => e!)
                 .ToList();

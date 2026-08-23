@@ -25,12 +25,12 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Mail
             }
         }
 
-        static (MailDispatcher dispatcher, FakeMailSender fake) Create(string redirectAllTo = "", int maxBulkCount = 10000)
+        static (MailDispatcher dispatcher, FakeMailSender fake) Create(string debugRedirectAllTo = "", int maxBulkCount = 10000)
         {
             var fake = new FakeMailSender();
             var config = new MailConfig
             {
-                RedirectAllTo = redirectAllTo,
+                DebugRedirectAllTo = debugRedirectAllTo,
                 Infras =
                 {
                     new MailInfraSettings { Name = "Main", Type = MailInfraTypes.Smtp, MaxBulkCount = maxBulkCount },
@@ -127,7 +127,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Mail
         [Test]
         public async Task Send_Redirect時は宛先が差し替わり元宛先はヘッダに残る()
         {
-            var (dispatcher, fake) = Create(redirectAllTo: "catch@example.com");
+            var (dispatcher, fake) = Create(debugRedirectAllTo: "catch@example.com");
             await dispatcher.SendAsync(null, new MailMessage
             {
                 To = { "a@example.com" },
@@ -193,7 +193,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Mail
         [Test]
         public async Task SendBulk_Redirect時は先頭10通だけ個別送信され総数はヘッダに残る()
         {
-            var (dispatcher, fake) = Create(redirectAllTo: "catch@example.com");
+            var (dispatcher, fake) = Create(debugRedirectAllTo: "catch@example.com");
             var recipients = Enumerable.Range(0, 25).Select(i => new MailBulkRecipient
             {
                 To = $"user{i}@example.com",
@@ -309,7 +309,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Mail
             var fake = new FakeMailSender();
             var config = new MailConfig
             {
-                RedirectAllTo = "test@example.com",
+                DebugRedirectAllTo = "test@example.com",
                 Infras = { new MailInfraSettings { Name = "Main", AllowedFromDomains = { "example.com" } } },
             };
             var dispatcher = new MailDispatcher(config, _ => fake);

@@ -32,8 +32,9 @@
 - `{Name.Value}` … 宛先行のフィールドの値 (数値・日付はフィールドの書式で整形)
 - `{Rank}` / `{Rank.DisplayText}` … Select/Link は表示テキスト。`{Rank.Value}` はコード値
 - `{Contact.Email.Value}` … リンクパス (Link/SelectField の参照先モジュールのフィールド)
-- `{RecordUrl}` … 宛先行の詳細画面への深いリンク (appsettings の Mail.AppBaseUrl が必要)
 - リテラルの `{` `}` は `{{` `}}`
+- レコードへのリンクを入れたい場合は URL を直書きして id 変数を混ぜる
+  (例: `https://app.example.com/Main/Contact/{Contact.Id.Value}`)
 
 ### デザイナー設定プロパティ
 

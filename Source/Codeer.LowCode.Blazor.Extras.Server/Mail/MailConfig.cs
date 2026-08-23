@@ -6,15 +6,13 @@
     /// </summary>
     public class MailConfig
     {
-        /// <summary>Base URL of the app. Used to build record deep links in mail bodies.</summary>
-        public string AppBaseUrl { get; set; } = string.Empty;
-
         /// <summary>
-        /// 設定すると、全メールが実際の宛先の代わりにこのアドレスへリダイレクトされる
-        /// (開発・ステージングの誤送信防止)。元の宛先は X-CLB-Original-To ヘッダに記録される。
-        /// 一斉送信は先頭10通に切り詰められる。
+        /// ★デバッグ専用 (本番では設定しない)。設定すると、全メールが実際の宛先の代わりに
+        /// このアドレスへリダイレクトされる。本番データのコピーで動く開発・ステージング環境で、
+        /// 実在の宛先へ誤送信する事故を遮断するためのもの。
+        /// 元の宛先は X-CLB-Original-To ヘッダに記録される。一斉送信は先頭10通に切り詰められる。
         /// </summary>
-        public string RedirectAllTo { get; set; } = string.Empty;
+        public string DebugRedirectAllTo { get; set; } = string.Empty;
 
         /// <summary>
         /// 送信操作1回につき1行を記録する履歴モジュール名 (役割は MailHistoryContractField:
@@ -106,8 +104,19 @@
         public string TenantId { get; set; } = string.Empty;
         public string ClientId { get; set; } = string.Empty;
 
-        /// <summary>GraphApi: クライアントシークレット。GmailApi: サービスアカウントの JSON キー (ファイルパスか JSON 文字列そのもの)。</summary>
+        /// <summary>
+        /// GraphApi: クライアントシークレット。
+        /// GmailApi: サービスアカウントの JSON キー (ドメイン全体の委任モード)、または
+        /// OAuth クライアントの client_secret JSON (installed/web = ユーザー同意モード)。どちらもファイルパスか JSON 文字列そのもの。
+        /// </summary>
         public string ClientSecret { get; set; } = string.Empty;
+
+        /// <summary>
+        /// GmailApi のユーザー同意モード (ClientSecret が OAuth クライアントのとき) で使う、
+        /// 同意で得たリフレッシュトークンの JSON ({"refresh_token":"..."}。ファイルパスか JSON 文字列そのもの)。
+        /// 送信は同意したユーザー本人として行われる (管理者権限・ドメイン全体の委任は不要)。
+        /// </summary>
+        public string TokenSecret { get; set; } = string.Empty;
 
         //SendGrid
         public string ApiKey { get; set; } = string.Empty;

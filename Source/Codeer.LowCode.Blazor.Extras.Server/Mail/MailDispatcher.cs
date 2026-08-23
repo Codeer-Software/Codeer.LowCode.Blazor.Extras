@@ -5,13 +5,13 @@ using System.Net;
 namespace Codeer.LowCode.Blazor.Extras.Server.Mail
 {
     /// <summary>
-    /// プロバイダ非依存の送信レイヤ。名前付きインフラの解決・RedirectAllTo の誤送信防止・
+    /// プロバイダ非依存の送信レイヤ。名前付きインフラの解決・DebugRedirectAllTo の誤送信防止・
     /// 一斉送信の件数上限を適用してから <see cref="IMailSender"/> へ委譲する。
     /// 独自インフラはコンストラクタ引数 customSenderFactory で差し込める。
     /// </summary>
     public class MailDispatcher
     {
-        /// <summary>RedirectAllTo 有効時に元の宛先を記録するヘッダ。</summary>
+        /// <summary>DebugRedirectAllTo 有効時に元の宛先を記録するヘッダ。</summary>
         public const string OriginalToHeader = "X-CLB-Original-To";
 
         /// <summary>リダイレクトされた一斉送信の元の宛先件数を記録するヘッダ。</summary>
@@ -102,7 +102,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
                 return failure;
             }
             var sender = CreateSender(settings);
-            var sendMessage = string.IsNullOrEmpty(_config.RedirectAllTo) ? message : Redirect(message);
+            var sendMessage = string.IsNullOrEmpty(_config.DebugRedirectAllTo) ? message : Redirect(message);
             var result = await sender.SendAsync(sendMessage);
             if (_historyWriter != null) await _historyWriter.WriteAsync(settings.Name, message.Subject, result, source);
             return result;
@@ -134,7 +134,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
             if (template.IsBodyHtml) recipients = recipients.Select(EncodeHtmlVariables).ToList();
 
             var sender = CreateSender(settings);
-            var result = !string.IsNullOrEmpty(_config.RedirectAllTo)
+            var result = !string.IsNullOrEmpty(_config.DebugRedirectAllTo)
                 ? await SendBulkRedirectedAsync(sender, template, recipients)
                 : await sender.SendBulkAsync(template, recipients);
             if (_historyWriter != null) await _historyWriter.WriteAsync(settings.Name, template.Subject, result, source);
@@ -158,7 +158,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
             {
                 From = src.From,
                 FromDisplayName = src.FromDisplayName,
-                To = { _config.RedirectAllTo },
+                To = { _config.DebugRedirectAllTo },
                 Subject = src.Subject,
                 Body = src.Body,
                 IsBodyHtml = src.IsBodyHtml,

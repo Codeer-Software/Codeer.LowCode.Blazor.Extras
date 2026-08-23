@@ -31,7 +31,7 @@
         public List<MailAttachment> Attachments { get; set; } = new();
 
         /// <summary>
-        /// 追加のメッセージヘッダ (例: RedirectAllTo の退避時に付く X-CLB-Original-To)。
+        /// 追加のメッセージヘッダ (例: DebugRedirectAllTo の退避時に付く X-CLB-Original-To)。
         /// ヘッダ名は "X-" で始めること。
         /// </summary>
         public Dictionary<string, string> Headers { get; set; } = new();
