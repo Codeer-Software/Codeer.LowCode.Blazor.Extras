@@ -30,13 +30,18 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
 
         readonly MailInfraSettings _settings;
         readonly HttpClient _http;
+        //差出人アドレス→ユーザー単位のリフレッシュトークン (ユーザー同意モード。null/未解決 = システムトークンで送る)。
+        //実装は MailUserTokenStore.FindRefreshTokenAsync (差出人でユーザーモジュールを検索) をテンプレの MailController が結線する
+        readonly Func<string, Task<string?>>? _userRefreshTokenResolver;
         //委任ユーザー (sub) ごとのトークンキャッシュ (動的 From はそのユーザーとして送るため)
         readonly Dictionary<string, (string Token, DateTime ExpiresAtUtc)> _tokens = new();
 
-        public GmailApiMailSender(MailInfraSettings settings, HttpClient? httpClient = null)
+        public GmailApiMailSender(MailInfraSettings settings, HttpClient? httpClient = null,
+            Func<string, Task<string?>>? userRefreshTokenResolver = null)
         {
             _settings = settings;
             _http = httpClient ?? _sharedClient;
+            _userRefreshTokenResolver = userRefreshTokenResolver;
         }
 
         public async Task<MailSendResult> SendAsync(MailMessage message)
@@ -109,25 +114,39 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
         async Task<string> GetTokenAsync(string sendAsUser)
         {
             var key = LoadKey();
-            var cacheKey = key.IsServiceAccount ? sendAsUser : OAuthUserCacheKey;
-            if (_tokens.TryGetValue(cacheKey, out var cached) && DateTime.UtcNow < cached.ExpiresAtUtc) return cached.Token;
 
-            //委任モード = サービスアカウント鍵で署名した JWT を交換 / ユーザー同意モード = リフレッシュトークンを交換
-            var form = key.IsServiceAccount
-                ? new Dictionary<string, string>
+            //委任モード = サービスアカウント鍵で署名した JWT を交換 (sub = 委任ユーザー)
+            if (key.IsServiceAccount)
+                return await GetOrExchangeAsync(sendAsUser, () => new Dictionary<string, string>
                 {
                     ["grant_type"] = "urn:ietf:params:oauth:grant-type:jwt-bearer",
                     ["assertion"] = CreateAssertion(key.ClientEmail, key.PrivateKeyPem, sendAsUser),
-                }
-                : new Dictionary<string, string>
-                {
-                    ["grant_type"] = "refresh_token",
-                    ["client_id"] = key.ClientId,
-                    ["client_secret"] = key.ClientSecret,
-                    ["refresh_token"] = LoadRefreshToken(),
-                };
+                });
 
-            var response = await _http.PostAsync("https://oauth2.googleapis.com/token", new FormUrlEncodedContent(form));
+            //ユーザー同意モード: 差出人にユーザー単位トークンが登録されていれば「その人として」送る
+            //(本人の送信済みに残る)。無ければシステムのトークン (TokenSecret) で送る
+            if (_tokens.TryGetValue(sendAsUser, out var cached) && DateTime.UtcNow < cached.ExpiresAtUtc) return cached.Token;
+            var userToken = _userRefreshTokenResolver == null || string.IsNullOrEmpty(sendAsUser)
+                ? null
+                : ParseRefreshToken(await _userRefreshTokenResolver(sendAsUser));
+            if (userToken != null)
+                return await GetOrExchangeAsync(sendAsUser, () => CreateRefreshTokenForm(key, userToken));
+            return await GetOrExchangeAsync(OAuthUserCacheKey, () => CreateRefreshTokenForm(key, LoadRefreshToken()));
+        }
+
+        static Dictionary<string, string> CreateRefreshTokenForm(GmailKey key, string refreshToken) => new()
+        {
+            ["grant_type"] = "refresh_token",
+            ["client_id"] = key.ClientId,
+            ["client_secret"] = key.ClientSecret,
+            ["refresh_token"] = refreshToken,
+        };
+
+        async Task<string> GetOrExchangeAsync(string cacheKey, Func<Dictionary<string, string>> createForm)
+        {
+            if (_tokens.TryGetValue(cacheKey, out var cached) && DateTime.UtcNow < cached.ExpiresAtUtc) return cached.Token;
+
+            var response = await _http.PostAsync("https://oauth2.googleapis.com/token", new FormUrlEncodedContent(createForm()));
             var text = await response.Content.ReadAsStringAsync();
             if (!response.IsSuccessStatusCode)
                 throw new InvalidOperationException($"Gmail token request failed ({(int)response.StatusCode}): {text}");
@@ -137,6 +156,24 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
             var expiresIn = json.RootElement.TryGetProperty("expires_in", out var e) ? e.GetInt32() : 300;
             _tokens[cacheKey] = (token, DateTime.UtcNow.AddSeconds(Math.Max(60, expiresIn - 60)));
             return token;
+        }
+
+        //ユーザー行のトークン列の値 (JSON {"refresh_token":"..."} かトークン文字列そのもの) からリフレッシュトークンを取り出す
+        static string? ParseRefreshToken(string? value)
+        {
+            if (string.IsNullOrWhiteSpace(value)) return null;
+            value = value.Trim();
+            if (!value.StartsWith('{')) return value;
+            try
+            {
+                using var json = JsonDocument.Parse(value);
+                return json.RootElement.TryGetProperty("refresh_token", out var token) && token.GetString() is { Length: > 0 } t
+                    ? t : null;
+            }
+            catch
+            {
+                return null;
+            }
         }
 
         //サービスアカウントの秘密鍵で署名した JWT (RS256)。sub = 成り代わって送る委任ユーザー。

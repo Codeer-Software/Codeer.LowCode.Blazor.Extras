@@ -1103,6 +1103,66 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
             }
         }
 
+        internal static string MailFieldIsFromCurrentUser {
+            get {
+                return ResourceManager.GetString("MailFieldIsFromCurrentUser", resourceCulture);
+            }
+        }
+
+        internal static string MailFieldBccVariable {
+            get {
+                return ResourceManager.GetString("MailFieldBccVariable", resourceCulture);
+            }
+        }
+
+        internal static string MailFieldBcc {
+            get {
+                return ResourceManager.GetString("MailFieldBcc", resourceCulture);
+            }
+        }
+
+        internal static string MailFieldReplyToVariable {
+            get {
+                return ResourceManager.GetString("MailFieldReplyToVariable", resourceCulture);
+            }
+        }
+
+        internal static string MailFieldFrom {
+            get {
+                return ResourceManager.GetString("MailFieldFrom", resourceCulture);
+            }
+        }
+
+        internal static string MailFieldFromDisplayName {
+            get {
+                return ResourceManager.GetString("MailFieldFromDisplayName", resourceCulture);
+            }
+        }
+
+        internal static string MailTokenField {
+            get {
+                return ResourceManager.GetString("MailTokenField", resourceCulture);
+            }
+        }
+
+        internal static string MailFieldDefaultButtonText {
+            get {
+                return ResourceManager.GetString("MailFieldDefaultButtonText", resourceCulture);
+            }
+        }
+
+        internal static string MailFieldSentToast {
+            get {
+                return ResourceManager.GetString("MailFieldSentToast", resourceCulture);
+            }
+        }
+
+        internal static string MailFieldSendFailedFormat {
+            get {
+                return ResourceManager.GetString("MailFieldSendFailedFormat", resourceCulture);
+            }
+        }
+
         internal static string MailHistoryContractField {
             get {
                 return ResourceManager.GetString("MailHistoryContractField", resourceCulture);

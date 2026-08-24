@@ -1,4 +1,4 @@
-using Codeer.LowCode.Blazor.Extras.Designer.Controls;
+﻿using Codeer.LowCode.Blazor.Extras.Designer.Controls;
 using Codeer.LowCode.Blazor.Extras.Designer.Setup;
 using Codeer.LowCode.Blazor.Extras.Designs;
 using Codeer.LowCode.Blazor.Extras.Fields;
@@ -48,7 +48,6 @@ namespace Codeer.LowCode.Blazor.Extras.Designer
             DesignerApp.ScriptRuntimeTypeManager.AddService(new ScriptObjects.Toaster(null!));
             DesignerApp.ScriptRuntimeTypeManager.AddService(new ScriptObjects.WebApiService(null!, null!));
             DesignerApp.ScriptRuntimeTypeManager.AddType<ScriptObjects.WebApiResult>();
-            DesignerApp.ScriptRuntimeTypeManager.AddType<ScriptObjects.Mail>();
             DesignerApp.ScriptRuntimeTypeManager.AddType<Codeer.LowCode.Blazor.Extras.Mail.MailSendResult>();
             DesignerApp.ScriptRuntimeTypeManager.AddType<Codeer.LowCode.Blazor.Extras.Mail.MailSendFailure>();
             DesignerApp.ScriptRuntimeTypeManager.AddService(new ScriptObjects.BulkFileTransferService());
@@ -69,7 +68,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designer
             //`.FieldDocs.<型名>.md` 規約で解決できるよう、探索先として登録する。
             FieldCatalog.AddDocAssembly(typeof(ExtrasDesignerInitializer).Assembly);
 
-            //AI 用スクリプトオブジェクトドキュメント(Excel / WebApi / Toaster / Mail 等)も同様に
+            //AI 用スクリプトオブジェクトドキュメント(Excel / WebApi / Toaster 等)も同様に
             //このアセンブリの埋め込みから登録する。
             foreach (var kv in ExtrasScriptObjectDocs.GetScriptObjectDocs())
                 ScriptObjectCatalog.Add(kv.Key, kv.Value);

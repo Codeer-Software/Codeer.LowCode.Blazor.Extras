@@ -21,6 +21,19 @@
         /// </summary>
         public string HistoryModuleName { get; set; } = string.Empty;
 
+        /// <summary>
+        /// 操作ユーザーの情報を解決するユーザーモジュール名 (例: "AppUser")。
+        /// 「自分を差出人にする」(IsFromCurrentUser) と GmailApi のユーザー単位トークン検索が使う。
+        /// 空 = どちらの機能も使わない。
+        /// </summary>
+        public string UserModuleName { get; set; } = string.Empty;
+
+        /// <summary>ユーザーモジュールの、メールアドレスを持つフィールド名 (例: "Email")。</summary>
+        public string UserEmailFieldName { get; set; } = string.Empty;
+
+        /// <summary>ユーザーモジュールの、表示名を持つフィールド名 (例: "Name")。空 = 差出人表示名なし。</summary>
+        public string UserNameFieldName { get; set; } = string.Empty;
+
         public List<MailInfraSettings> Infras { get; set; } = new();
 
         /// <summary>
@@ -83,12 +96,6 @@
         public string SenderMailAddress { get; set; } = string.Empty;
         public string SenderDisplayName { get; set; } = string.Empty;
 
-        /// <summary>
-        /// 動的な差出人 (MailMessage.From) を許可するドメイン。空 (既定) = 動的 From 不許可。
-        /// SPF/DKIM/DMARC と送信インフラの SendAs 権限が整合するドメインだけを登録すること。
-        /// </summary>
-        public List<string> AllowedFromDomains { get; set; } = new();
-
         /// <summary>一斉送信1回の件数上限。超過はエラー (黙って切り詰めない)。</summary>
         public int MaxBulkCount { get; set; } = 10000;
 
@@ -115,8 +122,18 @@
         /// GmailApi のユーザー同意モード (ClientSecret が OAuth クライアントのとき) で使う、
         /// 同意で得たリフレッシュトークンの JSON ({"refresh_token":"..."}。ファイルパスか JSON 文字列そのもの)。
         /// 送信は同意したユーザー本人として行われる (管理者権限・ドメイン全体の委任は不要)。
+        /// システム送信者 (差出人省略時・ユーザートークン未登録時のフォールバック) の位置づけ。
         /// </summary>
         public string TokenSecret { get; set; } = string.Empty;
+
+        /// <summary>
+        /// GmailApi のユーザー同意モードで、差出人ごとのトークンを保存している MailTokenField の
+        /// フィールド名 (例: "GmailToken"。モジュールは Mail.UserModuleName)。空 = ユーザー単位トークンを使わない。
+        /// 設定すると、差出人アドレスでユーザーモジュールを検索し、登録されていれば
+        /// そのユーザー本人のトークンで送信する (本人の送信済みに残る)。
+        /// トークンの保存は MailTokenField (書き込み専用・クライアントに返さない) を使うこと。
+        /// </summary>
+        public string UserTokenFieldName { get; set; } = string.Empty;
 
         //SendGrid
         public string ApiKey { get; set; } = string.Empty;

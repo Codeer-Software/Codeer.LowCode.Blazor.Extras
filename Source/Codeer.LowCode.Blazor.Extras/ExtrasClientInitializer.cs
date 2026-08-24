@@ -19,7 +19,7 @@ namespace Codeer.LowCode.Blazor.Extras
         }
 
         /// <summary>
-        /// 組み込みスクリプトオブジェクト (Excel, WebApi, Toaster, Mail) 込みの初期化。
+        /// 組み込みスクリプトオブジェクト (Excel, WebApi, Toaster) 込みの初期化。
         /// エンドポイント URL はアプリの持ち物なので、各機能の静的プロパティで起動時に一度設定する
         /// (MailTransport.SendMailEndPoint / BulkSearchMailEndPoint、Excel.ConvertPdfEndPoint、
         /// AITextAnalyzerField.FileToModuleDataEndPoint / TextToModuleDataEndPoint)。
@@ -34,7 +34,6 @@ namespace Codeer.LowCode.Blazor.Extras
             manager.AddType(typeof(ExcelCellIndex));
             manager.AddModuleGenericType(typeof(ScriptObjects.BulkFileReader));
             manager.AddType<WebApiResult>();
-            manager.AddType<ScriptObjects.Mail>();
             manager.AddType<Codeer.LowCode.Blazor.Extras.Mail.MailSendResult>();
             manager.AddType<Codeer.LowCode.Blazor.Extras.Mail.MailSendFailure>();
             //承認フロー (経路のスクリプト組み立てと command API の応答)

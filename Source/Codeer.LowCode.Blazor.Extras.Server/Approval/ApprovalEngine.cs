@@ -751,8 +751,8 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Approval
                 //テンプレート解決に必要なフィールドパス (リンクパス可)
                 var paths = MailTemplateEngine.GetVariableNames(mail.Subject)
                     .Concat(MailTemplateEngine.GetVariableNames(mail.Body))
-                    .Concat([mail.ToVariable, mail.CcVariable, mail.SubjectVariable, mail.BodyVariable,
-                        mail.FromVariable, mail.FromDisplayNameVariable])
+                    .Concat([mail.ToVariable, mail.CcVariable, mail.BccVariable, mail.SubjectVariable,
+                        mail.BodyVariable, mail.ReplyToVariable])
                     .Where(e => !string.IsNullOrEmpty(e))
                     .Select(e => MailVariableResolver.ParseToken(e).FieldPath)
                     .Where(e => !string.IsNullOrEmpty(e))
@@ -787,23 +787,23 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Approval
                     var to = SplitAddresses(ResolveMailText(row, mail.ToVariable, mail.To));
                     if (to.Count == 0) continue; //アドレスの無いメンバーはスキップ
 
-                    //MailField と同じ規則: 変数指定があればそのフィールド値、無ければ固定文字列をテンプレートにする
+                    //MailField と同じ規則: 値が入っていれば値、空なら変数のフィールド値をテンプレートにする
                     var subjectTemplate = ResolveMailText(row, mail.SubjectVariable, mail.Subject);
                     var bodyTemplate = ResolveMailText(row, mail.BodyVariable, mail.Body);
                     var names = MailTemplateEngine.GetVariableNames(subjectTemplate)
                         .Concat(MailTemplateEngine.GetVariableNames(bodyTemplate)).Distinct().ToList();
                     var variables = MailVariableResolver.Resolve(ctx.MemberModule, row, names, _designData.Modules.Find);
 
+                    //差出人はシステム (インフラ既定)。申請者への返信は ReplyToVariable で表現する
                     var result = await dispatcher.SendAsync(mail.MailInfraName, new MailMessage
                     {
-                        From = string.IsNullOrEmpty(mail.FromVariable) ? string.Empty : MailVariableResolver.GetValueText(row, mail.FromVariable),
-                        FromDisplayName = string.IsNullOrEmpty(mail.FromDisplayNameVariable) ? string.Empty : MailVariableResolver.GetValueText(row, mail.FromDisplayNameVariable),
                         To = to,
                         Cc = SplitAddresses(ResolveMailText(row, mail.CcVariable, mail.Cc)),
+                        Bcc = SplitAddresses(ResolveMailText(row, mail.BccVariable, mail.Bcc)),
                         Subject = MailTemplateEngine.Fill(subjectTemplate, variables),
                         Body = MailTemplateEngine.Fill(bodyTemplate, variables),
                         IsBodyHtml = mail.IsBodyHtml,
-                        ReplyTo = mail.ReplyTo,
+                        ReplyTo = ResolveMailText(row, mail.ReplyToVariable, mail.ReplyTo),
                     }, Mail.MailDispatcher.CreateSource(ctx.MemberModule.Name, memberId));
                     if (!result.IsSuccess)
                         LogError?.Invoke($"Approval turn notification failed: {result.Failures.FirstOrDefault()?.Error}");
@@ -815,8 +815,11 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Approval
             }
         }
 
+        //値優先: 値が入っていればそれを使い、空なら変数を解決する (MailField と同じ規則)
         static string ResolveMailText(ModuleData data, string variable, string literal)
-            => string.IsNullOrEmpty(variable) ? literal : MailVariableResolver.GetValueText(data, variable);
+            => !string.IsNullOrEmpty(literal) ? literal
+                : string.IsNullOrEmpty(variable) ? string.Empty
+                : MailVariableResolver.GetValueText(data, variable);
 
         static List<string> SplitAddresses(string addresses)
             => addresses.Split([',', ';', '\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();

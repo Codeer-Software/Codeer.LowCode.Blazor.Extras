@@ -432,6 +432,9 @@
   <data name="OrientationLockField" xml:space="preserve">
     <value>画面向きロック</value>
   </data>
+  <data name="MailTokenField" xml:space="preserve">
+    <value>メールトークン</value>
+  </data>
   <data name="PasswordHashField" xml:space="preserve">
     <value>パスワードハッシュ</value>
   </data>
@@ -490,13 +493,40 @@
     <value>宛先変数</value>
   </data>
   <data name="MailFieldTo" xml:space="preserve">
-    <value>宛先</value>
+    <value>宛先 (;で複数可)</value>
   </data>
   <data name="MailFieldCcVariable" xml:space="preserve">
     <value>Cc変数</value>
   </data>
+  <data name="MailFieldBccVariable" xml:space="preserve">
+    <value>Bcc変数</value>
+  </data>
+  <data name="MailFieldBcc" xml:space="preserve">
+    <value>Bcc (;で複数可)</value>
+  </data>
+  <data name="MailFieldReplyToVariable" xml:space="preserve">
+    <value>返信先変数</value>
+  </data>
+  <data name="MailFieldFrom" xml:space="preserve">
+    <value>差出人</value>
+  </data>
+  <data name="MailFieldFromDisplayName" xml:space="preserve">
+    <value>差出人表示名</value>
+  </data>
+  <data name="MailFieldDefaultButtonText" xml:space="preserve">
+    <value>メール送信</value>
+  </data>
+  <data name="MailFieldSentToast" xml:space="preserve">
+    <value>メールを送信しました</value>
+  </data>
+  <data name="MailFieldSendFailedFormat" xml:space="preserve">
+    <value>メール送信に失敗しました: {0}</value>
+  </data>
+  <data name="MailFieldIsFromCurrentUser" xml:space="preserve">
+    <value>自分を差出人にする</value>
+  </data>
   <data name="MailFieldCc" xml:space="preserve">
-    <value>Cc</value>
+    <value>Cc (;で複数可)</value>
   </data>
   <data name="MailFieldSubjectVariable" xml:space="preserve">
     <value>件名変数</value>

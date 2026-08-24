@@ -238,69 +238,61 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Mail
                 Throws.InvalidOperationException);
         }
 
-        //================= 動的 From (AllowedFromDomains) =================
+        //================= 差出人 (IsFromCurrentUser = 自分を差出人にする) =================
 
-        static (MailDispatcher dispatcher, FakeMailSender fake) CreateWithFromDomains(params string[] domains)
+        static (MailDispatcher dispatcher, FakeMailSender fake) CreateWithCurrentUser(MailCurrentUser? user)
         {
             var fake = new FakeMailSender();
             var config = new MailConfig
             {
-                Infras = { new MailInfraSettings { Name = "Main", Type = MailInfraTypes.Smtp, AllowedFromDomains = domains.ToList() } },
+                Infras = { new MailInfraSettings { Name = "Main", Type = MailInfraTypes.Smtp } },
             };
-            return (new MailDispatcher(config, _ => fake), fake);
+            return (new MailDispatcher(config, _ => fake, currentUserResolver: () => Task.FromResult(user)), fake);
         }
 
         [Test]
-        public async Task From_許可ドメインなら送られる()
+        public async Task From_フラグONでサーバーが解決した操作ユーザーになる()
         {
-            var (dispatcher, fake) = CreateWithFromDomains("example.com");
-            var result = await dispatcher.SendAsync(null, new MailMessage
-            { From = "sales@Example.COM", FromDisplayName = "営業", To = { "to@example.com" }, Subject = "s" });
+            var (dispatcher, fake) = CreateWithCurrentUser(new MailCurrentUser { Email = "sales@example.com", DisplayName = "営業 太郎" });
+            var result = await dispatcher.SendAsync(new MailSendRequest
+            {
+                IsFromCurrentUser = true,
+                Message = new MailMessage { To = { "to@example.com" }, Subject = "s" },
+            });
 
             Assert.That(result.IsSuccess, Is.True);
-            Assert.That(fake.Sent.Single().From, Is.EqualTo("sales@Example.COM"));
-            Assert.That(fake.Sent.Single().FromDisplayName, Is.EqualTo("営業"));
+            Assert.That(fake.Sent.Single().From, Is.EqualTo("sales@example.com"));
+            Assert.That(fake.Sent.Single().FromDisplayName, Is.EqualTo("営業 太郎"));
         }
 
         [Test]
-        public async Task From_許可ドメイン外は送信されず失敗()
+        public async Task From_クライアントが載せたFromは無視される()
         {
-            var (dispatcher, fake) = CreateWithFromDomains("example.com");
-            var result = await dispatcher.SendAsync(null, new MailMessage
-            { From = "spoof@evil.com", To = { "to@example.com" }, Subject = "s" });
+            //ワイヤ経由の From はなりすまし防止のため常に破棄される (フラグOFF = システム差出人)
+            var (dispatcher, fake) = CreateWithCurrentUser(new MailCurrentUser { Email = "sales@example.com" });
+            var result = await dispatcher.SendAsync(new MailSendRequest
+            {
+                Message = new MailMessage { From = "spoof@evil.com", FromDisplayName = "偽", To = { "to@example.com" }, Subject = "s" },
+            });
+
+            Assert.That(result.IsSuccess, Is.True);
+            Assert.That(fake.Sent.Single().From, Is.Empty);
+            Assert.That(fake.Sent.Single().FromDisplayName, Is.Empty);
+        }
+
+        [Test]
+        public async Task From_フラグONで操作ユーザーが解決できなければ失敗()
+        {
+            var (dispatcher, fake) = CreateWithCurrentUser(null);
+            var result = await dispatcher.SendAsync(new MailSendRequest
+            {
+                IsFromCurrentUser = true,
+                Message = new MailMessage { To = { "to@example.com" }, Subject = "s" },
+            });
 
             Assert.That(result.IsSuccess, Is.False);
-            Assert.That(result.Failures.Single().Error, Does.Contain("AllowedFromDomains"));
+            Assert.That(result.Failures.Single().Error, Does.Contain("IsFromCurrentUser"));
             Assert.That(fake.Sent, Is.Empty);
-        }
-
-        [Test]
-        public async Task From_許可ドメイン未設定の送信者では常に拒否()
-        {
-            var (dispatcher, fake) = Create();
-            var result = await dispatcher.SendAsync(null, new MailMessage
-            { From = "sales@example.com", To = { "to@example.com" }, Subject = "s" });
-
-            Assert.That(result.IsSuccess, Is.False);
-            Assert.That(fake.Sent, Is.Empty);
-        }
-
-        [Test]
-        public async Task From_一斉送信でも検証され_許可時はテンプレートに残る()
-        {
-            var (dispatcher, fake) = CreateWithFromDomains("example.com");
-            var recipients = new List<MailBulkRecipient> { new() { To = "a@example.com" }, new() { To = "b@example.com" } };
-
-            var deny = await dispatcher.SendBulkAsync(null,
-                new MailBulkTemplate { From = "spoof@evil.com", Subject = "s", Body = "b" }, recipients);
-            Assert.That(deny.IsSuccess, Is.False);
-            Assert.That(deny.Failures.Count, Is.EqualTo(2));
-            Assert.That(fake.BulkSent, Is.Empty);
-
-            var ok = await dispatcher.SendBulkAsync(null,
-                new MailBulkTemplate { From = "sales@example.com", FromDisplayName = "営業", Subject = "s", Body = "b" }, recipients);
-            Assert.That(ok.IsSuccess, Is.True);
-            Assert.That(fake.BulkSent.Single().Template.From, Is.EqualTo("sales@example.com"));
         }
 
         [Test]
@@ -310,12 +302,16 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Mail
             var config = new MailConfig
             {
                 DebugRedirectAllTo = "test@example.com",
-                Infras = { new MailInfraSettings { Name = "Main", AllowedFromDomains = { "example.com" } } },
+                Infras = { new MailInfraSettings { Name = "Main" } },
             };
-            var dispatcher = new MailDispatcher(config, _ => fake);
+            var dispatcher = new MailDispatcher(config, _ => fake,
+                currentUserResolver: () => Task.FromResult<MailCurrentUser?>(new() { Email = "sales@example.com" }));
 
-            var result = await dispatcher.SendAsync(null, new MailMessage
-            { From = "sales@example.com", To = { "customer@other.com" }, Subject = "s" });
+            var result = await dispatcher.SendAsync(new MailSendRequest
+            {
+                IsFromCurrentUser = true,
+                Message = new MailMessage { To = { "customer@other.com" }, Subject = "s" },
+            });
 
             Assert.That(result.IsSuccess, Is.True);
             Assert.That(fake.Sent.Single().To, Is.EqualTo(new[] { "test@example.com" }));

@@ -34,12 +34,12 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         public BulkMailFieldDesign() : base(typeof(BulkMailFieldDesign).FullName!) { }
 
         /// <summary>宛先名簿のリストフィールド名 (List/DetailList/TileList)。そのリストの検索条件に合致する全行が送信対象。</summary>
-        [Designer(Index = 1, CandidateType = CandidateType.Field, DisplayName = "$BulkMailRecipientListFieldName")]
+        [Designer(Index = 2, CandidateType = CandidateType.Field, DisplayName = "$BulkMailRecipientListFieldName")]
         [TargetFieldType(Types = [typeof(ListFieldDesignBase)])]
         public string RecipientListFieldName { get; set; } = string.Empty;
 
         /// <summary>宛先モジュールの、メールアドレスを持つ変数 ("Email.Value")。リンクパス可 ("Contact.Email.Value")。</summary>
-        [Designer(Index = 2, CandidateType = CandidateType.Variable, DisplayName = "$BulkMailEmailAddressVariable")]
+        [Designer(Index = 3, CandidateType = CandidateType.Variable, DisplayName = "$BulkMailEmailAddressVariable")]
         [ModuleMember(Member = "SearchCondition.ModuleName")]
         [RelativeField(Property = nameof(RecipientListFieldName))]
         public string EmailAddressVariable { get; set; } = string.Empty;
@@ -49,53 +49,57 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         /// 人の恒久属性をリンクパスで指すのが典型 ("Contact.メール拒否.Value")。
         /// なお「今回のキャンペーンの対象から外す」は名簿の行を削除するのが正道 (このフラグの用途ではない)。
         /// </summary>
-        [Designer(Index = 3, CandidateType = CandidateType.Variable, DisplayName = "$BulkMailOptOutVariable")]
+        [Designer(Index = 4, CandidateType = CandidateType.Variable, DisplayName = "$BulkMailOptOutVariable")]
         [ModuleMember(Member = "SearchCondition.ModuleName")]
         [RelativeField(Property = nameof(RecipientListFieldName))]
         public string OptOutVariable { get; set; } = string.Empty;
 
-        /// <summary>件名テンプレートを持つ自モジュールの変数 ("Title.Value")。空なら Subject の固定文字列を使う。</summary>
-        [Designer(Index = 4, CandidateType = CandidateType.Variable, DisplayName = "$BulkMailSubjectVariable")]
+        /// <summary>件名テンプレートを持つ自モジュールの変数 ("Title.Value")。Subject (値) が入っている場合はそちらが優先。</summary>
+        [Designer(Index = 5, CandidateType = CandidateType.Variable, DisplayName = "$BulkMailSubjectVariable")]
         public string SubjectVariable { get; set; } = string.Empty;
 
-        /// <summary>件名テンプレート (固定)。SubjectVariable が空のときに使う。{変数} は宛先行で解決される。</summary>
-        [Designer(Index = 5, DisplayName = "$BulkMailSubject")]
+        /// <summary>件名テンプレート (値)。入っていれば SubjectVariable より優先。{変数} は宛先行で解決される。</summary>
+        [Designer(Index = 6, DisplayName = "$BulkMailSubject")]
         public string Subject { get; set; } = string.Empty;
 
-        /// <summary>本文テンプレートを持つ自モジュールの変数 ("Body.Value")。空なら Body の固定文字列を使う。</summary>
-        [Designer(Index = 6, CandidateType = CandidateType.Variable, DisplayName = "$BulkMailBodyVariable")]
+        /// <summary>本文テンプレートを持つ自モジュールの変数 ("Body.Value")。Body (値) が入っている場合はそちらが優先。</summary>
+        [Designer(Index = 7, CandidateType = CandidateType.Variable, DisplayName = "$BulkMailBodyVariable")]
         public string BodyVariable { get; set; } = string.Empty;
 
-        /// <summary>本文テンプレート (固定)。BodyVariable が空のときに使う。{変数} は宛先行で解決される。</summary>
-        [Designer(Index = 7, CandidateType = CandidateType.MultilineString, DisplayName = "$BulkMailBody")]
+        /// <summary>本文テンプレート (値)。入っていれば BodyVariable より優先。{変数} は宛先行で解決される。</summary>
+        [Designer(Index = 8, CandidateType = CandidateType.MultilineString, DisplayName = "$BulkMailBody")]
         public string Body { get; set; } = string.Empty;
 
         /// <summary>メールインフラ名 (appsettings の Mail.Infras の設定名 = どの送信インフラ・既定差出人を使うか)。空なら既定 (Mail.DefaultBulkInfraName → DefaultInfraName → 先頭)。</summary>
-        [Designer(Index = 8, DisplayName = "$MailInfraName")]
+        [Designer(Index = 1, DisplayName = "$MailInfraName")]
         public string MailInfraName { get; set; } = string.Empty;
 
         /// <summary>本文を HTML として送るか。</summary>
-        [Designer(Index = 9, DisplayName = "$BulkMailIsBodyHtml")]
+        [Designer(Index = 12, DisplayName = "$BulkMailIsBodyHtml")]
         public bool IsBodyHtml { get; set; }
 
-        /// <summary>返信先アドレス。</summary>
-        [Designer(Index = 10, DisplayName = "$BulkMailReplyTo")]
+        /// <summary>返信先アドレスの変数 (自モジュールの変数・リンクパス可)。ReplyTo (値) が入っている場合はそちらが優先。</summary>
+        [Designer(Index = 10, CandidateType = CandidateType.Variable, DisplayName = "$MailFieldReplyToVariable")]
+        public string ReplyToVariable { get; set; } = string.Empty;
+
+        /// <summary>返信先アドレス (値)。入っていれば ReplyToVariable より優先。</summary>
+        [Designer(Index = 11, DisplayName = "$BulkMailReplyTo")]
         public string ReplyTo { get; set; } = string.Empty;
 
+        /// <summary>
+        /// 自分 (操作ユーザー) を差出人にする。差出人アドレスはサーバーが操作ユーザーから解決する
+        /// (アドレス指定は不可 = なりすましの構造的排除)。false = 送信インフラ設定の差出人 (システムのアドレス)。
+        /// 要サーバー設定 Mail.UserModuleName / UserEmailFieldName。
+        /// </summary>
+        [Designer(Index = 9, DisplayName = "$MailFieldIsFromCurrentUser")]
+        public bool IsFromCurrentUser { get; set; }
+
         /// <summary>ボタンの表示テキスト。空なら既定の文言。</summary>
-        [Designer(Index = 11, DisplayName = "$BulkMailButtonText")]
+        [Designer(Index = 13, DisplayName = "$BulkMailButtonText")]
         public string ButtonText { get; set; } = string.Empty;
 
-        /// <summary>差出人アドレスの変数 (任意・自モジュールの変数。リンクパス可)。空 = 送信者設定の差出人。許可ドメインはサーバー設定 (AllowedFromDomains)。</summary>
-        [Designer(Index = 13, CandidateType = CandidateType.Variable, DisplayName = "$MailFieldFromVariable")]
-        public string FromVariable { get; set; } = string.Empty;
-
-        /// <summary>差出人表示名の変数 (任意・FromVariable 指定時のみ使われる)。</summary>
-        [Designer(Index = 14, CandidateType = CandidateType.Variable, DisplayName = "$MailFieldFromDisplayNameVariable")]
-        public string FromDisplayNameVariable { get; set; } = string.Empty;
-
         /// <summary>送信結果サマリ (JSON) の保存列。空ならサマリを保存しない (履歴モジュールの全量記録は別途 Mail.HistoryModuleName)。</summary>
-        [Designer(Index = 12, CandidateType = CandidateType.DbColumn, DisplayName = "$BulkMailFieldDbColumn")]
+        [Designer(Index = 14, CandidateType = CandidateType.DbColumn, DisplayName = "$BulkMailFieldDbColumn")]
         [DbColumn(nameof(BulkMailFieldData.Value))]
         public override string DbColumn { get; set; } = string.Empty;
 
@@ -133,8 +137,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
             //テンプレートは変数参照(自モジュール)を検証。固定文字列とどちらも空なら知らせる
             context.CheckFieldVariableExistence(Name, nameof(SubjectVariable), SubjectVariable).AddTo(result);
             context.CheckFieldVariableExistence(Name, nameof(BodyVariable), BodyVariable).AddTo(result);
-            context.CheckFieldVariableExistence(Name, nameof(FromVariable), FromVariable).AddTo(result);
-            context.CheckFieldVariableExistence(Name, nameof(FromDisplayNameVariable), FromDisplayNameVariable).AddTo(result);
+            context.CheckFieldVariableExistence(Name, nameof(ReplyToVariable), ReplyToVariable).AddTo(result);
             if (string.IsNullOrEmpty(SubjectVariable) && string.IsNullOrEmpty(Subject) &&
                 string.IsNullOrEmpty(BodyVariable) && string.IsNullOrEmpty(Body))
             {
@@ -149,8 +152,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
                 .AddField(RecipientListFieldName, x => RecipientListFieldName = x)
                 .AddVariable(SubjectVariable, x => SubjectVariable = x)
                 .AddVariable(BodyVariable, x => BodyVariable = x)
-                .AddVariable(FromVariable, x => FromVariable = x)
-                .AddVariable(FromDisplayNameVariable, x => FromDisplayNameVariable = x);
+                .AddVariable(ReplyToVariable, x => ReplyToVariable = x);
 
             //宛先モジュールの単純変数はリネーム追従する(リンクパスは非追従=既存のリンク越し変数と同じ制限)
             var targetModuleName = (context.GetFieldDesign(RecipientListFieldName) as IListFieldDesign)?.SearchCondition.ModuleName;

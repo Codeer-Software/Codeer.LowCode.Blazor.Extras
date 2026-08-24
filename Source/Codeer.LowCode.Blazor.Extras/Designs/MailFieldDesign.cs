@@ -1,5 +1,6 @@
 ﻿using Codeer.LowCode.Blazor.DesignLogic;
 using Codeer.LowCode.Blazor.DesignLogic.Check;
+using Codeer.LowCode.Blazor.Extras.Components;
 using Codeer.LowCode.Blazor.DesignLogic.Location;
 using Codeer.LowCode.Blazor.DesignLogic.Refactor;
 using Codeer.LowCode.Blazor.Extras.Fields;
@@ -10,71 +11,90 @@ using Codeer.LowCode.Blazor.Repository.Design;
 namespace Codeer.LowCode.Blazor.Extras.Designs
 {
     /// <summary>
-    /// 単発メール送信フィールド (UI を持たない設定運搬 + スクリプト API)。
-    /// 宛先・件名・本文テンプレートをデザインで宣言し、スクリプトの Send() が自レコードの値で
-    /// テンプレートの {変数} (リンクパス可) を解決して送信する。ボタンは ButtonField + スクリプトで置く。
-    /// 名簿への一斉送信は BulkMailField、完全に動的な送信は Mail スクリプトオブジェクト。
+    /// 単発メール送信フィールド。レイアウトに置くと送信ボタンとして表示され、押すと送信する
+    /// (置かずにスクリプトの Send() からだけ使うこともできる)。
+    /// 各項目は「値」と「変数」のペアで指定でき、**値が入っていれば値、空なら変数を解決**する。
+    /// 値 (To/Subject 等) はスクリプトからも設定できる (ReceiptMail.To = "..." → Send())。
+    /// 件名・本文の値はテンプレートで、{変数} (リンクパス可) が自レコードで解決される。
+    /// 名簿への一斉送信は BulkMailField。
     /// このフィールドを使うアプリはサーバー側のメール送信対応 (MailController) が必要。
     /// </summary>
     [ToolboxIcon(PackIconMaterialKind = "EmailOutline")]
     [Designer(DisplayName = "$MailField")]
+    [IgnoreBaseProperties(nameof(FieldDesignBase.IgnoreModification), nameof(FieldDesignBase.OnValidateInput))]
     public class MailFieldDesign : FieldDesignBase
     {
         public MailFieldDesign() : base(typeof(MailFieldDesign).FullName!) { }
 
-        /// <summary>宛先アドレスの変数 ("Email.Value"。リンクパス可)。空なら To の固定アドレスを使う。</summary>
-        [Designer(Index = 1, CandidateType = CandidateType.Variable, DisplayName = "$MailFieldToVariable")]
+        /// <summary>宛先アドレスの変数 ("Email.Value"。リンクパス可)。To (値) が入っている場合はそちらが優先。</summary>
+        [Designer(Index = 2, CandidateType = CandidateType.Variable, DisplayName = "$MailFieldToVariable")]
         public string ToVariable { get; set; } = string.Empty;
 
-        /// <summary>宛先アドレス (固定。カンマ / セミコロン区切りで複数可)。ToVariable が空のときに使う。</summary>
-        [Designer(Index = 2, DisplayName = "$MailFieldTo")]
+        /// <summary>宛先アドレス (値。カンマ / セミコロン区切りで複数可)。スクリプトから設定可。入っていれば ToVariable より優先。</summary>
+        [Designer(Index = 3, DisplayName = "$MailFieldTo")]
         public string To { get; set; } = string.Empty;
 
-        /// <summary>Cc アドレスの変数 (リンクパス可)。空なら Cc の固定アドレスを使う。</summary>
-        [Designer(Index = 3, CandidateType = CandidateType.Variable, DisplayName = "$MailFieldCcVariable")]
+        /// <summary>Cc アドレスの変数 (リンクパス可)。Cc (値) が入っている場合はそちらが優先。</summary>
+        [Designer(Index = 4, CandidateType = CandidateType.Variable, DisplayName = "$MailFieldCcVariable")]
         public string CcVariable { get; set; } = string.Empty;
 
-        /// <summary>Cc アドレス (固定。カンマ / セミコロン区切りで複数可)。</summary>
-        [Designer(Index = 4, DisplayName = "$MailFieldCc")]
+        /// <summary>Cc アドレス (値)。スクリプトから設定可。入っていれば CcVariable より優先。</summary>
+        [Designer(Index = 5, DisplayName = "$MailFieldCc")]
         public string Cc { get; set; } = string.Empty;
 
-        /// <summary>件名テンプレートを持つ自モジュールの変数 ("Title.Value")。空なら Subject の固定文字列を使う。</summary>
-        [Designer(Index = 5, CandidateType = CandidateType.Variable, DisplayName = "$MailFieldSubjectVariable")]
+        /// <summary>Bcc アドレスの変数 (リンクパス可)。Bcc (値) が入っている場合はそちらが優先。</summary>
+        [Designer(Index = 6, CandidateType = CandidateType.Variable, DisplayName = "$MailFieldBccVariable")]
+        public string BccVariable { get; set; } = string.Empty;
+
+        /// <summary>Bcc アドレス (値)。スクリプトから設定可。入っていれば BccVariable より優先。</summary>
+        [Designer(Index = 7, DisplayName = "$MailFieldBcc")]
+        public string Bcc { get; set; } = string.Empty;
+
+        /// <summary>件名テンプレートを持つ自モジュールの変数 ("Title.Value")。Subject (値) が入っている場合はそちらが優先。</summary>
+        [Designer(Index = 8, CandidateType = CandidateType.Variable, DisplayName = "$MailFieldSubjectVariable")]
         public string SubjectVariable { get; set; } = string.Empty;
 
-        /// <summary>件名テンプレート (固定)。{変数} は自レコードで解決される。</summary>
-        [Designer(Index = 6, DisplayName = "$MailFieldSubject")]
+        /// <summary>件名テンプレート (値)。スクリプトから設定可。{変数} は自レコードで解決される。入っていれば SubjectVariable より優先。</summary>
+        [Designer(Index = 9, DisplayName = "$MailFieldSubject")]
         public string Subject { get; set; } = string.Empty;
 
-        /// <summary>本文テンプレートを持つ自モジュールの変数 ("Body.Value")。空なら Body の固定文字列を使う。</summary>
-        [Designer(Index = 7, CandidateType = CandidateType.Variable, DisplayName = "$MailFieldBodyVariable")]
+        /// <summary>本文テンプレートを持つ自モジュールの変数 ("Body.Value")。Body (値) が入っている場合はそちらが優先。</summary>
+        [Designer(Index = 10, CandidateType = CandidateType.Variable, DisplayName = "$MailFieldBodyVariable")]
         public string BodyVariable { get; set; } = string.Empty;
 
-        /// <summary>本文テンプレート (固定)。{変数} は自レコードで解決される。</summary>
-        [Designer(Index = 8, CandidateType = CandidateType.MultilineString, DisplayName = "$MailFieldBody")]
+        /// <summary>本文テンプレート (値)。スクリプトから設定可。{変数} は自レコードで解決される。入っていれば BodyVariable より優先。</summary>
+        [Designer(Index = 11, CandidateType = CandidateType.MultilineString, DisplayName = "$MailFieldBody")]
         public string Body { get; set; } = string.Empty;
 
-        /// <summary>メールインフラ名 (appsettings の Mail.Infras の名前)。空なら既定 (Mail.DefaultInfraName → 先頭)。</summary>
-        [Designer(Index = 9, DisplayName = "$MailInfraName")]
+        /// <summary>メールインフラ名 (appsettings の Mail.Infras の名前)。デザイン固定 (スクリプトからは変更不可)。空なら既定 (Mail.DefaultInfraName → 先頭)。</summary>
+        [Designer(Index = 1, DisplayName = "$MailInfraName")]
         public string MailInfraName { get; set; } = string.Empty;
 
-        /// <summary>本文を HTML として送るか。</summary>
-        [Designer(Index = 10, DisplayName = "$MailFieldIsBodyHtml")]
+        /// <summary>本文を HTML として送るか。スクリプトから設定可。</summary>
+        [Designer(Index = 15, DisplayName = "$MailFieldIsBodyHtml")]
         public bool IsBodyHtml { get; set; }
 
-        /// <summary>返信先アドレス。</summary>
-        [Designer(Index = 11, DisplayName = "$MailFieldReplyTo")]
+        /// <summary>レイアウトに置いたときの送信ボタンの表示テキスト。空なら既定の文言。</summary>
+        [Designer(Index = 16, DisplayName = "$BulkMailButtonText")]
+        public string ButtonText { get; set; } = string.Empty;
+
+        /// <summary>返信先アドレスの変数 (リンクパス可)。ReplyTo (値) が入っている場合はそちらが優先。</summary>
+        [Designer(Index = 13, CandidateType = CandidateType.Variable, DisplayName = "$MailFieldReplyToVariable")]
+        public string ReplyToVariable { get; set; } = string.Empty;
+
+        /// <summary>返信先アドレス (値)。スクリプトから設定可。入っていれば ReplyToVariable より優先。</summary>
+        [Designer(Index = 14, DisplayName = "$MailFieldReplyTo")]
         public string ReplyTo { get; set; } = string.Empty;
 
-        /// <summary>差出人アドレスの変数 (任意・リンクパス可)。空 = 送信者設定の差出人。許可ドメインはサーバー設定 (AllowedFromDomains)。</summary>
-        [Designer(Index = 12, CandidateType = CandidateType.Variable, DisplayName = "$MailFieldFromVariable")]
-        public string FromVariable { get; set; } = string.Empty;
+        /// <summary>
+        /// 自分 (操作ユーザー) を差出人にする。スクリプトから設定可。
+        /// 差出人アドレスはサーバーが操作ユーザーから解決する (アドレス指定は不可 = なりすましの構造的排除)。
+        /// false = 送信インフラ設定の差出人 (システムのアドレス)。要サーバー設定 Mail.UserModuleName / UserEmailFieldName。
+        /// </summary>
+        [Designer(Index = 12, DisplayName = "$MailFieldIsFromCurrentUser")]
+        public bool IsFromCurrentUser { get; set; }
 
-        /// <summary>差出人表示名の変数 (任意・FromVariable 指定時のみ使われる)。</summary>
-        [Designer(Index = 13, CandidateType = CandidateType.Variable, DisplayName = "$MailFieldFromDisplayNameVariable")]
-        public string FromDisplayNameVariable { get; set; } = string.Empty;
-
-        public override string GetWebComponentTypeFullName() => string.Empty;
+        public override string GetWebComponentTypeFullName() => typeof(MailFieldComponent).FullName!;
 
         public override string GetSearchWebComponentTypeFullName() => string.Empty;
 
@@ -88,7 +108,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         {
             var result = base.CheckDesign(context);
 
-            //宛先は必須 (変数か固定のどちらか)
+            //宛先は必須 (変数か値のどちらか。スクリプトで設定する場合でもどちらかの宣言を推奨)
             if (string.IsNullOrEmpty(ToVariable) && string.IsNullOrEmpty(To))
             {
                 result.Add(new FieldDesignCheckInfo
@@ -100,10 +120,10 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
             }
             context.CheckFieldVariableExistence(Name, nameof(ToVariable), ToVariable).AddTo(result);
             context.CheckFieldVariableExistence(Name, nameof(CcVariable), CcVariable).AddTo(result);
+            context.CheckFieldVariableExistence(Name, nameof(BccVariable), BccVariable).AddTo(result);
             context.CheckFieldVariableExistence(Name, nameof(SubjectVariable), SubjectVariable).AddTo(result);
             context.CheckFieldVariableExistence(Name, nameof(BodyVariable), BodyVariable).AddTo(result);
-            context.CheckFieldVariableExistence(Name, nameof(FromVariable), FromVariable).AddTo(result);
-            context.CheckFieldVariableExistence(Name, nameof(FromDisplayNameVariable), FromDisplayNameVariable).AddTo(result);
+            context.CheckFieldVariableExistence(Name, nameof(ReplyToVariable), ReplyToVariable).AddTo(result);
 
             if (string.IsNullOrEmpty(SubjectVariable) && string.IsNullOrEmpty(Subject) &&
                 string.IsNullOrEmpty(BodyVariable) && string.IsNullOrEmpty(Body))
@@ -121,10 +141,10 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         public override RenameResult ChangeName(RenameContext context) => context.Builder(base.ChangeName(context))
             .AddVariable(ToVariable, x => ToVariable = x)
             .AddVariable(CcVariable, x => CcVariable = x)
+            .AddVariable(BccVariable, x => BccVariable = x)
             .AddVariable(SubjectVariable, x => SubjectVariable = x)
             .AddVariable(BodyVariable, x => BodyVariable = x)
-            .AddVariable(FromVariable, x => FromVariable = x)
-            .AddVariable(FromDisplayNameVariable, x => FromDisplayNameVariable = x)
+            .AddVariable(ReplyToVariable, x => ReplyToVariable = x)
             .Build();
     }
 }

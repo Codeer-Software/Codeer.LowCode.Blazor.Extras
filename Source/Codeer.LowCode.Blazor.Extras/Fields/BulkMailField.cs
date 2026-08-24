@@ -100,18 +100,17 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
                 condition.LimitCount = null;
                 condition.SelectFields = new(); //必要列はサーバーがテンプレ変数から組み直す
 
-                var subject = ResolveTemplate(Design.SubjectVariable, Design.Subject);
-                var body = ResolveTemplate(Design.BodyVariable, Design.Body);
+                var subject = ResolveValueFirst(Design.Subject, Design.SubjectVariable);
+                var body = ResolveValueFirst(Design.Body, Design.BodyVariable);
 
                 var request = new MailBulkSearchRequest
                 {
                     MailInfraName = Design.MailInfraName,
-                    From = ResolveOwnValue(Design.FromVariable),
-                    FromDisplayName = ResolveOwnValue(Design.FromDisplayNameVariable),
+                    IsFromCurrentUser = Design.IsFromCurrentUser,
                     Subject = subject,
                     Body = body,
                     IsBodyHtml = Design.IsBodyHtml,
-                    ReplyTo = Design.ReplyTo,
+                    ReplyTo = ResolveValueFirst(Design.ReplyTo, Design.ReplyToVariable),
                     Condition = condition,
                     EmailAddressVariable = Design.EmailAddressVariable,
                     OptOutVariable = Design.OptOutVariable,
@@ -120,7 +119,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
                     SummaryFieldName = string.IsNullOrEmpty(Design.DbColumn) ? string.Empty : Design.Name,
                 };
                 var result = await MailTransport.SendBulkSearchAsync(Services.Provider?.GetService<IHttpService>(), request);
-                await ScriptObjects.Mail.LogFailuresAsync(Services, result);
+                await MailSendLogger.LogFailuresAsync(Services, result);
 
                 //サーバーが列に書いた内容と同等のものでローカル表示も更新する(正値は次回ロードのサーバー値)
                 if (!string.IsNullOrEmpty(Design.DbColumn))
@@ -139,15 +138,10 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             }
         }
 
-        //変数指定(自モジュールのフィールド)を優先し、無ければ固定文字列を使う
-        string ResolveTemplate(string variable, string literal)
-        {
-            if (string.IsNullOrEmpty(variable)) return literal;
-            return MailVariableResolver.GetValueText(Module!.GetData(), variable);
-        }
-
-        //自レコードの変数値 (差出人等)。未指定は空
-        string ResolveOwnValue(string variable)
-            => string.IsNullOrEmpty(variable) ? string.Empty : MailVariableResolver.GetValueText(Module!.GetData(), variable);
+        //値優先: 値が入っていればそれを使い、空なら変数(自モジュールのフィールド)を解決する
+        string ResolveValueFirst(string value, string variable)
+            => !string.IsNullOrEmpty(value) ? value
+                : string.IsNullOrEmpty(variable) ? string.Empty
+                : MailVariableResolver.GetValueText(Module!.GetData(), variable);
     }
 }

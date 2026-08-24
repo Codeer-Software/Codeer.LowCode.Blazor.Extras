@@ -44,19 +44,19 @@
 | RecipientListFieldName | string | ○ | 宛先リストのフィールド名 (List/DetailList/TileList) |
 | EmailAddressVariable | string | ○ | 宛先モジュールの、メールアドレスを持つ変数。リンクパス可 (`Contact.Email.Value`) |
 | OptOutVariable | string | - | 配信停止 (Boolean) の変数。人側をリンクパスで指すのが典型 (`Contact.メール拒否.Value`) |
-| SubjectVariable | string | - | 件名テンプレートを持つ自モジュールの変数 (`Title.Value`)。空なら Subject を使う |
+| SubjectVariable | string | - | 件名テンプレートを持つ自モジュールの変数 (`Title.Value`)。Subject (値) が入っている場合はそちらが優先 |
 | Subject | string | - | 件名テンプレート (固定文字列) |
-| BodyVariable | string | - | 本文テンプレートを持つ自モジュールの変数 (`Body.Value`)。空なら Body を使う |
+| BodyVariable | string | - | 本文テンプレートを持つ自モジュールの変数 (`Body.Value`)。Body (値) が入っている場合はそちらが優先 |
 | Body | string | - | 本文テンプレート (固定文字列・複数行) |
 | MailInfraName | string | - | メールインフラ名 (appsettings の Mail.Infras の設定名 = どの送信インフラ・既定差出人を使うか)。空なら既定 (Mail.DefaultBulkInfraName → DefaultInfraName → 先頭)。差出人アドレスを変えるのは FromVariable の方 |
 | IsBodyHtml | bool | - | 本文を HTML として送るか (変数値は HTML エスケープされる) |
-| ReplyTo | string | - | 返信先アドレス |
-| FromVariable | string | - | 差出人アドレスの変数 (自モジュールの変数・リンクパス可)。空なら送信インフラ設定の差出人。サーバー設定 (AllowedFromDomains) で許可されたドメインのみ |
-| FromDisplayNameVariable | string | - | 差出人表示名の変数 (FromVariable 指定時のみ使われる) |
+| IsFromCurrentUser | bool | - | ON = 操作ユーザー本人のアドレスが差出人 (サーバーが解決)。OFF = 送信インフラ設定の差出人。**差出人のアドレス指定はできない** (なりすましの構造的排除)。要サーバー設定 `Mail.UserModuleName` / `UserEmailFieldName` |
+| ReplyToVariable | string | - | 返信先アドレスの変数 (自モジュールの変数・リンクパス可)。ReplyTo (値) が入っている場合はそちらが優先 |
+| ReplyTo | string | - | 返信先アドレス (値) |
 | ButtonText | string | - | ボタンの表示テキスト。空なら既定の文言 |
 | DbColumn | string | - | 送信結果サマリ (JSON) の保存列。空ならサマリを保存しない |
 
-件名・本文は「テンプレートフィールド参照 (Variable) が優先、無ければ固定文字列」です。
+件名・本文などの「変数 / 値」ペアは**値が入っていれば値、空なら変数**です (MailField と同じ規則)。
 どちらも空のままだとデザインチェックが知らせます。
 
 ### 典型構成 (キャンペーン + 名簿 = Salesforce の Campaign + CampaignMember)
@@ -105,7 +105,7 @@
 - `Value` … 送信結果サマリの JSON 文字列 (読み取り)
 
 一斉送信の入口はこのフィールドに一本化されています。単発送信 (個別の宛先へスクリプトから送る)
-はスクリプトの Mail オブジェクトを使います。
+は MailField を使います (値プロパティをスクリプトから設定すれば動的送信も可能)。
 
 ## CSS
 

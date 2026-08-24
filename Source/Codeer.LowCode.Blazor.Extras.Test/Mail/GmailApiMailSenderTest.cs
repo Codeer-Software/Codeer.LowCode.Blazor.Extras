@@ -169,6 +169,32 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Mail
         }
 
         [Test]
+        public async Task ユーザー同意モード_差出人のユーザートークンがあればその人として送る()
+        {
+            var handler = CreateHandler();
+            var resolved = new List<string>();
+            var sender = new GmailApiMailSender(OAuthSettings, handler.CreateClient(),
+                userRefreshTokenResolver: mail =>
+                {
+                    resolved.Add(mail);
+                    return Task.FromResult<string?>(mail == "tanaka@example.com" ? """{"refresh_token":"TANAKA1"}""" : null);
+                });
+
+            //ユーザートークンあり → その人のリフレッシュトークンで交換
+            var result = await sender.SendAsync(new MailMessage { To = { "a@example.com" }, From = "tanaka@example.com" });
+            Assert.That(result.IsSuccess, Is.True);
+            Assert.That(handler.Requests[0].Body, Does.Contain("refresh_token=TANAKA1"));
+
+            //ユーザートークンなし → システムの TokenSecret にフォールバック
+            var result2 = await sender.SendAsync(new MailMessage { To = { "b@example.com" }, From = "unknown@example.com" });
+            Assert.That(result2.IsSuccess, Is.True);
+            var tokenBodies = handler.Requests.Where(e => e.Request.RequestUri!.Host == "oauth2.googleapis.com").Select(e => e.Body).ToList();
+            Assert.That(tokenBodies, Has.Count.EqualTo(2));
+            Assert.That(tokenBodies[1], Does.Contain("refresh_token=REFRESH1"));
+            Assert.That(resolved, Is.EqualTo(new[] { "tanaka@example.com", "unknown@example.com" }));
+        }
+
+        [Test]
         public async Task ユーザー同意モード_TokenSecret未設定は明確なエラー()
         {
             var handler = CreateHandler();

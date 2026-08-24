@@ -127,6 +127,93 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Mail
         }
 
         [Test]
+        public async Task 送信_スクリプトで設定した値は変数より優先される()
+        {
+            //旧 Mail スクリプトオブジェクトの置き換え: 値プロパティをスクリプトから設定して完全動的送信
+            var (module, field) = await CreateAsync(CreateDesignData());
+            await ((TextField)module.GetField("Title")!).SetValueAsync("経費精算");
+            await ((TextField)module.GetField("Email")!).SetValueAsync("variable@example.com");
+
+            field.To = "value@example.com";              //値が入っていれば ToVariable より優先
+            field.Bcc = "bcc@example.com";
+            field.Subject = "【上書き】{Title.Value}";    //値もテンプレートとして解決される
+            field.IsBodyHtml = true;
+            field.IsFromCurrentUser = true;
+            field.ReplyTo = "reply@example.com";
+            field.AddTextAttachment("a.txt", "attach");
+
+            var handler = new CaptureHandler();
+            MailTransport.Handler = handler;
+            try
+            {
+                await field.SendAsync();
+                //添付は送信後にクリアされる
+                await field.SendAsync();
+            }
+            finally
+            {
+                MailTransport.Handler = null;
+            }
+
+            var sent = handler.Sent!; //2通目
+            Assert.That(sent.MailInfraName, Is.EqualTo("notify")); //インフラ名はデザイン固定 (スクリプトから変更不可)
+            Assert.That(sent.Message.To, Is.EqualTo(new[] { "value@example.com" }));
+            Assert.That(sent.Message.Bcc, Is.EqualTo(new[] { "bcc@example.com" }));
+            Assert.That(sent.Message.Subject, Is.EqualTo("【上書き】経費精算"));
+            Assert.That(sent.Message.IsBodyHtml, Is.True);
+            Assert.That(sent.IsFromCurrentUser, Is.True); //差出人はアドレス指定不可 = フラグだけがワイヤに乗る
+            Assert.That(sent.Message.From, Is.Empty);
+            Assert.That(sent.Message.ReplyTo, Is.EqualTo("reply@example.com"));
+            Assert.That(sent.Message.Attachments, Is.Empty); //1通目で送られてクリア済み
+        }
+
+        [Test]
+        public async Task 送信_添付は次のSendで送られる()
+        {
+            var (module, field) = await CreateAsync(CreateDesignData());
+            await ((TextField)module.GetField("Email")!).SetValueAsync("a@example.com");
+            field.AddTextAttachment("data.txt", "中身");
+
+            var handler = new CaptureHandler();
+            MailTransport.Handler = handler;
+            try
+            {
+                await field.SendAsync();
+            }
+            finally
+            {
+                MailTransport.Handler = null;
+            }
+
+            var attachment = handler.Sent!.Message.Attachments.Single();
+            Assert.That(attachment.FileName, Is.EqualTo("data.txt"));
+            Assert.That(System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(attachment.ContentBase64)), Is.EqualTo("中身"));
+        }
+
+        [Test]
+        public async Task 送信_ReplyToVariableは値が空のとき自レコードで解決される()
+        {
+            var (module, field) = await CreateAsync(CreateDesignData(m =>
+            {
+                m.ReplyToVariable = "Email.Value";
+                m.To = "fixed@example.com";
+            }));
+            await ((TextField)module.GetField("Email")!).SetValueAsync("owner@example.com");
+
+            var handler = new CaptureHandler();
+            MailTransport.Handler = handler;
+            try
+            {
+                await field.SendAsync();
+            }
+            finally
+            {
+                MailTransport.Handler = null;
+            }
+            Assert.That(handler.Sent!.Message.ReplyTo, Is.EqualTo("owner@example.com"));
+        }
+
+        [Test]
         public void チェック_宛先未設定と件名本文空は指摘される()
         {
             var d = CreateDesignData(m =>

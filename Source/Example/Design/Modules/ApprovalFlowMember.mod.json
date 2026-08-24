@@ -418,8 +418,7 @@
       "Subject": "【承認依頼】{StepName.Value} の承認をお願いします",
       "Body": "{ApproverUser.Name.Value} さん\n\n承認の順番が回ってきました。\nステップ: {StepNo.Value} {StepName.Value}\n承認画面から対応をお願いします。",
       "TypeFullName": "Codeer.LowCode.Blazor.Extras.Designs.MailFieldDesign",
-      "FromVariable": "Flow.Applicant.Email.Value",
-      "FromDisplayNameVariable": "Flow.Applicant.Name.Value"
+      "ReplyToVariable": "Flow.Applicant.Email.Value"
     }
   ],
   "UserWriteCondition": {

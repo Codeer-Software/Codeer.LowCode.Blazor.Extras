@@ -58,14 +58,30 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
 
             var template = new MailBulkTemplate
             {
-                From = request.From,
-                FromDisplayName = request.FromDisplayName,
                 Subject = request.Subject,
                 Body = request.Body,
                 IsBodyHtml = request.IsBodyHtml,
                 ReplyTo = request.ReplyTo,
                 Attachments = request.Attachments,
             };
+            //差出人はクライアントの値を信用せず、「自分を差出人にする」のときだけサーバーが操作ユーザーを解決する
+            if (request.IsFromCurrentUser)
+            {
+                var user = await dispatcher.GetCurrentUserAsync();
+                if (user == null)
+                {
+                    var fromFailure = new MailSendResult
+                    {
+                        TotalCount = recipients.Count,
+                        Failures = recipients.Select(e => new MailSendFailure { To = e.To, Error = MailDispatcher.CurrentUserUnresolvedError }).ToList(),
+                    };
+                    await WriteSummaryAsync(dispatcher, moduleDataIO, designData, request, fromFailure,
+                        updateRecordInternalAsync, logError);
+                    return fromFailure;
+                }
+                template.From = user.Email;
+                template.FromDisplayName = user.DisplayName;
+            }
             var result = await dispatcher.SendBulkAsync(request.MailInfraName, template, recipients,
                 MailDispatcher.CreateSource(request.SourceModule, request.SourceId));
 

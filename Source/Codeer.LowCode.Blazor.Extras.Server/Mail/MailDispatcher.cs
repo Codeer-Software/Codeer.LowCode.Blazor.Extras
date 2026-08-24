@@ -23,14 +23,23 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
         readonly MailConfig _config;
         readonly Func<MailInfraSettings, IMailSender?>? _customSenderFactory;
         readonly MailHistoryWriter? _historyWriter;
+        readonly Func<Task<MailCurrentUser?>>? _currentUserResolver;
 
         public MailDispatcher(MailConfig config, Func<MailInfraSettings, IMailSender?>? customSenderFactory = null,
-            MailHistoryWriter? historyWriter = null)
+            MailHistoryWriter? historyWriter = null, Func<Task<MailCurrentUser?>>? currentUserResolver = null)
         {
             _config = config;
             _customSenderFactory = customSenderFactory;
             _historyWriter = historyWriter;
+            _currentUserResolver = currentUserResolver;
         }
+
+        /// <summary>
+        /// 「自分を差出人にする」(IsFromCurrentUser) の操作ユーザー情報。
+        /// 未結線・未設定・解決不能は null (呼び出し側が失敗にする)。
+        /// </summary>
+        public async Task<MailCurrentUser?> GetCurrentUserAsync()
+            => _currentUserResolver == null ? null : await _currentUserResolver();
 
         /// <summary>単発送信のインフラ解決: 明示名 → DefaultInfraName → 先頭。</summary>
         public MailInfraSettings ResolveInfraSettings(string? mailInfraName)
@@ -51,19 +60,6 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
                 ?? throw new InvalidOperationException($"Mail sender '{name}' is not configured.");
         }
 
-        //動的 From の許可判定。空 = null (許可)。AllowedFromDomains 未設定の送信者では動的 From を常に拒否する
-        static string? ValidateFrom(MailInfraSettings settings, string from)
-        {
-            if (string.IsNullOrEmpty(from)) return null;
-            var domain = from.Split('@').Length == 2 ? from.Split('@')[1] : string.Empty;
-            if (!string.IsNullOrEmpty(domain) &&
-                settings.AllowedFromDomains.Any(e => string.Equals(e, domain, StringComparison.OrdinalIgnoreCase)))
-            {
-                return null;
-            }
-            return $"From '{from}' is not allowed. Add the domain to AllowedFromDomains of mail sender '{settings.Name}'.";
-        }
-
         public IMailSender CreateSender(MailInfraSettings settings)
         {
             var custom = _customSenderFactory?.Invoke(settings);
@@ -79,9 +75,34 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
             };
         }
 
-        /// <summary>単発送信のワイヤリクエスト (POST /api/mail) をそのまま送る。Controller を薄く保つための入口。</summary>
+        /// <summary>
+        /// 単発送信のワイヤリクエスト (POST /api/mail) をそのまま送る。Controller を薄く保つための入口。
+        /// 差出人はクライアントの値を信用せず、IsFromCurrentUser (自分を差出人にする) のときだけ
+        /// サーバーが解決した操作ユーザーのアドレスにする (なりすましの構造的排除)。
+        /// </summary>
         public async Task<MailSendResult> SendAsync(MailSendRequest request)
-            => await SendAsync(request.MailInfraName, request.Message, CreateSource(request.SourceModule, request.SourceId));
+        {
+            var message = request.Message;
+            message.From = string.Empty;
+            message.FromDisplayName = string.Empty;
+            if (request.IsFromCurrentUser)
+            {
+                var user = await GetCurrentUserAsync();
+                if (user == null)
+                {
+                    var failure = MailSendResult.Failure(string.Join(";", message.To), CurrentUserUnresolvedError);
+                    if (_historyWriter != null) await _historyWriter.WriteAsync(request.MailInfraName, message.Subject, failure,
+                        CreateSource(request.SourceModule, request.SourceId));
+                    return failure;
+                }
+                message.From = user.Email;
+                message.FromDisplayName = user.DisplayName;
+            }
+            return await SendAsync(request.MailInfraName, message, CreateSource(request.SourceModule, request.SourceId));
+        }
+
+        internal const string CurrentUserUnresolvedError =
+            "IsFromCurrentUser requires the current user's mail address (configure Mail.UserModuleName / UserEmailFieldName and make sure the user has an address).";
 
         internal static MailHistorySource? CreateSource(string sourceModule, string sourceId)
             => string.IsNullOrEmpty(sourceModule)
@@ -94,13 +115,6 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
                 return MailSendResult.Failure(string.Empty, "No recipients.");
 
             var settings = ResolveInfraSettings(mailInfraName);
-            var fromError = ValidateFrom(settings, message.From);
-            if (fromError != null)
-            {
-                var failure = MailSendResult.Failure(string.Join(";", message.To), fromError);
-                if (_historyWriter != null) await _historyWriter.WriteAsync(settings.Name, message.Subject, failure, source);
-                return failure;
-            }
             var sender = CreateSender(settings);
             var sendMessage = string.IsNullOrEmpty(_config.DebugRedirectAllTo) ? message : Redirect(message);
             var result = await sender.SendAsync(sendMessage);
@@ -116,17 +130,6 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
         public async Task<MailSendResult> SendBulkAsync(string? mailInfraName, MailBulkTemplate template, List<MailBulkRecipient> recipients, MailHistorySource? source = null)
         {
             var settings = ResolveBulkInfraSettings(mailInfraName);
-            var bulkFromError = ValidateFrom(settings, template.From);
-            if (bulkFromError != null)
-            {
-                var failure = new MailSendResult
-                {
-                    TotalCount = recipients.Count,
-                    Failures = recipients.Select(e => new MailSendFailure { To = e.To, Error = bulkFromError }).ToList(),
-                };
-                if (_historyWriter != null) await _historyWriter.WriteAsync(settings.Name, template.Subject, failure, source);
-                return failure;
-            }
             if (recipients.Count > settings.MaxBulkCount)
                 throw new InvalidOperationException(
                     $"Bulk send of {recipients.Count} mails exceeds MaxBulkCount ({settings.MaxBulkCount}) of mail sender '{settings.Name}'.");

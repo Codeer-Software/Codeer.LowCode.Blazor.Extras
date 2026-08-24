@@ -432,6 +432,9 @@
   <data name="OrientationLockField" xml:space="preserve">
     <value>Orientation Lock</value>
   </data>
+  <data name="MailTokenField" xml:space="preserve">
+    <value>Mail Token</value>
+  </data>
   <data name="PasswordHashField" xml:space="preserve">
     <value>Password Hash</value>
   </data>
@@ -490,13 +493,40 @@
     <value>To Variable</value>
   </data>
   <data name="MailFieldTo" xml:space="preserve">
-    <value>To</value>
+    <value>To (; separated)</value>
   </data>
   <data name="MailFieldCcVariable" xml:space="preserve">
     <value>Cc Variable</value>
   </data>
+  <data name="MailFieldBccVariable" xml:space="preserve">
+    <value>Bcc Variable</value>
+  </data>
+  <data name="MailFieldBcc" xml:space="preserve">
+    <value>Bcc (; separated)</value>
+  </data>
+  <data name="MailFieldReplyToVariable" xml:space="preserve">
+    <value>Reply-To Variable</value>
+  </data>
+  <data name="MailFieldFrom" xml:space="preserve">
+    <value>From</value>
+  </data>
+  <data name="MailFieldFromDisplayName" xml:space="preserve">
+    <value>From Display Name</value>
+  </data>
+  <data name="MailFieldDefaultButtonText" xml:space="preserve">
+    <value>Send Mail</value>
+  </data>
+  <data name="MailFieldSentToast" xml:space="preserve">
+    <value>The mail has been sent.</value>
+  </data>
+  <data name="MailFieldSendFailedFormat" xml:space="preserve">
+    <value>Failed to send the mail: {0}</value>
+  </data>
+  <data name="MailFieldIsFromCurrentUser" xml:space="preserve">
+    <value>Send as Current User</value>
+  </data>
   <data name="MailFieldCc" xml:space="preserve">
-    <value>Cc</value>
+    <value>Cc (; separated)</value>
   </data>
   <data name="MailFieldSubjectVariable" xml:space="preserve">
     <value>Subject Variable</value>

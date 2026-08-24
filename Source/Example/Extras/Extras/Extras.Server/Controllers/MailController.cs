@@ -2,6 +2,7 @@
 using Codeer.LowCode.Blazor.Extras.Server.Mail;
 using Microsoft.AspNetCore.Mvc;
 using Extras.Server.Services;
+using System.Security.Claims;
 
 namespace Extras.Server.Controllers
 {
@@ -42,18 +43,40 @@ namespace Extras.Server.Controllers
                 ? null
                 : new MailHistoryWriter(mail.HistoryModuleName, DesignerService.GetDesignData(),
                     data => _dataService.ModuleDataIO.AddSystemRecordAsync(data), e => _logger.LogError("{Error}", e));
-            return new MailDispatcher(mail, CreateSender, historyWriter);
+            return new MailDispatcher(mail, CreateSender, historyWriter, CreateCurrentUserResolver());
         }
 
         //センダー設定(Type)→送信インフラ実装の対応表。独自インフラ(IMailSenderの実装)を使うときはここに追記する
-        static IMailSender? CreateSender(MailInfraSettings settings)
+        IMailSender? CreateSender(MailInfraSettings settings)
             => settings.Type switch
             {
                 MailInfraTypes.Smtp or "" => new SmtpMailSender(settings),
                 MailInfraTypes.GraphApi => new GraphApiMailSender(settings),
                 MailInfraTypes.SendGrid => new SendGridMailSender(settings),
-                MailInfraTypes.GmailApi => new GmailApiMailSender(settings),
+                MailInfraTypes.GmailApi => new GmailApiMailSender(settings, userRefreshTokenResolver: CreateUserTokenResolver(settings)),
                 _ => null, //null は製品組み込みの解決に委ねる(未知の Type はそこでエラーになる)
             };
+
+        //「自分を差出人にする」(IsFromCurrentUser) の操作ユーザー解決 (認証ユーザーId → Mail.UserModuleName のメール/表示名)
+        Func<Task<MailCurrentUser?>>? CreateCurrentUserResolver()
+        {
+            var mail = SystemConfig.Instance.Mail;
+            if (string.IsNullOrEmpty(mail.UserModuleName)) return null;
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
+            var store = new MailUserStore(DesignerService.GetDesignData(), mail,
+                _dataService.DbAccess, e => _logger.LogError("{Error}", e));
+            return () => store.FindCurrentUserAsync(userId);
+        }
+
+        //差出人ごとのユーザートークン検索 (Gmail ユーザー同意モード)。UserTokenFieldName 未設定なら使わない。
+        //トークン列は書き込み専用のためサーバー内部の SQL (MailUserStore) で読む
+        Func<string, Task<string?>>? CreateUserTokenResolver(MailInfraSettings settings)
+        {
+            var mail = SystemConfig.Instance.Mail;
+            if (string.IsNullOrEmpty(mail.UserModuleName) || string.IsNullOrEmpty(settings.UserTokenFieldName)) return null;
+            var store = new MailUserStore(DesignerService.GetDesignData(), mail,
+                _dataService.DbAccess, e => _logger.LogError("{Error}", e));
+            return address => store.FindRefreshTokenAsync(address, settings.UserTokenFieldName);
+        }
     }
 }
