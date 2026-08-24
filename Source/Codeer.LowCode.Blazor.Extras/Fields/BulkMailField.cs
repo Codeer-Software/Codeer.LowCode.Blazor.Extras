@@ -45,7 +45,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             }
 
             var listField = Module.GetField<ListField>(Design.RecipientListFieldName);
-            if (listField?.GetSearchCondition() == null || string.IsNullOrEmpty(Design.EmailAddressVariable))
+            if (listField?.GetSearchCondition() == null)
             {
                 await Services.UIService.NotifyError(Properties.Resources.BulkMailTargetListInvalid);
                 return;
@@ -82,8 +82,8 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
                 return MailSendResult.Failure(string.Empty, "Save the record before sending.");
 
             var listField = Module.GetField<ListField>(Design.RecipientListFieldName);
-            if (listField?.GetSearchCondition() == null || string.IsNullOrEmpty(Design.EmailAddressVariable))
-                return MailSendResult.Failure(string.Empty, "The recipient list or the to-address variable is not configured.");
+            if (listField?.GetSearchCondition() == null)
+                return MailSendResult.Failure(string.Empty, "The recipient list is not configured.");
 
             return await SendCoreAsync(listField) ?? MailSendResult.Failure(string.Empty, "Sending is already in progress.");
         }
@@ -112,8 +112,6 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
                     IsBodyHtml = Design.IsBodyHtml,
                     ReplyTo = ResolveValueFirst(Design.ReplyTo, Design.ReplyToVariable),
                     Condition = condition,
-                    EmailAddressVariable = Design.EmailAddressVariable,
-                    OptOutVariable = Design.OptOutVariable,
                     SourceModule = Module!.Design.Name,
                     SourceId = Module.GetIdText(),
                     SummaryFieldName = string.IsNullOrEmpty(Design.DbColumn) ? string.Empty : Design.Name,

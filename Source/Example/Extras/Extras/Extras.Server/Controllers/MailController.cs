@@ -56,8 +56,7 @@ namespace Extras.Server.Controllers
         {
             var mail = SystemConfig.Instance.Mail;
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
-            var store = new MailUserStore(DesignerService.GetDesignData(), mail,
-                _dataService.DbAccess, e => _logger.LogError("{Error}", e));
+            var store = CreateUserStore();
             return () => store.FindCurrentUserAsync(userId);
         }
 
@@ -66,9 +65,13 @@ namespace Extras.Server.Controllers
         //(CurrentUser モジュールに GmailTokenField が無ければ使われない)
         Func<string, Task<string?>>? CreateUserTokenResolver()
         {
-            var store = new MailUserStore(DesignerService.GetDesignData(), SystemConfig.Instance.Mail,
-                _dataService.DbAccess, e => _logger.LogError("{Error}", e));
+            var store = CreateUserStore();
             return address => store.FindRefreshTokenAsync(address, SystemConfig.Instance.Gmail.TokenEncryptionKey);
         }
+
+        //ユーザーモジュールの検索は製品のデータ層 (システム内部経路) を通す。生SQLは書かない
+        MailUserStore CreateUserStore()
+            => new(DesignerService.GetDesignData(),
+                _dataService.ModuleDataIO.GetSystemRecordsInternalAsync, e => _logger.LogError("{Error}", e));
     }
 }

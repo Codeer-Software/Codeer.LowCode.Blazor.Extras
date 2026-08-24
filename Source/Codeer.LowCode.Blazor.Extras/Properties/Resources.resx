@@ -585,14 +585,53 @@
   <data name="MailHistoryContractField" xml:space="preserve">
     <value>Mail History Contract</value>
   </data>
+  <data name="MailSenderContractField" xml:space="preserve">
+    <value>Mail Sender Contract</value>
+  </data>
+  <data name="MailSenderContractEmail" xml:space="preserve">
+    <value>Mail Address (required)</value>
+  </data>
+  <data name="MailSenderContractDisplayName" xml:space="preserve">
+    <value>Display Name</value>
+  </data>
+  <data name="BulkMailRecipientContractField" xml:space="preserve">
+    <value>Bulk Mail Recipient Contract</value>
+  </data>
+  <data name="ContractCheck_RoleRequiredFormat" xml:space="preserve">
+    <value>The role '{0}' is required.</value>
+  </data>
+  <data name="BulkMailRecipientContractEmail" xml:space="preserve">
+    <value>Mail Address (required)</value>
+  </data>
+  <data name="BulkMailRecipientContractOptOut" xml:space="preserve">
+    <value>Opt Out</value>
+  </data>
+  <data name="MailHistoryContractSentAt" xml:space="preserve">
+    <value>Sent At (required)</value>
+  </data>
+  <data name="MailHistoryContractMailInfraName" xml:space="preserve">
+    <value>Mail Infra Name</value>
+  </data>
+  <data name="MailHistoryContractSubject" xml:space="preserve">
+    <value>Subject</value>
+  </data>
+  <data name="MailHistoryContractTotalCount" xml:space="preserve">
+    <value>Total Count</value>
+  </data>
+  <data name="MailHistoryContractSuccessCount" xml:space="preserve">
+    <value>Success Count</value>
+  </data>
+  <data name="MailHistoryContractFailureDetails" xml:space="preserve">
+    <value>Failure Details</value>
+  </data>
+  <data name="MailHistoryContractSourceModule" xml:space="preserve">
+    <value>Source Module</value>
+  </data>
+  <data name="MailHistoryContractSourceId" xml:space="preserve">
+    <value>Source Id</value>
+  </data>
   <data name="BulkMailRecipientListFieldName" xml:space="preserve">
     <value>Recipient List</value>
-  </data>
-  <data name="BulkMailEmailAddressVariable" xml:space="preserve">
-    <value>Email Address</value>
-  </data>
-  <data name="BulkMailOptOutVariable" xml:space="preserve">
-    <value>Opt-Out Flag</value>
   </data>
   <data name="MailFieldButtonText" xml:space="preserve">
     <value>Button Text</value>
@@ -602,9 +641,6 @@
   </data>
   <data name="BulkMailRecipientListFieldRequired" xml:space="preserve">
     <value>Set the recipient list field.</value>
-  </data>
-  <data name="BulkMailEmailAddressVariableRequired" xml:space="preserve">
-    <value>Set the email address variable.</value>
   </data>
   <data name="MailSubjectOrBodyRequired" xml:space="preserve">
     <value>Both the subject and the body are empty. Set a template field or a fixed text.</value>
@@ -616,7 +652,7 @@
     <value>There are unsaved changes. Save the record before sending.</value>
   </data>
   <data name="BulkMailTargetListInvalid" xml:space="preserve">
-    <value>The recipient list or the email address variable is not configured.</value>
+    <value>The recipient list field is not configured.</value>
   </data>
   <data name="BulkMailConfirmFormat" xml:space="preserve">
     <value>Send bulk mail to {0} rows? (Rows with the exclude flag and rows without an address are skipped.)</value>

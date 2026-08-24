@@ -17,13 +17,24 @@ DDL でテーブルを作成すると全送信が自動記録される。
 
 - どのモジュールが履歴かの指定はサーバー設定 (appsettings の `Mail.HistoryModuleName`)
 - 各プロパティ (役割) の初期値は既定フィールド名。既定名でフィールドを作れば設定不要 (置くだけ)。
-  **契約フィールドが無いモジュールには既定名で書く** (置かなくても従来どおり動く)
-- **役割を空にすると「使わない」宣言** (その項目は記録しない)。最小構成 (送信日時 + 件名だけ等) も可
-- 役割のフィールドが自モジュールに無ければデザインチェックがエラーにする。リネームに自動追従する
+  **契約フィールドが無いモジュールには既定名で書く** (置かなくても動く)
+- **必須は送信日時だけ** (デザイナの表示名に「(必須)」が付く)。**他の役割は空にすると「使わない」宣言**
+  (その項目は記録しない)。契約フィールドを置かない場合も、必須以外は既定名のフィールドが無ければ記録しないだけ
+- 必須役割が空・契約が名指ししたフィールドが不在ならデザインチェックがエラーにする。リネームに自動追従する
+- **履歴を取る設定 (`Mail.HistoryModuleName`) なのに上記を満たしていない場合は、送信前に実行時エラー**
+  になって**メールを送らない** (記録が静かに欠けるのを防ぐ。履歴モジュールは appsettings 指定なので
+  デザインチェックからは辿れず、実行時に検出するしかない)
 
-役割: `SentAt` (送信日時・DateTime) / `MailInfraName` / `Subject` / `TotalCount` (数値) /
-`SuccessCount` (数値) / `FailureDetails` (失敗明細JSON。Text か Json) / `SourceModule` / `SourceId`
-(送信元レコード。MailField / BulkMailField が自動で記録する)。
+| 役割 (表示名) | 内容 | 必須 |
+|---|---|---|
+| SentAt (送信日時 (必須)) | 送信操作の日時 (DateTime) | ○ |
+| MailInfraName (メールインフラ名) | 送信先の呼び名 | - |
+| Subject (件名) | 件名 | - |
+| TotalCount (送信対象数) | 数値 | - |
+| SuccessCount (成功数) | 数値 | - |
+| FailureDetails (失敗明細) | 失敗明細 JSON (Text か Json) | - |
+| SourceModule (送信元モジュール) | 送信元レコードのモジュール名 | - |
+| SourceId (送信元Id) | 送信元レコードの Id | - |
 
 ```json
 { "Name": "Contract", "TypeFullName": "Codeer.LowCode.Blazor.Extras.Designs.MailHistoryContractFieldDesign" }

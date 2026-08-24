@@ -15,10 +15,16 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
     /// <summary>
     /// Mail.HistoryModuleName のモジュールへ、送信操作1回につき1行の履歴を書く。
     /// フィールド名は履歴モジュール上の MailHistoryContractField 経由で解決する
-    /// (roles left empty are not recorded); a module without the contract uses the default role names.
+    /// (空の役割 = 記録しない。契約フィールドが無いモジュールは既定の役割名を使う)。
     /// 書き込みは内部 add デリゲート経由で、操作ユーザーの書き込み権限に依存しない (履歴はシステムの記録)。
-    /// 履歴設定の異常は logError で報告し、送信自体は失敗させない。
     /// </summary>
+    /// <remarks>
+    /// **履歴を取る設定 (Mail.HistoryModuleName) なのにモジュールが契約を満たしていない場合は
+    /// 送信前の <see cref="Validate"/> で例外にする = メールを送らない** (静かに記録が欠けるのを防ぐ。
+    /// 履歴モジュールは appsettings 指定なのでデザインチェックからは辿れず、実行時に検出するしかない)。
+    /// 一方、書き込み時の障害 (DB エラー等) は送信後なので logError のみで送信は失敗させない。
+    /// 記録したくない項目は契約フィールドを置いてその役割を空にする。
+    /// </remarks>
     public class MailHistoryWriter
     {
         readonly string _historyModuleName;
@@ -35,10 +41,62 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
             _logError = logError;
         }
 
+        /// <summary>
+        /// 履歴モジュールが契約を満たしているかを検証する (送信前に呼ぶ)。
+        /// モジュール不在・必須役割の不備・契約が名指ししたフィールドの不在は例外 = 送信させない。
+        /// </summary>
+        /// <remarks>
+        /// **必須以外の役割は空にできる** (= その項目は記録しない)。契約フィールドを置いていない場合は
+        /// 既定の役割名で書くが、既定名のフィールドが無い項目は「記録しない」として扱う
+        /// (必須役割だけは無いとエラー)。
+        /// </remarks>
+        public void Validate()
+        {
+            var design = _designData.Modules.Find(_historyModuleName)
+                ?? throw new InvalidOperationException(
+                    $"Mail history module '{_historyModuleName}' (Mail.HistoryModuleName) does not exist.");
+
+            var contract = MailContracts.History(design);
+            var names = contract ?? new Designs.MailHistoryContractFieldDesign();
+            var problems = new List<string>();
+            foreach (var (role, fieldName) in GetRoles(names))
+            {
+                var required = names.IsRoleRequired(role);
+                if (string.IsNullOrEmpty(fieldName))
+                {
+                    if (required) problems.Add($"{role} (required) is empty");
+                    continue;
+                }
+                if (design.Fields.Any(f => f.Name == fieldName)) continue;
+                //契約が名指ししたフィールドの不在は設定ミス。既定名フォールバックは記録しないだけ (必須は除く)
+                if (required || contract != null) problems.Add($"{role} -> '{fieldName}' does not exist");
+            }
+            if (problems.Count == 0) return;
+
+            throw new InvalidOperationException(
+                $"Mail history module '{_historyModuleName}' does not implement the mail history contract: " +
+                string.Join(", ", problems) +
+                ". Add the fields, or put a MailHistoryContractField on the module and leave the roles you do not record empty.");
+        }
+
+        //役割名 → 記録先フィールド名 (契約フィールドが無い場合は既定名)
+        static IEnumerable<(string Role, string FieldName)> GetRoles(Designs.MailHistoryContractFieldDesign names)
+        {
+            yield return (nameof(names.SentAt), names.SentAt);
+            yield return (nameof(names.MailInfraName), names.MailInfraName);
+            yield return (nameof(names.Subject), names.Subject);
+            yield return (nameof(names.TotalCount), names.TotalCount);
+            yield return (nameof(names.SuccessCount), names.SuccessCount);
+            yield return (nameof(names.FailureDetails), names.FailureDetails);
+            yield return (nameof(names.SourceModule), names.SourceModule);
+            yield return (nameof(names.SourceId), names.SourceId);
+        }
+
         public async Task WriteAsync(string mailInfraName, string subject, MailSendResult result, MailHistorySource? source)
         {
             try
             {
+                //構成の妥当性は送信前の Validate で確認済み (ここに来る時点でモジュールと役割は揃っている)
                 var design = _designData.Modules.Find(_historyModuleName);
                 if (design == null)
                 {

@@ -10,7 +10,7 @@
 
 - **宛先リストの行 = 送る対象そのもの**。「今回はこの人を外す」は行の削除 (または最初から入れない) で行う
 - **配信停止 (オプトアウト) は人の恒久属性**。宛先の人 (リンク先) の Boolean フィールドを
-  `OptOutVariable` で指しておくと、送信時に常にスキップされる (最終安全弁)。
+  宛先契約の `OptOut` で指しておくと、送信時に常にスキップされる (最終安全弁)。
   Salesforce の Email Opt Out (`HasOptedOutOfEmail`) に相当
 
 ### 動作
@@ -41,16 +41,14 @@
 | プロパティ | 型 | 必須 | 説明 |
 |---|---|---|---|
 | Name | string | ○ | フィールド名 |
-| RecipientListFieldName | string | ○ | 宛先リストのフィールド名 (List/DetailList/TileList) |
-| EmailAddressVariable | string | ○ | 宛先モジュールの、メールアドレスを持つ変数。リンクパス可 (`Contact.Email.Value`) |
-| OptOutVariable | string | - | 配信停止 (Boolean) の変数。人側をリンクパスで指すのが典型 (`Contact.メール拒否.Value`) |
+| RecipientListFieldName | string | ○ | 宛先リストのフィールド名 (List/DetailList/TileList)。**その先のモジュールに一斉送信の宛先契約 (BulkMailRecipientContractField) が必要** |
 | SubjectVariable | string | - | 件名テンプレートを持つ自モジュールの変数 (`Title.Value`)。Subject (値) が入っている場合はそちらが優先 |
 | Subject | string | - | 件名テンプレート (デザインに直接書く方)。`{変数}` は宛先行で解決される |
 | BodyVariable | string | - | 本文テンプレートを持つ自モジュールの変数 (`Body.Value`)。Body (値) が入っている場合はそちらが優先 |
 | Body | string | - | 本文テンプレート (デザインに直接書く方・複数行)。`{変数}` は宛先行で解決される |
 | MailInfraName | string | - | 送信先の呼び名 (どの送信インフラで送るか。対応づけはアプリの MailController の対応表)。**省略可**で、省略 (空) なら appsettings の `Mail.DefaultBulkInfraName` → `DefaultInfraName`、それも空ならアプリの既定。「一斉は配信サービス、単発は通知系」の対を appsettings 側で決めておき、フィールドには書かないのが基本形 |
 | IsBodyHtml | bool | - | 本文を HTML として送るか (変数値は HTML エスケープされる) |
-| IsFromCurrentUser | bool | - | ON = 操作ユーザー本人のアドレスが差出人 (サーバーが解決)。OFF = 送信インフラ設定の差出人。**差出人のアドレス指定はできない** (なりすましの構造的排除)。要: デザインの CurrentUser モジュール設定と `Mail.UserEmailFieldName` (既定 "Email") |
+| IsFromCurrentUser | bool | - | ON = 操作ユーザー本人のアドレスが差出人 (サーバーが解決)。OFF = 送信インフラ設定の差出人。**差出人のアドレス指定はできない** (なりすましの構造的排除)。要: 現在のユーザーのモジュールに**差出人契約 (MailSenderContractField)** |
 | ReplyToVariable | string | - | 返信先アドレスの変数 (自モジュールの変数・リンクパス可)。ReplyTo (値) が入っている場合はそちらが優先 |
 | ReplyTo | string | - | 返信先アドレス (値) |
 | ButtonText | string | - | ボタンの表示テキスト。空なら既定の文言 |

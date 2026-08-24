@@ -1,4 +1,4 @@
-using Codeer.LowCode.Blazor.Extras.Designs;
+﻿using Codeer.LowCode.Blazor.Extras.Designs;
 using Codeer.LowCode.Blazor.Repository.Design;
 
 namespace Codeer.LowCode.Blazor.Extras.Mail
@@ -11,5 +11,13 @@ namespace Codeer.LowCode.Blazor.Extras.Mail
     {
         public static MailHistoryContractFieldDesign? History(ModuleDesign? historyModule)
             => historyModule?.Fields.OfType<MailHistoryContractFieldDesign>().FirstOrDefault();
+
+        /// <summary>差出人 (操作ユーザー) モジュールの契約。無ければ null。</summary>
+        public static MailSenderContractFieldDesign? Sender(ModuleDesign? currentUserModule)
+            => currentUserModule?.Fields.OfType<MailSenderContractFieldDesign>().FirstOrDefault();
+
+        /// <summary>一斉送信の宛先モジュールの契約。無ければ null (= そのモジュールは契約を実装していない)。</summary>
+        public static BulkMailRecipientContractFieldDesign? Recipient(ModuleDesign? recipientModule)
+            => recipientModule?.Fields.OfType<BulkMailRecipientContractFieldDesign>().FirstOrDefault();
     }
 }

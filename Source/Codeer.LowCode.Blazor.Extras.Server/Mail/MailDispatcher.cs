@@ -107,6 +107,9 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
             if (!message.To.Any() && !message.Cc.Any() && !message.Bcc.Any())
                 return MailSendResult.Failure(string.Empty, "No recipients.");
 
+            //履歴を取る設定なのに履歴モジュールが契約を満たしていないなら送らない (記録が静かに欠けるのを防ぐ)
+            _historyWriter?.Validate();
+
             var name = ResolveInfraName(mailInfraName);
             var sender = CreateSender(name);
             var sendMessage = string.IsNullOrEmpty(_config.DebugRedirectAllTo) ? message : Redirect(message);
@@ -122,6 +125,8 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
         /// </summary>
         public async Task<MailSendResult> SendBulkAsync(string? mailInfraName, MailBulkTemplate template, List<MailBulkRecipient> recipients, MailHistorySource? source = null)
         {
+            _historyWriter?.Validate();
+
             var name = ResolveBulkInfraName(mailInfraName);
             var sender = CreateSender(name);
             if (recipients.Count > sender.MaxBulkCount)

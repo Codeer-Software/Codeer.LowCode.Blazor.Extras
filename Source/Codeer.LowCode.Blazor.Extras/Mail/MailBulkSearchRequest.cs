@@ -5,6 +5,8 @@ namespace Codeer.LowCode.Blazor.Extras.Mail
     /// <summary>
     /// POST /api/mail/bulk_search のワイヤ形式 (宛先は検索条件からサーバーで解決する。
     /// アドレスはクライアントに渡らない)。
+    /// どの値がアドレス・配信停止かは**宛先行モジュールの BulkMailRecipientContractField** をサーバーが読む
+    /// (クライアントからは指定できない)。
     /// </summary>
     public class MailBulkSearchRequest
     {
@@ -20,10 +22,6 @@ namespace Codeer.LowCode.Blazor.Extras.Mail
         /// <summary>全宛先共通の添付ファイル。</summary>
         public List<MailAttachment> Attachments { get; set; } = new();
         public SearchCondition Condition { get; set; } = new();
-        /// <summary>宛先行モジュールの、メールアドレスを持つ変数。リンクパス ("Contact.Email") と末尾 ".Value" 可。</summary>
-        public string EmailAddressVariable { get; set; } = string.Empty;
-        /// <summary>宛先行モジュールの Boolean 変数。true の行は除外 (配信停止)。表記は EmailAddressVariable と同じ。</summary>
-        public string OptOutVariable { get; set; } = string.Empty;
         public string SourceModule { get; set; } = string.Empty;
         public string SourceId { get; set; } = string.Empty;
         /// <summary>

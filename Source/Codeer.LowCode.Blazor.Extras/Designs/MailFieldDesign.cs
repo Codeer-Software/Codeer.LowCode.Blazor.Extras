@@ -128,6 +128,13 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
             context.CheckFieldVariableExistence(Name, nameof(BodyVariable), BodyVariable).AddTo(result);
             context.CheckFieldVariableExistence(Name, nameof(ReplyToVariable), ReplyToVariable).AddTo(result);
 
+            //「自分を差出人にする」は CurrentUser モジュールの差出人契約からアドレスを解決する
+            if (IsFromCurrentUser)
+            {
+                ContractFieldChecks.CheckCurrentUserModuleImplementsContract<MailSenderContractFieldDesign>(
+                    context, result, Name, nameof(IsFromCurrentUser));
+            }
+
             if (string.IsNullOrEmpty(SubjectVariable) && string.IsNullOrEmpty(Subject) &&
                 string.IsNullOrEmpty(BodyVariable) && string.IsNullOrEmpty(Body))
             {

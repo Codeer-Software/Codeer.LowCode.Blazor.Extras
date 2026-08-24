@@ -31,6 +31,22 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
 
         public override FieldBase CreateField() => new ContractField(this);
 
+        /// <summary>
+        /// 値を「変数」として扱う役割名 (リンクパス可。既定 = 自モジュールのフィールド名として扱う)。
+        /// 宛先の人が別モジュールにいる名簿 (中間テーブル) では "Contact.Email.Value" のように書けるようにする。
+        /// </summary>
+        private protected virtual HashSet<string> VariableRoleNames => new();
+
+        /// <summary>
+        /// 必須の役割名。空にするとデザインチェックエラー。
+        /// ここに無い役割は**空 = その項目は使わない**という宣言 (エラーにしない)。
+        /// 表示名にも「(必須)」を入れて、プロパティを見れば分かるようにしている。
+        /// </summary>
+        private protected virtual HashSet<string> RequiredRoleNames => new();
+
+        /// <summary>その役割が必須か (空にできないか)。機能側 (エンジン) の実行時検証でも使う。</summary>
+        public bool IsRoleRequired(string roleName) => RequiredRoleNames.Contains(roleName);
+
         /// <summary>役割プロパティ (プロパティ名 = 役割名) の一覧。チェックとリネーム追従で使う。</summary>
         internal IEnumerable<System.Reflection.PropertyInfo> GetRoleProperties()
             => GetType().GetProperties()
@@ -54,11 +70,26 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
                 });
             }
 
-            //役割のフィールドが自モジュールに存在すること (=このモジュールが契約を実装していること)
+            //役割のフィールド(または変数)が自モジュールから解決できること (=このモジュールが契約を実装していること)。
+            //必須でない役割は空にできる (= その項目は使わない)
             foreach (var role in GetRoleProperties())
             {
                 var fieldName = role.GetValue(this)?.ToString() ?? string.Empty;
-                context.CheckFieldFieldExistence(Name, role.Name, fieldName).AddTo(result);
+                if (string.IsNullOrEmpty(fieldName))
+                {
+                    if (!RequiredRoleNames.Contains(role.Name)) continue;
+                    result.Add(new FieldDesignCheckInfo
+                    {
+                        Location = new FieldDesignDataLocation
+                        { Module = context.OwnerModule, Field = Name, Member = role.Name },
+                        Message = string.Format(Properties.Resources.ContractCheck_RoleRequiredFormat, role.Name),
+                    });
+                    continue;
+                }
+                if (VariableRoleNames.Contains(role.Name))
+                    context.CheckFieldVariableExistence(Name, role.Name, fieldName).AddTo(result);
+                else
+                    context.CheckFieldFieldExistence(Name, role.Name, fieldName).AddTo(result);
             }
             return result;
         }
@@ -69,7 +100,10 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
             foreach (var role in GetRoleProperties())
             {
                 var current = role.GetValue(this)?.ToString() ?? string.Empty;
-                builder.AddField(current, x => role.SetValue(this, x));
+                if (VariableRoleNames.Contains(role.Name))
+                    builder.AddVariable(current, x => role.SetValue(this, x));
+                else
+                    builder.AddField(current, x => role.SetValue(this, x));
             }
             return builder.Build();
         }
@@ -77,34 +111,6 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         //役割が一覧フィールドであること + 一覧の先のモジュールが指定の契約を実装していることのチェック
         private protected void CheckListRole<TContract>(DesignCheckContext context, List<DesignCheckInfo> result,
             string roleName, string fieldName) where TContract : ContractFieldDesignBase
-        {
-            var ownModule = context.DesignData.Modules.Find(context.OwnerModule);
-            var field = ownModule?.Fields.FirstOrDefault(e => e.Name == fieldName);
-            if (field == null) return; //不在は役割チェックが指摘済み
-
-            if (field is not IListFieldDesign list)
-            {
-                result.Add(new FieldDesignCheckInfo
-                {
-                    Location = new FieldDesignDataLocation
-                    { Module = context.OwnerModule, Field = Name, Member = roleName },
-                    Message = string.Format(Properties.Resources.ApprovalCheck_RoleMustBeListFormat, fieldName),
-                });
-                return;
-            }
-
-            var targetModule = context.DesignData.Modules.Find(list.SearchCondition.ModuleName);
-            if (targetModule == null) return; //一覧側のモジュール不在チェックが指摘する
-            if (!targetModule.Fields.OfType<TContract>().Any())
-            {
-                result.Add(new FieldDesignCheckInfo
-                {
-                    Location = new FieldDesignDataLocation
-                    { Module = context.OwnerModule, Field = Name, Member = roleName },
-                    Message = string.Format(Properties.Resources.ApprovalCheck_ContractFieldMissingFormat,
-                        targetModule.Name, typeof(TContract).Name),
-                });
-            }
-        }
+            => ContractFieldChecks.CheckListImplementsContract<TContract>(context, result, Name, roleName, fieldName);
     }
 }

@@ -16,7 +16,9 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
     /// 同一モジュール上のリストフィールド (List/DetailList/TileList) を宛先リストとして参照し、
     /// そのリストの検索条件に合致する全行 (ページング無視) へサーバー解決で一斉送信する
     /// (アドレスはクライアントに渡らず、読み取り権限・行条件が効く)。
-    /// 宛先リストの行 = 送る対象そのもの (精査は行の追加/削除で行う)。配信停止は OptOutVariable (人側の属性が典型)。
+    /// 宛先リストの行 = 送る対象そのもの (精査は行の追加/削除で行う)。
+    /// **宛先アドレス・配信停止は行モジュール側の BulkMailRecipientContractField で宣言する**
+    /// (このフィールドには持たない = 基準モジュールの違う設定が混ざらない)。
     /// 件名・本文は自モジュールのフィールドをテンプレートとして参照できるため、配信レコードごとに文面を変えられる。
     /// テンプレートの {変数} は宛先行で解決される ({Name.Value} / {Contact.Email.Value} などのリンクパス可)。
     /// DbColumn を設定すると送信結果サマリ (JSON) がこのレコードの列に書き戻される (サーバー内部経路)。
@@ -39,22 +41,6 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         [Designer(Index = 2, CandidateType = CandidateType.Field, DisplayName = "$BulkMailRecipientListFieldName")]
         [TargetFieldType(Types = [typeof(ListFieldDesignBase)])]
         public string RecipientListFieldName { get; set; } = string.Empty;
-
-        /// <summary>宛先モジュールの、メールアドレスを持つ変数 ("Email.Value")。リンクパス可 ("Contact.Email.Value")。</summary>
-        [Designer(Index = 3, CandidateType = CandidateType.Variable, DisplayName = "$BulkMailEmailAddressVariable")]
-        [ModuleMember(Member = "SearchCondition.ModuleName")]
-        [RelativeField(Property = nameof(RecipientListFieldName))]
-        public string EmailAddressVariable { get; set; } = string.Empty;
-
-        /// <summary>
-        /// 配信停止 (オプトアウト) の Boolean 変数。true の行には送らない (最終安全弁)。空なら判定なし。
-        /// 人の恒久属性をリンクパスで指すのが典型 ("Contact.メール拒否.Value")。
-        /// なお「今回のキャンペーンの対象から外す」は名簿の行を削除するのが正道 (このフラグの用途ではない)。
-        /// </summary>
-        [Designer(Index = 4, CandidateType = CandidateType.Variable, DisplayName = "$BulkMailOptOutVariable")]
-        [ModuleMember(Member = "SearchCondition.ModuleName")]
-        [RelativeField(Property = nameof(RecipientListFieldName))]
-        public string OptOutVariable { get; set; } = string.Empty;
 
         /// <summary>件名テンプレートを持つ自モジュールの変数 ("Title.Value")。Subject (値) が入っている場合はそちらが優先。</summary>
         [Designer(Index = 5, CandidateType = CandidateType.Variable, DisplayName = "$MailFieldSubjectVariable")]
@@ -130,19 +116,21 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
             context.CheckFieldFieldExistence(Name, nameof(RecipientListFieldName), RecipientListFieldName).AddTo(result);
             context.CheckFieldFieldInstanceType(Name, nameof(RecipientListFieldName), RecipientListFieldName, typeof(ListFieldDesignBase)).AddTo(result);
 
-            //宛先アドレスは必須。宛先モジュールの変数(リンクパス可)として検証する
-            if (string.IsNullOrEmpty(EmailAddressVariable))
-            {
-                result.Add(CreateCheckInfo(context, nameof(EmailAddressVariable), Properties.Resources.BulkMailEmailAddressVariableRequired));
-            }
-            var targetModuleName = GetTargetModuleName(context);
-            CheckRecipientVariable(context, nameof(EmailAddressVariable), targetModuleName, EmailAddressVariable).AddTo(result);
-            CheckRecipientVariable(context, nameof(OptOutVariable), targetModuleName, OptOutVariable).AddTo(result);
+            //宛先アドレス・配信停止は行モジュールの宛先契約が宣言する。契約が無ければエラー
+            ContractFieldChecks.CheckListImplementsContract<BulkMailRecipientContractFieldDesign>(context, result,
+                Name, nameof(RecipientListFieldName), RecipientListFieldName);
 
             //テンプレートは変数参照(自モジュール)を検証。固定文字列とどちらも空なら知らせる
             context.CheckFieldVariableExistence(Name, nameof(SubjectVariable), SubjectVariable).AddTo(result);
             context.CheckFieldVariableExistence(Name, nameof(BodyVariable), BodyVariable).AddTo(result);
             context.CheckFieldVariableExistence(Name, nameof(ReplyToVariable), ReplyToVariable).AddTo(result);
+
+            //「自分を差出人にする」は CurrentUser モジュールの差出人契約からアドレスを解決する
+            if (IsFromCurrentUser)
+            {
+                ContractFieldChecks.CheckCurrentUserModuleImplementsContract<MailSenderContractFieldDesign>(
+                    context, result, Name, nameof(IsFromCurrentUser));
+            }
             if (string.IsNullOrEmpty(SubjectVariable) && string.IsNullOrEmpty(Subject) &&
                 string.IsNullOrEmpty(BodyVariable) && string.IsNullOrEmpty(Body))
             {
@@ -153,20 +141,12 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
 
         public override RenameResult ChangeName(RenameContext context)
         {
-            var builder = context.Builder(base.ChangeName(context))
+            return context.Builder(base.ChangeName(context))
                 .AddField(RecipientListFieldName, x => RecipientListFieldName = x)
                 .AddVariable(SubjectVariable, x => SubjectVariable = x)
                 .AddVariable(BodyVariable, x => BodyVariable = x)
-                .AddVariable(ReplyToVariable, x => ReplyToVariable = x);
-
-            //宛先モジュールの単純変数はリネーム追従する(リンクパスは非追従=既存のリンク越し変数と同じ制限)
-            var targetModuleName = (context.GetFieldDesign(RecipientListFieldName) as IListFieldDesign)?.SearchCondition.ModuleName;
-            if (!string.IsNullOrEmpty(targetModuleName))
-            {
-                builder.AddVariable(targetModuleName, EmailAddressVariable, x => EmailAddressVariable = x)
-                    .AddVariable(targetModuleName, OptOutVariable, x => OptOutVariable = x);
-            }
-            return builder.Build();
+                .AddVariable(ReplyToVariable, x => ReplyToVariable = x)
+                .Build();
         }
 
         string GetTargetModuleName(DesignCheckContext context)

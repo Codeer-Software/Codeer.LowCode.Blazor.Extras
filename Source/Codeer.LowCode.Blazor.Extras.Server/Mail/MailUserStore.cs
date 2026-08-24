@@ -1,7 +1,10 @@
-﻿using Codeer.LowCode.Blazor.DataIO.Db;
-using Codeer.LowCode.Blazor.DesignLogic;
+﻿using Codeer.LowCode.Blazor.DesignLogic;
 using Codeer.LowCode.Blazor.Extras.Designs;
+using Codeer.LowCode.Blazor.Extras.Mail;
+using Codeer.LowCode.Blazor.Repository;
+using Codeer.LowCode.Blazor.Repository.Data;
 using Codeer.LowCode.Blazor.Repository.Design;
+using Codeer.LowCode.Blazor.Repository.Match;
 
 namespace Codeer.LowCode.Blazor.Extras.Server.Mail
 {
@@ -16,21 +19,27 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
     /// ユーザーモジュール (デザインの AppSettings.CurrentUserModuleDesignName = CurrentUser のモジュール) の検索。
     /// ①操作ユーザーの差出人情報 (「自分を差出人にする」= IsFromCurrentUser)、
     /// ②GmailApi ユーザー同意モードのユーザー単位トークン (差出人アドレス → GmailTokenField 列)。
-    /// トークン列は書き込み専用 (クライアントに返さない) のため、通常のデータ取得経路ではなく
-    /// サーバー内部の SQL で直接読む。
     /// </summary>
+    /// <remarks>
+    /// 読み取りは**製品のデータ層 (ModuleDataIO のシステム内部経路)** を通す。生 SQL は書かない。
+    /// トークン列は書き込み専用 (クライアントに返さない) なので、書き込み専用列も読める
+    /// システム内部経路 (GetSystemRecordsAsync) をテンプレートが結線する。
+    /// </remarks>
     public class MailUserStore
     {
         readonly DesignData _designData;
-        readonly MailConfig _config;
-        readonly IDbAccessor _dbAccessor;
+        readonly Func<SearchCondition, Task<List<ModuleData>>> _getSystemRecordsAsync;
         readonly Action<string> _logError;
 
-        public MailUserStore(DesignData designData, MailConfig config, IDbAccessor dbAccessor, Action<string> logError)
+        /// <param name="getSystemRecordsAsync">
+        /// システムの記録用の読み取り (認可を通さず書き込み専用列も読む)。
+        /// テンプレートの CustomizedModuleDataIO が ModuleDataIO.GetSystemRecordsAsync を公開して渡す。
+        /// </param>
+        public MailUserStore(DesignData designData,
+            Func<SearchCondition, Task<List<ModuleData>>> getSystemRecordsAsync, Action<string> logError)
         {
             _designData = designData;
-            _config = config;
-            _dbAccessor = dbAccessor;
+            _getSystemRecordsAsync = getSystemRecordsAsync;
             _logError = logError;
         }
 
@@ -45,26 +54,29 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
             {
                 var module = FindUserModule();
                 if (module == null) return null;
-                var idColumn = GetColumn(module, SystemFieldNames.Id);
-                var emailColumn = GetColumn(module, _config.UserEmailFieldName);
-                if (string.IsNullOrEmpty(idColumn) || string.IsNullOrEmpty(emailColumn))
-                {
-                    _logError($"Mail.UserEmailFieldName '{_config.UserEmailFieldName}' is not resolvable on module '{module.Name}'.");
-                    return null;
-                }
-                var nameColumn = GetColumn(module, _config.UserNameFieldName);
-                var select = string.IsNullOrEmpty(nameColumn) ? emailColumn : $"{emailColumn}, {nameColumn}";
+                var contract = FindContract(module);
+                if (contract == null) return null;
 
-                var rows = await _dbAccessor.QueryAsync(module.DataSourceName,
-                    $"select {select} from {module.DbTable} where {idColumn} = @userId",
-                    new Dictionary<string, ParamAndRawDbTypeName> { ["userId"] = new() { Value = userId } });
-                var row = rows.FirstOrDefault();
-                var email = row?.Values.FirstOrDefault()?.ToString();
+                var selectFields = new List<string> { SystemFieldNames.Id, GetFieldPath(contract.Email) };
+                if (!string.IsNullOrEmpty(contract.DisplayName)) selectFields.Add(GetFieldPath(contract.DisplayName));
+                var row = (await _getSystemRecordsAsync(new SearchCondition
+                {
+                    ModuleName = module.Name,
+                    Condition = new FieldValueMatchCondition
+                    {
+                        SearchTargetVariable = $"{SystemFieldNames.Id}.Value",
+                        Comparison = MatchComparison.Equal,
+                        Value = MultiTypeValue.Create(userId),
+                    },
+                    SelectFields = selectFields,
+                })).FirstOrDefault();
+
+                var email = GetText(row, contract.Email);
                 if (string.IsNullOrEmpty(email)) return null;
                 return new MailCurrentUser
                 {
                     Email = email,
-                    DisplayName = row!.Values.Skip(1).FirstOrDefault()?.ToString() ?? string.Empty,
+                    DisplayName = GetText(row, contract.DisplayName) ?? string.Empty,
                 };
             }
             catch (Exception ex)
@@ -95,19 +107,22 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
                 if (tokenFields.Count > 1)
                     _logError($"Module '{module.Name}' has {tokenFields.Count} GmailTokenFields. The first one ('{tokenFields[0].Name}') is used.");
 
-                var emailColumn = GetColumn(module, _config.UserEmailFieldName);
-                var tokenColumn = tokenFields[0].DbColumnToken;
-                if (string.IsNullOrEmpty(emailColumn) || string.IsNullOrEmpty(tokenColumn))
-                {
-                    _logError($"Mail.UserEmailFieldName '{_config.UserEmailFieldName}' or the token column of '{tokenFields[0].Name}' is not resolvable on module '{module.Name}'.");
-                    return null;
-                }
+                var contract = FindContract(module);
+                if (contract == null) return null;
 
-                var rows = await _dbAccessor.QueryAsync(module.DataSourceName,
-                    $"select {tokenColumn} from {module.DbTable} where {emailColumn} = @mailAddress",
-                    new Dictionary<string, ParamAndRawDbTypeName> { ["mailAddress"] = new() { Value = mailAddress } });
-                var token = rows.Select(e => e.Values.FirstOrDefault()?.ToString())
-                    .FirstOrDefault(e => !string.IsNullOrEmpty(e));
+                var row = (await _getSystemRecordsAsync(new SearchCondition
+                {
+                    ModuleName = module.Name,
+                    Condition = new FieldValueMatchCondition
+                    {
+                        SearchTargetVariable = contract.Email,
+                        Comparison = MatchComparison.Equal,
+                        Value = MultiTypeValue.Create(mailAddress),
+                    },
+                    SelectFields = new List<string> { SystemFieldNames.Id, tokenFields[0].Name },
+                })).FirstOrDefault();
+
+                var token = (row?.Fields.GetValueOrDefault(tokenFields[0].Name) as Data.GmailTokenFieldData)?.RefreshToken;
                 if (string.IsNullOrEmpty(token)) return null;
 
                 //列は暗号化して保存されている (GmailTokenHelper)。
@@ -136,9 +151,22 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
             return module;
         }
 
-        static string? GetColumn(ModuleDesign module, string fieldName)
-            => string.IsNullOrEmpty(fieldName)
+        //アドレス・表示名は CurrentUser モジュールに置いた差出人契約 (MailSenderContractField) が宣言する
+        Designs.MailSenderContractFieldDesign? FindContract(ModuleDesign module)
+        {
+            var contract = Extras.Mail.MailContracts.Sender(module);
+            if (contract == null)
+                _logError($"The current user module '{module.Name}' does not implement the mail sender contract. " +
+                    "Put a MailSenderContractField on it and declare the mail address.");
+            return contract;
+        }
+
+        //変数 ("Email.Value" / "Employee.Email.Value") のフィールド部分 (SelectFields とデータのキー)
+        static string GetFieldPath(string variable) => new VariableName(variable).FieldName.FullName;
+
+        static string? GetText(ModuleData? row, string? variable)
+            => string.IsNullOrEmpty(variable)
                 ? null
-                : (module.Fields.FirstOrDefault(e => e.Name == fieldName) as DbValueFieldDesignBase)?.DbColumn;
+                : (row?.Fields.GetValueOrDefault(GetFieldPath(variable)) as ValueFieldDataBase<string>)?.Value;
     }
 }

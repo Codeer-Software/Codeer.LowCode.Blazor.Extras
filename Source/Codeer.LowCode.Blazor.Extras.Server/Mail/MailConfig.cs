@@ -29,17 +29,6 @@
         public string HistoryModuleName { get; set; } = string.Empty;
 
         /// <summary>
-        /// ユーザーモジュールの、メールアドレスを持つフィールド名 (既定 "Email")。
-        /// 「自分を差出人にする」(IsFromCurrentUser) と Gmail のユーザー単位トークン検索が使う。
-        /// ユーザーモジュール自体はデザインの設定 (AppSettings.CurrentUserModuleDesignName = CurrentUser のモジュール)
-        /// なので指定しない。空 = どちらの機能も使わない。
-        /// </summary>
-        public string UserEmailFieldName { get; set; } = "Email";
-
-        /// <summary>ユーザーモジュールの、表示名を持つフィールド名 (既定 "Name")。空 = 差出人表示名なし。</summary>
-        public string UserNameFieldName { get; set; } = "Name";
-
-        /// <summary>
         /// 単発送信で呼び名が省略されたときの既定 (例: "GraphApi")。
         /// この文字列を解釈するのはテンプレートの対応表なので、アプリが好きな呼び名を付けられる。
         /// 空でもよい (空のまま対応表に渡され、対応表の既定が答える)。

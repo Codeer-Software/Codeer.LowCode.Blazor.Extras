@@ -1211,21 +1211,99 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
             }
         }
 
+        internal static string MailSenderContractField {
+            get {
+                return ResourceManager.GetString("MailSenderContractField", resourceCulture);
+            }
+        }
+
+        internal static string MailSenderContractEmail {
+            get {
+                return ResourceManager.GetString("MailSenderContractEmail", resourceCulture);
+            }
+        }
+
+        internal static string MailSenderContractDisplayName {
+            get {
+                return ResourceManager.GetString("MailSenderContractDisplayName", resourceCulture);
+            }
+        }
+
+        internal static string BulkMailRecipientContractField {
+            get {
+                return ResourceManager.GetString("BulkMailRecipientContractField", resourceCulture);
+            }
+        }
+
+        internal static string ContractCheck_RoleRequiredFormat {
+            get {
+                return ResourceManager.GetString("ContractCheck_RoleRequiredFormat", resourceCulture);
+            }
+        }
+
+        internal static string BulkMailRecipientContractEmail {
+            get {
+                return ResourceManager.GetString("BulkMailRecipientContractEmail", resourceCulture);
+            }
+        }
+
+        internal static string BulkMailRecipientContractOptOut {
+            get {
+                return ResourceManager.GetString("BulkMailRecipientContractOptOut", resourceCulture);
+            }
+        }
+
+        internal static string MailHistoryContractSentAt {
+            get {
+                return ResourceManager.GetString("MailHistoryContractSentAt", resourceCulture);
+            }
+        }
+
+        internal static string MailHistoryContractMailInfraName {
+            get {
+                return ResourceManager.GetString("MailHistoryContractMailInfraName", resourceCulture);
+            }
+        }
+
+        internal static string MailHistoryContractSubject {
+            get {
+                return ResourceManager.GetString("MailHistoryContractSubject", resourceCulture);
+            }
+        }
+
+        internal static string MailHistoryContractTotalCount {
+            get {
+                return ResourceManager.GetString("MailHistoryContractTotalCount", resourceCulture);
+            }
+        }
+
+        internal static string MailHistoryContractSuccessCount {
+            get {
+                return ResourceManager.GetString("MailHistoryContractSuccessCount", resourceCulture);
+            }
+        }
+
+        internal static string MailHistoryContractFailureDetails {
+            get {
+                return ResourceManager.GetString("MailHistoryContractFailureDetails", resourceCulture);
+            }
+        }
+
+        internal static string MailHistoryContractSourceModule {
+            get {
+                return ResourceManager.GetString("MailHistoryContractSourceModule", resourceCulture);
+            }
+        }
+
+        internal static string MailHistoryContractSourceId {
+            get {
+                return ResourceManager.GetString("MailHistoryContractSourceId", resourceCulture);
+            }
+        }
+
         internal static string BulkMailRecipientListFieldName {
             get {
                 return ResourceManager.GetString("BulkMailRecipientListFieldName", resourceCulture);
-            }
-        }
-
-        internal static string BulkMailEmailAddressVariable {
-            get {
-                return ResourceManager.GetString("BulkMailEmailAddressVariable", resourceCulture);
-            }
-        }
-
-        internal static string BulkMailOptOutVariable {
-            get {
-                return ResourceManager.GetString("BulkMailOptOutVariable", resourceCulture);
             }
         }
 
@@ -1244,12 +1322,6 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
         internal static string BulkMailRecipientListFieldRequired {
             get {
                 return ResourceManager.GetString("BulkMailRecipientListFieldRequired", resourceCulture);
-            }
-        }
-
-        internal static string BulkMailEmailAddressVariableRequired {
-            get {
-                return ResourceManager.GetString("BulkMailEmailAddressVariableRequired", resourceCulture);
             }
         }
 

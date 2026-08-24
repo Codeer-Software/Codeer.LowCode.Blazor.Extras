@@ -37,6 +37,10 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         {
             var result = base.CheckDesign(context);
             context.CheckFieldDbColumnExistence(Name, nameof(DbColumnToken), DbColumnToken).AddTo(result);
+
+            //送信時は差出人アドレスでこのモジュールを引く = 差出人契約でアドレスが宣言されていること
+            ContractFieldChecks.CheckCurrentUserModuleImplementsContract<MailSenderContractFieldDesign>(
+                context, result, Name, nameof(Name));
             return result;
         }
     }

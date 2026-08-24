@@ -23,8 +23,15 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
         {
             var design = designData.Modules.Find(request.Condition.ModuleName)
                 ?? throw new InvalidOperationException($"Module '{request.Condition.ModuleName}' does not exist.");
-            if (string.IsNullOrEmpty(request.EmailAddressVariable))
-                throw new InvalidOperationException("EmailAddressVariable is required for search-based bulk send.");
+
+            //どの値がアドレス・配信停止かは宛先(行)モジュールの契約が宣言する (クライアントからは指定できない)
+            var contract = MailContracts.Recipient(design)
+                ?? throw new InvalidOperationException(
+                    $"Module '{design.Name}' does not implement the mail recipient contract. " +
+                    "Put a BulkMailRecipientContractField on it and declare the mail address.");
+            if (string.IsNullOrEmpty(contract.Email))
+                throw new InvalidOperationException(
+                    $"The mail address role of the recipient contract on '{design.Name}' is empty.");
 
             //テンプレ変数+宛先/除外+Idだけ取得する。
             //リンクパス("Contact.Email")はルートの FK を取得し、リンク先は後段で一括解決する
@@ -34,8 +41,8 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
                 .Where(e => design.Fields.Any(f => f.Name == new FieldName(e).Root))
                 .Concat(new[]
                 {
-                    MailVariableResolver.ParseToken(request.EmailAddressVariable).FieldPath,
-                    MailVariableResolver.ParseToken(request.OptOutVariable).FieldPath,
+                    MailVariableResolver.ParseToken(contract.Email).FieldPath,
+                    MailVariableResolver.ParseToken(contract.OptOut).FieldPath,
                 })
                 .Where(e => !string.IsNullOrEmpty(e))
                 .Distinct().ToList();
@@ -50,7 +57,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
             await MailLinkPathLoader.LoadAsync(moduleDataIO, designData, design, rows, paths);
 
             var recipients = rows
-                .Select(row => MailRecipientBuilder.TryBuild(design, row, request.EmailAddressVariable, request.OptOutVariable, names,
+                .Select(row => MailRecipientBuilder.TryBuild(design, row, contract.Email, contract.OptOut, names,
                     designData.Modules.Find))
                 .Where(e => e != null)
                 .Select(e => e!)
