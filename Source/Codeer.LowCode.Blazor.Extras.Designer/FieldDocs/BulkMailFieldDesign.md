@@ -46,7 +46,7 @@
 | Subject | string | - | 件名テンプレート (デザインに直接書く方)。`{変数}` は宛先行で解決される |
 | BodyVariable | string | - | 本文テンプレートを持つ自モジュールの変数 (`Body.Value`)。Body (値) が入っている場合はそちらが優先 |
 | Body | string | - | 本文テンプレート (デザインに直接書く方・複数行)。`{変数}` は宛先行で解決される |
-| MailInfraName | string | - | 送信先の呼び名 (どの送信インフラで送るか。対応づけはアプリの MailController の対応表)。**省略可**で、省略 (空) なら appsettings の `Mail.DefaultBulkInfraName` → `DefaultInfraName`、それも空ならアプリの既定。「一斉は配信サービス、単発は通知系」の対を appsettings 側で決めておき、フィールドには書かないのが基本形 |
+| MailInfraName | string | - | 送信先の呼び名 (どの送信インフラで送るか。対応づけはアプリの MailController の対応表)。**省略可**で、省略 (空) なら appsettings の `Mail.DefaultBulkInfraName` → `DefaultInfraName` (どれも空なら「呼び名未指定」の送信エラー)。「一斉は配信サービス、単発は通知系」の対を appsettings 側で決めておき、フィールドには書かないのが基本形 |
 | IsBodyHtml | bool | - | 本文を HTML として送るか (変数値は HTML エスケープされる) |
 | IsFromCurrentUser | bool | - | ON = 操作ユーザー本人のアドレスが差出人 (サーバーが解決)。OFF = 送信インフラ設定の差出人。**差出人のアドレス指定はできない** (なりすましの構造的排除)。要: 現在のユーザーのモジュールに**差出人契約 (MailSenderContractField)** |
 | ReplyToVariable | string | - | 返信先アドレスの変数 (自モジュールの変数・リンクパス可)。ReplyTo (値) が入っている場合はそちらが優先 |

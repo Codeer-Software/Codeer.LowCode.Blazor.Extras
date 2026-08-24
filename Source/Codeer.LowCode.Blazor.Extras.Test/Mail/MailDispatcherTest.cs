@@ -30,9 +30,10 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Mail
         static (MailDispatcher dispatcher, FakeMailSender fake) Create(string debugRedirectAllTo = "", int maxBulkCount = 10000)
         {
             var fake = new FakeMailSender { MaxBulkCount = maxBulkCount };
-            var config = new MailConfig { DebugRedirectAllTo = debugRedirectAllTo };
-            //テンプレートの対応表に相当。呼び名が空 = 既定
-            return (new MailDispatcher(config, name => name is "Main" or "" ? fake : null), fake);
+            //呼び名の省略は appsettings の既定で解決する (空のまま対応表に渡ることはない)
+            var config = new MailConfig { DebugRedirectAllTo = debugRedirectAllTo, DefaultInfraName = "Main" };
+            //テンプレートの対応表に相当
+            return (new MailDispatcher(config, name => name == "Main" ? fake : null), fake);
         }
 
         [Test]
@@ -64,11 +65,21 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Mail
         }
 
         [Test]
-        public void CreateSender_呼び名が空で対応表が既定を返さないならエラー()
+        public void CreateSender_呼び名が空なら対応表を呼ばずにエラー()
         {
-            //設定ミスを黙って別のインフラで送らない (以前の「先頭に落とす」挙動は廃止)
-            var dispatcher = new MailDispatcher(new MailConfig(), _ => null);
-            Assert.That(() => dispatcher.CreateSender(string.Empty), Throws.InvalidOperationException);
+            //設定ミスを黙って別のインフラで送らない (以前の「先頭に落とす」挙動は廃止)。
+            //対応表が空を引き受けても (旧テンプレの "Smtp" or "") それには従わない =
+            //設定漏れが別インフラのエラーに化けない
+            var called = new List<string>();
+            var dispatcher = new MailDispatcher(new MailConfig(), name =>
+            {
+                called.Add(name);
+                return new FakeMailSender();
+            });
+
+            Assert.That(() => dispatcher.CreateSender(string.Empty),
+                Throws.InvalidOperationException.With.Message.Contains("Mail.DefaultInfraName"));
+            Assert.That(called, Is.Empty);
         }
 
         [Test]
@@ -199,11 +210,51 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Mail
         }
 
         [Test]
-        public void 対応表が知らない呼び名で送るとエラー()
+        public async Task 対応表が知らない呼び名で送ると呼び名がわかる失敗になる()
         {
             var dispatcher = new MailDispatcher(new MailConfig(), _ => null);
-            Assert.That(async () => await dispatcher.SendAsync("X", new MailMessage { To = { "a@example.com" } }),
-                Throws.InvalidOperationException);
+            var result = await dispatcher.SendAsync("X", new MailMessage { To = { "a@example.com" } });
+
+            Assert.That(result.IsSuccess, Is.False);
+            //スクリプトの戻り値・トーストに出るので、名前と直し場所が文言に入っている
+            Assert.That(result.Failures.Single().Error, Does.Contain("'X'").And.Contain("MailSenderTable"));
+        }
+
+        [Test]
+        public async Task 呼び名も既定も空で送ると設定漏れがわかる失敗になる()
+        {
+            //対応表が空を引き受ける実装でも、空は対応表に渡らない (SMTP未設定などの別エラーに化けない)
+            var dispatcher = new MailDispatcher(new MailConfig(), _ => new FakeMailSender());
+            var result = await dispatcher.SendAsync(null, new MailMessage { To = { "a@example.com" } });
+
+            Assert.That(result.IsSuccess, Is.False);
+            Assert.That(result.Failures.Single().To, Is.EqualTo("a@example.com"));
+            Assert.That(result.Failures.Single().Error,
+                Does.Contain("MailInfraName").And.Contain("Mail.DefaultInfraName"));
+        }
+
+        [Test]
+        public async Task SendBulk_呼び名も既定も空なら宛先ごとに設定漏れの失敗になる()
+        {
+            var dispatcher = new MailDispatcher(new MailConfig(), _ => new FakeMailSender());
+            var recipients = Enumerable.Range(0, 3).Select(i => new MailBulkRecipient { To = $"user{i}@example.com" }).ToList();
+            var result = await dispatcher.SendBulkAsync(null, new MailBulkTemplate(), recipients);
+
+            Assert.That(result.TotalCount, Is.EqualTo(3));
+            Assert.That(result.SuccessCount, Is.Zero);
+            Assert.That(result.Failures.Select(e => e.To),
+                Is.EqualTo(new[] { "user0@example.com", "user1@example.com", "user2@example.com" }));
+            Assert.That(result.Failures[0].Error, Does.Contain("Mail.DefaultBulkInfraName"));
+        }
+
+        [Test]
+        public async Task SendBulk_宛先0件でも呼び名未指定は成功にしない()
+        {
+            var dispatcher = new MailDispatcher(new MailConfig(), _ => new FakeMailSender());
+            var result = await dispatcher.SendBulkAsync(null, new MailBulkTemplate(), new List<MailBulkRecipient>());
+
+            Assert.That(result.IsSuccess, Is.False);
+            Assert.That(result.Failures.Single().Error, Does.Contain("Mail.DefaultInfraName"));
         }
 
         //================= 差出人 (IsFromCurrentUser = 自分を差出人にする) =================
@@ -211,7 +262,8 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Mail
         static (MailDispatcher dispatcher, FakeMailSender fake) CreateWithCurrentUser(MailCurrentUser? user)
         {
             var fake = new FakeMailSender();
-            return (new MailDispatcher(new MailConfig(), _ => fake, currentUserResolver: () => Task.FromResult(user)), fake);
+            return (new MailDispatcher(new MailConfig { DefaultInfraName = "Main" }, _ => fake,
+                currentUserResolver: () => Task.FromResult(user)), fake);
         }
 
         [Test]
@@ -263,7 +315,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Mail
         public async Task From_リダイレクト時も維持される()
         {
             var fake = new FakeMailSender();
-            var config = new MailConfig { DebugRedirectAllTo = "test@example.com" };
+            var config = new MailConfig { DebugRedirectAllTo = "test@example.com", DefaultInfraName = "Main" };
             var dispatcher = new MailDispatcher(config, _ => fake,
                 currentUserResolver: () => Task.FromResult<MailCurrentUser?>(new() { Email = "sales@example.com" }));
 

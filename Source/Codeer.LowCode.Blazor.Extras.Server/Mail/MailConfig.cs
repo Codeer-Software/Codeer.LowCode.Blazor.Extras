@@ -31,12 +31,14 @@
         /// <summary>
         /// 単発送信で呼び名が省略されたときの既定 (例: "GraphApi")。
         /// この文字列を解釈するのはテンプレートの対応表なので、アプリが好きな呼び名を付けられる。
-        /// 空でもよい (空のまま対応表に渡され、対応表の既定が答える)。
+        /// フィールドの MailInfraName もこれも空なら**送信は「呼び名未指定」エラー**
+        /// (空のまま対応表に渡して既定を推測させることはしない)。
         /// </summary>
         public string DefaultInfraName { get; set; } = string.Empty;
 
         /// <summary>
-        /// 一斉送信で呼び名が省略されたときの既定 (例: "SendGrid")。空 = <see cref="DefaultInfraName"/>。
+        /// 一斉送信で呼び名が省略されたときの既定 (例: "SendGrid")。空 = <see cref="DefaultInfraName"/>
+        /// (それも空なら「呼び名未指定」エラー)。
         /// 「単発は通知系、一斉は配信サービス」の対をこの2つで固定する。
         /// </summary>
         public string DefaultBulkInfraName { get; set; } = string.Empty;

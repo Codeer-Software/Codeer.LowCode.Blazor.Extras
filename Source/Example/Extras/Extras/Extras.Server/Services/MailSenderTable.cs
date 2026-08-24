@@ -11,7 +11,9 @@ namespace Extras.Server.Services
     /// Program.cs が個別に読んでいる ("Mail" は製品が読む共通設定)。
     /// 独自インフラ (社内メールGW 等) を使うときは <see cref="IMailSender"/> を実装して
     /// この switch に1行足す (設定もこのアプリの appsettings に好きな形で置ける)。
-    /// null を返すと「そのインフラは未設定」エラーになる (黙って別のインフラで送らない)。
+    /// null を返すと「その呼び名は対応表に無い」エラーになる (黙って別のインフラで送らない)。
+    /// 呼び名が空のケースはここには来ない (製品側が「呼び名未指定」エラーにする)。
+    /// アプリの既定は appsettings の Mail.DefaultInfraName / DefaultBulkInfraName で決める。
     /// </remarks>
     public static class MailSenderTable
     {
@@ -23,8 +25,7 @@ namespace Extras.Server.Services
                 "GraphApi" => new GraphApiMailSender(config.GraphApi),
                 "SendGrid" => new SendGridMailSender(config.SendGrid),
                 "Gmail" => new GmailApiMailSender(config.Gmail, userRefreshTokenResolver: gmailUserTokenResolver),
-                //呼び名の省略 (空) はここに来る = このアプリの既定
-                "Smtp" or "" => new SmtpMailSender(config.Smtp),
+                "Smtp" => new SmtpMailSender(config.Smtp),
                 _ => null,
             };
         }

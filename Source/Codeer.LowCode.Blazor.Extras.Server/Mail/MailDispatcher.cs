@@ -30,7 +30,8 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
 
         /// <param name="senderFactory">
         /// 呼び名 → 送信インフラの対応表 (テンプレートの MailController.CreateSender)。
-        /// 呼び名が空のときは既定を返すこと。知らない呼び名は null を返すとエラーになる。
+        /// 知らない呼び名は null を返すとエラーになる。
+        /// 空の呼び名はここには来ない (呼び名が空 = 設定漏れとして製品側がエラーにする)。
         /// </param>
         public MailDispatcher(MailConfig config, Func<string, IMailSender?> senderFactory,
             MailHistoryWriter? historyWriter = null, Func<Task<MailCurrentUser?>>? currentUserResolver = null)
@@ -59,14 +60,47 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
                 : mailInfraName;
 
         /// <summary>
-        /// 呼び名から送信インフラを引き当てる。対応表が知らない呼び名は例外
-        /// (設定ミスを黙って別のインフラで送らない)。
+        /// 呼び名から送信インフラを引き当てる。呼び名が空 (指定なし・既定も未設定) と対応表が
+        /// 知らない呼び名はどちらも例外 (設定ミスを黙って別のインフラで送らない)。
+        /// 送信経路は例外ではなく失敗結果を返すので <see cref="FindSender"/> を使う。
         /// </summary>
         public IMailSender CreateSender(string mailInfraName)
-            => _senderFactory(mailInfraName)
-                ?? throw new InvalidOperationException(string.IsNullOrEmpty(mailInfraName)
-                    ? "No mail sender is configured (set Mail.DefaultInfraName, or return a default from MailController.CreateSender)."
-                    : $"Mail sender '{mailInfraName}' is not configured.");
+            => FindSender(mailInfraName, out var error) ?? throw new InvalidOperationException(error);
+
+        /// <summary>呼び名が空 = フィールドの MailInfraName も appsettings の既定も未設定。</summary>
+        internal const string NoInfraNameError =
+            "No mail infra name is specified: the field's MailInfraName is empty and so is Mail.DefaultInfraName " +
+            "(bulk: Mail.DefaultBulkInfraName) in appsettings. Set one of them to a name that the app's mail sender table (MailSenderTable) knows.";
+
+        /// <summary>知らない呼び名 = 対応表 (MailSenderTable) にその名前が無い。</summary>
+        internal static string UnknownInfraNameError(string mailInfraName)
+            => $"Mail infra name '{mailInfraName}' is unknown: the app's mail sender table (MailSenderTable) has no entry for it. " +
+                "Fix the name (field MailInfraName / Mail.DefaultInfraName / Mail.DefaultBulkInfraName) or add the infra to the table.";
+
+        /// <summary>
+        /// 呼び名から送信インフラを引き当てる。引き当てられないときは null + 理由
+        /// (どちらの設定漏れなのかが分かる文言。送信経路はこれを失敗結果にして返す)。
+        /// </summary>
+        IMailSender? FindSender(string mailInfraName, out string error)
+        {
+            //空を対応表に渡さない = アプリの対応表が「空 = 何かのインフラ」と解釈して
+            //設定漏れがそのインフラの別のエラー (SMTP未設定など) に化けるのを防ぐ
+            if (string.IsNullOrEmpty(mailInfraName))
+            {
+                error = NoInfraNameError;
+                return null;
+            }
+            var sender = _senderFactory(mailInfraName);
+            error = sender == null ? UnknownInfraNameError(mailInfraName) : string.Empty;
+            return sender;
+        }
+
+        //設定漏れも送信失敗と同じ扱いで返す (スクリプトの戻り値・トースト・履歴・サマリに理由が出る)
+        async Task<MailSendResult> FailAsync(string mailInfraName, string subject, MailSendResult failure, MailHistorySource? source)
+        {
+            if (_historyWriter != null) await _historyWriter.WriteAsync(mailInfraName, subject, failure, source);
+            return failure;
+        }
 
         /// <summary>
         /// 単発送信のワイヤリクエスト (POST /api/mail) をそのまま送る。Controller を薄く保つための入口。
@@ -111,7 +145,11 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
             _historyWriter?.Validate();
 
             var name = ResolveInfraName(mailInfraName);
-            var sender = CreateSender(name);
+            var sender = FindSender(name, out var senderError);
+            if (sender == null)
+                return await FailAsync(name, message.Subject,
+                    MailSendResult.Failure(string.Join(";", message.To), senderError), source);
+
             var sendMessage = string.IsNullOrEmpty(_config.DebugRedirectAllTo) ? message : Redirect(message);
             var result = await sender.SendAsync(sendMessage);
             if (_historyWriter != null) await _historyWriter.WriteAsync(name, message.Subject, result, source);
@@ -128,7 +166,17 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
             _historyWriter?.Validate();
 
             var name = ResolveBulkInfraName(mailInfraName);
-            var sender = CreateSender(name);
+            var sender = FindSender(name, out var senderError);
+            if (sender == null)
+                return await FailAsync(name, template.Subject, new MailSendResult
+                {
+                    TotalCount = recipients.Count,
+                    //宛先0件でも設定漏れは失敗として見せる (黙って成功にしない)
+                    Failures = recipients.Count == 0
+                        ? [new MailSendFailure { Error = senderError }]
+                        : recipients.Select(e => new MailSendFailure { To = e.To, Error = senderError }).ToList(),
+                }, source);
+
             if (recipients.Count > sender.MaxBulkCount)
                 throw new InvalidOperationException(
                     $"Bulk send of {recipients.Count} mails exceeds MaxBulkCount ({sender.MaxBulkCount}) of mail sender '{name}'.");

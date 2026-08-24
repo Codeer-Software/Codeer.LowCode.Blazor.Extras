@@ -99,7 +99,8 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Approval
             {
                 //通知メールは常に結線する (契約の TurnNotifyMail が空なら送られない)
                 MailDispatcher = new MailDispatcher(
-                    new MailConfig(),
+                    //呼び名は契約側で空 = appsettings の既定で解決する (空のままでは送信エラーになる)
+                    new MailConfig { DefaultInfraName = "Main" },
                     _ => new FakeMailSender(this)),
                 LogError = _mailErrors.Add,
             };
