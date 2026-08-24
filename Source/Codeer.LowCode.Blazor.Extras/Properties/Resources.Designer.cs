@@ -1229,45 +1229,9 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
             }
         }
 
-        internal static string BulkMailSubjectVariable {
+        internal static string MailFieldButtonText {
             get {
-                return ResourceManager.GetString("BulkMailSubjectVariable", resourceCulture);
-            }
-        }
-
-        internal static string BulkMailSubject {
-            get {
-                return ResourceManager.GetString("BulkMailSubject", resourceCulture);
-            }
-        }
-
-        internal static string BulkMailBodyVariable {
-            get {
-                return ResourceManager.GetString("BulkMailBodyVariable", resourceCulture);
-            }
-        }
-
-        internal static string BulkMailBody {
-            get {
-                return ResourceManager.GetString("BulkMailBody", resourceCulture);
-            }
-        }
-
-        internal static string BulkMailIsBodyHtml {
-            get {
-                return ResourceManager.GetString("BulkMailIsBodyHtml", resourceCulture);
-            }
-        }
-
-        internal static string BulkMailReplyTo {
-            get {
-                return ResourceManager.GetString("BulkMailReplyTo", resourceCulture);
-            }
-        }
-
-        internal static string BulkMailButtonText {
-            get {
-                return ResourceManager.GetString("BulkMailButtonText", resourceCulture);
+                return ResourceManager.GetString("MailFieldButtonText", resourceCulture);
             }
         }
 
@@ -1289,9 +1253,9 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
             }
         }
 
-        internal static string BulkMailSubjectOrBodyRequired {
+        internal static string MailSubjectOrBodyRequired {
             get {
-                return ResourceManager.GetString("BulkMailSubjectOrBodyRequired", resourceCulture);
+                return ResourceManager.GetString("MailSubjectOrBodyRequired", resourceCulture);
             }
         }
 

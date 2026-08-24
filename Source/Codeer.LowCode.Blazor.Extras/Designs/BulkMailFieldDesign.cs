@@ -26,6 +26,8 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
     [Designer(DisplayName = "$BulkMailField")]
     [IgnoreBaseProperties(
         nameof(FieldDesignBase.IgnoreModification), nameof(FieldDesignBase.OnValidateInput),
+        //ボタンなので値フィールドの表示名・必須・入力系は意味を持たない (MailField と同じ見え方に揃える)
+        nameof(ValueFieldDesignBase.DisplayName),
         nameof(ValueFieldDesignBase.IsRequired), nameof(ValueFieldDesignBase.OnDataChanged),
         nameof(DbValueFieldDesignBase.IsUpdateProtected), nameof(DbValueFieldDesignBase.IsSimpleSearchParameter),
         nameof(DbValueFieldDesignBase.AllowEmptySearch), nameof(DbValueFieldDesignBase.OnSearchDataChanged))]
@@ -55,19 +57,19 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         public string OptOutVariable { get; set; } = string.Empty;
 
         /// <summary>件名テンプレートを持つ自モジュールの変数 ("Title.Value")。Subject (値) が入っている場合はそちらが優先。</summary>
-        [Designer(Index = 5, CandidateType = CandidateType.Variable, DisplayName = "$BulkMailSubjectVariable")]
+        [Designer(Index = 5, CandidateType = CandidateType.Variable, DisplayName = "$MailFieldSubjectVariable")]
         public string SubjectVariable { get; set; } = string.Empty;
 
         /// <summary>件名テンプレート (値)。入っていれば SubjectVariable より優先。{変数} は宛先行で解決される。</summary>
-        [Designer(Index = 6, DisplayName = "$BulkMailSubject")]
+        [Designer(Index = 6, DisplayName = "$MailFieldSubject")]
         public string Subject { get; set; } = string.Empty;
 
         /// <summary>本文テンプレートを持つ自モジュールの変数 ("Body.Value")。Body (値) が入っている場合はそちらが優先。</summary>
-        [Designer(Index = 7, CandidateType = CandidateType.Variable, DisplayName = "$BulkMailBodyVariable")]
+        [Designer(Index = 7, CandidateType = CandidateType.Variable, DisplayName = "$MailFieldBodyVariable")]
         public string BodyVariable { get; set; } = string.Empty;
 
         /// <summary>本文テンプレート (値)。入っていれば BodyVariable より優先。{変数} は宛先行で解決される。</summary>
-        [Designer(Index = 8, CandidateType = CandidateType.MultilineString, DisplayName = "$BulkMailBody")]
+        [Designer(Index = 8, CandidateType = CandidateType.MultilineString, DisplayName = "$MailFieldBody")]
         public string Body { get; set; } = string.Empty;
 
         /// <summary>
@@ -78,7 +80,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         public string MailInfraName { get; set; } = string.Empty;
 
         /// <summary>本文を HTML として送るか。</summary>
-        [Designer(Index = 12, DisplayName = "$BulkMailIsBodyHtml")]
+        [Designer(Index = 12, DisplayName = "$MailFieldIsBodyHtml")]
         public bool IsBodyHtml { get; set; }
 
         /// <summary>返信先アドレスの変数 (自モジュールの変数・リンクパス可)。ReplyTo (値) が入っている場合はそちらが優先。</summary>
@@ -86,7 +88,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         public string ReplyToVariable { get; set; } = string.Empty;
 
         /// <summary>返信先アドレス (値)。入っていれば ReplyToVariable より優先。</summary>
-        [Designer(Index = 11, DisplayName = "$BulkMailReplyTo")]
+        [Designer(Index = 11, DisplayName = "$MailFieldReplyTo")]
         public string ReplyTo { get; set; } = string.Empty;
 
         /// <summary>
@@ -98,7 +100,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         public bool IsFromCurrentUser { get; set; }
 
         /// <summary>ボタンの表示テキスト。空なら既定の文言。</summary>
-        [Designer(Index = 13, DisplayName = "$BulkMailButtonText")]
+        [Designer(Index = 13, DisplayName = "$MailFieldButtonText")]
         public string ButtonText { get; set; } = string.Empty;
 
         /// <summary>送信結果サマリ (JSON) の保存列。空ならサマリを保存しない (履歴モジュールの全量記録は別途 Mail.HistoryModuleName)。</summary>
@@ -144,7 +146,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
             if (string.IsNullOrEmpty(SubjectVariable) && string.IsNullOrEmpty(Subject) &&
                 string.IsNullOrEmpty(BodyVariable) && string.IsNullOrEmpty(Body))
             {
-                result.Add(CreateCheckInfo(context, nameof(Subject), Properties.Resources.BulkMailSubjectOrBodyRequired));
+                result.Add(CreateCheckInfo(context, nameof(Subject), Properties.Resources.MailSubjectOrBodyRequired));
             }
             return result;
         }

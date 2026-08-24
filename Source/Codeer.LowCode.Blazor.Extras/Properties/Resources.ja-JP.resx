@@ -594,25 +594,7 @@
   <data name="BulkMailOptOutVariable" xml:space="preserve">
     <value>配信停止 (オプトアウト)</value>
   </data>
-  <data name="BulkMailSubjectVariable" xml:space="preserve">
-    <value>件名テンプレートフィールド</value>
-  </data>
-  <data name="BulkMailSubject" xml:space="preserve">
-    <value>件名 (固定)</value>
-  </data>
-  <data name="BulkMailBodyVariable" xml:space="preserve">
-    <value>本文テンプレートフィールド</value>
-  </data>
-  <data name="BulkMailBody" xml:space="preserve">
-    <value>本文 (固定)</value>
-  </data>
-  <data name="BulkMailIsBodyHtml" xml:space="preserve">
-    <value>HTML本文</value>
-  </data>
-  <data name="BulkMailReplyTo" xml:space="preserve">
-    <value>返信先</value>
-  </data>
-  <data name="BulkMailButtonText" xml:space="preserve">
+  <data name="MailFieldButtonText" xml:space="preserve">
     <value>ボタンテキスト</value>
   </data>
   <data name="BulkMailFieldDbColumn" xml:space="preserve">
@@ -624,7 +606,7 @@
   <data name="BulkMailEmailAddressVariableRequired" xml:space="preserve">
     <value>宛先メールアドレスの変数を設定してください。</value>
   </data>
-  <data name="BulkMailSubjectOrBodyRequired" xml:space="preserve">
+  <data name="MailSubjectOrBodyRequired" xml:space="preserve">
     <value>件名と本文がどちらも空です。テンプレートフィールドか固定文字列を設定してください。</value>
   </data>
   <data name="BulkMailVariableNotFoundFormat" xml:space="preserve">

@@ -78,7 +78,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         public bool IsBodyHtml { get; set; }
 
         /// <summary>レイアウトに置いたときの送信ボタンの表示テキスト。空なら既定の文言。</summary>
-        [Designer(Index = 16, DisplayName = "$BulkMailButtonText")]
+        [Designer(Index = 16, DisplayName = "$MailFieldButtonText")]
         public string ButtonText { get; set; } = string.Empty;
 
         /// <summary>返信先アドレスの変数 (リンクパス可)。ReplyTo (値) が入っている場合はそちらが優先。</summary>
@@ -135,7 +135,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
                 {
                     Location = new FieldDesignDataLocation
                     { Module = context.OwnerModule, Field = Name, Member = nameof(Subject) },
-                    Message = Properties.Resources.BulkMailSubjectOrBodyRequired,
+                    Message = Properties.Resources.MailSubjectOrBodyRequired,
                 });
             }
             return result;
