@@ -48,7 +48,7 @@
 | Subject | string | - | 件名テンプレート (固定文字列) |
 | BodyVariable | string | - | 本文テンプレートを持つ自モジュールの変数 (`Body.Value`)。Body (値) が入っている場合はそちらが優先 |
 | Body | string | - | 本文テンプレート (固定文字列・複数行) |
-| MailInfraName | string | - | メールインフラ名 (appsettings の Mail.Infras の設定名 = どの送信インフラ・既定差出人を使うか)。空なら既定 (Mail.DefaultBulkInfraName → DefaultInfraName → 先頭)。差出人アドレスを変えるのは FromVariable の方 |
+| MailInfraName | string | - | メールインフラ名 (appsettings の Mail.Infras の設定名 = どの送信インフラ・既定差出人を使うか)。**省略可**で、省略 (空) なら既定のインフラを使う (Mail.DefaultBulkInfraName → DefaultInfraName → 先頭)。「一斉は配信サービス、単発は通知インフラ」の対を appsettings 側で決めておき、フィールドには書かないのが基本形 |
 | IsBodyHtml | bool | - | 本文を HTML として送るか (変数値は HTML エスケープされる) |
 | IsFromCurrentUser | bool | - | ON = 操作ユーザー本人のアドレスが差出人 (サーバーが解決)。OFF = 送信インフラ設定の差出人。**差出人のアドレス指定はできない** (なりすましの構造的排除)。要サーバー設定 `Mail.UserModuleName` / `UserEmailFieldName` |
 | ReplyToVariable | string | - | 返信先アドレスの変数 (自モジュールの変数・リンクパス可)。ReplyTo (値) が入っている場合はそちらが優先 |

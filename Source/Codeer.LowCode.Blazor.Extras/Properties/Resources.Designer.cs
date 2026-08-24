@@ -1139,9 +1139,51 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
             }
         }
 
-        internal static string MailTokenField {
+        internal static string GmailTokenField {
             get {
-                return ResourceManager.GetString("MailTokenField", resourceCulture);
+                return ResourceManager.GetString("GmailTokenField", resourceCulture);
+            }
+        }
+
+        internal static string GmailTokenFieldPlaceholder {
+            get {
+                return ResourceManager.GetString("GmailTokenFieldPlaceholder", resourceCulture);
+            }
+        }
+
+        internal static string GmailTokenFieldLoadFile {
+            get {
+                return ResourceManager.GetString("GmailTokenFieldLoadFile", resourceCulture);
+            }
+        }
+
+        internal static string GmailTokenFieldClear {
+            get {
+                return ResourceManager.GetString("GmailTokenFieldClear", resourceCulture);
+            }
+        }
+
+        internal static string GmailTokenFieldPendingNote {
+            get {
+                return ResourceManager.GetString("GmailTokenFieldPendingNote", resourceCulture);
+            }
+        }
+
+        internal static string GmailTokenFieldClearedNote {
+            get {
+                return ResourceManager.GetString("GmailTokenFieldClearedNote", resourceCulture);
+            }
+        }
+
+        internal static string GmailTokenFieldFileTooLarge {
+            get {
+                return ResourceManager.GetString("GmailTokenFieldFileTooLarge", resourceCulture);
+            }
+        }
+
+        internal static string GmailTokenFieldViewOnlyNote {
+            get {
+                return ResourceManager.GetString("GmailTokenFieldViewOnlyNote", resourceCulture);
             }
         }
 

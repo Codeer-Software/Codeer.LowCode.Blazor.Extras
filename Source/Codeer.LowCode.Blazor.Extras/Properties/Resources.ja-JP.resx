@@ -432,8 +432,29 @@
   <data name="OrientationLockField" xml:space="preserve">
     <value>画面向きロック</value>
   </data>
-  <data name="MailTokenField" xml:space="preserve">
-    <value>メールトークン</value>
+  <data name="GmailTokenField" xml:space="preserve">
+    <value>Gmailトークン</value>
+  </data>
+  <data name="GmailTokenFieldPlaceholder" xml:space="preserve">
+    <value>トークンJSONを貼り付け、またはファイルから読み込み (空のまま保存すると現在の登録を維持)</value>
+  </data>
+  <data name="GmailTokenFieldLoadFile" xml:space="preserve">
+    <value>ファイルから読み込む</value>
+  </data>
+  <data name="GmailTokenFieldClear" xml:space="preserve">
+    <value>登録を解除</value>
+  </data>
+  <data name="GmailTokenFieldPendingNote" xml:space="preserve">
+    <value>保存すると新しいトークンを登録します</value>
+  </data>
+  <data name="GmailTokenFieldClearedNote" xml:space="preserve">
+    <value>保存すると登録を解除します</value>
+  </data>
+  <data name="GmailTokenFieldFileTooLarge" xml:space="preserve">
+    <value>ファイルが大きすぎます。トークンのJSONファイルを選んでください。</value>
+  </data>
+  <data name="GmailTokenFieldViewOnlyNote" xml:space="preserve">
+    <value>トークンは表示できません</value>
   </data>
   <data name="PasswordHashField" xml:space="preserve">
     <value>パスワードハッシュ</value>

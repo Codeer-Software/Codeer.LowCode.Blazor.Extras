@@ -12,7 +12,8 @@ void SendReceiptMail()
 //② 完全に動的な送信 (値プロパティをスクリプトで設定 = デザインの変数より優先される)
 void SendNotification_OnClick()
 {
-    ReceiptMail.MailInfraName = "Notify";  //省略可(既定インフラ。Mail.Infras の設定名)
+    //メールインフラ名はデザイン固定 (スクリプトからは変更不可)。デザイン側でも省略可で、
+    //省略時は既定のインフラ (appsettings の Mail.DefaultInfraName → 先頭) が使われる
     ReceiptMail.To = CustomerEmail.Value;  //カンマ/セミコロン区切りで複数可 (Cc/Bcc も同様)
     ReceiptMail.Subject = "注文確認";       //値もテンプレートとして {変数} が自レコードで解決される
     ReceiptMail.Body = "注文番号: {OrderId.Value}";

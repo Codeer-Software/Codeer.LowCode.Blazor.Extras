@@ -34,6 +34,14 @@
         /// <summary>ユーザーモジュールの、表示名を持つフィールド名 (例: "Name")。空 = 差出人表示名なし。</summary>
         public string UserNameFieldName { get; set; } = string.Empty;
 
+        /// <summary>
+        /// GmailTokenField (ユーザー単位の Gmail トークン) をDBに保存するときの暗号化鍵。
+        /// 長さ自由の文字列 (パスフレーズでも Base64 でも可) を SHA-256 で 256bit 鍵に畳んで AES-GCM で暗号化する。
+        /// **未設定のままトークンを保存しようとするとエラーになる** (平文で保存しない)。
+        /// 環境変数で上書き可 (Mail__TokenEncryptionKey)。リポジトリやデザインファイルには置かないこと。
+        /// </summary>
+        public string TokenEncryptionKey { get; set; } = string.Empty;
+
         public List<MailInfraSettings> Infras { get; set; } = new();
 
         /// <summary>
@@ -127,11 +135,11 @@
         public string TokenSecret { get; set; } = string.Empty;
 
         /// <summary>
-        /// GmailApi のユーザー同意モードで、差出人ごとのトークンを保存している MailTokenField の
+        /// GmailApi のユーザー同意モードで、差出人ごとのトークンを保存している GmailTokenField の
         /// フィールド名 (例: "GmailToken"。モジュールは Mail.UserModuleName)。空 = ユーザー単位トークンを使わない。
         /// 設定すると、差出人アドレスでユーザーモジュールを検索し、登録されていれば
         /// そのユーザー本人のトークンで送信する (本人の送信済みに残る)。
-        /// トークンの保存は MailTokenField (書き込み専用・クライアントに返さない) を使うこと。
+        /// トークンの保存は GmailTokenField (書き込み専用・クライアントに返さない) を使うこと。
         /// </summary>
         public string UserTokenFieldName { get; set; } = string.Empty;
 

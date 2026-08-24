@@ -15,7 +15,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
     /// <summary>
     /// ユーザーモジュール (Mail.UserModuleName / UserEmailFieldName / UserNameFieldName) の検索。
     /// ①操作ユーザーの差出人情報 (「自分を差出人にする」= IsFromCurrentUser)、
-    /// ②GmailApi ユーザー同意モードのユーザー単位トークン (差出人アドレス → MailTokenField 列)。
+    /// ②GmailApi ユーザー同意モードのユーザー単位トークン (差出人アドレス → GmailTokenField 列)。
     /// トークン列は書き込み専用 (クライアントに返さない) のため、通常のデータ取得経路ではなく
     /// サーバー内部の SQL で直接読む。
     /// </summary>
@@ -75,8 +75,8 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
         }
 
         /// <summary>
-        /// 差出人アドレスのユーザートークンを返す。未登録・設定不備は null (呼び出し側がシステムトークンにフォールバック)。
-        /// 検索失敗はエラーログを出して null (送信自体は止めない)。
+        /// 差出人アドレスのユーザートークンを復号して返す。未登録・設定不備は null (呼び出し側がシステムトークンにフォールバック)。
+        /// 検索・復号の失敗はエラーログを出して null (送信自体は止めない)。
         /// </summary>
         public async Task<string?> FindRefreshTokenAsync(string mailAddress, string tokenFieldName)
         {
@@ -87,7 +87,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
                 var module = FindUserModule();
                 if (module == null) return null;
                 var emailColumn = GetColumn(module, _config.UserEmailFieldName);
-                var tokenColumn = (module.Fields.FirstOrDefault(e => e.Name == tokenFieldName) as MailTokenFieldDesign)?.DbColumnToken;
+                var tokenColumn = (module.Fields.FirstOrDefault(e => e.Name == tokenFieldName) as GmailTokenFieldDesign)?.DbColumnToken;
                 if (string.IsNullOrEmpty(emailColumn) || string.IsNullOrEmpty(tokenColumn))
                 {
                     _logError($"Mail.UserEmailFieldName '{_config.UserEmailFieldName}' or UserTokenFieldName '{tokenFieldName}' is not resolvable on module '{module.Name}'.");
@@ -99,7 +99,16 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
                     new Dictionary<string, ParamAndRawDbTypeName> { ["mailAddress"] = new() { Value = mailAddress } });
                 var token = rows.Select(e => e.Values.FirstOrDefault()?.ToString())
                     .FirstOrDefault(e => !string.IsNullOrEmpty(e));
-                return string.IsNullOrEmpty(token) ? null : token;
+                if (string.IsNullOrEmpty(token)) return null;
+
+                //列は暗号化して保存されている (GmailTokenHelper)。
+                //暗号化されていない値は不正な経路で入ったものなので使わない (再登録してもらう)
+                if (!GmailTokenProtector.IsProtected(token))
+                {
+                    _logError($"The stored Gmail token of '{mailAddress}' is not encrypted. Register it again from the user screen.");
+                    return null;
+                }
+                return GmailTokenProtector.Unprotect(token, _config.TokenEncryptionKey);
             }
             catch (Exception ex)
             {

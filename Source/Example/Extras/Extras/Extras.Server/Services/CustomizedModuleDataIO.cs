@@ -3,6 +3,7 @@ using Codeer.LowCode.Blazor.DataIO;
 using Codeer.LowCode.Blazor.DataIO.Db;
 using Codeer.LowCode.Blazor.DesignLogic;
 using Codeer.LowCode.Blazor.Repository.Data;
+using Codeer.LowCode.Blazor.Extras.Server.Mail;
 using Codeer.LowCode.Blazor.Extras.Services;
 
 namespace Extras.Server.Services
@@ -23,7 +24,8 @@ namespace Extras.Server.Services
             if (moduleDesign == null) throw LowCodeException.Create("invalid design");
 
             PasswordHashHelper.ApplyPasswordHash(moduleDesign, data);
-            MailUserTokenHelper.ApplyMailToken(moduleDesign, data);
+            //Gmailトークンは平文で来るのでここで暗号化する (鍵 = Mail.TokenEncryptionKey)
+            GmailTokenHelper.ProtectGmailTokens(moduleDesign, data, SystemConfig.Instance.Mail.TokenEncryptionKey);
             return await base.AddAsync(transactionId, moduleSubmitId, data);
         }
 
@@ -33,7 +35,8 @@ namespace Extras.Server.Services
             if (moduleDesign == null) throw LowCodeException.Create("invalid design");
 
             PasswordHashHelper.ApplyPasswordHash(moduleDesign, data);
-            MailUserTokenHelper.ApplyMailToken(moduleDesign, data);
+            //Gmailトークンは平文で来るのでここで暗号化する (鍵 = Mail.TokenEncryptionKey)
+            GmailTokenHelper.ProtectGmailTokens(moduleDesign, data, SystemConfig.Instance.Mail.TokenEncryptionKey);
             await base.UpdateAsync(transactionId, moduleSubmitId, data);
         }
         //メール送信履歴などシステムの記録を、操作ユーザーの書き込み権限に依存せず追加する内部経路。

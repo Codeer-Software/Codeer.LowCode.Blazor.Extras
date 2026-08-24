@@ -66,7 +66,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         [Designer(Index = 11, CandidateType = CandidateType.MultilineString, DisplayName = "$MailFieldBody")]
         public string Body { get; set; } = string.Empty;
 
-        /// <summary>メールインフラ名 (appsettings の Mail.Infras の名前)。デザイン固定 (スクリプトからは変更不可)。空なら既定 (Mail.DefaultInfraName → 先頭)。</summary>
+        /// <summary>メールインフラ名 (appsettings の Mail.Infras の名前)。デザイン固定 (スクリプトからは変更不可)。省略可 = 空なら既定のインフラ (Mail.DefaultInfraName → 先頭)。</summary>
         [Designer(Index = 1, DisplayName = "$MailInfraName")]
         public string MailInfraName { get; set; } = string.Empty;
 
