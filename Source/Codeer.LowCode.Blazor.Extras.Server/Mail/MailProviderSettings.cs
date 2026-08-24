@@ -108,14 +108,6 @@
         public string TokenSecret { get; set; } = string.Empty;
 
         /// <summary>
-        /// 差出人ごとのトークンを保存している GmailTokenField のフィールド名 (例: "GmailToken"。
-        /// モジュールは <see cref="MailConfig.UserModuleName"/>)。空 = ユーザー単位トークンを使わない。
-        /// 設定すると、差出人アドレスでユーザーモジュールを検索し、登録されていれば
-        /// そのユーザー本人のトークンで送信する (本人の送信済みに残る)。
-        /// </summary>
-        public string UserTokenFieldName { get; set; } = string.Empty;
-
-        /// <summary>
         /// GmailTokenField をDBに保存するときの暗号化鍵 (AES-GCM)。
         /// 長さ自由の文字列を SHA-256 で 256bit 鍵に畳む。
         /// **未設定のままトークンを保存しようとするとエラーになる** (平文で保存しない)。

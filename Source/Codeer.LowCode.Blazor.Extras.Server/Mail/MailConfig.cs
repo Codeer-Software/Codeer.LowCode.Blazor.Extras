@@ -29,17 +29,15 @@
         public string HistoryModuleName { get; set; } = string.Empty;
 
         /// <summary>
-        /// 操作ユーザーの情報を解決するユーザーモジュール名 (例: "AppUser")。
-        /// 「自分を差出人にする」(IsFromCurrentUser) が使う (プロバイダ共通)。
-        /// Gmail のユーザー単位トークンの検索先も同じモジュール。空 = どちらの機能も使わない。
+        /// ユーザーモジュールの、メールアドレスを持つフィールド名 (既定 "Email")。
+        /// 「自分を差出人にする」(IsFromCurrentUser) と Gmail のユーザー単位トークン検索が使う。
+        /// ユーザーモジュール自体はデザインの設定 (AppSettings.CurrentUserModuleDesignName = CurrentUser のモジュール)
+        /// なので指定しない。空 = どちらの機能も使わない。
         /// </summary>
-        public string UserModuleName { get; set; } = string.Empty;
+        public string UserEmailFieldName { get; set; } = "Email";
 
-        /// <summary>ユーザーモジュールの、メールアドレスを持つフィールド名 (例: "Email")。</summary>
-        public string UserEmailFieldName { get; set; } = string.Empty;
-
-        /// <summary>ユーザーモジュールの、表示名を持つフィールド名 (例: "Name")。空 = 差出人表示名なし。</summary>
-        public string UserNameFieldName { get; set; } = string.Empty;
+        /// <summary>ユーザーモジュールの、表示名を持つフィールド名 (既定 "Name")。空 = 差出人表示名なし。</summary>
+        public string UserNameFieldName { get; set; } = "Name";
 
         /// <summary>
         /// 単発送信で呼び名が省略されたときの既定 (例: "GraphApi")。

@@ -50,27 +50,25 @@ namespace Extras.Server.Controllers
         IMailSender? CreateSender(string name)
             => MailSenderTable.Create(name, CreateUserTokenResolver());
 
-        //「自分を差出人にする」(IsFromCurrentUser) の操作ユーザー解決 (認証ユーザーId → Mail.UserModuleName のメール/表示名)
+        //「自分を差出人にする」(IsFromCurrentUser) の操作ユーザー解決
+        //(認証ユーザーId → デザインの CurrentUser モジュールのメール/表示名)
         Func<Task<MailCurrentUser?>>? CreateCurrentUserResolver()
         {
             var mail = SystemConfig.Instance.Mail;
-            if (string.IsNullOrEmpty(mail.UserModuleName)) return null;
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
             var store = new MailUserStore(DesignerService.GetDesignData(), mail,
                 _dataService.DbAccess, e => _logger.LogError("{Error}", e));
             return () => store.FindCurrentUserAsync(userId);
         }
 
-        //差出人ごとのユーザートークン検索 (Gmail ユーザー同意モード)。Gmail.UserTokenFieldName 未設定なら使わない。
+        //差出人ごとのユーザートークン検索 (Gmail ユーザー同意モード)。
         //トークン列は書き込み専用+暗号化のためサーバー内部の SQL (MailUserStore) で読んで復号する
+        //(CurrentUser モジュールに GmailTokenField が無ければ使われない)
         Func<string, Task<string?>>? CreateUserTokenResolver()
         {
-            var mail = SystemConfig.Instance.Mail;
-            var gmail = SystemConfig.Instance.Gmail;
-            if (string.IsNullOrEmpty(mail.UserModuleName) || string.IsNullOrEmpty(gmail.UserTokenFieldName)) return null;
-            var store = new MailUserStore(DesignerService.GetDesignData(), mail,
+            var store = new MailUserStore(DesignerService.GetDesignData(), SystemConfig.Instance.Mail,
                 _dataService.DbAccess, e => _logger.LogError("{Error}", e));
-            return address => store.FindRefreshTokenAsync(address, gmail.UserTokenFieldName, gmail.TokenEncryptionKey);
+            return address => store.FindRefreshTokenAsync(address, SystemConfig.Instance.Gmail.TokenEncryptionKey);
         }
     }
 }

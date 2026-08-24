@@ -74,6 +74,15 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Mail
             Assert.That(GmailTokenProtector.IsProtected(a), Is.True);
         }
 
+        //ユーザーモジュールはデザインの CurrentUser モジュール (appsettings では指定しない)
+        static DesignData CreateDesignData(ModuleDesign userModule)
+        {
+            var designData = new DesignData();
+            designData.AddModule(userModule);
+            designData.AppSettings.CurrentUserModuleDesignName = userModule.Name;
+            return designData;
+        }
+
         static ModuleDesign CreateUserModule()
         {
             var module = new ModuleDesign { Name = "AppUser" };
@@ -88,17 +97,15 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Mail
             var module = new ModuleDesign { Name = "AppUser", DataSourceName = "Main", DbTable = "app_users" };
             module.Fields.Add(new TextFieldDesign { Name = "Email", DbColumn = "email" });
             module.Fields.Add(new GmailTokenFieldDesign { Name = "GmailToken", DbColumnToken = "gmail_token" });
-            var designData = new DesignData();
-            designData.AddModule(module);
+            var designData = CreateDesignData(module);
 
             var db = new FakeDbAccessor { Rows = { new Dictionary<string, object> { ["gmail_token"] = GmailTokenProtector.Protect(PlainToken, Key) } } };
             var store = new MailUserStore(designData, new MailConfig
             {
-                UserModuleName = "AppUser",
                 UserEmailFieldName = "Email",
             }, db, _ => { });
 
-            var token = await store.FindRefreshTokenAsync("tanaka@example.com", "GmailToken", Key);
+            var token = await store.FindRefreshTokenAsync("tanaka@example.com", Key);
 
             //復号して返す
             Assert.That(token, Is.EqualTo(PlainToken));
@@ -110,39 +117,48 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Mail
         [Test]
         public async Task FindRefreshToken_未登録や設定不備はnullで送信は止めない()
         {
-            var designData = new DesignData();
             var module = new ModuleDesign { Name = "AppUser", DataSourceName = "Main", DbTable = "app_users" };
             module.Fields.Add(new TextFieldDesign { Name = "Email", DbColumn = "email" });
             module.Fields.Add(new GmailTokenFieldDesign { Name = "GmailToken", DbColumnToken = "gmail_token" });
-            designData.AddModule(module);
+            var designData = CreateDesignData(module);
 
             //行なし → null
             var store = new MailUserStore(designData, new MailConfig
             {
-                UserModuleName = "AppUser",
                 UserEmailFieldName = "Email",
             }, new FakeDbAccessor(), _ => { });
-            Assert.That(await store.FindRefreshTokenAsync("nobody@example.com", "GmailToken", Key), Is.Null);
+            Assert.That(await store.FindRefreshTokenAsync("nobody@example.com", Key), Is.Null);
 
-            //モジュール不在 → null + エラーログ
+            //CurrentUser モジュールが存在しない → null + エラーログ
             var errors = new List<string>();
-            var broken = new MailUserStore(designData, new MailConfig
+            var brokenDesign = new DesignData();
+            brokenDesign.AppSettings.CurrentUserModuleDesignName = "NoSuchModule";
+            var broken = new MailUserStore(brokenDesign, new MailConfig
             {
-                UserModuleName = "NoSuchModule",
                 UserEmailFieldName = "Email",
             }, new FakeDbAccessor(), errors.Add);
-            Assert.That(await broken.FindRefreshTokenAsync("tanaka@example.com", "GmailToken", Key), Is.Null);
+            Assert.That(await broken.FindRefreshTokenAsync("tanaka@example.com", Key), Is.Null);
             Assert.That(errors, Has.Count.EqualTo(1));
+
+            //GmailTokenField が置かれていない → ユーザー単位トークンを使わない (エラーでもない)
+            var noTokenModule = new ModuleDesign { Name = "AppUser", DataSourceName = "Main", DbTable = "app_users" };
+            noTokenModule.Fields.Add(new TextFieldDesign { Name = "Email", DbColumn = "email" });
+            var noTokenErrors = new List<string>();
+            var noToken = new MailUserStore(CreateDesignData(noTokenModule), new MailConfig
+            {
+                UserEmailFieldName = "Email",
+            }, new FakeDbAccessor(), noTokenErrors.Add);
+            Assert.That(await noToken.FindRefreshTokenAsync("tanaka@example.com", Key), Is.Null);
+            Assert.That(noTokenErrors, Is.Empty);
 
             //暗号化されていない列の値は使わない (エラーログを出して null = システムトークンにフォールバック)
             var plainErrors = new List<string>();
             var plainDb = new FakeDbAccessor { Rows = { new Dictionary<string, object> { ["gmail_token"] = PlainToken } } };
             var plainStore = new MailUserStore(designData, new MailConfig
             {
-                UserModuleName = "AppUser",
                 UserEmailFieldName = "Email",
             }, plainDb, plainErrors.Add);
-            Assert.That(await plainStore.FindRefreshTokenAsync("tanaka@example.com", "GmailToken", Key), Is.Null);
+            Assert.That(await plainStore.FindRefreshTokenAsync("tanaka@example.com", Key), Is.Null);
             Assert.That(plainErrors, Has.Count.EqualTo(1));
         }
 

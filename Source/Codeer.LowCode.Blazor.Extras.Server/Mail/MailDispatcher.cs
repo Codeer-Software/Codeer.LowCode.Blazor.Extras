@@ -95,7 +95,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
         }
 
         internal const string CurrentUserUnresolvedError =
-            "IsFromCurrentUser requires the current user's mail address (configure Mail.UserModuleName / UserEmailFieldName and make sure the user has an address).";
+            "IsFromCurrentUser requires the current user's mail address (set the current user module in the design and Mail.UserEmailFieldName, and make sure the user has an address).";
 
         internal static MailHistorySource? CreateSource(string sourceModule, string sourceId)
             => string.IsNullOrEmpty(sourceModule)

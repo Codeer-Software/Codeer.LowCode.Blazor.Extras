@@ -13,7 +13,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
     }
 
     /// <summary>
-    /// ユーザーモジュール (Mail.UserModuleName / UserEmailFieldName / UserNameFieldName) の検索。
+    /// ユーザーモジュール (デザインの AppSettings.CurrentUserModuleDesignName = CurrentUser のモジュール) の検索。
     /// ①操作ユーザーの差出人情報 (「自分を差出人にする」= IsFromCurrentUser)、
     /// ②GmailApi ユーザー同意モードのユーザー単位トークン (差出人アドレス → GmailTokenField 列)。
     /// トークン列は書き込み専用 (クライアントに返さない) のため、通常のデータ取得経路ではなく
@@ -40,7 +40,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
         /// </summary>
         public async Task<MailCurrentUser?> FindCurrentUserAsync(string userId)
         {
-            if (string.IsNullOrEmpty(_config.UserModuleName) || string.IsNullOrEmpty(userId)) return null;
+            if (string.IsNullOrEmpty(userId)) return null;
             try
             {
                 var module = FindUserModule();
@@ -78,21 +78,28 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
         /// 差出人アドレスのユーザートークンを復号して返す。未登録・設定不備は null (呼び出し側がシステムトークンにフォールバック)。
         /// 検索・復号の失敗はエラーログを出して null (送信自体は止めない)。
         /// </summary>
-        /// <param name="tokenFieldName">GmailTokenField のフィールド名 (Gmail 設定の UserTokenFieldName)。</param>
         /// <param name="encryptionKey">列の暗号化鍵 (Gmail 設定の TokenEncryptionKey)。</param>
-        public async Task<string?> FindRefreshTokenAsync(string mailAddress, string tokenFieldName, string encryptionKey)
+        /// <remarks>
+        /// トークン列は型 (GmailTokenField) で見つけるのでフィールド名の設定は要らない。
+        /// ユーザーモジュールに GmailTokenField が無ければ「ユーザー単位トークンを使わない」= null。
+        /// </remarks>
+        public async Task<string?> FindRefreshTokenAsync(string mailAddress, string encryptionKey)
         {
-            if (string.IsNullOrEmpty(_config.UserModuleName) || string.IsNullOrEmpty(tokenFieldName) ||
-                string.IsNullOrEmpty(mailAddress)) return null;
+            if (string.IsNullOrEmpty(mailAddress)) return null;
             try
             {
                 var module = FindUserModule();
                 if (module == null) return null;
+                var tokenFields = module.Fields.OfType<GmailTokenFieldDesign>().ToList();
+                if (tokenFields.Count == 0) return null;
+                if (tokenFields.Count > 1)
+                    _logError($"Module '{module.Name}' has {tokenFields.Count} GmailTokenFields. The first one ('{tokenFields[0].Name}') is used.");
+
                 var emailColumn = GetColumn(module, _config.UserEmailFieldName);
-                var tokenColumn = (module.Fields.FirstOrDefault(e => e.Name == tokenFieldName) as GmailTokenFieldDesign)?.DbColumnToken;
+                var tokenColumn = tokenFields[0].DbColumnToken;
                 if (string.IsNullOrEmpty(emailColumn) || string.IsNullOrEmpty(tokenColumn))
                 {
-                    _logError($"Mail.UserEmailFieldName '{_config.UserEmailFieldName}' or UserTokenFieldName '{tokenFieldName}' is not resolvable on module '{module.Name}'.");
+                    _logError($"Mail.UserEmailFieldName '{_config.UserEmailFieldName}' or the token column of '{tokenFields[0].Name}' is not resolvable on module '{module.Name}'.");
                     return null;
                 }
 
@@ -119,10 +126,13 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
             }
         }
 
+        //ユーザーモジュールはデザインの CurrentUser モジュール (認証ユーザーId で引ける唯一のモジュール)
         ModuleDesign? FindUserModule()
         {
-            var module = _designData.Modules.Find(_config.UserModuleName);
-            if (module == null) _logError($"Mail.UserModuleName '{_config.UserModuleName}' does not exist.");
+            var moduleName = _designData.AppSettings.CurrentUserModuleDesignName;
+            if (string.IsNullOrEmpty(moduleName)) return null;
+            var module = _designData.Modules.Find(moduleName);
+            if (module == null) _logError($"The current user module '{moduleName}' does not exist.");
             return module;
         }
 

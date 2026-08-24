@@ -23,7 +23,8 @@ SendGrid = ドメイン認証 / Smtp = リレー)。
   `CustomizedModuleDataIO.AddAsync / UpdateAsync` で
   `Codeer.LowCode.Blazor.Extras.Server.Mail.GmailTokenHelper.ProtectGmailTokens(moduleDesign, data, Gmail.TokenEncryptionKey)` を
   `base.AddAsync / base.UpdateAsync` の前に呼ぶこと (PasswordHashHelper.ApplyPasswordHash と並べて呼ぶのが定石)
-- 送信時の読み取り・復号はサーバー内部経路のみ (`MailUserStore`。テンプレートの MailController が結線)
+- 送信時の読み取り・復号はサーバー内部経路のみ (`MailUserStore`。テンプレートの MailController が結線)。
+  **このフィールドが CurrentUser モジュールに無ければユーザー単位トークンは使われない** (設定でのON/OFFは無い)
 - **誰が登録できるかは、このモジュールの書き込み権限がそのまま効く**。
   「本人だけが自分の行を編集できる」設計 (UserWriteCondition 等) にしておくこと
 
@@ -49,22 +50,19 @@ SendGrid = ドメイン認証 / Smtp = リレー)。
 ## サーバー設定 (appsettings)
 
 ```json
-"Mail": {
-  "UserModuleName": "AppUser",
-  "UserEmailFieldName": "Email"
-},
 "Gmail": {
   "SenderMailAddress": "notify@your-domain.example",
   "ClientSecret": "...client_secret.json のパス...",
   "TokenSecret": "...システム送信者のトークン (フォールバック)...",
-  "UserTokenFieldName": "GmailToken",
   "TokenEncryptionKey": "...(環境変数 Gmail__TokenEncryptionKey で与えるのが安全)..."
 }
 ```
 
-`Mail` は製品が読む共通設定、`Gmail` はプロバイダ個別の設定 (テンプレートが読む) です。
+フィールドを置く先は**デザインの CurrentUser モジュール** (アプリ設定の「現在のユーザーのモジュール」)。
+このモジュールにこのフィールドを1つ置くだけで有効になり、**フィールド名の設定は要りません** (型で判別する)。
+アドレス列は `Mail.UserEmailFieldName` (既定 "Email")。
 
-送信時、差出人のアドレスで `Mail.UserModuleName` を検索し、トークンが登録されていれば復号して
+送信時、差出人のアドレスで CurrentUser モジュールを検索し、トークンが登録されていれば復号して
 その人として送る。未登録なら `TokenSecret` (システム送信者) にフォールバックする。
 差出人が本人になるのは MailField / BulkMailField の「自分を差出人にする」(IsFromCurrentUser) のときだけで、
 アドレス指定はできない。
