@@ -1,4 +1,4 @@
-using Codeer.LowCode.Blazor.Extras.Mail;
+﻿using Codeer.LowCode.Blazor.Extras.Mail;
 using Codeer.LowCode.Blazor.Extras.ScriptObjects;
 using System.Net;
 using System.Security.Cryptography;
@@ -9,12 +9,12 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
 {
     /// <summary>
     /// <see cref="IMailSender"/> の Gmail API (users.messages.send) 実装。素の REST (SDK なし)。
-    /// <see cref="MailInfraSettings.ClientSecret"/> の JSON の種類で認証モードが決まる:
+    /// <see cref="GmailSettings.ClientSecret"/> の JSON の種類で認証モードが決まる:
     ///
     /// ① サービスアカウントキー (client_email/private_key) = ドメイン全体の委任 (Google Workspace・管理者設定が必要)。
-    ///    <see cref="MailInfraSettings.SenderMailAddress"/> のユーザーとして送信し、動的 From はそのユーザーに成り代わる。
+    ///    <see cref="GmailSettings.SenderMailAddress"/> のユーザーとして送信し、動的 From はそのユーザーに成り代わる。
     /// ② OAuth クライアント (installed/web) = ユーザー同意モード (管理者不要)。
-    ///    本人がブラウザで 1 回同意して得たリフレッシュトークン (<see cref="MailInfraSettings.TokenSecret"/>) で、
+    ///    本人がブラウザで 1 回同意して得たリフレッシュトークン (<see cref="GmailSettings.TokenSecret"/>) で、
     ///    **同意したユーザー本人として**送信する。営業担当者などが自分のアドレスで送るための経路。
     ///    動的 From はそのアカウントの Gmail 側で送信者エイリアス (Send As) が設定されている場合のみ有効
     ///    (未設定なら Gmail が本人アドレスに書き換える)。
@@ -28,7 +28,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
         //ユーザー同意モードのトークンキャッシュキー (委任モードは委任ユーザーごと)
         const string OAuthUserCacheKey = "(oauth-user)";
 
-        readonly MailInfraSettings _settings;
+        readonly GmailSettings _settings;
         readonly HttpClient _http;
         //差出人アドレス→ユーザー単位のリフレッシュトークン (ユーザー同意モード。null/未解決 = システムトークンで送る)。
         //実装は MailUserStore.FindRefreshTokenAsync (差出人でユーザーモジュールを検索) をテンプレの MailController が結線する
@@ -36,13 +36,15 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
         //委任ユーザー (sub) ごとのトークンキャッシュ (動的 From はそのユーザーとして送るため)
         readonly Dictionary<string, (string Token, DateTime ExpiresAtUtc)> _tokens = new();
 
-        public GmailApiMailSender(MailInfraSettings settings, HttpClient? httpClient = null,
+        public GmailApiMailSender(GmailSettings settings, HttpClient? httpClient = null,
             Func<string, Task<string?>>? userRefreshTokenResolver = null)
         {
             _settings = settings;
             _http = httpClient ?? _sharedClient;
             _userRefreshTokenResolver = userRefreshTokenResolver;
         }
+
+        public int MaxBulkCount => _settings.MaxBulkCount;
 
         public async Task<MailSendResult> SendAsync(MailMessage message)
         {
@@ -105,7 +107,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
 
         async Task<byte[]> CreateRawMimeAsync(MailMessage message)
         {
-            var mime = SmtpMailSender.CreateMimeMessage(_settings, message);
+            var mime = SmtpMailSender.CreateMimeMessage(_settings.SenderMailAddress, _settings.SenderDisplayName, message);
             using var stream = new MemoryStream();
             await mime.WriteToAsync(stream);
             return stream.ToArray();

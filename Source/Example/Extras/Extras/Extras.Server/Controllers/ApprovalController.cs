@@ -1,4 +1,4 @@
-using Codeer.LowCode.Blazor.DesignLogic;
+﻿using Codeer.LowCode.Blazor.DesignLogic;
 using Codeer.LowCode.Blazor.Extras.Approval;
 using Codeer.LowCode.Blazor.Extras.Server.Approval;
 using Codeer.LowCode.Blazor.Extras.Server.Mail;
@@ -67,7 +67,7 @@ namespace Extras.Server.Controllers
                 data => _dataService.ModuleDataIO.UpdateSystemRecordAsync(data))
             {
                 //順番到達の通知メール (メンバー契約の TurnNotifyMail が設定されているときだけ送られる)
-                MailDispatcher = new MailDispatcher(mail, historyWriter: historyWriter),
+                MailDispatcher = new MailDispatcher(mail, name => MailSenderTable.Create(name), historyWriter: historyWriter),
                 LogError = e => _logger.LogError("{Error}", e),
             };
         }

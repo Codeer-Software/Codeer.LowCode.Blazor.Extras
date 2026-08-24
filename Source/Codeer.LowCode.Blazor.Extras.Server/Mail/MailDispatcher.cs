@@ -5,10 +5,13 @@ using System.Net;
 namespace Codeer.LowCode.Blazor.Extras.Server.Mail
 {
     /// <summary>
-    /// プロバイダ非依存の送信レイヤ。名前付きインフラの解決・DebugRedirectAllTo の誤送信防止・
+    /// プロバイダ非依存の送信レイヤ。呼び名から送信インフラを引き当て、DebugRedirectAllTo の誤送信防止・
     /// 一斉送信の件数上限を適用してから <see cref="IMailSender"/> へ委譲する。
-    /// 独自インフラはコンストラクタ引数 customSenderFactory で差し込める。
     /// </summary>
+    /// <remarks>
+    /// 「呼び名 → <see cref="IMailSender"/>」の対応表は**アプリのテンプレート側 (MailController.CreateSender)**
+    /// が持つ (senderFactory)。製品はプロバイダ名も設定形式も知らないので、独自インフラも同じ対応表に足すだけ。
+    /// </remarks>
     public class MailDispatcher
     {
         /// <summary>DebugRedirectAllTo 有効時に元の宛先を記録するヘッダ。</summary>
@@ -21,15 +24,19 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
         internal const int RedirectBulkClipCount = 10;
 
         readonly MailConfig _config;
-        readonly Func<MailInfraSettings, IMailSender?>? _customSenderFactory;
+        readonly Func<string, IMailSender?> _senderFactory;
         readonly MailHistoryWriter? _historyWriter;
         readonly Func<Task<MailCurrentUser?>>? _currentUserResolver;
 
-        public MailDispatcher(MailConfig config, Func<MailInfraSettings, IMailSender?>? customSenderFactory = null,
+        /// <param name="senderFactory">
+        /// 呼び名 → 送信インフラの対応表 (テンプレートの MailController.CreateSender)。
+        /// 呼び名が空のときは既定を返すこと。知らない呼び名は null を返すとエラーになる。
+        /// </param>
+        public MailDispatcher(MailConfig config, Func<string, IMailSender?> senderFactory,
             MailHistoryWriter? historyWriter = null, Func<Task<MailCurrentUser?>>? currentUserResolver = null)
         {
             _config = config;
-            _customSenderFactory = customSenderFactory;
+            _senderFactory = senderFactory;
             _historyWriter = historyWriter;
             _currentUserResolver = currentUserResolver;
         }
@@ -41,39 +48,25 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
         public async Task<MailCurrentUser?> GetCurrentUserAsync()
             => _currentUserResolver == null ? null : await _currentUserResolver();
 
-        /// <summary>単発送信のインフラ解決: 明示名 → DefaultInfraName → 先頭。</summary>
-        public MailInfraSettings ResolveInfraSettings(string? mailInfraName)
-            => ResolveCore(mailInfraName, _config.DefaultInfraName);
+        /// <summary>単発送信の呼び名: 明示名 → DefaultInfraName (どちらも空なら空)。</summary>
+        public string ResolveInfraName(string? mailInfraName)
+            => string.IsNullOrEmpty(mailInfraName) ? _config.DefaultInfraName : mailInfraName;
 
-        /// <summary>一斉送信のインフラ解決: 明示名 → DefaultBulkInfraName → DefaultInfraName → 先頭。</summary>
-        public MailInfraSettings ResolveBulkInfraSettings(string? mailInfraName)
-            => ResolveCore(mailInfraName, string.IsNullOrEmpty(_config.DefaultBulkInfraName)
-                ? _config.DefaultInfraName : _config.DefaultBulkInfraName);
+        /// <summary>一斉送信の呼び名: 明示名 → DefaultBulkInfraName → DefaultInfraName。</summary>
+        public string ResolveBulkInfraName(string? mailInfraName)
+            => string.IsNullOrEmpty(mailInfraName)
+                ? (string.IsNullOrEmpty(_config.DefaultBulkInfraName) ? _config.DefaultInfraName : _config.DefaultBulkInfraName)
+                : mailInfraName;
 
-        //設定された既定名がどれにも一致しない場合は明示名と同じく例外にする (設定ミスを黙って先頭に落とさない)
-        MailInfraSettings ResolveCore(string? mailInfraName, string defaultName)
-        {
-            if (!_config.Infras.Any()) throw new InvalidOperationException("No mail senders are configured (Mail.Infras).");
-            var name = string.IsNullOrEmpty(mailInfraName) ? defaultName : mailInfraName;
-            if (string.IsNullOrEmpty(name)) return _config.Infras[0];
-            return _config.Infras.FirstOrDefault(e => e.Name == name)
-                ?? throw new InvalidOperationException($"Mail sender '{name}' is not configured.");
-        }
-
-        public IMailSender CreateSender(MailInfraSettings settings)
-        {
-            var custom = _customSenderFactory?.Invoke(settings);
-            if (custom != null) return custom;
-            return settings.Type switch
-            {
-                MailInfraTypes.GraphApi => new GraphApiMailSender(settings),
-                MailInfraTypes.SendGrid => new SendGridMailSender(settings),
-                MailInfraTypes.GmailApi => new GmailApiMailSender(settings),
-                //Type 空 = 旧形式の設定は SMTP
-                MailInfraTypes.Smtp or "" => new SmtpMailSender(settings),
-                _ => throw new InvalidOperationException($"Unknown mail sender type '{settings.Type}'."),
-            };
-        }
+        /// <summary>
+        /// 呼び名から送信インフラを引き当てる。対応表が知らない呼び名は例外
+        /// (設定ミスを黙って別のインフラで送らない)。
+        /// </summary>
+        public IMailSender CreateSender(string mailInfraName)
+            => _senderFactory(mailInfraName)
+                ?? throw new InvalidOperationException(string.IsNullOrEmpty(mailInfraName)
+                    ? "No mail sender is configured (set Mail.DefaultInfraName, or return a default from MailController.CreateSender)."
+                    : $"Mail sender '{mailInfraName}' is not configured.");
 
         /// <summary>
         /// 単発送信のワイヤリクエスト (POST /api/mail) をそのまま送る。Controller を薄く保つための入口。
@@ -114,11 +107,11 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
             if (!message.To.Any() && !message.Cc.Any() && !message.Bcc.Any())
                 return MailSendResult.Failure(string.Empty, "No recipients.");
 
-            var settings = ResolveInfraSettings(mailInfraName);
-            var sender = CreateSender(settings);
+            var name = ResolveInfraName(mailInfraName);
+            var sender = CreateSender(name);
             var sendMessage = string.IsNullOrEmpty(_config.DebugRedirectAllTo) ? message : Redirect(message);
             var result = await sender.SendAsync(sendMessage);
-            if (_historyWriter != null) await _historyWriter.WriteAsync(settings.Name, message.Subject, result, source);
+            if (_historyWriter != null) await _historyWriter.WriteAsync(name, message.Subject, result, source);
             return result;
         }
 
@@ -129,18 +122,18 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
         /// </summary>
         public async Task<MailSendResult> SendBulkAsync(string? mailInfraName, MailBulkTemplate template, List<MailBulkRecipient> recipients, MailHistorySource? source = null)
         {
-            var settings = ResolveBulkInfraSettings(mailInfraName);
-            if (recipients.Count > settings.MaxBulkCount)
+            var name = ResolveBulkInfraName(mailInfraName);
+            var sender = CreateSender(name);
+            if (recipients.Count > sender.MaxBulkCount)
                 throw new InvalidOperationException(
-                    $"Bulk send of {recipients.Count} mails exceeds MaxBulkCount ({settings.MaxBulkCount}) of mail sender '{settings.Name}'.");
+                    $"Bulk send of {recipients.Count} mails exceeds MaxBulkCount ({sender.MaxBulkCount}) of mail sender '{name}'.");
 
             if (template.IsBodyHtml) recipients = recipients.Select(EncodeHtmlVariables).ToList();
 
-            var sender = CreateSender(settings);
             var result = !string.IsNullOrEmpty(_config.DebugRedirectAllTo)
                 ? await SendBulkRedirectedAsync(sender, template, recipients)
                 : await sender.SendBulkAsync(template, recipients);
-            if (_historyWriter != null) await _historyWriter.WriteAsync(settings.Name, template.Subject, result, source);
+            if (_historyWriter != null) await _historyWriter.WriteAsync(name, template.Subject, result, source);
             return result;
         }
 

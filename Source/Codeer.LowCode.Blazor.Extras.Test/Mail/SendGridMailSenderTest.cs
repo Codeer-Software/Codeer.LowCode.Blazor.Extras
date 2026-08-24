@@ -8,10 +8,8 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Mail
 {
     public class SendGridMailSenderTest
     {
-        static readonly MailInfraSettings Settings = new()
+        static readonly SendGridSettings Settings = new()
         {
-            Name = "Campaign",
-            Type = MailInfraTypes.SendGrid,
             ApiKey = "SG.test",
             SenderMailAddress = "info@example.com",
             SenderDisplayName = "Info",

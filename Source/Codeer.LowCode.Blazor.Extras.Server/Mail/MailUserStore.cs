@@ -1,4 +1,4 @@
-using Codeer.LowCode.Blazor.DataIO.Db;
+﻿using Codeer.LowCode.Blazor.DataIO.Db;
 using Codeer.LowCode.Blazor.DesignLogic;
 using Codeer.LowCode.Blazor.Extras.Designs;
 using Codeer.LowCode.Blazor.Repository.Design;
@@ -78,7 +78,9 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
         /// 差出人アドレスのユーザートークンを復号して返す。未登録・設定不備は null (呼び出し側がシステムトークンにフォールバック)。
         /// 検索・復号の失敗はエラーログを出して null (送信自体は止めない)。
         /// </summary>
-        public async Task<string?> FindRefreshTokenAsync(string mailAddress, string tokenFieldName)
+        /// <param name="tokenFieldName">GmailTokenField のフィールド名 (Gmail 設定の UserTokenFieldName)。</param>
+        /// <param name="encryptionKey">列の暗号化鍵 (Gmail 設定の TokenEncryptionKey)。</param>
+        public async Task<string?> FindRefreshTokenAsync(string mailAddress, string tokenFieldName, string encryptionKey)
         {
             if (string.IsNullOrEmpty(_config.UserModuleName) || string.IsNullOrEmpty(tokenFieldName) ||
                 string.IsNullOrEmpty(mailAddress)) return null;
@@ -108,7 +110,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
                     _logError($"The stored Gmail token of '{mailAddress}' is not encrypted. Register it again from the user screen.");
                     return null;
                 }
-                return GmailTokenProtector.Unprotect(token, _config.TokenEncryptionKey);
+                return GmailTokenProtector.Unprotect(token, encryptionKey);
             }
             catch (Exception ex)
             {

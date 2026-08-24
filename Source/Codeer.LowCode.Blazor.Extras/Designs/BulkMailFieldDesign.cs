@@ -70,7 +70,10 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         [Designer(Index = 8, CandidateType = CandidateType.MultilineString, DisplayName = "$BulkMailBody")]
         public string Body { get; set; } = string.Empty;
 
-        /// <summary>メールインフラ名 (appsettings の Mail.Infras の設定名 = どの送信インフラ・既定差出人を使うか)。省略可 = 空なら既定のインフラ (Mail.DefaultBulkInfraName → DefaultInfraName → 先頭)。</summary>
+        /// <summary>
+        /// 送信先の呼び名 (テンプレートの MailController の対応表が解釈する)。
+        /// 省略可 = 空なら appsettings の Mail.DefaultBulkInfraName → DefaultInfraName、それも空なら対応表の既定。
+        /// </summary>
         [Designer(Index = 1, DisplayName = "$MailInfraName")]
         public string MailInfraName { get; set; } = string.Empty;
 

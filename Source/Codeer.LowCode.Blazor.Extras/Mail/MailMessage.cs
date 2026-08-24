@@ -13,7 +13,7 @@
     public class MailMessage
     {
         /// <summary>
-        /// 差出人アドレス (任意)。空 = 送信者設定 (Mail.Infras) の SenderMailAddress。
+        /// 差出人アドレス (任意)。空 = プロバイダ設定 (Smtp / Gmail などのセクション) の SenderMailAddress。
         /// 動的な From は送信者設定の AllowedFromDomains で許可されたドメインのみ (サーバーが検証する)。
         /// </summary>
         public string From { get; set; } = string.Empty;

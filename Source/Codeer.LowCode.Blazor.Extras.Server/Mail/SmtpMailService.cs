@@ -5,7 +5,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
     /// <summary>
     /// 後方互換のために残している旧形式の単一 SMTP 送信の入口。
     /// 内部では <see cref="SmtpMailSender"/> (MailKit) へ委譲する。
-    /// 新しいコードは名前付きインフラの <see cref="MailDispatcher"/> を使うこと。
+    /// 新しいコードは <see cref="MailDispatcher"/> を使うこと (設定は Mail.Smtp)。
     /// </summary>
     public class SmtpMailService
     {
@@ -18,10 +18,8 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
             if (string.IsNullOrEmpty(_settings.Host)) return false;
             if (!message.To.Any()) return false;
 
-            var sender = new SmtpMailSender(new MailInfraSettings
+            var sender = new SmtpMailSender(new SmtpSettings
             {
-                Name = MailInfraSettings.LegacyDefaultName,
-                Type = MailInfraTypes.Smtp,
                 Host = _settings.Host,
                 Port = _settings.Port,
                 SSL = _settings.SSL,

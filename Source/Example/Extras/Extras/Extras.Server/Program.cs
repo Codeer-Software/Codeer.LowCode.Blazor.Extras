@@ -1,4 +1,4 @@
-using Codeer.LowCode.Blazor.Extras;
+﻿using Codeer.LowCode.Blazor.Extras;
 using Codeer.LowCode.Blazor.Extras.Fields;
 using Codeer.LowCode.Blazor.Json;
 using Codeer.LowCode.Blazor.License;
@@ -35,7 +35,12 @@ SystemConfig.Instance.TemporaryFileTableInfo = builder.Configuration.GetSection(
 SystemConfig.Instance.DesignFileDirectory = builder.Configuration["DesignFileDirectory"] ?? string.Empty;
 SystemConfig.Instance.FontFileDirectory = builder.Configuration["FontFileDirectory"] ?? string.Empty;
 SystemConfig.Instance.MailSettings = builder.Configuration.GetSection("MailSettings").Get<MailSettings>() ?? new();
-SystemConfig.Instance.Mail = MailConfig.Normalize(builder.Configuration.GetSection("Mail").Get<MailConfig>(), SystemConfig.Instance.MailSettings);
+SystemConfig.Instance.Mail = builder.Configuration.GetSection("Mail").Get<MailConfig>() ?? new();
+//メールのプロバイダ設定はそれぞれ独立したセクション (使うものだけ書けばよい)。旧 MailSettings は Smtp に写す
+SystemConfig.Instance.Smtp = SmtpSettings.Normalize(builder.Configuration.GetSection("Smtp").Get<SmtpSettings>(), SystemConfig.Instance.MailSettings);
+SystemConfig.Instance.GraphApi = builder.Configuration.GetSection("GraphApi").Get<GraphApiSettings>() ?? new();
+SystemConfig.Instance.SendGrid = builder.Configuration.GetSection("SendGrid").Get<SendGridSettings>() ?? new();
+SystemConfig.Instance.Gmail = builder.Configuration.GetSection("Gmail").Get<GmailSettings>() ?? new();
 SystemConfig.Instance.AISettings = builder.Configuration.GetSection("AISettings").Get<AISettings>() ?? new();
 SystemConfig.Instance.DataSources.ToList().ForEach(e => e.ConnectionString = builder.Configuration.GetConnectionString(e.Name) ?? string.Empty);
 SystemConfig.Instance.FileStorages.ToList().ForEach(e => e.ConnectionString = builder.Configuration.GetConnectionString(e.Name) ?? string.Empty);

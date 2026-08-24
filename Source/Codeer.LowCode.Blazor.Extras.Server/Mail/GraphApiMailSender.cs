@@ -17,16 +17,18 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
         static readonly HttpClient _sharedClient = new();
         const int MaxRetryCount = 3;
 
-        readonly MailInfraSettings _settings;
+        readonly GraphApiSettings _settings;
         readonly HttpClient _http;
         string? _token;
         DateTime _tokenExpiresAtUtc;
 
-        public GraphApiMailSender(MailInfraSettings settings, HttpClient? httpClient = null)
+        public GraphApiMailSender(GraphApiSettings settings, HttpClient? httpClient = null)
         {
             _settings = settings;
             _http = httpClient ?? _sharedClient;
         }
+
+        public int MaxBulkCount => _settings.MaxBulkCount;
 
         public async Task<MailSendResult> SendAsync(MailMessage message)
         {

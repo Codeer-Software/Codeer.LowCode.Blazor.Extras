@@ -14,14 +14,14 @@ SendGrid = ドメイン認証 / Smtp = リレー)。
 
 - トークンは**書き込み専用の DB 列**に保存され、**クライアントには一切返さない**
   (トークンは「所持 = そのユーザーとして送信できる」秘密のため)
-- 列は**AES-GCM で暗号化**されて保存される。鍵は appsettings の `Mail.TokenEncryptionKey`。
+- 列は**AES-GCM で暗号化**されて保存される。鍵は appsettings の `Gmail.TokenEncryptionKey`。
   **鍵が未設定のまま保存しようとするとエラー**になる (平文で保存しない)
 - 入力欄はこのフィールド自身が持つ (**貼り付け**、または**トークンJSONファイルの読み込み**)。
   現在の値は読み出せないので**入力欄は毎回空から始まり、空のまま保存すれば既存トークンを維持**する
   (パスワード変更欄と同じ挙動)。「登録を解除」で登録を消せる
 - 保存時の暗号化はサーバー側ヘルパが行う:
   `CustomizedModuleDataIO.AddAsync / UpdateAsync` で
-  `Codeer.LowCode.Blazor.Extras.Server.Mail.GmailTokenHelper.ProtectGmailTokens(moduleDesign, data, key)` を
+  `Codeer.LowCode.Blazor.Extras.Server.Mail.GmailTokenHelper.ProtectGmailTokens(moduleDesign, data, Gmail.TokenEncryptionKey)` を
   `base.AddAsync / base.UpdateAsync` の前に呼ぶこと (PasswordHashHelper.ApplyPasswordHash と並べて呼ぶのが定石)
 - 送信時の読み取り・復号はサーバー内部経路のみ (`MailUserStore`。テンプレートの MailController が結線)
 - **誰が登録できるかは、このモジュールの書き込み権限がそのまま効く**。
@@ -51,14 +51,18 @@ SendGrid = ドメイン認証 / Smtp = リレー)。
 ```json
 "Mail": {
   "UserModuleName": "AppUser",
-  "UserEmailFieldName": "Email",
-  "TokenEncryptionKey": "...(環境変数 Mail__TokenEncryptionKey で与えるのが安全)...",
-  "Infras": [
-    { "Name": "GmailApi", "Type": "GmailApi",
-      "ClientSecret": "...client_secret.json のパス...",
-      "TokenSecret": "...システム送信者のトークン (フォールバック)...",
-      "UserTokenFieldName": "GmailToken" } ] }
+  "UserEmailFieldName": "Email"
+},
+"Gmail": {
+  "SenderMailAddress": "notify@your-domain.example",
+  "ClientSecret": "...client_secret.json のパス...",
+  "TokenSecret": "...システム送信者のトークン (フォールバック)...",
+  "UserTokenFieldName": "GmailToken",
+  "TokenEncryptionKey": "...(環境変数 Gmail__TokenEncryptionKey で与えるのが安全)..."
+}
 ```
+
+`Mail` は製品が読む共通設定、`Gmail` はプロバイダ個別の設定 (テンプレートが読む) です。
 
 送信時、差出人のアドレスで `Mail.UserModuleName` を検索し、トークンが登録されていれば復号して
 その人として送る。未登録なら `TokenSecret` (システム送信者) にフォールバックする。

@@ -25,7 +25,7 @@ namespace Extras.Server.Services
 
             PasswordHashHelper.ApplyPasswordHash(moduleDesign, data);
             //Gmailトークンは平文で来るのでここで暗号化する (鍵 = Mail.TokenEncryptionKey)
-            GmailTokenHelper.ProtectGmailTokens(moduleDesign, data, SystemConfig.Instance.Mail.TokenEncryptionKey);
+            GmailTokenHelper.ProtectGmailTokens(moduleDesign, data, SystemConfig.Instance.Gmail.TokenEncryptionKey);
             return await base.AddAsync(transactionId, moduleSubmitId, data);
         }
 
@@ -36,7 +36,7 @@ namespace Extras.Server.Services
 
             PasswordHashHelper.ApplyPasswordHash(moduleDesign, data);
             //Gmailトークンは平文で来るのでここで暗号化する (鍵 = Mail.TokenEncryptionKey)
-            GmailTokenHelper.ProtectGmailTokens(moduleDesign, data, SystemConfig.Instance.Mail.TokenEncryptionKey);
+            GmailTokenHelper.ProtectGmailTokens(moduleDesign, data, SystemConfig.Instance.Gmail.TokenEncryptionKey);
             await base.UpdateAsync(transactionId, moduleSubmitId, data);
         }
         //メール送信履歴などシステムの記録を、操作ユーザーの書き込み権限に依存せず追加する内部経路。

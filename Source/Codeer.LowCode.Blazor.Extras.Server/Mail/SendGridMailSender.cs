@@ -17,14 +17,16 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
         internal const int PersonalizationsPerRequest = 1000;
         const string Endpoint = "https://api.sendgrid.com/v3/mail/send";
 
-        readonly MailInfraSettings _settings;
+        readonly SendGridSettings _settings;
         readonly HttpClient _http;
 
-        public SendGridMailSender(MailInfraSettings settings, HttpClient? httpClient = null)
+        public SendGridMailSender(SendGridSettings settings, HttpClient? httpClient = null)
         {
             _settings = settings;
             _http = httpClient ?? _sharedClient;
         }
+
+        public int MaxBulkCount => _settings.MaxBulkCount;
 
         public async Task<MailSendResult> SendAsync(MailMessage message)
         {

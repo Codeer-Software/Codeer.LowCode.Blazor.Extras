@@ -12,6 +12,8 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Mail
             public List<MailMessage> Sent { get; } = new();
             public List<(MailBulkTemplate Template, List<MailBulkRecipient> Recipients)> BulkSent { get; } = new();
 
+            public int MaxBulkCount { get; set; } = 10000;
+
             public Task<MailSendResult> SendAsync(MailMessage message)
             {
                 Sent.Add(message);
@@ -27,87 +29,60 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Mail
 
         static (MailDispatcher dispatcher, FakeMailSender fake) Create(string debugRedirectAllTo = "", int maxBulkCount = 10000)
         {
-            var fake = new FakeMailSender();
-            var config = new MailConfig
-            {
-                DebugRedirectAllTo = debugRedirectAllTo,
-                Infras =
-                {
-                    new MailInfraSettings { Name = "Main", Type = MailInfraTypes.Smtp, MaxBulkCount = maxBulkCount },
-                    new MailInfraSettings { Name = "Sub", Type = MailInfraTypes.SendGrid },
-                }
-            };
-            return (new MailDispatcher(config, _ => fake), fake);
+            var fake = new FakeMailSender { MaxBulkCount = maxBulkCount };
+            var config = new MailConfig { DebugRedirectAllTo = debugRedirectAllTo };
+            //テンプレートの対応表に相当。呼び名が空 = 既定
+            return (new MailDispatcher(config, name => name is "Main" or "" ? fake : null), fake);
         }
 
         [Test]
-        public void ResolveInfraSettings_省略は先頭_名前指定は一致_不明はエラー()
+        public void ResolveInfraName_省略は既定名_明示指定が最優先()
+        {
+            var dispatcher = new MailDispatcher(
+                new MailConfig { DefaultInfraName = "Notify", DefaultBulkInfraName = "Campaign" }, _ => null);
+
+            Assert.That(dispatcher.ResolveInfraName(null), Is.EqualTo("Notify"));
+            Assert.That(dispatcher.ResolveBulkInfraName(null), Is.EqualTo("Campaign"));
+            Assert.That(dispatcher.ResolveInfraName("Other"), Is.EqualTo("Other"));
+            Assert.That(dispatcher.ResolveBulkInfraName("Other"), Is.EqualTo("Other"));
+        }
+
+        [Test]
+        public void ResolveBulkInfraName_Bulk既定なしは単発既定_両方なしは空()
+        {
+            Assert.That(new MailDispatcher(new MailConfig { DefaultInfraName = "Notify" }, _ => null)
+                .ResolveBulkInfraName(null), Is.EqualTo("Notify"));
+            Assert.That(new MailDispatcher(new MailConfig(), _ => null).ResolveBulkInfraName(null), Is.Empty);
+        }
+
+        [Test]
+        public void CreateSender_対応表が知らない呼び名はエラー()
         {
             var (dispatcher, _) = Create();
-            Assert.That(dispatcher.ResolveInfraSettings(null).Name, Is.EqualTo("Main"));
-            Assert.That(dispatcher.ResolveInfraSettings("Sub").Name, Is.EqualTo("Sub"));
-            Assert.That(() => dispatcher.ResolveInfraSettings("Nothing"), Throws.InvalidOperationException);
+            Assert.That(() => dispatcher.CreateSender("Nothing"),
+                Throws.InvalidOperationException.With.Message.Contains("Nothing"));
         }
 
         [Test]
-        public void ResolveInfraSettings_設定なしはエラー()
+        public void CreateSender_呼び名が空で対応表が既定を返さないならエラー()
         {
-            var dispatcher = new MailDispatcher(new MailConfig());
-            Assert.That(() => dispatcher.ResolveInfraSettings(null), Throws.InvalidOperationException);
-        }
-
-        static MailDispatcher CreateWithDefaults(string defaultSender, string defaultBulkSender)
-            => new(new MailConfig
-            {
-                DefaultInfraName = defaultSender,
-                DefaultBulkInfraName = defaultBulkSender,
-                Infras =
-                {
-                    new MailInfraSettings { Name = "Main" },
-                    new MailInfraSettings { Name = "Notify" },
-                    new MailInfraSettings { Name = "Campaign" },
-                }
-            });
-
-        [Test]
-        public void ResolveInfraSettings_省略時は用途別デフォルト_明示指定が最優先()
-        {
-            var dispatcher = CreateWithDefaults("Notify", "Campaign");
-            Assert.That(dispatcher.ResolveInfraSettings(null).Name, Is.EqualTo("Notify"));
-            Assert.That(dispatcher.ResolveBulkInfraSettings(null).Name, Is.EqualTo("Campaign"));
-            Assert.That(dispatcher.ResolveInfraSettings("Campaign").Name, Is.EqualTo("Campaign"));
-            Assert.That(dispatcher.ResolveBulkInfraSettings("Notify").Name, Is.EqualTo("Notify"));
-        }
-
-        [Test]
-        public void ResolveBulkInfraSettings_Bulk既定なしは単発既定_両方なしは先頭()
-        {
-            Assert.That(CreateWithDefaults("Notify", "").ResolveBulkInfraSettings(null).Name, Is.EqualTo("Notify"));
-            Assert.That(CreateWithDefaults("", "").ResolveBulkInfraSettings(null).Name, Is.EqualTo("Main"));
-        }
-
-        [Test]
-        public void ResolveInfraSettings_デフォルト名が不明でも黙って先頭に落ちずエラー()
-        {
-            Assert.That(() => CreateWithDefaults("Nothing", "").ResolveInfraSettings(null), Throws.InvalidOperationException);
-            Assert.That(() => CreateWithDefaults("", "Nothing").ResolveBulkInfraSettings(null), Throws.InvalidOperationException);
+            //設定ミスを黙って別のインフラで送らない (以前の「先頭に落とす」挙動は廃止)
+            var dispatcher = new MailDispatcher(new MailConfig(), _ => null);
+            Assert.That(() => dispatcher.CreateSender(string.Empty), Throws.InvalidOperationException);
         }
 
         [Test]
         public void SendBulk_センダー省略時はBulk既定のセンダーで送られる()
         {
-            var fake = new FakeMailSender();
-            var config = new MailConfig
+            var notify = new FakeMailSender();
+            var campaign = new FakeMailSender { MaxBulkCount = 1 };
+            var config = new MailConfig { DefaultInfraName = "Notify", DefaultBulkInfraName = "Campaign" };
+            var dispatcher = new MailDispatcher(config, name => name switch
             {
-                DefaultInfraName = "Notify",
-                DefaultBulkInfraName = "Campaign",
-                Infras =
-                {
-                    new MailInfraSettings { Name = "Notify" },
-                    new MailInfraSettings { Name = "Campaign", MaxBulkCount = 1 },
-                }
-            };
-            var dispatcher = new MailDispatcher(config, _ => fake);
+                "Notify" => notify,
+                "Campaign" => campaign,
+                _ => null,
+            });
 
             //Campaign(MaxBulkCount=1)が選ばれている証拠として2件で超過エラーになる
             Assert.That(async () => await dispatcher.SendBulkAsync(null, new MailBulkTemplate(),
@@ -213,27 +188,20 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Mail
         }
 
         [Test]
-        public async Task カスタムセンダーファクトリが優先される()
+        public async Task 独自インフラも対応表に足すだけで送れる()
         {
             var fake = new FakeMailSender();
-            var config = new MailConfig
-            {
-                Infras = { new MailInfraSettings { Name = "Custom", Type = "MyGateway" } }
-            };
-            var dispatcher = new MailDispatcher(config, s => s.Type == "MyGateway" ? fake : null);
+            var dispatcher = new MailDispatcher(new MailConfig(), name => name == "MyGateway" ? fake : null);
 
-            var result = await dispatcher.SendAsync("Custom", new MailMessage { To = { "a@example.com" } });
+            var result = await dispatcher.SendAsync("MyGateway", new MailMessage { To = { "a@example.com" } });
             Assert.That(result.IsSuccess, Is.True);
             Assert.That(fake.Sent, Has.Count.EqualTo(1));
         }
 
         [Test]
-        public void 不明なセンダータイプはエラー()
+        public void 対応表が知らない呼び名で送るとエラー()
         {
-            var dispatcher = new MailDispatcher(new MailConfig
-            {
-                Infras = { new MailInfraSettings { Name = "X", Type = "Unknown" } }
-            });
+            var dispatcher = new MailDispatcher(new MailConfig(), _ => null);
             Assert.That(async () => await dispatcher.SendAsync("X", new MailMessage { To = { "a@example.com" } }),
                 Throws.InvalidOperationException);
         }
@@ -243,11 +211,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Mail
         static (MailDispatcher dispatcher, FakeMailSender fake) CreateWithCurrentUser(MailCurrentUser? user)
         {
             var fake = new FakeMailSender();
-            var config = new MailConfig
-            {
-                Infras = { new MailInfraSettings { Name = "Main", Type = MailInfraTypes.Smtp } },
-            };
-            return (new MailDispatcher(config, _ => fake, currentUserResolver: () => Task.FromResult(user)), fake);
+            return (new MailDispatcher(new MailConfig(), _ => fake, currentUserResolver: () => Task.FromResult(user)), fake);
         }
 
         [Test]
@@ -299,11 +263,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Mail
         public async Task From_リダイレクト時も維持される()
         {
             var fake = new FakeMailSender();
-            var config = new MailConfig
-            {
-                DebugRedirectAllTo = "test@example.com",
-                Infras = { new MailInfraSettings { Name = "Main" } },
-            };
+            var config = new MailConfig { DebugRedirectAllTo = "test@example.com" };
             var dispatcher = new MailDispatcher(config, _ => fake,
                 currentUserResolver: () => Task.FromResult<MailCurrentUser?>(new() { Email = "sales@example.com" }));
 

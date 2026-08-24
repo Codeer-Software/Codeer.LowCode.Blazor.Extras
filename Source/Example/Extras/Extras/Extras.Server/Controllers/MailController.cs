@@ -46,16 +46,9 @@ namespace Extras.Server.Controllers
             return new MailDispatcher(mail, CreateSender, historyWriter, CreateCurrentUserResolver());
         }
 
-        //センダー設定(Type)→送信インフラ実装の対応表。独自インフラ(IMailSenderの実装)を使うときはここに追記する
-        IMailSender? CreateSender(MailInfraSettings settings)
-            => settings.Type switch
-            {
-                MailInfraTypes.Smtp or "" => new SmtpMailSender(settings),
-                MailInfraTypes.GraphApi => new GraphApiMailSender(settings),
-                MailInfraTypes.SendGrid => new SendGridMailSender(settings),
-                MailInfraTypes.GmailApi => new GmailApiMailSender(settings, userRefreshTokenResolver: CreateUserTokenResolver(settings)),
-                _ => null, //null は製品組み込みの解決に委ねる(未知の Type はそこでエラーになる)
-            };
+        //呼び名→送信インフラの対応表は MailSenderTable (独自インフラはそこに足す)
+        IMailSender? CreateSender(string name)
+            => MailSenderTable.Create(name, CreateUserTokenResolver());
 
         //「自分を差出人にする」(IsFromCurrentUser) の操作ユーザー解決 (認証ユーザーId → Mail.UserModuleName のメール/表示名)
         Func<Task<MailCurrentUser?>>? CreateCurrentUserResolver()
@@ -68,15 +61,16 @@ namespace Extras.Server.Controllers
             return () => store.FindCurrentUserAsync(userId);
         }
 
-        //差出人ごとのユーザートークン検索 (Gmail ユーザー同意モード)。UserTokenFieldName 未設定なら使わない。
-        //トークン列は書き込み専用のためサーバー内部の SQL (MailUserStore) で読む
-        Func<string, Task<string?>>? CreateUserTokenResolver(MailInfraSettings settings)
+        //差出人ごとのユーザートークン検索 (Gmail ユーザー同意モード)。Gmail.UserTokenFieldName 未設定なら使わない。
+        //トークン列は書き込み専用+暗号化のためサーバー内部の SQL (MailUserStore) で読んで復号する
+        Func<string, Task<string?>>? CreateUserTokenResolver()
         {
             var mail = SystemConfig.Instance.Mail;
-            if (string.IsNullOrEmpty(mail.UserModuleName) || string.IsNullOrEmpty(settings.UserTokenFieldName)) return null;
+            var gmail = SystemConfig.Instance.Gmail;
+            if (string.IsNullOrEmpty(mail.UserModuleName) || string.IsNullOrEmpty(gmail.UserTokenFieldName)) return null;
             var store = new MailUserStore(DesignerService.GetDesignData(), mail,
                 _dataService.DbAccess, e => _logger.LogError("{Error}", e));
-            return address => store.FindRefreshTokenAsync(address, settings.UserTokenFieldName);
+            return address => store.FindRefreshTokenAsync(address, gmail.UserTokenFieldName, gmail.TokenEncryptionKey);
         }
     }
 }

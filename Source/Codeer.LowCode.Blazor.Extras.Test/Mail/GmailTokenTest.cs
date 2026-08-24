@@ -96,10 +96,9 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Mail
             {
                 UserModuleName = "AppUser",
                 UserEmailFieldName = "Email",
-                TokenEncryptionKey = Key,
             }, db, _ => { });
 
-            var token = await store.FindRefreshTokenAsync("tanaka@example.com", "GmailToken");
+            var token = await store.FindRefreshTokenAsync("tanaka@example.com", "GmailToken", Key);
 
             //復号して返す
             Assert.That(token, Is.EqualTo(PlainToken));
@@ -123,7 +122,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Mail
                 UserModuleName = "AppUser",
                 UserEmailFieldName = "Email",
             }, new FakeDbAccessor(), _ => { });
-            Assert.That(await store.FindRefreshTokenAsync("nobody@example.com", "GmailToken"), Is.Null);
+            Assert.That(await store.FindRefreshTokenAsync("nobody@example.com", "GmailToken", Key), Is.Null);
 
             //モジュール不在 → null + エラーログ
             var errors = new List<string>();
@@ -132,7 +131,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Mail
                 UserModuleName = "NoSuchModule",
                 UserEmailFieldName = "Email",
             }, new FakeDbAccessor(), errors.Add);
-            Assert.That(await broken.FindRefreshTokenAsync("tanaka@example.com", "GmailToken"), Is.Null);
+            Assert.That(await broken.FindRefreshTokenAsync("tanaka@example.com", "GmailToken", Key), Is.Null);
             Assert.That(errors, Has.Count.EqualTo(1));
 
             //暗号化されていない列の値は使わない (エラーログを出して null = システムトークンにフォールバック)
@@ -142,9 +141,8 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Mail
             {
                 UserModuleName = "AppUser",
                 UserEmailFieldName = "Email",
-                TokenEncryptionKey = Key,
             }, plainDb, plainErrors.Add);
-            Assert.That(await plainStore.FindRefreshTokenAsync("tanaka@example.com", "GmailToken"), Is.Null);
+            Assert.That(await plainStore.FindRefreshTokenAsync("tanaka@example.com", "GmailToken", Key), Is.Null);
             Assert.That(plainErrors, Has.Count.EqualTo(1));
         }
 

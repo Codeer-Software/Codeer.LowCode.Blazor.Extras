@@ -1,4 +1,4 @@
-using Codeer.LowCode.Blazor.DesignLogic.Check;
+﻿using Codeer.LowCode.Blazor.DesignLogic.Check;
 using Codeer.LowCode.Blazor.Extras.Components;
 using Codeer.LowCode.Blazor.Extras.Data;
 using Codeer.LowCode.Blazor.Extras.Fields;
@@ -15,9 +15,9 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
     /// **列は書き込み専用でクライアントには一切返さない** (トークンは所持=送信できる秘密のため)。
     /// 入力欄はこのフィールド自身が持ち (貼り付け / トークンJSONファイルの読み込み)、
     /// 入力された平文はサーバー側で暗号化されてから列に入る
-    /// (Extras.Server の GmailTokenHelper.ApplyGmailToken + Mail.TokenEncryptionKey)。
+    /// (Extras.Server の GmailTokenHelper.ProtectGmailTokens + Gmail 設定の TokenEncryptionKey)。
     /// 送信時はサーバーが差出人アドレスでこのモジュールを検索して復号する
-    /// (appsettings の Mail.UserModuleName / Mail.UserEmailFieldName と Mail.Infras[GmailApi].UserTokenFieldName)。
+    /// (appsettings の Mail.UserModuleName / Mail.UserEmailFieldName と Gmail 設定の UserTokenFieldName)。
     /// </summary>
     [ToolboxIcon(PackIconMaterialKind = "EmailLock")]
     [Designer(DisplayName = "$GmailTokenField")]

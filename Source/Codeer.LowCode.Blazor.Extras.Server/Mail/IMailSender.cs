@@ -4,11 +4,17 @@ using Codeer.LowCode.Blazor.Extras.ScriptObjects;
 namespace Codeer.LowCode.Blazor.Extras.Server.Mail
 {
     /// <summary>
-    /// メール送信インフラ。インフラごとの実装 (SMTP / Microsoft Graph / SendGrid) があり、
-    /// 独自実装は <see cref="MailDispatcher"/> 経由で差し込める。
+    /// メール送信インフラ。プロバイダごとの実装 (SMTP / Microsoft Graph / SendGrid / Gmail) があり、
+    /// それぞれ自分のプロバイダ設定だけを受け取る。プロバイダ間の差はこのインターフェースが吸収する
+    /// (製品側にプロバイダ共通の設定型は無い)。独自実装はテンプレートの対応表 (MailController.CreateSender) に足す。
     /// </summary>
     public interface IMailSender
     {
+        /// <summary>
+        /// 一斉送信1回の件数上限 (プロバイダ設定の MaxBulkCount)。超過は <see cref="MailDispatcher"/> がエラーにする。
+        /// </summary>
+        int MaxBulkCount { get; }
+
         /// <summary>単発メッセージを送る。</summary>
         Task<MailSendResult> SendAsync(MailMessage message);
 

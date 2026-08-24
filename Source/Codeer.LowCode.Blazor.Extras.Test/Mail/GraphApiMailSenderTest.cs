@@ -8,10 +8,8 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Mail
 {
     public class GraphApiMailSenderTest
     {
-        static readonly MailInfraSettings Settings = new()
+        static readonly GraphApiSettings Settings = new()
         {
-            Name = "Notify",
-            Type = MailInfraTypes.GraphApi,
             TenantId = "tenant-id",
             ClientId = "client-id",
             ClientSecret = "secret",

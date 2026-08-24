@@ -99,7 +99,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Approval
             {
                 //通知メールは常に結線する (契約の TurnNotifyMail が空なら送られない)
                 MailDispatcher = new MailDispatcher(
-                    new MailConfig { Infras = { new MailInfraSettings { Name = "Test", Type = MailInfraTypes.Smtp } } },
+                    new MailConfig(),
                     _ => new FakeMailSender(this)),
                 LogError = _mailErrors.Add,
             };
@@ -111,6 +111,8 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Approval
 
         class FakeMailSender(ApprovalEngineDbTest owner) : IMailSender
         {
+            public int MaxBulkCount => 10000;
+
             public Task<MailSendResult> SendAsync(MailMessage message)
             {
                 if (owner._mailSenderThrows) throw new InvalidOperationException("mail infrastructure down");

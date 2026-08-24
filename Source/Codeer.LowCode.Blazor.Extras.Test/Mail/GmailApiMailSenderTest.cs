@@ -11,10 +11,8 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Mail
     public class GmailApiMailSenderTest
     {
         //テスト用に生成したRSA鍵でサービスアカウントJSONキーを偽装する(ClientSecret=JSON文字列の経路も兼ねる)
-        static readonly MailInfraSettings Settings = new()
+        static readonly GmailSettings Settings = new()
         {
-            Name = "Gmail",
-            Type = MailInfraTypes.GmailApi,
             SenderMailAddress = "notify@example.com",
             SenderDisplayName = "業務システム",
             ClientSecret = JsonSerializer.Serialize(new
@@ -111,10 +109,8 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Mail
         }
 
         //ユーザー同意モード (OAuth クライアント + リフレッシュトークン。管理者・ドメイン全体の委任は不要)
-        static readonly MailInfraSettings OAuthSettings = new()
+        static readonly GmailSettings OAuthSettings = new()
         {
-            Name = "Gmail",
-            Type = MailInfraTypes.GmailApi,
             SenderMailAddress = "sales@example.com",
             SenderDisplayName = "営業 太郎",
             ClientSecret = """{"installed":{"client_id":"CID.apps.googleusercontent.com","client_secret":"CSECRET","redirect_uris":["http://localhost"]}}""",
@@ -198,10 +194,9 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Mail
         public async Task ユーザー同意モード_TokenSecret未設定は明確なエラー()
         {
             var handler = CreateHandler();
-            var sender = new GmailApiMailSender(new MailInfraSettings
+            var sender = new GmailApiMailSender(new GmailSettings
             {
-                Type = MailInfraTypes.GmailApi,
-                SenderMailAddress = "sales@example.com",
+                    SenderMailAddress = "sales@example.com",
                 ClientSecret = """{"installed":{"client_id":"CID","client_secret":"CSECRET"}}""",
             }, handler.CreateClient());
 
@@ -215,10 +210,9 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Mail
         {
             //OAuth の client_secret.json でもサービスアカウントキーでもない JSON (かつての KeyNotFoundException の改善)
             var handler = CreateHandler();
-            var sender = new GmailApiMailSender(new MailInfraSettings
+            var sender = new GmailApiMailSender(new GmailSettings
             {
-                Type = MailInfraTypes.GmailApi,
-                SenderMailAddress = "sales@example.com",
+                    SenderMailAddress = "sales@example.com",
                 ClientSecret = """{"foo":"bar"}""",
             }, handler.CreateClient());
 

@@ -10,10 +10,8 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Mail
     /// </summary>
     public class SmtpMailSenderTest
     {
-        static readonly MailInfraSettings Settings = new()
+        static readonly SmtpSettings Settings = new()
         {
-            Name = "Local",
-            Type = MailInfraTypes.Smtp,
             Host = "smtp.example.com",
             Port = "587",
             SenderMailAddress = "noreply@example.com",
@@ -23,7 +21,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Mail
         [Test]
         public void CreateMimeMessage_基本要素の対応()
         {
-            var mime = SmtpMailSender.CreateMimeMessage(Settings, new MailMessage
+            var mime = SmtpMailSender.CreateMimeMessage(Settings.SenderMailAddress, Settings.SenderDisplayName, new MailMessage
             {
                 To = { "a@example.com", "b@example.com" },
                 Cc = { "c@example.com" },
@@ -49,7 +47,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Mail
         [Test]
         public void CreateMimeMessage_動的Fromの上書き()
         {
-            var mime = SmtpMailSender.CreateMimeMessage(Settings, new MailMessage
+            var mime = SmtpMailSender.CreateMimeMessage(Settings.SenderMailAddress, Settings.SenderDisplayName, new MailMessage
             {
                 From = "sales@example.com",
                 FromDisplayName = "営業 太郎",
@@ -76,7 +74,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Mail
         [Test]
         public void CreateMimeMessage_HTML本文と添付()
         {
-            var mime = SmtpMailSender.CreateMimeMessage(Settings, new MailMessage
+            var mime = SmtpMailSender.CreateMimeMessage(Settings.SenderMailAddress, Settings.SenderDisplayName, new MailMessage
             {
                 To = { "a@example.com" },
                 Body = "<p>本文</p>",

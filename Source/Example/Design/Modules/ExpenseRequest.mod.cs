@@ -14,7 +14,7 @@ ApprovalRouteData OnBuildRoute()
     return route;
 }
 
-// 受付メールを送る (MailField のデモ。実送信には appsettings の Mail.Infras 設定が必要)
+// 受付メールを送る (MailField のデモ。実送信には appsettings の Mail 設定が必要)
 void SendReceiptMail()
 {
     var result = ReceiptMail.Send();

@@ -11,9 +11,11 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
     /// </summary>
     public class SmtpMailSender : IMailSender
     {
-        readonly MailInfraSettings _settings;
+        readonly SmtpSettings _settings;
 
-        public SmtpMailSender(MailInfraSettings settings) => _settings = settings;
+        public SmtpMailSender(SmtpSettings settings) => _settings = settings;
+
+        public int MaxBulkCount => _settings.MaxBulkCount;
 
         public async Task<MailSendResult> SendAsync(MailMessage message)
         {
@@ -24,7 +26,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
             try
             {
                 await ConnectAsync(client, port);
-                await client.SendAsync(CreateMimeMessage(_settings, message));
+                await client.SendAsync(CreateMimeMessage(_settings.SenderMailAddress, _settings.SenderDisplayName, message));
                 return MailSendResult.Success(1);
             }
             catch (Exception ex)
@@ -55,7 +57,8 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
                 {
                     try
                     {
-                        await client.SendAsync(CreateMimeMessage(_settings, CreateResolvedMessage(template, recipient)));
+                        await client.SendAsync(CreateMimeMessage(_settings.SenderMailAddress, _settings.SenderDisplayName,
+                            CreateResolvedMessage(template, recipient)));
                         result.SuccessCount++;
                     }
                     catch (Exception ex)
@@ -121,12 +124,12 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
             }
         }
 
-        internal static MimeMessage CreateMimeMessage(MailInfraSettings settings, MailMessage message)
+        internal static MimeMessage CreateMimeMessage(string senderMailAddress, string senderDisplayName, MailMessage message)
         {
             var mime = new MimeMessage();
-            //動的 From (許可ドメインは MailDispatcher が検証済み)。空なら送信者設定の差出人
+            //From はサーバーが解決した本人のアドレスのみ (MailDispatcher が保証)。空ならプロバイダ設定の差出人
             mime.From.Add(string.IsNullOrEmpty(message.From)
-                ? new MailboxAddress(settings.SenderDisplayName, settings.SenderMailAddress)
+                ? new MailboxAddress(senderDisplayName, senderMailAddress)
                 : new MailboxAddress(message.FromDisplayName, message.From));
             foreach (var e in message.To) mime.To.Add(MailboxAddress.Parse(e));
             foreach (var e in message.Cc) mime.Cc.Add(MailboxAddress.Parse(e));
