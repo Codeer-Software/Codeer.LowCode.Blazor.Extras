@@ -15,29 +15,29 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
     {
         public ApprovalFlowContractFieldDesign() : base(typeof(ApprovalFlowContractFieldDesign).FullName!) { }
 
-        [Designer(Index = 3, CandidateType = CandidateType.Field)]
+        [Designer(Index = 3, CandidateType = CandidateType.Field, DisplayName = "$ApprovalFlowContractStatus")]
         public string Status { get; set; } = nameof(Status);
 
-        [Designer(Index = 4, CandidateType = CandidateType.Field)]
+        [Designer(Index = 4, CandidateType = CandidateType.Field, DisplayName = "$ApprovalFlowContractTargetModuleName")]
         public string TargetModuleName { get; set; } = nameof(TargetModuleName);
 
-        [Designer(Index = 5, CandidateType = CandidateType.Field)]
+        [Designer(Index = 5, CandidateType = CandidateType.Field, DisplayName = "$ApprovalFlowContractTargetId")]
         public string TargetId { get; set; } = nameof(TargetId);
 
-        [Designer(Index = 6, CandidateType = CandidateType.Field)]
+        [Designer(Index = 6, CandidateType = CandidateType.Field, DisplayName = "$ApprovalFlowContractRouteName")]
         public string RouteName { get; set; } = nameof(RouteName);
 
         /// <summary>
         /// 申請者ユーザー (User モジュールへの Link)。申請時にエンジンが書き込む。
         /// 申請書側の条件は「(フィールド名).Applicant.Value」のリンク越し参照でこれを使う。
         /// </summary>
-        [Designer(Index = 7, CandidateType = CandidateType.Field)]
+        [Designer(Index = 7, CandidateType = CandidateType.Field, DisplayName = "$ApprovalFlowContractApplicant")]
         public string Applicant { get; set; } = nameof(Applicant);
 
-        [Designer(Index = 8, CandidateType = CandidateType.Field)]
+        [Designer(Index = 8, CandidateType = CandidateType.Field, DisplayName = "$ApprovalFlowContractAttemptNo")]
         public string AttemptNo { get; set; } = nameof(AttemptNo);
 
-        [Designer(Index = 9, CandidateType = CandidateType.Field)]
+        [Designer(Index = 9, CandidateType = CandidateType.Field, DisplayName = "$ApprovalFlowContractCurrentStepNo")]
         public string CurrentStepNo { get; set; } = nameof(CurrentStepNo);
 
         /// <summary>
@@ -45,11 +45,11 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         /// メンバーモジュールはこの一覧の参照先として決まる。申請書側の条件は
         /// 「(フィールド名).Members.～」のリンク越し存在条件でこれを参照する (一覧フィールドの複製は不要)。
         /// </summary>
-        [Designer(Index = 10, CandidateType = CandidateType.Field)]
+        [Designer(Index = 10, CandidateType = CandidateType.Field, DisplayName = "$ApprovalFlowContractMembers")]
         public string Members { get; set; } = nameof(Members);
 
         /// <summary>承認履歴一覧 (フローモジュール上の List フィールド)。履歴モジュールはこの一覧の参照先として決まる。</summary>
-        [Designer(Index = 11, CandidateType = CandidateType.Field)]
+        [Designer(Index = 11, CandidateType = CandidateType.Field, DisplayName = "$ApprovalFlowContractHistories")]
         public string Histories { get; set; } = nameof(Histories);
 
         public override List<DesignCheckInfo> CheckDesign(DesignCheckContext context)
@@ -68,51 +68,51 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
     {
         public ApprovalMemberContractFieldDesign() : base(typeof(ApprovalMemberContractFieldDesign).FullName!) { }
 
-        [Designer(Index = 3, CandidateType = CandidateType.Field)]
+        [Designer(Index = 3, CandidateType = CandidateType.Field, DisplayName = "$ApprovalMemberContractFlow")]
         public string Flow { get; set; } = nameof(Flow);
 
-        [Designer(Index = 4, CandidateType = CandidateType.Field)]
+        [Designer(Index = 4, CandidateType = CandidateType.Field, DisplayName = "$ApprovalMemberContractAttemptNo")]
         public string AttemptNo { get; set; } = nameof(AttemptNo);
 
-        [Designer(Index = 5, CandidateType = CandidateType.Field)]
+        [Designer(Index = 5, CandidateType = CandidateType.Field, DisplayName = "$ApprovalMemberContractStepNo")]
         public string StepNo { get; set; } = nameof(StepNo);
 
-        [Designer(Index = 6, CandidateType = CandidateType.Field)]
+        [Designer(Index = 6, CandidateType = CandidateType.Field, DisplayName = "$ApprovalMemberContractStepName")]
         public string StepName { get; set; } = nameof(StepName);
 
-        [Designer(Index = 7, CandidateType = CandidateType.Field)]
+        [Designer(Index = 7, CandidateType = CandidateType.Field, DisplayName = "$ApprovalMemberContractStepType")]
         public string StepType { get; set; } = nameof(StepType);
 
-        [Designer(Index = 8, CandidateType = CandidateType.Field)]
+        [Designer(Index = 8, CandidateType = CandidateType.Field, DisplayName = "$ApprovalMemberContractCompletionPolicy")]
         public string CompletionPolicy { get; set; } = nameof(CompletionPolicy);
 
-        [Designer(Index = 9, CandidateType = CandidateType.Field)]
+        [Designer(Index = 9, CandidateType = CandidateType.Field, DisplayName = "$ApprovalMemberContractIsCommentRequiredOnReject")]
         public string IsCommentRequiredOnReject { get; set; } = nameof(IsCommentRequiredOnReject);
 
-        [Designer(Index = 10, CandidateType = CandidateType.Field)]
+        [Designer(Index = 10, CandidateType = CandidateType.Field, DisplayName = "$ApprovalMemberContractReturnScope")]
         public string ReturnScope { get; set; } = nameof(ReturnScope);
 
-        [Designer(Index = 11, CandidateType = CandidateType.Field)]
+        [Designer(Index = 11, CandidateType = CandidateType.Field, DisplayName = "$ApprovalMemberContractApproverUser")]
         public string ApproverUser { get; set; } = nameof(ApproverUser);
 
-        [Designer(Index = 12, CandidateType = CandidateType.Field)]
+        [Designer(Index = 12, CandidateType = CandidateType.Field, DisplayName = "$ApprovalMemberContractIsRequired")]
         public string IsRequired { get; set; } = nameof(IsRequired);
 
         /// <summary>最終承認ステップのメンバーか (条件式で「最終承認者」を表すためのスナップショット)。</summary>
-        [Designer(Index = 13, CandidateType = CandidateType.Field)]
+        [Designer(Index = 13, CandidateType = CandidateType.Field, DisplayName = "$ApprovalMemberContractIsFinalStep")]
         public string IsFinalStep { get; set; } = nameof(IsFinalStep);
 
-        [Designer(Index = 14, CandidateType = CandidateType.Field)]
+        [Designer(Index = 14, CandidateType = CandidateType.Field, DisplayName = "$ApprovalMemberContractStatus")]
         public string Status { get; set; } = nameof(Status);
 
-        [Designer(Index = 15, CandidateType = CandidateType.Field)]
+        [Designer(Index = 15, CandidateType = CandidateType.Field, DisplayName = "$ApprovalMemberContractActedAt")]
         public string ActedAt { get; set; } = nameof(ActedAt);
 
         /// <summary>
         /// 順番到達通知メール (任意)。自モジュールの MailField 名。
         /// 設定すると、承認の順番が回ってきたメンバーへエンジンが通知メールを送る。空 = 通知しない。
         /// </summary>
-        [Designer(Index = 16, CandidateType = CandidateType.Field)]
+        [Designer(Index = 16, CandidateType = CandidateType.Field, DisplayName = "$ApprovalMemberContractTurnNotifyMail")]
         public string TurnNotifyMail { get; set; } = string.Empty;
 
         public override List<DesignCheckInfo> CheckDesign(DesignCheckContext context)
@@ -145,31 +145,31 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
     {
         public ApprovalHistoryContractFieldDesign() : base(typeof(ApprovalHistoryContractFieldDesign).FullName!) { }
 
-        [Designer(Index = 3, CandidateType = CandidateType.Field)]
+        [Designer(Index = 3, CandidateType = CandidateType.Field, DisplayName = "$ApprovalHistoryContractFlow")]
         public string Flow { get; set; } = nameof(Flow);
 
-        [Designer(Index = 4, CandidateType = CandidateType.Field)]
+        [Designer(Index = 4, CandidateType = CandidateType.Field, DisplayName = "$ApprovalHistoryContractAttemptNo")]
         public string AttemptNo { get; set; } = nameof(AttemptNo);
 
-        [Designer(Index = 5, CandidateType = CandidateType.Field)]
+        [Designer(Index = 5, CandidateType = CandidateType.Field, DisplayName = "$ApprovalHistoryContractStepNo")]
         public string StepNo { get; set; } = nameof(StepNo);
 
-        [Designer(Index = 6, CandidateType = CandidateType.Field)]
+        [Designer(Index = 6, CandidateType = CandidateType.Field, DisplayName = "$ApprovalHistoryContractAction")]
         public string Action { get; set; } = nameof(Action);
 
-        [Designer(Index = 7, CandidateType = CandidateType.Field)]
+        [Designer(Index = 7, CandidateType = CandidateType.Field, DisplayName = "$ApprovalHistoryContractActorUser")]
         public string ActorUser { get; set; } = nameof(ActorUser);
 
-        [Designer(Index = 8, CandidateType = CandidateType.Field)]
+        [Designer(Index = 8, CandidateType = CandidateType.Field, DisplayName = "$ApprovalHistoryContractFromStatus")]
         public string FromStatus { get; set; } = nameof(FromStatus);
 
-        [Designer(Index = 9, CandidateType = CandidateType.Field)]
+        [Designer(Index = 9, CandidateType = CandidateType.Field, DisplayName = "$ApprovalHistoryContractToStatus")]
         public string ToStatus { get; set; } = nameof(ToStatus);
 
-        [Designer(Index = 10, CandidateType = CandidateType.Field)]
+        [Designer(Index = 10, CandidateType = CandidateType.Field, DisplayName = "$ApprovalHistoryContractComment")]
         public string Comment { get; set; } = nameof(Comment);
 
-        [Designer(Index = 11, CandidateType = CandidateType.Field)]
+        [Designer(Index = 11, CandidateType = CandidateType.Field, DisplayName = "$ApprovalHistoryContractActedAt")]
         public string ActedAt { get; set; } = nameof(ActedAt);
     }
 
@@ -185,11 +185,11 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         public ApprovalRouteContractFieldDesign() : base(typeof(ApprovalRouteContractFieldDesign).FullName!) { }
 
         /// <summary>経路名 (LoadRoute の引数と照合するキー)。</summary>
-        [Designer(Index = 3, CandidateType = CandidateType.Field)]
+        [Designer(Index = 3, CandidateType = CandidateType.Field, DisplayName = "$ApprovalRouteContractRouteName")]
         public string RouteName { get; set; } = nameof(RouteName);
 
         /// <summary>ステップ一覧 (経路モジュール上の List フィールド)。ステップモジュールはこの一覧の参照先として決まる。</summary>
-        [Designer(Index = 4, CandidateType = CandidateType.Field)]
+        [Designer(Index = 4, CandidateType = CandidateType.Field, DisplayName = "$ApprovalRouteContractSteps")]
         public string Steps { get; set; } = nameof(Steps);
 
         public override List<DesignCheckInfo> CheckDesign(DesignCheckContext context)
@@ -213,40 +213,40 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         public ApprovalRouteStepContractFieldDesign() : base(typeof(ApprovalRouteStepContractFieldDesign).FullName!) { }
 
         /// <summary>経路行への FK (Link)。</summary>
-        [Designer(Index = 3, CandidateType = CandidateType.Field)]
+        [Designer(Index = 3, CandidateType = CandidateType.Field, DisplayName = "$ApprovalRouteStepContractRoute")]
         public string Route { get; set; } = nameof(Route);
 
         /// <summary>ステップの並び順 (数値)。</summary>
-        [Designer(Index = 4, CandidateType = CandidateType.Field)]
+        [Designer(Index = 4, CandidateType = CandidateType.Field, DisplayName = "$ApprovalRouteStepContractStepNo")]
         public string StepNo { get; set; } = nameof(StepNo);
 
-        [Designer(Index = 5, CandidateType = CandidateType.Field)]
+        [Designer(Index = 5, CandidateType = CandidateType.Field, DisplayName = "$ApprovalRouteStepContractStepName")]
         public string StepName { get; set; } = nameof(StepName);
 
         /// <summary>Approval / Confirmation (空 = Approval)。</summary>
-        [Designer(Index = 6, CandidateType = CandidateType.Field)]
+        [Designer(Index = 6, CandidateType = CandidateType.Field, DisplayName = "$ApprovalRouteStepContractStepType")]
         public string StepType { get; set; } = nameof(StepType);
 
         /// <summary>RequiredMembers / All / Any (空 = RequiredMembers)。</summary>
-        [Designer(Index = 7, CandidateType = CandidateType.Field)]
+        [Designer(Index = 7, CandidateType = CandidateType.Field, DisplayName = "$ApprovalRouteStepContractCompletionPolicy")]
         public string CompletionPolicy { get; set; } = nameof(CompletionPolicy);
 
-        [Designer(Index = 8, CandidateType = CandidateType.Field)]
+        [Designer(Index = 8, CandidateType = CandidateType.Field, DisplayName = "$ApprovalRouteStepContractIsCommentRequiredOnReject")]
         public string IsCommentRequiredOnReject { get; set; } = nameof(IsCommentRequiredOnReject);
 
         /// <summary>ApplicantOnly / AnyPreviousStep (空 = ApplicantOnly)。</summary>
-        [Designer(Index = 9, CandidateType = CandidateType.Field)]
+        [Designer(Index = 9, CandidateType = CandidateType.Field, DisplayName = "$ApprovalRouteStepContractReturnScope")]
         public string ReturnScope { get; set; } = nameof(ReturnScope);
 
         /// <summary>承認者一覧 (ステップモジュール上の List フィールド)。承認者モジュールはこの一覧の参照先として決まる。</summary>
-        [Designer(Index = 10, CandidateType = CandidateType.Field)]
+        [Designer(Index = 10, CandidateType = CandidateType.Field, DisplayName = "$ApprovalRouteStepContractMembers")]
         public string Members { get; set; } = nameof(Members);
 
         /// <summary>
         /// ステップ行に直付けの承認者 (ユーザーへの Link)。1ステップ1人のシンプル構成用で、
         /// 使う場合は Members を空にしてこちらを設定する (既定は空 = 使わない)。
         /// </summary>
-        [Designer(Index = 11, CandidateType = CandidateType.Field)]
+        [Designer(Index = 11, CandidateType = CandidateType.Field, DisplayName = "$ApprovalRouteStepContractApproverUser")]
         public string ApproverUser { get; set; } = string.Empty;
 
         public override List<DesignCheckInfo> CheckDesign(DesignCheckContext context)
@@ -277,15 +277,15 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         public ApprovalRouteStepMemberContractFieldDesign() : base(typeof(ApprovalRouteStepMemberContractFieldDesign).FullName!) { }
 
         /// <summary>ステップ行への FK (Link)。</summary>
-        [Designer(Index = 3, CandidateType = CandidateType.Field)]
+        [Designer(Index = 3, CandidateType = CandidateType.Field, DisplayName = "$ApprovalRouteStepMemberContractStep")]
         public string Step { get; set; } = nameof(Step);
 
         /// <summary>承認者ユーザー (User モジュールへの Link)。</summary>
-        [Designer(Index = 4, CandidateType = CandidateType.Field)]
+        [Designer(Index = 4, CandidateType = CandidateType.Field, DisplayName = "$ApprovalRouteStepMemberContractApproverUser")]
         public string ApproverUser { get; set; } = nameof(ApproverUser);
 
         /// <summary>必須承認者か (空 = 必須)。</summary>
-        [Designer(Index = 5, CandidateType = CandidateType.Field)]
+        [Designer(Index = 5, CandidateType = CandidateType.Field, DisplayName = "$ApprovalRouteStepMemberContractIsRequired")]
         public string IsRequired { get; set; } = nameof(IsRequired);
     }
 }

@@ -1832,5 +1832,281 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
             }
         }
 
+        internal static string ApprovalFlowContractStatus {
+            get {
+                return ResourceManager.GetString("ApprovalFlowContractStatus", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalFlowContractTargetModuleName {
+            get {
+                return ResourceManager.GetString("ApprovalFlowContractTargetModuleName", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalFlowContractTargetId {
+            get {
+                return ResourceManager.GetString("ApprovalFlowContractTargetId", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalFlowContractRouteName {
+            get {
+                return ResourceManager.GetString("ApprovalFlowContractRouteName", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalFlowContractApplicant {
+            get {
+                return ResourceManager.GetString("ApprovalFlowContractApplicant", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalFlowContractAttemptNo {
+            get {
+                return ResourceManager.GetString("ApprovalFlowContractAttemptNo", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalFlowContractCurrentStepNo {
+            get {
+                return ResourceManager.GetString("ApprovalFlowContractCurrentStepNo", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalFlowContractMembers {
+            get {
+                return ResourceManager.GetString("ApprovalFlowContractMembers", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalFlowContractHistories {
+            get {
+                return ResourceManager.GetString("ApprovalFlowContractHistories", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalMemberContractFlow {
+            get {
+                return ResourceManager.GetString("ApprovalMemberContractFlow", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalMemberContractAttemptNo {
+            get {
+                return ResourceManager.GetString("ApprovalMemberContractAttemptNo", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalMemberContractStepNo {
+            get {
+                return ResourceManager.GetString("ApprovalMemberContractStepNo", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalMemberContractStepName {
+            get {
+                return ResourceManager.GetString("ApprovalMemberContractStepName", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalMemberContractStepType {
+            get {
+                return ResourceManager.GetString("ApprovalMemberContractStepType", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalMemberContractCompletionPolicy {
+            get {
+                return ResourceManager.GetString("ApprovalMemberContractCompletionPolicy", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalMemberContractIsCommentRequiredOnReject {
+            get {
+                return ResourceManager.GetString("ApprovalMemberContractIsCommentRequiredOnReject", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalMemberContractReturnScope {
+            get {
+                return ResourceManager.GetString("ApprovalMemberContractReturnScope", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalMemberContractApproverUser {
+            get {
+                return ResourceManager.GetString("ApprovalMemberContractApproverUser", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalMemberContractIsRequired {
+            get {
+                return ResourceManager.GetString("ApprovalMemberContractIsRequired", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalMemberContractIsFinalStep {
+            get {
+                return ResourceManager.GetString("ApprovalMemberContractIsFinalStep", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalMemberContractStatus {
+            get {
+                return ResourceManager.GetString("ApprovalMemberContractStatus", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalMemberContractActedAt {
+            get {
+                return ResourceManager.GetString("ApprovalMemberContractActedAt", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalMemberContractTurnNotifyMail {
+            get {
+                return ResourceManager.GetString("ApprovalMemberContractTurnNotifyMail", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalHistoryContractFlow {
+            get {
+                return ResourceManager.GetString("ApprovalHistoryContractFlow", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalHistoryContractAttemptNo {
+            get {
+                return ResourceManager.GetString("ApprovalHistoryContractAttemptNo", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalHistoryContractStepNo {
+            get {
+                return ResourceManager.GetString("ApprovalHistoryContractStepNo", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalHistoryContractAction {
+            get {
+                return ResourceManager.GetString("ApprovalHistoryContractAction", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalHistoryContractActorUser {
+            get {
+                return ResourceManager.GetString("ApprovalHistoryContractActorUser", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalHistoryContractFromStatus {
+            get {
+                return ResourceManager.GetString("ApprovalHistoryContractFromStatus", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalHistoryContractToStatus {
+            get {
+                return ResourceManager.GetString("ApprovalHistoryContractToStatus", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalHistoryContractComment {
+            get {
+                return ResourceManager.GetString("ApprovalHistoryContractComment", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalHistoryContractActedAt {
+            get {
+                return ResourceManager.GetString("ApprovalHistoryContractActedAt", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalRouteContractRouteName {
+            get {
+                return ResourceManager.GetString("ApprovalRouteContractRouteName", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalRouteContractSteps {
+            get {
+                return ResourceManager.GetString("ApprovalRouteContractSteps", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalRouteStepContractRoute {
+            get {
+                return ResourceManager.GetString("ApprovalRouteStepContractRoute", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalRouteStepContractStepNo {
+            get {
+                return ResourceManager.GetString("ApprovalRouteStepContractStepNo", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalRouteStepContractStepName {
+            get {
+                return ResourceManager.GetString("ApprovalRouteStepContractStepName", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalRouteStepContractStepType {
+            get {
+                return ResourceManager.GetString("ApprovalRouteStepContractStepType", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalRouteStepContractCompletionPolicy {
+            get {
+                return ResourceManager.GetString("ApprovalRouteStepContractCompletionPolicy", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalRouteStepContractIsCommentRequiredOnReject {
+            get {
+                return ResourceManager.GetString("ApprovalRouteStepContractIsCommentRequiredOnReject", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalRouteStepContractReturnScope {
+            get {
+                return ResourceManager.GetString("ApprovalRouteStepContractReturnScope", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalRouteStepContractMembers {
+            get {
+                return ResourceManager.GetString("ApprovalRouteStepContractMembers", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalRouteStepContractApproverUser {
+            get {
+                return ResourceManager.GetString("ApprovalRouteStepContractApproverUser", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalRouteStepMemberContractStep {
+            get {
+                return ResourceManager.GetString("ApprovalRouteStepMemberContractStep", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalRouteStepMemberContractApproverUser {
+            get {
+                return ResourceManager.GetString("ApprovalRouteStepMemberContractApproverUser", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalRouteStepMemberContractIsRequired {
+            get {
+                return ResourceManager.GetString("ApprovalRouteStepMemberContractIsRequired", resourceCulture);
+            }
+        }
+
     }
 }

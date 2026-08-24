@@ -894,4 +894,142 @@
   <data name="ApprovalReturnScope_AnyPreviousStep" xml:space="preserve">
     <value>任意の前ステップ</value>
   </data>
+  <data name="ApprovalFlowContractStatus" xml:space="preserve">
+    <value>ステータス</value>
+  </data>
+  <data name="ApprovalFlowContractTargetModuleName" xml:space="preserve">
+    <value>申請書のモジュール名</value>
+  </data>
+  <data name="ApprovalFlowContractTargetId" xml:space="preserve">
+    <value>申請書の Id</value>
+  </data>
+  <data name="ApprovalFlowContractRouteName" xml:space="preserve">
+    <value>経路名</value>
+  </data>
+  <data name="ApprovalFlowContractApplicant" xml:space="preserve">
+    <value>申請者 (ユーザーへの Link)</value>
+  </data>
+  <data name="ApprovalFlowContractAttemptNo" xml:space="preserve">
+    <value>試行番号 (再申請で +1)</value>
+  </data>
+  <data name="ApprovalFlowContractCurrentStepNo" xml:space="preserve">
+    <value>現在のステップ番号</value>
+  </data>
+  <data name="ApprovalFlowContractMembers" xml:space="preserve">
+    <value>承認メンバー一覧</value>
+  </data>
+  <data name="ApprovalFlowContractHistories" xml:space="preserve">
+    <value>承認履歴一覧</value>
+  </data>
+  <data name="ApprovalMemberContractFlow" xml:space="preserve">
+    <value>フロー (フロー行への Link)</value>
+  </data>
+  <data name="ApprovalMemberContractAttemptNo" xml:space="preserve">
+    <value>試行番号</value>
+  </data>
+  <data name="ApprovalMemberContractStepNo" xml:space="preserve">
+    <value>ステップ番号</value>
+  </data>
+  <data name="ApprovalMemberContractStepName" xml:space="preserve">
+    <value>ステップ名</value>
+  </data>
+  <data name="ApprovalMemberContractStepType" xml:space="preserve">
+    <value>ステップ種別 (承認/確認)</value>
+  </data>
+  <data name="ApprovalMemberContractCompletionPolicy" xml:space="preserve">
+    <value>ステップ完了条件</value>
+  </data>
+  <data name="ApprovalMemberContractIsCommentRequiredOnReject" xml:space="preserve">
+    <value>却下時のコメント必須</value>
+  </data>
+  <data name="ApprovalMemberContractReturnScope" xml:space="preserve">
+    <value>差し戻し先の範囲</value>
+  </data>
+  <data name="ApprovalMemberContractApproverUser" xml:space="preserve">
+    <value>承認者ユーザー</value>
+  </data>
+  <data name="ApprovalMemberContractIsRequired" xml:space="preserve">
+    <value>必須承認者か</value>
+  </data>
+  <data name="ApprovalMemberContractIsFinalStep" xml:space="preserve">
+    <value>最終承認ステップか</value>
+  </data>
+  <data name="ApprovalMemberContractStatus" xml:space="preserve">
+    <value>メンバーの状態</value>
+  </data>
+  <data name="ApprovalMemberContractActedAt" xml:space="preserve">
+    <value>操作日時</value>
+  </data>
+  <data name="ApprovalMemberContractTurnNotifyMail" xml:space="preserve">
+    <value>順番到達通知メール (MailField)</value>
+  </data>
+  <data name="ApprovalHistoryContractFlow" xml:space="preserve">
+    <value>フロー (フロー行への Link)</value>
+  </data>
+  <data name="ApprovalHistoryContractAttemptNo" xml:space="preserve">
+    <value>試行番号</value>
+  </data>
+  <data name="ApprovalHistoryContractStepNo" xml:space="preserve">
+    <value>ステップ番号</value>
+  </data>
+  <data name="ApprovalHistoryContractAction" xml:space="preserve">
+    <value>操作</value>
+  </data>
+  <data name="ApprovalHistoryContractActorUser" xml:space="preserve">
+    <value>実行者ユーザー</value>
+  </data>
+  <data name="ApprovalHistoryContractFromStatus" xml:space="preserve">
+    <value>遷移前のステータス</value>
+  </data>
+  <data name="ApprovalHistoryContractToStatus" xml:space="preserve">
+    <value>遷移後のステータス</value>
+  </data>
+  <data name="ApprovalHistoryContractComment" xml:space="preserve">
+    <value>コメント</value>
+  </data>
+  <data name="ApprovalHistoryContractActedAt" xml:space="preserve">
+    <value>操作日時</value>
+  </data>
+  <data name="ApprovalRouteContractRouteName" xml:space="preserve">
+    <value>経路名</value>
+  </data>
+  <data name="ApprovalRouteContractSteps" xml:space="preserve">
+    <value>ステップ一覧</value>
+  </data>
+  <data name="ApprovalRouteStepContractRoute" xml:space="preserve">
+    <value>経路 (経路行への Link)</value>
+  </data>
+  <data name="ApprovalRouteStepContractStepNo" xml:space="preserve">
+    <value>ステップ番号 (並び順)</value>
+  </data>
+  <data name="ApprovalRouteStepContractStepName" xml:space="preserve">
+    <value>ステップ名</value>
+  </data>
+  <data name="ApprovalRouteStepContractStepType" xml:space="preserve">
+    <value>ステップ種別 (承認/確認)</value>
+  </data>
+  <data name="ApprovalRouteStepContractCompletionPolicy" xml:space="preserve">
+    <value>ステップ完了条件</value>
+  </data>
+  <data name="ApprovalRouteStepContractIsCommentRequiredOnReject" xml:space="preserve">
+    <value>却下時のコメント必須</value>
+  </data>
+  <data name="ApprovalRouteStepContractReturnScope" xml:space="preserve">
+    <value>差し戻し先の範囲</value>
+  </data>
+  <data name="ApprovalRouteStepContractMembers" xml:space="preserve">
+    <value>承認者一覧</value>
+  </data>
+  <data name="ApprovalRouteStepContractApproverUser" xml:space="preserve">
+    <value>承認者ユーザー (1ステップ1人構成)</value>
+  </data>
+  <data name="ApprovalRouteStepMemberContractStep" xml:space="preserve">
+    <value>ステップ (ステップ行への Link)</value>
+  </data>
+  <data name="ApprovalRouteStepMemberContractApproverUser" xml:space="preserve">
+    <value>承認者ユーザー</value>
+  </data>
+  <data name="ApprovalRouteStepMemberContractIsRequired" xml:space="preserve">
+    <value>必須承認者か</value>
+  </data>
 </root>
