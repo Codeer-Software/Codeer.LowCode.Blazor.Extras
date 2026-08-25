@@ -1,4 +1,4 @@
-using Codeer.LowCode.Blazor.DesignLogic;
+﻿using Codeer.LowCode.Blazor.DesignLogic;
 using Codeer.LowCode.Blazor.DesignLogic.Check;
 using Codeer.LowCode.Blazor.DesignLogic.Refactor;
 using Codeer.LowCode.Blazor.Extras.Approval;
@@ -26,7 +26,6 @@ namespace Codeer.LowCode.Blazor.Extras.Test.DesignCheck
             flow.Fields.Add(new TextFieldDesign { Name = nameof(ApprovalFlowContractFieldDesign.Status), DbColumn = "DbColumn" });
             flow.Fields.Add(new TextFieldDesign { Name = nameof(ApprovalFlowContractFieldDesign.TargetModuleName), DbColumn = "DbColumn" });
             flow.Fields.Add(new TextFieldDesign { Name = nameof(ApprovalFlowContractFieldDesign.TargetId), DbColumn = "DbColumn" });
-            flow.Fields.Add(new TextFieldDesign { Name = nameof(ApprovalFlowContractFieldDesign.RouteName), DbColumn = "DbColumn" });
             flow.Fields.Add(new LinkFieldDesign { Name = nameof(ApprovalFlowContractFieldDesign.Applicant), DbColumn = "DbColumn" });
             flow.Fields.Add(new NumberFieldDesign { Name = nameof(ApprovalFlowContractFieldDesign.AttemptNo), DbColumn = "DbColumn" });
             flow.Fields.Add(new NumberFieldDesign { Name = nameof(ApprovalFlowContractFieldDesign.CurrentStepNo), DbColumn = "DbColumn" });
@@ -220,6 +219,62 @@ namespace Codeer.LowCode.Blazor.Extras.Test.DesignCheck
             Assert.That(result.RenameNeeded, Is.True);
             result.RenameAction();
             Assert.That(field.FlowModuleName, Is.EqualTo("ShareApprovalFlow"));
+        }
+
+        //必須役割が空ならエラー / 必須以外は空でもエラーにしない (空 = 使わない)
+        [Test]
+        public void 必須役割が空なら指摘される()
+        {
+            var d = CreateDesignData(out _);
+            var flow = CreateFlowModule();
+            d.AddModule(flow);
+            d.AddModule(CreateMemberModule());
+            d.AddModule(CreateHistoryModule());
+
+            var contract = flow.Fields.OfType<ApprovalFlowContractFieldDesign>().First();
+            contract.Status = string.Empty;
+            var ret = contract.CheckDesign(new DesignCheckContext("ApprovalFlow", d, Utilities.CreateDataSource()));
+
+            Assert.That(ret, Has.Count.EqualTo(1));
+            Assert.That(ret[0].Message, Does.Contain(nameof(ApprovalFlowContractFieldDesign.Status)));
+            ret[0].AssertFieldLocation("ApprovalFlow", "Contract", nameof(ApprovalFlowContractFieldDesign.Status));
+        }
+
+        [Test]
+        public void 必須でない役割は空でも指摘されない()
+        {
+            //承認契約で任意なのはメンバー契約の TurnNotifyMail だけ (空 = 通知しない)
+            var d = CreateDesignData(out _);
+            d.AddModule(CreateFlowModule());
+            var member = CreateMemberModule();
+            d.AddModule(member);
+            d.AddModule(CreateHistoryModule());
+
+            var contract = member.Fields.OfType<ApprovalMemberContractFieldDesign>().First();
+            contract.TurnNotifyMail = string.Empty;
+            var ret = contract.CheckDesign(new DesignCheckContext("ApprovalFlowMember", d, Utilities.CreateDataSource()));
+
+            //他の役割のフィールドが無い指摘は出るが、TurnNotifyMail についての指摘は無い
+            Assert.That(ret.Select(e => e.Message), Has.None.Contains(nameof(ApprovalMemberContractFieldDesign.TurnNotifyMail)));
+        }
+
+        [Test]
+        public void 必須と任意の役割はメール契約と同じく表示名の必須印と一致する()
+        {
+            //表示名 "(必須)" の有無 = IsRoleRequired (どちらか片方だけ直すのを防ぐ)
+            foreach (var contract in new ContractFieldDesignBase[]
+                     { new ApprovalFlowContractFieldDesign(), new ApprovalMemberContractFieldDesign(), new ApprovalHistoryContractFieldDesign() })
+            {
+                foreach (var role in contract.GetType().GetProperties()
+                             .Where(e => e.PropertyType == typeof(string) && e.DeclaringType == contract.GetType()))
+                {
+                    var attr = (DesignerAttribute)role.GetCustomAttributes(typeof(DesignerAttribute), true).Single();
+                    var display = Extras.Properties.Resources.ResourceManager.GetString(attr.DisplayName[1..],
+                        new System.Globalization.CultureInfo("ja-JP"))!;
+                    Assert.That(display.Contains("(必須)"), Is.EqualTo(contract.IsRoleRequired(role.Name)),
+                        $"{contract.GetType().Name}.{role.Name}: {display}");
+                }
+            }
         }
 
         [Test]

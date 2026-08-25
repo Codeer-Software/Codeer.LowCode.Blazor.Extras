@@ -186,7 +186,6 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Approval
             flow.Fields.Add(new TextFieldDesign { Name = nameof(ApprovalFlowContractFieldDesign.Status), DbColumn = "Status" });
             flow.Fields.Add(new TextFieldDesign { Name = nameof(ApprovalFlowContractFieldDesign.TargetModuleName), DbColumn = "TargetModuleName" });
             flow.Fields.Add(new TextFieldDesign { Name = nameof(ApprovalFlowContractFieldDesign.TargetId), DbColumn = "TargetId" });
-            flow.Fields.Add(new TextFieldDesign { Name = nameof(ApprovalFlowContractFieldDesign.RouteName), DbColumn = "RouteName" });
             flow.Fields.Add(new LinkFieldDesign { Name = nameof(ApprovalFlowContractFieldDesign.Applicant), SearchCondition = new SearchCondition("AppUser"), DbColumn = "Applicant" });
             flow.Fields.Add(new NumberFieldDesign { Name = nameof(ApprovalFlowContractFieldDesign.AttemptNo), DbColumn = "AttemptNo" });
             flow.Fields.Add(new NumberFieldDesign { Name = nameof(ApprovalFlowContractFieldDesign.CurrentStepNo), DbColumn = "CurrentStepNo" });
@@ -250,11 +249,8 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Approval
             history.Fields.Add(new IdFieldDesign { Name = "Id", DbColumn = "Id" });
             history.Fields.Add(new LinkFieldDesign { Name = nameof(ApprovalHistoryContractFieldDesign.Flow), SearchCondition = new SearchCondition("ApprovalFlow"), DbColumn = "FlowId" });
             history.Fields.Add(new NumberFieldDesign { Name = nameof(ApprovalHistoryContractFieldDesign.AttemptNo), DbColumn = "AttemptNo" });
-            history.Fields.Add(new NumberFieldDesign { Name = nameof(ApprovalHistoryContractFieldDesign.StepNo), DbColumn = "StepNo" });
             history.Fields.Add(new TextFieldDesign { Name = nameof(ApprovalHistoryContractFieldDesign.Action), DbColumn = "Action" });
             history.Fields.Add(new LinkFieldDesign { Name = nameof(ApprovalHistoryContractFieldDesign.ActorUser), SearchCondition = new SearchCondition("AppUser"), DbColumn = "ActorUser" });
-            history.Fields.Add(new TextFieldDesign { Name = nameof(ApprovalHistoryContractFieldDesign.FromStatus), DbColumn = "FromStatus" });
-            history.Fields.Add(new TextFieldDesign { Name = nameof(ApprovalHistoryContractFieldDesign.ToStatus), DbColumn = "ToStatus" });
             history.Fields.Add(new TextFieldDesign { Name = nameof(ApprovalHistoryContractFieldDesign.Comment), DbColumn = "Comment" });
             history.Fields.Add(new DateTimeFieldDesign { Name = nameof(ApprovalHistoryContractFieldDesign.ActedAt), DbColumn = "ActedAt" });
             history.Fields.Add(new ApprovalHistoryContractFieldDesign { Name = "Contract" });

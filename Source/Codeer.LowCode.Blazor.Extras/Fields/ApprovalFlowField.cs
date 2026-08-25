@@ -1,4 +1,4 @@
-using Codeer.LowCode.Blazor.DataIO;
+﻿using Codeer.LowCode.Blazor.DataIO;
 using Codeer.LowCode.Blazor.DesignLogic;
 using Codeer.LowCode.Blazor.Extras.Approval;
 using Codeer.LowCode.Blazor.Extras.Data;
@@ -412,16 +412,17 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
                 new SortCondition { Variable = $"{MemberNames.StepNo}.Value" },
                 new SortCondition { Variable = $"{SystemFieldNames.Id}.Value" },
             ],
-            SelectFields =
-            [
+            SelectFields = SelectFieldsOf(
                 SystemFieldNames.Id,
                 MemberNames.AttemptNo, MemberNames.StepNo,
                 MemberNames.StepName, MemberNames.StepType,
                 MemberNames.ReturnScope, MemberNames.IsCommentRequiredOnReject,
                 MemberNames.ApproverUser, MemberNames.IsRequired,
-                MemberNames.Status, MemberNames.ActedAt,
-            ],
+                MemberNames.Status, MemberNames.ActedAt),
         };
+
+        //必須でない役割は空 = 使わない (SelectFields に空名を渡さない)
+        static List<string> SelectFieldsOf(params string[] names) => names.Where(e => !string.IsNullOrEmpty(e)).ToList();
 
         SearchCondition CreateHistoryCondition() => new()
         {
@@ -433,13 +434,11 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
                 Value = MultiTypeValue.Create(_flowId),
             },
             SortConditions = [new SortCondition { Variable = $"{SystemFieldNames.Id}.Value", IsDescending = true }],
-            SelectFields =
-            [
+            SelectFields = SelectFieldsOf(
                 SystemFieldNames.Id,
                 HistoryNames.AttemptNo, HistoryNames.Action,
                 HistoryNames.ActorUser, HistoryNames.Comment,
-                HistoryNames.ActedAt,
-            ],
+                HistoryNames.ActedAt),
         };
 
         void BuildStepViews(List<ModuleData> members)

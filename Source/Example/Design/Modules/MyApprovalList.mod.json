@@ -44,12 +44,6 @@
           },
           {
             "IsParameter": false,
-            "Name": "route_name",
-            "DbType": "text",
-            "DbParameterDirection": "Input"
-          },
-          {
-            "IsParameter": false,
             "Name": "applicant",
             "DbType": "text",
             "DbParameterDirection": "Input"
@@ -96,7 +90,12 @@
     {
       "Name": "TargetModuleName",
       "DbColumn": "target_module_name",
-      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.TextFieldDesign"
+      "DisplayName": "申請種別",
+      "EnumName": "ApprovalRequestType",
+      "Candidates": [],
+      "EmptyCandidateType": "StringEmpty",
+      "AllowOrSearch": true,
+      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.SelectFieldDesign"
     },
     {
       "Name": "TargetId",
@@ -120,12 +119,6 @@
       "Name": "Applicant",
       "DbColumn": "applicant",
       "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.TextFieldDesign"
-    },
-    {
-      "Name": "RouteName",
-      "DbColumn": "route_name",
-      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.TextFieldDesign",
-      "DisplayName": "経路"
     },
     {
       "Name": "StepNo",
@@ -159,7 +152,6 @@
   "ListLayouts": {
     "": {
       "DataOnlyFields": [
-        "TargetModuleName",
         "TargetId"
       ],
       "OnAfterInitialization": "OnAfterInitialization",
@@ -176,8 +168,9 @@
             "Width": 180
           },
           {
-            "FieldName": "RouteName",
-            "Label": "経路"
+            "FieldName": "TargetModuleName",
+            "Label": "申請種別",
+            "Width": 160
           },
           {
             "FieldName": "StepName",

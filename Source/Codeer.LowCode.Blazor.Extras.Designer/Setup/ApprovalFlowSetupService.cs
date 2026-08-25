@@ -1,4 +1,4 @@
-using System.Text.RegularExpressions;
+﻿using System.Text.RegularExpressions;
 using Codeer.LowCode.Blazor.DataIO.Db.Definition;
 using Codeer.LowCode.Blazor.DesignLogic;
 using Codeer.LowCode.Blazor.Extras.Designs;
@@ -56,6 +56,11 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
                 as DbValueFieldDesignBase)?.DbColumn;
             if (string.IsNullOrEmpty(userNameColumn)) userNameColumn = "name";
 
+            //検索用モジュールの「申請種別」= 申請書モジュール名を enum (メンバー名 = モジュール名 / 表示 = 申請書の表示名) で見せる。
+            //結線先の申請書を最初のメンバーにして生成する (冪等: 既存はそのまま。申請書を増やしたらユーザーがメンバーを足す)
+            var requestTypeEnumName = options.Prefix + RequestTypeEnumBaseName;
+            EnsureRequestTypeEnum(designData, designDir, requestTypeEnumName, options.TargetModuleName, result);
+
             //モジュール生成 (冪等: 既存はスキップ)
             foreach (var template in templates)
             {
@@ -72,9 +77,9 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
                     options.UserDisplayNameField, options.UserEmailField,
                     removeTurnNotifyMail: !options.UseTurnNotifyMail);
 
-                //経路マスタを生成しないときは、承認状況の経路検索を経路マスタからの選択ではなく文字列にする
-                if (template == StatusList && options.RouteMaster == ApprovalRouteMasterKind.None)
-                    json = ModuleTemplateEngine.ReplaceFieldWithText(json, "RouteName");
+                //検索用モジュールの「申請種別」(TargetModuleName の Select) は申請種別 enum を参照する
+                if (template.IsQuery)
+                    json = ModuleTemplateEngine.SetSelectEnum(json, "TargetModuleName", requestTypeEnumName);
 
                 //型付きで読み直して正規化する (プロパティ名・型の崩れをここで検出し、デザイナ保存と同じ形で書き出す)
                 var module = JsonConverterEx.DeserializeObject<ModuleDesign>(json)
@@ -354,6 +359,31 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
         {
             var path = Path.Combine(designDir, "Modules", $"{moduleName}.mod.cs");
             return File.Exists(path) ? File.ReadAllText(path) : null;
+        }
+
+        /// <summary>申請種別 enum の既定名 (プレフィックスが前に付く)。</summary>
+        internal const string RequestTypeEnumBaseName = "ApprovalRequestType";
+
+        //申請種別 enum を生成する (既存なら触らない)。メンバー = 申請書モジュール名 (表示 = 申請書の表示名)
+        static void EnsureRequestTypeEnum(DesignData designData, string designDir, string enumName,
+            string targetModuleName, SetupResult result)
+        {
+            var path = Path.Combine(designDir, "Enums", $"{enumName}.enum.json");
+            if (designData.Enums.Any(e => e.Name == enumName) || File.Exists(path)) return;
+
+            var enumDesign = new EnumDesign { Name = enumName, ValueType = EnumValueType.String };
+            var target = string.IsNullOrEmpty(targetModuleName) ? null : designData.Modules.Find(targetModuleName);
+            if (target != null)
+            {
+                enumDesign.Members.Add(new EnumMemberDesign
+                {
+                    Name = target.Name,
+                    DisplayText = string.IsNullOrEmpty(target.PageTitle) ? target.Name : target.PageTitle,
+                });
+            }
+            designData.Enums.Add(enumDesign);
+            SaveDesignFile(designDir, "Enums", $"{enumName}.enum.json", JsonConverterEx.SerializeObject(enumDesign));
+            result.Notes.Add($"申請種別 enum {enumName} を生成しました。承認する申請書モジュールを増やしたら、メンバー (名前 = モジュール名) を追加してください。");
         }
 
         internal static void SaveDesignFile(string designDir, string subDir, string fileName, string content)

@@ -65,6 +65,9 @@ table{border-collapse:collapse;width:100%;font-size:14px;margin-top:12px}
 th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
 th{font-size:12px;letter-spacing:.06em;color:var(--muted);font-weight:500}
 td.k{font-family:"JetBrains Mono",monospace;font-size:13px;white-space:nowrap}
+td.req{white-space:nowrap;font-size:12px}
+td.req b{color:var(--contract)}
+td.req span{color:var(--muted)}
 .tblwrap{overflow-x:auto}
 .role-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:16px}
 .role{background:var(--panel);border:1px solid var(--line);border-top:4px solid var(--contract);border-radius:6px;padding:14px 16px}
@@ -197,20 +200,19 @@ td.k{font-family:"JetBrains Mono",monospace;font-size:13px;white-space:nowrap}
 <h2>4. 契約フィールドは 3 つだけ（フロー系）— 役割ごとの意味</h2>
 <p>役割名 = 既定のフィールド名。既定名で作れば設定不要（置くだけ）。無ければデザインチェックがエラー。
 「型」は Example のフィールド型（契約は名前で結ぶので、値の意味が同じなら型は変えてよい。Select ↔ Text など）。
-「書く」はその値を誰が更新するか。<b>エンジン以外は書かない</b>のが前提（モジュールの UserWriteCondition は誰も書けない条件にしてある）。</p>
+契約の役割は<b>システム（エンジン・UI・申請書側の条件）が読むものだけ</b>。書くだけの項目（経路名、履歴の遷移前後ステータスなど）は契約に持たない — 欲しければモジュールに自由にフィールドを足せばよい（エンジンは触らない）。だから役割は全て必須（デザイナの表示名に「(必須)」、空ならデザインチェックがエラー）。唯一の <b>－</b>（任意）は通知メールのオプトイン。「書く」はその値を誰が更新するか。<b>エンジン以外は書かない</b>のが前提（モジュールの UserWriteCondition は誰も書けない条件にしてある）。</p>
 
 <h3>4.1 ApprovalFlowContract — フローモジュール（申請 1 件 = 1 行）</h3>
 <div class="tblwrap"><table>
-<tr><th>役割</th><th>型</th><th>意味</th><th>書く</th><th>主に読む</th></tr>
-<tr><td class="k">Status</td><td>Select (enum <span class="mono">ApprovalFlowStatus</span>)</td><td>フロー全体の状態。<span class="mono">InProgress</span> 承認中 / <span class="mono">Completed</span> 承認済み / <span class="mono">Rejected</span> 却下 / <span class="mono">Returned</span> 差し戻し / <span class="mono">Withdrawn</span> 取り下げ</td><td>エンジン（全アクション）</td><td>申請書の編集ロック条件（DataWriteCondition）、ステッパー UI、承認状況一覧</td></tr>
-<tr><td class="k">TargetModuleName</td><td>Text</td><td>申請書モジュール名（どの種類の申請か）。フローを複数の申請書で共有するために持つ</td><td>エンジン（申請時）</td><td>一覧の「開く」（申請書へ遷移）、エンジンの申請書保存</td></tr>
-<tr><td class="k">TargetId</td><td>Text</td><td>申請書レコードの Id（逆参照）</td><td>エンジン（申請時。申請書の新規保存後に確定）</td><td>同上</td></tr>
-<tr><td class="k">RouteName</td><td>Text</td><td>申請時に組み立てた経路の名前（<span class="mono">ApprovalRouteData.Name</span>）。表示用。経路の中身はメンバー行に展開済みなので、名前は「どのルールで作ったか」の記録</td><td>エンジン（申請・再申請時）</td><td>一覧、通知メール件名</td></tr>
-<tr><td class="k">Applicant</td><td>Link → ユーザーモジュール</td><td>申請者。申請したログインユーザーの Id</td><td>エンジン（申請時）</td><td>申請書の「本人だけ編集可」条件（<span class="mono">Approval.Applicant.Value</span>）、取り下げ・再申請の本人確認、通知メールの返信先</td></tr>
-<tr><td class="k">AttemptNo</td><td>Number</td><td>申請回数。初回 1。差し戻し／取り下げ後の再申請で +1。メンバー行と履歴行はこの番号で世代が分かれる（過去の申請回の承認記録はそのまま残る）</td><td>エンジン（申請 = 1、再申請 = +1）</td><td>エンジン（「今回の申請回」のメンバー行だけを見る）、検索用 SQL の結合条件</td></tr>
-<tr><td class="k">CurrentStepNo</td><td>Number</td><td>現在のステップ番号（最初の承認ステップから始まり、承認で進む・差し戻しで戻る）。完了後は最終ステップのまま</td><td>エンジン</td><td>ステッパー UI（現在位置）、承認状況一覧の「現在ステップ／現在担当者」</td></tr>
-<tr><td class="k">Members</td><td>List → メンバーモジュール（<span class="mono">Flow = Id</span> で絞る）</td><td>この申請の承認者行の一覧。<b>メンバーモジュールはこの一覧の参照先として決まる</b>（申請書側にモジュール名の設定は無い）</td><td>—（参照定義）</td><td>申請書側の権限条件（<span class="mono">Approval.Members.～</span> のリンク越し存在条件）、ステッパー UI</td></tr>
-<tr><td class="k">Histories</td><td>List → 履歴モジュール（<span class="mono">Flow = Id</span> で絞る）</td><td>この申請の操作履歴の一覧。<b>履歴モジュールはこの一覧の参照先として決まる</b></td><td>—（参照定義）</td><td>ステッパー UI の履歴表示</td></tr>
+<tr><th>役割</th><th>必須</th><th>型</th><th>意味</th><th>書く</th><th>主に読む</th></tr>
+<tr><td class="k">Status</td><td class="req"><b>○</b></td><td>Select (enum <span class="mono">ApprovalFlowStatus</span>)</td><td>フロー全体の状態。<span class="mono">InProgress</span> 承認中 / <span class="mono">Completed</span> 承認済み / <span class="mono">Rejected</span> 却下 / <span class="mono">Returned</span> 差し戻し / <span class="mono">Withdrawn</span> 取り下げ</td><td>エンジン（全アクション）</td><td>申請書の編集ロック条件（DataWriteCondition）、ステッパー UI、承認状況一覧</td></tr>
+<tr><td class="k">TargetModuleName</td><td class="req"><b>○</b></td><td>Text</td><td>申請書モジュール名（どの種類の申請か）。フローを複数の申請書で共有するために持つ</td><td>エンジン（申請時）</td><td>一覧の「開く」（申請書へ遷移）、エンジンの申請書保存</td></tr>
+<tr><td class="k">TargetId</td><td class="req"><b>○</b></td><td>Text</td><td>申請書レコードの Id（逆参照）</td><td>エンジン（申請時。申請書の新規保存後に確定）</td><td>同上</td></tr>
+<tr><td class="k">Applicant</td><td class="req"><b>○</b></td><td>Link → ユーザーモジュール</td><td>申請者。申請したログインユーザーの Id</td><td>エンジン（申請時）</td><td>申請書の「本人だけ編集可」条件（<span class="mono">Approval.Applicant.Value</span>）、取り下げ・再申請の本人確認、通知メールの返信先</td></tr>
+<tr><td class="k">AttemptNo</td><td class="req"><b>○</b></td><td>Number</td><td>申請回数。初回 1。差し戻し／取り下げ後の再申請で +1。メンバー行と履歴行はこの番号で世代が分かれる（過去の申請回の承認記録はそのまま残る）</td><td>エンジン（申請 = 1、再申請 = +1）</td><td>エンジン（「今回の申請回」のメンバー行だけを見る）、検索用 SQL の結合条件</td></tr>
+<tr><td class="k">CurrentStepNo</td><td class="req"><b>○</b></td><td>Number</td><td>現在のステップ番号（最初の承認ステップから始まり、承認で進む・差し戻しで戻る）。完了後は最終ステップのまま</td><td>エンジン</td><td>ステッパー UI（現在位置）、承認状況一覧の「現在ステップ／現在担当者」</td></tr>
+<tr><td class="k">Members</td><td class="req"><b>○</b></td><td>List → メンバーモジュール（<span class="mono">Flow = Id</span> で絞る）</td><td>この申請の承認者行の一覧。<b>メンバーモジュールはこの一覧の参照先として決まる</b>（申請書側にモジュール名の設定は無い）</td><td>—（参照定義）</td><td>申請書側の権限条件（<span class="mono">Approval.Members.～</span> のリンク越し存在条件）、ステッパー UI</td></tr>
+<tr><td class="k">Histories</td><td class="req"><b>○</b></td><td>List → 履歴モジュール（<span class="mono">Flow = Id</span> で絞る）</td><td>この申請の操作履歴の一覧。<b>履歴モジュールはこの一覧の参照先として決まる</b></td><td>—（参照定義）</td><td>ステッパー UI の履歴表示</td></tr>
 </table></div>
 <p>契約外だが Example には <span class="mono">OptimisticLocking</span>（楽観ロック。綴り固定のシステムフィールド）を置いている。エンジンの同時更新（2 人が同時に承認）をここで検出する。</p>
 
@@ -218,35 +220,33 @@ td.k{font-family:"JetBrains Mono",monospace;font-size:13px;white-space:nowrap}
 <p>申請時に経路（<span class="mono">ApprovalRouteData</span>）を行に展開したもの。「ステップの設定」（StepType〜ReturnScope、IsFinalStep）は同じステップの全行に同じ値が入る。
 経路の設定を行にコピーしておくのは、<b>後で経路マスタを変えても進行中の申請に影響させない</b>ため。</p>
 <div class="tblwrap"><table>
-<tr><th>役割</th><th>型</th><th>意味</th><th>書く</th><th>主に読む</th></tr>
-<tr><td class="k">Flow</td><td>Link → フローモジュール</td><td>親フロー</td><td>エンジン（展開時）</td><td>Members 一覧の絞り込み、エンジン</td></tr>
-<tr><td class="k">AttemptNo</td><td>Number</td><td>どの申請回の行か（フローの AttemptNo と同じ値）</td><td>エンジン（展開時）</td><td>エンジン（今回分だけ読む）</td></tr>
-<tr><td class="k">StepNo</td><td>Number</td><td>ステップ番号（1 始まり。経路の順）</td><td>エンジン（展開時）</td><td>エンジン（進行）、ステッパー UI</td></tr>
-<tr><td class="k">StepName</td><td>Text</td><td>ステップの表示名（「課長承認」等）</td><td>エンジン（展開時）</td><td>ステッパー UI、通知メール件名、一覧</td></tr>
-<tr><td class="k">StepType</td><td>Select (enum <span class="mono">ApprovalStepType</span>)</td><td><span class="mono">Approval</span> 承認（承認されるまで次へ進まない）/ <span class="mono">Confirmation</span> 回覧（見るだけ。フローの進行をブロックしない。承認ではなく「確認」を記録）</td><td>エンジン（展開時）</td><td>エンジン、UI（ボタンの出し分け）</td></tr>
-<tr><td class="k">CompletionPolicy</td><td>Text / Select (enum <span class="mono">ApprovalCompletionPolicy</span>)</td><td>そのステップの完了条件。<span class="mono">RequiredMembers</span> 必須メンバー全員（必須がいなければ誰か 1 人）/ <span class="mono">All</span> 全員 / <span class="mono">Any</span> 誰か 1 人。ステップが完了すると、まだ承認していない同ステップの人は <span class="mono">Skipped</span> になる</td><td>エンジン（展開時）</td><td>エンジン（ステップ完了判定）</td></tr>
-<tr><td class="k">IsCommentRequiredOnReject</td><td>Boolean</td><td>却下・差し戻しにコメント必須か</td><td>エンジン（展開時）</td><td>エンジン（入力検証）、UI</td></tr>
-<tr><td class="k">ReturnScope</td><td>Text / Select (enum <span class="mono">ApprovalReturnScope</span>)</td><td>差し戻し先の許可範囲。<span class="mono">ApplicantOnly</span> 申請者へ戻すだけ / <span class="mono">AnyPreviousStep</span> 前の任意のステップへ戻せる</td><td>エンジン（展開時）</td><td>エンジン、UI（差し戻し先の選択肢）</td></tr>
-<tr><td class="k">ApproverUser</td><td>Link → ユーザーモジュール</td><td>この行の承認者（解決済みのユーザー Id。役職などの解決は申請時のスクリプト側で済ませる）</td><td>エンジン（展開時）</td><td>「自分の番か」の判定、申請書側の権限条件、通知メールの宛先（<span class="mono">ApproverUser.Email.Value</span>）、承認待ち一覧</td></tr>
-<tr><td class="k">IsRequired</td><td>Boolean</td><td>必須メンバーか（CompletionPolicy = RequiredMembers のときに効く）</td><td>エンジン（展開時）</td><td>エンジン（ステップ完了判定）</td></tr>
-<tr><td class="k">IsFinalStep</td><td>Boolean</td><td>最終ステップの行か。申請書側の「最終承認者だけ査定額を編集できる」のような条件で使う</td><td>エンジン（展開時）</td><td>申請書側の権限条件</td></tr>
-<tr><td class="k">Status</td><td>Select (enum <span class="mono">ApprovalMemberStatus</span>)</td><td>行の状態。<span class="mono">Pending</span> 順番待ち（まだ自分の番でない）/ <span class="mono">Waiting</span> 承認待ち（今この人の番）/ <span class="mono">Approved</span> 承認した / <span class="mono">Rejected</span> 却下した / <span class="mono">Confirmed</span> 回覧を確認した / <span class="mono">Skipped</span> 不要になった（ステップが他の人で完了）。Pending ↔ Waiting はエンジンが毎回正規化する</td><td>エンジン（アクションのたび）</td><td>承認待ち一覧（<span class="mono">Waiting</span> の行）、現在担当者、申請書側の権限条件</td></tr>
-<tr><td class="k">ActedAt</td><td>DateTime</td><td>この人が行動した日時（承認・却下・確認）</td><td>エンジン</td><td>ステッパー UI</td></tr>
-<tr><td class="k">TurnNotifyMail（任意）</td><td>MailField</td><td>「自分の番になった」通知メール。承認で次の人が <span class="mono">Waiting</span> になったときにエンジンがサーバー側で送る（コミット後）。宛先・件名・本文はメールフィールドの設定で、Flow や ApproverUser のリンク越し参照が使える。未設定なら通知しない</td><td>—（送信設定）</td><td>エンジン（送信）</td></tr>
+<tr><th>役割</th><th>必須</th><th>型</th><th>意味</th><th>書く</th><th>主に読む</th></tr>
+<tr><td class="k">Flow</td><td class="req"><b>○</b></td><td>Link → フローモジュール</td><td>親フロー</td><td>エンジン（展開時）</td><td>Members 一覧の絞り込み、エンジン</td></tr>
+<tr><td class="k">AttemptNo</td><td class="req"><b>○</b></td><td>Number</td><td>どの申請回の行か（フローの AttemptNo と同じ値）</td><td>エンジン（展開時）</td><td>エンジン（今回分だけ読む）</td></tr>
+<tr><td class="k">StepNo</td><td class="req"><b>○</b></td><td>Number</td><td>ステップ番号（1 始まり。経路の順）</td><td>エンジン（展開時）</td><td>エンジン（進行）、ステッパー UI</td></tr>
+<tr><td class="k">StepName</td><td class="req"><b>○</b></td><td>Text</td><td>ステップの表示名（「課長承認」等）</td><td>エンジン（展開時）</td><td>ステッパー UI、通知メール件名、一覧</td></tr>
+<tr><td class="k">StepType</td><td class="req"><b>○</b></td><td>Select (enum <span class="mono">ApprovalStepType</span>)</td><td><span class="mono">Approval</span> 承認（承認されるまで次へ進まない）/ <span class="mono">Confirmation</span> 回覧（見るだけ。フローの進行をブロックしない。承認ではなく「確認」を記録）</td><td>エンジン（展開時）</td><td>エンジン、UI（ボタンの出し分け）</td></tr>
+<tr><td class="k">CompletionPolicy</td><td class="req"><b>○</b></td><td>Text / Select (enum <span class="mono">ApprovalCompletionPolicy</span>)</td><td>そのステップの完了条件。<span class="mono">RequiredMembers</span> 必須メンバー全員（必須がいなければ誰か 1 人）/ <span class="mono">All</span> 全員 / <span class="mono">Any</span> 誰か 1 人。ステップが完了すると、まだ承認していない同ステップの人は <span class="mono">Skipped</span> になる</td><td>エンジン（展開時）</td><td>エンジン（ステップ完了判定）</td></tr>
+<tr><td class="k">IsCommentRequiredOnReject</td><td class="req"><b>○</b></td><td>Boolean</td><td>却下・差し戻しにコメント必須か</td><td>エンジン（展開時）</td><td>エンジン（入力検証）、UI</td></tr>
+<tr><td class="k">ReturnScope</td><td class="req"><b>○</b></td><td>Text / Select (enum <span class="mono">ApprovalReturnScope</span>)</td><td>差し戻し先の許可範囲。<span class="mono">ApplicantOnly</span> 申請者へ戻すだけ / <span class="mono">AnyPreviousStep</span> 前の任意のステップへ戻せる</td><td>エンジン（展開時）</td><td>エンジン、UI（差し戻し先の選択肢）</td></tr>
+<tr><td class="k">ApproverUser</td><td class="req"><b>○</b></td><td>Link → ユーザーモジュール</td><td>この行の承認者（解決済みのユーザー Id。役職などの解決は申請時のスクリプト側で済ませる）</td><td>エンジン（展開時）</td><td>「自分の番か」の判定、申請書側の権限条件、通知メールの宛先（<span class="mono">ApproverUser.Email.Value</span>）、承認待ち一覧</td></tr>
+<tr><td class="k">IsRequired</td><td class="req"><b>○</b></td><td>Boolean</td><td>必須メンバーか（CompletionPolicy = RequiredMembers のときに効く）</td><td>エンジン（展開時）</td><td>エンジン（ステップ完了判定）</td></tr>
+<tr><td class="k">IsFinalStep</td><td class="req"><b>○</b></td><td>Boolean</td><td>最終ステップの行か。申請書側の「最終承認者だけ査定額を編集できる」のような条件で使う</td><td>エンジン（展開時）</td><td>申請書側の権限条件</td></tr>
+<tr><td class="k">Status</td><td class="req"><b>○</b></td><td>Select (enum <span class="mono">ApprovalMemberStatus</span>)</td><td>行の状態。<span class="mono">Pending</span> 順番待ち（まだ自分の番でない）/ <span class="mono">Waiting</span> 承認待ち（今この人の番）/ <span class="mono">Approved</span> 承認した / <span class="mono">Rejected</span> 却下した / <span class="mono">Confirmed</span> 回覧を確認した / <span class="mono">Skipped</span> 不要になった（ステップが他の人で完了）。Pending ↔ Waiting はエンジンが毎回正規化する</td><td>エンジン（アクションのたび）</td><td>承認待ち一覧（<span class="mono">Waiting</span> の行）、現在担当者、申請書側の権限条件</td></tr>
+<tr><td class="k">ActedAt</td><td class="req"><b>○</b></td><td>DateTime</td><td>この人が行動した日時（承認・却下・確認）</td><td>エンジン</td><td>ステッパー UI</td></tr>
+<tr><td class="k">TurnNotifyMail</td><td class="req"><span>－</span></td><td>MailField</td><td>「自分の番になった」通知メール。承認で次の人が <span class="mono">Waiting</span> になったときにエンジンがサーバー側で送る（コミット後）。宛先・件名・本文はメールフィールドの設定で、Flow や ApproverUser のリンク越し参照が使える。未設定なら通知しない</td><td>—（送信設定）</td><td>エンジン（送信）</td></tr>
 </table></div>
 
 <h3>4.3 ApprovalHistoryContract — 履歴モジュール（操作 1 回 = 1 行、追記のみ）</h3>
 <p>監査用。エンジンは追記するだけで更新・削除はしない。差し戻しや再申請で状態が巻き戻っても履歴は残る。</p>
 <div class="tblwrap"><table>
-<tr><th>役割</th><th>型</th><th>意味</th><th>書く</th><th>主に読む</th></tr>
-<tr><td class="k">Flow</td><td>Link → フローモジュール</td><td>親フロー</td><td>エンジン</td><td>Histories 一覧の絞り込み</td></tr>
-<tr><td class="k">AttemptNo</td><td>Number</td><td>どの申請回の操作か</td><td>エンジン</td><td>ステッパー UI（今回分と過去分の区別）</td></tr>
-<tr><td class="k">StepNo</td><td>Number</td><td>操作したステップ番号。申請・再申請・取り下げはステップに属さないので 0</td><td>エンジン</td><td>ステッパー UI</td></tr>
-<tr><td class="k">Action</td><td>Text / Select (enum <span class="mono">ApprovalAction</span>)</td><td>操作の種類。<span class="mono">Submit</span> 申請 / <span class="mono">Approve</span> 承認 / <span class="mono">Reject</span> 却下 / <span class="mono">Return</span> 差し戻し / <span class="mono">Withdraw</span> 取り下げ / <span class="mono">Resubmit</span> 再申請 / <span class="mono">Confirm</span> 回覧確認</td><td>エンジン</td><td>ステッパー UI、承認状況一覧の申請日（<span class="mono">Submit</span> 行の ActedAt）</td></tr>
-<tr><td class="k">ActorUser</td><td>Link → ユーザーモジュール</td><td>操作した人</td><td>エンジン</td><td>ステッパー UI</td></tr>
-<tr><td class="k">FromStatus / ToStatus</td><td>Text</td><td>操作前後のフロー状態（<span class="mono">ApprovalFlowStatus</span> の値）。状態遷移の記録</td><td>エンジン</td><td>監査</td></tr>
-<tr><td class="k">Comment</td><td>Text</td><td>操作時のコメント（却下理由など。IsCommentRequiredOnReject なら必須）</td><td>エンジン（ユーザー入力を記録）</td><td>ステッパー UI</td></tr>
-<tr><td class="k">ActedAt</td><td>DateTime</td><td>操作日時</td><td>エンジン</td><td>ステッパー UI、申請日</td></tr>
+<tr><th>役割</th><th>必須</th><th>型</th><th>意味</th><th>書く</th><th>主に読む</th></tr>
+<tr><td class="k">Flow</td><td class="req"><b>○</b></td><td>Link → フローモジュール</td><td>親フロー</td><td>エンジン</td><td>Histories 一覧の絞り込み</td></tr>
+<tr><td class="k">AttemptNo</td><td class="req"><b>○</b></td><td>Number</td><td>どの申請回の操作か</td><td>エンジン</td><td>ステッパー UI（今回分と過去分の区別）</td></tr>
+<tr><td class="k">Action</td><td class="req"><b>○</b></td><td>Text / Select (enum <span class="mono">ApprovalAction</span>)</td><td>操作の種類。<span class="mono">Submit</span> 申請 / <span class="mono">Approve</span> 承認 / <span class="mono">Reject</span> 却下 / <span class="mono">Return</span> 差し戻し / <span class="mono">Withdraw</span> 取り下げ / <span class="mono">Resubmit</span> 再申請 / <span class="mono">Confirm</span> 回覧確認</td><td>エンジン</td><td>ステッパー UI、承認状況一覧の申請日（<span class="mono">Submit</span> 行の ActedAt）</td></tr>
+<tr><td class="k">ActorUser</td><td class="req"><b>○</b></td><td>Link → ユーザーモジュール</td><td>操作した人</td><td>エンジン</td><td>ステッパー UI</td></tr>
+<tr><td class="k">Comment</td><td class="req"><b>○</b></td><td>Text</td><td>操作時のコメント（却下理由など。IsCommentRequiredOnReject なら必須）</td><td>エンジン（ユーザー入力を記録）</td><td>ステッパー UI</td></tr>
+<tr><td class="k">ActedAt</td><td class="req"><b>○</b></td><td>DateTime</td><td>操作日時</td><td>エンジン</td><td>ステッパー UI、申請日</td></tr>
 </table></div>
 
 <h3>4.4 3 つの関係（1 申請の中身を追う）</h3>

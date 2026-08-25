@@ -75,18 +75,19 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Approval
             }
             var inbox = d.Modules.Find("MyApprovalList")!.Fields.OfType<QueryFieldDesign>().Single();
             Assert.That(inbox.QuerySetting.Parameters.Any(e => e.IsParameter && e.Name == "current_user_id"), Is.True);
-            //承認状況の検索 = 状態 (複数選択) / 申請者 (ユーザー選択) / 経路 (経路マスタ選択)。入力パラメータは持たない
+            //承認状況の検索 = 状態 (複数選択) / 申請者 (ユーザー選択) / 申請種別 (申請書モジュールを表示名で選択)。入力パラメータは持たない
             var statusList = d.Modules.Find("ApprovalStatusList")!;
             Assert.That(statusList.Fields.OfType<QueryFieldDesign>().Single().QuerySetting.Parameters.Any(e => e.IsParameter), Is.False);
             var searchFields = statusList.SearchLayouts[""].Layout.GetDescendantLayouts<FieldLayoutDesign>().Select(e => e.FieldName)
                 .Where(n => statusList.Fields.First(f => f.Name == n) is not LabelFieldDesign);
-            Assert.That(searchFields, Is.EquivalentTo(new[] { "Status", "Applicant", "RouteName" }));
+            Assert.That(searchFields, Is.EquivalentTo(new[] { "Status", "Applicant", "TargetModuleName" }));
             Assert.That(((SelectFieldDesign)statusList.Fields.First(e => e.Name == "Status")).AllowOrSearch, Is.True);
             Assert.That(((SelectFieldDesign)statusList.Fields.First(e => e.Name == "Applicant")).SearchCondition.ModuleName, Is.EqualTo("AppUser"));
-            Assert.That(((SelectFieldDesign)statusList.Fields.First(e => e.Name == "RouteName")).SearchCondition.ModuleName, Is.EqualTo("ApprovalRoute"));
-            //待ち手 (今 Waiting のメンバー名) が一覧に出る。申請モジュール名はユーザーに見せない
+            Assert.That(((SelectFieldDesign)statusList.Fields.First(e => e.Name == "TargetModuleName")).EnumName, Is.EqualTo("ApprovalRequestType"));
+            Assert.That(d.Enums.Single(e => e.Name == "ApprovalRequestType").Members.Select(e => e.GetValue()), Is.EqualTo(new[] { "PurchaseRequest" }));
+            //待ち手 (今 Waiting のメンバー名) が一覧に出る。申請種別は Select の表示名で見せる (モジュール名そのものは出さない)
             var columns = statusList.ListLayouts[""].Elements[0].Select(e => e.FieldName).ToList();
-            Assert.That(columns, Does.Contain("WaitingNames").And.Not.Contain("TargetModuleName"));
+            Assert.That(columns, Does.Contain("WaitingNames").And.Contain("TargetModuleName"));
         }
 
         [Test]

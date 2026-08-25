@@ -8,7 +8,10 @@ using Codeer.LowCode.Blazor.Repository.Design;
 
 namespace Codeer.LowCode.Blazor.Extras.Designs
 {
-    /// <summary>承認フローモジュールの契約。Members / Histories の一覧の先がメンバー・履歴モジュールになる。</summary>
+    /// <summary>
+    /// 承認フローモジュールの契約。Members / Histories の一覧の先がメンバー・履歴モジュールになる。
+    /// 役割は「エンジン・UI が読むもの」だけ (書くだけの項目は契約に持たない) なので全て必須。
+    /// </summary>
     [Designer(DisplayName = "$ApprovalFlowContractField")]
     [ToolboxIcon(PackIconMaterialKind = "CheckDecagramOutline")]
     public class ApprovalFlowContractFieldDesign : ContractFieldDesignBase
@@ -23,9 +26,6 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
 
         [Designer(Index = 5, CandidateType = CandidateType.Field, DisplayName = "$ApprovalFlowContractTargetId")]
         public string TargetId { get; set; } = nameof(TargetId);
-
-        [Designer(Index = 6, CandidateType = CandidateType.Field, DisplayName = "$ApprovalFlowContractRouteName")]
-        public string RouteName { get; set; } = nameof(RouteName);
 
         /// <summary>
         /// 申請者ユーザー (User モジュールへの Link)。申請時にエンジンが書き込む。
@@ -52,6 +52,12 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         [Designer(Index = 11, CandidateType = CandidateType.Field, DisplayName = "$ApprovalFlowContractHistories")]
         public string Histories { get; set; } = nameof(Histories);
 
+        private protected override HashSet<string> RequiredRoleNames => new()
+        {
+            nameof(Status), nameof(TargetModuleName), nameof(TargetId), nameof(Applicant),
+            nameof(AttemptNo), nameof(CurrentStepNo), nameof(Members), nameof(Histories),
+        };
+
         public override List<DesignCheckInfo> CheckDesign(DesignCheckContext context)
         {
             var result = base.CheckDesign(context);
@@ -61,7 +67,11 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         }
     }
 
-    /// <summary>承認メンバーモジュールの契約。</summary>
+    /// <summary>
+    /// 承認メンバーモジュールの契約。
+    /// 役割はエンジン・UI・申請書側の条件が読むものだけなので全て必須。
+    /// 唯一の例外が TurnNotifyMail (通知メールのオプトイン。空 = 通知しない)。
+    /// </summary>
     [Designer(DisplayName = "$ApprovalMemberContractField")]
     [ToolboxIcon(PackIconMaterialKind = "CheckDecagramOutline")]
     public class ApprovalMemberContractFieldDesign : ContractFieldDesignBase
@@ -115,6 +125,14 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         [Designer(Index = 16, CandidateType = CandidateType.Field, DisplayName = "$ApprovalMemberContractTurnNotifyMail")]
         public string TurnNotifyMail { get; set; } = string.Empty;
 
+        //TurnNotifyMail (任意) 以外は必須
+        private protected override HashSet<string> RequiredRoleNames => new()
+        {
+            nameof(Flow), nameof(AttemptNo), nameof(StepNo), nameof(StepName), nameof(StepType), nameof(CompletionPolicy),
+            nameof(IsCommentRequiredOnReject), nameof(ReturnScope), nameof(ApproverUser), nameof(IsRequired),
+            nameof(IsFinalStep), nameof(Status), nameof(ActedAt),
+        };
+
         public override List<DesignCheckInfo> CheckDesign(DesignCheckContext context)
         {
             var result = base.CheckDesign(context);
@@ -138,7 +156,9 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         }
     }
 
-    /// <summary>承認履歴モジュールの契約。</summary>
+    /// <summary>
+    /// 承認履歴モジュールの契約 (追記のみ)。役割は UI が読むものだけなので全て必須。
+    /// </summary>
     [Designer(DisplayName = "$ApprovalHistoryContractField")]
     [ToolboxIcon(PackIconMaterialKind = "CheckDecagramOutline")]
     public class ApprovalHistoryContractFieldDesign : ContractFieldDesignBase
@@ -151,8 +171,6 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         [Designer(Index = 4, CandidateType = CandidateType.Field, DisplayName = "$ApprovalHistoryContractAttemptNo")]
         public string AttemptNo { get; set; } = nameof(AttemptNo);
 
-        [Designer(Index = 5, CandidateType = CandidateType.Field, DisplayName = "$ApprovalHistoryContractStepNo")]
-        public string StepNo { get; set; } = nameof(StepNo);
 
         [Designer(Index = 6, CandidateType = CandidateType.Field, DisplayName = "$ApprovalHistoryContractAction")]
         public string Action { get; set; } = nameof(Action);
@@ -160,17 +178,18 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         [Designer(Index = 7, CandidateType = CandidateType.Field, DisplayName = "$ApprovalHistoryContractActorUser")]
         public string ActorUser { get; set; } = nameof(ActorUser);
 
-        [Designer(Index = 8, CandidateType = CandidateType.Field, DisplayName = "$ApprovalHistoryContractFromStatus")]
-        public string FromStatus { get; set; } = nameof(FromStatus);
 
-        [Designer(Index = 9, CandidateType = CandidateType.Field, DisplayName = "$ApprovalHistoryContractToStatus")]
-        public string ToStatus { get; set; } = nameof(ToStatus);
 
         [Designer(Index = 10, CandidateType = CandidateType.Field, DisplayName = "$ApprovalHistoryContractComment")]
         public string Comment { get; set; } = nameof(Comment);
 
         [Designer(Index = 11, CandidateType = CandidateType.Field, DisplayName = "$ApprovalHistoryContractActedAt")]
         public string ActedAt { get; set; } = nameof(ActedAt);
+
+        private protected override HashSet<string> RequiredRoleNames => new()
+        {
+            nameof(Flow), nameof(AttemptNo), nameof(Action), nameof(ActorUser), nameof(Comment), nameof(ActedAt),
+        };
     }
 
 }

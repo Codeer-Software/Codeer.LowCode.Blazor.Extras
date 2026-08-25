@@ -107,28 +107,6 @@
       "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.TextFieldDesign"
     },
     {
-      "DbColumn": "route_name",
-      "IsMultiline": false,
-      "IsAutoFitRows": false,
-      "Placeholder": "",
-      "TextEditEmptyType": "StringEmpty",
-      "ShouldTrimAfterEdit": false,
-      "AutoTab": false,
-      "IsUpdateProtected": false,
-      "IsSimpleSearchParameter": false,
-      "AllowEmptySearch": false,
-      "OnSearchDataChanged": "",
-      "IsRequired": false,
-      "OnDataChanged": "",
-      "Name": "RouteName",
-      "IgnoreModification": false,
-      "OnValidateInput": "",
-      "IsFocusSkip": false,
-      "NextFocusField": "",
-      "OnFocusMoving": "",
-      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.TextFieldDesign"
-    },
-    {
       "SearchCondition": {
         "SelectFields": [],
         "SortConditions": [],
@@ -318,7 +296,6 @@
       "Status": "Status",
       "TargetModuleName": "TargetModuleName",
       "TargetId": "TargetId",
-      "RouteName": "RouteName",
       "Applicant": "Applicant",
       "AttemptNo": "AttemptNo",
       "CurrentStepNo": "CurrentStepNo",

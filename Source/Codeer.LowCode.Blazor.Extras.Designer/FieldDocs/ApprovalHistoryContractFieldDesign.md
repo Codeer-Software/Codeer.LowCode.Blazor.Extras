@@ -1,4 +1,4 @@
-# ApprovalHistoryContractField (承認履歴契約)
+﻿# ApprovalHistoryContractField (承認履歴契約)
 
 承認履歴モジュール (監査履歴) に1つ置き、「役割 → 自モジュールのフィールド名」の
 マッピングを宣言するフィールド。UI もデータも持たない (DB列不要)。
@@ -9,9 +9,18 @@
 - 役割のフィールドが自モジュールに無ければデザインチェックがエラーにする
 - 役割プロパティはフィールドのリネームに自動追従する
 - 同じモジュールに複数置くとエラー
+- 役割は UI (ステッパーの履歴表示) が読むものだけなので全て必須 (デザイナの表示名に「(必須)」)。空・名指ししたフィールドの不在はデザインチェックがエラー。
+  監査用に項目を増やしたい場合は履歴モジュールに自由にフィールドを足してよい (エンジンは契約の役割しか書かない)
 
-役割: `Flow` (Link→フロー) / `AttemptNo` / `StepNo` / `Action` / `ActorUser` (Link→ユーザー) /
-`FromStatus` / `ToStatus` / `Comment` / `ActedAt`。
+| 役割 (表示名) | 内容 |
+|---|---|
+| Flow (フロー) | Link→フロー行 |
+| AttemptNo (試行番号) | 操作時の試行番号 |
+| Action (操作) | `ApprovalAction` |
+| ActorUser (実行者ユーザー) | Link→ユーザー。UI が申請者の特定にも使う |
+| Comment (コメント) | 却下理由など (申請・再申請時のコメントも同じ欄) |
+| ActedAt (操作日時) | 操作の日時 |
+
 
 ```json
 { "Name": "Contract", "TypeFullName": "Codeer.LowCode.Blazor.Extras.Designs.ApprovalHistoryContractFieldDesign" }

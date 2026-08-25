@@ -1825,12 +1825,6 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
             }
         }
 
-        internal static string ApprovalFlowContractRouteName {
-            get {
-                return ResourceManager.GetString("ApprovalFlowContractRouteName", resourceCulture);
-            }
-        }
-
         internal static string ApprovalFlowContractApplicant {
             get {
                 return ResourceManager.GetString("ApprovalFlowContractApplicant", resourceCulture);
@@ -1957,12 +1951,6 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
             }
         }
 
-        internal static string ApprovalHistoryContractStepNo {
-            get {
-                return ResourceManager.GetString("ApprovalHistoryContractStepNo", resourceCulture);
-            }
-        }
-
         internal static string ApprovalHistoryContractAction {
             get {
                 return ResourceManager.GetString("ApprovalHistoryContractAction", resourceCulture);
@@ -1972,18 +1960,6 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
         internal static string ApprovalHistoryContractActorUser {
             get {
                 return ResourceManager.GetString("ApprovalHistoryContractActorUser", resourceCulture);
-            }
-        }
-
-        internal static string ApprovalHistoryContractFromStatus {
-            get {
-                return ResourceManager.GetString("ApprovalHistoryContractFromStatus", resourceCulture);
-            }
-        }
-
-        internal static string ApprovalHistoryContractToStatus {
-            get {
-                return ResourceManager.GetString("ApprovalHistoryContractToStatus", resourceCulture);
             }
         }
 

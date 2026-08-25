@@ -108,10 +108,14 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Setup
             //承認待ちはログインユーザーで絞る (サーバー束縛の予約パラメータ)
             var inboxSql = File.ReadAllText(Path.Combine(ProjectDir, "Modules", "MyApprovalList.Query.sql"));
             Assert.That(inboxSql, Does.Contain("@current_user_id").And.Contain("LEFT JOIN app_users u").And.Contain("u.name AS applicant_name"));
-            //承認状況の検索 (状態 / 申請者 / 経路) は出力列への通常検索。経路は経路マスタから選ぶ
+            //承認状況の検索 (状態 / 申請者 / 申請種別) は出力列への通常検索。申請種別 = 申請書モジュール名の enum (結線先が最初のメンバー)
             var statusList = d.Modules.Find("ApprovalStatusList")!;
-            var route = (SelectFieldDesign)statusList.Fields.First(e => e.Name == "RouteName");
-            Assert.That(route.SearchCondition.ModuleName, Is.EqualTo("ApprovalRoute"));
+            Assert.That(((SelectFieldDesign)statusList.Fields.First(e => e.Name == "TargetModuleName")).EnumName, Is.EqualTo("ApprovalRequestType"));
+            Assert.That(((SelectFieldDesign)d.Modules.Find("MyApprovalList")!.Fields.First(e => e.Name == "TargetModuleName")).EnumName,
+                Is.EqualTo("ApprovalRequestType"));
+            var requestType = d.Enums.Single(e => e.Name == "ApprovalRequestType");
+            Assert.That(requestType.Members.Select(e => e.Name), Is.EqualTo(new[] { "Request" }));
+            Assert.That(File.Exists(Path.Combine(ProjectDir, "Enums", "ApprovalRequestType.enum.json")), Is.True);
             var applicant = (SelectFieldDesign)statusList.Fields.First(e => e.Name == "Applicant");
             Assert.That(applicant.SearchCondition.ModuleName, Is.EqualTo("AppUser"));
             Assert.That(((SelectFieldDesign)statusList.Fields.First(e => e.Name == "Status")).AllowOrSearch, Is.True);
@@ -183,8 +187,10 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Setup
             var applicantSearch = (SelectFieldDesign)d.Modules.Find("KeiriApprovalStatusList")!.Fields.First(e => e.Name == "Applicant");
             Assert.That(applicantSearch.SearchCondition.ModuleName, Is.EqualTo("Staff"));
             Assert.That(applicantSearch.DisplayTextVariable, Is.EqualTo("DisplayName.Value"));
-            var routeSearch = (SelectFieldDesign)d.Modules.Find("KeiriApprovalStatusList")!.Fields.First(e => e.Name == "RouteName");
-            Assert.That(routeSearch.SearchCondition.ModuleName, Is.EqualTo("KeiriApprovalRoute"));
+            //申請種別 enum もプレフィックス付き
+            Assert.That(((SelectFieldDesign)d.Modules.Find("KeiriApprovalStatusList")!.Fields.First(e => e.Name == "TargetModuleName")).EnumName,
+                Is.EqualTo("KeiriApprovalRequestType"));
+            Assert.That(d.Enums.Any(e => e.Name == "KeiriApprovalRequestType"), Is.True);
             Assert.That(inboxSql, Does.Not.Contain(" approval_flows ").And.Not.Contain(" approval_flow_members "));
             //スクリプトのモジュール名 (ModuleSearcher<Xxx>) も追従すること
             var routeScript = File.ReadAllText(Path.Combine(ProjectDir, "Modules", "KeiriApprovalRoute.mod.cs"));
@@ -238,8 +244,6 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Setup
             var d = Load();
             var field = d.Modules.Find("Request")!.Fields.OfType<ApprovalFlowFieldDesign>().Single();
             Assert.That(d.Scripts["Request"], Does.Contain("NewRoute").And.Not.Contain(".Load("));
-            //経路マスタが無いので承認状況の経路検索は文字列
-            Assert.That(d.Modules.Find("ApprovalStatusList")!.Fields.First(e => e.Name == "RouteName"), Is.TypeOf<TextFieldDesign>());
         }
     
 

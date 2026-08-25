@@ -1,4 +1,4 @@
-# ApprovalMemberContractField (承認メンバー契約)
+﻿# ApprovalMemberContractField (承認メンバー契約)
 
 承認メンバーモジュール (承認者スナップショット) に1つ置き、「役割 → 自モジュールのフィールド名」の
 マッピングを宣言するフィールド。UI もデータも持たない (DB列不要)。
@@ -9,10 +9,26 @@
 - 役割のフィールドが自モジュールに無ければデザインチェックがエラーにする
 - 役割プロパティはフィールドのリネームに自動追従する
 - 同じモジュールに複数置くとエラー
+- 役割はエンジン・UI・申請書側の条件が読むものなので全て必須 (デザイナの表示名に「(必須)」)。空・名指ししたフィールドの不在はデザインチェックがエラー
+- 唯一の任意は `TurnNotifyMail` (通知メールのオプトイン。空 = 通知しない)
 
-役割: `Flow` (Link→フロー) / `AttemptNo` / `StepNo` / `StepName` / `StepType` / `CompletionPolicy` /
-`IsCommentRequiredOnReject` / `ReturnScope` / `ApproverUser` (Link→ユーザー) / `IsRequired` /
-`IsFinalStep` / `Status` / `ActedAt`。
+| 役割 (表示名) | 内容 | 必須 |
+|---|---|---|
+| Flow (フロー) | Link→フロー行 | ○ |
+| AttemptNo (試行番号) | 展開時の試行番号 | ○ |
+| StepNo (ステップ番号) | 1 始まり | ○ |
+| StepName (ステップ名) | 表示用のステップ名 | ○ |
+| StepType (ステップ種別) | 承認 / 確認 (`ApprovalStepType`) | ○ |
+| CompletionPolicy (ステップ完了条件) | `ApprovalCompletionPolicy` | ○ |
+| IsCommentRequiredOnReject (却下時のコメント必須) | Boolean | ○ |
+| ReturnScope (差し戻し先の範囲) | `ApprovalReturnScope` | ○ |
+| ApproverUser (承認者ユーザー) | Link→ユーザー | ○ |
+| IsRequired (必須承認者か) | Boolean | ○ |
+| IsFinalStep (最終承認ステップか) | 条件式で「最終承認者」を表すためのスナップショット | ○ |
+| Status (メンバーの状態) | `ApprovalMemberStatus` | ○ |
+| ActedAt (操作日時) | 承認・却下した日時 (表示用) | ○ |
+| TurnNotifyMail (順番到達通知メール) | 自モジュールの MailField 名。下記 | - |
+
 
 ```json
 { "Name": "Contract", "TypeFullName": "Codeer.LowCode.Blazor.Extras.Designs.ApprovalMemberContractFieldDesign" }

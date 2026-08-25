@@ -78,8 +78,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Approval
                 //フロー生成 (申請時スナップショット)
                 var flowId = await CreateFlowAsync(ctx, route, targetId, attemptNo: 1);
                 await CreateMembersAsync(ctx, route, flowId, attemptNo: 1);
-                await AddHistoryAsync(ctx, flowId, 1, 0, ApprovalAction.Submit.ToDesignValue(), string.Empty,
-                    ApprovalFlowStatus.InProgress.ToDesignValue(), request.Comment);
+                await AddHistoryAsync(ctx, flowId, 1, ApprovalAction.Submit.ToDesignValue(), request.Comment);
 
                 //親レコードに FK を書く (システム経路。クライアントは送信できない)。
                 //状態・申請者はフロー行が正で、条件はリンク越し参照 ((フィールド名).Status 等) で読む
@@ -134,13 +133,11 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Approval
 
                 var flowUpdate = CreateFlowUpdate(ctx, flow);
                 SetString(ctx.FlowModule, flowUpdate, ctx.Flow.Status, ApprovalFlowStatus.InProgress.ToDesignValue());
-                SetString(ctx.FlowModule, flowUpdate, ctx.Flow.RouteName, route.Name);
                 SetNumber(ctx.FlowModule, flowUpdate, ctx.Flow.AttemptNo, newAttempt);
                 SetNumber(ctx.FlowModule, flowUpdate, ctx.Flow.CurrentStepNo, FirstApprovalStepNo(route));
                 await _updateInternalAsync(flowUpdate);
 
-                await AddHistoryAsync(ctx, flow.Id, newAttempt, 0, ApprovalAction.Resubmit.ToDesignValue(), flow.Status,
-                    ApprovalFlowStatus.InProgress.ToDesignValue(), request.Comment);
+                await AddHistoryAsync(ctx, flow.Id, newAttempt, ApprovalAction.Resubmit.ToDesignValue(), request.Comment);
 
                 await _db.CommitAsync();
                 await NotifyTurnAsync(ctx, flow.Id, newAttempt, onlyMemberIds: null);
@@ -226,8 +223,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Approval
             SetNumber(ctx.FlowModule, flowUpdate, ctx.Flow.CurrentStepNo, nextStepNo == 0 ? currentStepNo : nextStepNo);
             await _updateInternalAsync(flowUpdate);
 
-            await AddHistoryAsync(ctx, flow.Id, flow.AttemptNo, currentStepNo, ApprovalAction.Approve.ToDesignValue(),
-                flow.Status, newStatus, request.Comment);
+            await AddHistoryAsync(ctx, flow.Id, flow.AttemptNo, ApprovalAction.Approve.ToDesignValue(), request.Comment);
             return ApprovalActionResult.Success(flow.Id, flow.TargetId);
         }
 
@@ -249,8 +245,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Approval
             SetString(ctx.FlowModule, flowUpdate, ctx.Flow.Status, ApprovalFlowStatus.Rejected.ToDesignValue());
             await _updateInternalAsync(flowUpdate);
 
-            await AddHistoryAsync(ctx, flow.Id, flow.AttemptNo, currentStepNo, ApprovalAction.Reject.ToDesignValue(),
-                flow.Status, ApprovalFlowStatus.Rejected.ToDesignValue(), request.Comment);
+            await AddHistoryAsync(ctx, flow.Id, flow.AttemptNo, ApprovalAction.Reject.ToDesignValue(), request.Comment);
             return ApprovalActionResult.Success(flow.Id, flow.TargetId);
         }
 
@@ -290,8 +285,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Approval
                 SetNumber(ctx.FlowModule, stepUpdate, ctx.Flow.CurrentStepNo, targetStepNo);
                 await _updateInternalAsync(stepUpdate);
 
-                await AddHistoryAsync(ctx, flow.Id, flow.AttemptNo, currentStepNo, ApprovalAction.Return.ToDesignValue(),
-                    flow.Status, flow.Status, request.Comment);
+                await AddHistoryAsync(ctx, flow.Id, flow.AttemptNo, ApprovalAction.Return.ToDesignValue(), request.Comment);
                 return ApprovalActionResult.Success(flow.Id, flow.TargetId);
             }
 
@@ -303,8 +297,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Approval
             SetString(ctx.FlowModule, flowUpdate, ctx.Flow.Status, ApprovalFlowStatus.Returned.ToDesignValue());
             await _updateInternalAsync(flowUpdate);
 
-            await AddHistoryAsync(ctx, flow.Id, flow.AttemptNo, currentStepNo, ApprovalAction.Return.ToDesignValue(),
-                flow.Status, ApprovalFlowStatus.Returned.ToDesignValue(), request.Comment);
+            await AddHistoryAsync(ctx, flow.Id, flow.AttemptNo, ApprovalAction.Return.ToDesignValue(), request.Comment);
             return ApprovalActionResult.Success(flow.Id, flow.TargetId);
         }
 
@@ -328,8 +321,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Approval
             SetString(ctx.FlowModule, flowUpdate, ctx.Flow.Status, ApprovalFlowStatus.Withdrawn.ToDesignValue());
             await _updateInternalAsync(flowUpdate);
 
-            await AddHistoryAsync(ctx, flow.Id, flow.AttemptNo, 0, ApprovalAction.Withdraw.ToDesignValue(),
-                flow.Status, ApprovalFlowStatus.Withdrawn.ToDesignValue(), request.Comment);
+            await AddHistoryAsync(ctx, flow.Id, flow.AttemptNo, ApprovalAction.Withdraw.ToDesignValue(), request.Comment);
             return ApprovalActionResult.Success(flow.Id, flow.TargetId);
         }
 
@@ -347,8 +339,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Approval
             var flowUpdate = CreateFlowUpdate(ctx, flow);
             await _updateInternalAsync(flowUpdate);
 
-            await AddHistoryAsync(ctx, flow.Id, flow.AttemptNo, member.StepNo, ApprovalAction.Confirm.ToDesignValue(),
-                flow.Status, flow.Status, request.Comment);
+            await AddHistoryAsync(ctx, flow.Id, flow.AttemptNo, ApprovalAction.Confirm.ToDesignValue(), request.Comment);
             return ApprovalActionResult.Success(flow.Id, flow.TargetId);
         }
 
@@ -629,7 +620,6 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Approval
             SetString(ctx.FlowModule, data, ctx.Flow.Status, ApprovalFlowStatus.InProgress.ToDesignValue());
             SetString(ctx.FlowModule, data, ctx.Flow.TargetModuleName, ctx.TargetModule.Name);
             SetString(ctx.FlowModule, data, ctx.Flow.TargetId, targetId);
-            SetString(ctx.FlowModule, data, ctx.Flow.RouteName, route.Name);
             SetLink(ctx.FlowModule, data, ctx.Flow.Applicant, ctx.ActorId);
             SetNumber(ctx.FlowModule, data, ctx.Flow.AttemptNo, attemptNo);
             SetNumber(ctx.FlowModule, data, ctx.Flow.CurrentStepNo, FirstApprovalStepNo(route));
@@ -703,17 +693,13 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Approval
             }
         }
 
-        async Task AddHistoryAsync(Context ctx, string flowId, int attemptNo, int stepNo,
-            string action, string fromStatus, string toStatus, string comment)
+        async Task AddHistoryAsync(Context ctx, string flowId, int attemptNo, string action, string comment)
         {
             var data = new ModuleData { Name = ctx.HistoryModule.Name };
             SetLink(ctx.HistoryModule, data, ctx.History.Flow, flowId);
             SetNumber(ctx.HistoryModule, data, ctx.History.AttemptNo, attemptNo);
-            SetNumber(ctx.HistoryModule, data, ctx.History.StepNo, stepNo);
             SetString(ctx.HistoryModule, data, ctx.History.Action, action);
             SetLink(ctx.HistoryModule, data, ctx.History.ActorUser, ctx.ActorId);
-            SetString(ctx.HistoryModule, data, ctx.History.FromStatus, fromStatus);
-            SetString(ctx.HistoryModule, data, ctx.History.ToStatus, toStatus);
             SetString(ctx.HistoryModule, data, ctx.History.Comment, comment);
             SetDateTime(ctx.HistoryModule, data, ctx.History.ActedAt, DateTime.Now);
             await _addInternalAsync(data);
@@ -857,7 +843,8 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Approval
         }
 
         //====================================================================
-        // フィールド値ヘルパー (既定フィールド名で厳格に読む/書く。欠落は設定ミス = 例外)
+        // フィールド値ヘルパー (契約の役割名で厳格に読む/書く。名指しされたフィールドの欠落は設定ミス = 例外。
+        // 必須でない役割は空 = 書かない。必須役割の空はデザインチェックが弾く)
         //====================================================================
 
         static FieldDataBase CreateFieldData(ModuleDesign design, string fieldName)
@@ -870,6 +857,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Approval
 
         static void SetString(ModuleDesign design, ModuleData data, string fieldName, string value)
         {
+            if (string.IsNullOrEmpty(fieldName)) return; //任意役割の「使わない」宣言
             var fieldData = CreateFieldData(design, fieldName);
             ((ValueFieldDataBase<string>)fieldData).Value = value;
             data.Fields[fieldName] = fieldData;
@@ -877,6 +865,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Approval
 
         static void SetNumber(ModuleDesign design, ModuleData data, string fieldName, int value)
         {
+            if (string.IsNullOrEmpty(fieldName)) return; //任意役割の「使わない」宣言
             var fieldData = CreateFieldData(design, fieldName);
             ((NumberFieldData)fieldData).Value = value;
             data.Fields[fieldName] = fieldData;
@@ -884,6 +873,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Approval
 
         static void SetBool(ModuleDesign design, ModuleData data, string fieldName, bool value)
         {
+            if (string.IsNullOrEmpty(fieldName)) return; //任意役割の「使わない」宣言
             var fieldData = CreateFieldData(design, fieldName);
             ((BooleanFieldData)fieldData).Value = value;
             data.Fields[fieldName] = fieldData;
@@ -891,6 +881,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Approval
 
         static void SetDateTime(ModuleDesign design, ModuleData data, string fieldName, DateTime? value)
         {
+            if (string.IsNullOrEmpty(fieldName)) return; //任意役割の「使わない」宣言
             var fieldData = CreateFieldData(design, fieldName);
             ((DateTimeFieldData)fieldData).Value = value;
             data.Fields[fieldName] = fieldData;
@@ -898,6 +889,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Approval
 
         static void SetLink(ModuleDesign design, ModuleData data, string fieldName, string value)
         {
+            if (string.IsNullOrEmpty(fieldName)) return; //任意役割の「使わない」宣言
             var fieldData = CreateFieldData(design, fieldName);
             ((ValueFieldDataBase<string>)fieldData).Value = value;
             data.Fields[fieldName] = fieldData;

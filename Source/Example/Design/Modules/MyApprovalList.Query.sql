@@ -6,7 +6,6 @@ SELECT
   f.id AS flow_id,
   f.target_module_name AS target_module_name,
   f.target_id AS target_id,
-  f.route_name AS route_name,
   f.applicant AS applicant,
   u.name AS applicant_name,
   m.step_no AS step_no,

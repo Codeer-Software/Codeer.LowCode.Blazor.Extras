@@ -75,14 +75,14 @@ DDL は自動実行されないため、生成後にテーブルを作成する�
 
 役割一覧 (括弧は推奨フィールド型。名前は変更可):
 
-- フロー契約: `Status` (SelectField 推奨) / `TargetModuleName` / `TargetId` / `RouteName` /
+- フロー契約: `Status` (SelectField 推奨) / `TargetModuleName` / `TargetId` /
   `Applicant` (ユーザーモジュールへの LinkField。申請時にエンジンが書き込む) /
   `AttemptNo` / `CurrentStepNo` (Number) /
   `Members` / `Histories` (それぞれメンバー・履歴モジュールの ListField。バインド `Flow.Value == Id.Value`)。
   ほかに `OptimisticLocking` (OptimisticLockingField、IncrementVersion 推奨) が必須
 - メンバー契約: `Flow` (Link→フロー) / `AttemptNo` / `StepNo` / `StepName` / `StepType` / `CompletionPolicy` /
   `IsCommentRequiredOnReject` / `ReturnScope` / `ApproverUser` (Link→ユーザー) / `IsRequired` / `IsFinalStep` / `Status` / `ActedAt`
-- 履歴契約: `Flow` / `AttemptNo` / `StepNo` / `Action` / `ActorUser` (Link→ユーザー) / `FromStatus` / `ToStatus` / `Comment` / `ActedAt`
+- 履歴契約: `Flow` / `AttemptNo` / `Action` / `ActorUser` (Link→ユーザー) / `Comment` / `ActedAt`
 
 デザインファイル (JSON) では次の1エントリを Fields に足すだけ (マッピングは既定値):
 

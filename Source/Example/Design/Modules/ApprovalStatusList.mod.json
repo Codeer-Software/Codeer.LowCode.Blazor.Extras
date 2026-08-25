@@ -50,12 +50,6 @@
           },
           {
             "IsParameter": false,
-            "Name": "route_name",
-            "DbType": "text",
-            "DbParameterDirection": "Input"
-          },
-          {
-            "IsParameter": false,
             "Name": "current_step_no",
             "DbType": "integer",
             "DbParameterDirection": "Input"
@@ -128,26 +122,17 @@
     {
       "Name": "TargetModuleName",
       "DbColumn": "target_module_name",
-      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.TextFieldDesign"
+      "DisplayName": "申請種別",
+      "EnumName": "ApprovalRequestType",
+      "Candidates": [],
+      "EmptyCandidateType": "StringEmpty",
+      "AllowOrSearch": true,
+      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.SelectFieldDesign"
     },
     {
       "Name": "TargetId",
       "DbColumn": "target_id",
       "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.TextFieldDesign"
-    },
-    {
-      "Name": "RouteName",
-      "DbColumn": "route_name",
-      "DisplayName": "経路",
-      "Candidates": [],
-      "EmptyCandidateType": "StringEmpty",
-      "SearchCondition": {
-        "ModuleName": "ApprovalRoute"
-      },
-      "ValueVariable": "RouteName.Value",
-      "DisplayTextVariable": "RouteName.Value",
-      "AllowOrSearch": true,
-      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.SelectFieldDesign"
     },
     {
       "Name": "CurrentStepNo",
@@ -183,8 +168,8 @@
       "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.LabelFieldDesign"
     },
     {
-      "Name": "SearchRouteLabel",
-      "Text": "経路",
+      "Name": "SearchTargetLabel",
+      "Text": "申請種別",
       "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.LabelFieldDesign"
     },
     {
@@ -198,7 +183,6 @@
   "ListLayouts": {
     "": {
       "DataOnlyFields": [
-        "TargetModuleName",
         "TargetId"
       ],
       "OnAfterInitialization": "OnAfterInitialization",
@@ -210,8 +194,9 @@
             "Width": 150
           },
           {
-            "FieldName": "RouteName",
-            "Label": "経路"
+            "FieldName": "TargetModuleName",
+            "Label": "申請種別",
+            "Width": 160
           },
           {
             "FieldName": "Status",
@@ -253,7 +238,7 @@
               {
                 "Width": 260,
                 "Layout": {
-                  "FieldName": "SearchRouteLabel",
+                  "FieldName": "SearchTargetLabel",
                   "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.FieldLayoutDesign"
                 }
               },
@@ -279,7 +264,7 @@
               {
                 "Width": 260,
                 "Layout": {
-                  "FieldName": "RouteName",
+                  "FieldName": "TargetModuleName",
                   "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.FieldLayoutDesign"
                 }
               },
