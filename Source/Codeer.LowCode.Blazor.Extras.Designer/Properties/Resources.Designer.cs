@@ -129,7 +129,6 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Properties
 
         public static string SetupRouteStandard => GetString("SetupRouteStandard");
 
-        public static string SetupRouteSimple => GetString("SetupRouteSimple");
 
         public static string SetupRouteNone => GetString("SetupRouteNone");
 

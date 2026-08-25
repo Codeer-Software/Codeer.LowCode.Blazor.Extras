@@ -24,6 +24,9 @@ ExtrasServerInitializer.Initialize();
 
 var builder = WebApplication.CreateBuilder(args);
 
+//Development 以外の環境名 (Approval 等のテスト用プロファイル) でも Client の wwwroot / Blazor フレームワークファイルを配信する
+builder.WebHost.UseStaticWebAssets();
+
 LicenseManager.DomainLicense = builder.Configuration.GetSection("DomainLicense").Get<string>() ?? string.Empty;
 LicenseManager.IsAutoUpdate = builder.Configuration.GetSection("IsLicenseAutoUpdate").Get<bool>();
 SystemConfig.Instance.UseHotReload = builder.Configuration.GetSection("UseHotReload").Get<bool>();

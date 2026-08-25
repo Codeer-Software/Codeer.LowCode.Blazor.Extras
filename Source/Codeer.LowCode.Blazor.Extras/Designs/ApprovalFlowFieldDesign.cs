@@ -37,14 +37,6 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         public string FlowModuleName { get; set; } = "ApprovalFlow";
 
         /// <summary>
-        /// 経路マスタ (経路) モジュール名 (任意)。指定するとスクリプトの LoadRoute(経路名) で
-        /// マスタから経路を読める。ステップ・承認者モジュールは経路契約の Steps / Members 一覧の参照先として決まる。
-        /// マスタはただのユーザー定義モジュールで、エンジンは関与しない (申請は常に SubmitWithRoute の1本道)。
-        /// </summary>
-        [Designer(Index = 7, CandidateType = CandidateType.Module, DisplayName = "$ApprovalRouteModuleName")]
-        public string RouteModuleName { get; set; } = string.Empty;
-
-        /// <summary>
         /// 取り下げの許可範囲 (業務ポリシー)。既定は「承認が始まる前のみ」。
         /// エンジンが強制するのは資格・版・遷移の整合だけで、この種の業務ポリシーはデザインで選ぶ。
         /// </summary>
@@ -116,33 +108,11 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
                 });
             }
 
-            //経路マスタ (任意)。指定されているときだけ検証する
-            if (!string.IsNullOrEmpty(RouteModuleName))
-            {
-                context.CheckFieldModuleExistence(Name, nameof(RouteModuleName), RouteModuleName).AddTo(result);
-                var routeModule = context.DesignData.Modules.Find(RouteModuleName);
-                if (routeModule != null && ApprovalContracts.Route(routeModule) == null)
-                {
-                    result.Add(new FieldDesignCheckInfo
-                    {
-                        Location = new FieldDesignDataLocation
-                        {
-                            Module = context.OwnerModule,
-                            Field = Name,
-                            Member = nameof(RouteModuleName),
-                        },
-                        Message = string.Format(Properties.Resources.ApprovalCheck_ContractFieldMissingFormat,
-                            RouteModuleName, nameof(ApprovalRouteContractFieldDesign)),
-                    });
-                }
-            }
-
             return result;
         }
 
         public override RenameResult ChangeName(RenameContext context) => context.Builder(base.ChangeName(context))
             .AddModule(FlowModuleName, x => FlowModuleName = x)
-            .AddModule(RouteModuleName, x => RouteModuleName = x)
             .Build();
     }
 }

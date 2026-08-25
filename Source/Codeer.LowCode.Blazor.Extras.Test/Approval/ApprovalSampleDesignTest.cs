@@ -56,7 +56,6 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Approval
             Assert.That(field.Name, Is.EqualTo("Approval"));
             Assert.That(field.DbColumn, Is.EqualTo("approval_id"));
             Assert.That(field.FlowModuleName, Is.EqualTo("ApprovalFlow"));
-            Assert.That(field.RouteModuleName, Is.EqualTo("ApprovalRoute"));
 
             //dotted リンク列はレイアウト使用から自動合成される (フロー側の Select+enum のクローンになる)
             var statusClone = request.Fields.FirstOrDefault(e => e.Name == "Approval.Status");
@@ -78,37 +77,32 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Approval
         }
 
         [Test]
-        public void 経路マスタモジュールの構造()
+        public void 経路マスタモジュールは契約を持たないただのモジュール()
         {
+            //経路マスタは申請書スクリプト (OnBuildRoute) が ModuleSearcher で読む「ただのモジュール」。
+            //承認フロー側 (フィールド / エンジン) は経路マスタの形を知らない = 契約フィールドを置かない
             var d = Load();
+            foreach (var name in new[] { "ApprovalRoute", "ApprovalRouteStep", "ApprovalRouteStepMember" })
+            {
+                var module = d.Modules.Find(name)!;
+                Assert.That(module, Is.Not.Null, name);
+                Assert.That(module.Fields.Any(e => e is ContractFieldDesignBase), Is.False, name);
+            }
 
-            //経路モジュール: 管理画面は通常のローコード (Steps は普通の ListField = ListInList 構成)
+            //管理画面は通常のローコード (Steps / Members は普通の ListField = ListInList 構成)
             var route = d.Modules.Find("ApprovalRoute")!;
-            Assert.That(route, Is.Not.Null);
-            Assert.That(route.Fields.OfType<ApprovalRouteContractFieldDesign>().Count(), Is.EqualTo(1));
             var steps = (ListFieldDesign)route.Fields.First(e => e.Name == "Steps");
             Assert.That(steps.SearchCondition.ModuleName, Is.EqualTo("ApprovalRouteStep"));
             Assert.That(steps.SearchCondition.SortConditions.Single().Variable, Is.EqualTo("StepNo.Value"));
 
-            //ステップモジュール: 契約 + StepType/CompletionPolicy/ReturnScope はコード定義 enum の Select
+            //StepType/CompletionPolicy/ReturnScope はコード定義 enum の Select (値候補と表示名が自動で出る)
             var step = d.Modules.Find("ApprovalRouteStep")!;
-            Assert.That(step.Fields.OfType<ApprovalRouteStepContractFieldDesign>().Count(), Is.EqualTo(1));
             Assert.That(((SelectFieldDesign)step.Fields.First(e => e.Name == "StepType")).EnumName, Is.EqualTo("ApprovalStepType"));
             Assert.That(((SelectFieldDesign)step.Fields.First(e => e.Name == "CompletionPolicy")).EnumName, Is.EqualTo("ApprovalCompletionPolicy"));
             Assert.That(((SelectFieldDesign)step.Fields.First(e => e.Name == "ReturnScope")).EnumName, Is.EqualTo("ApprovalReturnScope"));
 
-            //承認者モジュール: 契約あり
-            var member = d.Modules.Find("ApprovalRouteStepMember")!;
-            Assert.That(member.Fields.OfType<ApprovalRouteStepMemberContractFieldDesign>().Count(), Is.EqualTo(1));
-
-            //契約チェックが全部通ること (役割フィールド存在 + 一覧役割の連鎖)
-            var ds = new Dictionary<string, List<Codeer.LowCode.Blazor.DataIO.Db.Definition.DbTableDefinition>>();
-            Assert.That(route.Fields.OfType<ApprovalRouteContractFieldDesign>().Single()
-                .CheckDesign(new DesignCheckContext("ApprovalRoute", d, ds)), Is.Empty);
-            Assert.That(step.Fields.OfType<ApprovalRouteStepContractFieldDesign>().Single()
-                .CheckDesign(new DesignCheckContext("ApprovalRouteStep", d, ds)), Is.Empty);
-            Assert.That(member.Fields.OfType<ApprovalRouteStepMemberContractFieldDesign>().Single()
-                .CheckDesign(new DesignCheckContext("ApprovalRouteStepMember", d, ds)), Is.Empty);
+            //経費申請のスクリプトがマスタを読む (LoadRoute のような組み込み API は無い)
+            Assert.That(d.Scripts["ExpenseRequest"], Does.Contain("ModuleSearcher<ApprovalRoute>").And.Contain("OnBuildRoute"));
         }
 
         [Test]

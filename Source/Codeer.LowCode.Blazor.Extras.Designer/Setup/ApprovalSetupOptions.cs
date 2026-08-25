@@ -5,9 +5,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
     {
         /// <summary>経路マスタなし (経路はスクリプトで組み立てる)。</summary>
         None,
-        /// <summary>シンプル構成 (経路 + ステップの2モジュール。1ステップ1承認者)。</summary>
-        Simple,
-        /// <summary>標準構成 (経路 + ステップ + 承認者の3モジュール。1ステップ複数承認者)。</summary>
+        /// <summary>経路マスタあり (経路 + ステップ + 承認者の3モジュール。契約なしのただのモジュール + それを読む OnBuildRoute 雛形)。</summary>
         Standard,
     }
 

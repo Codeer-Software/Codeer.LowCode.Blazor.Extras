@@ -14,7 +14,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
     /// approval-setup:
     ///   &lt;designer.exe&gt; approval-setup "&lt;projectDir&gt;" [--target &lt;module&gt;] [--field Approval] [--db-column approval_id]
     ///     [--prefix &lt;P&gt;] [--data-source &lt;name&gt;] [--user-module AppUser] [--user-name-field Name] [--user-email-field Email]
-    ///     [--route standard|simple|none] [--no-turn-mail] [--no-pageframe] [--ddl-out "&lt;path.sql&gt;"]
+    ///     [--route standard|none] [--no-turn-mail] [--no-pageframe] [--ddl-out "&lt;path.sql&gt;"]
     ///
     /// mail-history-setup:
     ///   &lt;designer.exe&gt; mail-history-setup "&lt;projectDir&gt;" [--name MailHistory] [--data-source &lt;name&gt;]
@@ -59,12 +59,8 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
                         ? "AppUser" : designData.AppSettings.CurrentUserModuleDesignName),
                 UserDisplayNameField = named.GetValueOrDefault("--user-name-field", "Name"),
                 UserEmailField = named.GetValueOrDefault("--user-email-field", "Email"),
-                RouteMaster = named.GetValueOrDefault("--route", "standard").ToLowerInvariant() switch
-                {
-                    "none" => ApprovalRouteMasterKind.None,
-                    "simple" => ApprovalRouteMasterKind.Simple,
-                    _ => ApprovalRouteMasterKind.Standard,
-                },
+                RouteMaster = named.GetValueOrDefault("--route", "standard").ToLowerInvariant() == "none"
+                    ? ApprovalRouteMasterKind.None : ApprovalRouteMasterKind.Standard,
                 UseTurnNotifyMail = !args.Contains("--no-turn-mail"),
                 AddPageFrameLinks = !args.Contains("--no-pageframe"),
             };

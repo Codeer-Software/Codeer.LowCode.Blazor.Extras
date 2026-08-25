@@ -49,7 +49,6 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Setup
             Assert.That(field.Name, Is.EqualTo("Approval"));
             Assert.That(field.DbColumn, Is.EqualTo("approval_id"));
             Assert.That(field.FlowModuleName, Is.EqualTo("ApprovalFlow"));
-            Assert.That(field.RouteModuleName, Is.EqualTo("ApprovalRoute"));
             Assert.That(field.OnBuildRoute, Is.EqualTo("OnBuildRoute"));
 
             //フィールド自身のチェックで契約欠落・モジュール不在が出ないこと
@@ -75,7 +74,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Setup
             var grid = (GridLayoutDesign)request.DetailLayouts[""].Layout;
             Assert.That(grid.Rows.SelectMany(r => r.Columns)
                 .Any(c => (c.Layout as FieldLayoutDesign)?.FieldName == "Approval"), Is.True);
-            Assert.That(d.Scripts["Request"], Does.Contain("OnBuildRoute").And.Contain("LoadRoute"));
+            Assert.That(d.Scripts["Request"], Does.Contain("OnBuildRoute").And.Contain("ModuleSearcher<ApprovalRoute>"));
 
             //PageFrame リンク
             var frame = d.PageFrames.Find("Main")!;
@@ -106,14 +105,13 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Setup
                 UserModuleName = "Staff",
                 UserDisplayNameField = "DisplayName",
                 UserEmailField = "MailAddress",
-                RouteMaster = ApprovalRouteMasterKind.Simple,
             };
             var result = ApprovalFlowSetupService.Run(Load(), ProjectDir, options, DataSourceType.SQLite);
 
             Assert.That(result.CreatedModules, Is.EquivalentTo(new[]
             {
                 "KeiriApprovalFlow", "KeiriApprovalFlowMember", "KeiriApprovalHistory",
-                "KeiriApprovalSimpleRoute", "KeiriApprovalSimpleRouteStep",
+                "KeiriApprovalRoute", "KeiriApprovalRouteStep", "KeiriApprovalRouteStepMember",
             }));
 
             //生成ファイルにテンプレートのモジュール名参照が残っていないこと
@@ -193,8 +191,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Setup
 
             var d = Load();
             var field = d.Modules.Find("Request")!.Fields.OfType<ApprovalFlowFieldDesign>().Single();
-            Assert.That(field.RouteModuleName, Is.Empty);
-            Assert.That(d.Scripts["Request"], Does.Contain("NewRoute").And.Not.Contain("LoadRoute"));
+            Assert.That(d.Scripts["Request"], Does.Contain("NewRoute").And.Not.Contain("ModuleSearcher"));
         }
     }
 }

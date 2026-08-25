@@ -74,7 +74,6 @@
     {
       "DbColumn": "approval_id",
       "FlowModuleName": "ApprovalFlow",
-      "RouteModuleName": "ApprovalRoute",
       "WithdrawPolicy": "BeforeFirstApproval",
       "ShowProgress": true,
       "ShowHistory": true,

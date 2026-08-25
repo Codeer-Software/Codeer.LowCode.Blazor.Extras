@@ -289,24 +289,6 @@
       "NextFocusField": "",
       "OnFocusMoving": "",
       "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.ListFieldDesign"
-    },
-    {
-      "Route": "Route",
-      "StepNo": "StepNo",
-      "StepName": "StepName",
-      "StepType": "StepType",
-      "CompletionPolicy": "CompletionPolicy",
-      "IsCommentRequiredOnReject": "IsCommentRequiredOnReject",
-      "ReturnScope": "ReturnScope",
-      "Members": "Members",
-      "ApproverUser": "",
-      "Name": "Contract",
-      "IgnoreModification": false,
-      "OnValidateInput": "",
-      "IsFocusSkip": false,
-      "NextFocusField": "",
-      "OnFocusMoving": "",
-      "TypeFullName": "Codeer.LowCode.Blazor.Extras.Designs.ApprovalRouteStepContractFieldDesign"
     }
   ],
   "UserWriteCondition": {
@@ -598,24 +580,6 @@
       "OnFieldDataChanged": "",
       "Elements": [
         [
-          {
-            "FieldName": "StepNo",
-            "ContextMenu": "",
-            "Label": "順序",
-            "Width": 80,
-            "IsMaxWidthFixed": false,
-            "ColumnSpan": 1,
-            "RowSpan": 1,
-            "TextWrap": "Unset",
-            "CanResize": false,
-            "CanUserSort": true,
-            "ClassName": "",
-            "FontFamily": "",
-            "Color": "",
-            "BackgroundColor": "",
-            "DetailLayoutName": "",
-            "ListElementComponent": ""
-          },
           {
             "FieldName": "StepName",
             "ContextMenu": "",

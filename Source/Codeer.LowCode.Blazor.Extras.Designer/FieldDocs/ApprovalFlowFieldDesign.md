@@ -53,7 +53,6 @@ DDL は自動実行されないため、生成後にテーブルを作成する�
 |---|---|
 | DB列 | 承認フロー行への FK 列 (このフィールドが自テーブルに持つ列はこの1本だけ) |
 | 承認フローモジュール | フロー本体のモジュール名 (既定 ApprovalFlow)。メンバー・履歴モジュールはフロー契約の Members / Histories 一覧の参照先として決まるため指定不要 |
-| 経路マスタモジュール | 経路マスタ (経路) のモジュール名 (任意)。指定するとスクリプトの `LoadRoute(経路名)` でマスタから経路を読める。マスタの作り方は ApprovalRouteContractField のドキュメント参照 |
 | 取り下げ許可範囲 | BeforeFirstApproval (既定・承認が始まる前のみ) / Anytime (進行中ならいつでも)。業務ポリシー |
 | 進捗を表示 / 履歴を表示 / コメント欄を表示 / アクションボタンを表示 | 標準 UI の表示切り替え。アクションボタンを OFF にすると ButtonField ＋ スクリプト API でアプリ独自の承認 UI に置き換えられる (サーバーの検証はどの UI からでも同じ) |
 | 経路組み立て | ApprovalRouteData を返すスクリプト (null で申請中止)。設定すると組み込みの申請・再申請ボタンが出て、スクリプト API の Submit() / Resubmit() も使える |
@@ -186,12 +185,36 @@ if (!result.IsSuccess) Logger.Error(result.ErrorMessage);
 承認.SubmitWithRoute(route);
 承認.ResubmitWithRoute(route);
 
-// 経路マスタから読む (デザインの「経路マスタモジュール」が必要。見つからなければ null = 申請中止に使える)
+// 経路マスタから読む。マスタはただのユーザー定義モジュール (契約なし・形は自由) で、
+// 承認フロー側はこのスクリプトが返す経路しか見ない。名指し / 役職や部署からの解決 / 決め打ちロジック、
+// どれも OnBuildRoute の書き方の違いでしかない (マスタ自体が必須ではない)。
+// 例: 経路 (ApprovalRoute: RouteName) → ステップ (ApprovalRouteStep: Route / StepNo / StepName / StepType /
+//     CompletionPolicy / ReturnScope / IsCommentRequiredOnReject) → ステップ承認者 (ApprovalRouteStepMember:
+//     Step / ApproverUser / IsRequired) の3段マスタを読む場合
 ApprovalRouteData OnBuildRouteFromMaster()
 {
-    var route = 承認.LoadRoute("経費ルート");   // 読んだ後に AddStep / AddMember で加工してもよい
-    if (route == null) Logger.Error("経路マスタに『経費ルート』がありません");
-    return route;
+    var routes = new ModuleSearcher<ApprovalRoute>();
+    routes.AddEquals(r => r.RouteName.Value, "経費ルート");
+    var master = routes.ExecuteFirstOrDefault();
+    if (master == null) { Logger.Error("経路マスタに『経費ルート』がありません"); return null; }
+
+    var steps = new ModuleSearcher<ApprovalRouteStep>();
+    steps.AddEquals(s => s.Route.Value, master.Id.Value);
+    steps.OrderBy(s => s.StepNo.Value);
+
+    var route = 承認.NewRoute(master.RouteName.Value);
+    foreach (var s in steps.Execute())
+    {
+        var step = route.AddStep(s.StepName.Value);
+        if (s.CompletionPolicy.Value != null && s.CompletionPolicy.Value != "") step.CompletionPolicy = s.CompletionPolicy.Value;
+        var members = new ModuleSearcher<ApprovalRouteStepMember>();
+        members.AddEquals(m => m.Step.Value, s.Id.Value);
+        foreach (var m in members.Execute())
+        {
+            if (m.ApproverUser.Value != null) step.AddMember(m.ApproverUser.Value, m.IsRequired.Value ?? true);
+        }
+    }
+    return route;   // 読んだ後に AddStep / AddMember で加工してもよい
 }
 
 // コメント (組み込みコメント欄と同じ値。外付けボタンから使う場合に設定/参照)

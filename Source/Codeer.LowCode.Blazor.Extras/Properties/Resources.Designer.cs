@@ -1669,35 +1669,10 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
             }
         }
 
-        internal static string ApprovalRouteContractField {
-            get {
-                return ResourceManager.GetString("ApprovalRouteContractField", resourceCulture);
-            }
-        }
 
-        internal static string ApprovalRouteStepContractField {
-            get {
-                return ResourceManager.GetString("ApprovalRouteStepContractField", resourceCulture);
-            }
-        }
 
-        internal static string ApprovalRouteStepMemberContractField {
-            get {
-                return ResourceManager.GetString("ApprovalRouteStepMemberContractField", resourceCulture);
-            }
-        }
 
-        internal static string ApprovalRouteModuleName {
-            get {
-                return ResourceManager.GetString("ApprovalRouteModuleName", resourceCulture);
-            }
-        }
 
-        internal static string ApprovalCheck_StepApproverRoleRequired {
-            get {
-                return ResourceManager.GetString("ApprovalCheck_StepApproverRoleRequired", resourceCulture);
-            }
-        }
 
 
         internal static string ApprovalCheck_ContractFieldMissingFormat {
@@ -2024,89 +1999,19 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
             }
         }
 
-        internal static string ApprovalRouteContractRouteName {
-            get {
-                return ResourceManager.GetString("ApprovalRouteContractRouteName", resourceCulture);
-            }
-        }
 
-        internal static string ApprovalRouteContractSteps {
-            get {
-                return ResourceManager.GetString("ApprovalRouteContractSteps", resourceCulture);
-            }
-        }
 
-        internal static string ApprovalRouteStepContractRoute {
-            get {
-                return ResourceManager.GetString("ApprovalRouteStepContractRoute", resourceCulture);
-            }
-        }
 
-        internal static string ApprovalRouteStepContractStepNo {
-            get {
-                return ResourceManager.GetString("ApprovalRouteStepContractStepNo", resourceCulture);
-            }
-        }
 
-        internal static string ApprovalRouteStepContractStepName {
-            get {
-                return ResourceManager.GetString("ApprovalRouteStepContractStepName", resourceCulture);
-            }
-        }
 
-        internal static string ApprovalRouteStepContractStepType {
-            get {
-                return ResourceManager.GetString("ApprovalRouteStepContractStepType", resourceCulture);
-            }
-        }
 
-        internal static string ApprovalRouteStepContractCompletionPolicy {
-            get {
-                return ResourceManager.GetString("ApprovalRouteStepContractCompletionPolicy", resourceCulture);
-            }
-        }
 
-        internal static string ApprovalRouteStepContractIsCommentRequiredOnReject {
-            get {
-                return ResourceManager.GetString("ApprovalRouteStepContractIsCommentRequiredOnReject", resourceCulture);
-            }
-        }
 
-        internal static string ApprovalRouteStepContractReturnScope {
-            get {
-                return ResourceManager.GetString("ApprovalRouteStepContractReturnScope", resourceCulture);
-            }
-        }
 
-        internal static string ApprovalRouteStepContractMembers {
-            get {
-                return ResourceManager.GetString("ApprovalRouteStepContractMembers", resourceCulture);
-            }
-        }
 
-        internal static string ApprovalRouteStepContractApproverUser {
-            get {
-                return ResourceManager.GetString("ApprovalRouteStepContractApproverUser", resourceCulture);
-            }
-        }
 
-        internal static string ApprovalRouteStepMemberContractStep {
-            get {
-                return ResourceManager.GetString("ApprovalRouteStepMemberContractStep", resourceCulture);
-            }
-        }
 
-        internal static string ApprovalRouteStepMemberContractApproverUser {
-            get {
-                return ResourceManager.GetString("ApprovalRouteStepMemberContractApproverUser", resourceCulture);
-            }
-        }
 
-        internal static string ApprovalRouteStepMemberContractIsRequired {
-            get {
-                return ResourceManager.GetString("ApprovalRouteStepMemberContractIsRequired", resourceCulture);
-            }
-        }
 
     }
 }

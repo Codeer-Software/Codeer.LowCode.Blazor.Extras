@@ -41,7 +41,6 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
             _comboUserModule.SelectedItem = moduleNames.Contains(userModule) ? userModule : moduleNames.FirstOrDefault();
 
             _comboRouteMaster.Items.Add(Properties.Resources.SetupRouteStandard);
-            _comboRouteMaster.Items.Add(Properties.Resources.SetupRouteSimple);
             _comboRouteMaster.Items.Add(Properties.Resources.SetupRouteNone);
             _comboRouteMaster.SelectedIndex = 0;
 
@@ -76,12 +75,8 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
                 UserModuleName = (string)_comboUserModule.SelectedItem,
                 UserDisplayNameField = string.IsNullOrWhiteSpace(_textUserNameField.Text) ? "Name" : _textUserNameField.Text.Trim(),
                 UserEmailField = string.IsNullOrWhiteSpace(_textUserEmailField.Text) ? "Email" : _textUserEmailField.Text.Trim(),
-                RouteMaster = _comboRouteMaster.SelectedIndex switch
-                {
-                    1 => ApprovalRouteMasterKind.Simple,
-                    2 => ApprovalRouteMasterKind.None,
-                    _ => ApprovalRouteMasterKind.Standard,
-                },
+                RouteMaster = _comboRouteMaster.SelectedIndex == 1
+                    ? ApprovalRouteMasterKind.None : ApprovalRouteMasterKind.Standard,
                 UseTurnNotifyMail = _checkTurnMail.IsChecked == true,
                 AddPageFrameLinks = _checkPageFrame.IsChecked == true,
             };

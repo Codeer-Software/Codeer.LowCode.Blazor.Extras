@@ -118,10 +118,7 @@
     <value>Route master</value>
   </data>
   <data name="SetupRouteStandard" xml:space="preserve">
-    <value>Standard (route + step + member)</value>
-  </data>
-  <data name="SetupRouteSimple" xml:space="preserve">
-    <value>Simple (route + step)</value>
+    <value>Yes (route + step + member)</value>
   </data>
   <data name="SetupRouteNone" xml:space="preserve">
     <value>None (build routes by script)</value>

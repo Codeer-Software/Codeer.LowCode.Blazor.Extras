@@ -92,7 +92,7 @@
       "CanDelete": true,
       "CanUserSort": true,
       "CanSelect": false,
-      "UseIndexSort": false,
+      "UseIndexSort": true,
       "OnDataChanged": "",
       "OnSearchDataChanged": "",
       "OnSelectedIndexChanged": "",
@@ -105,17 +105,6 @@
       "NextFocusField": "",
       "OnFocusMoving": "",
       "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.ListFieldDesign"
-    },
-    {
-      "RouteName": "RouteName",
-      "Steps": "Steps",
-      "Name": "Contract",
-      "IgnoreModification": false,
-      "OnValidateInput": "",
-      "IsFocusSkip": false,
-      "NextFocusField": "",
-      "OnFocusMoving": "",
-      "TypeFullName": "Codeer.LowCode.Blazor.Extras.Designs.ApprovalRouteContractFieldDesign"
     },
     {
       "Text": "経路名",

@@ -118,10 +118,7 @@
     <value>経路マスタ</value>
   </data>
   <data name="SetupRouteStandard" xml:space="preserve">
-    <value>標準 (経路+ステップ+承認者)</value>
-  </data>
-  <data name="SetupRouteSimple" xml:space="preserve">
-    <value>シンプル (経路+ステップ)</value>
+    <value>あり (経路+ステップ+承認者)</value>
   </data>
   <data name="SetupRouteNone" xml:space="preserve">
     <value>なし (スクリプトで組み立て)</value>

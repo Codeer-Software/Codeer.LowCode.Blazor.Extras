@@ -12,8 +12,9 @@ using System.Text;
 namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
 {
     /// <summary>
-    /// 承認フローのセットアップ。承認データモジュール群 (フロー / メンバー / 履歴 + 経路マスタ) を
-    /// テンプレートから生成し、申請書モジュールへ結線する。
+    /// 承認フローのセットアップ。承認データモジュール群 (フロー / メンバー / 履歴 + 任意の経路マスタ) を
+    /// テンプレートから生成し、申請書モジュールへ結線する。経路マスタは契約を持たないただのモジュールで、
+    /// 申請書スクリプトの雛形 (OnBuildRoute) がそれを読む「出発点」として生成する。
     /// - 冪等: 同名モジュールが既に存在すれば生成せず結線だけを行う (使いまわし)。
     /// - 生成後は通常のモジュール (フィールド追加・画面カスタム・リネームすべて自由。契約フィールドが正)。
     /// - DDL は雛形として返す (実行は呼び出し側でユーザーの確認を挟む)。
@@ -28,8 +29,6 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
         static readonly TemplateInfo Route = new("ApprovalRoute", "approval_routes", true);
         static readonly TemplateInfo RouteStep = new("ApprovalRouteStep", "approval_route_steps", true);
         static readonly TemplateInfo RouteStepMember = new("ApprovalRouteStepMember", "approval_route_step_members", true);
-        static readonly TemplateInfo SimpleRoute = new("ApprovalSimpleRoute", "approval_simple_routes", true);
-        static readonly TemplateInfo SimpleRouteStep = new("ApprovalSimpleRouteStep", "approval_simple_route_steps", true);
 
         public static SetupResult Run(DesignData designData, string designDir, ApprovalSetupOptions options,
             DataSourceType dataSourceType, List<DbTableDefinition>? existingTables = null)
@@ -80,7 +79,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
             }
 
             if (options.RouteMaster != ApprovalRouteMasterKind.None
-                && result.CreatedModules.Any(e => e == nameMap[GetRouteTemplate(options.RouteMaster).BaseName]))
+                && result.CreatedModules.Any(e => e == nameMap[Route.BaseName]))
             {
                 result.Notes.Add("経路マスタは誰でも編集できる状態で生成されます。管理者だけが編集できるようにするには、経路マスタモジュールの UserWriteCondition に管理者条件を設定してください。");
             }
@@ -100,7 +99,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
                     ("承認フロー管理", nameMap[Flow.BaseName]),
                 };
                 if (options.RouteMaster != ApprovalRouteMasterKind.None)
-                    links.Add(("承認経路マスタ", nameMap[GetRouteTemplate(options.RouteMaster).BaseName]));
+                    links.Add(("承認経路マスタ", nameMap[Route.BaseName]));
 
                 AddPageFrameLinks(designData, designDir,
                     links.Where(e => result.CreatedModules.Contains(e.Module)).ToList(), result);
@@ -112,23 +111,14 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
         static List<TemplateInfo> SelectTemplates(ApprovalRouteMasterKind routeMaster)
         {
             var templates = new List<TemplateInfo> { Flow, Member, History };
-            switch (routeMaster)
+            if (routeMaster == ApprovalRouteMasterKind.Standard)
             {
-                case ApprovalRouteMasterKind.Simple:
-                    templates.Add(SimpleRoute);
-                    templates.Add(SimpleRouteStep);
-                    break;
-                case ApprovalRouteMasterKind.Standard:
-                    templates.Add(Route);
-                    templates.Add(RouteStep);
-                    templates.Add(RouteStepMember);
-                    break;
+                templates.Add(Route);
+                templates.Add(RouteStep);
+                templates.Add(RouteStepMember);
             }
             return templates;
         }
-
-        static TemplateInfo GetRouteTemplate(ApprovalRouteMasterKind routeMaster)
-            => routeMaster == ApprovalRouteMasterKind.Simple ? SimpleRoute : Route;
 
         static bool ModuleExists(DesignData designData, string designDir, string moduleName)
             => designData.Modules.Find(moduleName) != null
@@ -150,16 +140,11 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
                 return;
             }
 
-            var routeModuleName = options.RouteMaster == ApprovalRouteMasterKind.None
-                ? string.Empty
-                : nameMap[GetRouteTemplate(options.RouteMaster).BaseName];
-
             var field = new ApprovalFlowFieldDesign
             {
                 Name = options.FieldName,
                 DbColumn = options.DbColumn,
                 FlowModuleName = nameMap[Flow.BaseName],
-                RouteModuleName = routeModuleName,
                 OnBuildRoute = "OnBuildRoute",
             };
             parent.Fields.Add(field);
@@ -200,7 +185,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
             script ??= LoadScriptFile(designDir, parent.Name) ?? string.Empty;
             if (!script.Contains("OnBuildRoute"))
             {
-                var stub = CreateOnBuildRouteStub(options.FieldName, options.RouteMaster);
+                var stub = CreateOnBuildRouteStub(options.FieldName, options.RouteMaster, nameMap);
                 script = string.IsNullOrWhiteSpace(script) ? stub : script.TrimEnd() + "\r\n\r\n" + stub;
                 SaveDesignFile(designDir, "Modules", $"{parent.Name}.mod.cs", script);
                 designData.Scripts[parent.Name] = script;
@@ -237,7 +222,8 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
             return new ModuleMatchCondition { ModuleName = moduleName, Condition = condition };
         }
 
-        static string CreateOnBuildRouteStub(string fieldName, ApprovalRouteMasterKind routeMaster)
+        static string CreateOnBuildRouteStub(string fieldName, ApprovalRouteMasterKind routeMaster,
+            Dictionary<string, string> nameMap)
             => routeMaster == ApprovalRouteMasterKind.None
                 ? $$"""
                     // 承認経路を組み立てる ({{fieldName}} の「経路組み立て」に設定済み。null を返すと申請中止)
@@ -251,15 +237,40 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
                     }
                     """
                 : $$"""
-                    // 承認経路を組み立てる ({{fieldName}} の「経路組み立て」に設定済み。null を返すと申請中止)
+                    // 承認経路を組み立てる ({{fieldName}} の「経路組み立て」に設定済み。null を返すと申請中止)。
+                    // 経路マスタ (経路 / ステップ / ステップ承認者) はただのモジュールで、承認フロー側はこのスクリプトが返す
+                    // 経路しか見ない。マスタの形や承認者の決め方 (役職・部署など) はプロジェクトに合わせて自由に変えてよい
                     ApprovalRouteData OnBuildRoute()
                     {
                         // 経路マスタ画面で経路を作成し、その経路名に合わせてください
-                        var route = {{fieldName}}.LoadRoute("標準経路");
-                        if (route == null)
+                        var routes = new ModuleSearcher<{{nameMap[Route.BaseName]}}>();
+                        routes.AddEquals(r => r.RouteName.Value, "標準経路");
+                        var master = routes.ExecuteFirstOrDefault();
+                        if (master == null)
                         {
                             Logger.Error("経路マスタに『標準経路』がありません");
                             return null;
+                        }
+
+                        var steps = new ModuleSearcher<{{nameMap[RouteStep.BaseName]}}>();
+                        steps.AddEquals(s => s.Route.Value, master.Id.Value);
+                        steps.OrderBy(s => s.StepNo.Value);
+
+                        var route = {{fieldName}}.NewRoute(master.RouteName.Value);
+                        foreach (var s in steps.Execute())
+                        {
+                            var step = route.AddStep(s.StepName.Value);
+                            if (s.StepType.Value != null && s.StepType.Value != "") step.StepType = s.StepType.Value;
+                            if (s.CompletionPolicy.Value != null && s.CompletionPolicy.Value != "") step.CompletionPolicy = s.CompletionPolicy.Value;
+                            if (s.ReturnScope.Value != null && s.ReturnScope.Value != "") step.ReturnScope = s.ReturnScope.Value;
+                            step.IsCommentRequiredOnReject = s.IsCommentRequiredOnReject.Value ?? true;
+
+                            var members = new ModuleSearcher<{{nameMap[RouteStepMember.BaseName]}}>();
+                            members.AddEquals(m => m.Step.Value, s.Id.Value);
+                            foreach (var m in members.Execute())
+                            {
+                                if (m.ApproverUser.Value != null) step.AddMember(m.ApproverUser.Value, m.IsRequired.Value ?? true);
+                            }
                         }
                         return route;
                     }

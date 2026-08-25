@@ -38,10 +38,6 @@
       "Name": "IsRequired",
       "DbColumn": "is_required",
       "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.BooleanFieldDesign"
-    },
-    {
-      "Name": "Contract",
-      "TypeFullName": "Codeer.LowCode.Blazor.Extras.Designs.ApprovalRouteStepMemberContractFieldDesign"
     }
   ],
   "ListLayouts": {

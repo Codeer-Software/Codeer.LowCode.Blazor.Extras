@@ -99,8 +99,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.DesignCheck
             var contracts = new[]
             {
                 typeof(ApprovalFlowContractFieldDesign), typeof(ApprovalMemberContractFieldDesign),
-                typeof(ApprovalHistoryContractFieldDesign), typeof(ApprovalRouteContractFieldDesign),
-                typeof(ApprovalRouteStepContractFieldDesign), typeof(ApprovalRouteStepMemberContractFieldDesign),
+                typeof(ApprovalHistoryContractFieldDesign),
             };
 
             var missing = new List<string>();

@@ -813,21 +813,6 @@
   <data name="ApprovalHistoryContractField" xml:space="preserve">
     <value>承認履歴契約</value>
   </data>
-  <data name="ApprovalRouteContractField" xml:space="preserve">
-    <value>承認経路契約</value>
-  </data>
-  <data name="ApprovalRouteStepContractField" xml:space="preserve">
-    <value>承認経路ステップ契約</value>
-  </data>
-  <data name="ApprovalRouteStepMemberContractField" xml:space="preserve">
-    <value>承認経路承認者契約</value>
-  </data>
-  <data name="ApprovalRouteModuleName" xml:space="preserve">
-    <value>経路マスタモジュール</value>
-  </data>
-  <data name="ApprovalCheck_StepApproverRoleRequired" xml:space="preserve">
-    <value>役割 'Members' (複数人) か 'ApproverUser' (ステップ直付け1人) のどちらかを設定してください</value>
-  </data>
   <data name="ApprovalCheck_ContractFieldMissingFormat" xml:space="preserve">
     <value>モジュール '{0}' に契約フィールド ({1}) がありません。役割マッピングを宣言する契約フィールドを配置してください。</value>
   </data>
@@ -989,47 +974,5 @@
   </data>
   <data name="ApprovalHistoryContractActedAt" xml:space="preserve">
     <value>操作日時</value>
-  </data>
-  <data name="ApprovalRouteContractRouteName" xml:space="preserve">
-    <value>経路名</value>
-  </data>
-  <data name="ApprovalRouteContractSteps" xml:space="preserve">
-    <value>ステップ一覧</value>
-  </data>
-  <data name="ApprovalRouteStepContractRoute" xml:space="preserve">
-    <value>経路 (経路行への Link)</value>
-  </data>
-  <data name="ApprovalRouteStepContractStepNo" xml:space="preserve">
-    <value>ステップ番号 (並び順)</value>
-  </data>
-  <data name="ApprovalRouteStepContractStepName" xml:space="preserve">
-    <value>ステップ名</value>
-  </data>
-  <data name="ApprovalRouteStepContractStepType" xml:space="preserve">
-    <value>ステップ種別 (承認/確認)</value>
-  </data>
-  <data name="ApprovalRouteStepContractCompletionPolicy" xml:space="preserve">
-    <value>ステップ完了条件</value>
-  </data>
-  <data name="ApprovalRouteStepContractIsCommentRequiredOnReject" xml:space="preserve">
-    <value>却下時のコメント必須</value>
-  </data>
-  <data name="ApprovalRouteStepContractReturnScope" xml:space="preserve">
-    <value>差し戻し先の範囲</value>
-  </data>
-  <data name="ApprovalRouteStepContractMembers" xml:space="preserve">
-    <value>承認者一覧</value>
-  </data>
-  <data name="ApprovalRouteStepContractApproverUser" xml:space="preserve">
-    <value>承認者ユーザー (1ステップ1人構成)</value>
-  </data>
-  <data name="ApprovalRouteStepMemberContractStep" xml:space="preserve">
-    <value>ステップ (ステップ行への Link)</value>
-  </data>
-  <data name="ApprovalRouteStepMemberContractApproverUser" xml:space="preserve">
-    <value>承認者ユーザー</value>
-  </data>
-  <data name="ApprovalRouteStepMemberContractIsRequired" xml:space="preserve">
-    <value>必須承認者か</value>
   </data>
 </root>
