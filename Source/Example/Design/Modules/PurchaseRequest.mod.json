@@ -25,28 +25,6 @@
       "Placeholder": "金額"
     },
     {
-      "Name": "Approver1",
-      "DbColumn": "approver1",
-      "SearchCondition": {
-        "ModuleName": "AppUser",
-        "TypeFullName": "Codeer.LowCode.Blazor.Repository.Match.SearchCondition"
-      },
-      "ValueVariable": "Id.Value",
-      "DisplayTextVariable": "Name.Value",
-      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.LinkFieldDesign"
-    },
-    {
-      "Name": "Approver2",
-      "DbColumn": "approver2",
-      "SearchCondition": {
-        "ModuleName": "AppUser",
-        "TypeFullName": "Codeer.LowCode.Blazor.Repository.Match.SearchCondition"
-      },
-      "ValueVariable": "Id.Value",
-      "DisplayTextVariable": "Name.Value",
-      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.LinkFieldDesign"
-    },
-    {
       "Name": "Approval",
       "DbColumn": "approval_id",
       "FlowModuleName": "ApprovalFlow",
@@ -61,16 +39,6 @@
     {
       "Name": "AmountLabel",
       "Text": "金額",
-      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.LabelFieldDesign"
-    },
-    {
-      "Name": "Approver1Label",
-      "Text": "一次承認者",
-      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.LabelFieldDesign"
-    },
-    {
-      "Name": "Approver2Label",
-      "Text": "二次承認者(任意)",
       "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.LabelFieldDesign"
     },
     {
@@ -93,9 +61,7 @@
       "Name": "RequestFieldsPermission",
       "TargetFields": [
         "Title",
-        "Amount",
-        "Approver1",
-        "Approver2"
+        "Amount"
       ],
       "WriteCondition": {
         "ModuleName": "PurchaseRequest",
@@ -170,6 +136,11 @@
         }
       },
       "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.PermissionFieldDesign"
+    },
+    {
+      "Name": "RouteNote",
+      "Text": "承認経路は金額で選ばれます (10万円未満: 購買ルート / 10万円以上: 購買ルート(高額)。承認経路マスタで管理)",
+      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.LabelFieldDesign"
     }
   ],
   "PageTitle": "購買申請",
@@ -298,31 +269,7 @@
             "Columns": [
               {
                 "Layout": {
-                  "FieldName": "Approver1Label",
-                  "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.FieldLayoutDesign"
-                },
-                "Width": 140
-              },
-              {
-                "Layout": {
-                  "FieldName": "Approver1",
-                  "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.FieldLayoutDesign"
-                }
-              }
-            ]
-          },
-          {
-            "Columns": [
-              {
-                "Layout": {
-                  "FieldName": "Approver2Label",
-                  "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.FieldLayoutDesign"
-                },
-                "Width": 140
-              },
-              {
-                "Layout": {
-                  "FieldName": "Approver2",
+                  "FieldName": "RouteNote",
                   "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.FieldLayoutDesign"
                 }
               }

@@ -1,6 +1,8 @@
-// 承認フロー実機確認サンプル (高機能版)。
-// 申請時のデータ正当性チェック + 最終承認者だけが編集できる査定額フィールドのデモ
-// 申請・再申請ボタンはフィールドの標準 UI (経路の組み立てだけがアプリの責務)
+﻿// 承認フロー実機確認サンプル (高機能版)。
+// 経路は経路マスタから金額で選ぶ (10万円未満 = 「購買ルート」、10万円以上 = 「購買ルート(高額)」)。
+// マスタの読み込みと検証 (経路が無い / 自己承認) は経路マスタモジュール (ApprovalRoute.mod.cs) の Load に共通化してある。
+// 申請時のデータ正当性チェック + 最終承認者だけが編集できる査定額フィールドのデモ。
+// 申請・再申請ボタンはフィールドの標準 UI
 
 // 経路を組み立てる (フィールドの「経路組み立て」に設定。null を返すと申請中止)
 ApprovalRouteData OnBuildRoute()
@@ -11,28 +13,8 @@ ApprovalRouteData OnBuildRoute()
         Logger.Error("金額は1円以上を入力してください");
         return null;
     }
-    if (Approver1.Value == null)
-    {
-        Logger.Error("一次承認者を選択してください");
-        return null;
-    }
-    if (Amount.Value >= 100000 && Approver2.Value == null)
-    {
-        Logger.Error("10万円以上の申請は二次承認者が必要です");
-        return null;
-    }
-    if (Approver1.Value == CurrentUser.Id.Value || Approver2.Value == CurrentUser.Id.Value)
-    {
-        Logger.Error("自分を承認者には指定できません");
-        return null;
-    }
-    var route = Approval.NewRoute("購買ルート");
-    var step1 = route.AddStep("一次承認");
-    step1.AddMember(Approver1.Value, true);
-    if (Approver2.Value != null)
-    {
-        var step2 = route.AddStep("二次承認");
-        step2.AddMember(Approver2.Value, true);
-    }
-    return route;
+
+    //金額で経路マスタの経路を選ぶ (経路が無い / 自己承認の検証は Load の中)
+    var routeName = Amount.Value >= 100000 ? "購買ルート(高額)" : "購買ルート";
+    return new ApprovalRoute().Load(routeName);
 }

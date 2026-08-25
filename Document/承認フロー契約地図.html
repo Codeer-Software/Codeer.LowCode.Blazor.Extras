@@ -202,7 +202,7 @@ td.k{font-family:"JetBrains Mono",monospace;font-size:13px;white-space:nowrap}
   <div class="role"><h3>ApprovalMemberContract</h3><div class="mod">メンバーモジュールに置く</div>
     <ul><li>Flow (Link)</li><li>AttemptNo</li><li>StepNo / StepName</li><li>StepType</li><li>CompletionPolicy</li><li>IsCommentRequiredOnReject</li><li>ReturnScope</li><li>ApproverUser (Link)</li><li>IsRequired / IsFinalStep</li><li>Status</li><li>ActedAt</li><li class="opt">TurnNotifyMail (MailField)</li></ul></div>
   <div class="role"><h3>ApprovalHistoryContract</h3><div class="mod">履歴モジュールに置く</div>
-    <ul><li>Flow (Link)</li><li>AttemptNo</li><li>StepNo</li><li>Action</li><li>ActorUser (Link)</li><li>FromStatus / ToStatus</li><li>Comment</li><li>ActedAt</li></ul></div>
+    <ul><li>Flow (Link)</li><li>AttemptNo</li><li>StepNo</li><li>Action</li><li>ActorUser (Link)</li><li>FromStatus / ToStatus</li><li>Comment</li><li>ActedAt</li><li class="opt">TurnNotifyMail (MailField)</li></ul></div>
 </div>
 
 <h2>5. 経路マスタ（任意）に契約は無い — 承認フロー側は「経路の作り方」を知らない</h2>
@@ -213,12 +213,12 @@ td.k{font-family:"JetBrains Mono",monospace;font-size:13px;white-space:nowrap}
   <text x="20" y="28" font-size="12" font-weight="700" fill="var(--user)">経路の作り方（申請書スクリプトの世界。何でもよい）</text>
   <rect x="20" y="45" width="200" height="62" rx="6" fill="var(--user-soft)" stroke="var(--user)" stroke-width="1.5"/>
   <text x="32" y="67" font-size="12.5" font-weight="700">画面で選ぶ</text>
-  <text x="32" y="86" font-size="11" fill="var(--muted)">Approver1 / Approver2 の Link 値</text>
-  <text x="32" y="100" font-size="11" fill="var(--muted)">（購買申請サンプル）</text>
+  <text x="32" y="86" font-size="11" fill="var(--muted)">ピッカーで選んだ Link 値を AddMember</text>
+  <text x="32" y="100" font-size="11" fill="var(--muted)">（サンプルには無いが同じ書き方）</text>
   <rect x="20" y="120" width="200" height="62" rx="6" fill="var(--user-soft)" stroke="var(--user)" stroke-width="1.5"/>
   <text x="32" y="142" font-size="12.5" font-weight="700">経路マスタから読む</text>
-  <text x="32" y="161" font-size="11" fill="var(--muted)">ModuleSearcher で 経路→ステップ→承認者</text>
-  <text x="32" y="175" font-size="11" fill="var(--muted)">（経費申請サンプル・契約なし）</text>
+  <text x="32" y="161" font-size="11" fill="var(--muted)">new ApprovalRoute().Load(経路名)</text>
+  <text x="32" y="175" font-size="11" fill="var(--muted)">（経費・購買申請サンプル。契約なし）</text>
   <rect x="20" y="195" width="200" height="62" rx="6" fill="var(--user-soft)" stroke="var(--user)" stroke-width="1.5"/>
   <text x="32" y="217" font-size="12.5" font-weight="700">決め打ち / 役職から解決</text>
   <text x="32" y="236" font-size="11" fill="var(--muted)">ユーザーモジュールを役職＋部署で検索</text>
@@ -249,19 +249,27 @@ td.k{font-family:"JetBrains Mono",monospace;font-size:13px;white-space:nowrap}
 </figure>
 
 <h3>Example の経路マスタ（ただのモジュール 3 つ）を読むスクリプト</h3>
-<p>契約が無いので、フィールド名も形も自分で決めてよい。読む側は 10 行程度の定型:</p>
-<div class="real" style="font-family:'JetBrains Mono',monospace;font-size:12.5px;white-space:pre;overflow-x:auto">ApprovalRouteData OnBuildRoute()
+<p>契約が無いので、フィールド名も形も自分で決めてよい。読む処理は<strong>経路マスタモジュール側のスクリプト</strong>（<code>ApprovalRoute.mod.cs</code>）に 1 つ置き、申請書からはモジュールを <code>new</code> して呼ぶ（static 関数は未サポート）:</p>
+<div class="real" style="font-family:'JetBrains Mono',monospace;font-size:12.5px;white-space:pre;overflow-x:auto">// 申請書 (ExpenseRequest.mod.cs)
+ApprovalRouteData OnBuildRoute()
+{
+    return new ApprovalRoute().Load("経費ルート");
+}
+
+// 経路マスタ (ApprovalRoute.mod.cs) — 形を知っているのはここだけ
+ApprovalRouteData Load(string routeName)
 {
     var routes = new ModuleSearcher&lt;ApprovalRoute&gt;();
-    routes.AddEquals(r =&gt; r.RouteName.Value, "経費ルート");
+    routes.AddEquals(r =&gt; r.RouteName.Value, routeName);
     var master = routes.ExecuteFirstOrDefault();
-    if (master == null) { Logger.Error("経路マスタに『経費ルート』がありません"); return null; }
+    if (master == null) { Logger.Error("経路マスタに『" + routeName + "』がありません"); return null; }
 
     var steps = new ModuleSearcher&lt;ApprovalRouteStep&gt;();
     steps.AddEquals(s =&gt; s.Route.Value, master.Id.Value);
     steps.OrderBy(s =&gt; s.StepNo.Value);
 
-    var route = Approval.NewRoute(master.RouteName.Value);
+    var route = new ApprovalRouteData();
+    route.Name = master.RouteName.Value;
     foreach (var s in steps.Execute())
     {
         var step = route.AddStep(s.StepName.Value);
@@ -270,20 +278,22 @@ td.k{font-family:"JetBrains Mono",monospace;font-size:13px;white-space:nowrap}
         members.AddEquals(m =&gt; m.Step.Value, s.Id.Value);
         foreach (var m in members.Execute())
         {
-            if (m.ApproverUser.Value != null) step.AddMember(m.ApproverUser.Value, m.IsRequired.Value ?? true);
+            if (m.ApproverUser.Value == null) continue;
+            if (m.ApproverUser.Value == CurrentUser.Id.Value) { Logger.Error("申請者自身が承認者に含まれる経路では申請できません"); return null; }
+            step.AddMember(m.ApproverUser.Value, m.IsRequired.Value ?? true);
         }
     }
     return route;
 }</div>
-<p style="margin-top:12px">役職ベースにしたければ <code>AddMember</code> の前に「ユーザーモジュールを役職＋申請者の部署で検索」を挟むだけ。セットアップ（自動生成）はこの 3 モジュールと上のスクリプト雛形を「出発点」として吐くだけで、以降は同期しない。</p>
+<p style="margin-top:12px">役職ベースにしたければ <code>Load</code> の <code>AddMember</code> の前に「ユーザーモジュールを役職＋申請者の部署で検索」を挟むだけで、全申請書に効く。購買申請は金額で経路名を切り替えてから <code>Load</code> している。セットアップ（自動生成）はこの 3 モジュール＋ <code>ApprovalRoute.mod.cs</code>（Load）＋申請書側の 1 行雛形を「出発点」として吐くだけで、以降は同期しない。</p>
 <p><strong>なぜ契約を消したか</strong>: 以前は経路契約 3 つ＋ <code>RouteModuleName</code> ＋ <code>LoadRoute</code> があったが、フィールドがマスタの「形」を知っている構造だと、形を変えると契約・API・UI が連鎖して変わり、役職ベース（行 = 「部長」であって人ではない）が「1 行 = ユーザー 1 人」の契約に乗らず、ユーザーのカスタマイズ余地を Extras が先回りして塞いでいた。エンジンは解決済みユーザーのスナップショットしか受け取らないので、経路作成時に人に固定される限りフロー側はそのままで足りる。</p>
 
 <h2>6. ApprovalTest 環境では実際にこうなっている</h2>
 <div class="real">
 <div class="tblwrap"><table>
 <tr><th>モジュール</th><th>契約フィールド</th><th>既定から変えている所</th></tr>
-<tr><td class="k">PurchaseRequest</td><td>（申請書。契約なし）</td><td><span class="mono">Approval.FlowModuleName = "ApprovalFlow"</span>。経路は <span class="mono">OnBuildRoute</span> でスクリプト組み立て（マスタ不使用）</td></tr>
-<tr><td class="k">ExpenseRequest</td><td>（申請書。契約なし）</td><td>同上。<span class="mono">OnBuildRoute</span> が経路マスタを <span class="mono">ModuleSearcher</span> で読んで組む</td></tr>
+<tr><td class="k">PurchaseRequest</td><td>（申請書。契約なし）</td><td><span class="mono">Approval.FlowModuleName = "ApprovalFlow"</span>。<span class="mono">OnBuildRoute</span> が金額で「購買ルート」/「購買ルート(高額)」を選んで <span class="mono">Load</span></td></tr>
+<tr><td class="k">ExpenseRequest</td><td>（申請書。契約なし）</td><td>同上。<span class="mono">OnBuildRoute</span> が <span class="mono">new ApprovalRoute().Load("経費ルート")</span> を呼ぶ</td></tr>
 <tr><td class="k">ApprovalFlow</td><td>ApprovalFlowContract</td><td>すべて既定名</td></tr>
 <tr><td class="k">ApprovalFlowMember</td><td>ApprovalMemberContract</td><td><span class="mono">TurnNotifyMail = "TurnMail"</span>（MailField。宛先 <span class="mono">ApproverUser.Email.Value</span>）</td></tr>
 <tr><td class="k">ApprovalHistory</td><td>ApprovalHistoryContract</td><td>すべて既定名</td></tr>

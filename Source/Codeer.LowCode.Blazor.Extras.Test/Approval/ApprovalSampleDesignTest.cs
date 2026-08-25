@@ -79,7 +79,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Approval
         [Test]
         public void 経路マスタモジュールは契約を持たないただのモジュール()
         {
-            //経路マスタは申請書スクリプト (OnBuildRoute) が ModuleSearcher で読む「ただのモジュール」。
+            //経路マスタは経路モジュールのスクリプト (Load) が ModuleSearcher で読む「ただのモジュール」。
             //承認フロー側 (フィールド / エンジン) は経路マスタの形を知らない = 契約フィールドを置かない
             var d = Load();
             foreach (var name in new[] { "ApprovalRoute", "ApprovalRouteStep", "ApprovalRouteStepMember" })
@@ -89,9 +89,11 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Approval
                 Assert.That(module.Fields.Any(e => e is ContractFieldDesignBase), Is.False, name);
             }
 
-            //管理画面は通常のローコード (Steps / Members は普通の ListField = ListInList 構成)
+            //管理画面は通常のローコード (Steps / Members は普通の ListField = ListInList 構成。ページャなし)
             var route = d.Modules.Find("ApprovalRoute")!;
             var steps = (ListFieldDesign)route.Fields.First(e => e.Name == "Steps");
+            Assert.That(steps.UseIndexSort, Is.True);
+            Assert.That(steps.PagerPosition, Is.EqualTo(PagerPosition.None));
             Assert.That(steps.SearchCondition.ModuleName, Is.EqualTo("ApprovalRouteStep"));
             Assert.That(steps.SearchCondition.SortConditions.Single().Variable, Is.EqualTo("StepNo.Value"));
 
@@ -101,8 +103,11 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Approval
             Assert.That(((SelectFieldDesign)step.Fields.First(e => e.Name == "CompletionPolicy")).EnumName, Is.EqualTo("ApprovalCompletionPolicy"));
             Assert.That(((SelectFieldDesign)step.Fields.First(e => e.Name == "ReturnScope")).EnumName, Is.EqualTo("ApprovalReturnScope"));
 
-            //経費申請のスクリプトがマスタを読む (LoadRoute のような組み込み API は無い)
-            Assert.That(d.Scripts["ExpenseRequest"], Does.Contain("ModuleSearcher<ApprovalRoute>").And.Contain("OnBuildRoute"));
+            //マスタの読み込みは経路モジュールの Load に共通化し、申請書は new ApprovalRoute().Load(名前) で呼ぶ
+            //(LoadRoute のような組み込み API は無い)
+            Assert.That(d.Scripts["ApprovalRoute"], Does.Contain("ApprovalRouteData Load(").And.Contain("ModuleSearcher<ApprovalRouteStepMember>"));
+            Assert.That(d.Scripts["ExpenseRequest"], Does.Contain("new ApprovalRoute().Load(\"経費ルート\")").And.Contain("OnBuildRoute"));
+            Assert.That(d.Scripts["PurchaseRequest"], Does.Contain("new ApprovalRoute().Load(").And.Contain("購買ルート(高額)"));
         }
 
         [Test]
@@ -116,7 +121,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Approval
 
             //バインド条件は条件エディタの正準形 (Multi 直下に葉)。bare の葉をルートに置くと
             //エディタが解釈できず、デザイナ保存で空条件に潰される (実機で実証済みの罠)
-            static FieldVariableMatchCondition Binding(ListFieldDesign list)
+            static FieldVariableMatchCondition Binding(ListFieldDesignBase list)
                 => (FieldVariableMatchCondition)((MultiMatchCondition)list.SearchCondition.Condition!).Children.Single();
 
             var members = flow.Fields.OfType<ListFieldDesign>().Single(e => e.Name == "Members");

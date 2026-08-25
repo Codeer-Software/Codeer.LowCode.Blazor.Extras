@@ -188,21 +188,30 @@ if (!result.IsSuccess) Logger.Error(result.ErrorMessage);
 // 経路マスタから読む。マスタはただのユーザー定義モジュール (契約なし・形は自由) で、
 // 承認フロー側はこのスクリプトが返す経路しか見ない。名指し / 役職や部署からの解決 / 決め打ちロジック、
 // どれも OnBuildRoute の書き方の違いでしかない (マスタ自体が必須ではない)。
-// 例: 経路 (ApprovalRoute: RouteName) → ステップ (ApprovalRouteStep: Route / StepNo / StepName / StepType /
-//     CompletionPolicy / ReturnScope / IsCommentRequiredOnReject) → ステップ承認者 (ApprovalRouteStepMember:
-//     Step / ApproverUser / IsRequired) の3段マスタを読む場合
+// マスタを読む処理は経路マスタモジュール側のスクリプトに共通化し、申請書からはモジュールを new して呼ぶ
 ApprovalRouteData OnBuildRouteFromMaster()
 {
+    return new ApprovalRoute().Load("経費ルート");   // 読んだ後に AddStep / AddMember で加工してから返してもよい
+}
+
+// 例: 経路 (ApprovalRoute: RouteName) → ステップ (ApprovalRouteStep: Route / StepNo / StepName / StepType /
+//     CompletionPolicy / ReturnScope / IsCommentRequiredOnReject) → ステップ承認者 (ApprovalRouteStepMember:
+//     Step / ApproverUser / IsRequired) の3段マスタを読む共通処理 (ApprovalRoute.mod.cs に置く)。
+//     申請できない経路 (マスタに無い / 申請者自身が承認者) のエラー表示もここに集約する。
+//     セットアップ (承認フローのセットアップ) はこのスクリプトも生成する
+ApprovalRouteData Load(string routeName)
+{
     var routes = new ModuleSearcher<ApprovalRoute>();
-    routes.AddEquals(r => r.RouteName.Value, "経費ルート");
+    routes.AddEquals(r => r.RouteName.Value, routeName);
     var master = routes.ExecuteFirstOrDefault();
-    if (master == null) { Logger.Error("経路マスタに『経費ルート』がありません"); return null; }
+    if (master == null) { Logger.Error("経路マスタに『" + routeName + "』がありません"); return null; }
 
     var steps = new ModuleSearcher<ApprovalRouteStep>();
     steps.AddEquals(s => s.Route.Value, master.Id.Value);
     steps.OrderBy(s => s.StepNo.Value);
 
-    var route = 承認.NewRoute(master.RouteName.Value);
+    var route = new ApprovalRouteData();
+    route.Name = master.RouteName.Value;
     foreach (var s in steps.Execute())
     {
         var step = route.AddStep(s.StepName.Value);
@@ -211,10 +220,12 @@ ApprovalRouteData OnBuildRouteFromMaster()
         members.AddEquals(m => m.Step.Value, s.Id.Value);
         foreach (var m in members.Execute())
         {
-            if (m.ApproverUser.Value != null) step.AddMember(m.ApproverUser.Value, m.IsRequired.Value ?? true);
+            if (m.ApproverUser.Value == null) continue;
+            if (m.ApproverUser.Value == CurrentUser.Id.Value) { Logger.Error("申請者自身が承認者に含まれる経路では申請できません"); return null; }
+            step.AddMember(m.ApproverUser.Value, m.IsRequired.Value ?? true);
         }
     }
-    return route;   // 読んだ後に AddStep / AddMember で加工してもよい
+    return route;
 }
 
 // コメント (組み込みコメント欄と同じ値。外付けボタンから使う場合に設定/参照)

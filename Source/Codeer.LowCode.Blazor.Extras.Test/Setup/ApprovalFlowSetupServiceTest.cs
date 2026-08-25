@@ -30,6 +30,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Setup
                 "ApprovalRoute", "ApprovalRouteStep", "ApprovalRouteStepMember",
             }));
             Assert.That(File.Exists(Path.Combine(ProjectDir, "Modules", "ApprovalFlowMember.mod.cs")), Is.True);
+            Assert.That(File.Exists(Path.Combine(ProjectDir, "Modules", "ApprovalRoute.mod.cs")), Is.True);
 
             //実際の読込経路で読み直して構造を検証する
             var d = Load();
@@ -74,7 +75,8 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Setup
             var grid = (GridLayoutDesign)request.DetailLayouts[""].Layout;
             Assert.That(grid.Rows.SelectMany(r => r.Columns)
                 .Any(c => (c.Layout as FieldLayoutDesign)?.FieldName == "Approval"), Is.True);
-            Assert.That(d.Scripts["Request"], Does.Contain("OnBuildRoute").And.Contain("ModuleSearcher<ApprovalRoute>"));
+            Assert.That(d.Scripts["Request"], Does.Contain("OnBuildRoute").And.Contain("new ApprovalRoute().Load("));
+            Assert.That(d.Scripts["ApprovalRoute"], Does.Contain("ApprovalRouteData Load(").And.Contain("ModuleSearcher<ApprovalRouteStepMember>"));
 
             //PageFrame リンク
             var frame = d.PageFrames.Find("Main")!;
@@ -144,6 +146,9 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Setup
             var script = File.ReadAllText(Path.Combine(ProjectDir, "Modules", "KeiriApprovalFlowMember.mod.cs"));
             Assert.That(script, Does.Contain("ModuleSearcher<KeiriApprovalFlowMember>"));
             Assert.That(script, Does.Not.Contain("ModuleSearcher<ApprovalFlow>"));
+            var routeScript = File.ReadAllText(Path.Combine(ProjectDir, "Modules", "KeiriApprovalRoute.mod.cs"));
+            Assert.That(routeScript, Does.Contain("ModuleSearcher<KeiriApprovalRoute>").And.Contain("ModuleSearcher<KeiriApprovalRouteStepMember>"));
+            Assert.That(routeScript, Does.Not.Contain("<ApprovalRoute>"));
         }
 
         [Test]
@@ -191,7 +196,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Setup
 
             var d = Load();
             var field = d.Modules.Find("Request")!.Fields.OfType<ApprovalFlowFieldDesign>().Single();
-            Assert.That(d.Scripts["Request"], Does.Contain("NewRoute").And.Not.Contain("ModuleSearcher"));
+            Assert.That(d.Scripts["Request"], Does.Contain("NewRoute").And.Not.Contain(".Load("));
         }
     }
 }

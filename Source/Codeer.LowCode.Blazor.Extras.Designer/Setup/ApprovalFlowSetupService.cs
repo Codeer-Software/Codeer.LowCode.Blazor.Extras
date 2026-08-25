@@ -14,7 +14,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
     /// <summary>
     /// 承認フローのセットアップ。承認データモジュール群 (フロー / メンバー / 履歴 + 任意の経路マスタ) を
     /// テンプレートから生成し、申請書モジュールへ結線する。経路マスタは契約を持たないただのモジュールで、
-    /// 申請書スクリプトの雛形 (OnBuildRoute) がそれを読む「出発点」として生成する。
+    /// 読み込み処理 (経路モジュールの .mod.cs の Load) と申請書スクリプトの雛形 (OnBuildRoute) を「出発点」として生成する。
     /// - 冪等: 同名モジュールが既に存在すれば生成せず結線だけを行う (使いまわし)。
     /// - 生成後は通常のモジュール (フィールド追加・画面カスタム・リネームすべて自由。契約フィールドが正)。
     /// - DDL は雛形として返す (実行は呼び出し側でユーザーの確認を挟む)。
@@ -66,7 +66,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
 
                 SaveDesignFile(designDir, "Modules", $"{moduleName}.mod.json", JsonConverterEx.SerializeObject(module));
 
-                if (template == Member)
+                if (template == Member || template == Route)
                 {
                     var script = ModuleTemplateEngine.RewriteScript(
                         SetupTemplates.Load($"{template.BaseName}.mod.cs"), nameMap);
@@ -239,40 +239,12 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
                 : $$"""
                     // 承認経路を組み立てる ({{fieldName}} の「経路組み立て」に設定済み。null を返すと申請中止)。
                     // 経路マスタ (経路 / ステップ / ステップ承認者) はただのモジュールで、承認フロー側はこのスクリプトが返す
-                    // 経路しか見ない。マスタの形や承認者の決め方 (役職・部署など) はプロジェクトに合わせて自由に変えてよい
+                    // 経路しか見ない。マスタの読み込みと検証 (経路が無い / 自己承認) は経路マスタモジュール
+                    // ({{nameMap[Route.BaseName]}}.mod.cs) の Load に共通化してあり、承認者の決め方 (役職・部署など) を
+                    // 変えたいときはそちらを書き換える。経路マスタ画面で経路を作成し、その経路名に合わせてください
                     ApprovalRouteData OnBuildRoute()
                     {
-                        // 経路マスタ画面で経路を作成し、その経路名に合わせてください
-                        var routes = new ModuleSearcher<{{nameMap[Route.BaseName]}}>();
-                        routes.AddEquals(r => r.RouteName.Value, "標準経路");
-                        var master = routes.ExecuteFirstOrDefault();
-                        if (master == null)
-                        {
-                            Logger.Error("経路マスタに『標準経路』がありません");
-                            return null;
-                        }
-
-                        var steps = new ModuleSearcher<{{nameMap[RouteStep.BaseName]}}>();
-                        steps.AddEquals(s => s.Route.Value, master.Id.Value);
-                        steps.OrderBy(s => s.StepNo.Value);
-
-                        var route = {{fieldName}}.NewRoute(master.RouteName.Value);
-                        foreach (var s in steps.Execute())
-                        {
-                            var step = route.AddStep(s.StepName.Value);
-                            if (s.StepType.Value != null && s.StepType.Value != "") step.StepType = s.StepType.Value;
-                            if (s.CompletionPolicy.Value != null && s.CompletionPolicy.Value != "") step.CompletionPolicy = s.CompletionPolicy.Value;
-                            if (s.ReturnScope.Value != null && s.ReturnScope.Value != "") step.ReturnScope = s.ReturnScope.Value;
-                            step.IsCommentRequiredOnReject = s.IsCommentRequiredOnReject.Value ?? true;
-
-                            var members = new ModuleSearcher<{{nameMap[RouteStepMember.BaseName]}}>();
-                            members.AddEquals(m => m.Step.Value, s.Id.Value);
-                            foreach (var m in members.Execute())
-                            {
-                                if (m.ApproverUser.Value != null) step.AddMember(m.ApproverUser.Value, m.IsRequired.Value ?? true);
-                            }
-                        }
-                        return route;
+                        return new {{nameMap[Route.BaseName]}}().Load("標準経路");
                     }
                     """;
 
