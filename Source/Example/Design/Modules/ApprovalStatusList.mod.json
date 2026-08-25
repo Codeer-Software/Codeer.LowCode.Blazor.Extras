@@ -1,5 +1,5 @@
 ﻿{
-  "Name": "ApprovalFlowList",
+  "Name": "ApprovalStatusList",
   "DataSourceName": "SampleSQLite",
   "DbTable": "",
   "CanCreate": false,
@@ -9,21 +9,9 @@
     {
       "Name": "Query",
       "QuerySetting": {
-        "QuerySortType": "None",
-        "QueryPagingType": "None",
+        "QuerySortType": "System",
+        "QueryPagingType": "System",
         "Parameters": [
-          {
-            "IsParameter": true,
-            "Name": "status_filter",
-            "DbType": "text",
-            "DbParameterDirection": "Input"
-          },
-          {
-            "IsParameter": true,
-            "Name": "route_name_filter",
-            "DbType": "text",
-            "DbParameterDirection": "Input"
-          },
           {
             "IsParameter": false,
             "Name": "id",
@@ -33,6 +21,12 @@
           {
             "IsParameter": false,
             "Name": "status",
+            "DbType": "text",
+            "DbParameterDirection": "Input"
+          },
+          {
+            "IsParameter": false,
+            "Name": "applicant",
             "DbType": "text",
             "DbParameterDirection": "Input"
           },
@@ -74,6 +68,18 @@
           },
           {
             "IsParameter": false,
+            "Name": "waiting_names",
+            "DbType": "text",
+            "DbParameterDirection": "Input"
+          },
+          {
+            "IsParameter": false,
+            "Name": "submitted_at",
+            "DbType": "datetime",
+            "DbParameterDirection": "Input"
+          },
+          {
+            "IsParameter": false,
             "Name": "attempt_no",
             "DbType": "integer",
             "DbParameterDirection": "Input"
@@ -83,31 +89,35 @@
       "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.QueryFieldDesign"
     },
     {
-      "Name": "StatusFilter",
-      "DbColumn": "status_filter",
-      "EnumName": "ApprovalFlowStatus",
-      "Candidates": [],
-      "EmptyCandidateType": "StringEmpty",
-      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.SelectFieldDesign",
-      "DisplayName": "状態",
-      "IsSimpleSearchParameter": true
-    },
-    {
-      "Name": "RouteNameFilter",
-      "DbColumn": "route_name_filter",
-      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.TextFieldDesign",
-      "DisplayName": "経路",
-      "IsSimpleSearchParameter": true,
-      "Placeholder": "経路名 (部分一致)"
+      "Name": "SubmittedAt",
+      "DbColumn": "submitted_at",
+      "DisplayName": "申請日",
+      "Format": "yyyy/MM/dd HH:mm",
+      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.DateTimeFieldDesign"
     },
     {
       "Name": "Status",
       "DbColumn": "status",
+      "DisplayName": "状態",
       "EnumName": "ApprovalFlowStatus",
       "Candidates": [],
       "EmptyCandidateType": "StringEmpty",
-      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.SelectFieldDesign",
-      "DisplayName": "状態"
+      "AllowOrSearch": true,
+      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.SelectFieldDesign"
+    },
+    {
+      "Name": "Applicant",
+      "DbColumn": "applicant",
+      "DisplayName": "申請者",
+      "Candidates": [],
+      "EmptyCandidateType": "StringEmpty",
+      "SearchCondition": {
+        "ModuleName": "AppUser"
+      },
+      "ValueVariable": "Id.Value",
+      "DisplayTextVariable": "Name.Value",
+      "AllowOrSearch": false,
+      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.SelectFieldDesign"
     },
     {
       "Name": "ApplicantName",
@@ -118,8 +128,7 @@
     {
       "Name": "TargetModuleName",
       "DbColumn": "target_module_name",
-      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.TextFieldDesign",
-      "DisplayName": "申請モジュール"
+      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.TextFieldDesign"
     },
     {
       "Name": "TargetId",
@@ -129,8 +138,16 @@
     {
       "Name": "RouteName",
       "DbColumn": "route_name",
-      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.TextFieldDesign",
-      "DisplayName": "経路"
+      "DisplayName": "経路",
+      "Candidates": [],
+      "EmptyCandidateType": "StringEmpty",
+      "SearchCondition": {
+        "ModuleName": "ApprovalRoute"
+      },
+      "ValueVariable": "RouteName.Value",
+      "DisplayTextVariable": "RouteName.Value",
+      "AllowOrSearch": true,
+      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.SelectFieldDesign"
     },
     {
       "Name": "CurrentStepNo",
@@ -144,6 +161,12 @@
       "DisplayName": "現在ステップ"
     },
     {
+      "Name": "WaitingNames",
+      "DbColumn": "waiting_names",
+      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.TextFieldDesign",
+      "DisplayName": "現在担当者"
+    },
+    {
       "Name": "AttemptNo",
       "DbColumn": "attempt_no",
       "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.NumberFieldDesign",
@@ -152,6 +175,11 @@
     {
       "Name": "SearchStatusLabel",
       "Text": "状態",
+      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.LabelFieldDesign"
+    },
+    {
+      "Name": "SearchApplicantLabel",
+      "Text": "申請者",
       "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.LabelFieldDesign"
     },
     {
@@ -170,39 +198,40 @@
   "ListLayouts": {
     "": {
       "DataOnlyFields": [
+        "TargetModuleName",
         "TargetId"
       ],
       "OnAfterInitialization": "OnAfterInitialization",
       "Elements": [
         [
           {
-            "FieldName": "Status",
-            "Label": "状態",
-            "Width": 110
-          },
-          {
-            "FieldName": "ApplicantName",
-            "Label": "申請者",
-            "Width": 180
-          },
-          {
-            "FieldName": "TargetModuleName",
-            "Label": "申請モジュール",
-            "Width": 180
+            "FieldName": "SubmittedAt",
+            "Label": "申請日",
+            "Width": 150
           },
           {
             "FieldName": "RouteName",
             "Label": "経路"
           },
           {
-            "FieldName": "CurrentStepName",
-            "Label": "現在ステップ",
+            "FieldName": "Status",
+            "Label": "状態",
+            "Width": 100
+          },
+          {
+            "FieldName": "ApplicantName",
+            "Label": "申請者",
             "Width": 160
           },
           {
-            "FieldName": "AttemptNo",
-            "Label": "回",
-            "Width": 60
+            "FieldName": "CurrentStepName",
+            "Label": "現在ステップ",
+            "Width": 150
+          },
+          {
+            "FieldName": "WaitingNames",
+            "Label": "現在担当者",
+            "Width": 220
           },
           {
             "FieldName": "OpenRequestButton",
@@ -222,18 +251,25 @@
           {
             "Columns": [
               {
-                "Layout": {
-                  "FieldName": "SearchStatusLabel",
-                  "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.FieldLayoutDesign"
-                },
-                "Width": 200
-              },
-              {
+                "Width": 260,
                 "Layout": {
                   "FieldName": "SearchRouteLabel",
                   "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.FieldLayoutDesign"
-                },
-                "Width": 260
+                }
+              },
+              {
+                "Width": 240,
+                "Layout": {
+                  "FieldName": "SearchStatusLabel",
+                  "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.FieldLayoutDesign"
+                }
+              },
+              {
+                "Width": 240,
+                "Layout": {
+                  "FieldName": "SearchApplicantLabel",
+                  "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.FieldLayoutDesign"
+                }
               },
               {}
             ]
@@ -241,18 +277,25 @@
           {
             "Columns": [
               {
+                "Width": 260,
                 "Layout": {
-                  "FieldName": "StatusFilter",
+                  "FieldName": "RouteName",
                   "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.FieldLayoutDesign"
-                },
-                "Width": 200
+                }
               },
               {
+                "Width": 240,
                 "Layout": {
-                  "FieldName": "RouteNameFilter",
+                  "FieldName": "Status",
                   "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.FieldLayoutDesign"
-                },
-                "Width": 260
+                }
+              },
+              {
+                "Width": 240,
+                "Layout": {
+                  "FieldName": "Applicant",
+                  "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.FieldLayoutDesign"
+                }
               },
               {}
             ]

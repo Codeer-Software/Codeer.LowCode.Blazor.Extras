@@ -1,3 +1,4 @@
+using Codeer.LowCode.Blazor.Repository.Design;
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 
@@ -46,6 +47,29 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
             if (removeTurnNotifyMail)
                 RemoveTurnNotifyMail(root);
 
+            return root.ToJsonString(new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
+        }
+
+        /// <summary>
+        /// 指定フィールドを候補付き選択から素の文字列フィールドに置き換える (参照先マスタを生成しないとき用)。
+        /// </summary>
+        internal static string ReplaceFieldWithText(string moduleJson, string fieldName)
+        {
+            var root = JsonNode.Parse(moduleJson)!.AsObject();
+            var fields = root["Fields"]!.AsArray();
+            for (var i = 0; i < fields.Count; i++)
+            {
+                var field = fields[i]!.AsObject();
+                if (field["Name"]?.GetValue<string>() != fieldName) continue;
+                var replaced = new JsonObject
+                {
+                    ["Name"] = fieldName,
+                    ["DbColumn"] = field["DbColumn"]?.GetValue<string>() ?? string.Empty,
+                    ["DisplayName"] = field["DisplayName"]?.GetValue<string>() ?? string.Empty,
+                    ["TypeFullName"] = typeof(TextFieldDesign).FullName,
+                };
+                fields[i] = replaced;
+            }
             return root.ToJsonString(new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
         }
 

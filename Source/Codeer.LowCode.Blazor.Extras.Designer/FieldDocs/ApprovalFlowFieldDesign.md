@@ -32,7 +32,7 @@ DDL は自動実行されないため、生成後にテーブルを作成する�
 - 複数の申請書モジュールが同じ承認モジュールを共有するのが標準。
   一覧画面 (承認待ち / 承認状況) が全申請種別を横断する。
 - フロー・メンバー・履歴モジュールはエンジンが読み書きするデータと契約だけで UI を持たない。
-  一覧は QueryField の検索用モジュールで作る (Example の ApprovalInbox / ApprovalFlowList)。
+  一覧は QueryField の検索用モジュールで作る (Example の MyApprovalList / ApprovalStatusList)。
   承認待ちは予約パラメータ `current_user_id` で自分が Waiting のメンバー行に絞る (サーバーが束縛するので権限として使える)。
   「開く」ボタンで TargetModuleName / TargetId から申請書へ遷移する。
 - 経路 (誰が承認するか) は申請時にスクリプトで組み立てて渡す。

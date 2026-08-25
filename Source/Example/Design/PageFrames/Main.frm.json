@@ -1030,7 +1030,7 @@
         "ModuleUrlSegment": "",
         "ActiveModuleSegments": [],
         "PageFrame": "",
-        "Module": "ApprovalInbox",
+        "Module": "MyApprovalList",
         "Id": "",
         "Parameters": "",
         "ListPageDesign": {
@@ -1053,7 +1053,12 @@
             "SearchCondition": {
               "LimitCount": 50,
               "SelectFields": [],
-              "SortConditions": [],
+              "SortConditions": [
+                {
+                  "Variable": "SubmittedAt.Value",
+                  "IsDescending": true
+                }
+              ],
               "SortFieldVariable": "",
               "SortDescending": false,
               "ModuleName": ""
@@ -1096,7 +1101,7 @@
         "ModuleUrlSegment": "",
         "ActiveModuleSegments": [],
         "PageFrame": "",
-        "Module": "ApprovalFlowList",
+        "Module": "ApprovalStatusList",
         "Id": "",
         "Parameters": "",
         "ListPageDesign": {
@@ -1119,7 +1124,12 @@
             "SearchCondition": {
               "LimitCount": 50,
               "SelectFields": [],
-              "SortConditions": [],
+              "SortConditions": [
+                {
+                  "Variable": "SubmittedAt.Value",
+                  "IsDescending": true
+                }
+              ],
               "SortFieldVariable": "",
               "SortDescending": false,
               "ModuleName": ""

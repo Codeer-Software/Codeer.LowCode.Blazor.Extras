@@ -29,8 +29,8 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
         static readonly TemplateInfo Member = new("ApprovalFlowMember", "approval_flow_members", false);
         static readonly TemplateInfo History = new("ApprovalHistory", "approval_histories", false);
         //検索用 (QueryField。テーブルを持たず SQL で承認テーブルを読む。一覧と「開く」だけ)
-        static readonly TemplateInfo Inbox = new("ApprovalInbox", "", false, IsQuery: true);
-        static readonly TemplateInfo FlowList = new("ApprovalFlowList", "", false, IsQuery: true);
+        static readonly TemplateInfo MyList = new("MyApprovalList", "", false, IsQuery: true);
+        static readonly TemplateInfo StatusList = new("ApprovalStatusList", "", false, IsQuery: true);
         static readonly TemplateInfo Route = new("ApprovalRoute", "approval_routes", true);
         static readonly TemplateInfo RouteStep = new("ApprovalRouteStep", "approval_route_steps", true);
         static readonly TemplateInfo RouteStepMember = new("ApprovalRouteStepMember", "approval_route_step_members", true);
@@ -71,6 +71,10 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
                     moduleName, template.IsQuery ? string.Empty : tablePrefix + template.DbTable, options.DataSourceName, nameMap,
                     options.UserDisplayNameField, options.UserEmailField,
                     removeTurnNotifyMail: !options.UseTurnNotifyMail);
+
+                //経路マスタを生成しないときは、承認状況の経路検索を経路マスタからの選択ではなく文字列にする
+                if (template == StatusList && options.RouteMaster == ApprovalRouteMasterKind.None)
+                    json = ModuleTemplateEngine.ReplaceFieldWithText(json, "RouteName");
 
                 //型付きで読み直して正規化する (プロパティ名・型の崩れをここで検出し、デザイナ保存と同じ形で書き出す)
                 var module = JsonConverterEx.DeserializeObject<ModuleDesign>(json)
@@ -116,8 +120,8 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
                 //検索用モジュールは「一覧だけ + 開くで申請書へ」(詳細遷移・作成・削除なし)。並びは SQL の ORDER BY
                 var links = new List<(string Title, string Module, Action<PageLink>? Configure)>
                 {
-                    ("承認待ち", nameMap[Inbox.BaseName], ConfigureQueryList),
-                    ("承認状況", nameMap[FlowList.BaseName], ConfigureQueryList),
+                    ("承認待ち", nameMap[MyList.BaseName], ConfigureQueryList),
+                    ("承認状況", nameMap[StatusList.BaseName], ConfigureQueryList),
                 };
                 if (options.RouteMaster != ApprovalRouteMasterKind.None)
                     links.Add(("承認経路マスタ", nameMap[Route.BaseName], null));
@@ -131,7 +135,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
 
         static List<TemplateInfo> SelectTemplates(ApprovalRouteMasterKind routeMaster)
         {
-            var templates = new List<TemplateInfo> { Flow, Member, History, Inbox, FlowList };
+            var templates = new List<TemplateInfo> { Flow, Member, History, MyList, StatusList };
             if (routeMaster == ApprovalRouteMasterKind.Standard)
             {
                 templates.Add(Route);
@@ -278,13 +282,14 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
             list.CanCreate = false;
             list.CanUpdate = false;
             list.CanDelete = false;
-            list.SearchCondition.SortConditions = [];
+            //並びは申請日の降順 (QuerySortType = System で SQL の外から付く)
+            list.SearchCondition.SortConditions = [new SortCondition { Variable = "SubmittedAt.Value", IsDescending = true }];
             list.SearchCondition.Condition = null;
         }
 
         /// <summary>
         /// 検索用モジュールのテンプレート SQL (Example = SQLite 文) を生成先に合わせて書き換える。
-        /// テーブル名のプレフィックス、ユーザーテーブル (app_users / u.name)、文字列連結 (LIKE '%' || @p || '%')、
+        /// テーブル名のプレフィックス、ユーザーテーブル (app_users / u.name)、名前の連結 (GROUP_CONCAT)、
         /// パラメータ接頭辞 (Oracle は :)。
         /// </summary>
         internal static string RewriteQuerySql(string sql, DataSourceType dataSourceType, string tablePrefix,
@@ -292,12 +297,14 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
         {
             sql = Regex.Replace(sql, @"\bapproval_flow_members\b", tablePrefix + "approval_flow_members");
             sql = Regex.Replace(sql, @"\bapproval_flows\b", tablePrefix + "approval_flows");
+            sql = Regex.Replace(sql, @"\bapproval_histories\b", tablePrefix + "approval_histories");
             sql = Regex.Replace(sql, @"\bapp_users\b", userTable);
-            sql = Regex.Replace(sql, @"\bu\.name\b", "u." + userNameColumn);
-            sql = Regex.Replace(sql, @"'%' \|\| (@\w+) \|\| '%'", m => dataSourceType switch
+            sql = Regex.Replace(sql, @"\b(u2?)\.name\b", "$1." + userNameColumn);
+            sql = Regex.Replace(sql, @"GROUP_CONCAT\((\w+\.\w+), '、'\)", m => dataSourceType switch
             {
-                DataSourceType.SQLServer => $"'%' + {m.Groups[1].Value} + '%'",
-                DataSourceType.MySQL => $"CONCAT('%', {m.Groups[1].Value}, '%')",
+                DataSourceType.PostgreSQL or DataSourceType.SQLServer => $"STRING_AGG({m.Groups[1].Value}, '、')",
+                DataSourceType.MySQL => $"GROUP_CONCAT({m.Groups[1].Value} SEPARATOR '、')",
+                DataSourceType.Oracle => $"LISTAGG({m.Groups[1].Value}, '、') WITHIN GROUP (ORDER BY {m.Groups[1].Value})",
                 _ => m.Value,
             });
             if (dataSourceType == DataSourceType.Oracle) sql = Regex.Replace(sql, @"@(\w+)", ":$1");
