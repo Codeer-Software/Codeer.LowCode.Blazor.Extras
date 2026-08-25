@@ -297,6 +297,7 @@ ApprovalRouteData Load(string routeName)
 <tr><td class="k">ApprovalFlow</td><td>ApprovalFlowContract</td><td>すべて既定名</td></tr>
 <tr><td class="k">ApprovalFlowMember</td><td>ApprovalMemberContract</td><td><span class="mono">TurnNotifyMail = "TurnMail"</span>（MailField。宛先 <span class="mono">ApproverUser.Email.Value</span>）</td></tr>
 <tr><td class="k">ApprovalHistory</td><td>ApprovalHistoryContract</td><td>すべて既定名</td></tr>
+<tr><td class="k">ApprovalInbox / ApprovalFlowList</td><td>（検索用。契約なし）</td><td>QueryField のモジュール。テーブルを持たず SQL で承認テーブルを読む読み取り専用。承認待ち = <span class="mono">current_user_id</span> で自分が Waiting の行だけ、承認状況 = 全フロー（状態 / 経路名で検索）。「開く」で申請書へ遷移。上の 3 モジュールは UI を持たない</td></tr>
 <tr><td class="k">ApprovalRoute / RouteStep / RouteStepMember</td><td>（経路マスタ。契約なし）</td><td>ただのモジュール。経費ルート = 課長承認(花子) → 部長または経理(次郎・四郎 = Any)、総務ルート = 課長 → 部長</td></tr>
 </table></div>
 </div>

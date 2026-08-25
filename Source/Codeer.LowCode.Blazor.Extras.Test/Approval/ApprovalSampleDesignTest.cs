@@ -1,4 +1,4 @@
-using Codeer.LowCode.Blazor.DesignLogic;
+﻿using Codeer.LowCode.Blazor.DesignLogic;
 using Codeer.LowCode.Blazor.DesignLogic.Check;
 using Codeer.LowCode.Blazor.Extras.Approval;
 using Codeer.LowCode.Blazor.Extras.Designs;
@@ -44,6 +44,40 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Approval
             {
                 Assert.That(d.Modules.Find(name), Is.Not.Null, name);
             }
+        }
+
+        [Test]
+        public void エンジン用モジュールはUIを持たず検索用モジュールが一覧を担う()
+        {
+            var d = Load();
+            foreach (var name in new[] { "ApprovalFlow", "ApprovalFlowMember", "ApprovalHistory" })
+            {
+                var module = d.Modules.Find(name)!;
+                Assert.That(module.ListLayouts[""].Elements.SelectMany(e => e).All(e => string.IsNullOrEmpty(e.FieldName)), Is.True, name);
+                Assert.That(module.SearchLayouts.Values.All(e => e.Layout.GetDescendantLayouts<FieldLayoutDesign>().Count == 0), Is.True, name);
+                Assert.That(d.Scripts.ContainsKey(name), Is.False, name);
+            }
+            //申請書側の権限評価 (メンバー行) に使う列は DataOnlyFields として残る
+            var member = d.Modules.Find("ApprovalFlowMember")!;
+            Assert.That(member.ListLayouts[""].DataOnlyFields, Is.EquivalentTo(new[] { "StepType", "IsFinalStep", "Status", "ApproverUser" }));
+
+            foreach (var name in new[] { "ApprovalInbox", "ApprovalFlowList" })
+            {
+                var module = d.Modules.Find(name)!;
+                Assert.That(module.DbTable, Is.Empty, name);
+                Assert.That(module.CanCreate || module.CanUpdate || module.CanDelete, Is.False, name);
+                var query = module.Fields.OfType<QueryFieldDesign>().Single();
+                var outputs = query.QuerySetting.Parameters.Where(e => !e.IsParameter).Select(e => e.Name).ToList();
+                foreach (var f in module.Fields.OfType<DbValueFieldDesignBase>().Where(e => !e.IsSimpleSearchParameter))
+                    Assert.That(outputs, Does.Contain(f.DbColumn), $"{name}.{f.Name}");
+                Assert.That(module.ListLayouts[""].Elements[0].Select(e => e.FieldName), Does.Contain("OpenRequestButton"), name);
+                Assert.That(d.Scripts[name], Does.Contain("OpenRequest_OnClick"), name);
+            }
+            var inbox = d.Modules.Find("ApprovalInbox")!.Fields.OfType<QueryFieldDesign>().Single();
+            Assert.That(inbox.QuerySetting.Parameters.Any(e => e.IsParameter && e.Name == "current_user_id"), Is.True);
+            var flowList = d.Modules.Find("ApprovalFlowList")!;
+            Assert.That(flowList.Fields.Where(e => e is DbValueFieldDesignBase { IsSimpleSearchParameter: true }).Select(e => e.Name),
+                Is.EquivalentTo(new[] { "StatusFilter", "RouteNameFilter" }));
         }
 
         [Test]

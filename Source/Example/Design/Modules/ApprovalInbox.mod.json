@@ -1,0 +1,191 @@
+﻿{
+  "Name": "ApprovalInbox",
+  "DataSourceName": "SampleSQLite",
+  "DbTable": "",
+  "CanCreate": false,
+  "CanUpdate": false,
+  "CanDelete": false,
+  "Fields": [
+    {
+      "Name": "Query",
+      "QuerySetting": {
+        "QuerySortType": "None",
+        "QueryPagingType": "None",
+        "Parameters": [
+          {
+            "IsParameter": true,
+            "Name": "current_user_id",
+            "DbType": "text",
+            "DbParameterDirection": "Input"
+          },
+          {
+            "IsParameter": false,
+            "Name": "id",
+            "DbType": "integer",
+            "DbParameterDirection": "Input"
+          },
+          {
+            "IsParameter": false,
+            "Name": "flow_id",
+            "DbType": "integer",
+            "DbParameterDirection": "Input"
+          },
+          {
+            "IsParameter": false,
+            "Name": "target_module_name",
+            "DbType": "text",
+            "DbParameterDirection": "Input"
+          },
+          {
+            "IsParameter": false,
+            "Name": "target_id",
+            "DbType": "text",
+            "DbParameterDirection": "Input"
+          },
+          {
+            "IsParameter": false,
+            "Name": "route_name",
+            "DbType": "text",
+            "DbParameterDirection": "Input"
+          },
+          {
+            "IsParameter": false,
+            "Name": "applicant_name",
+            "DbType": "text",
+            "DbParameterDirection": "Input"
+          },
+          {
+            "IsParameter": false,
+            "Name": "step_no",
+            "DbType": "integer",
+            "DbParameterDirection": "Input"
+          },
+          {
+            "IsParameter": false,
+            "Name": "step_name",
+            "DbType": "text",
+            "DbParameterDirection": "Input"
+          },
+          {
+            "IsParameter": false,
+            "Name": "step_type",
+            "DbType": "text",
+            "DbParameterDirection": "Input"
+          }
+        ]
+      },
+      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.QueryFieldDesign"
+    },
+    {
+      "Name": "FlowId",
+      "DbColumn": "flow_id",
+      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.TextFieldDesign"
+    },
+    {
+      "Name": "TargetModuleName",
+      "DbColumn": "target_module_name",
+      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.TextFieldDesign",
+      "DisplayName": "申請モジュール"
+    },
+    {
+      "Name": "TargetId",
+      "DbColumn": "target_id",
+      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.TextFieldDesign"
+    },
+    {
+      "Name": "RouteName",
+      "DbColumn": "route_name",
+      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.TextFieldDesign",
+      "DisplayName": "経路"
+    },
+    {
+      "Name": "ApplicantName",
+      "DbColumn": "applicant_name",
+      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.TextFieldDesign",
+      "DisplayName": "申請者"
+    },
+    {
+      "Name": "StepNo",
+      "DbColumn": "step_no",
+      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.NumberFieldDesign"
+    },
+    {
+      "Name": "StepName",
+      "DbColumn": "step_name",
+      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.TextFieldDesign",
+      "DisplayName": "ステップ"
+    },
+    {
+      "Name": "StepType",
+      "DbColumn": "step_type",
+      "EnumName": "ApprovalStepType",
+      "Candidates": [],
+      "EmptyCandidateType": "StringEmpty",
+      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.SelectFieldDesign",
+      "DisplayName": "種別"
+    },
+    {
+      "Name": "OpenRequestButton",
+      "Text": "開く",
+      "Variant": "Primary",
+      "OnClick": "OpenRequest_OnClick",
+      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.ButtonFieldDesign"
+    }
+  ],
+  "ListLayouts": {
+    "": {
+      "DataOnlyFields": [
+        "TargetId"
+      ],
+      "OnAfterInitialization": "OnAfterInitialization",
+      "Elements": [
+        [
+          {
+            "FieldName": "ApplicantName",
+            "Label": "申請者",
+            "Width": 180
+          },
+          {
+            "FieldName": "TargetModuleName",
+            "Label": "申請モジュール",
+            "Width": 180
+          },
+          {
+            "FieldName": "RouteName",
+            "Label": "経路"
+          },
+          {
+            "FieldName": "StepName",
+            "Label": "ステップ",
+            "Width": 160
+          },
+          {
+            "FieldName": "StepType",
+            "Label": "種別",
+            "Width": 100
+          },
+          {
+            "FieldName": "OpenRequestButton",
+            "Label": "操作",
+            "Width": 90
+          }
+        ]
+      ]
+    }
+  },
+  "DetailLayouts": {
+    "": {
+      "Layout": {
+        "Rows": [
+          {
+            "Columns": [
+              {}
+            ]
+          }
+        ],
+        "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.GridLayoutDesign"
+      }
+    }
+  },
+  "PageTitle": "承認待ち"
+}

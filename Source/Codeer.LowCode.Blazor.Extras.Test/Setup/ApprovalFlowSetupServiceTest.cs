@@ -1,4 +1,5 @@
-using Codeer.LowCode.Blazor.DataIO.Db.Definition;
+using Codeer.LowCode.Blazor.DesignLogic;
+﻿using Codeer.LowCode.Blazor.DataIO.Db.Definition;
 using Codeer.LowCode.Blazor.DesignLogic.Check;
 using Codeer.LowCode.Blazor.Extras.Approval;
 using Codeer.LowCode.Blazor.Extras.Designer.Setup;
@@ -26,12 +27,13 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Setup
 
             Assert.That(result.CreatedModules, Is.EquivalentTo(new[]
             {
-                "ApprovalFlow", "ApprovalFlowMember", "ApprovalHistory",
+                "ApprovalFlow", "ApprovalFlowMember", "ApprovalHistory", "ApprovalInbox", "ApprovalFlowList",
                 "ApprovalRoute", "ApprovalRouteStep", "ApprovalRouteStepMember",
             }));
-            Assert.That(File.Exists(Path.Combine(ProjectDir, "Modules", "ApprovalFlowMember.mod.cs")), Is.True);
-            Assert.That(File.Exists(Path.Combine(ProjectDir, "Modules", "ApprovalFlow.mod.cs")), Is.True);
+            Assert.That(File.Exists(Path.Combine(ProjectDir, "Modules", "ApprovalFlow.mod.cs")), Is.False);
             Assert.That(File.Exists(Path.Combine(ProjectDir, "Modules", "ApprovalRoute.mod.cs")), Is.True);
+            Assert.That(File.Exists(Path.Combine(ProjectDir, "Modules", "ApprovalInbox.Query.sql")), Is.True);
+            Assert.That(File.Exists(Path.Combine(ProjectDir, "Modules", "ApprovalFlowList.Query.sql")), Is.True);
 
             //実際の読込経路で読み直して構造を検証する
             var d = Load();
@@ -82,20 +84,30 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Setup
             //PageFrame リンク
             var frame = d.PageFrames.Find("Main")!;
             Assert.That(frame.Left.Links.Select(e => e.Module),
-                Does.Contain("ApprovalFlowMember").And.Contain("ApprovalFlow").And.Contain("ApprovalRoute"));
+                Is.EquivalentTo(new[] { "ApprovalInbox", "ApprovalFlowList", "ApprovalRoute" }));
 
-            //承認待ち一覧 / 承認フロー管理は一覧だけ (詳細遷移・削除なし)。承認待ち一覧は自分の Waiting 行だけ
-            var memberLink = frame.Left.Links.First(e => e.Module == "ApprovalFlowMember");
-            var memberList = (ListFieldDesign)memberLink.ListPageDesign.ListFieldDesign;
-            Assert.That(memberLink.ListPageDesign.UseNavigateToCreate, Is.False);
-            Assert.That(memberList.CanNavigateToDetail, Is.False);
-            Assert.That(memberList.CanDelete, Is.False);
-            var waiting = (MultiMatchCondition)memberList.SearchCondition.Condition!;
-            Assert.That(waiting.Children.OfType<FieldVariableMatchCondition>().Single().Variable, Is.EqualTo("CurrentUser.Id.Value"));
-            Assert.That(((StringValue)waiting.Children.OfType<FieldValueMatchConditionNonNull>().Single().Value!).Value, Is.EqualTo("Waiting"));
-            var flowList = (ListFieldDesign)frame.Left.Links.First(e => e.Module == "ApprovalFlow").ListPageDesign.ListFieldDesign;
-            Assert.That(flowList.CanNavigateToDetail, Is.False);
-            Assert.That(flowList.SearchCondition.Condition, Is.Null);
+            //エンジン用モジュールは UI を持たない (一覧列・検索レイアウト・スクリプトなし)
+            Assert.That(flow.ListLayouts[""].Elements.SelectMany(e => e).All(e => string.IsNullOrEmpty(e.FieldName)), Is.True);
+            Assert.That(flow.SearchLayouts.Values.All(e => e.Layout.GetDescendantLayouts<FieldLayoutDesign>().Count == 0), Is.True);
+            Assert.That(d.Scripts.ContainsKey("ApprovalFlow"), Is.False);
+
+            //検索用モジュールは一覧だけ (詳細遷移・作成・削除なし)。「開く」で申請書へ
+            foreach (var name in new[] { "ApprovalInbox", "ApprovalFlowList" })
+            {
+                var link = frame.Left.Links.First(e => e.Module == name);
+                var list = (ListFieldDesign)link.ListPageDesign.ListFieldDesign;
+                Assert.That(link.ListPageDesign.UseNavigateToCreate, Is.False, name);
+                Assert.That(list.CanNavigateToDetail, Is.False, name);
+                Assert.That(list.CanDelete, Is.False, name);
+                Assert.That(list.SearchCondition.SortConditions, Is.Empty, name);
+                var query = d.Modules.Find(name)!;
+                Assert.That(query.DbTable, Is.Empty, name);
+                Assert.That(query.Fields.OfType<QueryFieldDesign>().Single().QuerySetting.Parameters.Any(e => e.IsParameter == false && e.Name == "target_id"), Is.True, name);
+                Assert.That(d.Scripts[name], Does.Contain("NavigationService.GetModuleDataUrl(TargetModuleName.Value, TargetId.Value)"), name);
+            }
+            //承認待ちはログインユーザーで絞る (サーバー束縛の予約パラメータ)
+            var inboxSql = File.ReadAllText(Path.Combine(ProjectDir, "Modules", "ApprovalInbox.Query.sql"));
+            Assert.That(inboxSql, Does.Contain("@current_user_id").And.Contain("LEFT JOIN app_users u").And.Contain("u.name AS applicant_name"));
 
             //DDL: 全テーブルの CREATE + 申請書の FK 列 ALTER
             var ddl = string.Join("\n", result.Ddl);
@@ -126,7 +138,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Setup
 
             Assert.That(result.CreatedModules, Is.EquivalentTo(new[]
             {
-                "KeiriApprovalFlow", "KeiriApprovalFlowMember", "KeiriApprovalHistory",
+                "KeiriApprovalFlow", "KeiriApprovalFlowMember", "KeiriApprovalHistory", "KeiriApprovalInbox", "KeiriApprovalFlowList",
                 "KeiriApprovalRoute", "KeiriApprovalRouteStep", "KeiriApprovalRouteStepMember",
             }));
 
@@ -156,10 +168,12 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Setup
             var mail = (MailFieldDesign)member.Fields.First(e => e is MailFieldDesign);
             Assert.That(mail.ToVariable, Is.EqualTo("ApproverUser.MailAddress.Value"));
 
+            //検索用モジュールの SQL もプレフィックス付きテーブルとユーザーモジュールのテーブル・表示名列を指すこと
+            var inboxSql = File.ReadAllText(Path.Combine(ProjectDir, "Modules", "KeiriApprovalInbox.Query.sql"));
+            Assert.That(inboxSql, Does.Contain("FROM keiri_approval_flow_members m").And.Contain("JOIN keiri_approval_flows f")
+                .And.Contain("LEFT JOIN app_users u").And.Contain("u.name AS applicant_name"));
+            Assert.That(inboxSql, Does.Not.Contain(" approval_flows ").And.Not.Contain(" approval_flow_members "));
             //スクリプトのモジュール名 (ModuleSearcher<Xxx>) も追従すること
-            var script = File.ReadAllText(Path.Combine(ProjectDir, "Modules", "KeiriApprovalFlowMember.mod.cs"));
-            Assert.That(script, Does.Contain("ModuleSearcher<KeiriApprovalFlowMember>"));
-            Assert.That(script, Does.Not.Contain("ModuleSearcher<ApprovalFlow>"));
             var routeScript = File.ReadAllText(Path.Combine(ProjectDir, "Modules", "KeiriApprovalRoute.mod.cs"));
             Assert.That(routeScript, Does.Contain("ModuleSearcher<KeiriApprovalRoute>").And.Contain("ModuleSearcher<KeiriApprovalRouteStepMember>"));
             Assert.That(routeScript, Does.Not.Contain("<ApprovalRoute>"));
@@ -176,7 +190,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Setup
             var second = ApprovalFlowSetupService.Run(Load(), ProjectDir, DefaultOptions(), DataSourceType.SQLite);
 
             Assert.That(second.CreatedModules, Is.Empty);
-            Assert.That(second.SkippedModules.Count, Is.EqualTo(6));
+            Assert.That(second.SkippedModules.Count, Is.EqualTo(8));
             Assert.That(second.ParentWired, Is.False);
             Assert.That(ReadModuleJson("ApprovalFlow"), Is.EqualTo(before));
             Assert.That(ReadModuleJson("Request"), Is.EqualTo(beforeRequest));
@@ -205,12 +219,33 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Setup
 
             Assert.That(result.CreatedModules, Is.EquivalentTo(new[]
             {
-                "ApprovalFlow", "ApprovalFlowMember", "ApprovalHistory",
+                "ApprovalFlow", "ApprovalFlowMember", "ApprovalHistory", "ApprovalInbox", "ApprovalFlowList",
             }));
 
             var d = Load();
             var field = d.Modules.Find("Request")!.Fields.OfType<ApprovalFlowFieldDesign>().Single();
             Assert.That(d.Scripts["Request"], Does.Contain("NewRoute").And.Not.Contain(".Load("));
         }
-    }
+    
+
+        [TestCase(DataSourceType.SQLite, "LIKE '%' || @route_name_filter || '%'", "@current_user_id")]
+        [TestCase(DataSourceType.PostgreSQL, "LIKE '%' || @route_name_filter || '%'", "@current_user_id")]
+        [TestCase(DataSourceType.SQLServer, "LIKE '%' + @route_name_filter + '%'", "@current_user_id")]
+        [TestCase(DataSourceType.MySQL, "LIKE CONCAT('%', @route_name_filter, '%')", "@current_user_id")]
+        [TestCase(DataSourceType.Oracle, "LIKE '%' || :route_name_filter || '%'", ":current_user_id")]
+        public void 検索用SQLはDBの方言に合わせて書き換わる(DataSourceType type, string like, string userParam)
+        {
+            CreateFixture(userModuleName: "Staff", userNameField: "DisplayName", userEmailField: "MailAddress");
+            var options = DefaultOptions();
+            options.UserModuleName = "Staff";
+            options.UserDisplayNameField = "DisplayName";
+            options.UserEmailField = "MailAddress";
+            ApprovalFlowSetupService.Run(Load(), ProjectDir, options, type);
+
+            var flowList = File.ReadAllText(Path.Combine(ProjectDir, "Modules", "ApprovalFlowList.Query.sql"));
+            Assert.That(flowList, Does.Contain(like));
+            var inbox = File.ReadAllText(Path.Combine(ProjectDir, "Modules", "ApprovalInbox.Query.sql"));
+            Assert.That(inbox, Does.Contain(userParam).And.Contain("LEFT JOIN app_users u").And.Contain("u.name AS applicant_name"));
+        }
+}
 }

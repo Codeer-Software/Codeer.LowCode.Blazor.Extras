@@ -618,7 +618,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Approval
         [Test]
         public async Task 完了ポリシー_必須全員と任意1人()
         {
-            //必須2人 + 任意1人: 必須2人の承認で完了 (任意は Waiting のまま次へ)
+            //必須2人 + 任意1人: 必須2人の承認で完了 (任意はステップ完了で Skipped = 承認不要になった)
             var route = new ApprovalRouteData { Name = "R" };
             var step = route.AddStep("合議");
             step.AddMember("2", true).AddMember("3", true).AddMember("4", false);
@@ -628,6 +628,8 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Approval
             Assert.That(await GetFlowValueAsync(submit.FlowId, "Status"), Is.EqualTo(ApprovalFlowStatus.InProgress.ToDesignValue()));
             await ExecuteAsync("3", ApprovalAction.Approve.ToDesignValue(), submit.FlowId);
             Assert.That(await GetFlowValueAsync(submit.FlowId, "Status"), Is.EqualTo(ApprovalFlowStatus.Completed.ToDesignValue()));
+            var optional = await GetMembersAsync(submit.FlowId, 1);
+            Assert.That(S(optional[2], "Status"), Is.EqualTo(ApprovalMemberStatus.Skipped.ToDesignValue()));
 
             //必須ゼロ: 任意1人の承認で完了 (現行テンプレート互換)
             var anyRoute = new ApprovalRouteData { Name = "R" };
@@ -635,6 +637,57 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Approval
             var submit2 = await SubmitAsync(route: anyRoute);
             await ExecuteAsync("3", ApprovalAction.Approve.ToDesignValue(), submit2.FlowId);
             Assert.That(await GetFlowValueAsync(submit2.FlowId, "Status"), Is.EqualTo(ApprovalFlowStatus.Completed.ToDesignValue()));
+        }
+
+        [Test]
+        public async Task 並列ステップ_他の人の承認で完了したら相方はスキップされ承認できない()
+        {
+            //Any: 部長 or 経理 → 次の承認へ。承認しなかった方は Skipped (承認待ちに残らない・押しても拒否)
+            var route = new ApprovalRouteData { Name = "R" };
+            route.AddStep("課長承認").AddMember("2");
+            var any = route.AddStep("部長または経理");
+            any.CompletionPolicy = ApprovalCompletionPolicy.Any.ToDesignValue();
+            any.AddMember("3").AddMember("4");
+            route.AddStep("社長決裁").AddMember("2");
+
+            var submit = await SubmitAsync(route: route);
+            await ExecuteAsync("2", ApprovalAction.Approve.ToDesignValue(), submit.FlowId);
+            await ExecuteAsync("3", ApprovalAction.Approve.ToDesignValue(), submit.FlowId);
+
+            var members = await GetMembersAsync(submit.FlowId, 1);
+            Assert.That(S(members[1], "Status"), Is.EqualTo(ApprovalMemberStatus.Approved.ToDesignValue()));
+            Assert.That(S(members[2], "Status"), Is.EqualTo(ApprovalMemberStatus.Skipped.ToDesignValue()));
+            Assert.That(S(members[3], "Status"), Is.EqualTo(ApprovalMemberStatus.Waiting.ToDesignValue()));
+
+            var late = await ExecuteAsync("4", ApprovalAction.Approve.ToDesignValue(), submit.FlowId);
+            Assert.That(late.IsSuccess, Is.False);
+            Assert.That(await GetFlowValueAsync(submit.FlowId, "CurrentStepNo"), Is.EqualTo("3"));
+        }
+
+        [Test]
+        public async Task 並列ステップ_過去ステップへ差し戻すとスキップされた相方も承認待ちに戻る()
+        {
+            var route = new ApprovalRouteData { Name = "R" };
+            var any = route.AddStep("部長または経理");
+            any.CompletionPolicy = ApprovalCompletionPolicy.Any.ToDesignValue();
+            any.AddMember("3").AddMember("4");
+            var last = route.AddStep("社長決裁");
+            last.ReturnScope = ApprovalReturnScope.AnyPreviousStep.ToDesignValue();
+            last.AddMember("2");
+
+            var submit = await SubmitAsync(route: route);
+            await ExecuteAsync("3", ApprovalAction.Approve.ToDesignValue(), submit.FlowId);
+            var back = await ExecuteAsync("2", ApprovalAction.Return.ToDesignValue(), submit.FlowId, comment: "やり直し", targetStepNo: 1);
+            Assert.That(back.IsSuccess, Is.True, back.ErrorMessage);
+
+            var members = await GetMembersAsync(submit.FlowId, 1);
+            Assert.That(S(members[0], "Status"), Is.EqualTo(ApprovalMemberStatus.Waiting.ToDesignValue()));
+            Assert.That(S(members[1], "Status"), Is.EqualTo(ApprovalMemberStatus.Waiting.ToDesignValue()));
+            Assert.That(S(members[2], "Status"), Is.EqualTo(ApprovalMemberStatus.Pending.ToDesignValue()));
+
+            //相方が今度は承認できる
+            var ok = await ExecuteAsync("4", ApprovalAction.Approve.ToDesignValue(), submit.FlowId);
+            Assert.That(ok.IsSuccess, Is.True, ok.ErrorMessage);
         }
 
         [Test]

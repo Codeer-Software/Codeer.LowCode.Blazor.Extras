@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using Codeer.LowCode.Blazor.DataIO.Db.Definition;
 using Codeer.LowCode.Blazor.DesignLogic;
 using Codeer.LowCode.Blazor.Extras.Designs;
@@ -21,11 +22,15 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
     /// </summary>
     public static class ApprovalFlowSetupService
     {
-        record TemplateInfo(string BaseName, string DbTable, bool IsRouteMaster);
+        record TemplateInfo(string BaseName, string DbTable, bool IsRouteMaster, bool IsQuery = false);
 
+        //エンジン用 (承認フローが読み書きする。UI は持たない)
         static readonly TemplateInfo Flow = new("ApprovalFlow", "approval_flows", false);
         static readonly TemplateInfo Member = new("ApprovalFlowMember", "approval_flow_members", false);
         static readonly TemplateInfo History = new("ApprovalHistory", "approval_histories", false);
+        //検索用 (QueryField。テーブルを持たず SQL で承認テーブルを読む。一覧と「開く」だけ)
+        static readonly TemplateInfo Inbox = new("ApprovalInbox", "", false, IsQuery: true);
+        static readonly TemplateInfo FlowList = new("ApprovalFlowList", "", false, IsQuery: true);
         static readonly TemplateInfo Route = new("ApprovalRoute", "approval_routes", true);
         static readonly TemplateInfo RouteStep = new("ApprovalRouteStep", "approval_route_steps", true);
         static readonly TemplateInfo RouteStepMember = new("ApprovalRouteStepMember", "approval_route_step_members", true);
@@ -44,6 +49,13 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
                 ? string.Empty
                 : MailHistoryModuleFactory.ToSnakeCase(options.Prefix) + "_";
 
+            //検索用モジュールの SQL が結合するユーザーテーブル (テーブル名・表示名列はユーザーモジュールのデザインから)
+            var userModule = designData.Modules.Find(options.UserModuleName);
+            var userTable = string.IsNullOrEmpty(userModule?.DbTable) ? "app_users" : userModule!.DbTable;
+            var userNameColumn = (userModule?.Fields.FirstOrDefault(e => e.Name == options.UserDisplayNameField)
+                as DbValueFieldDesignBase)?.DbColumn;
+            if (string.IsNullOrEmpty(userNameColumn)) userNameColumn = "name";
+
             //モジュール生成 (冪等: 既存はスキップ)
             foreach (var template in templates)
             {
@@ -56,7 +68,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
 
                 var json = ModuleTemplateEngine.RewriteModuleJson(
                     SetupTemplates.Load($"{template.BaseName}.mod.json"),
-                    moduleName, tablePrefix + template.DbTable, options.DataSourceName, nameMap,
+                    moduleName, template.IsQuery ? string.Empty : tablePrefix + template.DbTable, options.DataSourceName, nameMap,
                     options.UserDisplayNameField, options.UserEmailField,
                     removeTurnNotifyMail: !options.UseTurnNotifyMail);
 
@@ -66,7 +78,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
 
                 SaveDesignFile(designDir, "Modules", $"{moduleName}.mod.json", JsonConverterEx.SerializeObject(module));
 
-                if (template == Flow || template == Member || template == Route)
+                if (template == Route || template.IsQuery)
                 {
                     var script = ModuleTemplateEngine.RewriteScript(
                         SetupTemplates.Load($"{template.BaseName}.mod.cs"), nameMap);
@@ -75,6 +87,14 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
                 }
 
                 result.CreatedModules.Add(moduleName);
+                if (template.IsQuery)
+                {
+                    //SQL はテーブル名 (プレフィックス) とユーザーテーブルを差し替え、DB の方言に合わせる。テーブルは作らない
+                    var sql = RewriteQuerySql(SetupTemplates.Load($"{template.BaseName}.Query.sql"),
+                        dataSourceType, tablePrefix, userTable, userNameColumn);
+                    SaveDesignFile(designDir, "Modules", $"{moduleName}.Query.sql", sql);
+                    continue;
+                }
                 result.Ddl.AddRange(module.CreateDDL(dataSourceType, existingTables));
             }
 
@@ -93,12 +113,11 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
             //PageFrame へのページリンク追加 (生成したモジュールのみ)
             if (options.AddPageFrameLinks)
             {
-                //承認待ち一覧 / 承認フロー管理は「一覧だけ + 開くで申請書へ」(詳細遷移・削除なし。
-                //承認待ち一覧は自分が今待たれている行 = ApproverUser == CurrentUser AND Status == Waiting だけ)
+                //検索用モジュールは「一覧だけ + 開くで申請書へ」(詳細遷移・作成・削除なし)。並びは SQL の ORDER BY
                 var links = new List<(string Title, string Module, Action<PageLink>? Configure)>
                 {
-                    ("承認待ち一覧", nameMap[Member.BaseName], link => ConfigureReadOnlyList(link, CreateWaitingListCondition())),
-                    ("承認フロー管理", nameMap[Flow.BaseName], link => ConfigureReadOnlyList(link, null)),
+                    ("承認待ち", nameMap[Inbox.BaseName], ConfigureQueryList),
+                    ("承認状況", nameMap[FlowList.BaseName], ConfigureQueryList),
                 };
                 if (options.RouteMaster != ApprovalRouteMasterKind.None)
                     links.Add(("承認経路マスタ", nameMap[Route.BaseName], null));
@@ -112,7 +131,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
 
         static List<TemplateInfo> SelectTemplates(ApprovalRouteMasterKind routeMaster)
         {
-            var templates = new List<TemplateInfo> { Flow, Member, History };
+            var templates = new List<TemplateInfo> { Flow, Member, History, Inbox, FlowList };
             if (routeMaster == ApprovalRouteMasterKind.Standard)
             {
                 templates.Add(Route);
@@ -251,6 +270,40 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
                     """;
 
         //一覧だけのページ (新規作成・詳細遷移・削除なし。新しい順。条件は任意)
+        static void ConfigureQueryList(PageLink link)
+        {
+            link.ListPageDesign.UseNavigateToCreate = false;
+            if (link.ListPageDesign.ListFieldDesign is not ListFieldDesign list) return;
+            list.CanNavigateToDetail = false;
+            list.CanCreate = false;
+            list.CanUpdate = false;
+            list.CanDelete = false;
+            list.SearchCondition.SortConditions = [];
+            list.SearchCondition.Condition = null;
+        }
+
+        /// <summary>
+        /// 検索用モジュールのテンプレート SQL (Example = SQLite 文) を生成先に合わせて書き換える。
+        /// テーブル名のプレフィックス、ユーザーテーブル (app_users / u.name)、文字列連結 (LIKE '%' || @p || '%')、
+        /// パラメータ接頭辞 (Oracle は :)。
+        /// </summary>
+        internal static string RewriteQuerySql(string sql, DataSourceType dataSourceType, string tablePrefix,
+            string userTable, string userNameColumn)
+        {
+            sql = Regex.Replace(sql, @"\bapproval_flow_members\b", tablePrefix + "approval_flow_members");
+            sql = Regex.Replace(sql, @"\bapproval_flows\b", tablePrefix + "approval_flows");
+            sql = Regex.Replace(sql, @"\bapp_users\b", userTable);
+            sql = Regex.Replace(sql, @"\bu\.name\b", "u." + userNameColumn);
+            sql = Regex.Replace(sql, @"'%' \|\| (@\w+) \|\| '%'", m => dataSourceType switch
+            {
+                DataSourceType.SQLServer => $"'%' + {m.Groups[1].Value} + '%'",
+                DataSourceType.MySQL => $"CONCAT('%', {m.Groups[1].Value}, '%')",
+                _ => m.Value,
+            });
+            if (dataSourceType == DataSourceType.Oracle) sql = Regex.Replace(sql, @"@(\w+)", ":$1");
+            return sql;
+        }
+
         static void ConfigureReadOnlyList(PageLink link, MatchConditionBase? condition)
         {
             link.ListPageDesign.UseNavigateToCreate = false;
@@ -261,25 +314,6 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
             list.CanDelete = false;
             list.SearchCondition.SortConditions = [new SortCondition { Variable = "Id.Value", IsDescending = true }];
             list.SearchCondition.Condition = condition;
-        }
-
-        //承認待ち一覧: 自分が今待たれている行だけ (条件エディタの正準形 = Multi 直下に葉)
-        static MatchConditionBase CreateWaitingListCondition()
-        {
-            var condition = new MultiMatchCondition();
-            condition.Children.Add(new FieldVariableMatchCondition
-            {
-                SearchTargetVariable = "ApproverUser.Value",
-                Comparison = MatchComparison.Equal,
-                Variable = "CurrentUser.Id.Value",
-            });
-            condition.Children.Add(new FieldValueMatchConditionNonNull
-            {
-                SearchTargetVariable = "Status.Value",
-                Comparison = MatchComparison.Equal,
-                Value = new StringValue { Value = "Waiting" },
-            });
-            return condition;
         }
 
         internal static void AddPageFrameLinks(DesignData designData, string designDir,

@@ -57,7 +57,7 @@
 	     ここからリンク埋め込みする (SetupTemplates.Load と連動)。Example の承認モジュールを変更すると
 	     生成されるテンプレートも変わる = Example がテンプレートの回帰テストを兼ねる。 -->
 	<ItemGroup>
-		<EmbeddedResource Include="..\Example\Design\Modules\ApprovalFlow.mod.json;..\Example\Design\Modules\ApprovalFlow.mod.cs;..\Example\Design\Modules\ApprovalFlowMember.mod.json;..\Example\Design\Modules\ApprovalFlowMember.mod.cs;..\Example\Design\Modules\ApprovalHistory.mod.json;..\Example\Design\Modules\ApprovalRoute.mod.json;..\Example\Design\Modules\ApprovalRoute.mod.cs;..\Example\Design\Modules\ApprovalRouteStep.mod.json;..\Example\Design\Modules\ApprovalRouteStepMember.mod.json">
+		<EmbeddedResource Include="..\Example\Design\Modules\ApprovalFlow.mod.json;..\Example\Design\Modules\ApprovalFlowMember.mod.json;..\Example\Design\Modules\ApprovalHistory.mod.json;..\Example\Design\Modules\ApprovalInbox.mod.json;..\Example\Design\Modules\ApprovalInbox.mod.cs;..\Example\Design\Modules\ApprovalInbox.Query.sql;..\Example\Design\Modules\ApprovalFlowList.mod.json;..\Example\Design\Modules\ApprovalFlowList.mod.cs;..\Example\Design\Modules\ApprovalFlowList.Query.sql;..\Example\Design\Modules\ApprovalRoute.mod.json;..\Example\Design\Modules\ApprovalRoute.mod.cs;..\Example\Design\Modules\ApprovalRouteStep.mod.json;..\Example\Design\Modules\ApprovalRouteStepMember.mod.json">
 			<LogicalName>Codeer.LowCode.Blazor.Extras.Designer.SetupTemplates.%(Filename)%(Extension)</LogicalName>
 		</EmbeddedResource>
 	</ItemGroup>

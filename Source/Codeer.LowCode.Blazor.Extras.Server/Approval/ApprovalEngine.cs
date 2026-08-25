@@ -274,11 +274,12 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Approval
                 if (!validTarget) return ApprovalActionResult.Failure(Resources.ApprovalError_ReturnNotAllowed);
 
                 //対象〜現在の承認メンバーを未処理へ戻し、到達状態は正規化に任せる
-                //(対象ステップ = Waiting、それ以降 = Pending になる)
+                //(対象ステップ = Waiting、それ以降 = Pending になる。ステップ完了で Skipped になった相方も戻す)
                 foreach (var m in members.Where(e => e.StepType == ApprovalStepType.Approval.ToDesignValue()
                     && e.StepNo >= targetStepNo && e.StepNo <= currentStepNo
                     && (e.Status == ApprovalMemberStatus.Approved.ToDesignValue() ||
-                        e.Status == ApprovalMemberStatus.Waiting.ToDesignValue())))
+                        e.Status == ApprovalMemberStatus.Waiting.ToDesignValue() ||
+                        e.Status == ApprovalMemberStatus.Skipped.ToDesignValue())))
                 {
                     await UpdateMemberStatusAsync(ctx, m, ApprovalMemberStatus.Pending.ToDesignValue(), null);
                     m.Status = ApprovalMemberStatus.Pending.ToDesignValue();
@@ -677,7 +678,9 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Approval
 
         //到達状態の正規化: 未処理メンバー (Pending / Waiting) を「自分より前の承認ステップが
         //全て完了しているか」で Waiting / Pending に揃える (冪等)。
-        //承認による前進も、ステップ差し戻しによる後退も、この1つで整合する
+        //承認による前進も、ステップ差し戻しによる後退も、この1つで整合する。
+        //完了した承認ステップに残った未処理メンバー (Any / 任意メンバーの相方) は Skipped にする
+        //(承認不要になった人が承認待ちに残らない・承認できない。回覧は未確認のまま Waiting でよい)
         async Task NormalizeMemberStatusesAsync(Context ctx, List<MemberRow> members)
         {
             foreach (var member in members.Where(e =>
@@ -689,6 +692,11 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Approval
                     .GroupBy(e => e.StepNo)
                     .All(g => IsStepCompleted(g.ToList()));
                 var status = reached ? ApprovalMemberStatus.Waiting.ToDesignValue() : ApprovalMemberStatus.Pending.ToDesignValue();
+                if (member.StepType == ApprovalStepType.Approval.ToDesignValue()
+                    && IsStepCompleted(members.Where(e => e.StepNo == member.StepNo).ToList()))
+                {
+                    status = ApprovalMemberStatus.Skipped.ToDesignValue();
+                }
                 if (member.Status == status) continue;
                 await UpdateMemberStatusAsync(ctx, member, status, null);
                 member.Status = status;
