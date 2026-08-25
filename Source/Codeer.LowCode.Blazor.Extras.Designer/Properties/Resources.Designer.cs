@@ -105,8 +105,6 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Properties
 
         public static string SetupMenuApprovalFlow => GetString("SetupMenuApprovalFlow");
 
-        public static string SetupMenuMailHistory => GetString("SetupMenuMailHistory");
-
         public static string SetupTargetModule => GetString("SetupTargetModule");
 
         public static string SetupTargetNone => GetString("SetupTargetNone");
@@ -157,5 +155,15 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Properties
         public static string SetupReloadNote => GetString("SetupReloadNote");
 
         public static string SetupDdlDone => GetString("SetupDdlDone");
+
+        public static string SetupMenuMail => GetString("SetupMenuMail");
+
+        public static string SetupSenderContract => GetString("SetupSenderContract");
+
+        public static string SetupGmailToken => GetString("SetupGmailToken");
+
+        public static string SetupMailHistory => GetString("SetupMailHistory");
+
+        public static string SetupMailInfra => GetString("SetupMailInfra");
     }
 }

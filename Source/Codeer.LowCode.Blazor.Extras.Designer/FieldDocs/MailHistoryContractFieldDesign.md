@@ -3,15 +3,18 @@
 メール送信履歴モジュールに1つ置き、「役割 → 自モジュールのフィールド名」のマッピングを
 宣言するフィールド。UI もデータも持たない (DB列不要)。
 
-## セットアップ (履歴モジュールの自動生成)
+## セットアップ (メールのセットアップで自動生成)
 
-履歴モジュールは手で作らず**セットアップコマンドで生成できる** (契約フィールド・保護条件・一覧同梱):
+履歴モジュールは手で作らず**メールのセットアップで生成できる** (契約フィールド・保護条件・一覧・ページリンク同梱。
+同時にユーザーモジュールの差出人契約や Gmail トークン欄、サーバー設定の案内も揃う):
 
-- デザイナ: メニュー Tools > メール履歴モジュールの生成
-- CLI (headless): `<designer.exe> mail-history-setup "<projectDir>" [--name MailHistory] [--data-source <name>] [--ddl-out <path.sql>]`
+- デザイナ: メニュー Tools > メールのセットアップ
+- CLI (headless): `<designer.exe> mail-setup "<projectDir>" [--history-name MailHistory] [--data-source <name>]
+  [--user-module AppUser] [--user-email-field Email] [--user-name-field Name] [--no-sender-contract] [--gmail-token]
+  [--no-history] [--infra Smtp|GraphApi|SendGrid|Gmail] [--no-pageframe] [--ddl-out <path.sql>]`
 
-生成後、サーバーの appsettings に `"Mail": { "HistoryModuleName": "<モジュール名>" }` を設定し、
-DDL でテーブルを作成すると全送信が自動記録される。
+生成後、案内どおりサーバーの appsettings に `"Mail": { "HistoryModuleName": "<モジュール名>" }` を設定し、
+DDL でテーブルを作成すると全送信が自動記録される。承認フローのセットアップで「メールを使う」を選んだ場合も同じものが生成される。
 
 ## Design
 

@@ -30,8 +30,14 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
         /// <summary>生成する経路マスタの種類。</summary>
         public ApprovalRouteMasterKind RouteMaster { get; set; } = ApprovalRouteMasterKind.Standard;
 
-        /// <summary>順番到達通知メール (メンバーモジュールの MailField + 契約 TurnNotifyMail) を含めるか。</summary>
+        /// <summary>
+        /// メールを使うか (順番到達通知メール = メンバーモジュールの MailField + 契約 TurnNotifyMail)。
+        /// true のときはメールのセットアップ (差出人契約 + 任意で送信履歴モジュール + サーバー設定の案内) も併せて行う。
+        /// </summary>
         public bool UseTurnNotifyMail { get; set; } = true;
+
+        /// <summary>メールを使うとき、送信履歴モジュールも生成するか (<see cref="MailSetupOptions.HistoryModuleName"/> の既定名)。</summary>
+        public bool UseMailHistory { get; set; } = true;
 
         /// <summary>承認待ち一覧などのページリンクを PageFrame に追加するか。</summary>
         public bool AddPageFrameLinks { get; set; } = true;
@@ -46,20 +52,41 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
         public string DbColumn { get; set; } = "approval_id";
     }
 
-    /// <summary>メール履歴モジュール生成のオプション。</summary>
-    public class MailHistorySetupOptions
+    /// <summary>メールのセットアップのオプション。</summary>
+    public class MailSetupOptions
     {
-        /// <summary>生成するモジュール名。appsettings の Mail.HistoryModuleName に設定する名前。</summary>
-        public string ModuleName { get; set; } = "MailHistory";
+        /// <summary>テンプレートの対応表 (MailSenderTable) が知っている送信インフラの呼び名。</summary>
+        public static readonly string[] InfraNames = ["Smtp", "GraphApi", "SendGrid", "Gmail"];
+
+        /// <summary>差出人 (操作ユーザー) のモジュール名。デザインの「現在のユーザーのモジュール」。</summary>
+        public string UserModuleName { get; set; } = "AppUser";
+
+        /// <summary>ユーザーモジュールのメールアドレスフィールド名 (差出人契約の Email 役割)。</summary>
+        public string UserEmailField { get; set; } = "Email";
+
+        /// <summary>ユーザーモジュールの表示名フィールド名 (差出人契約の DisplayName 役割)。</summary>
+        public string UserDisplayNameField { get; set; } = "Name";
+
+        /// <summary>差出人契約 (MailSenderContractField) をユーザーモジュールに追加するか。</summary>
+        public bool AddSenderContract { get; set; } = true;
+
+        /// <summary>Gmail ユーザートークン欄 (GmailTokenField) をユーザーモジュールに追加するか (Gmail で本人名義に送る場合のみ)。</summary>
+        public bool AddGmailTokenField { get; set; }
+
+        /// <summary>送信履歴モジュールを生成するか。</summary>
+        public bool CreateHistoryModule { get; set; } = true;
+
+        /// <summary>送信履歴モジュール名。appsettings の Mail.HistoryModuleName に設定する名前。</summary>
+        public string HistoryModuleName { get; set; } = "MailHistory";
 
         /// <summary>生成するモジュールのデータソース名。</summary>
         public string DataSourceName { get; set; } = string.Empty;
 
-        /// <summary>保護条件 (誰も書けない) の判定に使うユーザーモジュール名。</summary>
-        public string UserModuleName { get; set; } = "AppUser";
-
         /// <summary>送信履歴ページのリンクを PageFrame に追加するか。</summary>
         public bool AddPageFrameLink { get; set; } = true;
+
+        /// <summary>既定の送信インフラの呼び名 (appsettings 案内の Mail.DefaultInfraName とプロバイダセクション雛形に使う)。</summary>
+        public string DefaultInfraName { get; set; } = "Smtp";
     }
 
     /// <summary>セットアップの実行結果。</summary>
@@ -73,6 +100,15 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
 
         /// <summary>申請書モジュールへの結線を行ったか。</summary>
         public bool ParentWired { get; set; }
+
+        /// <summary>別のセットアップの結果を取り込む (承認フローのセットアップがメールのセットアップを内包するとき)。</summary>
+        public void Merge(SetupResult other)
+        {
+            CreatedModules.AddRange(other.CreatedModules);
+            SkippedModules.AddRange(other.SkippedModules);
+            Ddl.AddRange(other.Ddl);
+            Notes.AddRange(other.Notes);
+        }
 
         /// <summary>生成した DDL (テーブル作成 + FK 列追加)。実行はユーザーの確認を挟む。</summary>
         public List<string> Ddl { get; } = new();

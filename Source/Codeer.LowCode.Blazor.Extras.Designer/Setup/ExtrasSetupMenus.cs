@@ -13,16 +13,16 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
         public static void AddAll(DesignerEnvironment env)
         {
             AddApprovalFlowSetup(env);
-            AddMailHistorySetup(env);
+            AddMailSetup(env);
         }
 
         /// <summary>Tools &gt; 承認フローのセットアップ。承認モジュール群の生成と申請書への結線。</summary>
         public static void AddApprovalFlowSetup(DesignerEnvironment env)
             => env.AddMainMenu(() => RunApprovalSetup(env), "Tools", Properties.Resources.SetupMenuApprovalFlow);
 
-        /// <summary>Tools &gt; メール履歴モジュールの生成。</summary>
-        public static void AddMailHistorySetup(DesignerEnvironment env)
-            => env.AddMainMenu(() => RunMailHistorySetup(env), "Tools", Properties.Resources.SetupMenuMailHistory);
+        /// <summary>Tools &gt; メールのセットアップ。差出人契約・Gmail トークン欄・送信履歴モジュール・サーバー設定の案内。</summary>
+        public static void AddMailSetup(DesignerEnvironment env)
+            => env.AddMainMenu(() => RunMailSetup(env), "Tools", Properties.Resources.SetupMenuMail);
 
         static void RunApprovalSetup(DesignerEnvironment env)
         {
@@ -48,7 +48,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
             }
         }
 
-        static void RunMailHistorySetup(DesignerEnvironment env)
+        static void RunMailSetup(DesignerEnvironment env)
         {
             if (string.IsNullOrEmpty(env.CurrentFileDirectory)) return;
             try
@@ -56,11 +56,12 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
                 var designData = env.GetDesignData();
                 var dataSources = env.GetDesignerSettings().DataSources;
 
-                var options = MailHistorySetupWindow.ShowDialog(designData, dataSources.Select(e => e.Name).ToList());
+                var options = MailSetupWindow.ShowDialog(designData, dataSources.Select(e => e.Name).ToList());
                 if (options == null) return;
 
-                var dataSource = dataSources.First(e => e.Name == options.DataSourceName);
-                var result = MailHistorySetupService.Run(designData, env.CurrentFileDirectory, options,
+                //履歴を作らないときデータソースは未選択のことがある (DDL 実行先は先頭のデータソース)
+                var dataSource = dataSources.FirstOrDefault(e => e.Name == options.DataSourceName) ?? dataSources.First();
+                var result = MailSetupService.Run(designData, env.CurrentFileDirectory, options,
                     dataSource.DataSourceType, env.GetDbInfo(dataSource.Name));
 
                 SetupResultWindow.ShowResult(env, dataSource, result, null);

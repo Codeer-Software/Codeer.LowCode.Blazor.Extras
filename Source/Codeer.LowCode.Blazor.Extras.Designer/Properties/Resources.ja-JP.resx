@@ -84,9 +84,6 @@
   <data name="SetupMenuApprovalFlow" xml:space="preserve">
     <value>承認フローのセットアップ</value>
   </data>
-  <data name="SetupMenuMailHistory" xml:space="preserve">
-    <value>メール履歴モジュールの生成</value>
-  </data>
   <data name="SetupTargetModule" xml:space="preserve">
     <value>結線する申請書モジュール</value>
   </data>
@@ -124,7 +121,7 @@
     <value>なし (スクリプトで組み立て)</value>
   </data>
   <data name="SetupTurnMail" xml:space="preserve">
-    <value>順番到達通知メールを含める</value>
+    <value>メールを使う (順番到達通知メール + 差出人契約 + サーバー設定の案内)</value>
   </data>
   <data name="SetupPageFrame" xml:space="preserve">
     <value>PageFrame にページリンクを追加</value>
@@ -161,5 +158,20 @@
   </data>
   <data name="SetupDdlDone" xml:space="preserve">
     <value>完了しました</value>
+  </data>
+  <data name="SetupMenuMail" xml:space="preserve">
+    <value>メールのセットアップ</value>
+  </data>
+  <data name="SetupSenderContract" xml:space="preserve">
+    <value>差出人契約 (MailSenderContractField) をユーザーモジュールに追加 — 自分を差出人にする / Gmail ユーザートークン検索の前提</value>
+  </data>
+  <data name="SetupGmailToken" xml:space="preserve">
+    <value>Gmail ユーザートークン欄 (GmailTokenField) をユーザーモジュールに追加 — 本人の Gmail から送る場合のみ</value>
+  </data>
+  <data name="SetupMailHistory" xml:space="preserve">
+    <value>送信履歴モジュールを生成</value>
+  </data>
+  <data name="SetupMailInfra" xml:space="preserve">
+    <value>既定の送信インフラ (appsettings 案内用)</value>
   </data>
 </root>

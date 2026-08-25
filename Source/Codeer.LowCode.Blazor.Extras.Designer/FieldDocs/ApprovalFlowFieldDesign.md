@@ -10,8 +10,12 @@
 
 - デザイナ: メニュー Tools > 承認フローのセットアップ
 - CLI (headless): `<designer.exe> approval-setup "<projectDir>" [--target <申請書モジュール>] [--prefix <P>]
-  [--route standard|simple|none] [--user-module <ユーザーモジュール>] [--user-name-field Name] [--user-email-field Email]
-  [--no-turn-mail] [--no-pageframe] [--ddl-out <path.sql>]`
+  [--route standard|none] [--user-module <ユーザーモジュール>] [--user-name-field Name] [--user-email-field Email]
+  [--no-mail] [--no-mail-history] [--no-pageframe] [--ddl-out <path.sql>]`
+
+メールを使う (既定) と、順番到達通知メール (メンバーモジュールの MailField) に加えて**メールのセットアップ**
+(ユーザーモジュールの差出人契約・送信履歴モジュール・サーバー設定 appsettings の案内) も同時に行う。
+ユーザーモジュールに差出人契約が既にあれば、メールアドレス・表示名はその宣言に従う (`--user-*-field` は不要)。
 
 生成内容: 承認モジュール群 (.mod.json) + 申請書への結線 (ApprovalFlowField 追加・編集ロックの
 DataWriteCondition・DataOnlyFields・OnBuildRoute 雛形) + PageFrame のページリンク + テーブル作成 DDL。

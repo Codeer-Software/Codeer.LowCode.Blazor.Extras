@@ -24,6 +24,9 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
             _labelUserEmailField.Text = Properties.Resources.SetupUserEmailField;
             _labelRouteMaster.Text = Properties.Resources.SetupRouteMaster;
             _checkTurnMail.Content = Properties.Resources.SetupTurnMail;
+            _checkMailHistory.Content = Properties.Resources.SetupMailHistory;
+            _checkTurnMail.Checked += (_, _) => _checkMailHistory.IsEnabled = true;
+            _checkTurnMail.Unchecked += (_, _) => _checkMailHistory.IsEnabled = false;
             _checkPageFrame.Content = Properties.Resources.SetupPageFrame;
 
             var moduleNames = designData.Modules.GetModuleNames();
@@ -46,8 +49,10 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
 
             _textFieldName.Text = "Approval";
             _textDbColumn.Text = "approval_id";
-            _textUserNameField.Text = "Name";
-            _textUserEmailField.Text = "Email";
+            //既に差出人契約があれば、その宣言をユーザー項目の既定値にする
+            var (emailField, displayNameField) = MailSetupService.ReadSenderRoles(designData.Modules.Find(userModule));
+            _textUserNameField.Text = displayNameField ?? "Name";
+            _textUserEmailField.Text = emailField ?? "Email";
         }
 
         internal static ApprovalSetupOptions? ShowDialog(DesignData designData, List<string> dataSourceNames)
@@ -78,6 +83,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
                 RouteMaster = _comboRouteMaster.SelectedIndex == 1
                     ? ApprovalRouteMasterKind.None : ApprovalRouteMasterKind.Standard,
                 UseTurnNotifyMail = _checkTurnMail.IsChecked == true,
+                UseMailHistory = _checkMailHistory.IsChecked == true,
                 AddPageFrameLinks = _checkPageFrame.IsChecked == true,
             };
             Close();

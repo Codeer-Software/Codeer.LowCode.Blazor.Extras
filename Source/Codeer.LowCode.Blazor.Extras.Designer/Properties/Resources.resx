@@ -84,9 +84,6 @@
   <data name="SetupMenuApprovalFlow" xml:space="preserve">
     <value>Approval Flow Setup</value>
   </data>
-  <data name="SetupMenuMailHistory" xml:space="preserve">
-    <value>Mail History Module Setup</value>
-  </data>
   <data name="SetupTargetModule" xml:space="preserve">
     <value>Target request module</value>
   </data>
@@ -124,7 +121,7 @@
     <value>None (build routes by script)</value>
   </data>
   <data name="SetupTurnMail" xml:space="preserve">
-    <value>Include turn notification mail</value>
+    <value>Use mail (turn notification mail + sender contract + appsettings guide)</value>
   </data>
   <data name="SetupPageFrame" xml:space="preserve">
     <value>Add page links to the page frame</value>
@@ -161,5 +158,20 @@
   </data>
   <data name="SetupDdlDone" xml:space="preserve">
     <value>Completed</value>
+  </data>
+  <data name="SetupMenuMail" xml:space="preserve">
+    <value>Mail Setup</value>
+  </data>
+  <data name="SetupSenderContract" xml:space="preserve">
+    <value>Add the sender contract (MailSenderContractField) to the user module — required for "send as current user" and Gmail user tokens</value>
+  </data>
+  <data name="SetupGmailToken" xml:space="preserve">
+    <value>Add a Gmail user token field (GmailTokenField) to the user module — only when sending from the user's own Gmail</value>
+  </data>
+  <data name="SetupMailHistory" xml:space="preserve">
+    <value>Generate the mail history module</value>
+  </data>
+  <data name="SetupMailInfra" xml:space="preserve">
+    <value>Default mail infrastructure (for the appsettings guide)</value>
   </data>
 </root>

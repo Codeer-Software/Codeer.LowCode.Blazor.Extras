@@ -26,6 +26,7 @@
       <RowDefinition Height="Auto"/>
       <RowDefinition Height="Auto"/>
       <RowDefinition Height="Auto"/>
+      <RowDefinition Height="Auto"/>
     </Grid.RowDefinitions>
 
     <TextBlock x:Name="_labelTarget" Grid.Row="0" Grid.Column="0" VerticalAlignment="Center" Margin="0,4"/>
@@ -56,9 +57,10 @@
     <ComboBox x:Name="_comboRouteMaster" Grid.Row="8" Grid.Column="1" Margin="0,4"/>
 
     <CheckBox x:Name="_checkTurnMail" Grid.Row="9" Grid.Column="0" Grid.ColumnSpan="2" Margin="0,6,0,2" IsChecked="True"/>
-    <CheckBox x:Name="_checkPageFrame" Grid.Row="10" Grid.Column="0" Grid.ColumnSpan="2" Margin="0,2,0,6" IsChecked="True"/>
+    <CheckBox x:Name="_checkMailHistory" Grid.Row="10" Grid.Column="0" Grid.ColumnSpan="2" Margin="20,2,0,2" IsChecked="True"/>
+    <CheckBox x:Name="_checkPageFrame" Grid.Row="11" Grid.Column="0" Grid.ColumnSpan="2" Margin="0,2,0,6" IsChecked="True"/>
 
-    <StackPanel Grid.Row="11" Grid.Column="0" Grid.ColumnSpan="2" Orientation="Horizontal" HorizontalAlignment="Right">
+    <StackPanel Grid.Row="12" Grid.Column="0" Grid.ColumnSpan="2" Orientation="Horizontal" HorizontalAlignment="Right">
       <Button Content="OK" Width="100" Margin="5" IsDefault="True" Click="OkClick"/>
       <Button Content="Cancel" Width="100" Margin="5" IsCancel="True"/>
     </StackPanel>

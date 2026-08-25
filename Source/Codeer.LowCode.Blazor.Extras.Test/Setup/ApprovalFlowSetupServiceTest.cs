@@ -28,7 +28,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Setup
             Assert.That(result.CreatedModules, Is.EquivalentTo(new[]
             {
                 "ApprovalFlow", "ApprovalFlowMember", "ApprovalHistory", "MyApprovalList", "ApprovalStatusList",
-                "ApprovalRoute", "ApprovalRouteStep", "ApprovalRouteStepMember",
+                "ApprovalRoute", "ApprovalRouteStep", "ApprovalRouteStepMember", "MailHistory",
             }));
             Assert.That(File.Exists(Path.Combine(ProjectDir, "Modules", "ApprovalFlow.mod.cs")), Is.False);
             Assert.That(File.Exists(Path.Combine(ProjectDir, "Modules", "ApprovalRoute.mod.cs")), Is.True);
@@ -84,7 +84,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Setup
             //PageFrame リンク
             var frame = d.PageFrames.Find("Main")!;
             Assert.That(frame.Left.Links.Select(e => e.Module),
-                Is.EquivalentTo(new[] { "MyApprovalList", "ApprovalStatusList", "ApprovalRoute" }));
+                Is.EquivalentTo(new[] { "MyApprovalList", "ApprovalStatusList", "ApprovalRoute", "MailHistory" }));
 
             //エンジン用モジュールは UI を持たない (一覧列・検索レイアウト・スクリプトなし)
             Assert.That(flow.ListLayouts[""].Elements.SelectMany(e => e).All(e => string.IsNullOrEmpty(e.FieldName)), Is.True);
@@ -150,7 +150,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Setup
             Assert.That(result.CreatedModules, Is.EquivalentTo(new[]
             {
                 "KeiriApprovalFlow", "KeiriApprovalFlowMember", "KeiriApprovalHistory", "KeiriMyApprovalList", "KeiriApprovalStatusList",
-                "KeiriApprovalRoute", "KeiriApprovalRouteStep", "KeiriApprovalRouteStepMember",
+                "KeiriApprovalRoute", "KeiriApprovalRouteStep", "KeiriApprovalRouteStepMember", "MailHistory",
             }));
 
             //生成ファイルにテンプレートのモジュール名参照が残っていないこと
@@ -209,23 +209,69 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Setup
             var second = ApprovalFlowSetupService.Run(Load(), ProjectDir, DefaultOptions(), DataSourceType.SQLite);
 
             Assert.That(second.CreatedModules, Is.Empty);
-            Assert.That(second.SkippedModules.Count, Is.EqualTo(8));
+            Assert.That(second.SkippedModules.Count, Is.EqualTo(9));
             Assert.That(second.ParentWired, Is.False);
             Assert.That(ReadModuleJson("ApprovalFlow"), Is.EqualTo(before));
             Assert.That(ReadModuleJson("Request"), Is.EqualTo(beforeRequest));
         }
 
         [Test]
-        public void 通知メールを外すとメンバーモジュールにメールフィールドが無い()
+        public void メールを使わないとメンバーモジュールにメールフィールドが無く履歴も差出人契約も作らない()
         {
             CreateFixture();
             var options = DefaultOptions();
             options.UseTurnNotifyMail = false;
-            ApprovalFlowSetupService.Run(Load(), ProjectDir, options, DataSourceType.SQLite);
+            var result = ApprovalFlowSetupService.Run(Load(), ProjectDir, options, DataSourceType.SQLite);
 
-            var member = Load().Modules.Find("ApprovalFlowMember")!;
+            var d = Load();
+            var member = d.Modules.Find("ApprovalFlowMember")!;
             Assert.That(member.Fields.Any(e => e is MailFieldDesign), Is.False);
             Assert.That(ApprovalContracts.Member(member)!.TurnNotifyMail, Is.Empty);
+            Assert.That(d.Modules.Find("MailHistory"), Is.Null);
+            Assert.That(d.Modules.Find("AppUser")!.Fields.OfType<MailSenderContractFieldDesign>().Any(), Is.False);
+            Assert.That(string.Join("\n", result.Notes), Does.Not.Contain("DefaultInfraName"));
+        }
+
+        [Test]
+        public void メールを使うと差出人契約と送信履歴も揃いサーバー設定の案内が出る()
+        {
+            CreateFixture();
+            var result = ApprovalFlowSetupService.Run(Load(), ProjectDir, DefaultOptions(), DataSourceType.SQLite);
+
+            Assert.That(result.CreatedModules, Does.Contain("MailHistory"));
+            var d = Load();
+            var contract = d.Modules.Find("AppUser")!.Fields.OfType<MailSenderContractFieldDesign>().Single();
+            Assert.That(contract.Email, Is.EqualTo("Email.Value"));
+            Assert.That(contract.DisplayName, Is.EqualTo("Name.Value"));
+            Assert.That(d.PageFrames.Find("Main")!.Left.Links.Select(e => e.Module), Does.Contain("MailHistory"));
+            Assert.That(string.Join("\n", result.Notes), Does.Contain("HistoryModuleName").And.Contain("DefaultInfraName"));
+            Assert.That(string.Join("\n", result.Ddl), Does.Contain("mail_histories"));
+
+            //履歴だけ外せる
+            var options = DefaultOptions();
+            options.UseMailHistory = false;
+            options.Prefix = "X";
+            var second = ApprovalFlowSetupService.Run(Load(), ProjectDir, options, DataSourceType.SQLite);
+            Assert.That(second.CreatedModules, Does.Not.Contain("MailHistory"));
+            Assert.That(string.Join("\n", second.Notes), Does.Not.Contain("HistoryModuleName"));
+        }
+
+        [Test]
+        public void ユーザーモジュールに差出人契約があればその宣言をユーザー項目に使う()
+        {
+            CreateFixture(userModuleName: "Staff", userNameField: "DisplayName", userEmailField: "MailAddress");
+            var staff = Load().Modules.Find("Staff")!;
+            staff.Fields.Add(new MailSenderContractFieldDesign { Name = "MailSender", Email = "MailAddress.Value", DisplayName = "DisplayName.Value" });
+            SaveModule(staff);
+
+            //オプションは既定 (Name / Email) のまま = 契約の宣言が勝つ
+            var options = new ApprovalSetupOptions { DataSourceName = "Main", UserModuleName = "Staff" };
+            ApprovalFlowSetupService.Run(Load(), ProjectDir, options, DataSourceType.SQLite);
+
+            var d = Load();
+            var mail = d.Modules.Find("ApprovalFlowMember")!.Fields.OfType<MailFieldDesign>().Single();
+            Assert.That(mail.ToVariable, Is.EqualTo("ApproverUser.MailAddress.Value"));
+            Assert.That(d.Modules.Find("Staff")!.Fields.OfType<MailSenderContractFieldDesign>().Count(), Is.EqualTo(1));
         }
 
         [Test]
@@ -238,7 +284,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Setup
 
             Assert.That(result.CreatedModules, Is.EquivalentTo(new[]
             {
-                "ApprovalFlow", "ApprovalFlowMember", "ApprovalHistory", "MyApprovalList", "ApprovalStatusList",
+                "ApprovalFlow", "ApprovalFlowMember", "ApprovalHistory", "MyApprovalList", "ApprovalStatusList", "MailHistory",
             }));
 
             var d = Load();

@@ -14,11 +14,13 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
     /// approval-setup:
     ///   &lt;designer.exe&gt; approval-setup "&lt;projectDir&gt;" [--target &lt;module&gt;] [--field Approval] [--db-column approval_id]
     ///     [--prefix &lt;P&gt;] [--data-source &lt;name&gt;] [--user-module AppUser] [--user-name-field Name] [--user-email-field Email]
-    ///     [--route standard|none] [--no-turn-mail] [--no-pageframe] [--ddl-out "&lt;path.sql&gt;"]
+    ///     [--route standard|none] [--no-mail] [--no-mail-history] [--no-pageframe] [--ddl-out "&lt;path.sql&gt;"]
+    ///   (--no-mail = 通知メールを含めない。メールを使うときは mail-setup 相当 (差出人契約 + 送信履歴) も行う)
     ///
-    /// mail-history-setup:
-    ///   &lt;designer.exe&gt; mail-history-setup "&lt;projectDir&gt;" [--name MailHistory] [--data-source &lt;name&gt;]
-    ///     [--user-module AppUser] [--no-pageframe] [--ddl-out "&lt;path.sql&gt;"]
+    /// mail-setup:
+    ///   &lt;designer.exe&gt; mail-setup "&lt;projectDir&gt;" [--user-module AppUser] [--user-email-field Email] [--user-name-field Name]
+    ///     [--no-sender-contract] [--gmail-token] [--no-history] [--history-name MailHistory] [--data-source &lt;name&gt;]
+    ///     [--infra Smtp|GraphApi|SendGrid|Gmail] [--no-pageframe] [--ddl-out "&lt;path.sql&gt;"]
     ///
     /// DDL は実行しない (--ddl-out へ書き出し、適用は sql verb またはユーザーが行う)。
     /// 終了コード: 0 = 成功 / 2 = 失敗。
@@ -26,12 +28,12 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
     internal static class SetupCli
     {
         internal const string ApprovalVerb = "approval-setup";
-        internal const string MailHistoryVerb = "mail-history-setup";
+        internal const string MailVerb = "mail-setup";
 
         internal static void Register()
         {
             HeadlessCliVerbs.Register(ApprovalVerb, RunApproval);
-            HeadlessCliVerbs.Register(MailHistoryVerb, RunMailHistory);
+            HeadlessCliVerbs.Register(MailVerb, RunMail);
         }
 
         static int RunApproval(string[] args)
@@ -61,7 +63,8 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
                 UserEmailField = named.GetValueOrDefault("--user-email-field", "Email"),
                 RouteMaster = named.GetValueOrDefault("--route", "standard").ToLowerInvariant() == "none"
                     ? ApprovalRouteMasterKind.None : ApprovalRouteMasterKind.Standard,
-                UseTurnNotifyMail = !args.Contains("--no-turn-mail"),
+                UseTurnNotifyMail = !args.Contains("--no-mail") && !args.Contains("--no-turn-mail"),
+                UseMailHistory = !args.Contains("--no-mail-history"),
                 AddPageFrameLinks = !args.Contains("--no-pageframe"),
             };
 
@@ -69,11 +72,11 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
             return Report(result, named.GetValueOrDefault("--ddl-out"));
         }
 
-        static int RunMailHistory(string[] args)
+        static int RunMail(string[] args)
         {
             if (args.Length < 2)
             {
-                Console.Error.WriteLine($"usage: {MailHistoryVerb} \"<projectDir>\" [--name MailHistory] ...");
+                Console.Error.WriteLine($"usage: {MailVerb} \"<projectDir>\" [--user-module AppUser] [--history-name MailHistory] ...");
                 return 2;
             }
             var projectDir = Path.GetFullPath(args[1]);
@@ -82,17 +85,27 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
             var designData = LoadDesignData(projectDir);
             var (dataSourceName, dataSourceType) = ResolveDataSource(projectDir, named.GetValueOrDefault("--data-source"));
 
-            var options = new MailHistorySetupOptions
+            var infra = named.GetValueOrDefault("--infra", MailSetupOptions.InfraNames[0]);
+            if (!MailSetupOptions.InfraNames.Contains(infra))
+                throw new InvalidOperationException($"--infra must be one of: {string.Join("|", MailSetupOptions.InfraNames)}");
+
+            var options = new MailSetupOptions
             {
-                ModuleName = named.GetValueOrDefault("--name", "MailHistory"),
-                DataSourceName = dataSourceName,
                 UserModuleName = named.GetValueOrDefault("--user-module",
                     string.IsNullOrEmpty(designData.AppSettings.CurrentUserModuleDesignName)
                         ? "AppUser" : designData.AppSettings.CurrentUserModuleDesignName),
+                UserEmailField = named.GetValueOrDefault("--user-email-field", "Email"),
+                UserDisplayNameField = named.GetValueOrDefault("--user-name-field", "Name"),
+                AddSenderContract = !args.Contains("--no-sender-contract"),
+                AddGmailTokenField = args.Contains("--gmail-token"),
+                CreateHistoryModule = !args.Contains("--no-history"),
+                HistoryModuleName = named.GetValueOrDefault("--history-name", "MailHistory"),
+                DataSourceName = dataSourceName,
                 AddPageFrameLink = !args.Contains("--no-pageframe"),
+                DefaultInfraName = infra,
             };
 
-            var result = MailHistorySetupService.Run(designData, projectDir, options, dataSourceType);
+            var result = MailSetupService.Run(designData, projectDir, options, dataSourceType);
             return Report(result, named.GetValueOrDefault("--ddl-out"));
         }
 

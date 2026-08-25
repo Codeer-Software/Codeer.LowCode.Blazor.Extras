@@ -19,6 +19,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
     /// - 冪等: 同名モジュールが既に存在すれば生成せず結線だけを行う (使いまわし)。
     /// - 生成後は通常のモジュール (フィールド追加・画面カスタム・リネームすべて自由。契約フィールドが正)。
     /// - DDL は雛形として返す (実行は呼び出し側でユーザーの確認を挟む)。
+    /// - メールを使う (UseTurnNotifyMail) ときは MailSetupService も呼び、差出人契約・送信履歴・サーバー設定の案内まで揃える。
     /// </summary>
     public static class ApprovalFlowSetupService
     {
@@ -39,6 +40,11 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
             DataSourceType dataSourceType, List<DbTableDefinition>? existingTables = null)
         {
             var result = new SetupResult();
+
+            //ユーザーモジュールに差出人契約があれば、メールアドレス・表示名はその宣言に従う (二重に聞かない)
+            var (contractEmail, contractDisplayName) = MailSetupService.ReadSenderRoles(designData.Modules.Find(options.UserModuleName));
+            options.UserEmailField = contractEmail ?? options.UserEmailField;
+            options.UserDisplayNameField = contractDisplayName ?? options.UserDisplayNameField;
 
             var templates = SelectTemplates(options.RouteMaster);
             var nameMap = templates.ToDictionary(t => t.BaseName, t => options.Prefix + t.BaseName);
@@ -117,6 +123,22 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
             if (!string.IsNullOrEmpty(options.TargetModuleName))
             {
                 WireParent(designData, designDir, options, nameMap, dataSourceType, existingTables, result);
+            }
+
+            //メールを使うなら、通知メールが動く前提 (差出人契約・送信履歴・サーバー設定) も同時に揃える
+            if (options.UseTurnNotifyMail)
+            {
+                result.Merge(MailSetupService.Run(designData, designDir, new MailSetupOptions
+                {
+                    UserModuleName = options.UserModuleName,
+                    UserEmailField = options.UserEmailField,
+                    UserDisplayNameField = options.UserDisplayNameField,
+                    AddSenderContract = true,
+                    AddGmailTokenField = false,
+                    CreateHistoryModule = options.UseMailHistory,
+                    DataSourceName = options.DataSourceName,
+                    AddPageFrameLink = options.AddPageFrameLinks,
+                }, dataSourceType, existingTables));
             }
 
             //PageFrame へのページリンク追加 (生成したモジュールのみ)
