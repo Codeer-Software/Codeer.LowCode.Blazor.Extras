@@ -1,4 +1,7 @@
-﻿using Codeer.LowCode.Blazor.DesignLogic;
+﻿using Codeer.LowCode.Blazor.DataIO.Db;
+using Codeer.LowCode.Blazor.Extras.Mail;
+using Codeer.LowCode.Blazor.SystemSettings;
+using Codeer.LowCode.Blazor.DesignLogic;
 using Codeer.LowCode.Blazor.Extras.Data;
 using Codeer.LowCode.Blazor.Extras.Designs;
 using Codeer.LowCode.Blazor.Extras.Server.Mail;
@@ -107,105 +110,78 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Mail
             return module;
         }
 
-        //製品のデータ層 (システム内部読み取り) のフェイク。生SQLは使わない
-        class FakeSystemReader
+        //SQL の組み立てだけを見るフェイク (実行はしない)。実DB での動作は MailUserLookupDbTest
+        class FakeDb : IDbAccessor
         {
-            public List<ModuleData> Rows { get; } = new();
-            public SearchCondition? LastCondition;
-
-            public Task<List<ModuleData>> ReadAsync(SearchCondition condition)
-            {
-                LastCondition = condition;
-                return Task.FromResult(Rows);
-            }
+            public DataSourceType DataSourceType = DataSourceType.SQLite;
+            public DataSource? GetDataSource(string dataSource) => new() { Name = dataSource, DataSourceType = DataSourceType };
+            public Task<List<IDictionary<string, object>>> QueryAsync(string dataSourceName, string query, Dictionary<string, ParamAndRawDbTypeName> args)
+                => Task.FromResult(new List<IDictionary<string, object>>());
+            public void StartTransaction() { }
+            public Task CommitAsync() => Task.CompletedTask;
+            public System.Data.Common.DbConnection GetConnection(string dataSourceName) => throw new NotSupportedException();
+            public Task<int> ExecuteAsync(string dataSourceName, string query, Dictionary<string, object?> args) => throw new NotSupportedException();
+            public Task<string> InsertAsync(string dataSourceName, string query, Dictionary<string, object?> args) => throw new NotSupportedException();
+            public System.Data.IDbTransaction? GetTransaction(string dataSourceName) => null;
+            public ValueTask DisposeAsync() => ValueTask.CompletedTask;
         }
 
-        //MailUserStore: 差出人アドレスでユーザーモジュールを検索してトークン列を読む (書き込み専用列を含む内部経路)
-        [Test]
-        public async Task FindRefreshToken_アドレスで検索して復号する()
+        static GmailUserTokenStore CreateSqlStore(DesignData designData, DataSourceType type = DataSourceType.SQLite, Action<string>? logError = null)
+            => new(designData, new FakeDb { DataSourceType = type }, logError ?? (_ => { }));
+
+        //識別子の引用符とパラメータ接頭辞はデータソースの種類に合わせる (全 DB 共通で使える)
+        [TestCase(DataSourceType.SQLServer, "SELECT [gmail_token] AS token_value FROM [app_users] WHERE [email] = @p0", "@p0")]
+        [TestCase(DataSourceType.MySQL, "SELECT `gmail_token` AS token_value FROM `app_users` WHERE `email` = @p0", "@p0")]
+        [TestCase(DataSourceType.PostgreSQL, "SELECT \"gmail_token\" AS token_value FROM \"app_users\" WHERE \"email\" = @p0", "@p0")]
+        [TestCase(DataSourceType.Oracle, "SELECT \"gmail_token\" AS token_value FROM \"app_users\" WHERE \"email\" = :p0", ":p0")]
+        [TestCase(DataSourceType.SQLite, "SELECT \"gmail_token\" AS token_value FROM \"app_users\" WHERE \"email\" = @p0", "@p0")]
+        public void トークンSQLはDBの種類に合わせて組み立てる(DataSourceType type, string expectedSql, string parameterName)
         {
-            var designData = CreateDesignData(CreateAppUserWithToken());
-            var row = new ModuleData { Name = "AppUser" };
-            row.Fields["GmailToken"] = new GmailTokenFieldData { RefreshToken = GmailTokenProtector.Protect(PlainToken, Key) };
-            var reader = new FakeSystemReader { Rows = { row } };
-            var store = new MailUserStore(designData, reader.ReadAsync, _ => { });
+            var module = CreateAppUserWithToken();
+            var store = CreateSqlStore(CreateDesignData(module), type);
 
-            var token = await store.FindRefreshTokenAsync("tanaka@example.com", Key);
+            var sql = store.CreateTokenSql(module, MailContracts.Sender(module)!, module.Fields.OfType<GmailTokenFieldDesign>().Single(),
+                out var parameters, "tanaka@example.com");
 
-            //復号して返す
-            Assert.That(token, Is.EqualTo(PlainToken));
-            Assert.That(reader.LastCondition!.ModuleName, Is.EqualTo("AppUser"));
-            Assert.That(reader.LastCondition.SelectFields, Does.Contain("GmailToken"));
-            var condition = (FieldValueMatchCondition)reader.LastCondition.Condition!;
-            Assert.That(condition.SearchTargetVariable, Is.EqualTo("Email.Value"));
+            Assert.That(sql, Is.EqualTo(expectedSql));
+            Assert.That(parameters[parameterName], Is.EqualTo("tanaka@example.com"));
         }
 
         [Test]
-        public async Task FindRefreshToken_未登録や設定不備はnullで送信は止めない()
+        public void トークンSQLはリンクパスのアドレス役割を組み立てない()
         {
-            var designData = CreateDesignData(CreateAppUserWithToken());
-
-            //行なし → null
-            var store = new MailUserStore(designData, new FakeSystemReader().ReadAsync, _ => { });
-            Assert.That(await store.FindRefreshTokenAsync("nobody@example.com", Key), Is.Null);
-
-            //CurrentUser モジュールが存在しない → null + エラーログ
+            //アドレス役割がリンク先 (Employee.Email) だと SQL 1 文では引けないのでエラーログ + null (送信はシステムトークンへ)
+            var module = new ModuleDesign { Name = "AppUser", DataSourceName = "Main", DbTable = "app_users" };
+            module.Fields.Add(new LinkFieldDesign { Name = "Employee", DbColumn = "employee_id", SearchCondition = new() { ModuleName = "Employee" } });
+            module.Fields.Add(new GmailTokenFieldDesign { Name = "GmailToken", DbColumnToken = "gmail_token" });
+            module.Fields.Add(new MailSenderContractFieldDesign { Name = "MailSender", Email = "Employee.Email.Value" });
             var errors = new List<string>();
-            var brokenDesign = new DesignData();
-            brokenDesign.AppSettings.CurrentUserModuleDesignName = "NoSuchModule";
-            var broken = new MailUserStore(brokenDesign, new FakeSystemReader().ReadAsync, errors.Add);
-            Assert.That(await broken.FindRefreshTokenAsync("tanaka@example.com", Key), Is.Null);
+            var store = CreateSqlStore(CreateDesignData(module), logError: errors.Add);
+
+            var sql = store.CreateTokenSql(module, MailContracts.Sender(module)!, module.Fields.OfType<GmailTokenFieldDesign>().Single(),
+                out _, "tanaka@example.com");
+
+            Assert.That(sql, Is.Null);
             Assert.That(errors, Has.Count.EqualTo(1));
-
-            //GmailTokenField が置かれていない → ユーザー単位トークンを使わない (エラーでもない)
-            var noTokenModule = new ModuleDesign { Name = "AppUser", DataSourceName = "Main", DbTable = "app_users" };
-            noTokenModule.Fields.Add(new TextFieldDesign { Name = "Email", DbColumn = "email" });
-            noTokenModule.Fields.Add(new MailSenderContractFieldDesign { Name = "MailSender", Email = "Email.Value" });
-            var noTokenErrors = new List<string>();
-            var noToken = new MailUserStore(CreateDesignData(noTokenModule),
-                new FakeSystemReader().ReadAsync, noTokenErrors.Add);
-            Assert.That(await noToken.FindRefreshTokenAsync("tanaka@example.com", Key), Is.Null);
-            Assert.That(noTokenErrors, Is.Empty);
-
-            //暗号化されていない列の値は使わない (エラーログを出して null = システムトークンにフォールバック)
-            var plainErrors = new List<string>();
-            var plainRow = new ModuleData { Name = "AppUser" };
-            plainRow.Fields["GmailToken"] = new GmailTokenFieldData { RefreshToken = PlainToken };
-            var plainStore = new MailUserStore(designData,
-                new FakeSystemReader { Rows = { plainRow } }.ReadAsync, plainErrors.Add);
-            Assert.That(await plainStore.FindRefreshTokenAsync("tanaka@example.com", Key), Is.Null);
-            Assert.That(plainErrors, Has.Count.EqualTo(1));
-        }
-
-        //「自分を差出人にする」の操作ユーザー解決 (Id で CurrentUser モジュールを引く)
-        [Test]
-        public async Task FindCurrentUser_Idで引いてアドレスと表示名を返す()
-        {
-            var designData = CreateDesignData(CreateAppUserWithToken());
-            var row = new ModuleData { Name = "AppUser" };
-            row.Fields["Email"] = new TextFieldData { Value = "sales@example.com" };
-            row.Fields["Name"] = new TextFieldData { Value = "営業 太郎" };
-            var reader = new FakeSystemReader { Rows = { row } };
-            var store = new MailUserStore(designData, reader.ReadAsync, _ => { });
-
-            var user = await store.FindCurrentUserAsync("1");
-
-            Assert.That(user!.Email, Is.EqualTo("sales@example.com"));
-            Assert.That(user.DisplayName, Is.EqualTo("営業 太郎"));
-            var condition = (FieldValueMatchCondition)reader.LastCondition!.Condition!;
-            Assert.That(condition.SearchTargetVariable, Is.EqualTo("Id.Value"));
         }
 
         [Test]
-        public async Task FindCurrentUser_差出人契約が無ければnullとエラーログ()
+        public async Task GmailTokenFieldが無ければユーザー単位トークンを使わない()
         {
             var module = new ModuleDesign { Name = "AppUser", DataSourceName = "Main", DbTable = "app_users" };
             module.Fields.Add(new TextFieldDesign { Name = "Email", DbColumn = "email" });
+            module.Fields.Add(new MailSenderContractFieldDesign { Name = "MailSender", Email = "Email.Value" });
             var errors = new List<string>();
-            var store = new MailUserStore(CreateDesignData(module),
-                new FakeSystemReader().ReadAsync, errors.Add);
+            var store = CreateSqlStore(CreateDesignData(module), logError: errors.Add);
 
-            Assert.That(await store.FindCurrentUserAsync("1"), Is.Null);
+            Assert.That(await store.FindRefreshTokenAsync("tanaka@example.com", Key), Is.Null);
+            Assert.That(errors, Is.Empty);
+
+            //CurrentUser モジュールが存在しない → null + エラーログ
+            var brokenDesign = new DesignData();
+            brokenDesign.AppSettings.CurrentUserModuleDesignName = "NoSuchModule";
+            var broken = CreateSqlStore(brokenDesign, logError: errors.Add);
+            Assert.That(await broken.FindRefreshTokenAsync("tanaka@example.com", Key), Is.Null);
             Assert.That(errors, Has.Count.EqualTo(1));
         }
     }

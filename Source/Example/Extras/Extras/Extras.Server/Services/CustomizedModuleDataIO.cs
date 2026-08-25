@@ -45,11 +45,6 @@ namespace Extras.Server.Services
         internal async Task<string> AddSystemRecordAsync(ModuleData data)
             => await AddAsync(Guid.NewGuid(), Guid.NewGuid(), data);
 
-        //メールのユーザートークン解決など、システム内部の読み取り用経路。
-        //認可を通さず、書き込み専用列 (GmailTokenField 等) も読める。条件はサーバー側で組み立てること
-        internal async Task<List<ModuleData>> GetSystemRecordsInternalAsync(SearchCondition condition)
-            => await GetSystemRecordsAsync(condition);
-
         //BulkMailFieldの送信結果サマリなど、既存レコードへのシステムの記録の書き戻し用内部経路。
         //data に含まれるフィールドだけが更新される
         internal async Task UpdateSystemRecordAsync(ModuleData data)

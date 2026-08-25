@@ -205,7 +205,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Approval
             //メンバーモジュール側: 条件が参照するフィールドをリストロードに同梱している
             var member = d.Modules.Find("ApprovalFlowMember")!;
             Assert.That(member.ListLayouts[""].DataOnlyFields,
-                Is.EquivalentTo(new[] { "StepType", "IsFinalStep" }));
+                Is.EquivalentTo(new[] { "StepType", "IsFinalStep", "Status", "ApproverUser" }));
         }
 
         [Test]

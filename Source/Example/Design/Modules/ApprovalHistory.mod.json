@@ -397,31 +397,31 @@
   },
   "ListLayouts": {
     "": {
-      "HeaderTitle": "",
-      "DataOnlyFields": [],
-      "FocusControlMode": "Inherit",
-      "IsFocusWrap": false,
-      "OnBeforeInitialization": "",
-      "OnAfterInitialization": "",
-      "OnFieldDataChanged": "",
       "Elements": [
         [
           {
-            "FieldName": "",
-            "ContextMenu": "",
-            "Label": "",
-            "IsMaxWidthFixed": false,
-            "ColumnSpan": 1,
-            "RowSpan": 1,
-            "TextWrap": "Unset",
-            "CanResize": false,
-            "CanUserSort": true,
-            "ClassName": "",
-            "FontFamily": "",
-            "Color": "",
-            "BackgroundColor": "",
-            "DetailLayoutName": "",
-            "ListElementComponent": ""
+            "FieldName": "ActedAt",
+            "Label": "日時",
+            "Width": 170
+          },
+          {
+            "FieldName": "Action",
+            "Label": "操作",
+            "Width": 110
+          },
+          {
+            "FieldName": "ActorUser",
+            "Label": "実行者",
+            "Width": 180
+          },
+          {
+            "FieldName": "StepNo",
+            "Label": "ステップ",
+            "Width": 90
+          },
+          {
+            "FieldName": "Comment",
+            "Label": "コメント"
           }
         ]
       ]
@@ -527,7 +527,7 @@
   "UseListPageSubmitButton": false,
   "ListPageFieldDesign": {
     "LayoutName": "",
-    "CanNavigateToDetail": true,
+    "CanNavigateToDetail": false,
     "NavigateModuleUrlSegment": "",
     "CanCustomizeColumns": false,
     "FixedColumnCount": 0,
@@ -536,7 +536,12 @@
     "SearchCondition": {
       "LimitCount": 50,
       "SelectFields": [],
-      "SortConditions": [],
+      "SortConditions": [
+        {
+          "Variable": "Id.Value",
+          "IsDescending": true
+        }
+      ],
       "SortFieldVariable": "",
       "SortDescending": false,
       "ModuleName": ""
@@ -546,7 +551,7 @@
     "DeleteTogether": false,
     "CanCreate": false,
     "CanUpdate": false,
-    "CanDelete": true,
+    "CanDelete": false,
     "CanUserSort": true,
     "CanSelect": false,
     "UseIndexSort": false,

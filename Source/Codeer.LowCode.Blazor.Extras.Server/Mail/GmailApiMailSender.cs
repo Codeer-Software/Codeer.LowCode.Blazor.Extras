@@ -31,7 +31,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
         readonly GmailSettings _settings;
         readonly HttpClient _http;
         //差出人アドレス→ユーザー単位のリフレッシュトークン (ユーザー同意モード。null/未解決 = システムトークンで送る)。
-        //実装は MailUserStore.FindRefreshTokenAsync (差出人でユーザーモジュールを検索) をテンプレの MailController が結線する
+        //実装は GmailUserTokenStore.FindRefreshTokenAsync (差出人でユーザーモジュールを検索) をテンプレの MailController が結線する
         readonly Func<string, Task<string?>>? _userRefreshTokenResolver;
         //委任ユーザー (sub) ごとのトークンキャッシュ (動的 From はそのユーザーとして送るため)
         readonly Dictionary<string, (string Token, DateTime ExpiresAtUtc)> _tokens = new();

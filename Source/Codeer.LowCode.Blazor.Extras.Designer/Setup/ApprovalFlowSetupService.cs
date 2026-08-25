@@ -66,7 +66,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
 
                 SaveDesignFile(designDir, "Modules", $"{moduleName}.mod.json", JsonConverterEx.SerializeObject(module));
 
-                if (template == Member || template == Route)
+                if (template == Flow || template == Member || template == Route)
                 {
                     var script = ModuleTemplateEngine.RewriteScript(
                         SetupTemplates.Load($"{template.BaseName}.mod.cs"), nameMap);
@@ -93,13 +93,15 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
             //PageFrame へのページリンク追加 (生成したモジュールのみ)
             if (options.AddPageFrameLinks)
             {
-                var links = new List<(string Title, string Module)>
+                //承認待ち一覧 / 承認フロー管理は「一覧だけ + 開くで申請書へ」(詳細遷移・削除なし。
+                //承認待ち一覧は自分が今待たれている行 = ApproverUser == CurrentUser AND Status == Waiting だけ)
+                var links = new List<(string Title, string Module, Action<PageLink>? Configure)>
                 {
-                    ("承認待ち一覧", nameMap[Member.BaseName]),
-                    ("承認フロー管理", nameMap[Flow.BaseName]),
+                    ("承認待ち一覧", nameMap[Member.BaseName], link => ConfigureReadOnlyList(link, CreateWaitingListCondition())),
+                    ("承認フロー管理", nameMap[Flow.BaseName], link => ConfigureReadOnlyList(link, null)),
                 };
                 if (options.RouteMaster != ApprovalRouteMasterKind.None)
-                    links.Add(("承認経路マスタ", nameMap[Route.BaseName]));
+                    links.Add(("承認経路マスタ", nameMap[Route.BaseName], null));
 
                 AddPageFrameLinks(designData, designDir,
                     links.Where(e => result.CreatedModules.Contains(e.Module)).ToList(), result);
@@ -248,8 +250,40 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
                     }
                     """;
 
+        //一覧だけのページ (新規作成・詳細遷移・削除なし。新しい順。条件は任意)
+        static void ConfigureReadOnlyList(PageLink link, MatchConditionBase? condition)
+        {
+            link.ListPageDesign.UseNavigateToCreate = false;
+            if (link.ListPageDesign.ListFieldDesign is not ListFieldDesign list) return;
+            list.CanNavigateToDetail = false;
+            list.CanCreate = false;
+            list.CanUpdate = false;
+            list.CanDelete = false;
+            list.SearchCondition.SortConditions = [new SortCondition { Variable = "Id.Value", IsDescending = true }];
+            list.SearchCondition.Condition = condition;
+        }
+
+        //承認待ち一覧: 自分が今待たれている行だけ (条件エディタの正準形 = Multi 直下に葉)
+        static MatchConditionBase CreateWaitingListCondition()
+        {
+            var condition = new MultiMatchCondition();
+            condition.Children.Add(new FieldVariableMatchCondition
+            {
+                SearchTargetVariable = "ApproverUser.Value",
+                Comparison = MatchComparison.Equal,
+                Variable = "CurrentUser.Id.Value",
+            });
+            condition.Children.Add(new FieldValueMatchConditionNonNull
+            {
+                SearchTargetVariable = "Status.Value",
+                Comparison = MatchComparison.Equal,
+                Value = new StringValue { Value = "Waiting" },
+            });
+            return condition;
+        }
+
         internal static void AddPageFrameLinks(DesignData designData, string designDir,
-            List<(string Title, string Module)> links, SetupResult result)
+            List<(string Title, string Module, Action<PageLink>? Configure)> links, SetupResult result)
         {
             if (links.Count == 0) return;
 
@@ -262,10 +296,12 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
             }
 
             var added = false;
-            foreach (var (title, module) in links)
+            foreach (var (title, module, configure) in links)
             {
                 if (frame.Left.Links.Any(e => e.Module == module)) continue;
-                frame.Left.Links.Add(new PageLink { Title = title, Module = module });
+                var link = new PageLink { Title = title, Module = module };
+                configure?.Invoke(link);
+                frame.Left.Links.Add(link);
                 added = true;
             }
             if (!added) return;

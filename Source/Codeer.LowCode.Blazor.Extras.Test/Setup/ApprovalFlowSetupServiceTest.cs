@@ -30,6 +30,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Setup
                 "ApprovalRoute", "ApprovalRouteStep", "ApprovalRouteStepMember",
             }));
             Assert.That(File.Exists(Path.Combine(ProjectDir, "Modules", "ApprovalFlowMember.mod.cs")), Is.True);
+            Assert.That(File.Exists(Path.Combine(ProjectDir, "Modules", "ApprovalFlow.mod.cs")), Is.True);
             Assert.That(File.Exists(Path.Combine(ProjectDir, "Modules", "ApprovalRoute.mod.cs")), Is.True);
 
             //実際の読込経路で読み直して構造を検証する
@@ -82,6 +83,19 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Setup
             var frame = d.PageFrames.Find("Main")!;
             Assert.That(frame.Left.Links.Select(e => e.Module),
                 Does.Contain("ApprovalFlowMember").And.Contain("ApprovalFlow").And.Contain("ApprovalRoute"));
+
+            //承認待ち一覧 / 承認フロー管理は一覧だけ (詳細遷移・削除なし)。承認待ち一覧は自分の Waiting 行だけ
+            var memberLink = frame.Left.Links.First(e => e.Module == "ApprovalFlowMember");
+            var memberList = (ListFieldDesign)memberLink.ListPageDesign.ListFieldDesign;
+            Assert.That(memberLink.ListPageDesign.UseNavigateToCreate, Is.False);
+            Assert.That(memberList.CanNavigateToDetail, Is.False);
+            Assert.That(memberList.CanDelete, Is.False);
+            var waiting = (MultiMatchCondition)memberList.SearchCondition.Condition!;
+            Assert.That(waiting.Children.OfType<FieldVariableMatchCondition>().Single().Variable, Is.EqualTo("CurrentUser.Id.Value"));
+            Assert.That(((StringValue)waiting.Children.OfType<FieldValueMatchConditionNonNull>().Single().Value!).Value, Is.EqualTo("Waiting"));
+            var flowList = (ListFieldDesign)frame.Left.Links.First(e => e.Module == "ApprovalFlow").ListPageDesign.ListFieldDesign;
+            Assert.That(flowList.CanNavigateToDetail, Is.False);
+            Assert.That(flowList.SearchCondition.Condition, Is.Null);
 
             //DDL: 全テーブルの CREATE + 申請書の FK 列 ALTER
             var ddl = string.Join("\n", result.Ddl);

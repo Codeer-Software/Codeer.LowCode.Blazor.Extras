@@ -48,7 +48,7 @@ namespace Extras.Server.Controllers
 
         //呼び名→送信インフラの対応表は MailSenderTable (独自インフラはそこに足す)
         IMailSender? CreateSender(string name)
-            => MailSenderTable.Create(name, CreateUserTokenResolver());
+            => MailSenderTable.Create(name, ResolveGmailUserTokenAsync);
 
         //「自分を差出人にする」(IsFromCurrentUser) の操作ユーザー解決
         //(認証ユーザーId → デザインの CurrentUser モジュールのメール/表示名)
@@ -56,22 +56,15 @@ namespace Extras.Server.Controllers
         {
             var mail = SystemConfig.Instance.Mail;
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
-            var store = CreateUserStore();
-            return () => store.FindCurrentUserAsync(userId);
+            var resolver = new MailCurrentUserResolver(DesignerService.GetDesignData(), _dataService.ModuleDataIO, e => _logger.LogError("{Error}", e));
+            return () => resolver.FindCurrentUserAsync(userId);
         }
 
-        //差出人ごとのユーザートークン検索 (Gmail ユーザー同意モード)。
-        //トークン列は書き込み専用+暗号化のためサーバー内部の SQL (MailUserStore) で読んで復号する
-        //(CurrentUser モジュールに GmailTokenField が無ければ使われない)
-        Func<string, Task<string?>>? CreateUserTokenResolver()
-        {
-            var store = CreateUserStore();
-            return address => store.FindRefreshTokenAsync(address, SystemConfig.Instance.Gmail.TokenEncryptionKey);
-        }
-
-        //ユーザーモジュールの検索は製品のデータ層 (システム内部経路) を通す。生SQLは書かない
-        MailUserStore CreateUserStore()
-            => new(DesignerService.GetDesignData(),
-                _dataService.ModuleDataIO.GetSystemRecordsInternalAsync, e => _logger.LogError("{Error}", e));
+        //Gmail ユーザー同意モードの差出人ごとのユーザートークン (Gmail 送信器からだけ呼ばれる)。
+        //トークン列は書き込み専用+暗号化のため、パスワードハッシュのログイン照合と同じくサーバー側の SQL で読んで復号する
+        //(SQL はデザインのテーブル名・列名から組み立てられ、実行だけ DbAccess に渡す。CurrentUser モジュールに GmailTokenField が無ければ使われない)
+        Task<string?> ResolveGmailUserTokenAsync(string mailAddress)
+            => new GmailUserTokenStore(DesignerService.GetDesignData(), _dataService.DbAccess, e => _logger.LogError("{Error}", e))
+                .FindRefreshTokenAsync(mailAddress, SystemConfig.Instance.Gmail.TokenEncryptionKey);
     }
 }

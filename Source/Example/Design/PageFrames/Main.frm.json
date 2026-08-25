@@ -1041,10 +1041,10 @@
           "CanBulkDataUpdate": false,
           "CanBulkDataDownload": false,
           "UseSubmitButton": false,
-          "UseNavigateToCreate": true,
+          "UseNavigateToCreate": false,
           "ListFieldDesign": {
             "LayoutName": "",
-            "CanNavigateToDetail": true,
+            "CanNavigateToDetail": false,
             "NavigateModuleUrlSegment": "",
             "CanCustomizeColumns": false,
             "FixedColumnCount": 0,
@@ -1053,17 +1053,45 @@
             "SearchCondition": {
               "LimitCount": 50,
               "SelectFields": [],
-              "SortConditions": [],
+              "SortConditions": [
+                {
+                  "Variable": "Id.Value",
+                  "IsDescending": true
+                }
+              ],
               "SortFieldVariable": "",
               "SortDescending": false,
-              "ModuleName": ""
+              "ModuleName": "",
+              "Condition": {
+                "IsOrMatch": false,
+                "IsNot": false,
+                "Children": [
+                  {
+                    "SearchTargetVariable": "ApproverUser.Value",
+                    "Comparison": "Equal",
+                    "Variable": "CurrentUser.Id.Value",
+                    "TypeFullName": "Codeer.LowCode.Blazor.Repository.Match.FieldVariableMatchCondition"
+                  },
+                  {
+                    "SearchTargetVariable": "Status.Value",
+                    "Comparison": "Equal",
+                    "Value": {
+                      "Value": "Waiting",
+                      "TypeFullName": "Codeer.LowCode.Blazor.Repository.StringValue"
+                    },
+                    "TypeFullName": "Codeer.LowCode.Blazor.Repository.Match.FieldValueMatchConditionNonNull"
+                  }
+                ],
+                "Name": "",
+                "TypeFullName": "Codeer.LowCode.Blazor.Repository.Match.MultiMatchCondition"
+              }
             },
             "PagerPosition": "Top",
             "ReplaceMode": "None",
             "DeleteTogether": false,
             "CanCreate": false,
             "CanUpdate": false,
-            "CanDelete": true,
+            "CanDelete": false,
             "CanUserSort": true,
             "CanSelect": false,
             "UseIndexSort": false,
@@ -1107,10 +1135,10 @@
           "CanBulkDataUpdate": false,
           "CanBulkDataDownload": false,
           "UseSubmitButton": false,
-          "UseNavigateToCreate": true,
+          "UseNavigateToCreate": false,
           "ListFieldDesign": {
             "LayoutName": "",
-            "CanNavigateToDetail": true,
+            "CanNavigateToDetail": false,
             "NavigateModuleUrlSegment": "",
             "CanCustomizeColumns": false,
             "FixedColumnCount": 0,
@@ -1119,7 +1147,12 @@
             "SearchCondition": {
               "LimitCount": 50,
               "SelectFields": [],
-              "SortConditions": [],
+              "SortConditions": [
+                {
+                  "Variable": "Id.Value",
+                  "IsDescending": true
+                }
+              ],
               "SortFieldVariable": "",
               "SortDescending": false,
               "ModuleName": ""
@@ -1129,7 +1162,7 @@
             "DeleteTogether": false,
             "CanCreate": false,
             "CanUpdate": false,
-            "CanDelete": true,
+            "CanDelete": false,
             "CanUserSort": true,
             "CanSelect": false,
             "UseIndexSort": false,

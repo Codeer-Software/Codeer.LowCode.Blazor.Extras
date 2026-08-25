@@ -1,3 +1,4 @@
+using Codeer.LowCode.Blazor.Repository.Design;
 using Codeer.LowCode.Blazor.DataIO.Db.Definition;
 using Codeer.LowCode.Blazor.DesignLogic;
 using Codeer.LowCode.Blazor.Json;
@@ -33,7 +34,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
                 if (options.AddPageFrameLink)
                 {
                     ApprovalFlowSetupService.AddPageFrameLinks(designData, designDir,
-                        new List<(string, string)> { ("メール送信履歴", options.ModuleName) }, result);
+                        new List<(string, string, Action<PageLink>?)> { ("メール送信履歴", options.ModuleName, null) }, result);
                 }
             }
 

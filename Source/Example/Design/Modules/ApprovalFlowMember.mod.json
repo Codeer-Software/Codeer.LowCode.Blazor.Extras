@@ -547,122 +547,41 @@
   },
   "ListLayouts": {
     "": {
-      "HeaderTitle": "",
       "DataOnlyFields": [
         "StepType",
-        "IsFinalStep"
+        "IsFinalStep",
+        "Status",
+        "ApproverUser"
       ],
-      "FocusControlMode": "Inherit",
-      "IsFocusWrap": false,
-      "OnBeforeInitialization": "",
-      "OnAfterInitialization": "OnAfterInitialization",
-      "OnFieldDataChanged": "",
       "Elements": [
         [
           {
+            "FieldName": "Flow.Applicant",
+            "Label": "申請者",
+            "Width": 180
+          },
+          {
+            "FieldName": "Flow.TargetModuleName",
+            "Label": "申請モジュール",
+            "Width": 180
+          },
+          {
+            "FieldName": "Flow.RouteName",
+            "Label": "経路"
+          },
+          {
             "FieldName": "StepName",
-            "ContextMenu": "",
             "Label": "ステップ",
-            "IsMaxWidthFixed": false,
-            "ColumnSpan": 1,
-            "RowSpan": 1,
-            "TextWrap": "Unset",
-            "CanResize": false,
-            "CanUserSort": true,
-            "ClassName": "",
-            "FontFamily": "",
-            "Color": "",
-            "BackgroundColor": "",
-            "DetailLayoutName": "",
-            "ListElementComponent": ""
-          },
-          {
-            "FieldName": "ApproverUser",
-            "ContextMenu": "",
-            "Label": "承認者",
-            "IsMaxWidthFixed": false,
-            "ColumnSpan": 1,
-            "RowSpan": 1,
-            "TextWrap": "Unset",
-            "CanResize": false,
-            "CanUserSort": true,
-            "ClassName": "",
-            "FontFamily": "",
-            "Color": "",
-            "BackgroundColor": "",
-            "DetailLayoutName": "",
-            "ListElementComponent": ""
-          },
-          {
-            "FieldName": "Status",
-            "ContextMenu": "",
-            "Label": "状態",
-            "IsMaxWidthFixed": false,
-            "ColumnSpan": 1,
-            "RowSpan": 1,
-            "TextWrap": "Unset",
-            "CanResize": false,
-            "CanUserSort": true,
-            "ClassName": "",
-            "FontFamily": "",
-            "Color": "",
-            "BackgroundColor": "",
-            "DetailLayoutName": "",
-            "ListElementComponent": ""
-          },
-          {
-            "FieldName": "ActedAt",
-            "ContextMenu": "",
-            "Label": "処理日時",
-            "IsMaxWidthFixed": false,
-            "ColumnSpan": 1,
-            "RowSpan": 1,
-            "TextWrap": "Unset",
-            "CanResize": false,
-            "CanUserSort": true,
-            "ClassName": "",
-            "FontFamily": "",
-            "Color": "",
-            "BackgroundColor": "",
-            "DetailLayoutName": "",
-            "ListElementComponent": ""
-          },
-          {
-            "FieldName": "AttemptNo",
-            "ContextMenu": "",
-            "Label": "試行",
-            "IsMaxWidthFixed": false,
-            "ColumnSpan": 1,
-            "RowSpan": 1,
-            "TextWrap": "Unset",
-            "CanResize": false,
-            "CanUserSort": true,
-            "ClassName": "",
-            "FontFamily": "",
-            "Color": "",
-            "BackgroundColor": "",
-            "DetailLayoutName": "",
-            "ListElementComponent": ""
+            "Width": 160
           },
           {
             "FieldName": "OpenRequestButton",
-            "ContextMenu": "",
-            "Label": "",
-            "IsMaxWidthFixed": false,
-            "ColumnSpan": 1,
-            "RowSpan": 1,
-            "TextWrap": "Unset",
-            "CanResize": false,
-            "CanUserSort": true,
-            "ClassName": "",
-            "FontFamily": "",
-            "Color": "",
-            "BackgroundColor": "",
-            "DetailLayoutName": "",
-            "ListElementComponent": ""
+            "Label": "操作",
+            "Width": 90
           }
         ]
-      ]
+      ],
+      "OnAfterInitialization": "OnAfterInitialization"
     }
   },
   "SearchLayouts": {
@@ -765,7 +684,7 @@
   "UseListPageSubmitButton": false,
   "ListPageFieldDesign": {
     "LayoutName": "",
-    "CanNavigateToDetail": true,
+    "CanNavigateToDetail": false,
     "NavigateModuleUrlSegment": "",
     "CanCustomizeColumns": false,
     "FixedColumnCount": 0,
@@ -774,17 +693,45 @@
     "SearchCondition": {
       "LimitCount": 50,
       "SelectFields": [],
-      "SortConditions": [],
+      "SortConditions": [
+        {
+          "Variable": "Id.Value",
+          "IsDescending": true
+        }
+      ],
       "SortFieldVariable": "",
       "SortDescending": false,
-      "ModuleName": ""
+      "ModuleName": "",
+      "Condition": {
+        "IsOrMatch": false,
+        "IsNot": false,
+        "Children": [
+          {
+            "SearchTargetVariable": "ApproverUser.Value",
+            "Comparison": "Equal",
+            "Variable": "CurrentUser.Id.Value",
+            "TypeFullName": "Codeer.LowCode.Blazor.Repository.Match.FieldVariableMatchCondition"
+          },
+          {
+            "SearchTargetVariable": "Status.Value",
+            "Comparison": "Equal",
+            "Value": {
+              "Value": "Waiting",
+              "TypeFullName": "Codeer.LowCode.Blazor.Repository.StringValue"
+            },
+            "TypeFullName": "Codeer.LowCode.Blazor.Repository.Match.FieldValueMatchConditionNonNull"
+          }
+        ],
+        "Name": "",
+        "TypeFullName": "Codeer.LowCode.Blazor.Repository.Match.MultiMatchCondition"
+      }
     },
     "PagerPosition": "Top",
     "ReplaceMode": "None",
     "DeleteTogether": false,
     "CanCreate": false,
     "CanUpdate": false,
-    "CanDelete": true,
+    "CanDelete": false,
     "CanUserSort": true,
     "CanSelect": false,
     "UseIndexSort": false,
@@ -803,5 +750,5 @@
   },
   "CanBulkDataUpdate": false,
   "CanBulkDataDownload": false,
-  "PageTitle": ""
+  "PageTitle": "承認待ち一覧"
 }
