@@ -645,9 +645,6 @@
   <data name="MailSubjectOrBodyRequired" xml:space="preserve">
     <value>Both the subject and the body are empty. Set a template field or a fixed text.</value>
   </data>
-  <data name="BulkMailVariableNotFoundFormat" xml:space="preserve">
-    <value>The variable '{0}' does not exist in the module '{1}'.</value>
-  </data>
   <data name="BulkMailSaveBeforeSend" xml:space="preserve">
     <value>There are unsaved changes. Save the record before sending.</value>
   </data>

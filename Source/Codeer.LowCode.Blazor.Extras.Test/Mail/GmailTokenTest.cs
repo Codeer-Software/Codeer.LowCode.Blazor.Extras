@@ -14,6 +14,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Mail
     public class GmailTokenTest
     {
         const string Key = "test-encryption-key";
+        static readonly GmailSettings Settings = new() { TokenEncryptionKey = Key };
         const string PlainToken = """{"refresh_token":"R1"}""";
 
         //GmailTokenHelper: 送られてきた平文を暗号化して列に入れる (送られてこないフィールドは触らない=既存維持)
@@ -25,25 +26,25 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Mail
             //フィールドが自分で値を送ってくる → 暗号化されて入る
             var data = new ModuleData { Name = "AppUser" };
             data.Fields["GmailToken"] = new GmailTokenFieldData { RefreshToken = PlainToken };
-            GmailTokenHelper.ProtectGmailTokens(module, data, Key);
+            GmailTokenHelper.ProtectGmailTokens(module, data, Settings);
             var stored = (data.Fields["GmailToken"] as GmailTokenFieldData)!.RefreshToken!;
             Assert.That(stored, Does.StartWith("v1:"));
             Assert.That(stored, Does.Not.Contain("refresh_token"));
             Assert.That(GmailTokenProtector.Unprotect(stored, Key), Is.EqualTo(PlainToken));
 
             //何度呼んでも二重暗号化しない
-            GmailTokenHelper.ProtectGmailTokens(module, data, Key);
+            GmailTokenHelper.ProtectGmailTokens(module, data, Settings);
             Assert.That((data.Fields["GmailToken"] as GmailTokenFieldData)!.RefreshToken, Is.EqualTo(stored));
 
             //送られてこない → 何も足さない (空入力=既存トークン維持)
             var noInput = new ModuleData { Name = "AppUser" };
-            GmailTokenHelper.ProtectGmailTokens(module, noInput, Key);
+            GmailTokenHelper.ProtectGmailTokens(module, noInput, Settings);
             Assert.That(noInput.Fields.ContainsKey("GmailToken"), Is.False);
 
             //空 = 登録解除。暗号化せず空のまま書く
             var cleared = new ModuleData { Name = "AppUser" };
             cleared.Fields["GmailToken"] = new GmailTokenFieldData { RefreshToken = string.Empty };
-            GmailTokenHelper.ProtectGmailTokens(module, cleared, Key);
+            GmailTokenHelper.ProtectGmailTokens(module, cleared, Settings);
             Assert.That((cleared.Fields["GmailToken"] as GmailTokenFieldData)!.RefreshToken, Is.Empty);
         }
 
@@ -54,7 +55,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Mail
             var module = CreateUserModule();
             var data = new ModuleData { Name = "AppUser" };
             data.Fields["GmailToken"] = new GmailTokenFieldData { RefreshToken = PlainToken };
-            Assert.Throws<InvalidOperationException>(() => GmailTokenHelper.ProtectGmailTokens(module, data, string.Empty));
+            Assert.Throws<InvalidOperationException>(() => GmailTokenHelper.ProtectGmailTokens(module, data, new GmailSettings()));
         }
 
         //AES-GCM: 毎回違う暗号文・鍵違いと形式違いは復号できない
@@ -127,7 +128,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Mail
         }
 
         static GmailUserTokenStore CreateSqlStore(DesignData designData, DataSourceType type = DataSourceType.SQLite, Action<string>? logError = null)
-            => new(designData, new FakeDb { DataSourceType = type }, logError ?? (_ => { }));
+            => new(designData, new FakeDb { DataSourceType = type }, Settings, logError ?? (_ => { }));
 
         //識別子の引用符とパラメータ接頭辞はデータソースの種類に合わせる (全 DB 共通で使える)
         [TestCase(DataSourceType.SQLServer, "SELECT [gmail_token] AS token_value FROM [app_users] WHERE [email] = @p0", "@p0")]
@@ -174,14 +175,14 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Mail
             var errors = new List<string>();
             var store = CreateSqlStore(CreateDesignData(module), logError: errors.Add);
 
-            Assert.That(await store.FindRefreshTokenAsync("tanaka@example.com", Key), Is.Null);
+            Assert.That(await store.FindRefreshTokenAsync("tanaka@example.com"), Is.Null);
             Assert.That(errors, Is.Empty);
 
             //CurrentUser モジュールが存在しない → null + エラーログ
             var brokenDesign = new DesignData();
             brokenDesign.AppSettings.CurrentUserModuleDesignName = "NoSuchModule";
             var broken = CreateSqlStore(brokenDesign, logError: errors.Add);
-            Assert.That(await broken.FindRefreshTokenAsync("tanaka@example.com", Key), Is.Null);
+            Assert.That(await broken.FindRefreshTokenAsync("tanaka@example.com"), Is.Null);
             Assert.That(errors, Has.Count.EqualTo(1));
         }
     }

@@ -9,6 +9,7 @@ using Codeer.LowCode.Blazor.Repository;
 using Codeer.LowCode.Blazor.Repository.Data;
 using Codeer.LowCode.Blazor.Repository.Design;
 using Codeer.LowCode.Blazor.Repository.Match;
+using static Codeer.LowCode.Blazor.Extras.Server.ModuleDataValues;
 
 namespace Codeer.LowCode.Blazor.Extras.Server.Approval
 {
@@ -231,7 +232,6 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Approval
         {
             if (flow.Status != ApprovalFlowStatus.InProgress.ToDesignValue()) return ApprovalActionResult.Failure(Resources.ApprovalError_InvalidState);
 
-            var currentStepNo = GetCurrentStepNo(members);
             var member = FindWaitingApprover(members, ctx.ActorId);
             if (member == null) return ApprovalActionResult.Failure(Resources.ApprovalError_NotApprover);
             if (member.IsCommentRequired && string.IsNullOrWhiteSpace(request.Comment))
@@ -351,16 +351,17 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Approval
         {
             public ApprovalFlowFieldDesign FieldDesign { get; init; } = null!;
             public ModuleDesign TargetModule { get; init; } = null!;
-            public ModuleDesign FlowModule { get; init; } = null!;
-            public ModuleDesign MemberModule { get; init; } = null!;
-            public ModuleDesign HistoryModule { get; init; } = null!;
+            public ApprovalModules Modules { get; init; } = null!;
+            public string ActorId { get; init; } = string.Empty;
+
+            public ModuleDesign FlowModule => Modules.FlowModule;
+            public ModuleDesign MemberModule => Modules.MemberModule;
+            public ModuleDesign HistoryModule => Modules.HistoryModule;
 
             //契約(役割→フィールド名のマッピング)。エンジンはフィールド名をこの解決経由で読む
-            public ApprovalFlowContractFieldDesign Flow { get; init; } = null!;
-            public ApprovalMemberContractFieldDesign Member { get; init; } = null!;
-            public ApprovalHistoryContractFieldDesign History { get; init; } = null!;
-
-            public string ActorId { get; init; } = string.Empty;
+            public ApprovalFlowContractFieldDesign Flow => Modules.Flow;
+            public ApprovalMemberContractFieldDesign Member => Modules.Member;
+            public ApprovalHistoryContractFieldDesign History => Modules.History;
         }
 
         async Task<(Context?, string)> ResolveContextAsync(string targetModuleName, string fieldName)
@@ -372,19 +373,9 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Approval
             if (targetModule == null || fieldDesign == null || string.IsNullOrEmpty(fieldDesign.DbColumn))
                 return (null, Resources.ApprovalError_DesignNotFound);
 
-            //メンバー・履歴モジュールはフロー契約の Members / Histories 一覧の参照先として決まる
-            var flowModule = _designData.Modules.Find(fieldDesign.FlowModuleName);
-            var flowContract = ApprovalContracts.Flow(flowModule);
-            var memberModule = _designData.Modules.Find(ApprovalContracts.GetMemberModuleName(flowModule));
-            var historyModule = _designData.Modules.Find(ApprovalContracts.GetHistoryModuleName(flowModule));
-            var memberContract = ApprovalContracts.Member(memberModule);
-            var historyContract = ApprovalContracts.History(historyModule);
-            if (flowModule == null || flowContract == null ||
-                memberModule == null || memberContract == null ||
-                historyModule == null || historyContract == null)
-            {
-                return (null, Resources.ApprovalError_DesignNotFound);
-            }
+            //承認モジュール群 (フロー / メンバー / 履歴) と契約は、クライアントと同じ解決を使う
+            var modules = ApprovalModules.Resolve(_designData, fieldDesign.FlowModuleName);
+            if (modules == null) return (null, Resources.ApprovalError_DesignNotFound);
 
             var currentUser = await _io.GetCurrentUser();
             var actorId = currentUser == null ? string.Empty : GetId(currentUser);
@@ -393,12 +384,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Approval
             {
                 FieldDesign = fieldDesign,
                 TargetModule = targetModule,
-                FlowModule = flowModule,
-                MemberModule = memberModule,
-                HistoryModule = historyModule,
-                Flow = flowContract,
-                Member = memberContract,
-                History = historyContract,
+                Modules = modules,
                 ActorId = actorId,
             }, string.Empty);
         }
@@ -500,7 +486,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Approval
             Id = GetId(row),
             Status = GetString(row, ctx.Flow.Status),
             TargetId = GetString(row, ctx.Flow.TargetId),
-            Applicant = (row.Fields.GetValueOrDefault(ctx.Flow.Applicant) as ValueFieldDataBase<string>)?.Value ?? string.Empty,
+            Applicant = GetString(row, ctx.Flow.Applicant),
             AttemptNo = GetInt(row, ctx.Flow.AttemptNo),
             Version = (row.Fields.GetValueOrDefault(SystemFieldNames.OptimisticLocking) as OptimisticLockingFieldData)?.GetValue()?.ToString() ?? string.Empty,
             OptimisticLocking = row.Fields.GetValueOrDefault(SystemFieldNames.OptimisticLocking) as OptimisticLockingFieldData,
@@ -537,7 +523,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Approval
                 CompletionPolicy = GetString(e, ctx.Member.CompletionPolicy),
                 IsCommentRequired = GetBool(e, ctx.Member.IsCommentRequiredOnReject),
                 ReturnScope = GetString(e, ctx.Member.ReturnScope),
-                ApproverUserId = (e.Fields.GetValueOrDefault(ctx.Member.ApproverUser) as ValueFieldDataBase<string>)?.Value ?? string.Empty,
+                ApproverUserId = GetString(e, ctx.Member.ApproverUser),
                 IsRequired = GetBool(e, ctx.Member.IsRequired),
                 Status = GetString(e, ctx.Member.Status),
             }).ToList();
@@ -620,7 +606,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Approval
             SetString(ctx.FlowModule, data, ctx.Flow.Status, ApprovalFlowStatus.InProgress.ToDesignValue());
             SetString(ctx.FlowModule, data, ctx.Flow.TargetModuleName, ctx.TargetModule.Name);
             SetString(ctx.FlowModule, data, ctx.Flow.TargetId, targetId);
-            SetLink(ctx.FlowModule, data, ctx.Flow.Applicant, ctx.ActorId);
+            SetString(ctx.FlowModule, data, ctx.Flow.Applicant, ctx.ActorId);
             SetNumber(ctx.FlowModule, data, ctx.Flow.AttemptNo, attemptNo);
             SetNumber(ctx.FlowModule, data, ctx.Flow.CurrentStepNo, FirstApprovalStepNo(route));
             return await _addInternalAsync(data);
@@ -648,7 +634,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Approval
                 foreach (var member in step.Members)
                 {
                     var data = new ModuleData { Name = ctx.MemberModule.Name };
-                    SetLink(ctx.MemberModule, data, ctx.Member.Flow, flowId);
+                    SetString(ctx.MemberModule, data, ctx.Member.Flow, flowId);
                     SetNumber(ctx.MemberModule, data, ctx.Member.AttemptNo, attemptNo);
                     SetNumber(ctx.MemberModule, data, ctx.Member.StepNo, stepNo);
                     SetString(ctx.MemberModule, data, ctx.Member.StepName, step.Name);
@@ -656,7 +642,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Approval
                     SetString(ctx.MemberModule, data, ctx.Member.CompletionPolicy, step.CompletionPolicy);
                     SetBool(ctx.MemberModule, data, ctx.Member.IsCommentRequiredOnReject, step.IsCommentRequiredOnReject);
                     SetString(ctx.MemberModule, data, ctx.Member.ReturnScope, step.ReturnScope);
-                    SetLink(ctx.MemberModule, data, ctx.Member.ApproverUser, member.UserId);
+                    SetString(ctx.MemberModule, data, ctx.Member.ApproverUser, member.UserId);
                     SetBool(ctx.MemberModule, data, ctx.Member.IsRequired, member.IsRequired);
                     SetBool(ctx.MemberModule, data, ctx.Member.IsFinalStep,
                         step.StepType == ApprovalStepType.Approval.ToDesignValue() && stepNo == lastApprovalStepNo);
@@ -696,10 +682,10 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Approval
         async Task AddHistoryAsync(Context ctx, string flowId, int attemptNo, string action, string comment)
         {
             var data = new ModuleData { Name = ctx.HistoryModule.Name };
-            SetLink(ctx.HistoryModule, data, ctx.History.Flow, flowId);
+            SetString(ctx.HistoryModule, data, ctx.History.Flow, flowId);
             SetNumber(ctx.HistoryModule, data, ctx.History.AttemptNo, attemptNo);
             SetString(ctx.HistoryModule, data, ctx.History.Action, action);
-            SetLink(ctx.HistoryModule, data, ctx.History.ActorUser, ctx.ActorId);
+            SetString(ctx.HistoryModule, data, ctx.History.ActorUser, ctx.ActorId);
             SetString(ctx.HistoryModule, data, ctx.History.Comment, comment);
             SetDateTime(ctx.HistoryModule, data, ctx.History.ActedAt, DateTime.Now);
             await _addInternalAsync(data);
@@ -743,8 +729,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Approval
                     is not MailFieldDesign mail) return;
 
                 //テンプレート解決に必要なフィールドパス (リンクパス可)
-                var paths = MailTemplateEngine.GetVariableNames(mail.Subject)
-                    .Concat(MailTemplateEngine.GetVariableNames(mail.Body))
+                var paths = MailTemplateEngine.GetVariableNames(mail.Subject, mail.Body)
                     .Concat([mail.ToVariable, mail.CcVariable, mail.BccVariable, mail.SubjectVariable,
                         mail.BodyVariable, mail.ReplyToVariable])
                     .Where(e => !string.IsNullOrEmpty(e))
@@ -784,8 +769,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Approval
                     //MailField と同じ規則: 値が入っていれば値、空なら変数のフィールド値をテンプレートにする
                     var subjectTemplate = ResolveMailText(row, mail.SubjectVariable, mail.Subject);
                     var bodyTemplate = ResolveMailText(row, mail.BodyVariable, mail.Body);
-                    var names = MailTemplateEngine.GetVariableNames(subjectTemplate)
-                        .Concat(MailTemplateEngine.GetVariableNames(bodyTemplate)).Distinct().ToList();
+                    var names = MailTemplateEngine.GetVariableNames(subjectTemplate, bodyTemplate);
                     var variables = MailVariableResolver.Resolve(ctx.MemberModule, row, names, _designData.Modules.Find);
 
                     //差出人はシステム (インフラ既定)。申請者への返信は ReplyToVariable で表現する
@@ -818,8 +802,6 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Approval
         static List<string> SplitAddresses(string addresses)
             => addresses.Split([',', ';', '\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
 
-        //親レコードの FK と State/Applicant コピー列を書き戻す (コピー列はデザインで
-        //列名が設定されているときだけ実際に書かれる = FieldData 経由の列マッピング)
         //申請時に親レコードへフロー行の FK を書く (唯一の親書き込み。以降の状態遷移で親は触らない)
         async Task UpdateTargetFlowIdAsync(Context ctx, string targetId, string flowId)
         {
@@ -855,6 +837,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Approval
             return fieldData;
         }
 
+        //文字列系 (Text / Select / Link の FK 等。値型は ValueFieldDataBase<string>)
         static void SetString(ModuleDesign design, ModuleData data, string fieldName, string value)
         {
             if (string.IsNullOrEmpty(fieldName)) return; //任意役割の「使わない」宣言
@@ -886,26 +869,6 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Approval
             ((DateTimeFieldData)fieldData).Value = value;
             data.Fields[fieldName] = fieldData;
         }
-
-        static void SetLink(ModuleDesign design, ModuleData data, string fieldName, string value)
-        {
-            if (string.IsNullOrEmpty(fieldName)) return; //任意役割の「使わない」宣言
-            var fieldData = CreateFieldData(design, fieldName);
-            ((ValueFieldDataBase<string>)fieldData).Value = value;
-            data.Fields[fieldName] = fieldData;
-        }
-
-        static string GetId(ModuleData data)
-            => (data.Fields.GetValueOrDefault(SystemFieldNames.Id) as IdFieldData)?.Value ?? string.Empty;
-
-        static string GetString(ModuleData data, string fieldName)
-            => (data.Fields.GetValueOrDefault(fieldName) as ValueFieldDataBase<string>)?.Value ?? string.Empty;
-
-        static int GetInt(ModuleData data, string fieldName)
-            => (int)((data.Fields.GetValueOrDefault(fieldName) as NumberFieldData)?.Value ?? 0);
-
-        static bool GetBool(ModuleData data, string fieldName)
-            => (data.Fields.GetValueOrDefault(fieldName) as BooleanFieldData)?.Value == true;
 
         static FieldValueMatchCondition EqualsCondition(string variable, string value) => new()
         {

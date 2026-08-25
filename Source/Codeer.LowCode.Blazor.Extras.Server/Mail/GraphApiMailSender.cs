@@ -86,10 +86,10 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
 
         //動的 From はそのユーザーのメールボックスから送る (アプリケーション権限 Mail.Send はテナント内の全ユーザーで送れる。
         //許可ドメインは MailDispatcher が検証済み)。送信済みアイテムも本人に残る
-        internal string GetSendAsUser(MailMessage message)
+        string GetSendAsUser(MailMessage message)
             => string.IsNullOrEmpty(message.From) ? _settings.SenderMailAddress : message.From;
 
-        internal JsonObject CreateSendMailPayload(MailMessage message)
+        JsonObject CreateSendMailPayload(MailMessage message)
         {
             static JsonObject Address(string address) => new() { ["emailAddress"] = new JsonObject { ["address"] = address } };
             static JsonArray Addresses(IEnumerable<string> addresses) => new(addresses.Select(e => (JsonNode)Address(e)).ToArray());

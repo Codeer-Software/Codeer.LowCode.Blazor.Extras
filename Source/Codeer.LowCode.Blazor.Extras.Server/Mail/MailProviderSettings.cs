@@ -22,26 +22,6 @@
         public string UserName { get; set; } = string.Empty;
 
         public string Password { get; set; } = string.Empty;
-
-        /// <summary>
-        /// 旧形式の単一 SMTP 設定 "MailSettings" を写して後方互換を保つ
-        /// (新しい SMTP 設定にホストが書かれていればそちらを優先)。
-        /// </summary>
-        public static SmtpSettings Normalize(SmtpSettings? settings, MailSettings? legacySettings)
-        {
-            var result = settings ?? new SmtpSettings();
-            if (string.IsNullOrEmpty(legacySettings?.Host) || !string.IsNullOrEmpty(result.Host)) return result;
-
-            return new SmtpSettings
-            {
-                Host = legacySettings.Host,
-                Port = legacySettings.Port,
-                SSL = legacySettings.SSL,
-                Password = legacySettings.Password,
-                SenderMailAddress = legacySettings.SenderMailAddress,
-                SenderDisplayName = legacySettings.SenderDisplayName,
-            };
-        }
     }
 
     /// <summary>Microsoft Graph (sendMail・アプリケーション権限) の設定。</summary>

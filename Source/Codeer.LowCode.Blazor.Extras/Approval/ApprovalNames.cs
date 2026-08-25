@@ -25,10 +25,10 @@ namespace Codeer.LowCode.Blazor.Extras.Approval
     }
 
     /// <summary>フロー状態 (保存値 = 文字列) に対する判定。</summary>
-    public static class ApprovalFlowStatusLogic
+    internal static class ApprovalFlowStatusLogic
     {
         /// <summary>申請内容を編集して再申請できる状態か。</summary>
-        public static bool CanResubmit(string? status)
+        internal static bool CanResubmit(string? status)
             => Enum.TryParse<ApprovalFlowStatus>(status, out var s) &&
                s is ApprovalFlowStatus.Rejected or ApprovalFlowStatus.Returned or ApprovalFlowStatus.Withdrawn;
     }
@@ -65,7 +65,6 @@ namespace Codeer.LowCode.Blazor.Extras.Approval
         [DesignEnumMember(DisplayText = "$ApprovalStepType_Confirmation")]
         Confirmation,
     }
-
 
     /// <summary>ステップの完了条件 (メンバー行に保存)。デザイン enum として公開。</summary>
     [DesignEnum]

@@ -18,7 +18,8 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
     /// </remarks>
     public static class GmailTokenHelper
     {
-        public static void ProtectGmailTokens(ModuleDesign moduleDesign, ModuleData data, string encryptionKey)
+        /// <param name="settings">Gmail 設定 (列の暗号化鍵 TokenEncryptionKey を使う)。</param>
+        public static void ProtectGmailTokens(ModuleDesign moduleDesign, ModuleData data, GmailSettings settings)
         {
             foreach (var tokenFieldDesign in moduleDesign.Fields.OfType<GmailTokenFieldDesign>())
             {
@@ -33,7 +34,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
 
                 data.Fields[tokenFieldDesign.Name] = new GmailTokenFieldData
                 {
-                    RefreshToken = GmailTokenProtector.Protect(tokenData.RefreshToken, encryptionKey),
+                    RefreshToken = GmailTokenProtector.Protect(tokenData.RefreshToken, settings.TokenEncryptionKey),
                 };
             }
         }

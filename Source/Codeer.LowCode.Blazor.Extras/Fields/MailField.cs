@@ -48,8 +48,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         bool _isSending;
 
         /// <summary>送信中か (ボタンの二重実行防止)。</summary>
-        [ScriptHide]
-        public bool IsSending => _isSending;
+        internal bool IsSending => _isSending;
 
         [ScriptHide]
         public override bool IsModified => false;
@@ -134,8 +133,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             //テンプレート (値が入っていれば値、空なら変数のフィールド値) を自レコードで差し込み解決
             var subjectTemplate = ResolveValueFirst(data, Subject, Design.SubjectVariable);
             var bodyTemplate = ResolveValueFirst(data, Body, Design.BodyVariable);
-            var names = MailTemplateEngine.GetVariableNames(subjectTemplate)
-                .Concat(MailTemplateEngine.GetVariableNames(bodyTemplate)).Distinct().ToList();
+            var names = MailTemplateEngine.GetVariableNames(subjectTemplate, bodyTemplate);
             var variables = MailVariableResolver.Resolve(design, data, names,
                 name => Services.AppInfoService.GetDesignData().Modules.Find(name));
 
@@ -159,7 +157,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             };
             _attachments.Clear();
 
-            var result = await MailTransport.SendAsync(GetHttpService(), request);
+            var result = await MailTransport.SendAsync(Services.Provider?.GetService<IHttpService>(), request);
             await MailSendLogger.LogFailuresAsync(Services, result);
             return result;
         }
@@ -172,7 +170,5 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
 
         static List<string> SplitAddresses(string addresses)
             => addresses.Split([',', ';', '\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
-
-        IHttpService? GetHttpService() => Services.Provider?.GetService<IHttpService>();
     }
 }

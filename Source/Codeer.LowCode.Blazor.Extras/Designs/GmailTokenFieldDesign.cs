@@ -17,7 +17,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
     /// 入力された平文はサーバー側で暗号化されてから列に入る
     /// (Extras.Server の GmailTokenHelper.ProtectGmailTokens + Gmail 設定の TokenEncryptionKey)。
     /// 送信時はサーバーが差出人アドレスでこのモジュールを検索して復号する
-    /// (検索先はデザインの CurrentUser モジュール。アドレス列は Mail.UserEmailFieldName、トークン列はこのフィールドの型で判別)。
+    /// (検索先はデザインの CurrentUser モジュール。アドレス列は MailSenderContractField の Email、トークン列はこのフィールドの型で判別)。
     /// </summary>
     [ToolboxIcon(PackIconMaterialKind = "EmailLock")]
     [Designer(DisplayName = "$GmailTokenField")]

@@ -7,7 +7,7 @@ namespace Codeer.LowCode.Blazor.Extras.Mail
     /// POST されるものと同じ内容を受け取る。HTTP を介さないホスト (デスクトップアプリ =
     /// MailDispatcher 直呼び) が設定する。
     /// </summary>
-    public interface IMailTransportHandler
+    internal interface IMailTransportHandler
     {
         /// <summary>= POST SendMailEndPoint</summary>
         Task<MailSendResult> SendAsync(MailSendRequest request);
@@ -28,7 +28,7 @@ namespace Codeer.LowCode.Blazor.Extras.Mail
         public static string BulkSearchMailEndPoint { get; set; } = string.Empty;
 
         /// <summary>設定すると、全送信が HTTP エンドポイントの代わりにこのハンドラを通る。</summary>
-        public static IMailTransportHandler? Handler { get; set; }
+        internal static IMailTransportHandler? Handler { get; set; }
 
         internal static async Task<MailSendResult> SendAsync(IHttpService? http, MailSendRequest request)
             => await PostAsync(http, SendMailEndPoint, request, static (handler, r) => handler.SendAsync(r));

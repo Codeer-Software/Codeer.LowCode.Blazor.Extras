@@ -9,7 +9,7 @@
 @* 一覧ページの一括ダウンロード/一括更新ボタンと同じ見た目 (アイコンのみ) *@
 @if (Field.CanDownload)
 {
-  <button type="button" class="btn btn-outline-secondary" style="@StyleString"
+  <button type="button" class="btn btn-outline-secondary" style="@Field.GetOwnStyleString()"
           disabled="@(Field.IsTransferring || !Field.IsEnabled)"
           @onclick="@(async () => await Field.DownloadAsync())"
           aria-label="Bulk Download" data-system="bulk-download">
@@ -20,14 +20,14 @@
 {
   if (Field.IsTransferring || !Field.IsEnabled)
   {
-    <span class="btn btn-outline-secondary disabled @MarginClass" style="@StyleString"
+    <span class="btn btn-outline-secondary disabled @MarginClass" style="@Field.GetOwnStyleString()"
           aria-label="Bulk Upload" data-system="bulk-upload">
       <i class="bi bi-upload" aria-hidden="true"></i>
     </span>
   }
   else
   {
-    <label class="btn btn-outline-secondary @MarginClass" style="@StyleString"
+    <label class="btn btn-outline-secondary @MarginClass" style="@Field.GetOwnStyleString()"
            role="button" aria-label="Bulk Upload" data-system="bulk-upload">
       <i class="bi bi-upload" aria-hidden="true"></i>
       <InputFile class="form-control d-none" OnChange="OnFileChangeAsync" />
@@ -38,18 +38,6 @@
 @code {
   string MarginClass => Field.CanDownload ? "ms-1" : string.Empty;
 
-  //自分に明示設定されたスタイルだけ出力する (コアの GetStyleString と同じ規約)
-  string? StyleString
-  {
-    get
-    {
-      var drawStyle = Field.GetOwnStyles();
-      var style = string.Empty;
-      if (drawStyle.HasFlag(DrawStyle.BackgroundColor)) style += $"background-color: {Field.BackgroundColor};";
-      if (drawStyle.HasFlag(DrawStyle.Color)) style += $"color: {Field.Color};";
-      return style.Length == 0 ? null : style;
-    }
-  }
 
   async Task OnFileChangeAsync(InputFileChangeEventArgs e)
   {

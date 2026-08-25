@@ -109,7 +109,7 @@ else
           {
             <li>
               <span class="approval-history-when">@entry.ActedAt?.ToString("yyyy/MM/dd HH:mm")</span>
-              <span class="approval-history-action">@ActionText(entry.Action)</span>
+              <span class="approval-history-action">@ApprovalDisplayText.ActionText(entry.Action)</span>
               <span class="approval-history-actor">@entry.ActorDisplayText</span>
               @if (!string.IsNullOrEmpty(entry.Comment))
               {
@@ -140,8 +140,8 @@ else
     if (result.IsSuccess)
     {
       await Field.Services.UIService.NotifySuccess(string.Format(
-        Codeer.LowCode.Blazor.Extras.Properties.Resources.ApprovalDoneFormat,
-        ActionText(isResubmit ? ApprovalAction.Resubmit.ToDesignValue() : ApprovalAction.Submit.ToDesignValue())));
+        R.ApprovalDoneFormat,
+        ApprovalDisplayText.ActionText(isResubmit ? ApprovalAction.Resubmit.ToDesignValue() : ApprovalAction.Submit.ToDesignValue())));
     }
     else if (!string.IsNullOrEmpty(result.ErrorMessage))
     {
@@ -151,15 +151,13 @@ else
 
   string FlowStatusText => Enum.TryParse<ApprovalFlowStatus>(Field.FlowStatus, out var status) ? status switch
   {
-    ApprovalFlowStatus.InProgress => Codeer.LowCode.Blazor.Extras.Properties.Resources.ApprovalStatus_InProgress,
-    ApprovalFlowStatus.Completed => Codeer.LowCode.Blazor.Extras.Properties.Resources.ApprovalStatus_Completed,
-    ApprovalFlowStatus.Rejected => Codeer.LowCode.Blazor.Extras.Properties.Resources.ApprovalStatus_Rejected,
-    ApprovalFlowStatus.Returned => Codeer.LowCode.Blazor.Extras.Properties.Resources.ApprovalStatus_Returned,
-    ApprovalFlowStatus.Withdrawn => Codeer.LowCode.Blazor.Extras.Properties.Resources.ApprovalStatus_Withdrawn,
+    ApprovalFlowStatus.InProgress => R.ApprovalStatus_InProgress,
+    ApprovalFlowStatus.Completed => R.ApprovalStatus_Completed,
+    ApprovalFlowStatus.Rejected => R.ApprovalStatus_Rejected,
+    ApprovalFlowStatus.Returned => R.ApprovalStatus_Returned,
+    ApprovalFlowStatus.Withdrawn => R.ApprovalStatus_Withdrawn,
     _ => Field.FlowStatus,
   } : Field.FlowStatus;
-
-  string ActionText(string action) => ApprovalDisplayText.ActionText(action);
 
   string MemberMark(ApprovalMemberView member, ApprovalStepView step)
     => Enum.TryParse<ApprovalMemberStatus>(member.Status, out var status) ? status switch
@@ -180,7 +178,7 @@ else
     if ((action == ApprovalAction.Reject.ToDesignValue() || action == ApprovalAction.Return.ToDesignValue())
         && Field.IsCommentRequiredOnReject && string.IsNullOrWhiteSpace(comment))
     {
-      await Field.Services.UIService.NotifyError(Codeer.LowCode.Blazor.Extras.Properties.Resources.ApprovalCommentRequired);
+      await Field.Services.UIService.NotifyError(R.ApprovalCommentRequired);
       return;
     }
 
@@ -197,7 +195,7 @@ else
     if (result.IsSuccess)
     {
       await Field.Services.UIService.NotifySuccess(
-        string.Format(Codeer.LowCode.Blazor.Extras.Properties.Resources.ApprovalDoneFormat, ActionText(action)));
+        string.Format(R.ApprovalDoneFormat, ApprovalDisplayText.ActionText(action)));
     }
     else if (!string.IsNullOrEmpty(result.ErrorMessage))
     {

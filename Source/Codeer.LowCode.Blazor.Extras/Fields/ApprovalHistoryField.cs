@@ -15,8 +15,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         ApprovalFlowField? _target;
 
         /// <summary>表示元の承認フローフィールド。</summary>
-        [ScriptHide]
-        public ApprovalFlowField? Target => _target;
+        internal ApprovalFlowField? Target => _target;
 
         [ScriptHide]
         public override bool IsModified => false;

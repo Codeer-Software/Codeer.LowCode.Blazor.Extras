@@ -6,7 +6,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
     /// <summary>
     /// <see cref="Codeer.LowCode.Blazor.Extras.Designs.GmailTokenFieldDesign"/> の列を保存するときの暗号化。
     /// AES-GCM 256bit・毎回ランダムな nonce で、保存形式は "v1:" + Base64(nonce | ciphertext | tag)。
-    /// 方式を公開しても安全性は鍵だけに依存する (鍵は appsettings の Mail.TokenEncryptionKey)。
+    /// 方式を公開しても安全性は鍵だけに依存する (鍵は appsettings の Gmail.TokenEncryptionKey)。
     /// リポジトリやデザインファイルに鍵を置かないこと。将来方式を変える場合は "v2:" を足して読み分ける。
     /// </summary>
     /// <remarks>
@@ -14,9 +14,9 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
     /// だから鍵の管理が必要になる。守れる範囲は「DBのダンプ・バックアップ・レプリカ・SQL経由の漏えい」で、
     /// サーバー自体が奪われた場合 (鍵も一緒に読める) は守れない。
     /// </remarks>
-    public static class GmailTokenProtector
+    internal static class GmailTokenProtector
     {
-        internal const string Version1Prefix = "v1:";
+        const string Version1Prefix = "v1:";
         const int NonceSize = 12;
         const int TagSize = 16;
 
@@ -69,7 +69,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
         static byte[] CreateKey(string encryptionKey)
         {
             if (string.IsNullOrEmpty(encryptionKey))
-                throw new InvalidOperationException("Mail.TokenEncryptionKey is not configured. Set it before storing Gmail tokens.");
+                throw new InvalidOperationException("Gmail.TokenEncryptionKey is not configured. Set it before storing Gmail tokens.");
             return SHA256.HashData(Encoding.UTF8.GetBytes(encryptionKey));
         }
     }

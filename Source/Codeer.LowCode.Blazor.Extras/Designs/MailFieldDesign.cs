@@ -92,7 +92,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         /// <summary>
         /// 自分 (操作ユーザー) を差出人にする。スクリプトから設定可。
         /// 差出人アドレスはサーバーが操作ユーザーから解決する (アドレス指定は不可 = なりすましの構造的排除)。
-        /// false = 送信インフラ設定の差出人 (システムのアドレス)。要: デザインの CurrentUser モジュール設定と Mail.UserEmailFieldName。
+        /// false = 送信インフラ設定の差出人 (システムのアドレス)。要: デザインの CurrentUser モジュールに MailSenderContractField。
         /// </summary>
         [Designer(Index = 12, DisplayName = "$MailFieldIsFromCurrentUser")]
         public bool IsFromCurrentUser { get; set; }

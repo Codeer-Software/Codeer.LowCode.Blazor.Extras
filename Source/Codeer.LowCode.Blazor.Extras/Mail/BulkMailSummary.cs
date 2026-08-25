@@ -6,7 +6,7 @@ namespace Codeer.LowCode.Blazor.Extras.Mail
     /// BulkMailField の DB 列に記録される送信1件。列はこの JSON 配列 (新しい順) を持つ。
     /// 失敗の明細は先頭数件だけ残す (全量の監査記録は Mail.HistoryModuleName 設定時の履歴モジュール)。
     /// </summary>
-    public class BulkMailSummaryEntry
+    internal class BulkMailSummaryEntry
     {
         public DateTime SentAt { get; set; }
         public string Sender { get; set; } = string.Empty;

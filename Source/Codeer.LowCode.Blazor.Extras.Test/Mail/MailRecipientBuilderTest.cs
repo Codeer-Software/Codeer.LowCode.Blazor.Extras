@@ -28,7 +28,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Mail
 
         [Test]
         public void GetVariableNames_件名と本文の変数を重複なしで取る()
-            => Assert.That(MailRecipientBuilder.GetVariableNames("{Name} 様", "こちらから: {Id.Value} ({Name})"),
+            => Assert.That(MailTemplateEngine.GetVariableNames("{Name} 様", "こちらから: {Id.Value} ({Name})"),
                 Is.EqualTo(new[] { "Name", "Id.Value" }));
 
         [Test]

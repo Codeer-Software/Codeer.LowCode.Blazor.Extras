@@ -15,13 +15,30 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
     /// リクエストにサマリフィールド (BulkMailField) が指定されていれば、送信後に
     /// そのフィールドの DB 列へ内部更新経路で結果を書き戻す。
     /// </summary>
-    public static class MailBulkSearch
+    public class MailBulkSearch
     {
-        public static async Task<MailSendResult> SendAsync(MailDispatcher dispatcher, ModuleDataIO moduleDataIO,
-            DesignData designData, MailBulkSearchRequest request,
+        readonly MailDispatcher _dispatcher;
+        readonly ModuleDataIO _moduleDataIO;
+        readonly DesignData _designData;
+        readonly Func<ModuleData, Task>? _updateRecordInternalAsync;
+        readonly Action<string>? _logError;
+
+        /// <param name="updateRecordInternalAsync">
+        /// サマリ (BulkMailField) の書き戻し用の内部更新経路 (操作ユーザーの書き込み権限に依存しない)。null = 書き戻さない。
+        /// </param>
+        public MailBulkSearch(MailDispatcher dispatcher, ModuleDataIO moduleDataIO, DesignData designData,
             Func<ModuleData, Task>? updateRecordInternalAsync = null, Action<string>? logError = null)
         {
-            var design = designData.Modules.Find(request.Condition.ModuleName)
+            _dispatcher = dispatcher;
+            _moduleDataIO = moduleDataIO;
+            _designData = designData;
+            _updateRecordInternalAsync = updateRecordInternalAsync;
+            _logError = logError;
+        }
+
+        public async Task<MailSendResult> SendAsync(MailBulkSearchRequest request)
+        {
+            var design = _designData.Modules.Find(request.Condition.ModuleName)
                 ?? throw new InvalidOperationException($"Module '{request.Condition.ModuleName}' does not exist.");
 
             //どの値がアドレス・配信停止かは宛先(行)モジュールの契約が宣言する (クライアントからは指定できない)
@@ -35,7 +52,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
 
             //テンプレ変数+宛先/除外+Idだけ取得する。
             //リンクパス("Contact.Email")はルートの FK を取得し、リンク先は後段で一括解決する
-            var names = MailRecipientBuilder.GetVariableNames(request.Subject, request.Body);
+            var names = MailTemplateEngine.GetVariableNames(request.Subject, request.Body);
             var paths = names
                 .Select(e => MailVariableResolver.ParseToken(e).FieldPath)
                 .Where(e => design.Fields.Any(f => f.Name == new FieldName(e).Root))
@@ -53,12 +70,12 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
                 .Append(SystemFieldNames.Id)
                 .Distinct().ToList();
 
-            var rows = (await moduleDataIO.GetListAsync(searchCondition, 0)).Items;
-            await MailLinkPathLoader.LoadAsync(moduleDataIO, designData, design, rows, paths);
+            var rows = (await _moduleDataIO.GetListAsync(searchCondition, 0)).Items;
+            await MailLinkPathLoader.LoadAsync(_moduleDataIO, _designData, design, rows, paths);
 
             var recipients = rows
                 .Select(row => MailRecipientBuilder.TryBuild(design, row, contract.Email, contract.OptOut, names,
-                    designData.Modules.Find))
+                    _designData.Modules.Find))
                 .Where(e => e != null)
                 .Select(e => e!)
                 .ToList();
@@ -74,7 +91,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
             //差出人はクライアントの値を信用せず、「自分を差出人にする」のときだけサーバーが操作ユーザーを解決する
             if (request.IsFromCurrentUser)
             {
-                var user = await dispatcher.GetCurrentUserAsync();
+                var user = await _dispatcher.GetCurrentUserAsync();
                 if (user == null)
                 {
                     var fromFailure = new MailSendResult
@@ -82,38 +99,34 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
                         TotalCount = recipients.Count,
                         Failures = recipients.Select(e => new MailSendFailure { To = e.To, Error = MailDispatcher.CurrentUserUnresolvedError }).ToList(),
                     };
-                    await WriteSummaryAsync(dispatcher, moduleDataIO, designData, request, fromFailure,
-                        updateRecordInternalAsync, logError);
+                    await WriteSummaryAsync(request, fromFailure);
                     return fromFailure;
                 }
                 template.From = user.Email;
                 template.FromDisplayName = user.DisplayName;
             }
-            var result = await dispatcher.SendBulkAsync(request.MailInfraName, template, recipients,
+            var result = await _dispatcher.SendBulkAsync(request.MailInfraName, template, recipients,
                 MailDispatcher.CreateSource(request.SourceModule, request.SourceId));
 
-            await WriteSummaryAsync(dispatcher, moduleDataIO, designData, request, result,
-                updateRecordInternalAsync, logError);
+            await WriteSummaryAsync(request, result);
             return result;
         }
 
         //起点レコード(BulkMailField)のDB列へ送信結果サマリを書き戻す。
         //履歴と同じくシステムの記録なので、操作ユーザーの書き込み権限に依存しない内部経路で書く。
         //サマリの失敗は送信を失敗させない(ログのみ)
-        static async Task WriteSummaryAsync(MailDispatcher dispatcher, ModuleDataIO moduleDataIO, DesignData designData,
-            MailBulkSearchRequest request, MailSendResult result,
-            Func<ModuleData, Task>? updateRecordInternalAsync, Action<string>? logError)
+        async Task WriteSummaryAsync(MailBulkSearchRequest request, MailSendResult result)
         {
-            if (string.IsNullOrEmpty(request.SummaryFieldName) || updateRecordInternalAsync == null) return;
+            if (string.IsNullOrEmpty(request.SummaryFieldName) || _updateRecordInternalAsync == null) return;
             if (string.IsNullOrEmpty(request.SourceModule) || string.IsNullOrEmpty(request.SourceId)) return;
 
             try
             {
-                var sourceDesign = designData.Modules.Find(request.SourceModule);
+                var sourceDesign = _designData.Modules.Find(request.SourceModule);
                 var summaryFieldDesign = sourceDesign?.Fields.FirstOrDefault(e => e.Name == request.SummaryFieldName);
                 if (summaryFieldDesign?.CreateData() is not ValueFieldDataBase<string> summaryData)
                 {
-                    logError?.Invoke($"Bulk mail summary field '{request.SourceModule}.{request.SummaryFieldName}' was not found or cannot hold text.");
+                    _logError?.Invoke($"Bulk mail summary field '{request.SourceModule}.{request.SummaryFieldName}' was not found or cannot hold text.");
                     return;
                 }
 
@@ -129,26 +142,26 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
                     },
                     SelectFields = new List<string> { SystemFieldNames.Id, request.SummaryFieldName },
                 };
-                var record = (await moduleDataIO.GetListAsync(condition, 0)).Items.FirstOrDefault();
+                var record = (await _moduleDataIO.GetListAsync(condition, 0)).Items.FirstOrDefault();
                 if (record == null)
                 {
-                    logError?.Invoke($"Bulk mail summary target record '{request.SourceModule}/{request.SourceId}' was not found.");
+                    _logError?.Invoke($"Bulk mail summary target record '{request.SourceModule}/{request.SourceId}' was not found.");
                     return;
                 }
 
                 var currentJson = (record.Fields.GetValueOrDefault(request.SummaryFieldName) as ValueFieldDataBase<string>)?.Value;
-                var mailInfraName = dispatcher.ResolveBulkInfraName(request.MailInfraName);
+                var mailInfraName = _dispatcher.ResolveBulkInfraName(request.MailInfraName);
                 summaryData.Value = BulkMailSummary.Prepend(currentJson,
                     BulkMailSummary.CreateEntry(mailInfraName, request.Subject, result, DateTime.Now));
 
                 var update = new ModuleData { Name = request.SourceModule };
                 update.Fields[SystemFieldNames.Id] = record.Fields[SystemFieldNames.Id];
                 update.Fields[request.SummaryFieldName] = summaryData;
-                await updateRecordInternalAsync(update);
+                await _updateRecordInternalAsync(update);
             }
             catch (Exception e)
             {
-                logError?.Invoke($"Failed to write the bulk mail summary. {e.Message}");
+                _logError?.Invoke($"Failed to write the bulk mail summary. {e.Message}");
             }
         }
     }

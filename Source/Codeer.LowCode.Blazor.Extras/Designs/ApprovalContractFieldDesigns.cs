@@ -171,14 +171,11 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         [Designer(Index = 4, CandidateType = CandidateType.Field, DisplayName = "$ApprovalHistoryContractAttemptNo")]
         public string AttemptNo { get; set; } = nameof(AttemptNo);
 
-
         [Designer(Index = 6, CandidateType = CandidateType.Field, DisplayName = "$ApprovalHistoryContractAction")]
         public string Action { get; set; } = nameof(Action);
 
         [Designer(Index = 7, CandidateType = CandidateType.Field, DisplayName = "$ApprovalHistoryContractActorUser")]
         public string ActorUser { get; set; } = nameof(ActorUser);
-
-
 
         [Designer(Index = 10, CandidateType = CandidateType.Field, DisplayName = "$ApprovalHistoryContractComment")]
         public string Comment { get; set; } = nameof(Comment);
@@ -191,5 +188,4 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
             nameof(Flow), nameof(AttemptNo), nameof(Action), nameof(ActorUser), nameof(Comment), nameof(ActedAt),
         };
     }
-
 }

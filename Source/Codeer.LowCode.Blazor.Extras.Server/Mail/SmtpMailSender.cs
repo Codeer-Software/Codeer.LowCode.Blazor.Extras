@@ -81,11 +81,10 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
         }
 
         /// <summary>
-        /// 一斉送信テンプレート+宛先1件を通常のメッセージに解決する。
-        /// ネイティブ一斉送信 API を持たない独自 <see cref="IMailSender"/> 実装向けに public
-        /// (テンプレートエンジン自体は internal)。使い方は GraphApiMailSender 参照。
+        /// 一斉送信テンプレート+宛先1件を通常のメッセージに解決する
+        /// (ネイティブ一斉送信 API を持たない実装の逐次送信用。使い方は GraphApiMailSender 参照)。
         /// </summary>
-        public static MailMessage CreateResolvedMessage(MailBulkTemplate template, MailBulkRecipient recipient)
+        internal static MailMessage CreateResolvedMessage(MailBulkTemplate template, MailBulkRecipient recipient)
             => new()
             {
                 From = template.From,

@@ -17,6 +17,5 @@ namespace Codeer.LowCode.Blazor.Extras.Data
             => obj is GmailTokenFieldData r && RefreshToken == r.RefreshToken;
 
         public override int GetHashCode() => RefreshToken?.GetHashCode() ?? 0;
-        public GmailTokenFieldData Clone() => (GmailTokenFieldData)MemberwiseClone();
     }
 }

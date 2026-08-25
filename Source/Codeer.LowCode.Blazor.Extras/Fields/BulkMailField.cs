@@ -20,8 +20,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         bool _isSending;
 
         /// <summary>送信中か (ボタンの二重実行防止)。</summary>
-        [ScriptHide]
-        public bool IsSending => _isSending;
+        internal bool IsSending => _isSending;
 
         [ScriptHide]
         public override async Task SetValueAsync(string? value)

@@ -31,9 +31,9 @@ namespace Extras.Server.Controllers
         //BulkMailFieldのサマリ書き戻しは履歴と同じくシステムの記録なので内部経路で書く
         [HttpPost("bulk_search")]
         public async Task<MailSendResult> SendBulkSearchAsync(MailBulkSearchRequest request)
-            => await MailBulkSearch.SendAsync(CreateDispatcher(), _dataService.ModuleDataIO,
-                DesignerService.GetDesignData(), request,
-                data => _dataService.ModuleDataIO.UpdateSystemRecordAsync(data), e => _logger.LogError("{Error}", e));
+            => await new MailBulkSearch(CreateDispatcher(), _dataService.ModuleDataIO, DesignerService.GetDesignData(),
+                    data => _dataService.ModuleDataIO.UpdateSystemRecordAsync(data), e => _logger.LogError("{Error}", e))
+                .SendAsync(request);
 
         MailDispatcher CreateDispatcher()
         {
@@ -48,7 +48,7 @@ namespace Extras.Server.Controllers
 
         //呼び名→送信インフラの対応表は MailSenderTable (独自インフラはそこに足す)
         IMailSender? CreateSender(string name)
-            => MailSenderTable.Create(name, ResolveGmailUserTokenAsync);
+            => MailSenderTable.Create(name, mailAddress => CreateGmailUserTokenStore().FindRefreshTokenAsync(mailAddress));
 
         //「自分を差出人にする」(IsFromCurrentUser) の操作ユーザー解決
         //(認証ユーザーId → デザインの CurrentUser モジュールのメール/表示名)
@@ -63,8 +63,7 @@ namespace Extras.Server.Controllers
         //Gmail ユーザー同意モードの差出人ごとのユーザートークン (Gmail 送信器からだけ呼ばれる)。
         //トークン列は書き込み専用+暗号化のため、パスワードハッシュのログイン照合と同じくサーバー側の SQL で読んで復号する
         //(SQL はデザインのテーブル名・列名から組み立てられ、実行だけ DbAccess に渡す。CurrentUser モジュールに GmailTokenField が無ければ使われない)
-        Task<string?> ResolveGmailUserTokenAsync(string mailAddress)
-            => new GmailUserTokenStore(DesignerService.GetDesignData(), _dataService.DbAccess, e => _logger.LogError("{Error}", e))
-                .FindRefreshTokenAsync(mailAddress, SystemConfig.Instance.Gmail.TokenEncryptionKey);
+        GmailUserTokenStore CreateGmailUserTokenStore()
+            => new(DesignerService.GetDesignData(), _dataService.DbAccess, SystemConfig.Instance.Gmail, e => _logger.LogError("{Error}", e));
     }
 }

@@ -6,7 +6,7 @@
 @inherits FieldComponentBase<BulkMailField>
 
 <div data-system="bulk-mail">
-  <button type="button" class="btn btn-outline-primary" style="@StyleString"
+  <button type="button" class="btn btn-outline-primary" style="@Field.GetOwnStyleString()"
           disabled="@(Field.IsSending || !Field.IsEnabled)"
           @onclick="@(async () => await Field.SendFromButtonAsync())"
           aria-label="Bulk Mail">
@@ -36,16 +36,4 @@
     }
   }
 
-  //自分に明示設定されたスタイルだけ出力する (コアの GetStyleString と同じ規約)
-  string? StyleString
-  {
-    get
-    {
-      var drawStyle = Field.GetOwnStyles();
-      var style = string.Empty;
-      if (drawStyle.HasFlag(DrawStyle.BackgroundColor)) style += $"background-color: {Field.BackgroundColor};";
-      if (drawStyle.HasFlag(DrawStyle.Color)) style += $"color: {Field.Color};";
-      return style.Length == 0 ? null : style;
-    }
-  }
 }

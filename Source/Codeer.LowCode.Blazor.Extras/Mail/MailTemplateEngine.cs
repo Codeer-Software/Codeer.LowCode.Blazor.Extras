@@ -40,6 +40,10 @@ namespace Codeer.LowCode.Blazor.Extras.Mail
             return names;
         }
 
+        /// <summary>件名・本文テンプレートで使われている変数名の一覧 (重複なし)。</summary>
+        public static List<string> GetVariableNames(string? subject, string? body)
+            => GetVariableNames(subject).Concat(GetVariableNames(body)).Distinct().ToList();
+
         public static string Fill(string? template, IReadOnlyDictionary<string, string> variables)
         {
             if (string.IsNullOrEmpty(template)) return string.Empty;

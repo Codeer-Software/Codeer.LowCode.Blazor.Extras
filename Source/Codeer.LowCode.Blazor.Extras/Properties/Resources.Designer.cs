@@ -1331,12 +1331,6 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
             }
         }
 
-        internal static string BulkMailVariableNotFoundFormat {
-            get {
-                return ResourceManager.GetString("BulkMailVariableNotFoundFormat", resourceCulture);
-            }
-        }
-
         internal static string BulkMailSaveBeforeSend {
             get {
                 return ResourceManager.GetString("BulkMailSaveBeforeSend", resourceCulture);

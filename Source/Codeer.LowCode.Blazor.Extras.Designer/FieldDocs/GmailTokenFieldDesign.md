@@ -21,7 +21,7 @@ SendGrid = ドメイン認証 / Smtp = リレー)。
   (パスワード変更欄と同じ挙動)。「登録を解除」で登録を消せる
 - 保存時の暗号化はサーバー側ヘルパが行う:
   `CustomizedModuleDataIO.AddAsync / UpdateAsync` で
-  `Codeer.LowCode.Blazor.Extras.Server.Mail.GmailTokenHelper.ProtectGmailTokens(moduleDesign, data, Gmail.TokenEncryptionKey)` を
+  `Codeer.LowCode.Blazor.Extras.Server.Mail.GmailTokenHelper.ProtectGmailTokens(moduleDesign, data, SystemConfig.Instance.Gmail)` を
   `base.AddAsync / base.UpdateAsync` の前に呼ぶこと (PasswordHashHelper.ApplyPasswordHash と並べて呼ぶのが定石)
 - 送信時の読み取り・復号はサーバー側の SQL のみ (`GmailUserTokenStore`。テーブル名・列名はデザインから、実行はテンプレートの DbAccess。MailController が結線)。
   **このフィールドが CurrentUser モジュールに無ければユーザー単位トークンは使われない** (設定でのON/OFFは無い)

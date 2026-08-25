@@ -45,7 +45,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         private protected virtual HashSet<string> RequiredRoleNames => new();
 
         /// <summary>その役割が必須か (空にできないか)。機能側 (エンジン) の実行時検証でも使う。</summary>
-        public bool IsRoleRequired(string roleName) => RequiredRoleNames.Contains(roleName);
+        internal bool IsRoleRequired(string roleName) => RequiredRoleNames.Contains(roleName);
 
         /// <summary>役割プロパティ (プロパティ名 = 役割名) の一覧。チェックとリネーム追従で使う。</summary>
         internal IEnumerable<System.Reflection.PropertyInfo> GetRoleProperties()

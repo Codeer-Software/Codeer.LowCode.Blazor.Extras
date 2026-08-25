@@ -66,7 +66,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
                 return new MailCurrentUser
                 {
                     Email = email,
-                    DisplayName = GetText(row, contract.DisplayName) ?? string.Empty,
+                    DisplayName = GetText(row, contract.DisplayName),
                 };
             }
             catch (Exception ex)
@@ -79,10 +79,8 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
         //変数 ("Email.Value" / "Employee.Email.Value") のフィールド部分 (SelectFields とデータのキー)
         static string GetFieldPath(string variable) => new VariableName(variable).FieldName.FullName;
 
-        static string? GetText(ModuleData? row, string? variable)
-            => string.IsNullOrEmpty(variable)
-                ? null
-                : (row?.Fields.GetValueOrDefault(GetFieldPath(variable)) as ValueFieldDataBase<string>)?.Value;
+        static string GetText(ModuleData? row, string variable)
+            => string.IsNullOrEmpty(variable) ? string.Empty : ModuleDataValues.GetString(row, GetFieldPath(variable));
     }
 
     /// <summary>ユーザーモジュール (デザインの CurrentUser モジュール) と差出人契約の解決。メール機能の共通部品。</summary>

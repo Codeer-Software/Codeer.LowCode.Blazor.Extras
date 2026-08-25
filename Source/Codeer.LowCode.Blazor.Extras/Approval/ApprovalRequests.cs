@@ -29,7 +29,7 @@ namespace Codeer.LowCode.Blazor.Extras.Approval
         public string ExpectedVersion { get; set; } = string.Empty;
     }
 
-    /// <summary>承認・却下・差し戻し・取り戻し・取消・確認の要求。</summary>
+    /// <summary>承認・却下・差し戻し・取り下げ・確認の要求。</summary>
     public class ApprovalActionRequest
     {
         public string TargetModuleName { get; set; } = string.Empty;
@@ -57,10 +57,10 @@ namespace Codeer.LowCode.Blazor.Extras.Approval
         /// <summary>申請書レコードの Id (申請時は保存で確定した実 Id)。</summary>
         public string TargetId { get; set; } = string.Empty;
 
-        public static ApprovalActionResult Success(string flowId, string targetId)
+        internal static ApprovalActionResult Success(string flowId, string targetId)
             => new() { IsSuccess = true, FlowId = flowId, TargetId = targetId };
 
-        public static ApprovalActionResult Failure(string message)
+        internal static ApprovalActionResult Failure(string message)
             => new() { ErrorMessage = message };
     }
 }

@@ -645,9 +645,6 @@
   <data name="MailSubjectOrBodyRequired" xml:space="preserve">
     <value>件名と本文がどちらも空です。テンプレートフィールドか固定文字列を設定してください。</value>
   </data>
-  <data name="BulkMailVariableNotFoundFormat" xml:space="preserve">
-    <value>変数 '{0}' はモジュール '{1}' に存在しません。</value>
-  </data>
   <data name="BulkMailSaveBeforeSend" xml:space="preserve">
     <value>未保存の変更があります。保存してから送信してください。</value>
   </data>

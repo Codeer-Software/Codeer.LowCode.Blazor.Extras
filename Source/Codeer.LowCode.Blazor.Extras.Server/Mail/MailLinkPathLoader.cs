@@ -13,7 +13,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
     /// データ層の SelectFields はモジュールに宣言済みのフィールドしか実体化しないため、
     /// 宣言なしのリンクパスはここでリンク先モジュールを一括ロードして補完する。
     /// </summary>
-    public static class MailLinkPathLoader
+    internal static class MailLinkPathLoader
     {
         /// <summary>rows に実体の無いリンクパスの値をリンク先モジュールから一括で引き、ドット名で row.Fields へ注入する。</summary>
         public static async Task LoadAsync(ModuleDataIO io, DesignData designData, ModuleDesign design,
@@ -36,7 +36,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
                 if (targetDesign == null) continue;
 
                 var fks = rows
-                    .Select(r => (r.Fields.GetValueOrDefault(group.Key) as ValueFieldDataBase<string>)?.Value)
+                    .Select(r => ModuleDataValues.GetString(r, group.Key))
                     .Where(e => !string.IsNullOrEmpty(e))
                     .Distinct().ToList();
                 if (fks.Count == 0) continue;
@@ -71,7 +71,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
                     .ToDictionary(g => g.Key, g => g.First());
                 foreach (var row in rows)
                 {
-                    var fk = (row.Fields.GetValueOrDefault(group.Key) as ValueFieldDataBase<string>)?.Value;
+                    var fk = ModuleDataValues.GetString(row, group.Key);
                     if (string.IsNullOrEmpty(fk) || !map.TryGetValue(fk, out var target)) continue;
                     foreach (var rest in restPaths)
                     {

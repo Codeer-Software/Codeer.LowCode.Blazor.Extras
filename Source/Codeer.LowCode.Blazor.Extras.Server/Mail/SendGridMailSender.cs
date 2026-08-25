@@ -14,7 +14,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
     public class SendGridMailSender : IMailSender
     {
         static readonly HttpClient _sharedClient = new();
-        internal const int PersonalizationsPerRequest = 1000;
+        const int PersonalizationsPerRequest = 1000;
         const string Endpoint = "https://api.sendgrid.com/v3/mail/send";
 
         readonly SendGridSettings _settings;

@@ -19,12 +19,15 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
     {
         readonly DesignData _designData;
         readonly IDbAccessor _db;
+        readonly GmailSettings _settings;
         readonly Action<string> _logError;
 
-        public GmailUserTokenStore(DesignData designData, IDbAccessor db, Action<string> logError)
+        /// <param name="settings">Gmail 設定 (列の暗号化鍵 TokenEncryptionKey を使う)。</param>
+        public GmailUserTokenStore(DesignData designData, IDbAccessor db, GmailSettings settings, Action<string> logError)
         {
             _designData = designData;
             _db = db;
+            _settings = settings;
             _logError = logError;
         }
 
@@ -32,12 +35,11 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
         /// 差出人アドレスのユーザートークンを復号して返す。未登録・設定不備は null (呼び出し側がシステムトークンにフォールバック)。
         /// 検索・復号の失敗はエラーログを出して null (送信自体は止めない)。
         /// </summary>
-        /// <param name="encryptionKey">列の暗号化鍵 (Gmail 設定の TokenEncryptionKey)。</param>
         /// <remarks>
         /// トークン列は型 (GmailTokenField) で見つけるのでフィールド名の設定は要らない。
         /// ユーザーモジュールに GmailTokenField が無ければ「ユーザー単位トークンを使わない」= null。
         /// </remarks>
-        public async Task<string?> FindRefreshTokenAsync(string mailAddress, string encryptionKey)
+        public async Task<string?> FindRefreshTokenAsync(string mailAddress)
         {
             if (string.IsNullOrEmpty(mailAddress)) return null;
             try
@@ -67,7 +69,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
                     _logError($"The stored Gmail token of '{mailAddress}' is not encrypted. Register it again from the user screen.");
                     return null;
                 }
-                return GmailTokenProtector.Unprotect(token, encryptionKey);
+                return GmailTokenProtector.Unprotect(token, _settings.TokenEncryptionKey);
             }
             catch (Exception ex)
             {
@@ -76,7 +78,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
             }
         }
 
-        internal const string TokenAlias = "token_value";
+        const string TokenAlias = "token_value";
 
         //トークン列を差出人アドレスで引く SQL。テーブル名・列名はデザイン (DbTable / DbColumn) から取り、
         //識別子の引用符とパラメータ接頭辞はデータソースの種類に合わせる

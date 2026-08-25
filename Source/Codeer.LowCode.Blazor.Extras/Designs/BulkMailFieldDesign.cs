@@ -4,7 +4,6 @@ using Codeer.LowCode.Blazor.DesignLogic.Refactor;
 using Codeer.LowCode.Blazor.Extras.Components;
 using Codeer.LowCode.Blazor.Extras.Data;
 using Codeer.LowCode.Blazor.Extras.Fields;
-using Codeer.LowCode.Blazor.Extras.Mail;
 using Codeer.LowCode.Blazor.OperatingModel;
 using Codeer.LowCode.Blazor.Repository.Data;
 using Codeer.LowCode.Blazor.Repository.Design;
@@ -80,7 +79,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         /// <summary>
         /// 自分 (操作ユーザー) を差出人にする。差出人アドレスはサーバーが操作ユーザーから解決する
         /// (アドレス指定は不可 = なりすましの構造的排除)。false = 送信インフラ設定の差出人 (システムのアドレス)。
-        /// 要: デザインの CurrentUser モジュール設定と Mail.UserEmailFieldName。
+        /// 要: デザインの CurrentUser モジュールに MailSenderContractField。
         /// </summary>
         [Designer(Index = 9, DisplayName = "$MailFieldIsFromCurrentUser")]
         public bool IsFromCurrentUser { get; set; }
@@ -147,45 +146,6 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
                 .AddVariable(BodyVariable, x => BodyVariable = x)
                 .AddVariable(ReplyToVariable, x => ReplyToVariable = x)
                 .Build();
-        }
-
-        string GetTargetModuleName(DesignCheckContext context)
-        {
-            var moduleDesign = context.DesignData.Modules.Find(context.OwnerModule);
-            var listField = moduleDesign?.Fields.FirstOrDefault(e => e.Name == RecipientListFieldName);
-            return (listField as IListFieldDesign)?.SearchCondition.ModuleName ?? string.Empty;
-        }
-
-        //宛先モジュールの変数を検証する。"Contact.Email.Value" のようなリンクパスは
-        //Link/SelectFieldの参照先モジュールを辿って最終フィールドの存在まで確認する
-        FieldDesignCheckInfo? CheckRecipientVariable(DesignCheckContext context, string memberName,
-            string targetModuleName, string variable)
-        {
-            if (string.IsNullOrEmpty(targetModuleName) || string.IsNullOrEmpty(variable)) return null;
-
-            var (fieldPath, _) = MailVariableResolver.ParseToken(variable);
-            var current = context.DesignData.Modules.Find(targetModuleName);
-            var segments = fieldPath.Split('.');
-            for (var i = 0; i < segments.Length && current != null; i++)
-            {
-                var field = current.Fields.FirstOrDefault(e => e.Name == segments[i]);
-                if (field == null)
-                {
-                    return CreateCheckInfo(context, memberName,
-                        string.Format(Properties.Resources.BulkMailVariableNotFoundFormat, variable, targetModuleName));
-                }
-                if (i == segments.Length - 1) return null;
-
-                var linkModuleName = field switch
-                {
-                    LinkFieldDesign linkField => linkField.SearchCondition.ModuleName,
-                    SelectFieldDesign selectField => selectField.SearchCondition.ModuleName,
-                    _ => string.Empty,
-                };
-                current = string.IsNullOrEmpty(linkModuleName) ? null : context.DesignData.Modules.Find(linkModuleName);
-            }
-            return current != null ? null : CreateCheckInfo(context, memberName,
-                string.Format(Properties.Resources.BulkMailVariableNotFoundFormat, variable, targetModuleName));
         }
 
         FieldDesignCheckInfo CreateCheckInfo(DesignCheckContext context, string memberName, string message)

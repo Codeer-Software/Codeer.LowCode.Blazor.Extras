@@ -6,7 +6,7 @@ using System.Text.Json;
 namespace Codeer.LowCode.Blazor.Extras.Server.Mail
 {
     /// <summary>Origin record of a send operation (for the history's SourceModule/SourceId).</summary>
-    public class MailHistorySource
+    internal class MailHistorySource
     {
         public string SourceModule { get; set; } = string.Empty;
         public string SourceId { get; set; } = string.Empty;
@@ -50,7 +50,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
         /// 既定の役割名で書くが、既定名のフィールドが無い項目は「記録しない」として扱う
         /// (必須役割だけは無いとエラー)。
         /// </remarks>
-        public void Validate()
+        internal void Validate()
         {
             var design = _designData.Modules.Find(_historyModuleName)
                 ?? throw new InvalidOperationException(
@@ -92,7 +92,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
             yield return (nameof(names.SourceId), names.SourceId);
         }
 
-        public async Task WriteAsync(string mailInfraName, string subject, MailSendResult result, MailHistorySource? source)
+        internal async Task WriteAsync(string mailInfraName, string subject, MailSendResult result, MailHistorySource? source)
         {
             try
             {

@@ -6,7 +6,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
     /// <summary>
     /// メール送信インフラ。プロバイダごとの実装 (SMTP / Microsoft Graph / SendGrid / Gmail) があり、
     /// それぞれ自分のプロバイダ設定だけを受け取る。プロバイダ間の差はこのインターフェースが吸収する
-    /// (製品側にプロバイダ共通の設定型は無い)。独自実装はテンプレートの対応表 (MailController.CreateSender) に足す。
+    /// (製品側にプロバイダ共通の設定型は無い)。独自実装はテンプレートの対応表 (MailSenderTable) に足す。
     /// </summary>
     public interface IMailSender
     {

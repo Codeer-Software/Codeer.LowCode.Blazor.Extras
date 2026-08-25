@@ -9,19 +9,19 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
     /// 一斉送信の件数上限を適用してから <see cref="IMailSender"/> へ委譲する。
     /// </summary>
     /// <remarks>
-    /// 「呼び名 → <see cref="IMailSender"/>」の対応表は**アプリのテンプレート側 (MailController.CreateSender)**
+    /// 「呼び名 → <see cref="IMailSender"/>」の対応表は**アプリのテンプレート側 (MailSenderTable)**
     /// が持つ (senderFactory)。製品はプロバイダ名も設定形式も知らないので、独自インフラも同じ対応表に足すだけ。
     /// </remarks>
     public class MailDispatcher
     {
         /// <summary>DebugRedirectAllTo 有効時に元の宛先を記録するヘッダ。</summary>
-        public const string OriginalToHeader = "X-CLB-Original-To";
+        internal const string OriginalToHeader = "X-CLB-Original-To";
 
         /// <summary>リダイレクトされた一斉送信の元の宛先件数を記録するヘッダ。</summary>
-        public const string OriginalTotalHeader = "X-CLB-Original-Total";
+        internal const string OriginalTotalHeader = "X-CLB-Original-Total";
 
         //redirected bulk sends are clipped so that a staging environment never sends thousands of mails
-        internal const int RedirectBulkClipCount = 10;
+        const int RedirectBulkClipCount = 10;
 
         readonly MailConfig _config;
         readonly Func<string, IMailSender?> _senderFactory;
@@ -29,7 +29,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
         readonly Func<Task<MailCurrentUser?>>? _currentUserResolver;
 
         /// <param name="senderFactory">
-        /// 呼び名 → 送信インフラの対応表 (テンプレートの MailController.CreateSender)。
+        /// 呼び名 → 送信インフラの対応表 (テンプレートの MailSenderTable)。
         /// 知らない呼び名は null を返すとエラーになる。
         /// 空の呼び名はここには来ない (呼び名が空 = 設定漏れとして製品側がエラーにする)。
         /// </param>
@@ -46,15 +46,15 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
         /// 「自分を差出人にする」(IsFromCurrentUser) の操作ユーザー情報。
         /// 未結線・未設定・解決不能は null (呼び出し側が失敗にする)。
         /// </summary>
-        public async Task<MailCurrentUser?> GetCurrentUserAsync()
+        internal async Task<MailCurrentUser?> GetCurrentUserAsync()
             => _currentUserResolver == null ? null : await _currentUserResolver();
 
         /// <summary>単発送信の呼び名: 明示名 → DefaultInfraName (どちらも空なら空)。</summary>
-        public string ResolveInfraName(string? mailInfraName)
+        internal string ResolveInfraName(string? mailInfraName)
             => string.IsNullOrEmpty(mailInfraName) ? _config.DefaultInfraName : mailInfraName;
 
         /// <summary>一斉送信の呼び名: 明示名 → DefaultBulkInfraName → DefaultInfraName。</summary>
-        public string ResolveBulkInfraName(string? mailInfraName)
+        internal string ResolveBulkInfraName(string? mailInfraName)
             => string.IsNullOrEmpty(mailInfraName)
                 ? (string.IsNullOrEmpty(_config.DefaultBulkInfraName) ? _config.DefaultInfraName : _config.DefaultBulkInfraName)
                 : mailInfraName;
@@ -64,16 +64,16 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
         /// 知らない呼び名はどちらも例外 (設定ミスを黙って別のインフラで送らない)。
         /// 送信経路は例外ではなく失敗結果を返すので <see cref="FindSender"/> を使う。
         /// </summary>
-        public IMailSender CreateSender(string mailInfraName)
+        internal IMailSender CreateSender(string mailInfraName)
             => FindSender(mailInfraName, out var error) ?? throw new InvalidOperationException(error);
 
         /// <summary>呼び名が空 = フィールドの MailInfraName も appsettings の既定も未設定。</summary>
-        internal const string NoInfraNameError =
+        const string NoInfraNameError =
             "No mail infra name is specified: the field's MailInfraName is empty and so is Mail.DefaultInfraName " +
             "(bulk: Mail.DefaultBulkInfraName) in appsettings. Set one of them to a name that the app's mail sender table (MailSenderTable) knows.";
 
         /// <summary>知らない呼び名 = 対応表 (MailSenderTable) にその名前が無い。</summary>
-        internal static string UnknownInfraNameError(string mailInfraName)
+        static string UnknownInfraNameError(string mailInfraName)
             => $"Mail infra name '{mailInfraName}' is unknown: the app's mail sender table (MailSenderTable) has no entry for it. " +
                 "Fix the name (field MailInfraName / Mail.DefaultInfraName / Mail.DefaultBulkInfraName) or add the infra to the table.";
 
@@ -129,14 +129,14 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
         }
 
         internal const string CurrentUserUnresolvedError =
-            "IsFromCurrentUser requires the current user's mail address (set the current user module in the design and Mail.UserEmailFieldName, and make sure the user has an address).";
+            "IsFromCurrentUser requires the current user's mail address (set the current user module in the design, put a MailSenderContractField on it, and make sure the user has an address).";
 
         internal static MailHistorySource? CreateSource(string sourceModule, string sourceId)
             => string.IsNullOrEmpty(sourceModule)
                 ? null
                 : new MailHistorySource { SourceModule = sourceModule, SourceId = sourceId };
 
-        public async Task<MailSendResult> SendAsync(string? mailInfraName, MailMessage message, MailHistorySource? source = null)
+        internal async Task<MailSendResult> SendAsync(string? mailInfraName, MailMessage message, MailHistorySource? source = null)
         {
             if (!message.To.Any() && !message.Cc.Any() && !message.Bcc.Any())
                 return MailSendResult.Failure(string.Empty, "No recipients.");
@@ -161,7 +161,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
         /// HTML テンプレートの変数値はここで一度だけ HTML エスケープする
         /// (ネイティブ一斉送信 (SendGrid) と逐次送信フォールバックの挙動を揃えるため)。
         /// </summary>
-        public async Task<MailSendResult> SendBulkAsync(string? mailInfraName, MailBulkTemplate template, List<MailBulkRecipient> recipients, MailHistorySource? source = null)
+        internal async Task<MailSendResult> SendBulkAsync(string? mailInfraName, MailBulkTemplate template, List<MailBulkRecipient> recipients, MailHistorySource? source = null)
         {
             _historyWriter?.Validate();
 

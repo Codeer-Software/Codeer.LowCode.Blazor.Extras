@@ -11,12 +11,6 @@ namespace Codeer.LowCode.Blazor.Extras.Mail
     /// </summary>
     internal static class MailRecipientBuilder
     {
-        /// <summary>件名・本文テンプレートで使われている変数名の一覧 (重複なし)。</summary>
-        public static List<string> GetVariableNames(string subject, string body)
-            => MailTemplateEngine.GetVariableNames(subject)
-                .Concat(MailTemplateEngine.GetVariableNames(body))
-                .Distinct().ToList();
-
         /// <summary>行から宛先1件を組み立てる。除外 (配信停止) やアドレス無しの行は null を返す。</summary>
         public static MailBulkRecipient? TryBuild(ModuleDesign? design, ModuleData row, string emailAddressVariable, string optOutVariable,
             IReadOnlyCollection<string> names, Func<string, ModuleDesign?>? findModule = null)

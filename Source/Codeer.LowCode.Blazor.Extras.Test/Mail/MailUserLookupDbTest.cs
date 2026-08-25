@@ -65,7 +65,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Mail
         }
 
         ModuleDataIO CreateIO() => new(_designData, this, _db, new TemporaryFileManager(_db, [], []));
-        GmailUserTokenStore CreateTokenStore() => new(_designData, _db, _errors.Add);
+        GmailUserTokenStore CreateTokenStore() => new(_designData, _db, new GmailSettings { TokenEncryptionKey = Key }, _errors.Add);
         MailCurrentUserResolver CreateResolver() => new(_designData, CreateIO(), _errors.Add);
 
         [Test]
@@ -77,7 +77,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Mail
             Assert.That(rows.All(r => !r.Fields.ContainsKey("GmailToken")), Is.True);
 
             //GmailUserTokenStore はデザインから組み立てた SQL で読んで復号する
-            var token = await CreateTokenStore().FindRefreshTokenAsync("sales@example.com", Key);
+            var token = await CreateTokenStore().FindRefreshTokenAsync("sales@example.com");
             Assert.That(token, Is.EqualTo(PlainToken));
             Assert.That(_errors, Is.Empty);
         }
@@ -88,12 +88,12 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Mail
             var store = CreateTokenStore();
 
             //未登録 (NULL) / 該当アドレスなし → null (システムトークンにフォールバック)
-            Assert.That(await store.FindRefreshTokenAsync("none@example.com", Key), Is.Null);
-            Assert.That(await store.FindRefreshTokenAsync("nobody@example.com", Key), Is.Null);
+            Assert.That(await store.FindRefreshTokenAsync("none@example.com"), Is.Null);
+            Assert.That(await store.FindRefreshTokenAsync("nobody@example.com"), Is.Null);
             Assert.That(_errors, Is.Empty);
 
             //暗号化されていない値は使わない (エラーログ + null)
-            Assert.That(await store.FindRefreshTokenAsync("plain@example.com", Key), Is.Null);
+            Assert.That(await store.FindRefreshTokenAsync("plain@example.com"), Is.Null);
             Assert.That(_errors, Has.Count.EqualTo(1));
         }
 

@@ -17,7 +17,7 @@
   }
   else
   {
-    <textarea class="form-control @(Field.GetValidationClassName())" rows="2" style="@StyleString"
+    <textarea class="form-control @(Field.GetValidationClassName())" rows="2" style="@Field.GetOwnStyleString()"
               placeholder="@Resources.GmailTokenFieldPlaceholder"
               disabled="@(Field.IsEnabled == false)"
               value="@Field.Input" @oninput="OnInput"></textarea>
@@ -70,16 +70,4 @@
 
   void OnToggleClear() => Field.SetCleared(!Field.IsCleared);
 
-  //自分に明示設定されたスタイルだけ出力する (コアの GetStyleString と同じ規約)
-  string? StyleString
-  {
-    get
-    {
-      var drawStyle = Field.GetOwnStyles();
-      var style = string.Empty;
-      if (drawStyle.HasFlag(DrawStyle.BackgroundColor)) style += $"background-color: {Field.BackgroundColor};";
-      if (drawStyle.HasFlag(DrawStyle.Color)) style += $"color: {Field.Color};";
-      return style.Length == 0 ? null : style;
-    }
-  }
 }
