@@ -12,15 +12,16 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
     /// セットアップの headless CLI verb (CCFD = Claude Code からも同じ生成を呼べる)。
     ///
     /// approval-setup:
-    ///   &lt;designer.exe&gt; approval-setup "&lt;projectDir&gt;" [--target &lt;module&gt;] [--field Approval] [--db-column approval_id]
-    ///     [--prefix &lt;P&gt;] [--data-source &lt;name&gt;] [--user-module AppUser] [--user-name-field Name] [--user-email-field Email]
-    ///     [--route standard|none] [--no-mail] [--no-mail-history] [--no-pageframe] [--ddl-out "&lt;path.sql&gt;"]
-    ///   (--no-mail = 通知メールを含めない。メールを使うときは mail-setup 相当 (差出人契約 + 送信履歴) も行う)
+    ///   &lt;designer.exe&gt; approval-setup "&lt;projectDir&gt;" [--data-source &lt;name&gt;] [--user-module AppUser]
+    ///     [--user-name-field Name] [--user-email-field Email] [--route standard|none] [--no-mail] [--no-pageframe] [--ddl-out "&lt;path.sql&gt;"]
+    ///   (承認モジュール群を生成するだけ。申請書側 (ApprovalFlowField / OnBuildRoute) はデザイナで行う。
+    ///    --no-mail = 通知メールを含めない。メール側の準備は先に mail-setup で行う)
     ///
     /// mail-setup:
     ///   &lt;designer.exe&gt; mail-setup "&lt;projectDir&gt;" [--user-module AppUser] [--user-email-field Email] [--user-name-field Name]
-    ///     [--no-sender-contract] [--gmail-token] [--no-history] [--history-name MailHistory] [--data-source &lt;name&gt;]
-    ///     [--infra Smtp|GraphApi|SendGrid|Gmail] [--no-pageframe] [--ddl-out "&lt;path.sql&gt;"]
+    ///     [--sender-contract] [--gmail-token] [--no-history] [--history-name MailHistory] [--data-source &lt;name&gt;]
+    ///     [--no-pageframe] [--ddl-out "&lt;path.sql&gt;"]
+    ///   (--sender-contract = 差出人契約をユーザーモジュールに追加。「自分を差出人にする」/ Gmail 本人名義のときだけ)
     ///
     /// DDL は実行しない (--ddl-out へ書き出し、適用は sql verb またはユーザーが行う)。
     /// 終了コード: 0 = 成功 / 2 = 失敗。
@@ -40,7 +41,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
         {
             if (args.Length < 2)
             {
-                Console.Error.WriteLine($"usage: {ApprovalVerb} \"<projectDir>\" [--target <module>] [--prefix <P>] ...");
+                Console.Error.WriteLine($"usage: {ApprovalVerb} \"<projectDir>\" [--data-source <name>] [--user-module AppUser] ...");
                 return 2;
             }
             var projectDir = Path.GetFullPath(args[1]);
@@ -52,10 +53,6 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
             var options = new ApprovalSetupOptions
             {
                 DataSourceName = dataSourceName,
-                TargetModuleName = named.GetValueOrDefault("--target", string.Empty),
-                FieldName = named.GetValueOrDefault("--field", "Approval"),
-                DbColumn = named.GetValueOrDefault("--db-column", "approval_id"),
-                Prefix = named.GetValueOrDefault("--prefix", string.Empty),
                 UserModuleName = named.GetValueOrDefault("--user-module",
                     string.IsNullOrEmpty(designData.AppSettings.CurrentUserModuleDesignName)
                         ? "AppUser" : designData.AppSettings.CurrentUserModuleDesignName),
@@ -64,7 +61,6 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
                 RouteMaster = named.GetValueOrDefault("--route", "standard").ToLowerInvariant() == "none"
                     ? ApprovalRouteMasterKind.None : ApprovalRouteMasterKind.Standard,
                 UseTurnNotifyMail = !args.Contains("--no-mail") && !args.Contains("--no-turn-mail"),
-                UseMailHistory = !args.Contains("--no-mail-history"),
                 AddPageFrameLinks = !args.Contains("--no-pageframe"),
             };
 
@@ -85,10 +81,6 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
             var designData = LoadDesignData(projectDir);
             var (dataSourceName, dataSourceType) = ResolveDataSource(projectDir, named.GetValueOrDefault("--data-source"));
 
-            var infra = named.GetValueOrDefault("--infra", MailSetupOptions.InfraNames[0]);
-            if (!MailSetupOptions.InfraNames.Contains(infra))
-                throw new InvalidOperationException($"--infra must be one of: {string.Join("|", MailSetupOptions.InfraNames)}");
-
             var options = new MailSetupOptions
             {
                 UserModuleName = named.GetValueOrDefault("--user-module",
@@ -96,13 +88,12 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
                         ? "AppUser" : designData.AppSettings.CurrentUserModuleDesignName),
                 UserEmailField = named.GetValueOrDefault("--user-email-field", "Email"),
                 UserDisplayNameField = named.GetValueOrDefault("--user-name-field", "Name"),
-                AddSenderContract = !args.Contains("--no-sender-contract"),
+                AddSenderContract = args.Contains("--sender-contract"),
                 AddGmailTokenField = args.Contains("--gmail-token"),
                 CreateHistoryModule = !args.Contains("--no-history"),
                 HistoryModuleName = named.GetValueOrDefault("--history-name", "MailHistory"),
                 DataSourceName = dataSourceName,
                 AddPageFrameLink = !args.Contains("--no-pageframe"),
-                DefaultInfraName = infra,
             };
 
             var result = MailSetupService.Run(designData, projectDir, options, dataSourceType);
@@ -164,7 +155,6 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
             var report = new StringBuilder();
             report.AppendLine($"created: {string.Join(", ", result.CreatedModules)}");
             report.AppendLine($"skipped (existing): {string.Join(", ", result.SkippedModules)}");
-            report.AppendLine($"parent wired: {result.ParentWired}");
             foreach (var note in result.Notes) report.AppendLine($"note: {note}");
 
             if (result.Ddl.Count > 0)

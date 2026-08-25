@@ -84,21 +84,6 @@
   <data name="SetupMenuApprovalFlow" xml:space="preserve">
     <value>承認フローのセットアップ</value>
   </data>
-  <data name="SetupTargetModule" xml:space="preserve">
-    <value>結線する申請書モジュール</value>
-  </data>
-  <data name="SetupTargetNone" xml:space="preserve">
-    <value>(モジュール生成のみ)</value>
-  </data>
-  <data name="SetupFieldName" xml:space="preserve">
-    <value>承認フィールド名</value>
-  </data>
-  <data name="SetupDbColumn" xml:space="preserve">
-    <value>FK列名</value>
-  </data>
-  <data name="SetupPrefix" xml:space="preserve">
-    <value>プレフィックス (別セットを作る場合)</value>
-  </data>
   <data name="SetupDataSource" xml:space="preserve">
     <value>データソース</value>
   </data>
@@ -121,7 +106,7 @@
     <value>なし (スクリプトで組み立て)</value>
   </data>
   <data name="SetupTurnMail" xml:space="preserve">
-    <value>メールを使う (順番到達通知メール + 差出人契約 + サーバー設定の案内)</value>
+    <value>順番到達通知メールを含める (メール側の準備は「メールのセットアップ」で先に)</value>
   </data>
   <data name="SetupPageFrame" xml:space="preserve">
     <value>PageFrame にページリンクを追加</value>
@@ -150,9 +135,6 @@
   <data name="SetupSkippedFormat" xml:space="preserve">
     <value>スキップ (既存を使いまわし): {0}</value>
   </data>
-  <data name="SetupParentWiredFormat" xml:space="preserve">
-    <value>{0} に ApprovalFlowField を結線しました。</value>
-  </data>
   <data name="SetupReloadNote" xml:space="preserve">
     <value>生成したモジュールを表示するには、プロジェクトを開き直してください。</value>
   </data>
@@ -163,15 +145,18 @@
     <value>メールのセットアップ</value>
   </data>
   <data name="SetupSenderContract" xml:space="preserve">
-    <value>差出人契約 (MailSenderContractField) をユーザーモジュールに追加 — 自分を差出人にする / Gmail ユーザートークン検索の前提</value>
+    <value>差出人契約 (MailSenderContractField) を追加 — 「自分を差出人にする」の前提</value>
   </data>
   <data name="SetupGmailToken" xml:space="preserve">
-    <value>Gmail ユーザートークン欄 (GmailTokenField) をユーザーモジュールに追加 — 本人の Gmail から送る場合のみ</value>
+    <value>Gmail ユーザートークン欄 (GmailTokenField) を追加 — Gmail で本人名義に送る場合のみ</value>
   </data>
   <data name="SetupMailHistory" xml:space="preserve">
     <value>送信履歴モジュールを生成</value>
   </data>
-  <data name="SetupMailInfra" xml:space="preserve">
-    <value>既定の送信インフラ (appsettings 案内用)</value>
+  <data name="SetupUserGroup" xml:space="preserve">
+    <value>ユーザーモジュール (差出人 = 操作ユーザーを使う場合)</value>
+  </data>
+  <data name="SetupUserGroupHelp" xml:space="preserve">
+    <value>システムのアドレスから送るだけなら設定不要です。MailField / BulkMailField の「自分を差出人にする」を使う、または Gmail で本人名義に送る場合に、ユーザーモジュールのどのフィールドがアドレス・表示名かを宣言します (差出人契約)。</value>
   </data>
 </root>

@@ -105,16 +105,6 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Properties
 
         public static string SetupMenuApprovalFlow => GetString("SetupMenuApprovalFlow");
 
-        public static string SetupTargetModule => GetString("SetupTargetModule");
-
-        public static string SetupTargetNone => GetString("SetupTargetNone");
-
-        public static string SetupFieldName => GetString("SetupFieldName");
-
-        public static string SetupDbColumn => GetString("SetupDbColumn");
-
-        public static string SetupPrefix => GetString("SetupPrefix");
-
         public static string SetupDataSource => GetString("SetupDataSource");
 
         public static string SetupUserModule => GetString("SetupUserModule");
@@ -150,8 +140,6 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Properties
 
         public static string SetupSkippedFormat => GetString("SetupSkippedFormat");
 
-        public static string SetupParentWiredFormat => GetString("SetupParentWiredFormat");
-
         public static string SetupReloadNote => GetString("SetupReloadNote");
 
         public static string SetupDdlDone => GetString("SetupDdlDone");
@@ -164,6 +152,8 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Properties
 
         public static string SetupMailHistory => GetString("SetupMailHistory");
 
-        public static string SetupMailInfra => GetString("SetupMailInfra");
+        public static string SetupUserGroup => GetString("SetupUserGroup");
+
+        public static string SetupUserGroupHelp => GetString("SetupUserGroupHelp");
     }
 }

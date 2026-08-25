@@ -84,21 +84,6 @@
   <data name="SetupMenuApprovalFlow" xml:space="preserve">
     <value>Approval Flow Setup</value>
   </data>
-  <data name="SetupTargetModule" xml:space="preserve">
-    <value>Target request module</value>
-  </data>
-  <data name="SetupTargetNone" xml:space="preserve">
-    <value>(generate modules only)</value>
-  </data>
-  <data name="SetupFieldName" xml:space="preserve">
-    <value>Approval field name</value>
-  </data>
-  <data name="SetupDbColumn" xml:space="preserve">
-    <value>FK column</value>
-  </data>
-  <data name="SetupPrefix" xml:space="preserve">
-    <value>Prefix (for a separate set)</value>
-  </data>
   <data name="SetupDataSource" xml:space="preserve">
     <value>Data source</value>
   </data>
@@ -121,7 +106,7 @@
     <value>None (build routes by script)</value>
   </data>
   <data name="SetupTurnMail" xml:space="preserve">
-    <value>Use mail (turn notification mail + sender contract + appsettings guide)</value>
+    <value>Include turn notification mail (run Mail Setup first for the mail side)</value>
   </data>
   <data name="SetupPageFrame" xml:space="preserve">
     <value>Add page links to the page frame</value>
@@ -150,9 +135,6 @@
   <data name="SetupSkippedFormat" xml:space="preserve">
     <value>Skipped (reused existing): {0}</value>
   </data>
-  <data name="SetupParentWiredFormat" xml:space="preserve">
-    <value>Wired ApprovalFlowField into {0}.</value>
-  </data>
   <data name="SetupReloadNote" xml:space="preserve">
     <value>Reopen the project to see the generated modules.</value>
   </data>
@@ -163,15 +145,18 @@
     <value>Mail Setup</value>
   </data>
   <data name="SetupSenderContract" xml:space="preserve">
-    <value>Add the sender contract (MailSenderContractField) to the user module — required for "send as current user" and Gmail user tokens</value>
+    <value>Add the sender contract (MailSenderContractField) — required for "send as current user"</value>
   </data>
   <data name="SetupGmailToken" xml:space="preserve">
-    <value>Add a Gmail user token field (GmailTokenField) to the user module — only when sending from the user's own Gmail</value>
+    <value>Add a Gmail user token field (GmailTokenField) — only when sending from the user's own Gmail</value>
   </data>
   <data name="SetupMailHistory" xml:space="preserve">
     <value>Generate the mail history module</value>
   </data>
-  <data name="SetupMailInfra" xml:space="preserve">
-    <value>Default mail infrastructure (for the appsettings guide)</value>
+  <data name="SetupUserGroup" xml:space="preserve">
+    <value>User module (when the sender is the current user)</value>
+  </data>
+  <data name="SetupUserGroupHelp" xml:space="preserve">
+    <value>Not needed when mail is always sent from the system address. Declare which fields of the user module hold the address and display name (sender contract) when using "send as current user" on MailField / BulkMailField, or sending from the user's own Gmail.</value>
   </data>
 </root>

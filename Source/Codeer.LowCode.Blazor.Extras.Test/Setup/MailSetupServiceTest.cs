@@ -13,6 +13,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Setup
         static MailSetupOptions DefaultOptions() => new()
         {
             DataSourceName = "Main",
+            AddSenderContract = true,
         };
 
         [Test]
@@ -44,10 +45,10 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Setup
             var protect = (FieldValueMatchCondition)module.UserWriteCondition.Condition!;
             Assert.That(protect.SearchTargetVariable, Is.EqualTo("Id.Value"));
 
-            //PageFrame リンクと appsettings 案内 (Mail セクション + 既定インフラ Smtp の雛形)
+            //PageFrame リンクと appsettings 案内 (Mail セクション。インフラの選択はアプリ側)
             Assert.That(d.PageFrames.Find("Main")!.Left.Links.Select(e => e.Module), Does.Contain("MailHistory"));
             var notes = string.Join("\n", result.Notes);
-            Assert.That(notes, Does.Contain("\"HistoryModuleName\": \"MailHistory\"").And.Contain("\"DefaultInfraName\": \"Smtp\"").And.Contain("\"Smtp\": {"));
+            Assert.That(notes, Does.Contain("\"HistoryModuleName\": \"MailHistory\"").And.Contain("DefaultInfraName").And.Not.Contain("TokenEncryptionKey"));
 
             Assert.That(string.Join("\n", result.Ddl), Does.Contain("CREATE TABLE mail_histories"));
         }
@@ -58,14 +59,25 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Setup
             CreateFixture();
             var options = DefaultOptions();
             options.AddGmailTokenField = true;
-            options.DefaultInfraName = "Gmail";
             var result = MailSetupService.Run(Load(), ProjectDir, options, DataSourceType.SQLite);
 
             var user = Load().Modules.Find("AppUser")!;
             var token = user.Fields.OfType<GmailTokenFieldDesign>().Single();
             Assert.That(token.DbColumnToken, Is.EqualTo("gmail_token"));
             Assert.That(string.Join("\n", result.Ddl), Does.Contain("gmail_token"));
-            Assert.That(string.Join("\n", result.Notes), Does.Contain("TokenEncryptionKey").And.Contain("\"Gmail\": {"));
+            Assert.That(string.Join("\n", result.Notes), Does.Contain("TokenEncryptionKey"));
+        }
+
+        [Test]
+        public void 既定は差出人契約なしで履歴の保護条件はデザインのCurrentUserモジュール()
+        {
+            CreateFixture();
+            var options = new MailSetupOptions { DataSourceName = "Main", UserModuleName = "Nobody" };
+            var result = MailSetupService.Run(Load(), ProjectDir, options, DataSourceType.SQLite);
+
+            var d = Load();
+            Assert.That(d.Modules.Find("AppUser")!.Fields.OfType<MailSenderContractFieldDesign>().Any(), Is.False);
+            Assert.That(d.Modules.Find("MailHistory")!.UserWriteCondition.ModuleName, Is.EqualTo("AppUser"));
         }
 
         [Test]

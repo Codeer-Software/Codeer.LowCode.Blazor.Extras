@@ -9,18 +9,25 @@
 手で作らず**セットアップコマンドで生成する**:
 
 - デザイナ: メニュー Tools > 承認フローのセットアップ
-- CLI (headless): `<designer.exe> approval-setup "<projectDir>" [--target <申請書モジュール>] [--prefix <P>]
+- CLI (headless): `<designer.exe> approval-setup "<projectDir>" [--data-source <name>]
   [--route standard|none] [--user-module <ユーザーモジュール>] [--user-name-field Name] [--user-email-field Email]
-  [--no-mail] [--no-mail-history] [--no-pageframe] [--ddl-out <path.sql>]`
+  [--no-mail] [--no-pageframe] [--ddl-out <path.sql>]`
 
-メールを使う (既定) と、順番到達通知メール (メンバーモジュールの MailField) に加えて**メールのセットアップ**
-(ユーザーモジュールの差出人契約・送信履歴モジュール・サーバー設定 appsettings の案内) も同時に行う。
+生成内容: 承認モジュール群 (フロー / メンバー / 履歴 + 検索用の承認待ち・承認状況 + 任意で経路マスタ 3 つ) +
+申請種別 enum `ApprovalRequestType` (空) + PageFrame のページリンク + テーブル作成 DDL。**それだけ**。
+**冪等**: 既存モジュールは生成しない (承認モジュール群は 1 セット。申請書が増えても共有する)。
+DDL は自動実行されないため、生成後にテーブルを作成すること。
+
+通知メールを含める (既定) 場合、メール側の準備 (差出人契約・送信履歴・サーバー設定) は
+**メールのセットアップ (Tools > メールのセットアップ / `mail-setup`) を先に**実行しておく。
 ユーザーモジュールに差出人契約が既にあれば、メールアドレス・表示名はその宣言に従う (`--user-*-field` は不要)。
 
-生成内容: 承認モジュール群 (.mod.json) + 申請書への結線 (ApprovalFlowField 追加・編集ロックの
-DataWriteCondition・DataOnlyFields・OnBuildRoute 雛形) + PageFrame のページリンク + テーブル作成 DDL。
-**冪等**: 既存モジュールは生成せず結線だけを行う (2個目以降の申請書は同じ承認モジュールを共有する)。
-DDL は自動実行されないため、生成後にテーブルを作成すること。
+### 申請書側の手順 (セットアップ後にデザイナで行う)
+
+1. 申請書モジュールに ApprovalFlowField を置く (FlowModuleName = `ApprovalFlow`、FK 列 (例 `approval_id`) を DB に追加)
+2. 申請書のスクリプトに `OnBuildRoute` を書き、フィールドの「経路組み立て」に設定する (下記「経路の組み立て」)
+3. 編集ロック: 申請書の DataWriteCondition に「(フィールド名).Status が 未申請(null) / Returned / Withdrawn / Rejected」の Or 条件
+4. 申請種別 enum `ApprovalRequestType` にメンバー (名前 = 申請書モジュール名 / 表示 = 申請書の名前) を追加
 
 ## Design
 

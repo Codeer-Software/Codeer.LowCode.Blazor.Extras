@@ -139,7 +139,8 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
                 return;
             }
 
-            var module = MailHistoryModuleFactory.Create(moduleName, options.DataSourceName, options.UserModuleName);
+            //保護条件 (誰も書けない) の判定に使うモジュールはデザインの CurrentUser モジュール
+            var module = MailHistoryModuleFactory.Create(moduleName, options.DataSourceName, SetupUi.CurrentUserModuleName(designData));
             SaveModule(designDir, module);
             result.CreatedModules.Add(moduleName);
             result.Ddl.AddRange(module.CreateDDL(dataSourceType, existingTables));
@@ -151,59 +152,23 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
             }
         }
 
-        /// <summary>サーバー設定 (appsettings.json) の案内。Mail セクション + 既定インフラのセクション雛形。</summary>
+        /// <summary>サーバー設定 (appsettings.json) の案内。送信インフラの選択・設定はアプリ側 (デザインには持たない)。</summary>
         internal static string CreateAppSettingsNote(MailSetupOptions options)
         {
-            var mail = new List<string> { $"    \"DefaultInfraName\": \"{options.DefaultInfraName}\"" };
-            if (options.CreateHistoryModule) mail.Add($"    \"HistoryModuleName\": \"{options.HistoryModuleName}\"");
-
-            var provider = options.DefaultInfraName switch
-            {
-                "GraphApi" => """
-                    "GraphApi": {
-                        "SenderMailAddress": "system@example.com",
-                        "SenderDisplayName": "システム",
-                        "TenantId": "",
-                        "ClientId": "",
-                        "ClientSecret": ""
-                      }
-                    """,
-                "SendGrid" => """
-                    "SendGrid": {
-                        "SenderMailAddress": "system@example.com",
-                        "SenderDisplayName": "システム",
-                        "ApiKey": ""
-                      }
-                    """,
-                "Gmail" => """
-                    "Gmail": {
-                        "SenderMailAddress": "system@example.com",
-                        "SenderDisplayName": "システム",
-                        "ClientSecret": "<client_secret.json のパスまたは JSON>",
-                        "TokenSecret": "<token.json のパスまたは JSON>",
-                        "TokenEncryptionKey": "<GmailTokenField を使う場合の暗号化鍵>"
-                      }
-                    """,
-                _ => """
-                    "Smtp": {
-                        "SenderMailAddress": "system@example.com",
-                        "SenderDisplayName": "システム",
-                        "Host": "smtp.example.com",
-                        "Port": "587",
-                        "SSL": "true",
-                        "UserName": "",
-                        "Password": ""
-                      }
-                    """,
-            };
-
+            var history = options.CreateHistoryModule
+                ? $",\r\n    \"HistoryModuleName\": \"{options.HistoryModuleName}\""
+                : string.Empty;
+            var gmailKey = options.AddGmailTokenField
+                ? "\r\n  Gmail で本人名義に送る (GmailTokenField) 場合は \"Gmail\" セクションの \"TokenEncryptionKey\" (列の暗号化鍵) も必要です。"
+                : string.Empty;
             return $$"""
-                メール送信はサーバー設定で有効になります。サーバーの appsettings.json に次を設定してください
-                (送信インフラの呼び名は MailSenderTable の対応表。秘密情報は環境変数やユーザーシークレットに置くこと):
+                メール送信はサーバー設定で有効になります。サーバーの appsettings.json に次を設定してください:
                   "Mail": {
-                {{string.Join(",\r\n", mail)}}
-                  },
-                  {{provider.Trim()}}
+                    "DefaultInfraName": "<単発送信の既定インフラ: Smtp | GraphApi | SendGrid | Gmail>",
+                    "DefaultBulkInfraName": "<一斉送信の既定インフラ (省略時は単発と同じ)>"{{history}}
+                  }
+                  使う送信インフラのセクション ("Smtp" / "GraphApi" / "SendGrid" / "Gmail") をそれぞれ独立して書きます (使うものだけ)。
+                  呼び名と設定の対応はアプリの MailSenderTable / Program.cs。秘密情報は環境変数やユーザーシークレットに置いてください。{{gmailKey}}
                 """;
         }
 

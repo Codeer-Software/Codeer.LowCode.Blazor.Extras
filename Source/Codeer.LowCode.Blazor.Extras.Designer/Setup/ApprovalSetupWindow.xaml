@@ -22,45 +22,27 @@
       <RowDefinition Height="Auto"/>
       <RowDefinition Height="Auto"/>
       <RowDefinition Height="Auto"/>
-      <RowDefinition Height="Auto"/>
-      <RowDefinition Height="Auto"/>
-      <RowDefinition Height="Auto"/>
-      <RowDefinition Height="Auto"/>
-      <RowDefinition Height="Auto"/>
     </Grid.RowDefinitions>
 
-    <TextBlock x:Name="_labelTarget" Grid.Row="0" Grid.Column="0" VerticalAlignment="Center" Margin="0,4"/>
-    <ComboBox x:Name="_comboTarget" Grid.Row="0" Grid.Column="1" Margin="0,4"/>
+    <TextBlock x:Name="_labelDataSource" Grid.Row="0" Grid.Column="0" VerticalAlignment="Center" Margin="0,4"/>
+    <ComboBox x:Name="_comboDataSource" Grid.Row="0" Grid.Column="1" Margin="0,4"/>
 
-    <TextBlock x:Name="_labelFieldName" Grid.Row="1" Grid.Column="0" VerticalAlignment="Center" Margin="0,4"/>
-    <TextBox x:Name="_textFieldName" Grid.Row="1" Grid.Column="1" Margin="0,4"/>
+    <TextBlock x:Name="_labelUserModule" Grid.Row="1" Grid.Column="0" VerticalAlignment="Center" Margin="0,4"/>
+    <ComboBox x:Name="_comboUserModule" Grid.Row="1" Grid.Column="1" Margin="0,4"/>
 
-    <TextBlock x:Name="_labelDbColumn" Grid.Row="2" Grid.Column="0" VerticalAlignment="Center" Margin="0,4"/>
-    <TextBox x:Name="_textDbColumn" Grid.Row="2" Grid.Column="1" Margin="0,4"/>
+    <TextBlock x:Name="_labelUserNameField" Grid.Row="2" Grid.Column="0" VerticalAlignment="Center" Margin="0,4"/>
+    <ComboBox x:Name="_comboUserNameField" Grid.Row="2" Grid.Column="1" Margin="0,4"/>
 
-    <TextBlock x:Name="_labelPrefix" Grid.Row="3" Grid.Column="0" VerticalAlignment="Center" Margin="0,4"/>
-    <TextBox x:Name="_textPrefix" Grid.Row="3" Grid.Column="1" Margin="0,4"/>
+    <TextBlock x:Name="_labelUserEmailField" Grid.Row="3" Grid.Column="0" VerticalAlignment="Center" Margin="0,4"/>
+    <ComboBox x:Name="_comboUserEmailField" Grid.Row="3" Grid.Column="1" Margin="0,4"/>
 
-    <TextBlock x:Name="_labelDataSource" Grid.Row="4" Grid.Column="0" VerticalAlignment="Center" Margin="0,4"/>
-    <ComboBox x:Name="_comboDataSource" Grid.Row="4" Grid.Column="1" Margin="0,4"/>
+    <TextBlock x:Name="_labelRouteMaster" Grid.Row="4" Grid.Column="0" VerticalAlignment="Center" Margin="0,4"/>
+    <ComboBox x:Name="_comboRouteMaster" Grid.Row="4" Grid.Column="1" Margin="0,4"/>
 
-    <TextBlock x:Name="_labelUserModule" Grid.Row="5" Grid.Column="0" VerticalAlignment="Center" Margin="0,4"/>
-    <ComboBox x:Name="_comboUserModule" Grid.Row="5" Grid.Column="1" Margin="0,4"/>
+    <CheckBox x:Name="_checkTurnMail" Grid.Row="5" Grid.Column="0" Grid.ColumnSpan="2" Margin="0,6,0,2" IsChecked="True"/>
+    <CheckBox x:Name="_checkPageFrame" Grid.Row="6" Grid.Column="0" Grid.ColumnSpan="2" Margin="0,2,0,6" IsChecked="True"/>
 
-    <TextBlock x:Name="_labelUserNameField" Grid.Row="6" Grid.Column="0" VerticalAlignment="Center" Margin="0,4"/>
-    <TextBox x:Name="_textUserNameField" Grid.Row="6" Grid.Column="1" Margin="0,4"/>
-
-    <TextBlock x:Name="_labelUserEmailField" Grid.Row="7" Grid.Column="0" VerticalAlignment="Center" Margin="0,4"/>
-    <TextBox x:Name="_textUserEmailField" Grid.Row="7" Grid.Column="1" Margin="0,4"/>
-
-    <TextBlock x:Name="_labelRouteMaster" Grid.Row="8" Grid.Column="0" VerticalAlignment="Center" Margin="0,4"/>
-    <ComboBox x:Name="_comboRouteMaster" Grid.Row="8" Grid.Column="1" Margin="0,4"/>
-
-    <CheckBox x:Name="_checkTurnMail" Grid.Row="9" Grid.Column="0" Grid.ColumnSpan="2" Margin="0,6,0,2" IsChecked="True"/>
-    <CheckBox x:Name="_checkMailHistory" Grid.Row="10" Grid.Column="0" Grid.ColumnSpan="2" Margin="20,2,0,2" IsChecked="True"/>
-    <CheckBox x:Name="_checkPageFrame" Grid.Row="11" Grid.Column="0" Grid.ColumnSpan="2" Margin="0,2,0,6" IsChecked="True"/>
-
-    <StackPanel Grid.Row="12" Grid.Column="0" Grid.ColumnSpan="2" Orientation="Horizontal" HorizontalAlignment="Right">
+    <StackPanel Grid.Row="7" Grid.Column="0" Grid.ColumnSpan="2" Orientation="Horizontal" HorizontalAlignment="Right">
       <Button Content="OK" Width="100" Margin="5" IsDefault="True" Click="OkClick"/>
       <Button Content="Cancel" Width="100" Margin="5" IsCancel="True"/>
     </StackPanel>

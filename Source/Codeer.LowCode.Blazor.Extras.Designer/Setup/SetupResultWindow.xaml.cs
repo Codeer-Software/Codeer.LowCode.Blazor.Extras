@@ -35,7 +35,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
             if (result.SkippedModules.Count > 0)
                 summary.AppendLine(string.Format(Properties.Resources.SetupSkippedFormat, string.Join(", ", result.SkippedModules)));
             foreach (var note in result.Notes) summary.AppendLine(note);
-            if (result.CreatedModules.Count > 0 || result.ParentWired)
+            if (result.CreatedModules.Count > 0)
                 summary.AppendLine(Properties.Resources.SetupReloadNote);
             _textSummary.Text = summary.ToString().TrimEnd();
 
@@ -49,11 +49,8 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
             }
         }
 
-        internal static void ShowResult(DesignerEnvironment environment, DataSource dataSource, SetupResult result, string? parentWiredModule)
+        internal static void ShowResult(DesignerEnvironment environment, DataSource dataSource, SetupResult result)
         {
-            if (result.ParentWired && parentWiredModule != null)
-                result.Notes.Insert(0, string.Format(Properties.Resources.SetupParentWiredFormat, parentWiredModule));
-
             new SetupResultWindow(result)
             {
                 _environment = environment,

@@ -7,52 +7,50 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
     /// <summary>承認フローセットアップのオプション入力ダイアログ。</summary>
     public partial class ApprovalSetupWindow : MetroWindow
     {
+        readonly DesignData _designData;
         ApprovalSetupOptions? _result;
 
         ApprovalSetupWindow(DesignData designData, List<string> dataSourceNames)
         {
             InitializeComponent();
+            _designData = designData;
 
             Title = Properties.Resources.SetupMenuApprovalFlow;
-            _labelTarget.Text = Properties.Resources.SetupTargetModule;
-            _labelFieldName.Text = Properties.Resources.SetupFieldName;
-            _labelDbColumn.Text = Properties.Resources.SetupDbColumn;
-            _labelPrefix.Text = Properties.Resources.SetupPrefix;
             _labelDataSource.Text = Properties.Resources.SetupDataSource;
             _labelUserModule.Text = Properties.Resources.SetupUserModule;
             _labelUserNameField.Text = Properties.Resources.SetupUserNameField;
             _labelUserEmailField.Text = Properties.Resources.SetupUserEmailField;
             _labelRouteMaster.Text = Properties.Resources.SetupRouteMaster;
             _checkTurnMail.Content = Properties.Resources.SetupTurnMail;
-            _checkMailHistory.Content = Properties.Resources.SetupMailHistory;
-            _checkTurnMail.Checked += (_, _) => _checkMailHistory.IsEnabled = true;
-            _checkTurnMail.Unchecked += (_, _) => _checkMailHistory.IsEnabled = false;
             _checkPageFrame.Content = Properties.Resources.SetupPageFrame;
 
             var moduleNames = designData.Modules.GetModuleNames();
-
-            _comboTarget.Items.Add(Properties.Resources.SetupTargetNone);
-            foreach (var name in moduleNames) _comboTarget.Items.Add(name);
-            _comboTarget.SelectedIndex = 0;
 
             foreach (var name in dataSourceNames) _comboDataSource.Items.Add(name);
             if (_comboDataSource.Items.Count > 0) _comboDataSource.SelectedIndex = 0;
 
             foreach (var name in moduleNames) _comboUserModule.Items.Add(name);
-            var userModule = string.IsNullOrEmpty(designData.AppSettings.CurrentUserModuleDesignName)
-                ? "AppUser" : designData.AppSettings.CurrentUserModuleDesignName;
+            var userModule = SetupUi.CurrentUserModuleName(designData);
             _comboUserModule.SelectedItem = moduleNames.Contains(userModule) ? userModule : moduleNames.FirstOrDefault();
+            _comboUserModule.SelectionChanged += (_, _) => FillUserFields();
+            FillUserFields();
 
             _comboRouteMaster.Items.Add(Properties.Resources.SetupRouteStandard);
             _comboRouteMaster.Items.Add(Properties.Resources.SetupRouteNone);
             _comboRouteMaster.SelectedIndex = 0;
 
-            _textFieldName.Text = "Approval";
-            _textDbColumn.Text = "approval_id";
-            //既に差出人契約があれば、その宣言をユーザー項目の既定値にする
-            var (emailField, displayNameField) = MailSetupService.ReadSenderRoles(designData.Modules.Find(userModule));
-            _textUserNameField.Text = displayNameField ?? "Name";
-            _textUserEmailField.Text = emailField ?? "Email";
+            //メールアドレスは通知メールを含めるときだけ使う
+            _checkTurnMail.Checked += (_, _) => _comboUserEmailField.IsEnabled = true;
+            _checkTurnMail.Unchecked += (_, _) => _comboUserEmailField.IsEnabled = false;
+        }
+
+        //選んだユーザーモジュールのフィールドを候補にする。既に差出人契約があれば、その宣言を初期選択にする
+        void FillUserFields()
+        {
+            var module = _designData.Modules.Find((string?)_comboUserModule.SelectedItem ?? string.Empty);
+            var (emailField, displayNameField) = MailSetupService.ReadSenderRoles(module);
+            SetupUi.FillFields(_comboUserNameField, module, displayNameField, "Name");
+            SetupUi.FillFields(_comboUserEmailField, module, emailField, "Email");
         }
 
         internal static ApprovalSetupOptions? ShowDialog(DesignData designData, List<string> dataSourceNames)
@@ -68,22 +66,18 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
         void OkClick(object sender, RoutedEventArgs e)
         {
             if (_comboDataSource.SelectedItem == null || _comboUserModule.SelectedItem == null) return;
-            if (string.IsNullOrWhiteSpace(_textFieldName.Text) || string.IsNullOrWhiteSpace(_textDbColumn.Text)) return;
+            if (_comboUserNameField.SelectedItem == null) return;
+            if (_checkTurnMail.IsChecked == true && _comboUserEmailField.SelectedItem == null) return;
 
             _result = new ApprovalSetupOptions
             {
-                TargetModuleName = _comboTarget.SelectedIndex <= 0 ? string.Empty : (string)_comboTarget.SelectedItem,
-                FieldName = _textFieldName.Text.Trim(),
-                DbColumn = _textDbColumn.Text.Trim(),
-                Prefix = _textPrefix.Text.Trim(),
                 DataSourceName = (string)_comboDataSource.SelectedItem,
                 UserModuleName = (string)_comboUserModule.SelectedItem,
-                UserDisplayNameField = string.IsNullOrWhiteSpace(_textUserNameField.Text) ? "Name" : _textUserNameField.Text.Trim(),
-                UserEmailField = string.IsNullOrWhiteSpace(_textUserEmailField.Text) ? "Email" : _textUserEmailField.Text.Trim(),
+                UserDisplayNameField = (string)_comboUserNameField.SelectedItem,
+                UserEmailField = (string?)_comboUserEmailField.SelectedItem ?? "Email",
                 RouteMaster = _comboRouteMaster.SelectedIndex == 1
                     ? ApprovalRouteMasterKind.None : ApprovalRouteMasterKind.Standard,
                 UseTurnNotifyMail = _checkTurnMail.IsChecked == true,
-                UseMailHistory = _checkMailHistory.IsChecked == true,
                 AddPageFrameLinks = _checkPageFrame.IsChecked == true,
             };
             Close();

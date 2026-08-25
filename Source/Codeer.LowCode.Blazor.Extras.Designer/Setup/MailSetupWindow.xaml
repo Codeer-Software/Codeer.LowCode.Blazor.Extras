@@ -7,51 +7,56 @@
         mc:Ignorable="d"
         WindowStartupLocation="CenterOwner"
         SizeToContent="Height"
-        Title="Mail Setup" Width="520" ResizeMode="NoResize">
-  <Grid Margin="12">
-    <Grid.ColumnDefinitions>
-      <ColumnDefinition Width="Auto" MinWidth="200"/>
-      <ColumnDefinition Width="*"/>
-    </Grid.ColumnDefinitions>
-    <Grid.RowDefinitions>
-      <RowDefinition Height="Auto"/>
-      <RowDefinition Height="Auto"/>
-      <RowDefinition Height="Auto"/>
-      <RowDefinition Height="Auto"/>
-      <RowDefinition Height="Auto"/>
-      <RowDefinition Height="Auto"/>
-      <RowDefinition Height="Auto"/>
-      <RowDefinition Height="Auto"/>
-      <RowDefinition Height="Auto"/>
-      <RowDefinition Height="Auto"/>
-      <RowDefinition Height="Auto"/>
-    </Grid.RowDefinitions>
+        Title="Mail Setup" Width="560" ResizeMode="NoResize">
+  <StackPanel Margin="12">
+    <!-- 送信履歴 -->
+    <CheckBox x:Name="_checkHistory" Margin="0,0,0,2" IsChecked="True"/>
+    <Grid Margin="20,0,0,0">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="Auto" MinWidth="200"/>
+        <ColumnDefinition Width="*"/>
+      </Grid.ColumnDefinitions>
+      <Grid.RowDefinitions>
+        <RowDefinition Height="Auto"/>
+        <RowDefinition Height="Auto"/>
+        <RowDefinition Height="Auto"/>
+      </Grid.RowDefinitions>
+      <TextBlock x:Name="_labelHistoryName" Grid.Row="0" Grid.Column="0" VerticalAlignment="Center" Margin="0,4"/>
+      <TextBox x:Name="_textHistoryName" Grid.Row="0" Grid.Column="1" Margin="0,4"/>
+      <TextBlock x:Name="_labelDataSource" Grid.Row="1" Grid.Column="0" VerticalAlignment="Center" Margin="0,4"/>
+      <ComboBox x:Name="_comboDataSource" Grid.Row="1" Grid.Column="1" Margin="0,4"/>
+      <CheckBox x:Name="_checkPageFrame" Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2" Margin="0,4" IsChecked="True"/>
+    </Grid>
 
-    <TextBlock x:Name="_labelUserModule" Grid.Row="0" Grid.Column="0" VerticalAlignment="Center" Margin="0,4"/>
-    <ComboBox x:Name="_comboUserModule" Grid.Row="0" Grid.Column="1" Margin="0,4"/>
+    <!-- 任意: ユーザーモジュール (差出人 = 操作ユーザーを使う場合) -->
+    <GroupBox x:Name="_groupUser" Margin="0,12,0,0" Padding="8">
+      <StackPanel>
+        <TextBlock x:Name="_textUserHelp" TextWrapping="Wrap" Margin="0,0,0,6" Opacity="0.8"/>
+        <CheckBox x:Name="_checkSenderContract" Margin="0,2" IsChecked="False"/>
+        <Grid Margin="20,4,0,0">
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto" MinWidth="200"/>
+            <ColumnDefinition Width="*"/>
+          </Grid.ColumnDefinitions>
+          <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+          </Grid.RowDefinitions>
+          <TextBlock x:Name="_labelUserModule" Grid.Row="0" Grid.Column="0" VerticalAlignment="Center" Margin="0,4"/>
+          <ComboBox x:Name="_comboUserModule" Grid.Row="0" Grid.Column="1" Margin="0,4"/>
+          <TextBlock x:Name="_labelUserEmailField" Grid.Row="1" Grid.Column="0" VerticalAlignment="Center" Margin="0,4"/>
+          <ComboBox x:Name="_comboUserEmailField" Grid.Row="1" Grid.Column="1" Margin="0,4"/>
+          <TextBlock x:Name="_labelUserNameField" Grid.Row="2" Grid.Column="0" VerticalAlignment="Center" Margin="0,4"/>
+          <ComboBox x:Name="_comboUserNameField" Grid.Row="2" Grid.Column="1" Margin="0,4"/>
+        </Grid>
+        <CheckBox x:Name="_checkGmailToken" Margin="0,8,0,2" IsChecked="False"/>
+      </StackPanel>
+    </GroupBox>
 
-    <TextBlock x:Name="_labelUserEmailField" Grid.Row="1" Grid.Column="0" VerticalAlignment="Center" Margin="0,4"/>
-    <TextBox x:Name="_textUserEmailField" Grid.Row="1" Grid.Column="1" Margin="0,4"/>
-
-    <TextBlock x:Name="_labelUserNameField" Grid.Row="2" Grid.Column="0" VerticalAlignment="Center" Margin="0,4"/>
-    <TextBox x:Name="_textUserNameField" Grid.Row="2" Grid.Column="1" Margin="0,4"/>
-
-    <CheckBox x:Name="_checkSenderContract" Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="2" Margin="0,6,0,2" IsChecked="True"/>
-    <CheckBox x:Name="_checkGmailToken" Grid.Row="4" Grid.Column="0" Grid.ColumnSpan="2" Margin="0,2,0,6" IsChecked="False"/>
-
-    <CheckBox x:Name="_checkHistory" Grid.Row="5" Grid.Column="0" Grid.ColumnSpan="2" Margin="0,6,0,2" IsChecked="True"/>
-    <TextBlock x:Name="_labelHistoryName" Grid.Row="6" Grid.Column="0" VerticalAlignment="Center" Margin="20,4,0,4"/>
-    <TextBox x:Name="_textHistoryName" Grid.Row="6" Grid.Column="1" Margin="0,4"/>
-    <TextBlock x:Name="_labelDataSource" Grid.Row="7" Grid.Column="0" VerticalAlignment="Center" Margin="20,4,0,4"/>
-    <ComboBox x:Name="_comboDataSource" Grid.Row="7" Grid.Column="1" Margin="0,4"/>
-    <CheckBox x:Name="_checkPageFrame" Grid.Row="8" Grid.Column="0" Grid.ColumnSpan="2" Margin="20,2,0,6" IsChecked="True"/>
-
-    <TextBlock x:Name="_labelInfra" Grid.Row="9" Grid.Column="0" VerticalAlignment="Center" Margin="0,4"/>
-    <ComboBox x:Name="_comboInfra" Grid.Row="9" Grid.Column="1" Margin="0,4"/>
-
-    <StackPanel Grid.Row="10" Grid.Column="0" Grid.ColumnSpan="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,8,0,0">
+    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
       <Button Content="OK" Width="100" Margin="5" IsDefault="True" Click="OkClick"/>
       <Button Content="Cancel" Width="100" Margin="5" IsCancel="True"/>
     </StackPanel>
-  </Grid>
+  </StackPanel>
 </Controls:MetroWindow>

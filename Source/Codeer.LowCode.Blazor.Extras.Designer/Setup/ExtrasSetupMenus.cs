@@ -16,7 +16,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
             AddMailSetup(env);
         }
 
-        /// <summary>Tools &gt; 承認フローのセットアップ。承認モジュール群の生成と申請書への結線。</summary>
+        /// <summary>Tools &gt; 承認フローのセットアップ。承認モジュール群 (フロー系 + 経路マスタ) の生成。</summary>
         public static void AddApprovalFlowSetup(DesignerEnvironment env)
             => env.AddMainMenu(() => RunApprovalSetup(env), "Tools", Properties.Resources.SetupMenuApprovalFlow);
 
@@ -39,8 +39,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
                 var result = ApprovalFlowSetupService.Run(designData, env.CurrentFileDirectory, options,
                     dataSource.DataSourceType, env.GetDbInfo(dataSource.Name));
 
-                SetupResultWindow.ShowResult(env, dataSource, result,
-                    string.IsNullOrEmpty(options.TargetModuleName) ? null : options.TargetModuleName);
+                SetupResultWindow.ShowResult(env, dataSource, result);
             }
             catch (Exception ex)
             {
@@ -64,7 +63,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
                 var result = MailSetupService.Run(designData, env.CurrentFileDirectory, options,
                     dataSource.DataSourceType, env.GetDbInfo(dataSource.Name));
 
-                SetupResultWindow.ShowResult(env, dataSource, result, null);
+                SetupResultWindow.ShowResult(env, dataSource, result);
             }
             catch (Exception ex)
             {

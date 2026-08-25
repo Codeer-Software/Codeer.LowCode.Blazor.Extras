@@ -10,8 +10,8 @@
 
 - デザイナ: メニュー Tools > メールのセットアップ
 - CLI (headless): `<designer.exe> mail-setup "<projectDir>" [--history-name MailHistory] [--data-source <name>]
-  [--user-module AppUser] [--user-email-field Email] [--user-name-field Name] [--no-sender-contract] [--gmail-token]
-  [--no-history] [--infra Smtp|GraphApi|SendGrid|Gmail] [--no-pageframe] [--ddl-out <path.sql>]`
+  [--no-history] [--no-pageframe]
+  [--sender-contract --user-module AppUser --user-email-field Email --user-name-field Name] [--gmail-token] [--ddl-out <path.sql>]`
 
 生成後、案内どおりサーバーの appsettings に `"Mail": { "HistoryModuleName": "<モジュール名>" }` を設定し、
 DDL でテーブルを作成すると全送信が自動記録される。承認フローのセットアップで「メールを使う」を選んだ場合も同じものが生成される。
