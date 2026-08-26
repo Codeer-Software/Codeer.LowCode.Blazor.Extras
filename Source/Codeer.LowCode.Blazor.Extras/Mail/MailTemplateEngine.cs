@@ -45,8 +45,16 @@ namespace Codeer.LowCode.Blazor.Extras.Mail
             => GetVariableNames(subject).Concat(GetVariableNames(body)).Distinct().ToList();
 
         public static string Fill(string? template, IReadOnlyDictionary<string, string> variables)
+            => FillWithSpans(template, variables).Text;
+
+        /// <summary>
+        /// Fill と同じ差し込みを行い、変数が入った区間 (解決後テキスト上の位置) も返す。
+        /// プレビューで「どこに何が入ったか」をハイライトするために使う。
+        /// </summary>
+        public static (string Text, List<MailTemplateSpan> Spans) FillWithSpans(string? template, IReadOnlyDictionary<string, string> variables)
         {
-            if (string.IsNullOrEmpty(template)) return string.Empty;
+            var spans = new List<MailTemplateSpan>();
+            if (string.IsNullOrEmpty(template)) return (string.Empty, spans);
 
             var sb = new StringBuilder(template.Length);
             for (var i = 0; i < template.Length; i++)
@@ -74,7 +82,9 @@ namespace Codeer.LowCode.Blazor.Extras.Mail
                         sb.Append(c);
                         continue;
                     }
-                    sb.Append(variables.TryGetValue(name, out var value) ? value : string.Empty);
+                    var resolved = variables.TryGetValue(name, out var value) ? value : string.Empty;
+                    spans.Add(new MailTemplateSpan { Start = sb.Length, Length = resolved.Length, Name = name });
+                    sb.Append(resolved);
                     i = end;
                 }
                 else if (c == '}')
@@ -93,7 +103,7 @@ namespace Codeer.LowCode.Blazor.Extras.Mail
                     sb.Append(c);
                 }
             }
-            return sb.ToString();
+            return (sb.ToString(), spans);
         }
     }
 }

@@ -151,6 +151,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Properties
         public static string SetupGmailToken => GetString("SetupGmailToken");
 
         public static string SetupMailHistory => GetString("SetupMailHistory");
+        public static string SetupMailHistoryDetail => GetString("SetupMailHistoryDetail");
 
         public static string SetupUserGroup => GetString("SetupUserGroup");
 

@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
 		<TargetFramework>net8.0</TargetFramework>
@@ -33,6 +33,11 @@
 
 	<ItemGroup>
 		<ProjectReference Include="..\Codeer.LowCode.Blazor.Extras\Codeer.LowCode.Blazor.Extras.csproj" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<!-- メールプレビュー HTML (MailPreviewHtml が埋め込みから読む) -->
+		<EmbeddedResource Include="Mail\MailPreview.html" LogicalName="Codeer.LowCode.Blazor.Extras.Server.Mail.MailPreview.html" />
 	</ItemGroup>
 
 	<ItemGroup>

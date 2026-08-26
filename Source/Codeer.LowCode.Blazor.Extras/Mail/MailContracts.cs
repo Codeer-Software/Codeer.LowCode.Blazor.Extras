@@ -12,6 +12,10 @@ namespace Codeer.LowCode.Blazor.Extras.Mail
         public static MailHistoryContractFieldDesign? History(ModuleDesign? historyModule)
             => historyModule?.Fields.OfType<MailHistoryContractFieldDesign>().FirstOrDefault();
 
+        /// <summary>送信明細モジュールの契約。無ければ null (= 既定名で扱う)。</summary>
+        public static MailHistoryDetailContractFieldDesign? HistoryDetail(ModuleDesign? detailModule)
+            => detailModule?.Fields.OfType<MailHistoryDetailContractFieldDesign>().FirstOrDefault();
+
         /// <summary>差出人 (操作ユーザー) モジュールの契約。無ければ null。</summary>
         public static MailSenderContractFieldDesign? Sender(ModuleDesign? currentUserModule)
             => currentUserModule?.Fields.OfType<MailSenderContractFieldDesign>().FirstOrDefault();

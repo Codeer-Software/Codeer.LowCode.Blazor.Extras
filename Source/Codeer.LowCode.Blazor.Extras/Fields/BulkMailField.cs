@@ -1,9 +1,10 @@
 ﻿using Codeer.LowCode.Blazor.Components.Dialog;
-using Codeer.LowCode.Blazor.Extras.Data;
+using Codeer.LowCode.Blazor.DataIO;
 using Codeer.LowCode.Blazor.Extras.Designs;
 using Codeer.LowCode.Blazor.Extras.Mail;
 using Codeer.LowCode.Blazor.Extras.Services;
 using Codeer.LowCode.Blazor.OperatingModel;
+using Codeer.LowCode.Blazor.Repository.Data;
 using Codeer.LowCode.Blazor.Script;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -14,20 +15,27 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
     /// サーバー側で解決される (全行対象・アドレスはクライアントに渡らない)。
     /// 未保存の変更がある間は送信できない (保存済みの状態=サーバーから見える状態が送信対象)。
     /// </summary>
-    public class BulkMailField(BulkMailFieldDesign design)
-        : ValueFieldBase<BulkMailFieldDesign, BulkMailFieldData, string>(design)
+    public class BulkMailField(BulkMailFieldDesign design) : FieldBase<BulkMailFieldDesign>(design)
     {
         bool _isSending;
 
         /// <summary>送信中か (ボタンの二重実行防止)。</summary>
         internal bool IsSending => _isSending;
 
-        [ScriptHide]
-        public override async Task SetValueAsync(string? value)
-            => await base.SetValueAsync(value);
+        //ボタン (値もデータも持たない)
+        public override bool IsModified => false;
 
-        /// <summary>送信結果サマリ (新しい順)。</summary>
-        internal List<BulkMailSummaryEntry> GetSummaryEntries() => BulkMailSummary.Parse(Value);
+        [ScriptHide]
+        public override FieldDataBase? GetData() => null;
+
+        [ScriptHide]
+        public override FieldSubmitData GetSubmitData() => new();
+
+        [ScriptHide]
+        public override async Task InitializeDataAsync(FieldDataBase? fieldDataBase) => await Task.CompletedTask;
+
+        [ScriptHide]
+        public override async Task SetDataAsync(FieldDataBase? fieldDataBase) => await Task.CompletedTask;
 
         /// <summary>ボタンからの送信。確認ダイアログを挟み、結果をトーストで知らせる。</summary>
         internal async Task SendFromButtonAsync()
@@ -87,6 +95,58 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             return await SendCoreAsync(listField) ?? MailSendResult.Failure(string.Empty, "Sending is already in progress.");
         }
 
+        /// <summary>
+        /// 送信せずに「送るとこうなる」を HTML でダウンロードする (左: 宛先一覧 (除外理由付き)・右: 宛先ごとに解決した本文)。
+        /// 宛先の解決は送信と同じサーバー経路。未保存の内容 (テンプレート・名簿) は反映されないので保存してから使う。
+        /// サーバー側のプレビュー対応 (MailTransport.BulkPreviewMailEndPoint) が必要。
+        /// </summary>
+        [ScriptName("Preview")]
+        public async Task<bool> PreviewAsync()
+        {
+            if (Services.AppInfoService.IsDesignMode || Module == null) return false;
+            if (Module.IsNewData || Module.IsModified)
+            {
+                await Services.UIService.NotifyError(Properties.Resources.MailPreviewSaveBeforePreview);
+                return false;
+            }
+            var listField = Module.GetField<ListField>(Design.RecipientListFieldName);
+            if (listField?.GetSearchCondition() == null)
+            {
+                await Services.UIService.NotifyError(Properties.Resources.BulkMailTargetListInvalid);
+                return false;
+            }
+            var html = await MailTransport.PreviewBulkSearchAsync(Services.Provider?.GetService<IHttpService>(), BuildRequest(listField));
+            if (html == null)
+            {
+                await Services.UIService.NotifyError(Properties.Resources.MailPreviewFailed);
+                return false;
+            }
+            await Services.UIService.DownloadFile(new MemoryStream(html), $"bulk-mail-preview-{Design.Name}.html");
+            return true;
+        }
+
+        //送信要求を組み立てる (送信とプレビューで共有 = 同じ宛先解決になる)
+        MailBulkSearchRequest BuildRequest(ListField listField)
+        {
+            //リストの検索条件に合致する全行を対象にする(表示中のページ・列に縛られない)
+            var condition = listField.GetSearchCondition()!;
+            condition.LimitCount = null;
+            condition.SelectFields = new(); //必要列はサーバーがテンプレ変数から組み直す
+
+            return new MailBulkSearchRequest
+            {
+                MailInfraName = Design.MailInfraName,
+                IsFromCurrentUser = Design.IsFromCurrentUser,
+                Subject = ResolveValueFirst(Design.Subject, Design.SubjectVariable),
+                Body = ResolveValueFirst(Design.Body, Design.BodyVariable),
+                IsBodyHtml = Design.IsBodyHtml,
+                ReplyTo = ResolveValueFirst(Design.ReplyTo, Design.ReplyToVariable),
+                Condition = condition,
+                SourceModule = Module!.Design.Name,
+                SourceId = Module.GetIdText(),
+            };
+        }
+
         async Task<MailSendResult?> SendCoreAsync(ListField listField)
         {
             if (_isSending) return null;
@@ -94,38 +154,9 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             NotifyStateChanged();
             try
             {
-                //リストの検索条件に合致する全行を対象にする(表示中のページ・列に縛られない)
-                var condition = listField.GetSearchCondition()!;
-                condition.LimitCount = null;
-                condition.SelectFields = new(); //必要列はサーバーがテンプレ変数から組み直す
-
-                var subject = ResolveValueFirst(Design.Subject, Design.SubjectVariable);
-                var body = ResolveValueFirst(Design.Body, Design.BodyVariable);
-
-                var request = new MailBulkSearchRequest
-                {
-                    MailInfraName = Design.MailInfraName,
-                    IsFromCurrentUser = Design.IsFromCurrentUser,
-                    Subject = subject,
-                    Body = body,
-                    IsBodyHtml = Design.IsBodyHtml,
-                    ReplyTo = ResolveValueFirst(Design.ReplyTo, Design.ReplyToVariable),
-                    Condition = condition,
-                    SourceModule = Module!.Design.Name,
-                    SourceId = Module.GetIdText(),
-                    SummaryFieldName = string.IsNullOrEmpty(Design.DbColumn) ? string.Empty : Design.Name,
-                };
+                var request = BuildRequest(listField);
                 var result = await MailTransport.SendBulkSearchAsync(Services.Provider?.GetService<IHttpService>(), request);
                 await MailSendLogger.LogFailuresAsync(Services, result);
-
-                //サーバーが列に書いた内容と同等のものでローカル表示も更新する(正値は次回ロードのサーバー値)
-                if (!string.IsNullOrEmpty(Design.DbColumn))
-                {
-                    var json = BulkMailSummary.Prepend(Value,
-                        BulkMailSummary.CreateEntry(Design.MailInfraName, subject, result, DateTime.Now));
-                    await InitializeDataAsync(new BulkMailFieldData { Value = json });
-                    NotifyStateChanged();
-                }
                 return result;
             }
             finally

@@ -4,19 +4,23 @@
 @using Microsoft.AspNetCore.Components.Web
 @inherits FieldComponentBase<MailField>
 
-<div data-system="mail">
-  <button type="button" class="btn btn-outline-primary" style="@Field.GetOwnStyleString()"
+@*送信 / プレビューのアイコンだけのボタングループ。文字付きのボタンが要るアプリは ButtonField + スクリプト (Send / Preview) で作る*@
+<div data-system="mail" class="btn-group" role="group" style="@Field.GetOwnStyleString()">
+  <button type="button" class="btn btn-outline-primary px-2"
           disabled="@(Field.IsSending || !Field.IsEnabled)"
           @onclick="@(async () => await Field.SendFromButtonAsync())"
-          aria-label="Mail">
-    <i class="bi bi-envelope" aria-hidden="true"></i>
-    @ButtonText
+          title="@Codeer.LowCode.Blazor.Extras.Properties.Resources.MailFieldSendButtonTitle"
+          aria-label="@Codeer.LowCode.Blazor.Extras.Properties.Resources.MailFieldSendButtonTitle">
+    <i class="bi bi-send" aria-hidden="true"></i>
   </button>
+  @if (Field.Design.ShowPreviewButton)
+  {
+    <button type="button" class="btn btn-outline-primary px-2"
+            disabled="@(Field.IsSending || !Field.IsEnabled)"
+            @onclick="@(async () => await Field.PreviewAsync())"
+            title="@Codeer.LowCode.Blazor.Extras.Properties.Resources.MailFieldPreviewButtonText"
+            aria-label="@Codeer.LowCode.Blazor.Extras.Properties.Resources.MailFieldPreviewButtonText">
+      <i class="bi bi-file-earmark-arrow-down" aria-hidden="true"></i>
+    </button>
+  }
 </div>
-
-@code {
-  string ButtonText => string.IsNullOrEmpty(Field.Design.ButtonText)
-    ? Codeer.LowCode.Blazor.Extras.Properties.Resources.MailFieldDefaultButtonText
-    : Field.Design.ButtonText;
-
-}

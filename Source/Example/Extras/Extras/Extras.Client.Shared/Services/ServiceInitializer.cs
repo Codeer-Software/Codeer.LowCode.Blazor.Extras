@@ -1,4 +1,4 @@
-using System.Globalization;
+﻿using System.Globalization;
 using Codeer.LowCode.Blazor.Components.AppParts.Loading;
 using Codeer.LowCode.Blazor.RequestInterfaces;
 using Codeer.LowCode.Blazor.Extras.Fields;
@@ -17,6 +17,8 @@ namespace Extras.Client.Shared.Services
             //Extras の組み込みサービスが使うエンドポイント。URL はアプリ(Controller を持つ側)の持ち物なのでここで一元定義する
             MailTransport.SendMailEndPoint = "/api/mail";
             MailTransport.BulkSearchMailEndPoint = "/api/mail/bulk_search";
+            MailTransport.PreviewMailEndPoint = "/api/mail/preview";
+            MailTransport.BulkPreviewMailEndPoint = "/api/mail/bulk_preview";
             Codeer.LowCode.Blazor.Extras.ScriptObjects.Excel.ConvertPdfEndPoint = "api/excel/pdf";
             AITextAnalyzerField.FileToModuleDataEndPoint = "/api/ai_text_analyze/file";
             AITextAnalyzerField.TextToModuleDataEndPoint = "/api/ai_text_analyze/text";

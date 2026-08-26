@@ -534,11 +534,16 @@
   <data name="MailFieldFromDisplayName" xml:space="preserve">
     <value>差出人表示名</value>
   </data>
-  <data name="MailFieldDefaultButtonText" xml:space="preserve">
-    <value>メール送信</value>
-  </data>
   <data name="MailFieldSentToast" xml:space="preserve">
     <value>メールを送信しました</value>
+  </data>
+  <data name="MailFieldSendButtonTitle" xml:space="preserve">
+    <value>送信</value>
+  </data>
+  <data name="MailFieldConfirmSendFormat" xml:space="preserve">
+    <value>このメールを送信しますか？
+件名: {0}
+宛先: {1} 件</value>
   </data>
   <data name="MailFieldSendFailedFormat" xml:space="preserve">
     <value>メール送信に失敗しました: {0}</value>
@@ -606,6 +611,18 @@
   <data name="BulkMailRecipientContractOptOut" xml:space="preserve">
     <value>配信停止 (オプトアウト)</value>
   </data>
+  <data name="BulkMailRecipientContractDisplayName" xml:space="preserve">
+    <value>表示名 (プレビューの一覧用)</value>
+  </data>
+  <data name="MailFieldPreviewButtonText" xml:space="preserve">
+    <value>プレビューを HTML でダウンロード (送信はしません)</value>
+  </data>
+  <data name="MailPreviewFailed" xml:space="preserve">
+    <value>プレビューを作成できませんでした (サーバーのプレビュー対応が必要です)</value>
+  </data>
+  <data name="MailPreviewSaveBeforePreview" xml:space="preserve">
+    <value>レコードを保存してからプレビューしてください</value>
+  </data>
   <data name="MailHistoryContractSentAt" xml:space="preserve">
     <value>送信日時 (必須)</value>
   </data>
@@ -630,14 +647,35 @@
   <data name="MailHistoryContractSourceId" xml:space="preserve">
     <value>送信元Id</value>
   </data>
+  <data name="MailHistoryContractDetails" xml:space="preserve">
+    <value>送信明細の一覧</value>
+  </data>
+  <data name="MailHistoryDetailContractField" xml:space="preserve">
+    <value>メール送信明細契約</value>
+  </data>
+  <data name="MailHistoryDetailContractHistory" xml:space="preserve">
+    <value>履歴 (履歴行への Link) (必須)</value>
+  </data>
+  <data name="MailHistoryDetailContractTo" xml:space="preserve">
+    <value>宛先 (必須)</value>
+  </data>
+  <data name="MailHistoryDetailContractSubject" xml:space="preserve">
+    <value>件名 (解決後)</value>
+  </data>
+  <data name="MailHistoryDetailContractBody" xml:space="preserve">
+    <value>本文 (解決後)</value>
+  </data>
+  <data name="MailHistoryDetailContractIsSuccess" xml:space="preserve">
+    <value>送信成否</value>
+  </data>
+  <data name="MailHistoryDetailContractError" xml:space="preserve">
+    <value>失敗理由</value>
+  </data>
   <data name="BulkMailRecipientListFieldName" xml:space="preserve">
     <value>宛先リスト</value>
   </data>
-  <data name="MailFieldButtonText" xml:space="preserve">
-    <value>ボタンテキスト</value>
-  </data>
-  <data name="BulkMailFieldDbColumn" xml:space="preserve">
-    <value>送信結果サマリ列</value>
+  <data name="MailFieldShowPreviewButton" xml:space="preserve">
+    <value>プレビューボタンを表示</value>
   </data>
   <data name="BulkMailRecipientListFieldRequired" xml:space="preserve">
     <value>宛先リストフィールドを設定してください。</value>
@@ -662,12 +700,6 @@
   </data>
   <data name="BulkMailSentWithFailuresFormat" xml:space="preserve">
     <value>{0}/{1}件送信しました。失敗分はログを確認してください。</value>
-  </data>
-  <data name="BulkMailDefaultButtonText" xml:space="preserve">
-    <value>一斉送信</value>
-  </data>
-  <data name="BulkMailLastSentFormat" xml:space="preserve">
-    <value>最終送信: {0}  成功 {1}/{2}</value>
   </data>
   <data name="ApprovalFlowField" xml:space="preserve">
     <value>承認フロー</value>

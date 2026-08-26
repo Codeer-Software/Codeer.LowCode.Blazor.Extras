@@ -52,7 +52,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Mail
                 });
 
             ModuleData? written = null;
-            var writer = new MailHistoryWriter("MailHistory", designData, d => { written = d; return Task.CompletedTask; });
+            var writer = new MailHistoryWriter("MailHistory", designData, d => { written = d; return Task.FromResult("1"); });
 
             await writer.WriteAsync("Campaign", "8月のご案内", CreateResult(),
                 new MailHistorySource { SourceModule = "Campaign", SourceId = "42" });
@@ -78,7 +78,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Mail
                 new TextFieldDesign { Name = "SourceId" });
 
             ModuleData? written = null;
-            var writer = new MailHistoryWriter("MailHistory", designData, d => { written = d; return Task.CompletedTask; });
+            var writer = new MailHistoryWriter("MailHistory", designData, d => { written = d; return Task.FromResult("1"); });
 
             await writer.WriteAsync("Campaign", "8月のご案内", CreateResult(),
                 new MailHistorySource { SourceModule = "Campaign", SourceId = "42" });
@@ -103,7 +103,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Mail
                 new NumberFieldDesign { Name = "SuccessCount" });
 
             ModuleData? written = null;
-            var writer = new MailHistoryWriter("MailHistory", designData, d => { written = d; return Task.CompletedTask; });
+            var writer = new MailHistoryWriter("MailHistory", designData, d => { written = d; return Task.FromResult("1"); });
             await writer.WriteAsync("Notify", "s", CreateResult(), null);
 
             Assert.That(written!.Fields.Keys, Is.EquivalentTo(new[] { "Subject", "SuccessCount" }));
@@ -115,7 +115,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Mail
             var designData = CreateDesignData(new JsonFieldDesign { Name = "FailureDetails" });
 
             ModuleData? written = null;
-            var writer = new MailHistoryWriter("MailHistory", designData, d => { written = d; return Task.CompletedTask; });
+            var writer = new MailHistoryWriter("MailHistory", designData, d => { written = d; return Task.FromResult("1"); });
             await writer.WriteAsync("Notify", "s", CreateResult(), null);
 
             Assert.That(((JsonFieldData)written!.Fields["FailureDetails"]).Value, Does.Contain("bad address"));
@@ -125,7 +125,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Mail
         public async Task モジュールが無い場合はログだけで例外にしない()
         {
             var errors = new List<string>();
-            var writer = new MailHistoryWriter("Nothing", CreateDesignData(), _ => Task.CompletedTask, errors.Add);
+            var writer = new MailHistoryWriter("Nothing", CreateDesignData(), _ => Task.FromResult("1"), errors.Add);
             await writer.WriteAsync("Notify", "s", CreateResult(), null);
             Assert.That(errors.Single(), Does.Contain("Nothing"));
         }
@@ -139,7 +139,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Mail
 
             var errors = new List<string>();
             ModuleData? written = null;
-            var writer = new MailHistoryWriter("MailHistory", designData, d => { written = d; return Task.CompletedTask; }, errors.Add);
+            var writer = new MailHistoryWriter("MailHistory", designData, d => { written = d; return Task.FromResult("1"); }, errors.Add);
             await writer.WriteAsync("Notify", "s", CreateResult(), null);
 
             Assert.That(written!.Fields.Keys, Is.EquivalentTo(new[] { "Subject" }));

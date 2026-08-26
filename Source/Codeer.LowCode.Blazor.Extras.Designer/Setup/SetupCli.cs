@@ -1,4 +1,4 @@
-using Codeer.LowCode.Blazor.Designer.Extensibility;
+﻿using Codeer.LowCode.Blazor.Designer.Extensibility;
 using Codeer.LowCode.Blazor.DesignLogic;
 using Codeer.LowCode.Blazor.SystemSettings;
 using System.IO;
@@ -19,7 +19,8 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
     ///
     /// mail-setup:
     ///   &lt;designer.exe&gt; mail-setup "&lt;projectDir&gt;" [--user-module AppUser] [--user-email-field Email] [--user-name-field Name]
-    ///     [--sender-contract] [--gmail-token] [--no-history] [--history-name MailHistory] [--data-source &lt;name&gt;]
+    ///     [--sender-contract] [--gmail-token] [--no-history] [--history-name MailHistory]
+    ///     [--no-history-detail] [--history-detail-name MailHistoryDetail] [--data-source &lt;name&gt;]
     ///     [--no-pageframe] [--ddl-out "&lt;path.sql&gt;"]
     ///   (--sender-contract = 差出人契約をユーザーモジュールに追加。「自分を差出人にする」/ Gmail 本人名義のときだけ)
     ///
@@ -92,6 +93,8 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
                 AddGmailTokenField = args.Contains("--gmail-token"),
                 CreateHistoryModule = !args.Contains("--no-history"),
                 HistoryModuleName = named.GetValueOrDefault("--history-name", "MailHistory"),
+                CreateHistoryDetailModule = !args.Contains("--no-history-detail"),
+                HistoryDetailModuleName = named.GetValueOrDefault("--history-detail-name", "MailHistoryDetail"),
                 DataSourceName = dataSourceName,
                 AddPageFrameLink = !args.Contains("--no-pageframe"),
             };

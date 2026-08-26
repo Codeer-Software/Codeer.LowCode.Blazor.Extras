@@ -1,4 +1,5 @@
 ﻿using Codeer.LowCode.Blazor.DataIO;
+using Codeer.LowCode.Blazor.Components.Dialog;
 using Codeer.LowCode.Blazor.Extras.Designs;
 using Codeer.LowCode.Blazor.Extras.Mail;
 using Codeer.LowCode.Blazor.OperatingModel;
@@ -87,6 +88,20 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             if (Services.AppInfoService.IsDesignMode) return;
             if (_isSending || Module == null) return;
 
+            //ボタンはアイコンだけなので、押した瞬間に送らず確認を挟む (スクリプトの Send() は確認なし)
+            var (request, buildError) = BuildRequest();
+            if (buildError != null)
+            {
+                await Services.UIService.NotifyError(string.Format(Properties.Resources.MailFieldSendFailedFormat, buildError));
+                return;
+            }
+            var recipientCount = request.Message.To.Count + request.Message.Cc.Count + request.Message.Bcc.Count;
+            var message = string.Format(Properties.Resources.MailFieldConfirmSendFormat, request.Message.Subject, recipientCount);
+            var answer = await Services.UIService.ShowMessageBox(string.Empty, message,
+                [new DialogButton("btn btn-outline-primary", Properties.Resources.BulkMailSendAction),
+                 new DialogButton("btn btn-outline-secondary", Properties.Resources.Cancel)]);
+            if (answer != Properties.Resources.BulkMailSendAction) return;
+
             var result = await SendAsync();
             if (result.IsSuccess)
             {
@@ -122,13 +137,57 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             }
         }
 
+        /// <summary>
+        /// 送信せずに「送るとこうなる」を HTML でダウンロードする (差出人・宛先・解決後の件名/本文・変数のハイライト)。
+        /// 文面の解決は送信と同じ経路。サーバー側のプレビュー対応 (MailTransport.PreviewMailEndPoint) が必要。
+        /// </summary>
+        [ScriptName("Preview")]
+        public async Task<bool> PreviewAsync()
+        {
+            if (Services.AppInfoService.IsDesignMode || Module == null) return false;
+            var (request, _) = BuildRequest();
+            var preview = new MailPreviewRequest
+            {
+                MailInfraName = request.MailInfraName,
+                IsFromCurrentUser = request.IsFromCurrentUser,
+                Message = request.Message,
+                SubjectTemplate = _lastSubjectTemplate,
+                BodyTemplate = _lastBodyTemplate,
+                SubjectSpans = _lastSubjectSpans,
+                BodySpans = _lastBodySpans,
+                Title = $"{Module.Design.Name} #{request.SourceId}",
+            };
+            var html = await MailTransport.PreviewAsync(Services.Provider?.GetService<IHttpService>(), preview);
+            if (html == null)
+            {
+                await Services.UIService.NotifyError(Properties.Resources.MailPreviewFailed);
+                return false;
+            }
+            await Services.UIService.DownloadFile(new MemoryStream(html), $"mail-preview-{Design.Name}.html");
+            return true;
+        }
+
+        string _lastSubjectTemplate = string.Empty, _lastBodyTemplate = string.Empty;
+        List<MailTemplateSpan> _lastSubjectSpans = new(), _lastBodySpans = new();
+
         async Task<MailSendResult> SendCoreAsync()
+        {
+            var (request, error) = BuildRequest();
+            if (error != null) return MailSendResult.Failure(string.Empty, error);
+            _attachments.Clear();
+
+            var result = await MailTransport.SendAsync(Services.Provider?.GetService<IHttpService>(), request);
+            await MailSendLogger.LogFailuresAsync(Services, result);
+            return result;
+        }
+
+        //送信要求を組み立てる (送信とプレビューで共有 = 同じ解決結果になる)
+        (MailSendRequest Request, string? Error) BuildRequest()
         {
             var data = Module!.GetData();
             var design = Services.AppInfoService.GetDesignData().Modules.Find(Module.Design.Name);
 
             var to = SplitAddresses(ResolveValueFirst(data, To, Design.ToVariable));
-            if (to.Count == 0) return MailSendResult.Failure(string.Empty, Properties.Resources.MailFieldNoRecipient);
 
             //テンプレート (値が入っていれば値、空なら変数のフィールド値) を自レコードで差し込み解決
             var subjectTemplate = ResolveValueFirst(data, Subject, Design.SubjectVariable);
@@ -136,6 +195,12 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             var names = MailTemplateEngine.GetVariableNames(subjectTemplate, bodyTemplate);
             var variables = MailVariableResolver.Resolve(design, data, names,
                 name => Services.AppInfoService.GetDesignData().Modules.Find(name));
+            var (subject, subjectSpans) = MailTemplateEngine.FillWithSpans(subjectTemplate, variables);
+            var (body, bodySpans) = MailTemplateEngine.FillWithSpans(bodyTemplate, variables);
+            _lastSubjectTemplate = subjectTemplate;
+            _lastBodyTemplate = bodyTemplate;
+            _lastSubjectSpans = subjectSpans;
+            _lastBodySpans = bodySpans;
 
             var request = new MailSendRequest
             {
@@ -148,18 +213,14 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
                     To = to,
                     Cc = SplitAddresses(ResolveValueFirst(data, Cc, Design.CcVariable)),
                     Bcc = SplitAddresses(ResolveValueFirst(data, Bcc, Design.BccVariable)),
-                    Subject = MailTemplateEngine.Fill(subjectTemplate, variables),
-                    Body = MailTemplateEngine.Fill(bodyTemplate, variables),
+                    Subject = subject,
+                    Body = body,
                     IsBodyHtml = IsBodyHtml,
                     ReplyTo = ResolveValueFirst(data, ReplyTo, Design.ReplyToVariable),
                     Attachments = _attachments.ToList(),
                 },
             };
-            _attachments.Clear();
-
-            var result = await MailTransport.SendAsync(Services.Provider?.GetService<IHttpService>(), request);
-            await MailSendLogger.LogFailuresAsync(Services, result);
-            return result;
+            return (request, to.Count == 0 ? Properties.Resources.MailFieldNoRecipient : null);
         }
 
         //値優先: 値 (プロパティ) が入っていればそれを使い、空なら変数を自レコードで解決する

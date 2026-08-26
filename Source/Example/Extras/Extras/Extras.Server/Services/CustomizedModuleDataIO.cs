@@ -45,7 +45,7 @@ namespace Extras.Server.Services
         internal async Task<string> AddSystemRecordAsync(ModuleData data)
             => await AddAsync(Guid.NewGuid(), Guid.NewGuid(), data);
 
-        //BulkMailFieldの送信結果サマリなど、既存レコードへのシステムの記録の書き戻し用内部経路。
+        //承認フローなど、既存レコードへのシステムの記録の書き戻し用内部経路。
         //data に含まれるフィールドだけが更新される
         internal async Task UpdateSystemRecordAsync(ModuleData data)
             => await UpdateAsync(Guid.NewGuid(), Guid.NewGuid(), data);

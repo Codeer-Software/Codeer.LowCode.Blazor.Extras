@@ -81,6 +81,10 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
         /// 呼び名から送信インフラを引き当てる。引き当てられないときは null + 理由
         /// (どちらの設定漏れなのかが分かる文言。送信経路はこれを失敗結果にして返す)。
         /// </summary>
+        /// <summary>呼び名の送信インフラの一斉送信上限。対応表に無ければ null (プレビューの注意表示用)。</summary>
+        internal int? TryGetMaxBulkCount(string mailInfraName)
+            => string.IsNullOrEmpty(mailInfraName) ? null : _senderFactory(mailInfraName)?.MaxBulkCount;
+
         IMailSender? FindSender(string mailInfraName, out string error)
         {
             //空を対応表に渡さない = アプリの対応表が「空 = 何かのインフラ」と解釈して
@@ -95,11 +99,47 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
             return sender;
         }
 
-        //設定漏れも送信失敗と同じ扱いで返す (スクリプトの戻り値・トースト・履歴・サマリに理由が出る)
-        async Task<MailSendResult> FailAsync(string mailInfraName, string subject, MailSendResult failure, MailHistorySource? source)
+        //設定漏れも送信失敗と同じ扱いで返す (スクリプトの戻り値・トースト・履歴に理由が出る)
+        async Task<MailSendResult> FailAsync(string mailInfraName, string subject, MailSendResult failure, MailHistorySource? source,
+            IReadOnlyList<MailHistoryDetail>? details)
         {
-            if (_historyWriter != null) await _historyWriter.WriteAsync(mailInfraName, subject, failure, source);
+            if (_historyWriter != null) await _historyWriter.WriteAsync(mailInfraName, subject, failure, source, details);
             return failure;
+        }
+
+        //送信明細 (履歴契約の Details が設定されているときだけ書かれる)。単発 = 宛先ごとに同じ文面
+        static List<MailHistoryDetail> DetailsOf(MailMessage message, MailSendResult result)
+        {
+            var recipients = message.To.Count > 0 ? message.To : message.Cc.Count > 0 ? message.Cc : message.Bcc;
+            var error = result.Failures.FirstOrDefault()?.Error ?? string.Empty;
+            return recipients.Select(to => new MailHistoryDetail
+            {
+                To = to,
+                Subject = message.Subject,
+                Body = message.Body,
+                IsSuccess = result.IsSuccess,
+                Error = result.IsSuccess ? string.Empty : error,
+            }).ToList();
+        }
+
+        //一斉 = 宛先ごとにテンプレートを解決した文面 (実際に送った内容)
+        static List<MailHistoryDetail> DetailsOf(MailBulkTemplate template, List<MailBulkRecipient> recipients, MailSendResult result)
+        {
+            var failures = result.Failures.Where(e => !string.IsNullOrEmpty(e.To))
+                .GroupBy(e => e.To).ToDictionary(g => g.Key, g => g.First().Error);
+            return recipients.Select(recipient =>
+            {
+                var message = SmtpMailSender.CreateResolvedMessage(template, recipient);
+                var failed = failures.TryGetValue(recipient.To, out var error);
+                return new MailHistoryDetail
+                {
+                    To = recipient.To,
+                    Subject = message.Subject,
+                    Body = message.Body,
+                    IsSuccess = !failed,
+                    Error = failed ? error! : string.Empty,
+                };
+            }).ToList();
         }
 
         /// <summary>
@@ -119,7 +159,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
                 {
                     var failure = MailSendResult.Failure(string.Join(";", message.To), CurrentUserUnresolvedError);
                     if (_historyWriter != null) await _historyWriter.WriteAsync(request.MailInfraName, message.Subject, failure,
-                        CreateSource(request.SourceModule, request.SourceId));
+                        CreateSource(request.SourceModule, request.SourceId), DetailsOf(message, failure));
                     return failure;
                 }
                 message.From = user.Email;
@@ -147,12 +187,14 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
             var name = ResolveInfraName(mailInfraName);
             var sender = FindSender(name, out var senderError);
             if (sender == null)
-                return await FailAsync(name, message.Subject,
-                    MailSendResult.Failure(string.Join(";", message.To), senderError), source);
+            {
+                var failure = MailSendResult.Failure(string.Join(";", message.To), senderError);
+                return await FailAsync(name, message.Subject, failure, source, DetailsOf(message, failure));
+            }
 
             var sendMessage = string.IsNullOrEmpty(_config.DebugRedirectAllTo) ? message : Redirect(message);
             var result = await sender.SendAsync(sendMessage);
-            if (_historyWriter != null) await _historyWriter.WriteAsync(name, message.Subject, result, source);
+            if (_historyWriter != null) await _historyWriter.WriteAsync(name, message.Subject, result, source, DetailsOf(message, result));
             return result;
         }
 
@@ -168,14 +210,17 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
             var name = ResolveBulkInfraName(mailInfraName);
             var sender = FindSender(name, out var senderError);
             if (sender == null)
-                return await FailAsync(name, template.Subject, new MailSendResult
+            {
+                var failure = new MailSendResult
                 {
                     TotalCount = recipients.Count,
                     //宛先0件でも設定漏れは失敗として見せる (黙って成功にしない)
                     Failures = recipients.Count == 0
                         ? [new MailSendFailure { Error = senderError }]
                         : recipients.Select(e => new MailSendFailure { To = e.To, Error = senderError }).ToList(),
-                }, source);
+                };
+                return await FailAsync(name, template.Subject, failure, source, DetailsOf(template, recipients, failure));
+            }
 
             if (recipients.Count > sender.MaxBulkCount)
                 throw new InvalidOperationException(
@@ -186,12 +231,12 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
             var result = !string.IsNullOrEmpty(_config.DebugRedirectAllTo)
                 ? await SendBulkRedirectedAsync(sender, template, recipients)
                 : await sender.SendBulkAsync(template, recipients);
-            if (_historyWriter != null) await _historyWriter.WriteAsync(name, template.Subject, result, source);
+            if (_historyWriter != null) await _historyWriter.WriteAsync(name, template.Subject, result, source, DetailsOf(template, recipients, result));
             return result;
         }
 
         //インジェクション対策: 変数値にはユーザー入力が入りうる
-        static MailBulkRecipient EncodeHtmlVariables(MailBulkRecipient recipient)
+        internal static MailBulkRecipient EncodeHtmlVariables(MailBulkRecipient recipient)
             => new()
             {
                 To = recipient.To,

@@ -114,6 +114,8 @@ using Codeer.LowCode.Blazor.Extras.Approval;
 
 MailTransport.SendMailEndPoint = "/api/mail";
 MailTransport.BulkSearchMailEndPoint = "/api/mail/bulk_search";
+MailTransport.PreviewMailEndPoint = "/api/mail/preview";
+MailTransport.BulkPreviewMailEndPoint = "/api/mail/bulk_preview";
 ApprovalTransport.EndPointBase = "/api/approval";
 Codeer.LowCode.Blazor.Extras.ScriptObjects.Excel.ConvertPdfEndPoint = "api/excel/pdf";
 AITextAnalyzerField.FileToModuleDataEndPoint = "/api/ai_text_analyze/file";

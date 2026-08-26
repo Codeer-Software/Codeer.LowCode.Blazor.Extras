@@ -153,6 +153,9 @@
   <data name="SetupMailHistory" xml:space="preserve">
     <value>送信履歴モジュールを生成</value>
   </data>
+  <data name="SetupMailHistoryDetail" xml:space="preserve">
+    <value>送信明細モジュール (1 宛先 1 行・解決後の本文) も生成</value>
+  </data>
   <data name="SetupUserGroup" xml:space="preserve">
     <value>ユーザーモジュール (差出人 = 操作ユーザーを使う場合)</value>
   </data>
