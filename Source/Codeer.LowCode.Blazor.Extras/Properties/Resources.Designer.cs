@@ -1301,6 +1301,54 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
             }
         }
 
+        internal static string MailHistoryContractDetails {
+            get {
+                return ResourceManager.GetString("MailHistoryContractDetails", resourceCulture);
+            }
+        }
+
+        internal static string MailHistoryDetailContractField {
+            get {
+                return ResourceManager.GetString("MailHistoryDetailContractField", resourceCulture);
+            }
+        }
+
+        internal static string MailHistoryDetailContractHistory {
+            get {
+                return ResourceManager.GetString("MailHistoryDetailContractHistory", resourceCulture);
+            }
+        }
+
+        internal static string MailHistoryDetailContractTo {
+            get {
+                return ResourceManager.GetString("MailHistoryDetailContractTo", resourceCulture);
+            }
+        }
+
+        internal static string MailHistoryDetailContractSubject {
+            get {
+                return ResourceManager.GetString("MailHistoryDetailContractSubject", resourceCulture);
+            }
+        }
+
+        internal static string MailHistoryDetailContractBody {
+            get {
+                return ResourceManager.GetString("MailHistoryDetailContractBody", resourceCulture);
+            }
+        }
+
+        internal static string MailHistoryDetailContractIsSuccess {
+            get {
+                return ResourceManager.GetString("MailHistoryDetailContractIsSuccess", resourceCulture);
+            }
+        }
+
+        internal static string MailHistoryDetailContractError {
+            get {
+                return ResourceManager.GetString("MailHistoryDetailContractError", resourceCulture);
+            }
+        }
+
         internal static string BulkMailRecipientListFieldName {
             get {
                 return ResourceManager.GetString("BulkMailRecipientListFieldName", resourceCulture);
@@ -1310,12 +1358,6 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
         internal static string MailFieldButtonText {
             get {
                 return ResourceManager.GetString("MailFieldButtonText", resourceCulture);
-            }
-        }
-
-        internal static string BulkMailFieldDbColumn {
-            get {
-                return ResourceManager.GetString("BulkMailFieldDbColumn", resourceCulture);
             }
         }
 
@@ -1370,12 +1412,6 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
         internal static string BulkMailDefaultButtonText {
             get {
                 return ResourceManager.GetString("BulkMailDefaultButtonText", resourceCulture);
-            }
-        }
-
-        internal static string BulkMailLastSentFormat {
-            get {
-                return ResourceManager.GetString("BulkMailLastSentFormat", resourceCulture);
             }
         }
 

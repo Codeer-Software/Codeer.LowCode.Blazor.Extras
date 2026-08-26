@@ -1,6 +1,5 @@
-@using Codeer.LowCode.Blazor.Components
+﻿@using Codeer.LowCode.Blazor.Components
 @using Codeer.LowCode.Blazor.Extras.Fields
-@using Codeer.LowCode.Blazor.Extras.Mail
 @using Codeer.LowCode.Blazor.OperatingModel
 @using Microsoft.AspNetCore.Components.Web
 @inherits FieldComponentBase<BulkMailField>
@@ -13,27 +12,10 @@
     <i class="bi bi-envelope" aria-hidden="true"></i>
     @ButtonText
   </button>
-  @if (LastEntry != null)
-  {
-    <div class="form-text">@LastSentText</div>
-  }
 </div>
 
 @code {
   string ButtonText => string.IsNullOrEmpty(Field.Design.ButtonText)
     ? Codeer.LowCode.Blazor.Extras.Properties.Resources.BulkMailDefaultButtonText
     : Field.Design.ButtonText;
-
-  BulkMailSummaryEntry? LastEntry => Field.GetSummaryEntries().FirstOrDefault();
-
-  string LastSentText
-  {
-    get
-    {
-      var e = LastEntry!;
-      return string.Format(Codeer.LowCode.Blazor.Extras.Properties.Resources.BulkMailLastSentFormat,
-        e.SentAt, e.SuccessCount, e.TotalCount);
-    }
-  }
-
 }

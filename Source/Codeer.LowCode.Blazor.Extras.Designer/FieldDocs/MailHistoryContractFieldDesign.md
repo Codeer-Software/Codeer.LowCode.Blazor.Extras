@@ -10,7 +10,7 @@
 
 - デザイナ: メニュー Tools > メールのセットアップ
 - CLI (headless): `<designer.exe> mail-setup "<projectDir>" [--history-name MailHistory] [--data-source <name>]
-  [--no-history] [--no-pageframe]
+  [--no-history] [--no-history-detail] [--history-detail-name MailHistoryDetail] [--no-pageframe]
   [--sender-contract --user-module AppUser --user-email-field Email --user-name-field Name] [--gmail-token] [--ddl-out <path.sql>]`
 
 生成後、案内どおりサーバーの appsettings に `"Mail": { "HistoryModuleName": "<モジュール名>" }` を設定し、
@@ -38,6 +38,7 @@ DDL でテーブルを作成すると全送信が自動記録される。承認�
 | FailureDetails (失敗明細) | 失敗明細 JSON (Text か Json) | - |
 | SourceModule (送信元モジュール) | 送信元レコードのモジュール名 | - |
 | SourceId (送信元Id) | 送信元レコードの Id | - |
+| Details (送信明細の一覧) | 自モジュール上の List フィールド名。参照先が明細モジュール (MailHistoryDetailContractField)。設定すると 1 宛先 1 行の明細 (宛先・解決後の件名/本文・成否) も書く。空 = 明細なし | - |
 
 ```json
 { "Name": "Contract", "TypeFullName": "Codeer.LowCode.Blazor.Extras.Designs.MailHistoryContractFieldDesign" }

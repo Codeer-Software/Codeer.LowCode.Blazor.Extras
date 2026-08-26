@@ -1,4 +1,4 @@
-namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
+﻿namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
 {
     /// <summary>承認フローセットアップで生成する経路マスタの種類。</summary>
     public enum ApprovalRouteMasterKind
@@ -63,6 +63,12 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
 
         /// <summary>送信履歴モジュール名。appsettings の Mail.HistoryModuleName に設定する名前。</summary>
         public string HistoryModuleName { get; set; } = "MailHistory";
+
+        /// <summary>送信明細モジュール (1 宛先 1 行。解決後の件名・本文と成否) も生成するか (履歴モジュールを生成するときだけ)。</summary>
+        public bool CreateHistoryDetailModule { get; set; } = true;
+
+        /// <summary>送信明細モジュール名。</summary>
+        public string HistoryDetailModuleName { get; set; } = "MailHistoryDetail";
 
         /// <summary>生成するモジュールのデータソース名。</summary>
         public string DataSourceName { get; set; } = string.Empty;

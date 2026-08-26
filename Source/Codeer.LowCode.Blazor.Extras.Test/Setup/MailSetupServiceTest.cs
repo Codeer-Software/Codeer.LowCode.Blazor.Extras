@@ -22,7 +22,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Setup
             CreateFixture();
             var result = MailSetupService.Run(Load(), ProjectDir, DefaultOptions(), DataSourceType.SQLite);
 
-            Assert.That(result.CreatedModules, Is.EquivalentTo(new[] { "MailHistory" }));
+            Assert.That(result.CreatedModules, Is.EquivalentTo(new[] { "MailHistory", "MailHistoryDetail" }));
 
             var d = Load();
             var user = d.Modules.Find("AppUser")!;
@@ -50,7 +50,30 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Setup
             var notes = string.Join("\n", result.Notes);
             Assert.That(notes, Does.Contain("\"HistoryModuleName\": \"MailHistory\"").And.Contain("DefaultInfraName").And.Not.Contain("TokenEncryptionKey"));
 
-            Assert.That(string.Join("\n", result.Ddl), Does.Contain("CREATE TABLE mail_histories"));
+            Assert.That(string.Join("\n", result.Ddl), Does.Contain("CREATE TABLE mail_histories").And.Contain("CREATE TABLE mail_history_details"));
+
+            //明細: 履歴契約の Details → 一覧 → 明細モジュール (明細契約を実装)。契約チェックが通る
+            var contract = module.Fields.OfType<MailHistoryContractFieldDesign>().Single();
+            Assert.That(contract.Details, Is.EqualTo("Details"));
+            var detail = d.Modules.Find("MailHistoryDetail")!;
+            Assert.That(MailContracts.HistoryDetail(detail), Is.Not.Null);
+            Assert.That(detail.Fields.OfType<MailHistoryDetailContractFieldDesign>().Single()
+                .CheckDesign(new DesignCheckContext("MailHistoryDetail", d, dbDefs)), Is.Empty);
+            Assert.That(notes, Does.Contain("MailHistoryDetail").And.Contain("閲覧権限"));
+        }
+
+        [Test]
+        public void 明細なしを選ぶと履歴だけ生成され契約のDetailsは空()
+        {
+            CreateFixture();
+            var options = DefaultOptions();
+            options.CreateHistoryDetailModule = false;
+            var result = MailSetupService.Run(Load(), ProjectDir, options, DataSourceType.SQLite);
+
+            Assert.That(result.CreatedModules, Is.EquivalentTo(new[] { "MailHistory" }));
+            var module = Load().Modules.Find("MailHistory")!;
+            Assert.That(module.Fields.OfType<MailHistoryContractFieldDesign>().Single().Details, Is.Empty);
+            Assert.That(module.Fields.Any(e => e.Name == "Details"), Is.False);
         }
 
         [Test]

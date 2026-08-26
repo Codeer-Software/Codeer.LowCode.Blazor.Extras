@@ -2,7 +2,6 @@
 using Codeer.LowCode.Blazor.DesignLogic.Check;
 using Codeer.LowCode.Blazor.DesignLogic.Refactor;
 using Codeer.LowCode.Blazor.Extras.Components;
-using Codeer.LowCode.Blazor.Extras.Data;
 using Codeer.LowCode.Blazor.Extras.Fields;
 using Codeer.LowCode.Blazor.OperatingModel;
 using Codeer.LowCode.Blazor.Repository.Data;
@@ -20,19 +19,12 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
     /// (このフィールドには持たない = 基準モジュールの違う設定が混ざらない)。
     /// 件名・本文は自モジュールのフィールドをテンプレートとして参照できるため、配信レコードごとに文面を変えられる。
     /// テンプレートの {変数} は宛先行で解決される ({Name.Value} / {Contact.Email.Value} などのリンクパス可)。
-    /// DbColumn を設定すると送信結果サマリ (JSON) がこのレコードの列に書き戻される (サーバー内部経路)。
     /// このフィールドを使うアプリはサーバー側のメール送信対応 (MailController) が必要。
     /// </summary>
     [ToolboxIcon(PackIconMaterialKind = "EmailOutline")]
     [Designer(DisplayName = "$BulkMailField")]
-    [IgnoreBaseProperties(
-        nameof(FieldDesignBase.IgnoreModification), nameof(FieldDesignBase.OnValidateInput),
-        //ボタンなので値フィールドの表示名・必須・入力系は意味を持たない (MailField と同じ見え方に揃える)
-        nameof(ValueFieldDesignBase.DisplayName),
-        nameof(ValueFieldDesignBase.IsRequired), nameof(ValueFieldDesignBase.OnDataChanged),
-        nameof(DbValueFieldDesignBase.IsUpdateProtected), nameof(DbValueFieldDesignBase.IsSimpleSearchParameter),
-        nameof(DbValueFieldDesignBase.AllowEmptySearch), nameof(DbValueFieldDesignBase.OnSearchDataChanged))]
-    public class BulkMailFieldDesign : DbValueFieldDesignBase
+    [IgnoreBaseProperties(nameof(FieldDesignBase.IgnoreModification), nameof(FieldDesignBase.OnValidateInput))]
+    public class BulkMailFieldDesign : FieldDesignBase
     {
         public BulkMailFieldDesign() : base(typeof(BulkMailFieldDesign).FullName!) { }
 
@@ -88,11 +80,6 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         [Designer(Index = 13, DisplayName = "$MailFieldButtonText")]
         public string ButtonText { get; set; } = string.Empty;
 
-        /// <summary>送信結果サマリ (JSON) の保存列。空ならサマリを保存しない (履歴モジュールの全量記録は別途 Mail.HistoryModuleName)。</summary>
-        [Designer(Index = 14, CandidateType = CandidateType.DbColumn, DisplayName = "$BulkMailFieldDbColumn")]
-        [DbColumn(nameof(BulkMailFieldData.Value))]
-        public override string DbColumn { get; set; } = string.Empty;
-
         public override string GetWebComponentTypeFullName() => typeof(BulkMailFieldComponent).FullName!;
 
         public override string GetSearchWebComponentTypeFullName() => string.Empty;
@@ -101,7 +88,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
 
         public override FieldBase CreateField() => new BulkMailField(this);
 
-        public override FieldDataBase? CreateData() => new BulkMailFieldData();
+        public override FieldDataBase? CreateData() => null;
 
         public override List<DesignCheckInfo> CheckDesign(DesignCheckContext context)
         {

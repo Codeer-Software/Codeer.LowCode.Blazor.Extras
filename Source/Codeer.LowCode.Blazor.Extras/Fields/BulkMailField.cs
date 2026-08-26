@@ -1,9 +1,10 @@
 ﻿using Codeer.LowCode.Blazor.Components.Dialog;
-using Codeer.LowCode.Blazor.Extras.Data;
+using Codeer.LowCode.Blazor.DataIO;
 using Codeer.LowCode.Blazor.Extras.Designs;
 using Codeer.LowCode.Blazor.Extras.Mail;
 using Codeer.LowCode.Blazor.Extras.Services;
 using Codeer.LowCode.Blazor.OperatingModel;
+using Codeer.LowCode.Blazor.Repository.Data;
 using Codeer.LowCode.Blazor.Script;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -14,20 +15,27 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
     /// サーバー側で解決される (全行対象・アドレスはクライアントに渡らない)。
     /// 未保存の変更がある間は送信できない (保存済みの状態=サーバーから見える状態が送信対象)。
     /// </summary>
-    public class BulkMailField(BulkMailFieldDesign design)
-        : ValueFieldBase<BulkMailFieldDesign, BulkMailFieldData, string>(design)
+    public class BulkMailField(BulkMailFieldDesign design) : FieldBase<BulkMailFieldDesign>(design)
     {
         bool _isSending;
 
         /// <summary>送信中か (ボタンの二重実行防止)。</summary>
         internal bool IsSending => _isSending;
 
-        [ScriptHide]
-        public override async Task SetValueAsync(string? value)
-            => await base.SetValueAsync(value);
+        //ボタン (値もデータも持たない)
+        public override bool IsModified => false;
 
-        /// <summary>送信結果サマリ (新しい順)。</summary>
-        internal List<BulkMailSummaryEntry> GetSummaryEntries() => BulkMailSummary.Parse(Value);
+        [ScriptHide]
+        public override FieldDataBase? GetData() => null;
+
+        [ScriptHide]
+        public override FieldSubmitData GetSubmitData() => new();
+
+        [ScriptHide]
+        public override async Task InitializeDataAsync(FieldDataBase? fieldDataBase) => await Task.CompletedTask;
+
+        [ScriptHide]
+        public override async Task SetDataAsync(FieldDataBase? fieldDataBase) => await Task.CompletedTask;
 
         /// <summary>ボタンからの送信。確認ダイアログを挟み、結果をトーストで知らせる。</summary>
         internal async Task SendFromButtonAsync()
@@ -113,19 +121,9 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
                     Condition = condition,
                     SourceModule = Module!.Design.Name,
                     SourceId = Module.GetIdText(),
-                    SummaryFieldName = string.IsNullOrEmpty(Design.DbColumn) ? string.Empty : Design.Name,
                 };
                 var result = await MailTransport.SendBulkSearchAsync(Services.Provider?.GetService<IHttpService>(), request);
                 await MailSendLogger.LogFailuresAsync(Services, result);
-
-                //サーバーが列に書いた内容と同等のものでローカル表示も更新する(正値は次回ロードのサーバー値)
-                if (!string.IsNullOrEmpty(Design.DbColumn))
-                {
-                    var json = BulkMailSummary.Prepend(Value,
-                        BulkMailSummary.CreateEntry(Design.MailInfraName, subject, result, DateTime.Now));
-                    await InitializeDataAsync(new BulkMailFieldData { Value = json });
-                    NotifyStateChanged();
-                }
                 return result;
             }
             finally

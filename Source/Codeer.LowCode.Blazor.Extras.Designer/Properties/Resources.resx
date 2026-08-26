@@ -153,6 +153,9 @@
   <data name="SetupMailHistory" xml:space="preserve">
     <value>Generate the mail history module</value>
   </data>
+  <data name="SetupMailHistoryDetail" xml:space="preserve">
+    <value>Also generate the detail module (one row per recipient, resolved body)</value>
+  </data>
   <data name="SetupUserGroup" xml:space="preserve">
     <value>User module (when the sender is the current user)</value>
   </data>

@@ -1,4 +1,5 @@
-﻿using Codeer.LowCode.Blazor.Repository.Design;
+﻿using Codeer.LowCode.Blazor.DesignLogic.Check;
+using Codeer.LowCode.Blazor.Repository.Design;
 
 namespace Codeer.LowCode.Blazor.Extras.Designs
 {
@@ -111,7 +112,61 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         [Designer(Index = 10, CandidateType = CandidateType.Field, DisplayName = "$MailHistoryContractSourceId")]
         public string SourceId { get; set; } = nameof(SourceId);
 
+        /// <summary>
+        /// 送信明細の一覧 (任意)。履歴モジュール上の List フィールドで、その参照先が明細モジュール
+        /// (MailHistoryDetailContractField を持つ) になる。設定すると 1 宛先 1 行の明細
+        /// (宛先・解決後の件名/本文・成否) が書かれる。空 = 明細を残さない。
+        /// </summary>
+        [Designer(Index = 11, CandidateType = CandidateType.Field, DisplayName = "$MailHistoryContractDetails")]
+        public string Details { get; set; } = string.Empty;
+
         //送信日時だけ必須。他は空にすればその項目は記録しない
         private protected override HashSet<string> RequiredRoleNames => new() { nameof(SentAt) };
+
+        public override List<DesignCheckInfo> CheckDesign(DesignCheckContext context)
+        {
+            var result = base.CheckDesign(context);
+            if (!string.IsNullOrEmpty(Details))
+                CheckListRole<MailHistoryDetailContractFieldDesign>(context, result, nameof(Details), Details);
+            return result;
+        }
+    }
+
+    /// <summary>
+    /// メール送信明細モジュールの契約 (1 宛先 1 行)。履歴契約の Details 一覧の参照先モジュールに1つ置く。
+    /// 宛先ごとに**解決後の**件名・本文と成否を記録する (テンプレートの展開結果を確認できる)。
+    /// 必須は History (履歴行への Link) と To。他は空にすればその項目は記録しない。
+    /// </summary>
+    [Designer(DisplayName = "$MailHistoryDetailContractField")]
+    [ToolboxIcon(PackIconMaterialKind = "CheckDecagramOutline")]
+    public class MailHistoryDetailContractFieldDesign : ContractFieldDesignBase
+    {
+        public MailHistoryDetailContractFieldDesign() : base(typeof(MailHistoryDetailContractFieldDesign).FullName!) { }
+
+        /// <summary>履歴行への Link (必須)。</summary>
+        [Designer(Index = 3, CandidateType = CandidateType.Field, DisplayName = "$MailHistoryDetailContractHistory")]
+        public string History { get; set; } = nameof(History);
+
+        /// <summary>宛先アドレス (必須)。リダイレクト送信時も元の宛先。</summary>
+        [Designer(Index = 4, CandidateType = CandidateType.Field, DisplayName = "$MailHistoryDetailContractTo")]
+        public string To { get; set; } = nameof(To);
+
+        /// <summary>解決後の件名。</summary>
+        [Designer(Index = 5, CandidateType = CandidateType.Field, DisplayName = "$MailHistoryDetailContractSubject")]
+        public string Subject { get; set; } = nameof(Subject);
+
+        /// <summary>解決後の本文 (HTML 本文はそのまま文字列)。</summary>
+        [Designer(Index = 6, CandidateType = CandidateType.Field, DisplayName = "$MailHistoryDetailContractBody")]
+        public string Body { get; set; } = nameof(Body);
+
+        /// <summary>送信成否 (Boolean)。</summary>
+        [Designer(Index = 7, CandidateType = CandidateType.Field, DisplayName = "$MailHistoryDetailContractIsSuccess")]
+        public string IsSuccess { get; set; } = nameof(IsSuccess);
+
+        /// <summary>失敗理由 (成功時は空)。</summary>
+        [Designer(Index = 8, CandidateType = CandidateType.Field, DisplayName = "$MailHistoryDetailContractError")]
+        public string Error { get; set; } = nameof(Error);
+
+        private protected override HashSet<string> RequiredRoleNames => new() { nameof(History), nameof(To) };
     }
 }

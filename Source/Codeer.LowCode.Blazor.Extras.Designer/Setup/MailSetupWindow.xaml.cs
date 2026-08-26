@@ -1,4 +1,4 @@
-using Codeer.LowCode.Blazor.DesignLogic;
+﻿using Codeer.LowCode.Blazor.DesignLogic;
 using MahApps.Metro.Controls;
 using System.Windows;
 
@@ -19,6 +19,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
             _checkHistory.Content = Properties.Resources.SetupMailHistory;
             _labelHistoryName.Text = Properties.Resources.SetupModuleName;
             _labelDataSource.Text = Properties.Resources.SetupDataSource;
+            _checkHistoryDetail.Content = Properties.Resources.SetupMailHistoryDetail;
             _checkPageFrame.Content = Properties.Resources.SetupPageFrame;
             _groupUser.Header = Properties.Resources.SetupUserGroup;
             _textUserHelp.Text = Properties.Resources.SetupUserGroupHelp;
@@ -30,6 +31,9 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
 
             //送信履歴
             _textHistoryName.Text = "MailHistory";
+            _textHistoryDetailName.Text = "MailHistoryDetail";
+            _checkHistoryDetail.Checked += (_, _) => UpdateEnabled();
+            _checkHistoryDetail.Unchecked += (_, _) => UpdateEnabled();
             foreach (var name in dataSourceNames) _comboDataSource.Items.Add(name);
             if (_comboDataSource.Items.Count > 0) _comboDataSource.SelectedIndex = 0;
             _checkHistory.Checked += (_, _) => UpdateEnabled();
@@ -63,6 +67,8 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
             var history = _checkHistory.IsChecked == true;
             _textHistoryName.IsEnabled = history;
             _comboDataSource.IsEnabled = history;
+            _checkHistoryDetail.IsEnabled = history;
+            _textHistoryDetailName.IsEnabled = history && _checkHistoryDetail.IsChecked == true;
             _checkPageFrame.IsEnabled = history;
 
             var user = _checkSenderContract.IsChecked == true || _checkGmailToken.IsChecked == true;
@@ -93,6 +99,8 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
             {
                 CreateHistoryModule = _checkHistory.IsChecked == true,
                 HistoryModuleName = _textHistoryName.Text.Trim(),
+                CreateHistoryDetailModule = _checkHistoryDetail.IsChecked == true && !string.IsNullOrWhiteSpace(_textHistoryDetailName.Text),
+                HistoryDetailModuleName = _textHistoryDetailName.Text.Trim(),
                 DataSourceName = (string?)_comboDataSource.SelectedItem ?? string.Empty,
                 AddPageFrameLink = _checkPageFrame.IsChecked == true,
                 AddSenderContract = _checkSenderContract.IsChecked == true,

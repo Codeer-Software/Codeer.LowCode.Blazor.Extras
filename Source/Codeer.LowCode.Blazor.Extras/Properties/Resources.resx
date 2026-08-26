@@ -630,14 +630,35 @@
   <data name="MailHistoryContractSourceId" xml:space="preserve">
     <value>Source Id</value>
   </data>
+  <data name="MailHistoryContractDetails" xml:space="preserve">
+    <value>Detail List</value>
+  </data>
+  <data name="MailHistoryDetailContractField" xml:space="preserve">
+    <value>Mail History Detail Contract</value>
+  </data>
+  <data name="MailHistoryDetailContractHistory" xml:space="preserve">
+    <value>History (required)</value>
+  </data>
+  <data name="MailHistoryDetailContractTo" xml:space="preserve">
+    <value>To (required)</value>
+  </data>
+  <data name="MailHistoryDetailContractSubject" xml:space="preserve">
+    <value>Subject (resolved)</value>
+  </data>
+  <data name="MailHistoryDetailContractBody" xml:space="preserve">
+    <value>Body (resolved)</value>
+  </data>
+  <data name="MailHistoryDetailContractIsSuccess" xml:space="preserve">
+    <value>Is Success</value>
+  </data>
+  <data name="MailHistoryDetailContractError" xml:space="preserve">
+    <value>Error</value>
+  </data>
   <data name="BulkMailRecipientListFieldName" xml:space="preserve">
     <value>Recipient List</value>
   </data>
   <data name="MailFieldButtonText" xml:space="preserve">
     <value>Button Text</value>
-  </data>
-  <data name="BulkMailFieldDbColumn" xml:space="preserve">
-    <value>Send Summary Column</value>
   </data>
   <data name="BulkMailRecipientListFieldRequired" xml:space="preserve">
     <value>Set the recipient list field.</value>
@@ -665,9 +686,6 @@
   </data>
   <data name="BulkMailDefaultButtonText" xml:space="preserve">
     <value>Send Bulk Mail</value>
-  </data>
-  <data name="BulkMailLastSentFormat" xml:space="preserve">
-    <value>Last sent: {0}  success {1}/{2}</value>
   </data>
   <data name="ApprovalFlowField" xml:space="preserve">
     <value>Approval Flow</value>

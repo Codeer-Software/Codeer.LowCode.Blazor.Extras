@@ -18,9 +18,9 @@
 1. 送信ボタン押下 → 対象件数の確認ダイアログを表示
 2. サーバーが宛先リストの検索条件から宛先を解決して送信
    (アドレスはクライアントに渡らない。読み取り権限・行条件が効く。上限は appsettings の MaxBulkCount)
-3. `OptOutVariable` が true の行と、宛先アドレスが空の行はスキップ
-4. `DbColumn` を設定していれば、送信結果サマリ (JSON) がこのレコードの列に書き戻される
-   (送信履歴と同じサーバー内部経路。操作ユーザーの書き込み権限に依存しない)
+3. 宛先契約の `OptOut` が true の行と、宛先アドレスが空の行はスキップ
+4. 送信の記録は送信履歴モジュール (appsettings の `Mail.HistoryModuleName`) に 1 送信 1 レコードで残る
+   (送信元 = このレコード。このフィールド自身は値も列も持たない)
 
 未保存の変更があるレコードからは送信できません (保存済みの状態=サーバーから見える状態が送信対象)。
 新規レコード (未保存) も同様です。
@@ -52,7 +52,6 @@
 | ReplyToVariable | string | - | 返信先アドレスの変数 (自モジュールの変数・リンクパス可)。ReplyTo (値) が入っている場合はそちらが優先 |
 | ReplyTo | string | - | 返信先アドレス (値) |
 | ButtonText | string | - | ボタンの表示テキスト。空なら既定の文言 |
-| DbColumn | string | - | 送信結果サマリ (JSON) の保存列。空ならサマリを保存しない |
 
 件名・本文などの「変数 / 値」ペアは**値が入っていれば値、空なら変数**です (MailField と同じ規則)。
 どちらも空のままだとデザインチェックが知らせます。
@@ -68,7 +67,7 @@
       RecipientListFieldName: Members
       EmailAddressVariable: Contact.Email.Value
       OptOutVariable: Contact.メール拒否.Value   … 人側の配信停止(最終安全弁)
-      SubjectVariable: Title.Value / BodyVariable: Body.Value / DbColumn: send_summary
+      SubjectVariable: Title.Value / BodyVariable: Body.Value
 
 配信対象 (CampaignMember)
 ├── Campaign (Link → メール配信)
@@ -83,12 +82,11 @@
 名簿を持たず条件で直接送る場合は RecipientListFieldName に ListField (検索条件に自モジュールの
 フィールドをバインド) を指定します。画面の一覧＝送信対象のプレビューになります。
 
-### 送信結果サマリ (DbColumn)
+### 送信の記録
 
-列には `BulkMailSummaryEntry` の JSON 配列 (新しい順・最大20件) が入ります。
-1件 = `SentAt / Sender / Subject / TotalCount / SuccessCount / FailureCount / Failures(先頭5件)`。
-ボタンの下に最終送信の結果が表示されます。全送信の監査記録が必要な場合は appsettings の
-`Mail.HistoryModuleName` (履歴モジュール) を併用します。
+送信結果は appsettings の `Mail.HistoryModuleName` で指定した送信履歴モジュールに記録されます
+(送信日時 / 件名 / 送信対象数 / 成功数 / 失敗明細 / 送信元 = このレコード)。
+このフィールド自身は送信結果を保持しません。
 
 ### 前提
 
@@ -100,7 +98,6 @@
 
 - `Send()` … 送信を実行し `MailSendResult` を返す。確認ダイアログ・トーストは出さない
   (呼び出し側で MessageBox 等を使って制御する)。未保存の変更があると失敗を返す
-- `Value` … 送信結果サマリの JSON 文字列 (読み取り)
 
 一斉送信の入口はこのフィールドに一本化されています。単発送信 (個別の宛先へスクリプトから送る)
 は MailField を使います (値プロパティをスクリプトから設定すれば動的送信も可能)。

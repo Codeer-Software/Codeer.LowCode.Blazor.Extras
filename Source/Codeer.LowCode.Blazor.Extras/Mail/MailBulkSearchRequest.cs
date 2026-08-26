@@ -24,10 +24,5 @@ namespace Codeer.LowCode.Blazor.Extras.Mail
         public SearchCondition Condition { get; set; } = new();
         public string SourceModule { get; set; } = string.Empty;
         public string SourceId { get; set; } = string.Empty;
-        /// <summary>
-        /// 送信結果サマリを保存する、起点レコードの BulkMailField 名。設定時 (かつサーバーに
-        /// 内部更新経路が結線されているとき)、送信後にそのフィールドの DB 列へサマリ JSON が書き戻される。
-        /// </summary>
-        public string SummaryFieldName { get; set; } = string.Empty;
     }
 }

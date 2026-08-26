@@ -96,7 +96,6 @@ ReceiptMail.Send();                                        // 添付は送信後
 | 宛先リスト | 同一モジュール上の List / DetailList / TileList のフィールド名。その先のモジュールに**一斉送信の宛先契約**が必要 |
 | 件名 / 件名変数、本文 / 本文変数 | MailField と同じ規則。`{変数}` は**宛先行**で解決される (`{Contact.Name.Value}` のようなリンクパス可) |
 | 自分を差出人にする / HTML本文 / 返信先 / メールインフラ名 / ボタンテキスト | MailField と同じ |
-| 送信結果サマリの保存列 | 設定すると、送信日時・件数・失敗明細がこのレコードの列に JSON で書き戻され、ボタンの下に最終送信結果が表示される |
 
 動作:
 
@@ -134,7 +133,8 @@ UI もデータも持たない「宣言用」のフィールドです。役割 �
 |---|---|---|---|
 | **差出人契約** (MailSenderContractField) | 現在のユーザーのモジュール (AppUser 等) | Email (必須) / DisplayName | 「自分を差出人にする」、Gmail トークン検索 |
 | **一斉送信の宛先契約** (BulkMailRecipientContractField) | 一斉送信の宛先リストが指すモジュール | Email (必須) / OptOut | BulkMailField の宛先解決 |
-| **メール履歴契約** (MailHistoryContractField) | 送信履歴モジュール | SentAt (必須) / MailInfraName / Subject / TotalCount / SuccessCount / FailureDetails / SourceModule / SourceId | 送信履歴の記録 |
+| **メール履歴契約** (MailHistoryContractField) | 送信履歴モジュール | SentAt (必須) / MailInfraName / Subject / TotalCount / SuccessCount / FailureDetails / SourceModule / SourceId / Details | 送信履歴の記録 |
+| **メール送信明細契約** (MailHistoryDetailContractField) | 送信明細モジュール (履歴の Details 一覧の参照先) | History (必須) / To (必須) / Subject / Body / IsSuccess / Error | 宛先ごとの明細 (任意) |
 
 役割の値はフィールドのリネームに追従し、不在ならデザインチェックがエラーにします。
 
@@ -144,6 +144,12 @@ UI もデータも持たない「宣言用」のフィールドです。役割 �
 そのモジュールに 1 送信 1 レコードで記録されます (失敗明細は JSON)。
 書き込みは操作ユーザーの権限に依存しないサーバー内部経路で行われ、履歴の失敗が送信を止めることはありません。
 履歴モジュールは**メールのセットアップ**で生成できます (一覧画面・ページリンク付き)。
+
+**送信明細 (任意)**: 履歴モジュールに明細モジュールへの一覧を置き、履歴契約の「送信明細の一覧」に設定すると、
+**1 宛先 1 行**で「宛先・**その宛先で解決した後の**件名と本文・成否・失敗理由」が残ります。
+テンプレートの変数が正しく展開されたか、誰に何を送ったかを後から確認できます。
+セットアップの「送信明細モジュールも生成」(既定 ON) で明細モジュールごと揃います。
+宛先アドレスと本文が残るので、履歴・明細モジュールの閲覧権限は管理者などに絞ってください。
 
 ### 差出人の考え方
 

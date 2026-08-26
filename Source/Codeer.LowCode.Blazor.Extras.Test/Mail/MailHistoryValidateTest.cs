@@ -35,7 +35,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Mail
         }
 
         static MailHistoryWriter CreateWriter(DesignData designData)
-            => new("MailHistory", designData, _ => Task.CompletedTask, _ => { });
+            => new("MailHistory", designData, _ => Task.FromResult("1"), _ => { });
 
         [Test]
         public void 既定名が全部揃っていればOK()

@@ -13,6 +13,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
     /// 1. ユーザー (CurrentUser) モジュールの差出人契約 (MailSenderContractField) — 「自分を差出人にする」と Gmail ユーザートークン検索の前提
     /// 2. (任意) ユーザーモジュールの GmailTokenField — 本人の Gmail から送るためのトークン欄
     /// 3. (任意) 送信履歴モジュール (MailHistoryContractField 同梱・誰も書けない保護条件・一覧・ページリンク)
+    ///    + (任意) 送信明細モジュール (1 宛先 1 行。解決後の件名・本文と成否)
     /// 4. サーバー設定 (appsettings の Mail / プロバイダセクション) の案内
     /// すべて冪等 (既に有るものは触らない)。DDL は雛形として返す (実行は呼び出し側でユーザーの確認を挟む)。
     /// 承認フローのセットアップも「メールを使う」を選ぶとこれを内部で呼ぶ。
@@ -140,10 +141,29 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
             }
 
             //保護条件 (誰も書けない) の判定に使うモジュールはデザインの CurrentUser モジュール
-            var module = MailHistoryModuleFactory.Create(moduleName, options.DataSourceName, SetupUi.CurrentUserModuleName(designData));
+            var userModuleName = SetupUi.CurrentUserModuleName(designData);
+            var detailName = options.CreateHistoryDetailModule ? options.HistoryDetailModuleName : string.Empty;
+            if (!string.IsNullOrEmpty(detailName) &&
+                (designData.Modules.Find(detailName) != null || File.Exists(Path.Combine(designDir, "Modules", $"{detailName}.mod.json"))))
+            {
+                result.SkippedModules.Add(detailName);
+                result.Notes.Add($"{detailName} は既に存在するため、履歴モジュールは明細なしで生成しました。明細を使う場合は {moduleName} に一覧フィールドを置き、契約の「送信明細の一覧」に設定してください。");
+                detailName = string.Empty;
+            }
+
+            var module = MailHistoryModuleFactory.Create(moduleName, options.DataSourceName, userModuleName, detailName);
             SaveModule(designDir, module);
             result.CreatedModules.Add(moduleName);
             result.Ddl.AddRange(module.CreateDDL(dataSourceType, existingTables));
+
+            if (!string.IsNullOrEmpty(detailName))
+            {
+                var detail = MailHistoryModuleFactory.CreateDetail(detailName, moduleName, options.DataSourceName, userModuleName);
+                SaveModule(designDir, detail);
+                result.CreatedModules.Add(detailName);
+                result.Ddl.AddRange(detail.CreateDDL(dataSourceType, existingTables));
+                result.Notes.Add($"送信明細 ({detailName}) には宛先アドレスと解決後の本文が 1 宛先 1 行で残ります。{moduleName} / {detailName} の閲覧権限 (UserReadCondition) は管理者などに絞ってください。");
+            }
 
             if (options.AddPageFrameLink)
             {
