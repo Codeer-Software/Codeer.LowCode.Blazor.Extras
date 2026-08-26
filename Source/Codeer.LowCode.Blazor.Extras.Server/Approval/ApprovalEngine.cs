@@ -412,8 +412,10 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Approval
             if (!route.Steps.Any(e => e.StepType == ApprovalStepType.Approval.ToDesignValue()))
                 return string.Format(Resources.ApprovalError_InvalidRouteFormat, "no approval step");
 
-            foreach (var step in route.Steps)
+            foreach (var (step, i) in route.Steps.Select((e, i) => (e, i)))
             {
+                //ステップ名は任意なので、エラー文では番号 (と名前があればそれ) で示す
+                var stepLabel = string.IsNullOrEmpty(step.Name) ? $"step {i + 1}" : $"step {i + 1} '{step.Name}'";
                 if (step.StepType != ApprovalStepType.Approval.ToDesignValue() &&
                     step.StepType != ApprovalStepType.Confirmation.ToDesignValue())
                     return string.Format(Resources.ApprovalError_InvalidRouteFormat, $"unknown step type '{step.StepType}'");
@@ -422,9 +424,9 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Approval
                 if (!Enum.TryParse<ApprovalReturnScope>(step.ReturnScope, out _))
                     return string.Format(Resources.ApprovalError_InvalidRouteFormat, $"unknown return scope '{step.ReturnScope}'");
                 if (step.Members.Count == 0)
-                    return string.Format(Resources.ApprovalError_InvalidRouteFormat, $"step '{step.Name}' has no members");
+                    return string.Format(Resources.ApprovalError_InvalidRouteFormat, $"{stepLabel} has no members");
                 if (step.Members.Any(e => string.IsNullOrWhiteSpace(e.UserId)))
-                    return string.Format(Resources.ApprovalError_InvalidRouteFormat, $"step '{step.Name}' has an empty user id");
+                    return string.Format(Resources.ApprovalError_InvalidRouteFormat, $"{stepLabel} has an empty user id");
             }
             return null;
         }

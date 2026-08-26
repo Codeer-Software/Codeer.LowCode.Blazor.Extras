@@ -274,7 +274,10 @@ if (r.IsSuccess) IsViewOnly = false;              // サーバー側は DataWrit
 
 - ステップのプロパティ: `StepType` (Approval/Confirmation) / `CompletionPolicy` (RequiredMembers/All/Any) /
   `IsCommentRequiredOnReject` (既定 true) / `ReturnScope` (ApplicantOnly/AnyPreviousStep)
+- `AddStep()` は名前なし (ステップ名は任意。表示はステップ番号で代替)。`AddStep(name)` で名前付き
 - `AddMember(userId, isRequired)` は必須指定付き。省略時は必須
+- `route.AddMembers(new[]{ 課長.Value, 部長.Value })` は**承認者ごとに 1 ステップ**を追加する直列承認の最短形
+  (各ステップは名前なし・承認者 1 人・必須)。同じステップに複数人を置く合議は `AddStep().AddMember(a).AddMember(b)`
 
 ## CSS
 

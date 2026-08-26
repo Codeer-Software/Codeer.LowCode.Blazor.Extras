@@ -1091,6 +1091,71 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Approval
 
         #endregion
 
+        #region 経路ビルダー (AddStep() / AddMembers)
+
+        [Test]
+        public async Task 経路_AddMembersは承認者ごとに1ステップの直列承認()
+        {
+            var route = new ApprovalRouteData().AddMembers(new[] { "2", "3" }); //課長 → 部長
+            Assert.That(route.Steps.Count, Is.EqualTo(2));
+            var submit = await SubmitAsync(route: route);
+
+            var rows = await _db.QueryAsync(Ds,
+                $"SELECT StepNo, StepName, ApproverUser, IsRequired, Status FROM ApprovalFlowMembers WHERE FlowId = {submit.FlowId} ORDER BY StepNo, Id", new());
+            Assert.That(rows.Count, Is.EqualTo(2));
+            Assert.That(S(rows[0], "StepName"), Is.Empty);
+            Assert.That(S(rows[0], "ApproverUser"), Is.EqualTo("2"));
+            Assert.That(S(rows[1], "ApproverUser"), Is.EqualTo("3"));
+            Assert.That(Convert.ToInt32(rows[0]["IsRequired"]), Is.EqualTo(1));
+            Assert.That(S(rows[0], "Status"), Is.EqualTo(ApprovalMemberStatus.Waiting.ToDesignValue()));
+            Assert.That(S(rows[1], "Status"), Is.EqualTo(ApprovalMemberStatus.Pending.ToDesignValue()));
+
+            //直列: 2 → 3 の順に承認して完了
+            var r1 = await ExecuteAsync("3", ApprovalAction.Approve.ToDesignValue(), submit.FlowId);
+            Assert.That(r1.IsSuccess, Is.False); //まだ順番ではない
+            var r2 = await ExecuteAsync("2", ApprovalAction.Approve.ToDesignValue(), submit.FlowId);
+            Assert.That(r2.IsSuccess, Is.True, r2.ErrorMessage);
+            var r3 = await ExecuteAsync("3", ApprovalAction.Approve.ToDesignValue(), submit.FlowId);
+            Assert.That(r3.IsSuccess, Is.True, r3.ErrorMessage);
+            Assert.That(await GetFlowValueAsync(submit.FlowId, "Status"), Is.EqualTo(ApprovalFlowStatus.Completed.ToDesignValue()));
+        }
+
+        [Test]
+        public async Task 経路_名前なしステップに複数人を置ける()
+        {
+            var route = new ApprovalRouteData();
+            route.AddStep().AddMember("2").AddMember("3"); //合議 (全員必須)
+            var submit = await SubmitAsync(route: route);
+
+            var rows = await _db.QueryAsync(Ds, $"SELECT StepName FROM ApprovalFlowMembers WHERE FlowId = {submit.FlowId}", new());
+            Assert.That(rows.Count, Is.EqualTo(2));
+            Assert.That(rows.All(e => S(e, "StepName") == string.Empty), Is.True);
+
+            var r1 = await ExecuteAsync("2", ApprovalAction.Approve.ToDesignValue(), submit.FlowId);
+            Assert.That(r1.IsSuccess, Is.True, r1.ErrorMessage);
+            Assert.That(await GetFlowValueAsync(submit.FlowId, "Status"), Is.EqualTo(ApprovalFlowStatus.InProgress.ToDesignValue()));
+            var r2 = await ExecuteAsync("3", ApprovalAction.Approve.ToDesignValue(), submit.FlowId);
+            Assert.That(r2.IsSuccess, Is.True, r2.ErrorMessage);
+            Assert.That(await GetFlowValueAsync(submit.FlowId, "Status"), Is.EqualTo(ApprovalFlowStatus.Completed.ToDesignValue()));
+        }
+
+        [Test]
+        public async Task 経路_名前なしステップのエラーは番号で示される()
+        {
+            var route = new ApprovalRouteData();
+            route.AddStep().AddMember("2");
+            route.AddStep(); //メンバーなし
+            var r = await CreateEngine("1").ExecuteAsync(new ApprovalCommand
+            {
+                Action = ApprovalAction.Submit, TargetModuleName = "Request", FieldName = "Approval",
+                TargetSubmitData = CreateNewRequestSubmit("x"), Route = route,
+            });
+            Assert.That(r.IsSuccess, Is.False);
+            Assert.That(r.ErrorMessage, Does.Contain("step 2"));
+        }
+
+        #endregion
+
         #region command API (1 本のエンドポイントで Action により振り分け)
 
         [Test]
