@@ -125,12 +125,14 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         [Designer(Index = 16, CandidateType = CandidateType.Field, DisplayName = "$ApprovalMemberContractTurnNotifyMail")]
         public string TurnNotifyMail { get; set; } = string.Empty;
 
-        //TurnNotifyMail (任意) 以外は必須
+        //Required = what the engine needs to identify a member and drive the state machine.
+        //Optional roles fall into two kinds:
+        //  snapshot/display only (StepName / IsFinalStep / ActedAt): empty = not written, UI shows without them
+        //  policy (CompletionPolicy / ReturnScope / IsCommentRequiredOnReject / IsRequired): empty = engine uses the default
+        //  (RequiredMembers / ApplicantOnly / false / true). See ApprovalMemberDefaults.
         private protected override HashSet<string> RequiredRoleNames => new()
         {
-            nameof(Flow), nameof(AttemptNo), nameof(StepNo), nameof(StepName), nameof(StepType), nameof(CompletionPolicy),
-            nameof(IsCommentRequiredOnReject), nameof(ReturnScope), nameof(ApproverUser), nameof(IsRequired),
-            nameof(IsFinalStep), nameof(Status), nameof(ActedAt),
+            nameof(Flow), nameof(AttemptNo), nameof(StepNo), nameof(StepType), nameof(ApproverUser), nameof(Status),
         };
 
         public override List<DesignCheckInfo> CheckDesign(DesignCheckContext context)
@@ -183,9 +185,8 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         [Designer(Index = 11, CandidateType = CandidateType.Field, DisplayName = "$ApprovalHistoryContractActedAt")]
         public string ActedAt { get; set; } = nameof(ActedAt);
 
-        private protected override HashSet<string> RequiredRoleNames => new()
-        {
-            nameof(Flow), nameof(AttemptNo), nameof(Action), nameof(ActorUser), nameof(Comment), nameof(ActedAt),
-        };
+        //The engine only writes history rows; the UI only displays them. Flow is required to find the rows,
+        //every other role is optional (empty = not recorded / not shown).
+        private protected override HashSet<string> RequiredRoleNames => new() { nameof(Flow) };
     }
 }

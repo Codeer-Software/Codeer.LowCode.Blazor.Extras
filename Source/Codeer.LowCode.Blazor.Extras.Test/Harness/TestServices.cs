@@ -1,4 +1,4 @@
-using Codeer.LowCode.Blazor.Components.Dialog;
+﻿using Codeer.LowCode.Blazor.Components.Dialog;
 using Codeer.LowCode.Blazor.DataIO;
 using Codeer.LowCode.Blazor.DesignLogic;
 using Codeer.LowCode.Blazor.OperatingModel;
@@ -49,7 +49,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Harness
             => _designData = designData;
 
         //IAppInfoService
-        public string CurrentUserId => string.Empty;
+        public string CurrentUserId { get; set; } = string.Empty;
         public ModuleData? CurrentUserData { get; set; }
         public ScriptRuntimeTypeManager GetScriptRuntimeTypeManager() => _scriptRuntimeTypeManager;
         public Task<MemoryStream?> GetResourceAsync(string resourcePath) => Task.FromResult<MemoryStream?>(null);
@@ -57,7 +57,16 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Harness
 
         //IModuleDataService (テストが使わないものは未実装)
         public Task<List<Paging<ModuleData>>> GetListAsync(List<GetListRequest> requests)
-            => Task.FromResult(requests.Select(_ => new Paging<ModuleData>()).ToList());
+        {
+            ListRequests.AddRange(requests);
+            return Task.FromResult(requests.Select(r => ListProvider?.Invoke(r) ?? new Paging<ModuleData>()).ToList());
+        }
+
+        /// <summary>GetListAsync に渡された要求 (条件の検証用)。</summary>
+        public List<GetListRequest> ListRequests { get; } = new();
+
+        /// <summary>GetListAsync の応答を差し替える (null = 空ページ)。</summary>
+        public Func<GetListRequest, Paging<ModuleData>?>? ListProvider { get; set; }
         public Task<List<ModuleSubmitResult>?> SubmitAsync(List<ModuleSubmitData> data)
             => throw new NotImplementedException();
         public Task<Codeer.LowCode.Blazor.DataIO.FileInfo?> UploadFile(string moduleName, string fieldName, string fileName, StreamContent content)

@@ -22,5 +22,20 @@ namespace Codeer.LowCode.Blazor.Extras.Server
 
         internal static bool GetBool(ModuleData data, string fieldName)
             => (data.Fields.GetValueOrDefault(fieldName) as BooleanFieldData)?.Value == true;
+
+        /// <summary>Optional role: empty role name or empty value = default.</summary>
+        internal static string GetStringOrDefault(ModuleData data, string fieldName, string defaultValue)
+        {
+            if (string.IsNullOrEmpty(fieldName)) return defaultValue;
+            var value = GetString(data, fieldName);
+            return string.IsNullOrEmpty(value) ? defaultValue : value;
+        }
+
+        /// <summary>Optional role: empty role name or null value = default.</summary>
+        internal static bool GetBoolOrDefault(ModuleData data, string fieldName, bool defaultValue)
+        {
+            if (string.IsNullOrEmpty(fieldName)) return defaultValue;
+            return (data.Fields.GetValueOrDefault(fieldName) as BooleanFieldData)?.Value ?? defaultValue;
+        }
     }
 }

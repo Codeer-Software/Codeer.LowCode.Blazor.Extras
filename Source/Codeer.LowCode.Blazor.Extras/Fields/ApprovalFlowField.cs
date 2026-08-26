@@ -357,6 +357,8 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
                 FlowStatus = GetString(flow, FlowNames.Status) ?? string.Empty;
                 AttemptNo = GetInt(flow, FlowNames.AttemptNo);
                 CurrentStepNo = GetInt(flow, FlowNames.CurrentStepNo);
+                //applicant = the flow row's Applicant (the same value the server uses for authorization)
+                ApplicantUserId = (flow.Fields.GetValueOrDefault(FlowNames.Applicant) as LinkFieldData)?.Value ?? string.Empty;
                 Version = (flow.Fields.GetValueOrDefault(SystemFieldNames.OptimisticLocking) as OptimisticLockingFieldData)
                     ?.GetValue()?.ToString() ?? string.Empty;
             }
@@ -379,7 +381,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             [
                 SystemFieldNames.Id, SystemFieldNames.OptimisticLocking,
                 FlowNames.Status, FlowNames.AttemptNo,
-                FlowNames.CurrentStepNo,
+                FlowNames.CurrentStepNo, FlowNames.Applicant,
             ],
         };
 
@@ -397,15 +399,16 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
                 new SortCondition { Variable = $"{MemberNames.StepNo}.Value" },
                 new SortCondition { Variable = $"{SystemFieldNames.Id}.Value" },
             ],
-            SelectFields =
-            [
+            //optional roles may be empty (= not used); they must not appear in SelectFields
+            SelectFields = new[]
+            {
                 SystemFieldNames.Id,
                 MemberNames.AttemptNo, MemberNames.StepNo,
                 MemberNames.StepName, MemberNames.StepType,
                 MemberNames.IsCommentRequiredOnReject,
                 MemberNames.ApproverUser, MemberNames.IsRequired,
                 MemberNames.Status, MemberNames.ActedAt,
-            ],
+            }.Where(e => !string.IsNullOrEmpty(e)).ToList(),
         };
 
         SearchCondition CreateHistoryCondition() => new()
@@ -418,13 +421,14 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
                 Value = MultiTypeValue.Create(FlowId),
             },
             SortConditions = [new SortCondition { Variable = $"{SystemFieldNames.Id}.Value", IsDescending = true }],
-            SelectFields =
-            [
+            //optional roles may be empty (= not recorded); they must not appear in SelectFields
+            SelectFields = new[]
+            {
                 SystemFieldNames.Id,
                 HistoryNames.AttemptNo, HistoryNames.Action,
                 HistoryNames.ActorUser, HistoryNames.Comment,
                 HistoryNames.ActedAt,
-            ],
+            }.Where(e => !string.IsNullOrEmpty(e)).ToList(),
         };
 
         void BuildStepViews(List<ModuleData> members)
@@ -439,7 +443,8 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
                     step = new ApprovalStepView
                     {
                         StepNo = stepNo,
-                        StepName = GetString(member, MemberNames.StepName) ?? string.Empty,
+                        //StepName is optional: fall back to the step number
+                        StepName = GetStringOrDefault(member, MemberNames.StepName, stepNo.ToString()),
                         StepType = GetString(member, MemberNames.StepType) ?? ApprovalStepType.Approval.ToDesignValue(),
                         IsCurrent = FlowStatus == ApprovalFlowStatus.InProgress.ToDesignValue() && stepNo == CurrentStepNo,
                     };
@@ -452,12 +457,12 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
                     MemberId = GetString(member, SystemFieldNames.Id) ?? string.Empty,
                     UserId = approver?.Value ?? string.Empty,
                     UserDisplayText = string.IsNullOrEmpty(approver?.DisplayText) ? approver?.Value ?? string.Empty : approver.DisplayText,
-                    IsRequired = GetBool(member, MemberNames.IsRequired),
+                    IsRequired = GetBoolOrDefault(member, MemberNames.IsRequired, ApprovalMemberDefaults.IsRequired),
                     Status = GetString(member, MemberNames.Status) ?? ApprovalMemberStatus.Waiting.ToDesignValue(),
                     ActedAt = GetDateTime(member, MemberNames.ActedAt),
                 });
 
-                if (step.IsCurrent) IsCommentRequiredOnReject = GetBool(member, MemberNames.IsCommentRequiredOnReject);
+                if (step.IsCurrent) IsCommentRequiredOnReject = GetBoolOrDefault(member, MemberNames.IsCommentRequiredOnReject, ApprovalMemberDefaults.IsCommentRequiredOnReject);
             }
         }
 
@@ -475,9 +480,6 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
                     ActedAt = GetDateTime(history, HistoryNames.ActedAt),
                 };
                 History.Add(entry);
-
-                //申請者 = 最初の Submit の実行者 (履歴は新しい順で読むので最後に見つかったものが最古)
-                if (entry.Action == ApprovalAction.Submit.ToDesignValue()) ApplicantUserId = actor?.Value ?? string.Empty;
             }
         }
 
@@ -506,5 +508,13 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
 
         static DateTime? GetDateTime(ModuleData data, string fieldName)
             => (data.Fields.GetValueOrDefault(fieldName) as DateTimeFieldData)?.Value;
+
+        //optional role: empty role name or empty value = default
+        static string GetStringOrDefault(ModuleData data, string fieldName, string defaultValue)
+            => string.IsNullOrEmpty(fieldName) ? defaultValue : (GetString(data, fieldName) is { Length: > 0 } v ? v : defaultValue);
+
+        static bool GetBoolOrDefault(ModuleData data, string fieldName, bool defaultValue)
+            => string.IsNullOrEmpty(fieldName) ? defaultValue
+                : (data.Fields.GetValueOrDefault(fieldName) as BooleanFieldData)?.Value ?? defaultValue;
     }
 }

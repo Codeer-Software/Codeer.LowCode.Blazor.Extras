@@ -910,34 +910,34 @@
     <value>ステップ番号 (必須)</value>
   </data>
   <data name="ApprovalMemberContractStepName" xml:space="preserve">
-    <value>ステップ名 (必須)</value>
+    <value>ステップ名</value>
   </data>
   <data name="ApprovalMemberContractStepType" xml:space="preserve">
     <value>ステップ種別 (承認/確認) (必須)</value>
   </data>
   <data name="ApprovalMemberContractCompletionPolicy" xml:space="preserve">
-    <value>ステップ完了条件 (必須)</value>
+    <value>ステップ完了条件</value>
   </data>
   <data name="ApprovalMemberContractIsCommentRequiredOnReject" xml:space="preserve">
-    <value>却下時のコメント必須 (必須)</value>
+    <value>却下時のコメント必須</value>
   </data>
   <data name="ApprovalMemberContractReturnScope" xml:space="preserve">
-    <value>差し戻し先の範囲 (必須)</value>
+    <value>差し戻し先の範囲</value>
   </data>
   <data name="ApprovalMemberContractApproverUser" xml:space="preserve">
     <value>承認者ユーザー (必須)</value>
   </data>
   <data name="ApprovalMemberContractIsRequired" xml:space="preserve">
-    <value>必須承認者か (必須)</value>
+    <value>必須承認者か</value>
   </data>
   <data name="ApprovalMemberContractIsFinalStep" xml:space="preserve">
-    <value>最終承認ステップか (必須)</value>
+    <value>最終承認ステップか</value>
   </data>
   <data name="ApprovalMemberContractStatus" xml:space="preserve">
     <value>メンバーの状態 (必須)</value>
   </data>
   <data name="ApprovalMemberContractActedAt" xml:space="preserve">
-    <value>操作日時 (必須)</value>
+    <value>操作日時</value>
   </data>
   <data name="ApprovalMemberContractTurnNotifyMail" xml:space="preserve">
     <value>順番到達通知メール (MailField)</value>
@@ -946,18 +946,18 @@
     <value>フロー (フロー行への Link) (必須)</value>
   </data>
   <data name="ApprovalHistoryContractAttemptNo" xml:space="preserve">
-    <value>試行番号 (必須)</value>
+    <value>試行番号</value>
   </data>
   <data name="ApprovalHistoryContractAction" xml:space="preserve">
-    <value>操作 (必須)</value>
+    <value>操作</value>
   </data>
   <data name="ApprovalHistoryContractActorUser" xml:space="preserve">
-    <value>実行者ユーザー (必須)</value>
+    <value>実行者ユーザー</value>
   </data>
   <data name="ApprovalHistoryContractComment" xml:space="preserve">
-    <value>コメント (必須)</value>
+    <value>コメント</value>
   </data>
   <data name="ApprovalHistoryContractActedAt" xml:space="preserve">
-    <value>操作日時 (必須)</value>
+    <value>操作日時</value>
   </data>
 </root>

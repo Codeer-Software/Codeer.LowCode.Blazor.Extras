@@ -449,11 +449,11 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Approval
             public string Id { get; init; } = string.Empty;
             public int StepNo { get; init; }
             public string StepType { get; init; } = ApprovalStepType.Approval.ToDesignValue();
-            public string CompletionPolicy { get; init; } = ApprovalCompletionPolicy.RequiredMembers.ToDesignValue();
-            public bool IsCommentRequired { get; init; }
-            public string ReturnScope { get; init; } = ApprovalReturnScope.ApplicantOnly.ToDesignValue();
+            public string CompletionPolicy { get; init; } = ApprovalMemberDefaults.CompletionPolicy;
+            public bool IsCommentRequired { get; init; } = ApprovalMemberDefaults.IsCommentRequiredOnReject;
+            public string ReturnScope { get; init; } = ApprovalMemberDefaults.ReturnScope;
             public string ApproverUserId { get; init; } = string.Empty;
-            public bool IsRequired { get; init; }
+            public bool IsRequired { get; init; } = ApprovalMemberDefaults.IsRequired;
             public string Status { get; set; } = ApprovalMemberStatus.Waiting.ToDesignValue();
         }
 
@@ -519,25 +519,27 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Approval
                     ],
                 },
                 SortConditions = [new SortCondition { Variable = $"{ctx.Member.StepNo}.Value" }],
-                SelectFields =
-                [
+                //optional roles may be empty (= not used); they must not appear in SelectFields
+                SelectFields = new[]
+                {
                     SystemFieldNames.Id,
                     ctx.Member.StepNo, ctx.Member.StepType,
                     ctx.Member.CompletionPolicy, ctx.Member.IsCommentRequiredOnReject,
                     ctx.Member.ReturnScope, ctx.Member.ApproverUser,
                     ctx.Member.IsRequired, ctx.Member.Status,
-                ],
+                }.Where(e => !string.IsNullOrEmpty(e)).ToList(),
             };
+            //policy roles: empty role (or empty value) = engine default (ApprovalMemberDefaults)
             return (await _io.GetListAsync(condition, 0)).Items.Select(e => new MemberRow
             {
                 Id = GetId(e),
                 StepNo = GetInt(e, ctx.Member.StepNo),
                 StepType = GetString(e, ctx.Member.StepType),
-                CompletionPolicy = GetString(e, ctx.Member.CompletionPolicy),
-                IsCommentRequired = GetBool(e, ctx.Member.IsCommentRequiredOnReject),
-                ReturnScope = GetString(e, ctx.Member.ReturnScope),
+                CompletionPolicy = GetStringOrDefault(e, ctx.Member.CompletionPolicy, ApprovalMemberDefaults.CompletionPolicy),
+                IsCommentRequired = GetBoolOrDefault(e, ctx.Member.IsCommentRequiredOnReject, ApprovalMemberDefaults.IsCommentRequiredOnReject),
+                ReturnScope = GetStringOrDefault(e, ctx.Member.ReturnScope, ApprovalMemberDefaults.ReturnScope),
                 ApproverUserId = GetString(e, ctx.Member.ApproverUser),
-                IsRequired = GetBool(e, ctx.Member.IsRequired),
+                IsRequired = GetBoolOrDefault(e, ctx.Member.IsRequired, ApprovalMemberDefaults.IsRequired),
                 Status = GetString(e, ctx.Member.Status),
             }).ToList();
         }

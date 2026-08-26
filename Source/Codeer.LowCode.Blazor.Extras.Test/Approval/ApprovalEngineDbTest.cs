@@ -945,5 +945,192 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Approval
             Assert.That(_sentMails[0].From, Is.Empty); //差出人はシステム (インフラ既定)
             Assert.That(_sentMails[0].ReplyTo, Is.EqualTo("user1@example.com")); //返信先=申請者
         }
+
+        #region 契約の任意役割 (空 = 使わない → 既定で動く)
+
+        //メンバー契約の任意役割 (表示系 3 + ポリシー系 4) と履歴契約の Flow 以外を全て空にする。
+        //DB 列は残っているが、役割が空なのでエンジンは読み書きしない (= その列を持たないアプリと同じ)
+        void UseMinimalContracts()
+        {
+            var member = _designData.Modules.Find("ApprovalFlowMember")!;
+            var mc = member.Fields.OfType<ApprovalMemberContractFieldDesign>().Single();
+            foreach (var role in new[] { nameof(mc.StepName), nameof(mc.IsFinalStep), nameof(mc.ActedAt),
+                nameof(mc.CompletionPolicy), nameof(mc.ReturnScope), nameof(mc.IsCommentRequiredOnReject), nameof(mc.IsRequired) })
+            {
+                member.Fields.Remove(member.Fields.First(e => e.Name == role));
+                typeof(ApprovalMemberContractFieldDesign).GetProperty(role)!.SetValue(mc, string.Empty);
+            }
+            var history = _designData.Modules.Find("ApprovalHistory")!;
+            var hc = history.Fields.OfType<ApprovalHistoryContractFieldDesign>().Single();
+            foreach (var role in new[] { nameof(hc.AttemptNo), nameof(hc.Action), nameof(hc.ActorUser), nameof(hc.Comment), nameof(hc.ActedAt) })
+            {
+                history.Fields.Remove(history.Fields.First(e => e.Name == role));
+                typeof(ApprovalHistoryContractFieldDesign).GetProperty(role)!.SetValue(hc, string.Empty);
+            }
+        }
+
+        static bool IsDbNull(object? value) => value is null or DBNull;
+
+        [Test]
+        public async Task 最小契約_申請から完了まで動き_空の役割は書かれない()
+        {
+            UseMinimalContracts();
+            var submit = await SubmitAsync();
+
+            //メンバー行: 必須役割だけが書かれ、任意役割の列は NULL
+            var rows = await _db.QueryAsync(Ds,
+                $"SELECT StepNo, StepType, ApproverUser, Status, StepName, CompletionPolicy, ReturnScope, IsCommentRequiredOnReject, IsRequired, IsFinalStep, ActedAt FROM ApprovalFlowMembers WHERE FlowId = {submit.FlowId} ORDER BY StepNo", new());
+            Assert.That(rows.Count, Is.EqualTo(2));
+            Assert.That(S(rows[0], "StepType"), Is.EqualTo(ApprovalStepType.Approval.ToDesignValue()));
+            Assert.That(S(rows[0], "Status"), Is.EqualTo(ApprovalMemberStatus.Waiting.ToDesignValue()));
+            foreach (var col in new[] { "StepName", "CompletionPolicy", "ReturnScope", "IsCommentRequiredOnReject", "IsRequired", "IsFinalStep", "ActedAt" })
+                Assert.That(IsDbNull(rows[0][col]), Is.True, col);
+
+            //履歴行: Flow だけ
+            var histories = await _db.QueryAsync(Ds, $"SELECT FlowId, Action, ActorUser, Comment FROM ApprovalHistories WHERE FlowId = {submit.FlowId}", new());
+            Assert.That(histories.Count, Is.EqualTo(1));
+            Assert.That(IsDbNull(histories[0]["Action"]), Is.True);
+            Assert.That(IsDbNull(histories[0]["ActorUser"]), Is.True);
+
+            //承認 → 次ステップ → 完了 (状態遷移は必須役割だけで成立する)
+            var r1 = await ExecuteAsync("2", ApprovalAction.Approve.ToDesignValue(), submit.FlowId);
+            Assert.That(r1.IsSuccess, Is.True, r1.ErrorMessage);
+            Assert.That(await GetFlowValueAsync(submit.FlowId, "Status"), Is.EqualTo(ApprovalFlowStatus.InProgress.ToDesignValue()));
+            var r2 = await ExecuteAsync("3", ApprovalAction.Approve.ToDesignValue(), submit.FlowId);
+            Assert.That(r2.IsSuccess, Is.True, r2.ErrorMessage);
+            Assert.That(await GetFlowValueAsync(submit.FlowId, "Status"), Is.EqualTo(ApprovalFlowStatus.Completed.ToDesignValue()));
+
+            //承認済みメンバーの ActedAt は役割が空なので書かれない
+            var acted = await _db.QueryAsync(Ds, $"SELECT ActedAt FROM ApprovalFlowMembers WHERE FlowId = {submit.FlowId}", new());
+            Assert.That(acted.All(e => IsDbNull(e["ActedAt"])), Is.True);
+        }
+
+        [Test]
+        public async Task 最小契約_IsRequired既定true_任意メンバー指定でも全員承認が必要()
+        {
+            //経路では 2 人とも「任意」(isRequired: false) = 本来は誰か 1 人で完了するが、
+            //IsRequired 役割が無いアプリでは既定 (true) で動く = 全員必須
+            var route = new ApprovalRouteData();
+            route.AddStep("合議").AddMember("2", false).AddMember("3", false);
+
+            //比較: 通常契約なら 1 人で完了
+            var full = await SubmitAsync(route: route);
+            var f1 = await ExecuteAsync("2", ApprovalAction.Approve.ToDesignValue(), full.FlowId);
+            Assert.That(f1.IsSuccess, Is.True, f1.ErrorMessage);
+            Assert.That(await GetFlowValueAsync(full.FlowId, "Status"), Is.EqualTo(ApprovalFlowStatus.Completed.ToDesignValue()));
+
+            UseMinimalContracts();
+            var min = await SubmitAsync(route: route);
+            var m1 = await ExecuteAsync("2", ApprovalAction.Approve.ToDesignValue(), min.FlowId);
+            Assert.That(m1.IsSuccess, Is.True, m1.ErrorMessage);
+            Assert.That(await GetFlowValueAsync(min.FlowId, "Status"), Is.EqualTo(ApprovalFlowStatus.InProgress.ToDesignValue()));
+            var m2 = await ExecuteAsync("3", ApprovalAction.Approve.ToDesignValue(), min.FlowId);
+            Assert.That(m2.IsSuccess, Is.True, m2.ErrorMessage);
+            Assert.That(await GetFlowValueAsync(min.FlowId, "Status"), Is.EqualTo(ApprovalFlowStatus.Completed.ToDesignValue()));
+        }
+
+        [Test]
+        public async Task 最小契約_ReturnScope既定ApplicantOnly_経路でAnyPreviousStepでも過去ステップ差し戻し不可()
+        {
+            UseMinimalContracts();
+            var route = new ApprovalRouteData();
+            route.AddStep("課長承認").AddMember("2");
+            var step2 = route.AddStep("部長承認");
+            step2.ReturnScope = ApprovalReturnScope.AnyPreviousStep.ToDesignValue();
+            step2.AddMember("3");
+            var submit = await SubmitAsync(route: route);
+            var r1 = await ExecuteAsync("2", ApprovalAction.Approve.ToDesignValue(), submit.FlowId);
+            Assert.That(r1.IsSuccess, Is.True, r1.ErrorMessage);
+
+            //役割が空なので経路の AnyPreviousStep はメンバー行に写らず、既定 (申請者へのみ) で判定される
+            var toStep1 = await ExecuteAsync("3", ApprovalAction.Return.ToDesignValue(), submit.FlowId, comment: "戻し", targetStepNo: 1);
+            Assert.That(toStep1.IsSuccess, Is.False);
+
+            //申請者への差し戻しはできる
+            var toApplicant = await ExecuteAsync("3", ApprovalAction.Return.ToDesignValue(), submit.FlowId, comment: "戻し");
+            Assert.That(toApplicant.IsSuccess, Is.True, toApplicant.ErrorMessage);
+            Assert.That(await GetFlowValueAsync(submit.FlowId, "Status"), Is.EqualTo(ApprovalFlowStatus.Returned.ToDesignValue()));
+        }
+
+        [Test]
+        public async Task 最小契約_コメント必須既定false_経路で必須でもコメントなし却下が通る()
+        {
+            UseMinimalContracts();
+            var submit = await SubmitAsync(); //CreateRoute の各ステップは IsCommentRequiredOnReject = true (ApprovalStepData の既定)
+            var r = await ExecuteAsync("2", ApprovalAction.Reject.ToDesignValue(), submit.FlowId);
+            Assert.That(r.IsSuccess, Is.True, r.ErrorMessage);
+            Assert.That(await GetFlowValueAsync(submit.FlowId, "Status"), Is.EqualTo(ApprovalFlowStatus.Rejected.ToDesignValue()));
+        }
+
+        [Test]
+        public async Task 最小契約_取り下げと再申請は申請者判定が履歴に依存しない()
+        {
+            //履歴の Action / ActorUser が無くても、申請者の判定 (フロー行の Applicant) は成立する
+            UseMinimalContracts();
+            var submit = await SubmitAsync();
+
+            var other = await ExecuteAsync("2", ApprovalAction.Withdraw.ToDesignValue(), submit.FlowId);
+            Assert.That(other.IsSuccess, Is.False);
+            var mine = await ExecuteAsync("1", ApprovalAction.Withdraw.ToDesignValue(), submit.FlowId);
+            Assert.That(mine.IsSuccess, Is.True, mine.ErrorMessage);
+            Assert.That(await GetFlowValueAsync(submit.FlowId, "Status"), Is.EqualTo(ApprovalFlowStatus.Withdrawn.ToDesignValue()));
+
+            var resubmit = await CreateEngine("1").ExecuteAsync(new ApprovalCommand
+            {
+                Action = ApprovalAction.Resubmit,
+                TargetModuleName = "Request",
+                FieldName = "Approval",
+                TargetSubmitData = CreateNewRequestSubmit("経費申請(再)"),
+                Route = CreateRoute(),
+                FlowId = submit.FlowId,
+                ExpectedVersion = await GetVersionAsync(submit.FlowId),
+            });
+            Assert.That(resubmit.IsSuccess, Is.True, resubmit.ErrorMessage);
+            Assert.That(await GetFlowValueAsync(submit.FlowId, "AttemptNo"), Is.EqualTo("2"));
+        }
+
+        #endregion
+
+        #region command API (1 本のエンドポイントで Action により振り分け)
+
+        [Test]
+        public async Task コマンド_不正なActionは失敗を返す()
+        {
+            var submit = await SubmitAsync();
+            var r = await CreateEngine("2").ExecuteAsync(new ApprovalCommand
+            {
+                Action = (ApprovalAction)999,
+                TargetModuleName = "Request",
+                FieldName = "Approval",
+                FlowId = submit.FlowId,
+                ExpectedVersion = await GetVersionAsync(submit.FlowId),
+            });
+            Assert.That(r.IsSuccess, Is.False);
+            Assert.That(await GetFlowValueAsync(submit.FlowId, "Status"), Is.EqualTo(ApprovalFlowStatus.InProgress.ToDesignValue()));
+        }
+
+        [Test]
+        public async Task コマンド_Submit以外はFlowIdが必要()
+        {
+            await SubmitAsync();
+            foreach (var action in new[] { ApprovalAction.Approve, ApprovalAction.Reject, ApprovalAction.Return, ApprovalAction.Withdraw, ApprovalAction.Confirm })
+            {
+                var r = await CreateEngine("2").ExecuteAsync(new ApprovalCommand
+                {
+                    Action = action, TargetModuleName = "Request", FieldName = "Approval", FlowId = string.Empty,
+                });
+                Assert.That(r.IsSuccess, Is.False, action.ToString());
+            }
+            //Resubmit も FlowId 必須 (Submit と同じ形の要求だが対象フローが要る)
+            var rs = await CreateEngine("1").ExecuteAsync(new ApprovalCommand
+            {
+                Action = ApprovalAction.Resubmit, TargetModuleName = "Request", FieldName = "Approval",
+                TargetSubmitData = CreateNewRequestSubmit("x"), Route = CreateRoute(), FlowId = string.Empty,
+            });
+            Assert.That(rs.IsSuccess, Is.False);
+        }
+
+        #endregion
+
     }
 }

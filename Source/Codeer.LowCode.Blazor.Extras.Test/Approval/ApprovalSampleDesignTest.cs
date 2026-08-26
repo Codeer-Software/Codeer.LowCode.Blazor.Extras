@@ -199,6 +199,12 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Approval
                 Is.EqualTo("ApprovalMemberStatus"));
             Assert.That(member.Fields.OfType<SelectFieldDesign>().Single(e => e.Name == "StepType").EnumName,
                 Is.EqualTo("ApprovalStepType"));
+            Assert.That(member.Fields.OfType<SelectFieldDesign>().Single(e => e.Name == "CompletionPolicy").EnumName,
+                Is.EqualTo("ApprovalCompletionPolicy"));
+            Assert.That(member.Fields.OfType<SelectFieldDesign>().Single(e => e.Name == "ReturnScope").EnumName,
+                Is.EqualTo("ApprovalReturnScope"));
+            Assert.That(d.Modules.Find("ApprovalHistory")!.Fields.OfType<SelectFieldDesign>().Single(e => e.Name == "Action").EnumName,
+                Is.EqualTo("ApprovalAction"));
 
             //enum は Extras のコード定義 ([DesignEnum] 付き C# enum) から合成される (enum 定義ファイルは不要)
             foreach (var name in new[] { "ApprovalFlowStatus", "ApprovalMemberStatus", "ApprovalStepType" })

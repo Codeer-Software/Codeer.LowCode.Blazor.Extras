@@ -259,6 +259,64 @@ namespace Codeer.LowCode.Blazor.Extras.Test.DesignCheck
         }
 
         [Test]
+        public void メンバー契約の任意役割を全て空にしても指摘なし()
+        {
+            //必須 = Flow / AttemptNo / StepNo / StepType / ApproverUser / Status (エンジンが状態遷移に使う)。
+            //それ以外は空 = 使わない (ポリシー系は ApprovalMemberDefaults の既定で動く)
+            var d = CreateDesignData(out _);
+            d.AddModule(CreateFlowModule());
+            var member = CreateMemberModule();
+            d.AddModule(member);
+            d.AddModule(CreateHistoryModule());
+
+            var contract = member.Fields.OfType<ApprovalMemberContractFieldDesign>().First();
+            var optional = new[]
+            {
+                nameof(contract.StepName), nameof(contract.CompletionPolicy), nameof(contract.IsCommentRequiredOnReject),
+                nameof(contract.ReturnScope), nameof(contract.IsRequired), nameof(contract.IsFinalStep), nameof(contract.ActedAt),
+                nameof(contract.TurnNotifyMail),
+            };
+            foreach (var role in optional)
+            {
+                Assert.That(contract.IsRoleRequired(role), Is.False, role);
+                typeof(ApprovalMemberContractFieldDesign).GetProperty(role)!.SetValue(contract, string.Empty);
+            }
+            //必須役割のフィールドだけ実装する
+            member.Fields.Add(new LinkFieldDesign { Name = "Flow", DbColumn = "flow" });
+            member.Fields.Add(new NumberFieldDesign { Name = "AttemptNo", DbColumn = "attempt_no" });
+            member.Fields.Add(new NumberFieldDesign { Name = "StepNo", DbColumn = "step_no" });
+            member.Fields.Add(new SelectFieldDesign { Name = "StepType", DbColumn = "step_type" });
+            member.Fields.Add(new LinkFieldDesign { Name = "ApproverUser", DbColumn = "approver_user" });
+            member.Fields.Add(new SelectFieldDesign { Name = "Status", DbColumn = "status" });
+
+            var ret = contract.CheckDesign(new DesignCheckContext("ApprovalFlowMember", d, Utilities.CreateDataSource()));
+            Assert.That(ret, Is.Empty, string.Join(" / ", ret.Select(e => e.Message)));
+        }
+
+        [Test]
+        public void 履歴契約は_Flow_以外を全て空にしても指摘なし()
+        {
+            //エンジンは履歴を書くだけ・UI は表示するだけ。履歴行を見つける Flow だけが必須
+            var d = CreateDesignData(out _);
+            d.AddModule(CreateFlowModule());
+            d.AddModule(CreateMemberModule());
+            var history = CreateHistoryModule();
+            d.AddModule(history);
+
+            var contract = history.Fields.OfType<ApprovalHistoryContractFieldDesign>().First();
+            foreach (var role in new[] { nameof(contract.AttemptNo), nameof(contract.Action), nameof(contract.ActorUser), nameof(contract.Comment), nameof(contract.ActedAt) })
+            {
+                Assert.That(contract.IsRoleRequired(role), Is.False, role);
+                typeof(ApprovalHistoryContractFieldDesign).GetProperty(role)!.SetValue(contract, string.Empty);
+            }
+            Assert.That(contract.IsRoleRequired(nameof(contract.Flow)), Is.True);
+            history.Fields.Add(new LinkFieldDesign { Name = "Flow", DbColumn = "flow" });
+
+            var ret = contract.CheckDesign(new DesignCheckContext("ApprovalHistory", d, Utilities.CreateDataSource()));
+            Assert.That(ret, Is.Empty, string.Join(" / ", ret.Select(e => e.Message)));
+        }
+
+        [Test]
         public void 必須と任意の役割はメール契約と同じく表示名の必須印と一致する()
         {
             //表示名 "(必須)" の有無 = IsRoleRequired (どちらか片方だけ直すのを防ぐ)
