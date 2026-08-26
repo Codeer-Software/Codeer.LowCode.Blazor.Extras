@@ -17,7 +17,7 @@
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>
 		<PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
-		<PackageReleaseNotes></PackageReleaseNotes>
+		<PackageReleaseNotes>Mail: MailField (single send with value/variable pairs, confirm dialog, preview), BulkMailField (bulk send to a list; recipients are resolved on the server so addresses never reach the client; preview), contract fields (MailSenderContractField, BulkMailRecipientContractField, MailHistoryContractField, MailHistoryDetailContractField) and GmailTokenField (per-user Gmail refresh token stored encrypted in a write-only column). BREAKING: the MailService script object and MailService.SendMailEndPoint are removed; use MailField / BulkMailField and MailTransport.SendMailEndPoint / BulkSearchMailEndPoint / PreviewMailEndPoint / BulkPreviewMailEndPoint. Approval flow: ApprovalFlowField (submit / approve / reject / return / withdraw / resubmit / confirm with built-in stepper, comment and history UI), ApprovalHistoryField, contract fields for the flow / member / history modules, ApprovalRouteData route builder (AddStep / AddMembers / AddMember) and the single command endpoint ApprovalTransport.EndPointBase. Bulk file transfer: BulkFileTransferService.Submit (bulk save from script, BulkSubmitEndPoint).</PackageReleaseNotes>
 		<PackageId>Codeer.LowCode.Blazor.Extras</PackageId>
 	</PropertyGroup>
 

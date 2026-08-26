@@ -16,7 +16,7 @@
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>
 		<PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
-		<PackageReleaseNotes></PackageReleaseNotes>
+		<PackageReleaseNotes>Mail: MailDispatcher (template resolution, bulk send, debug redirect, mail history with optional per-recipient detail rows), MailBulkSearch (server-side recipient resolution from a list search condition), MailPreviewBuilder (dry-run preview rendered as a self-contained HTML file; bulk preview lists excluded recipients with the reason and highlights resolved variables), Gmail API sender with per-user OAuth tokens (GmailUserTokenStore / GmailTokenHelper), MailCurrentUserResolver. Only the Gmail sender is public in this release; custom infrastructures implement IMailSender. BREAKING: SmtpMailService is removed. Approval flow: ApprovalEngine (server-side validation and execution of every state transition, optimistic locking, turn notification mail). Bulk file transfer: BulkFileTransfer.BulkSubmitAsync / GetListFileByDataAsync(Stream) helpers for the template controllers.</PackageReleaseNotes>
 		<PackageId>Codeer.LowCode.Blazor.Extras.Server</PackageId>
 	</PropertyGroup>
 
