@@ -81,4 +81,82 @@
   <data name="MappingPaddingChar" xml:space="preserve">
     <value>Padding character</value>
   </data>
+  <data name="SetupMenuApprovalFlow" xml:space="preserve">
+    <value>Approval Flow Setup</value>
+  </data>
+  <data name="SetupDataSource" xml:space="preserve">
+    <value>Data source</value>
+  </data>
+  <data name="SetupUserModule" xml:space="preserve">
+    <value>User module</value>
+  </data>
+  <data name="SetupUserNameField" xml:space="preserve">
+    <value>User display name field</value>
+  </data>
+  <data name="SetupUserEmailField" xml:space="preserve">
+    <value>User email field</value>
+  </data>
+  <data name="SetupRouteMaster" xml:space="preserve">
+    <value>Route master</value>
+  </data>
+  <data name="SetupRouteStandard" xml:space="preserve">
+    <value>Yes (route + step + member)</value>
+  </data>
+  <data name="SetupRouteNone" xml:space="preserve">
+    <value>None (build routes by script)</value>
+  </data>
+  <data name="SetupTurnMail" xml:space="preserve">
+    <value>Include turn notification mail (run Mail Setup first for the mail side)</value>
+  </data>
+  <data name="SetupPageFrame" xml:space="preserve">
+    <value>Add page links to the page frame</value>
+  </data>
+  <data name="SetupModuleName" xml:space="preserve">
+    <value>Module name</value>
+  </data>
+  <data name="SetupResultTitle" xml:space="preserve">
+    <value>Setup Result</value>
+  </data>
+  <data name="SetupDdlHeader" xml:space="preserve">
+    <value>Generated DDL (run to create the tables)</value>
+  </data>
+  <data name="SetupRun" xml:space="preserve">
+    <value>Run DDL</value>
+  </data>
+  <data name="SetupCopy" xml:space="preserve">
+    <value>Copy</value>
+  </data>
+  <data name="SetupClose" xml:space="preserve">
+    <value>Close</value>
+  </data>
+  <data name="SetupCreatedFormat" xml:space="preserve">
+    <value>Created: {0}</value>
+  </data>
+  <data name="SetupSkippedFormat" xml:space="preserve">
+    <value>Skipped (reused existing): {0}</value>
+  </data>
+  <data name="SetupReloadNote" xml:space="preserve">
+    <value>Reopen the project to see the generated modules.</value>
+  </data>
+  <data name="SetupDdlDone" xml:space="preserve">
+    <value>Completed</value>
+  </data>
+  <data name="SetupMenuMail" xml:space="preserve">
+    <value>Mail Setup</value>
+  </data>
+  <data name="SetupSenderContract" xml:space="preserve">
+    <value>Add the sender contract (MailSenderContractField) — required for "send as current user"</value>
+  </data>
+  <data name="SetupGmailToken" xml:space="preserve">
+    <value>Add a Gmail user token field (GmailTokenField) — only when sending from the user's own Gmail</value>
+  </data>
+  <data name="SetupMailHistory" xml:space="preserve">
+    <value>Generate the mail history module</value>
+  </data>
+  <data name="SetupUserGroup" xml:space="preserve">
+    <value>User module (when the sender is the current user)</value>
+  </data>
+  <data name="SetupUserGroupHelp" xml:space="preserve">
+    <value>Not needed when mail is always sent from the system address. Declare which fields of the user module hold the address and display name (sender contract) when using "send as current user" on MailField / BulkMailField, or sending from the user's own Gmail.</value>
+  </data>
 </root>

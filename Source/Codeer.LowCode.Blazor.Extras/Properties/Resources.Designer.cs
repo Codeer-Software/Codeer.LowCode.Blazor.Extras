@@ -1001,5 +1001,987 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
             }
         }
 
+        internal static string BulkMailField {
+            get {
+                return ResourceManager.GetString("BulkMailField", resourceCulture);
+            }
+        }
+
+        internal static string MailField {
+            get {
+                return ResourceManager.GetString("MailField", resourceCulture);
+            }
+        }
+
+        internal static string MailFieldToVariable {
+            get {
+                return ResourceManager.GetString("MailFieldToVariable", resourceCulture);
+            }
+        }
+
+        internal static string MailFieldTo {
+            get {
+                return ResourceManager.GetString("MailFieldTo", resourceCulture);
+            }
+        }
+
+        internal static string MailFieldCcVariable {
+            get {
+                return ResourceManager.GetString("MailFieldCcVariable", resourceCulture);
+            }
+        }
+
+        internal static string MailFieldCc {
+            get {
+                return ResourceManager.GetString("MailFieldCc", resourceCulture);
+            }
+        }
+
+        internal static string MailFieldSubjectVariable {
+            get {
+                return ResourceManager.GetString("MailFieldSubjectVariable", resourceCulture);
+            }
+        }
+
+        internal static string MailFieldSubject {
+            get {
+                return ResourceManager.GetString("MailFieldSubject", resourceCulture);
+            }
+        }
+
+        internal static string MailFieldBodyVariable {
+            get {
+                return ResourceManager.GetString("MailFieldBodyVariable", resourceCulture);
+            }
+        }
+
+        internal static string MailFieldBody {
+            get {
+                return ResourceManager.GetString("MailFieldBody", resourceCulture);
+            }
+        }
+
+        internal static string MailInfraName {
+            get {
+                return ResourceManager.GetString("MailInfraName", resourceCulture);
+            }
+        }
+
+        internal static string MailFieldIsBodyHtml {
+            get {
+                return ResourceManager.GetString("MailFieldIsBodyHtml", resourceCulture);
+            }
+        }
+
+        internal static string MailFieldReplyTo {
+            get {
+                return ResourceManager.GetString("MailFieldReplyTo", resourceCulture);
+            }
+        }
+
+        internal static string MailFieldFromVariable {
+            get {
+                return ResourceManager.GetString("MailFieldFromVariable", resourceCulture);
+            }
+        }
+
+        internal static string MailFieldFromDisplayNameVariable {
+            get {
+                return ResourceManager.GetString("MailFieldFromDisplayNameVariable", resourceCulture);
+            }
+        }
+
+        internal static string MailFieldToRequired {
+            get {
+                return ResourceManager.GetString("MailFieldToRequired", resourceCulture);
+            }
+        }
+
+        internal static string MailFieldNoRecipient {
+            get {
+                return ResourceManager.GetString("MailFieldNoRecipient", resourceCulture);
+            }
+        }
+
+        internal static string MailFieldIsFromCurrentUser {
+            get {
+                return ResourceManager.GetString("MailFieldIsFromCurrentUser", resourceCulture);
+            }
+        }
+
+        internal static string MailFieldBccVariable {
+            get {
+                return ResourceManager.GetString("MailFieldBccVariable", resourceCulture);
+            }
+        }
+
+        internal static string MailFieldBcc {
+            get {
+                return ResourceManager.GetString("MailFieldBcc", resourceCulture);
+            }
+        }
+
+        internal static string MailFieldReplyToVariable {
+            get {
+                return ResourceManager.GetString("MailFieldReplyToVariable", resourceCulture);
+            }
+        }
+
+        internal static string MailFieldFrom {
+            get {
+                return ResourceManager.GetString("MailFieldFrom", resourceCulture);
+            }
+        }
+
+        internal static string MailFieldFromDisplayName {
+            get {
+                return ResourceManager.GetString("MailFieldFromDisplayName", resourceCulture);
+            }
+        }
+
+        internal static string GmailTokenField {
+            get {
+                return ResourceManager.GetString("GmailTokenField", resourceCulture);
+            }
+        }
+
+        internal static string GmailTokenFieldPlaceholder {
+            get {
+                return ResourceManager.GetString("GmailTokenFieldPlaceholder", resourceCulture);
+            }
+        }
+
+        internal static string GmailTokenFieldLoadFile {
+            get {
+                return ResourceManager.GetString("GmailTokenFieldLoadFile", resourceCulture);
+            }
+        }
+
+        internal static string GmailTokenFieldClear {
+            get {
+                return ResourceManager.GetString("GmailTokenFieldClear", resourceCulture);
+            }
+        }
+
+        internal static string GmailTokenFieldPendingNote {
+            get {
+                return ResourceManager.GetString("GmailTokenFieldPendingNote", resourceCulture);
+            }
+        }
+
+        internal static string GmailTokenFieldClearedNote {
+            get {
+                return ResourceManager.GetString("GmailTokenFieldClearedNote", resourceCulture);
+            }
+        }
+
+        internal static string GmailTokenFieldFileTooLarge {
+            get {
+                return ResourceManager.GetString("GmailTokenFieldFileTooLarge", resourceCulture);
+            }
+        }
+
+        internal static string GmailTokenFieldViewOnlyNote {
+            get {
+                return ResourceManager.GetString("GmailTokenFieldViewOnlyNote", resourceCulture);
+            }
+        }
+
+        internal static string MailFieldDefaultButtonText {
+            get {
+                return ResourceManager.GetString("MailFieldDefaultButtonText", resourceCulture);
+            }
+        }
+
+        internal static string MailFieldSentToast {
+            get {
+                return ResourceManager.GetString("MailFieldSentToast", resourceCulture);
+            }
+        }
+
+        internal static string MailFieldSendFailedFormat {
+            get {
+                return ResourceManager.GetString("MailFieldSendFailedFormat", resourceCulture);
+            }
+        }
+
+        internal static string MailHistoryContractField {
+            get {
+                return ResourceManager.GetString("MailHistoryContractField", resourceCulture);
+            }
+        }
+
+        internal static string MailSenderContractField {
+            get {
+                return ResourceManager.GetString("MailSenderContractField", resourceCulture);
+            }
+        }
+
+        internal static string MailSenderContractEmail {
+            get {
+                return ResourceManager.GetString("MailSenderContractEmail", resourceCulture);
+            }
+        }
+
+        internal static string MailSenderContractDisplayName {
+            get {
+                return ResourceManager.GetString("MailSenderContractDisplayName", resourceCulture);
+            }
+        }
+
+        internal static string BulkMailRecipientContractField {
+            get {
+                return ResourceManager.GetString("BulkMailRecipientContractField", resourceCulture);
+            }
+        }
+
+        internal static string ContractCheck_RoleRequiredFormat {
+            get {
+                return ResourceManager.GetString("ContractCheck_RoleRequiredFormat", resourceCulture);
+            }
+        }
+
+        internal static string BulkMailRecipientContractEmail {
+            get {
+                return ResourceManager.GetString("BulkMailRecipientContractEmail", resourceCulture);
+            }
+        }
+
+        internal static string BulkMailRecipientContractOptOut {
+            get {
+                return ResourceManager.GetString("BulkMailRecipientContractOptOut", resourceCulture);
+            }
+        }
+
+        internal static string MailHistoryContractSentAt {
+            get {
+                return ResourceManager.GetString("MailHistoryContractSentAt", resourceCulture);
+            }
+        }
+
+        internal static string MailHistoryContractMailInfraName {
+            get {
+                return ResourceManager.GetString("MailHistoryContractMailInfraName", resourceCulture);
+            }
+        }
+
+        internal static string MailHistoryContractSubject {
+            get {
+                return ResourceManager.GetString("MailHistoryContractSubject", resourceCulture);
+            }
+        }
+
+        internal static string MailHistoryContractTotalCount {
+            get {
+                return ResourceManager.GetString("MailHistoryContractTotalCount", resourceCulture);
+            }
+        }
+
+        internal static string MailHistoryContractSuccessCount {
+            get {
+                return ResourceManager.GetString("MailHistoryContractSuccessCount", resourceCulture);
+            }
+        }
+
+        internal static string MailHistoryContractFailureDetails {
+            get {
+                return ResourceManager.GetString("MailHistoryContractFailureDetails", resourceCulture);
+            }
+        }
+
+        internal static string MailHistoryContractSourceModule {
+            get {
+                return ResourceManager.GetString("MailHistoryContractSourceModule", resourceCulture);
+            }
+        }
+
+        internal static string MailHistoryContractSourceId {
+            get {
+                return ResourceManager.GetString("MailHistoryContractSourceId", resourceCulture);
+            }
+        }
+
+        internal static string BulkMailRecipientListFieldName {
+            get {
+                return ResourceManager.GetString("BulkMailRecipientListFieldName", resourceCulture);
+            }
+        }
+
+        internal static string MailFieldButtonText {
+            get {
+                return ResourceManager.GetString("MailFieldButtonText", resourceCulture);
+            }
+        }
+
+        internal static string BulkMailFieldDbColumn {
+            get {
+                return ResourceManager.GetString("BulkMailFieldDbColumn", resourceCulture);
+            }
+        }
+
+        internal static string BulkMailRecipientListFieldRequired {
+            get {
+                return ResourceManager.GetString("BulkMailRecipientListFieldRequired", resourceCulture);
+            }
+        }
+
+        internal static string MailSubjectOrBodyRequired {
+            get {
+                return ResourceManager.GetString("MailSubjectOrBodyRequired", resourceCulture);
+            }
+        }
+
+        internal static string BulkMailSaveBeforeSend {
+            get {
+                return ResourceManager.GetString("BulkMailSaveBeforeSend", resourceCulture);
+            }
+        }
+
+        internal static string BulkMailTargetListInvalid {
+            get {
+                return ResourceManager.GetString("BulkMailTargetListInvalid", resourceCulture);
+            }
+        }
+
+        internal static string BulkMailConfirmFormat {
+            get {
+                return ResourceManager.GetString("BulkMailConfirmFormat", resourceCulture);
+            }
+        }
+
+        internal static string BulkMailSendAction {
+            get {
+                return ResourceManager.GetString("BulkMailSendAction", resourceCulture);
+            }
+        }
+
+        internal static string BulkMailSentFormat {
+            get {
+                return ResourceManager.GetString("BulkMailSentFormat", resourceCulture);
+            }
+        }
+
+        internal static string BulkMailSentWithFailuresFormat {
+            get {
+                return ResourceManager.GetString("BulkMailSentWithFailuresFormat", resourceCulture);
+            }
+        }
+
+        internal static string BulkMailDefaultButtonText {
+            get {
+                return ResourceManager.GetString("BulkMailDefaultButtonText", resourceCulture);
+            }
+        }
+
+        internal static string BulkMailLastSentFormat {
+            get {
+                return ResourceManager.GetString("BulkMailLastSentFormat", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalFlowField {
+            get {
+                return ResourceManager.GetString("ApprovalFlowField", resourceCulture);
+            }
+        }
+
+        internal static string DbColumn {
+            get {
+                return ResourceManager.GetString("DbColumn", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalFlowModuleName {
+            get {
+                return ResourceManager.GetString("ApprovalFlowModuleName", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalHistoryField {
+            get {
+                return ResourceManager.GetString("ApprovalHistoryField", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalFieldName {
+            get {
+                return ResourceManager.GetString("ApprovalFieldName", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalCheck_NotApprovalFlowFieldFormat {
+            get {
+                return ResourceManager.GetString("ApprovalCheck_NotApprovalFlowFieldFormat", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalShowProgress {
+            get {
+                return ResourceManager.GetString("ApprovalShowProgress", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalShowHistory {
+            get {
+                return ResourceManager.GetString("ApprovalShowHistory", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalShowComment {
+            get {
+                return ResourceManager.GetString("ApprovalShowComment", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalCheck_RequiredFieldMissingFormat {
+            get {
+                return ResourceManager.GetString("ApprovalCheck_RequiredFieldMissingFormat", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalInputInvalid {
+            get {
+                return ResourceManager.GetString("ApprovalInputInvalid", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalNotSubmittedText {
+            get {
+                return ResourceManager.GetString("ApprovalNotSubmittedText", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalAction_Submit {
+            get {
+                return ResourceManager.GetString("ApprovalAction_Submit", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalAction_Approve {
+            get {
+                return ResourceManager.GetString("ApprovalAction_Approve", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalAction_Reject {
+            get {
+                return ResourceManager.GetString("ApprovalAction_Reject", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalAction_Return {
+            get {
+                return ResourceManager.GetString("ApprovalAction_Return", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalAction_Withdraw {
+            get {
+                return ResourceManager.GetString("ApprovalAction_Withdraw", resourceCulture);
+            }
+        }
+
+
+        internal static string ApprovalAction_Resubmit {
+            get {
+                return ResourceManager.GetString("ApprovalAction_Resubmit", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalAction_Confirm {
+            get {
+                return ResourceManager.GetString("ApprovalAction_Confirm", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalCommentPlaceholder {
+            get {
+                return ResourceManager.GetString("ApprovalCommentPlaceholder", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalCommentRequired {
+            get {
+                return ResourceManager.GetString("ApprovalCommentRequired", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalDoneFormat {
+            get {
+                return ResourceManager.GetString("ApprovalDoneFormat", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalHistoryTitle {
+            get {
+                return ResourceManager.GetString("ApprovalHistoryTitle", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalStatus_InProgress {
+            get {
+                return ResourceManager.GetString("ApprovalStatus_InProgress", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalStatus_Completed {
+            get {
+                return ResourceManager.GetString("ApprovalStatus_Completed", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalStatus_Rejected {
+            get {
+                return ResourceManager.GetString("ApprovalStatus_Rejected", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalStatus_Returned {
+            get {
+                return ResourceManager.GetString("ApprovalStatus_Returned", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalStatus_Withdrawn {
+            get {
+                return ResourceManager.GetString("ApprovalStatus_Withdrawn", resourceCulture);
+            }
+        }
+
+
+        internal static string ApprovalError_RouteRequired {
+            get {
+                return ResourceManager.GetString("ApprovalError_RouteRequired", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalError_InvalidRouteFormat {
+            get {
+                return ResourceManager.GetString("ApprovalError_InvalidRouteFormat", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalError_FlowNotFound {
+            get {
+                return ResourceManager.GetString("ApprovalError_FlowNotFound", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalError_InvalidState {
+            get {
+                return ResourceManager.GetString("ApprovalError_InvalidState", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalError_VersionMismatch {
+            get {
+                return ResourceManager.GetString("ApprovalError_VersionMismatch", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalError_NotApprover {
+            get {
+                return ResourceManager.GetString("ApprovalError_NotApprover", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalError_NotApplicant {
+            get {
+                return ResourceManager.GetString("ApprovalError_NotApplicant", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalError_ReturnNotAllowed {
+            get {
+                return ResourceManager.GetString("ApprovalError_ReturnNotAllowed", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalError_AlreadySubmitted {
+            get {
+                return ResourceManager.GetString("ApprovalError_AlreadySubmitted", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalError_DesignNotFound {
+            get {
+                return ResourceManager.GetString("ApprovalError_DesignNotFound", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalError_TargetSaveFailedFormat {
+            get {
+                return ResourceManager.GetString("ApprovalError_TargetSaveFailedFormat", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalError_NoConfirmation {
+            get {
+                return ResourceManager.GetString("ApprovalError_NoConfirmation", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalError_WithdrawNotAllowed {
+            get {
+                return ResourceManager.GetString("ApprovalError_WithdrawNotAllowed", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalWithdrawPolicy {
+            get {
+                return ResourceManager.GetString("ApprovalWithdrawPolicy", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalShowActions {
+            get {
+                return ResourceManager.GetString("ApprovalShowActions", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalOnBuildRoute {
+            get {
+                return ResourceManager.GetString("ApprovalOnBuildRoute", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalFlowContractField {
+            get {
+                return ResourceManager.GetString("ApprovalFlowContractField", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalMemberContractField {
+            get {
+                return ResourceManager.GetString("ApprovalMemberContractField", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalHistoryContractField {
+            get {
+                return ResourceManager.GetString("ApprovalHistoryContractField", resourceCulture);
+            }
+        }
+
+
+
+
+
+
+
+        internal static string ApprovalCheck_ContractFieldMissingFormat {
+            get {
+                return ResourceManager.GetString("ApprovalCheck_ContractFieldMissingFormat", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalCheck_ContractFieldDuplicatedFormat {
+            get {
+                return ResourceManager.GetString("ApprovalCheck_ContractFieldDuplicatedFormat", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalCheck_RoleMustBeListFormat {
+            get {
+                return ResourceManager.GetString("ApprovalCheck_RoleMustBeListFormat", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalCheck_RoleMustBeMailFieldFormat {
+            get {
+                return ResourceManager.GetString("ApprovalCheck_RoleMustBeMailFieldFormat", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalFlowStatus_InProgress {
+            get {
+                return ResourceManager.GetString("ApprovalFlowStatus_InProgress", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalFlowStatus_Completed {
+            get {
+                return ResourceManager.GetString("ApprovalFlowStatus_Completed", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalFlowStatus_Rejected {
+            get {
+                return ResourceManager.GetString("ApprovalFlowStatus_Rejected", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalFlowStatus_Returned {
+            get {
+                return ResourceManager.GetString("ApprovalFlowStatus_Returned", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalFlowStatus_Withdrawn {
+            get {
+                return ResourceManager.GetString("ApprovalFlowStatus_Withdrawn", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalMemberStatus_Pending {
+            get {
+                return ResourceManager.GetString("ApprovalMemberStatus_Pending", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalMemberStatus_Waiting {
+            get {
+                return ResourceManager.GetString("ApprovalMemberStatus_Waiting", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalMemberStatus_Approved {
+            get {
+                return ResourceManager.GetString("ApprovalMemberStatus_Approved", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalMemberStatus_Rejected {
+            get {
+                return ResourceManager.GetString("ApprovalMemberStatus_Rejected", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalMemberStatus_Confirmed {
+            get {
+                return ResourceManager.GetString("ApprovalMemberStatus_Confirmed", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalMemberStatus_Skipped {
+            get {
+                return ResourceManager.GetString("ApprovalMemberStatus_Skipped", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalStepType_Approval {
+            get {
+                return ResourceManager.GetString("ApprovalStepType_Approval", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalStepType_Confirmation {
+            get {
+                return ResourceManager.GetString("ApprovalStepType_Confirmation", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalCompletionPolicy_RequiredMembers {
+            get {
+                return ResourceManager.GetString("ApprovalCompletionPolicy_RequiredMembers", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalCompletionPolicy_All {
+            get {
+                return ResourceManager.GetString("ApprovalCompletionPolicy_All", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalCompletionPolicy_Any {
+            get {
+                return ResourceManager.GetString("ApprovalCompletionPolicy_Any", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalReturnScope_ApplicantOnly {
+            get {
+                return ResourceManager.GetString("ApprovalReturnScope_ApplicantOnly", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalReturnScope_AnyPreviousStep {
+            get {
+                return ResourceManager.GetString("ApprovalReturnScope_AnyPreviousStep", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalFlowContractStatus {
+            get {
+                return ResourceManager.GetString("ApprovalFlowContractStatus", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalFlowContractTargetModuleName {
+            get {
+                return ResourceManager.GetString("ApprovalFlowContractTargetModuleName", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalFlowContractTargetId {
+            get {
+                return ResourceManager.GetString("ApprovalFlowContractTargetId", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalFlowContractApplicant {
+            get {
+                return ResourceManager.GetString("ApprovalFlowContractApplicant", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalFlowContractAttemptNo {
+            get {
+                return ResourceManager.GetString("ApprovalFlowContractAttemptNo", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalFlowContractCurrentStepNo {
+            get {
+                return ResourceManager.GetString("ApprovalFlowContractCurrentStepNo", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalFlowContractMembers {
+            get {
+                return ResourceManager.GetString("ApprovalFlowContractMembers", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalFlowContractHistories {
+            get {
+                return ResourceManager.GetString("ApprovalFlowContractHistories", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalMemberContractFlow {
+            get {
+                return ResourceManager.GetString("ApprovalMemberContractFlow", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalMemberContractAttemptNo {
+            get {
+                return ResourceManager.GetString("ApprovalMemberContractAttemptNo", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalMemberContractStepNo {
+            get {
+                return ResourceManager.GetString("ApprovalMemberContractStepNo", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalMemberContractStepName {
+            get {
+                return ResourceManager.GetString("ApprovalMemberContractStepName", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalMemberContractStepType {
+            get {
+                return ResourceManager.GetString("ApprovalMemberContractStepType", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalMemberContractCompletionPolicy {
+            get {
+                return ResourceManager.GetString("ApprovalMemberContractCompletionPolicy", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalMemberContractIsCommentRequiredOnReject {
+            get {
+                return ResourceManager.GetString("ApprovalMemberContractIsCommentRequiredOnReject", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalMemberContractReturnScope {
+            get {
+                return ResourceManager.GetString("ApprovalMemberContractReturnScope", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalMemberContractApproverUser {
+            get {
+                return ResourceManager.GetString("ApprovalMemberContractApproverUser", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalMemberContractIsRequired {
+            get {
+                return ResourceManager.GetString("ApprovalMemberContractIsRequired", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalMemberContractIsFinalStep {
+            get {
+                return ResourceManager.GetString("ApprovalMemberContractIsFinalStep", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalMemberContractStatus {
+            get {
+                return ResourceManager.GetString("ApprovalMemberContractStatus", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalMemberContractActedAt {
+            get {
+                return ResourceManager.GetString("ApprovalMemberContractActedAt", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalMemberContractTurnNotifyMail {
+            get {
+                return ResourceManager.GetString("ApprovalMemberContractTurnNotifyMail", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalHistoryContractFlow {
+            get {
+                return ResourceManager.GetString("ApprovalHistoryContractFlow", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalHistoryContractAttemptNo {
+            get {
+                return ResourceManager.GetString("ApprovalHistoryContractAttemptNo", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalHistoryContractAction {
+            get {
+                return ResourceManager.GetString("ApprovalHistoryContractAction", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalHistoryContractActorUser {
+            get {
+                return ResourceManager.GetString("ApprovalHistoryContractActorUser", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalHistoryContractComment {
+            get {
+                return ResourceManager.GetString("ApprovalHistoryContractComment", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalHistoryContractActedAt {
+            get {
+                return ResourceManager.GetString("ApprovalHistoryContractActedAt", resourceCulture);
+            }
+        }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     }
 }

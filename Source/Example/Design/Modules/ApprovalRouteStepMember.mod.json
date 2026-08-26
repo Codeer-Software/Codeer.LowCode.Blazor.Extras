@@ -1,0 +1,60 @@
+{
+  "Name": "ApprovalRouteStepMember",
+  "DataSourceName": "SampleSQLite",
+  "DbTable": "approval_route_step_members",
+  "CanCreate": true,
+  "CanUpdate": true,
+  "CanDelete": true,
+  "Fields": [
+    {
+      "Name": "Id",
+      "DbColumn": "id",
+      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.IdFieldDesign"
+    },
+    {
+      "Name": "Step",
+      "DbColumn": "approval_route_step_id",
+      "SearchCondition": {
+        "ModuleName": "ApprovalRouteStep",
+        "TypeFullName": "Codeer.LowCode.Blazor.Repository.Match.SearchCondition"
+      },
+      "ValueVariable": "Id.Value",
+      "DisplayTextVariable": "StepName.Value",
+      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.LinkFieldDesign"
+    },
+    {
+      "Name": "ApproverUser",
+      "DbColumn": "approver_user",
+      "SearchCondition": {
+        "ModuleName": "AppUser",
+        "TypeFullName": "Codeer.LowCode.Blazor.Repository.Match.SearchCondition"
+      },
+      "ValueVariable": "Id.Value",
+      "DisplayTextVariable": "Name.Value",
+      "IsRequired": true,
+      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.LinkFieldDesign"
+    },
+    {
+      "Name": "IsRequired",
+      "DbColumn": "is_required",
+      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.BooleanFieldDesign"
+    }
+  ],
+  "ListLayouts": {
+    "": {
+      "Elements": [
+        [
+          {
+            "FieldName": "ApproverUser",
+            "Label": "承認者"
+          },
+          {
+            "FieldName": "IsRequired",
+            "Label": "必須",
+            "Width": 80
+          }
+        ]
+      ]
+    }
+  }
+}

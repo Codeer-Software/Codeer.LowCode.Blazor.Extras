@@ -1,4 +1,4 @@
-using Codeer.LowCode.Blazor.Extras.Designs;
+﻿using Codeer.LowCode.Blazor.Extras.Designs;
 using Codeer.LowCode.Blazor.Extras.Fields;
 using Codeer.LowCode.Blazor.Extras.ScriptObjects;
 using Codeer.LowCode.Blazor.Extras.Services;
@@ -19,10 +19,10 @@ namespace Codeer.LowCode.Blazor.Extras
         }
 
         /// <summary>
-        /// Initialize including built-in script objects (Excel, WebApi, Toaster, Mail).
-        /// Endpoint URLs belong to the app, so set them once at startup via the static
-        /// properties of each feature (MailService.SendMailEndPoint, Excel.ConvertPdfEndPoint,
-        /// AITextAnalyzerField.FileToModuleDataEndPoint / TextToModuleDataEndPoint).
+        /// 組み込みスクリプトオブジェクト (Excel, WebApi, Toaster) 込みの初期化。
+        /// エンドポイント URL はアプリの持ち物なので、各機能の静的プロパティで起動時に一度設定する
+        /// (MailTransport.SendMailEndPoint / BulkSearchMailEndPoint、Excel.ConvertPdfEndPoint、
+        /// AITextAnalyzerField.FileToModuleDataEndPoint / TextToModuleDataEndPoint)。
         /// </summary>
         public static void Initialize(IAppInfoService app, IHttpService http, ILogger logger, IToastService toaster)
         {
@@ -34,10 +34,15 @@ namespace Codeer.LowCode.Blazor.Extras
             manager.AddType(typeof(ExcelCellIndex));
             manager.AddModuleGenericType(typeof(ScriptObjects.BulkFileReader));
             manager.AddType<WebApiResult>();
-            manager.AddType<MailMessage>();
+            manager.AddType<Codeer.LowCode.Blazor.Extras.Mail.MailSendResult>();
+            manager.AddType<Codeer.LowCode.Blazor.Extras.Mail.MailSendFailure>();
+            //承認フロー (経路のスクリプト組み立てと command API の応答)
+            manager.AddType<Approval.ApprovalRouteData>();
+            manager.AddType<Approval.ApprovalStepData>();
+            manager.AddType<Approval.ApprovalMemberData>();
+            manager.AddType<Approval.ApprovalActionResult>();
             manager.AddService(new WebApiService(http, logger));
             manager.AddService(new Toaster(toaster));
-            manager.AddService(new MailService());
             manager.AddService(new BulkFileTransferService());
         }
     }

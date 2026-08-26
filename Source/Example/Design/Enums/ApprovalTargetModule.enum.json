@@ -1,0 +1,11 @@
+﻿{
+  "Name": "ApprovalTargetModule",
+  "ValueType": "String",
+  "Members": [
+    {
+      "Name": "PurchaseRequest",
+      "Value": "",
+      "DisplayText": "購買申請"
+    }
+  ]
+}

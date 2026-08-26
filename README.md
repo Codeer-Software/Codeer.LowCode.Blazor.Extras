@@ -1,4 +1,4 @@
-# Codeer.LowCode.Blazor.Extras
+﻿# Codeer.LowCode.Blazor.Extras
 
 [Codeer.LowCode.Blazor](https://github.com/Codeer-Software/Codeer.LowCode.Blazor) に高機能UIコンポーネントと、
 アプリケーション開発でよく使うクライアント/サーバーサービスを追加する拡張ライブラリです。
@@ -11,9 +11,9 @@
 
 | パッケージ | 内容 |
 |---|---|
-| Codeer.LowCode.Blazor.Extras | 拡張フィールド、スクリプトオブジェクト (Excel / WebApi / Toaster / Mail)、クライアントサービス |
+| Codeer.LowCode.Blazor.Extras | 拡張フィールド (メール送信・承認フローを含む)、スクリプトオブジェクト (Excel / WebApi / Toaster)、クライアントサービス |
 | Codeer.LowCode.Blazor.Extras.Designer | デザイナ統合 (ツールボックス登録・AI 用ドキュメント登録) |
-| Codeer.LowCode.Blazor.Extras.Server | サーバーサービス (AI ドキュメント解析 / SMTP メール送信 / マルチDBアクセス / ファイルストレージ / ASP.NET Core ヘルパ) |
+| Codeer.LowCode.Blazor.Extras.Server | サーバーサービス (メール送信 / 承認フローエンジン / AI ドキュメント解析 / ファイルストレージ / ASP.NET Core ヘルパ) |
 
 ## 提供フィールド
 
@@ -32,6 +32,16 @@
 | [OrientationLockField](docs/OrientationLockField.md) | タッチ端末で画面の向き(横/縦)が指定と異なるとき、全画面オーバーレイで回転を促すフィールド |
 | [AITextAnalyzerField](docs/AITextAnalyzerField.md) | 帳票ファイルや自由テキストを AI で解析し、モジュールのフィールドへ自動入力する入力補助フィールド (Azure OpenAI + Document Intelligence を使用) |
 
+## 業務機能
+
+| 機能 | 説明 |
+|---|---|
+| [メール送信](docs/Mail.md) | MailField (単発送信ボタン) / BulkMailField (名簿への一斉送信) / 送信履歴 / 本人名義の送信 (差出人契約・GmailTokenField)。宛先・文面はレコードの値から組み立てる |
+| [承認フロー](docs/ApprovalFlow.md) | ApprovalFlowField を申請書に置くだけで申請・承認・却下・差し戻し・取り下げ・再申請・回覧。承認データは通常のモジュール。状態遷移はサーバーが検証 |
+
+どちらもデザイナの **Tools > メールのセットアップ / 承認フローのセットアップ** (または CLI の `mail-setup` / `approval-setup`) で
+必要なモジュール群を生成できます。
+
 ## スクリプトオブジェクト
 
 スクリプト (*.mod.cs) から利用できるサービス・型です。`ExtrasClientInitializer.Initialize` で一括登録されます。
@@ -41,7 +51,6 @@
 | Excel | Excel ファイルの読み書き・テンプレートへの値書き込み・xlsx / PDF ダウンロード |
 | WebApiService | 外部 API への HTTP リクエスト (Get / Post / Put / Delete) |
 | Toaster | トースト通知の表示 (Success / Info / Warn / Error) |
-| MailService | メール送信。`CreateMessage()` で宛先複数・Cc / Bcc・HTML 本文・添付付きのメールを組み立てられる |
 
 各オブジェクトの正確なシグネチャと使用例は、デザイナの入力補完、またはデザイナ CLI の
 `script-catalog` サブコマンドが生成するカタログで確認できます。
@@ -60,7 +69,8 @@
 ## サーバーサービス (Codeer.LowCode.Blazor.Extras.Server)
 
 - AITextAnalyzeService — Azure Document Intelligence + Azure OpenAI による帳票・テキスト解析 (AITextAnalyzerField のサーバー側)
-- SmtpMailService — MailMessage 対応の SMTP 送信
+- メール送信 — MailDispatcher (テンプレート解決・一斉送信・送信履歴) と Gmail API 送信。独自の送信手段は IMailSender で追加
+- 承認フロー — ApprovalEngine (状態遷移の検証と実行)
 - StorageAccess / TemporaryFileManager — ファイルストレージ (ファイルシステム / Azure Blob) と一時ファイル管理
 - CustomFontResolver — Excel PDF 変換用のフォントリゾルバ
 - Web ヘルパ — ETag 付きファイル応答 (FileWithETag)、ホットリロード (HotReloadHub / FileWatcherService)
@@ -90,18 +100,21 @@ using Codeer.LowCode.Blazor.Extras;
 // フィールドのみ使う場合
 ExtrasClientInitializer.Initialize(this);
 
-// スクリプトオブジェクト (Excel / WebApi / Toaster / Mail) も使う場合
+// スクリプトオブジェクト (Excel / WebApi / Toaster) も使う場合
 ExtrasClientInitializer.Initialize(this, http, logger, toaster);
 ```
 
-メール送信・Excel PDF 変換・AI 解析を使う場合は、エンドポイント URL を起動時に設定します
+メール送信・承認フロー・Excel PDF 変換・AI 解析を使う場合は、エンドポイント URL を起動時に設定します
 (URL はアプリのコントローラに合わせて変更してください)。
 
 ```csharp
 using Codeer.LowCode.Blazor.Extras.Fields;
-using Codeer.LowCode.Blazor.Extras.ScriptObjects;
+using Codeer.LowCode.Blazor.Extras.Mail;
+using Codeer.LowCode.Blazor.Extras.Approval;
 
-MailService.SendMailEndPoint = "/api/mail";
+MailTransport.SendMailEndPoint = "/api/mail";
+MailTransport.BulkSearchMailEndPoint = "/api/mail/bulk_search";
+ApprovalTransport.EndPointBase = "/api/approval";
 Codeer.LowCode.Blazor.Extras.ScriptObjects.Excel.ConvertPdfEndPoint = "api/excel/pdf";
 AITextAnalyzerField.FileToModuleDataEndPoint = "/api/ai_text_analyze/file";
 AITextAnalyzerField.TextToModuleDataEndPoint = "/api/ai_text_analyze/text";
@@ -117,6 +130,10 @@ using Codeer.LowCode.Blazor.Extras;
 ExtrasServerInitializer.Initialize();
 ```
 
+メール送信・承認フローを使う場合は、受け口となるコントローラ (`MailController` / `ApprovalController`) と
+送信インフラの対応表 (`MailSenderTable`) が必要です。新しいアプリテンプレートには含まれています。
+詳細は [メール送信](docs/Mail.md) / [承認フロー](docs/ApprovalFlow.md) を参照してください。
+
 #### LowCodeApp.Designer
 
 `App.xaml.cs` に以下のコードを追加してください。
@@ -124,9 +141,16 @@ ExtrasServerInitializer.Initialize();
 ```csharp
 using Codeer.LowCode.Blazor.Extras.Designer;
 
-// OnStartup メソッド内
+// OnStartup メソッド内 (base.OnStartup(e) より前)
 ExtrasDesignerInitializer.Initialize(BlazorRuntime);
+
+// base.OnStartup(e) の後 (Tools メニュー: 承認フローのセットアップ / メール履歴モジュールの生成)
+ExtrasDesignerInitializer.Setup(DesignerEnvironment);
 ```
+
+セットアップメニューは承認フロー・メール履歴に必要なモジュール群をテンプレートから生成し、
+申請書モジュールへの結線とテーブル作成 DDL の提示まで行います
+(headless CLI の `approval-setup` / `mail-history-setup` verb からも同じ生成を実行できます)。
 
 ### 3. セットアップ完了
 

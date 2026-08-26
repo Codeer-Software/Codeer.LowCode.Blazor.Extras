@@ -1,0 +1,38 @@
+@using Codeer.LowCode.Blazor.Components
+@using Codeer.LowCode.Blazor.Extras.Fields
+@using R = Codeer.LowCode.Blazor.Extras.Properties.Resources
+@inherits FieldComponentBase<ApprovalHistoryField>
+@if (Field.Services.AppInfoService.IsDesignMode)
+{
+  <div data-system="approval-history" class="approval-history">
+    <div class="approval-history-title">@R.ApprovalHistoryTitle</div>
+  </div>
+}
+else if (Field.Target is { } target && target.History.Count > 0)
+{
+  <div data-system="approval-history" class="approval-history">
+    <div class="approval-history-title">@R.ApprovalHistoryTitle</div>
+    <ul>
+      @foreach (var entry in target.History)
+      {
+        <li>
+          <span class="approval-history-when">@entry.ActedAt?.ToString("yyyy/MM/dd HH:mm")</span>
+          <span class="approval-history-action">@ApprovalDisplayText.ActionText(entry.Action)</span>
+          <span class="approval-history-actor">@entry.ActorDisplayText</span>
+          @if (!string.IsNullOrEmpty(entry.Comment))
+          {
+            <span class="approval-history-comment">@entry.Comment</span>
+          }
+        </li>
+      }
+    </ul>
+  </div>
+}
+
+@code {
+  protected override async Task OnInitializedAsync()
+  {
+    await base.OnInitializedAsync();
+    if (Field.Target is { } target && !target.IsLoaded) await target.ReloadAsync();
+  }
+}

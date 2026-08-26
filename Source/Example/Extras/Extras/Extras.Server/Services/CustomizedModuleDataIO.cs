@@ -1,8 +1,10 @@
-using Codeer.LowCode.Blazor;
+﻿using Codeer.LowCode.Blazor;
 using Codeer.LowCode.Blazor.DataIO;
 using Codeer.LowCode.Blazor.DataIO.Db;
 using Codeer.LowCode.Blazor.DesignLogic;
 using Codeer.LowCode.Blazor.Repository.Data;
+using Codeer.LowCode.Blazor.Repository.Match;
+using Codeer.LowCode.Blazor.Extras.Server.Mail;
 using Codeer.LowCode.Blazor.Extras.Services;
 
 namespace Extras.Server.Services
@@ -23,6 +25,8 @@ namespace Extras.Server.Services
             if (moduleDesign == null) throw LowCodeException.Create("invalid design");
 
             PasswordHashHelper.ApplyPasswordHash(moduleDesign, data);
+            //Gmailトークンは平文で来るのでここで暗号化する (鍵 = Gmail.TokenEncryptionKey)
+            GmailTokenHelper.ProtectGmailTokens(moduleDesign, data, SystemConfig.Instance.Gmail);
             return await base.AddAsync(transactionId, moduleSubmitId, data);
         }
 
@@ -32,7 +36,19 @@ namespace Extras.Server.Services
             if (moduleDesign == null) throw LowCodeException.Create("invalid design");
 
             PasswordHashHelper.ApplyPasswordHash(moduleDesign, data);
+            //Gmailトークンは平文で来るのでここで暗号化する (鍵 = Gmail.TokenEncryptionKey)
+            GmailTokenHelper.ProtectGmailTokens(moduleDesign, data, SystemConfig.Instance.Gmail);
             await base.UpdateAsync(transactionId, moduleSubmitId, data);
         }
+        //メール送信履歴などシステムの記録を、操作ユーザーの書き込み権限に依存せず追加する内部経路。
+        //クライアントから直接は呼ばれない(サーバー内部の記録専用)。戻り値は採番された Id (承認フローが使う)
+        internal async Task<string> AddSystemRecordAsync(ModuleData data)
+            => await AddAsync(Guid.NewGuid(), Guid.NewGuid(), data);
+
+        //BulkMailFieldの送信結果サマリなど、既存レコードへのシステムの記録の書き戻し用内部経路。
+        //data に含まれるフィールドだけが更新される
+        internal async Task UpdateSystemRecordAsync(ModuleData data)
+            => await UpdateAsync(Guid.NewGuid(), Guid.NewGuid(), data);
+
     }
 }

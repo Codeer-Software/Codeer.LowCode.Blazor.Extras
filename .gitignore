@@ -409,3 +409,7 @@ FodyWeavers.xsd
 
 # Claude Code local settings
 .claude/settings.local.json
+
+# ローカル実機テスト環境の設定 (絶対パス・メールアドレス・暗号鍵が入るのでコミットしない)
+Source/Example/Extras/Extras/Extras.Server/appsettings.Approval.json
+Source/Example/Extras/Extras/Extras.Server/appsettings.MailTest.json

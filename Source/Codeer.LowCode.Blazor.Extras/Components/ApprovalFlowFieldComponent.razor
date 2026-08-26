@@ -1,0 +1,205 @@
+﻿@using Codeer.LowCode.Blazor.Components
+@using Codeer.LowCode.Blazor.DesignLogic
+@using Codeer.LowCode.Blazor.Extras.Approval
+@using Codeer.LowCode.Blazor.Extras.Fields
+@using Microsoft.AspNetCore.Components.Web
+@using R = Codeer.LowCode.Blazor.Extras.Properties.Resources
+@inherits FieldComponentBase<ApprovalFlowField>
+@if (!Field.IsSubmitted)
+{
+  <div data-system="approval-flow" class="approval-flow">
+    <span class="approval-not-submitted">@R.ApprovalNotSubmittedText</span>
+    @if (Field.Design.ShowActions && Field.CanSubmit)
+    {
+      @if (ShowCommentBox)
+      {
+        <textarea class="form-control approval-comment" rows="2"
+                  placeholder="@R.ApprovalCommentPlaceholder"
+                  disabled="@Field.IsBusy"
+                  @bind="Field.Comment"></textarea>
+      }
+      <div class="approval-actions">
+        <button type="button" class="btn btn-primary" disabled="@Field.IsBusy"
+                @onclick="@(async () => await SubmitAsync(isResubmit: false))">@R.ApprovalAction_Submit</button>
+      </div>
+    }
+  </div>
+}
+else
+{
+  <div data-system="approval-flow" class="approval-flow">
+    <div class="approval-status">
+      <span class="approval-status-badge approval-status-@Field.FlowStatus.ToLowerInvariant()">@FlowStatusText</span>
+      @if (Field.AttemptNo > 1)
+      {
+        <span class="approval-attempt">#@Field.AttemptNo</span>
+      }
+    </div>
+
+    @if (Field.Design.ShowProgress && Field.Steps.Count > 0)
+    {
+      <div class="approval-steps">
+        @foreach (var step in Field.Steps)
+        {
+          <div class="approval-step @(step.IsCurrent ? "current" : "")">
+            <div class="approval-step-name">
+              @step.StepName
+              @if (step.StepType == ApprovalStepType.Confirmation.ToDesignValue())
+              {
+                <span class="approval-step-type">@R.ApprovalAction_Confirm</span>
+              }
+            </div>
+            <ul class="approval-members">
+              @foreach (var member in step.Members)
+              {
+                <li class="approval-member status-@member.Status.ToLowerInvariant()">
+                  <span class="approval-member-mark">@MemberMark(member, step)</span>
+                  <span class="approval-member-name">@member.UserDisplayText</span>
+                </li>
+              }
+            </ul>
+          </div>
+        }
+      </div>
+    }
+
+    @if (Field.Design.ShowActions && HasAnyAction)
+    {
+      @if (ShowCommentBox)
+      {
+        <textarea class="form-control approval-comment" rows="2"
+                  placeholder="@R.ApprovalCommentPlaceholder"
+                  disabled="@Field.IsBusy"
+                  @bind="Field.Comment"></textarea>
+      }
+      <div class="approval-actions">
+        @if (Field.CanApprove)
+        {
+          <button type="button" class="btn btn-primary" disabled="@Field.IsBusy"
+                  @onclick="@(async () => await ExecuteAsync(ApprovalAction.Approve.ToDesignValue()))">@R.ApprovalAction_Approve</button>
+          <button type="button" class="btn btn-outline-danger" disabled="@Field.IsBusy"
+                  @onclick="@(async () => await ExecuteAsync(ApprovalAction.Reject.ToDesignValue()))">@R.ApprovalAction_Reject</button>
+          <button type="button" class="btn btn-outline-secondary" disabled="@Field.IsBusy"
+                  @onclick="@(async () => await ExecuteAsync(ApprovalAction.Return.ToDesignValue()))">@R.ApprovalAction_Return</button>
+        }
+        @if (Field.CanConfirm)
+        {
+          <button type="button" class="btn btn-outline-primary" disabled="@Field.IsBusy"
+                  @onclick="@(async () => await ExecuteAsync(ApprovalAction.Confirm.ToDesignValue()))">@R.ApprovalAction_Confirm</button>
+        }
+        @if (Field.CanWithdraw)
+        {
+          <button type="button" class="btn btn-outline-secondary" disabled="@Field.IsBusy"
+                  @onclick="@(async () => await ExecuteAsync(ApprovalAction.Withdraw.ToDesignValue()))">@R.ApprovalAction_Withdraw</button>
+        }
+        @if (Field.CanResubmit)
+        {
+          <button type="button" class="btn btn-primary" disabled="@Field.IsBusy"
+                  @onclick="@(async () => await SubmitAsync(isResubmit: true))">@R.ApprovalAction_Resubmit</button>
+        }
+      </div>
+    }
+
+    @if (Field.Design.ShowHistory && Field.History.Count > 0)
+    {
+      <div class="approval-history">
+        <div class="approval-history-title">@R.ApprovalHistoryTitle</div>
+        <ul>
+          @foreach (var entry in Field.History)
+          {
+            <li>
+              <span class="approval-history-when">@entry.ActedAt?.ToString("yyyy/MM/dd HH:mm")</span>
+              <span class="approval-history-action">@ApprovalDisplayText.ActionText(entry.Action)</span>
+              <span class="approval-history-actor">@entry.ActorDisplayText</span>
+              @if (!string.IsNullOrEmpty(entry.Comment))
+              {
+                <span class="approval-history-comment">@entry.Comment</span>
+              }
+            </li>
+          }
+        </ul>
+      </div>
+    }
+  </div>
+}
+
+@code {
+  protected override async Task OnInitializedAsync()
+  {
+    await base.OnInitializedAsync();
+    if (!Field.IsLoaded) await Field.ReloadAsync();
+  }
+
+  bool HasAnyAction => Field.CanApprove || Field.CanConfirm || Field.CanWithdraw || Field.CanResubmit;
+
+  bool ShowCommentBox => Field.Design.ShowComment;
+
+  async Task SubmitAsync(bool isResubmit)
+  {
+    var result = isResubmit ? await Field.ResubmitAsync() : await Field.SubmitAsync();
+    if (result.IsSuccess)
+    {
+      await Field.Services.UIService.NotifySuccess(string.Format(
+        R.ApprovalDoneFormat,
+        ApprovalDisplayText.ActionText(isResubmit ? ApprovalAction.Resubmit.ToDesignValue() : ApprovalAction.Submit.ToDesignValue())));
+    }
+    else if (!string.IsNullOrEmpty(result.ErrorMessage))
+    {
+      await Field.Services.UIService.NotifyError(result.ErrorMessage);
+    }
+  }
+
+  string FlowStatusText => Enum.TryParse<ApprovalFlowStatus>(Field.FlowStatus, out var status) ? status switch
+  {
+    ApprovalFlowStatus.InProgress => R.ApprovalStatus_InProgress,
+    ApprovalFlowStatus.Completed => R.ApprovalStatus_Completed,
+    ApprovalFlowStatus.Rejected => R.ApprovalStatus_Rejected,
+    ApprovalFlowStatus.Returned => R.ApprovalStatus_Returned,
+    ApprovalFlowStatus.Withdrawn => R.ApprovalStatus_Withdrawn,
+    _ => Field.FlowStatus,
+  } : Field.FlowStatus;
+
+  string MemberMark(ApprovalMemberView member, ApprovalStepView step)
+    => Enum.TryParse<ApprovalMemberStatus>(member.Status, out var status) ? status switch
+  {
+    ApprovalMemberStatus.Approved or ApprovalMemberStatus.Confirmed => "✓",
+    ApprovalMemberStatus.Rejected => "✗",
+    ApprovalMemberStatus.Skipped => "—",
+    //Waiting = 本当に今待っている人 (未到達は Pending で無印)
+    ApprovalMemberStatus.Waiting when step.StepType == ApprovalStepType.Approval.ToDesignValue() => "▶",
+    _ => "",
+  } : "";
+
+  async Task ExecuteAsync(string action)
+  {
+    var comment = Field.Comment;
+
+    //却下・差し戻しのコメント必須はクライアントでも先に案内する (強制はサーバー)
+    if ((action == ApprovalAction.Reject.ToDesignValue() || action == ApprovalAction.Return.ToDesignValue())
+        && Field.IsCommentRequiredOnReject && string.IsNullOrWhiteSpace(comment))
+    {
+      await Field.Services.UIService.NotifyError(R.ApprovalCommentRequired);
+      return;
+    }
+
+    var result = Enum.TryParse<ApprovalAction>(action, out var a) ? a switch
+    {
+      ApprovalAction.Approve => await Field.ApproveAsync(comment),
+      ApprovalAction.Reject => await Field.RejectAsync(comment),
+      ApprovalAction.Return => await Field.ReturnToApplicantAsync(comment),
+      ApprovalAction.Withdraw => await Field.WithdrawAsync(comment),
+      ApprovalAction.Confirm => await Field.ConfirmAsync(comment),
+      _ => ApprovalActionResult.Failure(string.Empty),
+    } : ApprovalActionResult.Failure(string.Empty);
+
+    if (result.IsSuccess)
+    {
+      await Field.Services.UIService.NotifySuccess(
+        string.Format(R.ApprovalDoneFormat, ApprovalDisplayText.ActionText(action)));
+    }
+    else if (!string.IsNullOrEmpty(result.ErrorMessage))
+    {
+      await Field.Services.UIService.NotifyError(result.ErrorMessage);
+    }
+  }
+}

@@ -1,0 +1,73 @@
+@using Codeer.LowCode.Blazor.Components
+@using Codeer.LowCode.Blazor.Components.Fields
+@using Codeer.LowCode.Blazor.Components.Primitives
+@using Codeer.LowCode.Blazor.Extras.Fields
+@using Codeer.LowCode.Blazor.Extras.Properties
+@using Codeer.LowCode.Blazor.OperatingModel
+@using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.AspNetCore.Components.Web
+@inherits FieldComponentBase<GmailTokenField>
+
+@* 列は書き込み専用 = 現在のトークンは読み出せないので、入力欄は常に空から始まる
+   (空のまま保存 = 既存トークン維持。パスワード変更欄と同じ) *@
+<div class="gmail-token" data-system="gmail-token">
+  @if (Field.IsViewOnly)
+  {
+    <span class="note">@Resources.GmailTokenFieldViewOnlyNote</span>
+  }
+  else
+  {
+    <textarea class="form-control @(Field.GetValidationClassName())" rows="2" style="@Field.GetOwnStyleString()"
+              placeholder="@Resources.GmailTokenFieldPlaceholder"
+              disabled="@(Field.IsEnabled == false)"
+              value="@Field.Input" @oninput="OnInput"></textarea>
+    <div class="gmail-token-actions">
+      <label>
+        <span class="btn btn-outline-secondary btn-sm">
+          <i class="bi bi-upload" aria-hidden="true"></i>
+          @Resources.GmailTokenFieldLoadFile
+        </span>
+        <InputFile class="d-none" accept=".json,.txt" disabled="@(Field.IsEnabled == false)" OnChange="OnFileSelected" />
+      </label>
+      <button type="button" class="btn btn-outline-danger btn-sm"
+              disabled="@(Field.IsEnabled == false)" @onclick="OnToggleClear">
+        @Resources.GmailTokenFieldClear
+      </button>
+      @if (Field.IsCleared)
+      {
+        <span class="note text-danger">@Resources.GmailTokenFieldClearedNote</span>
+      }
+      else if (!string.IsNullOrEmpty(Field.Input))
+      {
+        <span class="note">@Resources.GmailTokenFieldPendingNote</span>
+      }
+    </div>
+  }
+</div>
+<ValidationFeedback IsValid="@Field.IsValid" ErrorMessage="@Field.ErrorText" />
+
+@code {
+  //トークンJSONは数KBなので、貼り間違い(巨大ファイル選択)はここで弾く
+  const long MaxFileSize = 64 * 1024;
+
+  void OnInput(ChangeEventArgs e)
+  {
+    Field.ClearError();
+    Field.SetInput(e.Value?.ToString());
+  }
+
+  async Task OnFileSelected(InputFileChangeEventArgs e)
+  {
+    Field.ClearError();
+    if (e.File.Size > MaxFileSize)
+    {
+      Field.SetError(Resources.GmailTokenFieldFileTooLarge);
+      return;
+    }
+    using var reader = new StreamReader(e.File.OpenReadStream(MaxFileSize));
+    Field.SetInput((await reader.ReadToEndAsync()).Trim());
+  }
+
+  void OnToggleClear() => Field.SetCleared(!Field.IsCleared);
+
+}

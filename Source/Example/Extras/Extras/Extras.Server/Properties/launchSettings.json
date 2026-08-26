@@ -18,6 +18,26 @@
           "ASPNETCORE_ENVIRONMENT": "Development"
         }
       },
+      "Extras.Server (Approval)": {
+        "commandName": "Project",
+        "dotnetRunMessages": true,
+        "launchBrowser": true,
+        "inspectUri": "{wsProtocol}://{url.hostname}:{url.port}/_framework/debug/ws-proxy?browser={browserInspectUri}",
+        "applicationUrl": "https://localhost:7269;http://localhost:5240",
+        "environmentVariables": {
+          "ASPNETCORE_ENVIRONMENT": "Approval"
+        }
+      },
+      "Extras.Server (MailTest)": {
+        "commandName": "Project",
+        "dotnetRunMessages": true,
+        "launchBrowser": true,
+        "inspectUri": "{wsProtocol}://{url.hostname}:{url.port}/_framework/debug/ws-proxy?browser={browserInspectUri}",
+        "applicationUrl": "https://localhost:7369;http://localhost:5340",
+        "environmentVariables": {
+          "ASPNETCORE_ENVIRONMENT": "MailTest"
+        }
+      },
       "IIS Express": {
         "commandName": "IISExpress",
         "launchBrowser": true,

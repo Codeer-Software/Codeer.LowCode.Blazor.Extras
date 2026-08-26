@@ -9,6 +9,9 @@
 @inject IAppInfoService AppInfoService
 @inject INavigationService NavigationService
 @inject Microsoft.JSInterop.IJSRuntime JSRuntime
+@inject HttpClient HttpClient
+@inject Microsoft.AspNetCore.Components.NavigationManager NavigationManager
+@using System.Net.Http.Json
 
 @if (_isValid)
 {
@@ -37,18 +40,43 @@ else
   public string? Id { get; set; }
 
   bool _isValid = false;
+  bool _toLoginPage = false;
+
+  class CurrentUser
+  {
+    public string Id { get; set; } = string.Empty;
+  }
 
   protected override async Task OnInitializedAsync()
   {
     _isValid = false;
     await base.OnInitializedAsync();
     AppInfoService.AsImplement().OnHotReload += PageBase_OnHotReload;
+
+    //デモログイン (AccountController) のユーザーをクライアントの権限判定・表示制御に伝える
+    //(Cookie バリアントの LowCodePage と同じ結線。未ログインならログインページへ)
+    try
+    {
+      var user = await HttpClient.GetFromJsonAsync<CurrentUser>("api/account/current");
+      AppInfoService.AsImplement().SetCurrentUserId(user?.Id ?? string.Empty);
+    }
+    catch
+    {
+      AppInfoService.AsImplement().SetCurrentUserId(string.Empty);
+    }
+
+    if (string.IsNullOrEmpty(AppInfoService.CurrentUserId))
+    {
+      _toLoginPage = true;
+      NavigationManager.NavigateTo("/login.html", forceLoad: true);
+    }
   }
 
   public void Dispose() => AppInfoService.AsImplement().OnHotReload -= PageBase_OnHotReload;
 
   protected override async Task OnParametersSetAsync()
   {
+    if (_toLoginPage) return;
     await base.OnParametersSetAsync();
     await InitPage();
   }

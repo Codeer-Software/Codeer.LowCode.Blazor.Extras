@@ -1,4 +1,5 @@
-using Codeer.LowCode.Blazor.Extras.Designer.Controls;
+﻿using Codeer.LowCode.Blazor.Extras.Designer.Controls;
+using Codeer.LowCode.Blazor.Extras.Designer.Setup;
 using Codeer.LowCode.Blazor.Extras.Designs;
 using Codeer.LowCode.Blazor.Extras.Fields;
 using Codeer.LowCode.Blazor.Designer;
@@ -18,10 +19,21 @@ namespace Codeer.LowCode.Blazor.Extras.Designer
         [Obsolete("Use Initialize(BlazorRuntime) instead. Without it, scoped CSS for Extras components is not installed.")]
         public static void Initialize() => InitializeCore();
 
+        /// <summary>
+        /// GUI 起動後の登録 (Tools メニュー: 承認フローのセットアップ / メール履歴モジュールの生成)。
+        /// アプリの OnStartup で base.OnStartup(e) の後に呼ぶ (DesignerStandard.Setup と同じタイミング)。
+        /// </summary>
+        public static void Setup(DesignerEnvironment designerEnvironment)
+            => ExtrasSetupMenus.AddAll(designerEnvironment);
+
         static void InitializeCore()
         {
             //load dll.
             typeof(TaskBoardFieldDesign).ToString();
+
+            //headless CLI verb (approval-setup / mail-history-setup)。CCFD からも同じ生成を呼べる。
+            //headless 分岐は base.OnStartup の先頭で走るため、ここ (base.OnStartup より前) で登録する
+            SetupCli.Register();
 
             //script runtime types.
             DesignerApp.ScriptRuntimeTypeManager.AddType<CalendarViewMode>();
@@ -36,11 +48,16 @@ namespace Codeer.LowCode.Blazor.Extras.Designer
             DesignerApp.ScriptRuntimeTypeManager.AddService(new ScriptObjects.Toaster(null!));
             DesignerApp.ScriptRuntimeTypeManager.AddService(new ScriptObjects.WebApiService(null!, null!));
             DesignerApp.ScriptRuntimeTypeManager.AddType<ScriptObjects.WebApiResult>();
-            DesignerApp.ScriptRuntimeTypeManager.AddService(new ScriptObjects.MailService());
-            DesignerApp.ScriptRuntimeTypeManager.AddType<ScriptObjects.MailMessage>();
+            DesignerApp.ScriptRuntimeTypeManager.AddType<Codeer.LowCode.Blazor.Extras.Mail.MailSendResult>();
+            DesignerApp.ScriptRuntimeTypeManager.AddType<Codeer.LowCode.Blazor.Extras.Mail.MailSendFailure>();
             DesignerApp.ScriptRuntimeTypeManager.AddService(new ScriptObjects.BulkFileTransferService());
             //new BulkFileReader<XXXModule>() のイディオム (モジュール名が ctor に渡る) で使える
             DesignerApp.ScriptRuntimeTypeManager.AddModuleGenericType(typeof(ScriptObjects.BulkFileReader));
+            //承認フロー (経路のスクリプト組み立てと command API の応答)
+            DesignerApp.ScriptRuntimeTypeManager.AddType<Extras.Approval.ApprovalRouteData>();
+            DesignerApp.ScriptRuntimeTypeManager.AddType<Extras.Approval.ApprovalStepData>();
+            DesignerApp.ScriptRuntimeTypeManager.AddType<Extras.Approval.ApprovalMemberData>();
+            DesignerApp.ScriptRuntimeTypeManager.AddType<Extras.Approval.ApprovalActionResult>();
 
             //custom property controls.
             PropertyTypeManager.AddPropertyControl<TaskBoardStatuses, TaskBoardStatusesPropertyControl>();
@@ -51,7 +68,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designer
             //`.FieldDocs.<型名>.md` 規約で解決できるよう、探索先として登録する。
             FieldCatalog.AddDocAssembly(typeof(ExtrasDesignerInitializer).Assembly);
 
-            //AI 用スクリプトオブジェクトドキュメント(Excel / WebApi / Toaster / Mail 等)も同様に
+            //AI 用スクリプトオブジェクトドキュメント(Excel / WebApi / Toaster 等)も同様に
             //このアセンブリの埋め込みから登録する。
             foreach (var kv in ExtrasScriptObjectDocs.GetScriptObjectDocs())
                 ScriptObjectCatalog.Add(kv.Key, kv.Value);

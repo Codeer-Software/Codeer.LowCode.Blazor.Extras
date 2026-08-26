@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <title>デモログイン - Extras Example</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    body { font-family: "Segoe UI", "Yu Gothic UI", sans-serif; background: #f5f6f8; margin: 0;
+           display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+    .card { background: #fff; border-radius: 10px; box-shadow: 0 2px 12px rgba(0,0,0,.08);
+            padding: 32px 40px; width: 360px; }
+    h1 { font-size: 1.1rem; margin: 0 0 4px; }
+    p { color: #666; font-size: .82rem; margin: 0 0 20px; }
+    button { display: block; width: 100%; margin: 8px 0; padding: 10px 14px; font-size: .95rem;
+             border: 1px solid #0d6efd; border-radius: 6px; background: #fff; color: #0d6efd;
+             cursor: pointer; text-align: left; }
+    button:hover { background: #0d6efd; color: #fff; }
+    .id { opacity: .6; font-size: .8rem; margin-right: 8px; }
+    .error { color: #dc3545; font-size: .85rem; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>デモログイン</h1>
+    <p>ユーザーを選ぶとそのユーザーとしてログインします (パスワードなしのデモ実装)。<br />
+       承認フローの確認: 申請 太郎で申請 → 承認者でログインし直して承認します。</p>
+    <div id="current" style="font-size:.85rem; color:#0a5239; margin-bottom:8px;"></div>
+    <div id="users"></div>
+    <button id="logout" style="border-color:#6c757d; color:#6c757d; display:none;">ログアウト</button>
+    <div id="error" class="error"></div>
+  </div>
+  <script>
+    async function showCurrent() {
+      try {
+        const res = await fetch('/api/account/current');
+        const user = await res.json();
+        const logout = document.getElementById('logout');
+        if (user && user.id) {
+          document.getElementById('current').textContent = '現在のログイン: ' + user.name;
+          logout.style.display = 'block';
+        } else {
+          document.getElementById('current').textContent = '';
+          logout.style.display = 'none';
+        }
+      } catch (e) { }
+    }
+    async function load() {
+      try {
+        const res = await fetch('/api/account/users');
+        const users = await res.json();
+        const box = document.getElementById('users');
+        for (const user of users) {
+          const button = document.createElement('button');
+          button.innerHTML = '<span class="id">' + user.id + '</span>' + user.name;
+          button.onclick = async () => {
+            const r = await fetch('/api/account/login', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ userId: user.id })
+            });
+            if (r.ok) location.href = '/';
+            else document.getElementById('error').textContent = 'ログインに失敗しました';
+          };
+          box.appendChild(button);
+        }
+        document.getElementById('logout').onclick = async () => {
+          await fetch('/api/account/logout', { method: 'POST' });
+          await showCurrent();
+        };
+        await showCurrent();
+      } catch (e) {
+        document.getElementById('error').textContent = '起動直後はユーザー一覧の取得に失敗することがあります。リロードしてください。';
+      }
+    }
+    load();
+  </script>
+</body>
+</html>

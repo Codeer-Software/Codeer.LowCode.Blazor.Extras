@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <root>
   <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
     <xsd:element name="root" msdata:IsDataSet="true">
@@ -432,6 +432,30 @@
   <data name="OrientationLockField" xml:space="preserve">
     <value>Orientation Lock</value>
   </data>
+  <data name="GmailTokenField" xml:space="preserve">
+    <value>Gmail Token</value>
+  </data>
+  <data name="GmailTokenFieldPlaceholder" xml:space="preserve">
+    <value>Paste the token JSON, or load it from a file (leave empty to keep the current registration)</value>
+  </data>
+  <data name="GmailTokenFieldLoadFile" xml:space="preserve">
+    <value>Load from file</value>
+  </data>
+  <data name="GmailTokenFieldClear" xml:space="preserve">
+    <value>Unregister</value>
+  </data>
+  <data name="GmailTokenFieldPendingNote" xml:space="preserve">
+    <value>Saving will register the new token.</value>
+  </data>
+  <data name="GmailTokenFieldClearedNote" xml:space="preserve">
+    <value>Saving will remove the registration.</value>
+  </data>
+  <data name="GmailTokenFieldFileTooLarge" xml:space="preserve">
+    <value>The file is too large. Select the token JSON file.</value>
+  </data>
+  <data name="GmailTokenFieldViewOnlyNote" xml:space="preserve">
+    <value>The token cannot be displayed.</value>
+  </data>
   <data name="PasswordHashField" xml:space="preserve">
     <value>Password Hash</value>
   </data>
@@ -479,5 +503,461 @@
   </data>
   <data name="FileColumnMappingFixedLengthZeroPaddingRequiresRight" xml:space="preserve">
     <value>Zero padding requires right alignment (left-aligned zero padding cannot be distinguished from trailing zeros of the value).</value>
+  </data>
+  <data name="BulkMailField" xml:space="preserve">
+    <value>Bulk Mail</value>
+  </data>
+  <data name="MailField" xml:space="preserve">
+    <value>Mail</value>
+  </data>
+  <data name="MailFieldToVariable" xml:space="preserve">
+    <value>To Variable</value>
+  </data>
+  <data name="MailFieldTo" xml:space="preserve">
+    <value>To (; separated)</value>
+  </data>
+  <data name="MailFieldCcVariable" xml:space="preserve">
+    <value>Cc Variable</value>
+  </data>
+  <data name="MailFieldBccVariable" xml:space="preserve">
+    <value>Bcc Variable</value>
+  </data>
+  <data name="MailFieldBcc" xml:space="preserve">
+    <value>Bcc (; separated)</value>
+  </data>
+  <data name="MailFieldReplyToVariable" xml:space="preserve">
+    <value>Reply-To Variable</value>
+  </data>
+  <data name="MailFieldFrom" xml:space="preserve">
+    <value>From</value>
+  </data>
+  <data name="MailFieldFromDisplayName" xml:space="preserve">
+    <value>From Display Name</value>
+  </data>
+  <data name="MailFieldDefaultButtonText" xml:space="preserve">
+    <value>Send Mail</value>
+  </data>
+  <data name="MailFieldSentToast" xml:space="preserve">
+    <value>The mail has been sent.</value>
+  </data>
+  <data name="MailFieldSendFailedFormat" xml:space="preserve">
+    <value>Failed to send the mail: {0}</value>
+  </data>
+  <data name="MailFieldIsFromCurrentUser" xml:space="preserve">
+    <value>Send as Current User</value>
+  </data>
+  <data name="MailFieldCc" xml:space="preserve">
+    <value>Cc (; separated)</value>
+  </data>
+  <data name="MailFieldSubjectVariable" xml:space="preserve">
+    <value>Subject Variable</value>
+  </data>
+  <data name="MailFieldSubject" xml:space="preserve">
+    <value>Subject</value>
+  </data>
+  <data name="MailFieldBodyVariable" xml:space="preserve">
+    <value>Body Variable</value>
+  </data>
+  <data name="MailFieldBody" xml:space="preserve">
+    <value>Body</value>
+  </data>
+  <data name="MailInfraName" xml:space="preserve">
+    <value>Mail Infrastructure Name</value>
+  </data>
+  <data name="MailFieldIsBodyHtml" xml:space="preserve">
+    <value>HTML Body</value>
+  </data>
+  <data name="MailFieldReplyTo" xml:space="preserve">
+    <value>Reply To</value>
+  </data>
+  <data name="MailFieldFromVariable" xml:space="preserve">
+    <value>From Variable</value>
+  </data>
+  <data name="MailFieldFromDisplayNameVariable" xml:space="preserve">
+    <value>From Display Name Variable</value>
+  </data>
+  <data name="MailFieldToRequired" xml:space="preserve">
+    <value>The recipient is empty. Set the To variable or a fixed address.</value>
+  </data>
+  <data name="MailFieldNoRecipient" xml:space="preserve">
+    <value>No recipient address could be resolved.</value>
+  </data>
+  <data name="MailHistoryContractField" xml:space="preserve">
+    <value>Mail History Contract</value>
+  </data>
+  <data name="MailSenderContractField" xml:space="preserve">
+    <value>Mail Sender Contract</value>
+  </data>
+  <data name="MailSenderContractEmail" xml:space="preserve">
+    <value>Mail Address (required)</value>
+  </data>
+  <data name="MailSenderContractDisplayName" xml:space="preserve">
+    <value>Display Name</value>
+  </data>
+  <data name="BulkMailRecipientContractField" xml:space="preserve">
+    <value>Bulk Mail Recipient Contract</value>
+  </data>
+  <data name="ContractCheck_RoleRequiredFormat" xml:space="preserve">
+    <value>The role '{0}' is required.</value>
+  </data>
+  <data name="BulkMailRecipientContractEmail" xml:space="preserve">
+    <value>Mail Address (required)</value>
+  </data>
+  <data name="BulkMailRecipientContractOptOut" xml:space="preserve">
+    <value>Opt Out</value>
+  </data>
+  <data name="MailHistoryContractSentAt" xml:space="preserve">
+    <value>Sent At (required)</value>
+  </data>
+  <data name="MailHistoryContractMailInfraName" xml:space="preserve">
+    <value>Mail Infra Name</value>
+  </data>
+  <data name="MailHistoryContractSubject" xml:space="preserve">
+    <value>Subject</value>
+  </data>
+  <data name="MailHistoryContractTotalCount" xml:space="preserve">
+    <value>Total Count</value>
+  </data>
+  <data name="MailHistoryContractSuccessCount" xml:space="preserve">
+    <value>Success Count</value>
+  </data>
+  <data name="MailHistoryContractFailureDetails" xml:space="preserve">
+    <value>Failure Details</value>
+  </data>
+  <data name="MailHistoryContractSourceModule" xml:space="preserve">
+    <value>Source Module</value>
+  </data>
+  <data name="MailHistoryContractSourceId" xml:space="preserve">
+    <value>Source Id</value>
+  </data>
+  <data name="BulkMailRecipientListFieldName" xml:space="preserve">
+    <value>Recipient List</value>
+  </data>
+  <data name="MailFieldButtonText" xml:space="preserve">
+    <value>Button Text</value>
+  </data>
+  <data name="BulkMailFieldDbColumn" xml:space="preserve">
+    <value>Send Summary Column</value>
+  </data>
+  <data name="BulkMailRecipientListFieldRequired" xml:space="preserve">
+    <value>Set the recipient list field.</value>
+  </data>
+  <data name="MailSubjectOrBodyRequired" xml:space="preserve">
+    <value>Both the subject and the body are empty. Set a template field or a fixed text.</value>
+  </data>
+  <data name="BulkMailSaveBeforeSend" xml:space="preserve">
+    <value>There are unsaved changes. Save the record before sending.</value>
+  </data>
+  <data name="BulkMailTargetListInvalid" xml:space="preserve">
+    <value>The recipient list field is not configured.</value>
+  </data>
+  <data name="BulkMailConfirmFormat" xml:space="preserve">
+    <value>Send bulk mail to {0} rows? (Rows with the exclude flag and rows without an address are skipped.)</value>
+  </data>
+  <data name="BulkMailSendAction" xml:space="preserve">
+    <value>Send</value>
+  </data>
+  <data name="BulkMailSentFormat" xml:space="preserve">
+    <value>Sent {0} mails.</value>
+  </data>
+  <data name="BulkMailSentWithFailuresFormat" xml:space="preserve">
+    <value>Sent {0} of {1} mails. Check the log for failures.</value>
+  </data>
+  <data name="BulkMailDefaultButtonText" xml:space="preserve">
+    <value>Send Bulk Mail</value>
+  </data>
+  <data name="BulkMailLastSentFormat" xml:space="preserve">
+    <value>Last sent: {0}  success {1}/{2}</value>
+  </data>
+  <data name="ApprovalFlowField" xml:space="preserve">
+    <value>Approval Flow</value>
+  </data>
+  <data name="ApprovalHistoryField" xml:space="preserve">
+    <value>Approval History</value>
+  </data>
+  <data name="ApprovalFieldName" xml:space="preserve">
+    <value>Approval Field</value>
+  </data>
+  <data name="ApprovalCheck_NotApprovalFlowFieldFormat" xml:space="preserve">
+    <value>'{0}' is not an approval flow field.</value>
+  </data>
+  <data name="DbColumn" xml:space="preserve">
+    <value>DB Column</value>
+  </data>
+  <data name="ApprovalFlowModuleName" xml:space="preserve">
+    <value>Approval Flow Module</value>
+  </data>
+  <data name="ApprovalShowProgress" xml:space="preserve">
+    <value>Show Progress</value>
+  </data>
+  <data name="ApprovalShowHistory" xml:space="preserve">
+    <value>Show History</value>
+  </data>
+  <data name="ApprovalShowComment" xml:space="preserve">
+    <value>Show Comment Box</value>
+  </data>
+  <data name="ApprovalCheck_RequiredFieldMissingFormat" xml:space="preserve">
+    <value>The approval flow requires the field '{1}' in module '{0}'.</value>
+  </data>
+  <data name="ApprovalInputInvalid" xml:space="preserve">
+    <value>There are input errors.</value>
+  </data>
+  <data name="ApprovalNotSubmittedText" xml:space="preserve">
+    <value>Not submitted.</value>
+  </data>
+  <data name="ApprovalAction_Submit" xml:space="preserve">
+    <value>Submit</value>
+  </data>
+  <data name="ApprovalAction_Approve" xml:space="preserve">
+    <value>Approve</value>
+  </data>
+  <data name="ApprovalAction_Reject" xml:space="preserve">
+    <value>Reject</value>
+  </data>
+  <data name="ApprovalAction_Return" xml:space="preserve">
+    <value>Return</value>
+  </data>
+  <data name="ApprovalAction_Withdraw" xml:space="preserve">
+    <value>Withdraw</value>
+  </data>
+  <data name="ApprovalAction_Resubmit" xml:space="preserve">
+    <value>Resubmit</value>
+  </data>
+  <data name="ApprovalAction_Confirm" xml:space="preserve">
+    <value>Confirm</value>
+  </data>
+  <data name="ApprovalCommentPlaceholder" xml:space="preserve">
+    <value>Comment</value>
+  </data>
+  <data name="ApprovalCommentRequired" xml:space="preserve">
+    <value>A comment is required.</value>
+  </data>
+  <data name="ApprovalDoneFormat" xml:space="preserve">
+    <value>{0} completed.</value>
+  </data>
+  <data name="ApprovalHistoryTitle" xml:space="preserve">
+    <value>History</value>
+  </data>
+  <data name="ApprovalStatus_InProgress" xml:space="preserve">
+    <value>In Progress</value>
+  </data>
+  <data name="ApprovalStatus_Completed" xml:space="preserve">
+    <value>Approved</value>
+  </data>
+  <data name="ApprovalStatus_Rejected" xml:space="preserve">
+    <value>Rejected</value>
+  </data>
+  <data name="ApprovalStatus_Returned" xml:space="preserve">
+    <value>Returned</value>
+  </data>
+  <data name="ApprovalStatus_Withdrawn" xml:space="preserve">
+    <value>Withdrawn</value>
+  </data>
+  <data name="ApprovalError_RouteRequired" xml:space="preserve">
+    <value>A route is required to submit.</value>
+  </data>
+  <data name="ApprovalError_InvalidRouteFormat" xml:space="preserve">
+    <value>The route is invalid: {0}</value>
+  </data>
+  <data name="ApprovalError_FlowNotFound" xml:space="preserve">
+    <value>The approval flow was not found.</value>
+  </data>
+  <data name="ApprovalError_InvalidState" xml:space="preserve">
+    <value>This action is not allowed in the current state.</value>
+  </data>
+  <data name="ApprovalError_VersionMismatch" xml:space="preserve">
+    <value>Another user has updated the flow. Reload and try again.</value>
+  </data>
+  <data name="ApprovalError_NotApprover" xml:space="preserve">
+    <value>You are not an approver of the current step.</value>
+  </data>
+  <data name="ApprovalError_NotApplicant" xml:space="preserve">
+    <value>Only the applicant can perform this action.</value>
+  </data>
+  <data name="ApprovalError_ReturnNotAllowed" xml:space="preserve">
+    <value>Returning to that step is not allowed.</value>
+  </data>
+  <data name="ApprovalError_AlreadySubmitted" xml:space="preserve">
+    <value>The record has already been submitted.</value>
+  </data>
+  <data name="ApprovalError_DesignNotFound" xml:space="preserve">
+    <value>The approval flow field configuration was not found.</value>
+  </data>
+  <data name="ApprovalError_TargetSaveFailedFormat" xml:space="preserve">
+    <value>Failed to save the record: {0}</value>
+  </data>
+  <data name="ApprovalError_NoConfirmation" xml:space="preserve">
+    <value>There is nothing to confirm.</value>
+  </data>
+  <data name="ApprovalError_WithdrawNotAllowed" xml:space="preserve">
+    <value>Cannot withdraw because approval has already started. Ask an approver to return the request.</value>
+  </data>
+  <data name="ApprovalWithdrawPolicy" xml:space="preserve">
+    <value>Withdraw Policy</value>
+  </data>
+  <data name="ApprovalShowActions" xml:space="preserve">
+    <value>Show Action Buttons</value>
+  </data>
+  <data name="ApprovalOnBuildRoute" xml:space="preserve">
+    <value>On Build Route</value>
+  </data>
+  <data name="ApprovalFlowContractField" xml:space="preserve">
+    <value>Approval Flow Contract</value>
+  </data>
+  <data name="ApprovalMemberContractField" xml:space="preserve">
+    <value>Approval Member Contract</value>
+  </data>
+  <data name="ApprovalHistoryContractField" xml:space="preserve">
+    <value>Approval History Contract</value>
+  </data>
+  <data name="ApprovalCheck_ContractFieldMissingFormat" xml:space="preserve">
+    <value>Module '{0}' does not have a contract field ({1}). Place the contract field that declares the role mapping.</value>
+  </data>
+  <data name="ApprovalCheck_ContractFieldDuplicatedFormat" xml:space="preserve">
+    <value>There are multiple contract fields ({0}). Keep only one.</value>
+  </data>
+  <data name="ApprovalCheck_RoleMustBeListFormat" xml:space="preserve">
+    <value>'{0}' must be a list field.</value>
+  </data>
+  <data name="ApprovalCheck_RoleMustBeMailFieldFormat" xml:space="preserve">
+    <value>'{0}' must be a mail field (MailField).</value>
+  </data>
+  <data name="ApprovalFlowStatus_InProgress" xml:space="preserve">
+    <value>In Progress</value>
+  </data>
+  <data name="ApprovalFlowStatus_Completed" xml:space="preserve">
+    <value>Completed</value>
+  </data>
+  <data name="ApprovalFlowStatus_Rejected" xml:space="preserve">
+    <value>Rejected</value>
+  </data>
+  <data name="ApprovalFlowStatus_Returned" xml:space="preserve">
+    <value>Returned</value>
+  </data>
+  <data name="ApprovalFlowStatus_Withdrawn" xml:space="preserve">
+    <value>Withdrawn</value>
+  </data>
+  <data name="ApprovalMemberStatus_Pending" xml:space="preserve">
+    <value>Pending</value>
+  </data>
+  <data name="ApprovalMemberStatus_Waiting" xml:space="preserve">
+    <value>Waiting</value>
+  </data>
+  <data name="ApprovalMemberStatus_Approved" xml:space="preserve">
+    <value>Approved</value>
+  </data>
+  <data name="ApprovalMemberStatus_Rejected" xml:space="preserve">
+    <value>Rejected</value>
+  </data>
+  <data name="ApprovalMemberStatus_Confirmed" xml:space="preserve">
+    <value>Confirmed</value>
+  </data>
+  <data name="ApprovalMemberStatus_Skipped" xml:space="preserve">
+    <value>Skipped</value>
+  </data>
+  <data name="ApprovalStepType_Approval" xml:space="preserve">
+    <value>Approval</value>
+  </data>
+  <data name="ApprovalStepType_Confirmation" xml:space="preserve">
+    <value>Confirmation</value>
+  </data>
+  <data name="ApprovalCompletionPolicy_RequiredMembers" xml:space="preserve">
+    <value>All Required Members</value>
+  </data>
+  <data name="ApprovalCompletionPolicy_All" xml:space="preserve">
+    <value>All Members</value>
+  </data>
+  <data name="ApprovalCompletionPolicy_Any" xml:space="preserve">
+    <value>Any Member</value>
+  </data>
+  <data name="ApprovalReturnScope_ApplicantOnly" xml:space="preserve">
+    <value>Applicant Only</value>
+  </data>
+  <data name="ApprovalReturnScope_AnyPreviousStep" xml:space="preserve">
+    <value>Any Previous Step</value>
+  </data>
+  <data name="ApprovalFlowContractStatus" xml:space="preserve">
+    <value>Status (required)</value>
+  </data>
+  <data name="ApprovalFlowContractTargetModuleName" xml:space="preserve">
+    <value>Target Module Name (required)</value>
+  </data>
+  <data name="ApprovalFlowContractTargetId" xml:space="preserve">
+    <value>Target Id (required)</value>
+  </data>
+  <data name="ApprovalFlowContractApplicant" xml:space="preserve">
+    <value>Applicant (required)</value>
+  </data>
+  <data name="ApprovalFlowContractAttemptNo" xml:space="preserve">
+    <value>Attempt No (required)</value>
+  </data>
+  <data name="ApprovalFlowContractCurrentStepNo" xml:space="preserve">
+    <value>Current Step No (required)</value>
+  </data>
+  <data name="ApprovalFlowContractMembers" xml:space="preserve">
+    <value>Member List (required)</value>
+  </data>
+  <data name="ApprovalFlowContractHistories" xml:space="preserve">
+    <value>History List (required)</value>
+  </data>
+  <data name="ApprovalMemberContractFlow" xml:space="preserve">
+    <value>Flow (required)</value>
+  </data>
+  <data name="ApprovalMemberContractAttemptNo" xml:space="preserve">
+    <value>Attempt No (required)</value>
+  </data>
+  <data name="ApprovalMemberContractStepNo" xml:space="preserve">
+    <value>Step No (required)</value>
+  </data>
+  <data name="ApprovalMemberContractStepName" xml:space="preserve">
+    <value>Step Name</value>
+  </data>
+  <data name="ApprovalMemberContractStepType" xml:space="preserve">
+    <value>Step Type</value>
+  </data>
+  <data name="ApprovalMemberContractCompletionPolicy" xml:space="preserve">
+    <value>Completion Policy</value>
+  </data>
+  <data name="ApprovalMemberContractIsCommentRequiredOnReject" xml:space="preserve">
+    <value>Comment Required On Reject</value>
+  </data>
+  <data name="ApprovalMemberContractReturnScope" xml:space="preserve">
+    <value>Return Scope</value>
+  </data>
+  <data name="ApprovalMemberContractApproverUser" xml:space="preserve">
+    <value>Approver User (required)</value>
+  </data>
+  <data name="ApprovalMemberContractIsRequired" xml:space="preserve">
+    <value>Is Required</value>
+  </data>
+  <data name="ApprovalMemberContractIsFinalStep" xml:space="preserve">
+    <value>Is Final Step</value>
+  </data>
+  <data name="ApprovalMemberContractStatus" xml:space="preserve">
+    <value>Status (required)</value>
+  </data>
+  <data name="ApprovalMemberContractActedAt" xml:space="preserve">
+    <value>Acted At</value>
+  </data>
+  <data name="ApprovalMemberContractTurnNotifyMail" xml:space="preserve">
+    <value>Turn Notify Mail</value>
+  </data>
+  <data name="ApprovalHistoryContractFlow" xml:space="preserve">
+    <value>Flow (required)</value>
+  </data>
+  <data name="ApprovalHistoryContractAttemptNo" xml:space="preserve">
+    <value>Attempt No</value>
+  </data>
+  <data name="ApprovalHistoryContractAction" xml:space="preserve">
+    <value>Action</value>
+  </data>
+  <data name="ApprovalHistoryContractActorUser" xml:space="preserve">
+    <value>Actor User</value>
+  </data>
+  <data name="ApprovalHistoryContractComment" xml:space="preserve">
+    <value>Comment</value>
+  </data>
+  <data name="ApprovalHistoryContractActedAt" xml:space="preserve">
+    <value>Acted At</value>
   </data>
 </root>

@@ -1,4 +1,4 @@
-using Codeer.LowCode.Blazor.Extras;
+﻿using Codeer.LowCode.Blazor.Extras;
 using Codeer.LowCode.Blazor.Extras.Fields;
 using Codeer.LowCode.Blazor.Json;
 using Codeer.LowCode.Blazor.License;
@@ -24,6 +24,9 @@ ExtrasServerInitializer.Initialize();
 
 var builder = WebApplication.CreateBuilder(args);
 
+//Development 以外の環境名 (Approval 等のテスト用プロファイル) でも Client の wwwroot / Blazor フレームワークファイルを配信する
+builder.WebHost.UseStaticWebAssets();
+
 LicenseManager.DomainLicense = builder.Configuration.GetSection("DomainLicense").Get<string>() ?? string.Empty;
 LicenseManager.IsAutoUpdate = builder.Configuration.GetSection("IsLicenseAutoUpdate").Get<bool>();
 SystemConfig.Instance.UseHotReload = builder.Configuration.GetSection("UseHotReload").Get<bool>();
@@ -34,7 +37,9 @@ SystemConfig.Instance.DataChangeHistoryTableInfo = builder.Configuration.GetSect
 SystemConfig.Instance.TemporaryFileTableInfo = builder.Configuration.GetSection("TemporaryFileTableInfo").Get<TemporaryFileTableInfo[]>() ?? [];
 SystemConfig.Instance.DesignFileDirectory = builder.Configuration["DesignFileDirectory"] ?? string.Empty;
 SystemConfig.Instance.FontFileDirectory = builder.Configuration["FontFileDirectory"] ?? string.Empty;
-SystemConfig.Instance.MailSettings = builder.Configuration.GetSection("MailSettings").Get<MailSettings>() ?? new();
+SystemConfig.Instance.Mail = builder.Configuration.GetSection("Mail").Get<MailConfig>() ?? new();
+//メールのプロバイダ設定はそれぞれ独立したセクション (使うものだけ書けばよい)
+SystemConfig.Instance.Gmail = builder.Configuration.GetSection("Gmail").Get<GmailSettings>() ?? new();
 SystemConfig.Instance.AISettings = builder.Configuration.GetSection("AISettings").Get<AISettings>() ?? new();
 SystemConfig.Instance.DataSources.ToList().ForEach(e => e.ConnectionString = builder.Configuration.GetConnectionString(e.Name) ?? string.Empty);
 SystemConfig.Instance.FileStorages.ToList().ForEach(e => e.ConnectionString = builder.Configuration.GetConnectionString(e.Name) ?? string.Empty);
@@ -95,6 +100,12 @@ builder.Services.Configure<RequestLocalizationOptions>(options =>
 
 builder.Services.AddScoped<DataService>();
 
+//デモ用の簡易ログイン (パスワードなしのユーザー切替。AccountController / login.html)。
+//承認フローなど操作ユーザーが必要な機能をサンプルで確認するためのもので、実運用の認証ではない
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddAuthentication(Microsoft.AspNetCore.Authentication.Cookies.CookieAuthenticationDefaults.AuthenticationScheme)
+    .AddCookie(options => options.Cookie.Name = "ExtrasExample.Auth");
+
 var app = builder.Build();
 
 app.UseResponseCompression();
@@ -118,6 +129,19 @@ app.UseBlazorFrameworkFiles();
 app.UseStaticFiles();
 
 app.UseRouting();
+
+app.UseAuthentication();
+
+//未ログインでアプリのルートを開いたらデモログインページへ (簡易実装)
+app.Use(async (context, next) =>
+{
+    if (context.Request.Path == "/" && context.User.Identity?.IsAuthenticated != true)
+    {
+        context.Response.Redirect("/login.html");
+        return;
+    }
+    await next();
+});
 
 if (SystemConfig.Instance.UseHotReload)
 {
