@@ -132,49 +132,6 @@
       "NextFocusField": "",
       "OnFocusMoving": "",
       "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.LabelFieldDesign"
-    },
-    {
-      "ToVariable": "",
-      "To": "applicant@example.com",
-      "CcVariable": "",
-      "Cc": "",
-      "SubjectVariable": "",
-      "Subject": "経費申請: {Title.Value}",
-      "BodyVariable": "",
-      "Body": "{Title.Value} (金額 {Amount.Value}) を受け付けました。",
-      "MailInfraName": "",
-      "IsBodyHtml": false,
-      "ReplyTo": "",
-      "Name": "ReceiptMail",
-      "IgnoreModification": false,
-      "OnValidateInput": "",
-      "IsFocusSkip": false,
-      "NextFocusField": "",
-      "OnFocusMoving": "",
-      "TypeFullName": "Codeer.LowCode.Blazor.Extras.Designs.MailFieldDesign"
-    },
-    {
-      "Text": "受付メールを送る (要 Mail 設定)",
-      "ImageResourcePath": "",
-      "ImageResourceSet": {
-        "Default": "",
-        "Focus": "",
-        "Active": "",
-        "Hover": "",
-        "Disabled": ""
-      },
-      "Icon": "",
-      "Variant": "OutlineSecondary",
-      "OnClick": "SendReceiptMail",
-      "ShowTextInToolTip": false,
-      "IsHtml": false,
-      "Name": "SendMailButton",
-      "IgnoreModification": false,
-      "OnValidateInput": "",
-      "IsFocusSkip": false,
-      "NextFocusField": "",
-      "OnFocusMoving": "",
-      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.ButtonFieldDesign"
     }
   ],
   "UserWriteCondition": {
@@ -400,45 +357,6 @@
               {
                 "Layout": {
                   "FieldName": "RouteNote",
-                  "ContextMenu": "",
-                  "ClassName": "",
-                  "FontFamily": "",
-                  "Color": "",
-                  "Name": "",
-                  "BackgroundColor": "",
-                  "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.FieldLayoutDesign"
-                },
-                "IgnoreContentWidth": false,
-                "Padding": {},
-                "BackgroundColor": "",
-                "BorderStyle": {
-                  "LeftColor": "",
-                  "TopColor": "",
-                  "RightColor": "",
-                  "BottomColor": ""
-                },
-                "CanResize": false,
-                "AllowOverflow": false,
-                "Border": "None"
-              }
-            ]
-          },
-          {
-            "IsWrap": false,
-            "IsAutoFillWrap": false,
-            "Margin": {
-              "Top": 8
-            },
-            "GridRowType": "Normal",
-            "CanResize": false,
-            "BackgroundColor": "",
-            "KeepInFillAvailableGrid": false,
-            "IsProportionalScale": false,
-            "IsRowMarginRemoved": false,
-            "Columns": [
-              {
-                "Layout": {
-                  "FieldName": "SendMailButton",
                   "ContextMenu": "",
                   "ClassName": "",
                   "FontFamily": "",

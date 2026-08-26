@@ -8,13 +8,3 @@ ApprovalRouteData OnBuildRoute()
 {
     return new ApprovalRoute().Load("経費ルート");
 }
-
-// 受付メールを送る (MailField のデモ。実送信には appsettings の Mail 設定が必要)
-void SendReceiptMail()
-{
-    var result = ReceiptMail.Send();
-    if (!result.IsSuccess)
-    {
-        Logger.Error("メール送信に失敗しました");
-    }
-}
