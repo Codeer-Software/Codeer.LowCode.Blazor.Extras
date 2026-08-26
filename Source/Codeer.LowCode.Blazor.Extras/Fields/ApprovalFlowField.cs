@@ -253,8 +253,9 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             NotifyViewStateChanged();
             try
             {
-                var request = new ApprovalSubmitRequest
+                var command = new ApprovalCommand
                 {
+                    Action = isResubmit ? ApprovalAction.Resubmit : ApprovalAction.Submit,
                     TargetModuleName = Module.Design.Name,
                     FieldName = Design.Name,
                     TargetSubmitData = Module.GetSubmitData(),
@@ -263,7 +264,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
                     FlowId = isResubmit ? FlowId : string.Empty,
                     ExpectedVersion = isResubmit ? Version : string.Empty,
                 };
-                var result = await ApprovalTransport.SubmitAsync(GetHttpService(), request);
+                var result = await ApprovalTransport.ExecuteAsync(GetHttpService(), command);
                 if (result.IsSuccess)
                 {
                     Comment = string.Empty;
@@ -291,8 +292,9 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             NotifyViewStateChanged();
             try
             {
-                var request = new ApprovalActionRequest
+                var command = new ApprovalCommand
                 {
+                    Action = Enum.Parse<ApprovalAction>(action),
                     TargetModuleName = Module.Design.Name,
                     FieldName = Design.Name,
                     FlowId = FlowId,
@@ -300,7 +302,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
                     Comment = comment,
                     TargetStepNo = targetStepNo,
                 };
-                var result = await ApprovalTransport.ExecuteAsync(GetHttpService(), action, request);
+                var result = await ApprovalTransport.ExecuteAsync(GetHttpService(), command);
                 if (result.IsSuccess)
                 {
                     Comment = string.Empty;

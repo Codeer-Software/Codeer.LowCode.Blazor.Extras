@@ -46,8 +46,21 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Approval
         /// <summary>通知メールの失敗などのログ (任意)。通知の失敗は承認操作を失敗させない。</summary>
         public Action<string>? LogError { get; set; }
 
+        /// <summary>
+        /// command API の入口。Action で振り分ける (Controller はこれを呼ぶだけでよい)。
+        /// </summary>
+        public async Task<ApprovalActionResult> ExecuteAsync(ApprovalCommand command)
+            => command.Action switch
+            {
+                ApprovalAction.Submit => await SubmitAsync(command),
+                ApprovalAction.Resubmit => await ResubmitAsync(command),
+                ApprovalAction.Approve or ApprovalAction.Reject or ApprovalAction.Return
+                    or ApprovalAction.Withdraw or ApprovalAction.Confirm => await ExecuteActionAsync(command),
+                _ => ApprovalActionResult.Failure(Resources.ApprovalError_InvalidState),
+            };
+
         /// <summary>申請。親保存 → 経路検証 → フロー生成 → FK 設定 → 履歴 を同一トランザクションで行う。</summary>
-        public async Task<ApprovalActionResult> SubmitAsync(ApprovalSubmitRequest request)
+        async Task<ApprovalActionResult> SubmitAsync(ApprovalCommand request)
         {
             var (ctx, error) = await ResolveContextAsync(request.TargetModuleName, request.FieldName);
             if (ctx == null) return ApprovalActionResult.Failure(error);
@@ -97,7 +110,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Approval
         }
 
         /// <summary>再申請 (却下・差し戻し・取り戻し後)。経路を再検証し新しい試行としてメンバーを作り直す。</summary>
-        public async Task<ApprovalActionResult> ResubmitAsync(ApprovalSubmitRequest request)
+        async Task<ApprovalActionResult> ResubmitAsync(ApprovalCommand request)
         {
             var (ctx, error) = await ResolveContextAsync(request.TargetModuleName, request.FieldName);
             if (ctx == null) return ApprovalActionResult.Failure(error);
@@ -152,7 +165,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Approval
         }
 
         /// <summary>承認・却下・差し戻し・取り戻し・取消・確認。</summary>
-        public async Task<ApprovalActionResult> ExecuteAsync(string action, ApprovalActionRequest request)
+        async Task<ApprovalActionResult> ExecuteActionAsync(ApprovalCommand request)
         {
             var (ctx, error) = await ResolveContextAsync(request.TargetModuleName, request.FieldName);
             if (ctx == null) return ApprovalActionResult.Failure(error);
@@ -168,7 +181,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Approval
                 var waitingBefore = members
                     .Where(e => e.Status == ApprovalMemberStatus.Waiting.ToDesignValue())
                     .Select(e => e.Id).ToHashSet();
-                var result = Enum.TryParse<ApprovalAction>(action, out var parsedAction) ? parsedAction switch
+                var result = request.Action switch
                 {
                     ApprovalAction.Approve => await ApproveAsync(ctx, flow, members, request),
                     ApprovalAction.Reject => await RejectAsync(ctx, flow, members, request),
@@ -176,7 +189,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Approval
                     ApprovalAction.Withdraw => await WithdrawAsync(ctx, flow, members, request),
                     ApprovalAction.Confirm => await ConfirmAsync(ctx, flow, members, request),
                     _ => ApprovalActionResult.Failure(Resources.ApprovalError_InvalidState),
-                } : ApprovalActionResult.Failure(Resources.ApprovalError_InvalidState);
+                };
 
                 if (result.IsSuccess) await _db.CommitAsync();
                 else await _db.RollbackAsync();
@@ -202,7 +215,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Approval
         // アクション本体 (トランザクション内で呼ばれる)
         //====================================================================
 
-        async Task<ApprovalActionResult> ApproveAsync(Context ctx, FlowRow flow, List<MemberRow> members, ApprovalActionRequest request)
+        async Task<ApprovalActionResult> ApproveAsync(Context ctx, FlowRow flow, List<MemberRow> members, ApprovalCommand request)
         {
             if (flow.Status != ApprovalFlowStatus.InProgress.ToDesignValue()) return ApprovalActionResult.Failure(Resources.ApprovalError_InvalidState);
 
@@ -228,7 +241,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Approval
             return ApprovalActionResult.Success(flow.Id, flow.TargetId);
         }
 
-        async Task<ApprovalActionResult> RejectAsync(Context ctx, FlowRow flow, List<MemberRow> members, ApprovalActionRequest request)
+        async Task<ApprovalActionResult> RejectAsync(Context ctx, FlowRow flow, List<MemberRow> members, ApprovalCommand request)
         {
             if (flow.Status != ApprovalFlowStatus.InProgress.ToDesignValue()) return ApprovalActionResult.Failure(Resources.ApprovalError_InvalidState);
 
@@ -249,7 +262,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Approval
             return ApprovalActionResult.Success(flow.Id, flow.TargetId);
         }
 
-        async Task<ApprovalActionResult> ReturnAsync(Context ctx, FlowRow flow, List<MemberRow> members, ApprovalActionRequest request)
+        async Task<ApprovalActionResult> ReturnAsync(Context ctx, FlowRow flow, List<MemberRow> members, ApprovalCommand request)
         {
             if (flow.Status != ApprovalFlowStatus.InProgress.ToDesignValue()) return ApprovalActionResult.Failure(Resources.ApprovalError_InvalidState);
 
@@ -301,7 +314,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Approval
             return ApprovalActionResult.Success(flow.Id, flow.TargetId);
         }
 
-        async Task<ApprovalActionResult> WithdrawAsync(Context ctx, FlowRow flow, List<MemberRow> members, ApprovalActionRequest request)
+        async Task<ApprovalActionResult> WithdrawAsync(Context ctx, FlowRow flow, List<MemberRow> members, ApprovalCommand request)
         {
             if (flow.Status != ApprovalFlowStatus.InProgress.ToDesignValue()) return ApprovalActionResult.Failure(Resources.ApprovalError_InvalidState);
             if (string.IsNullOrEmpty(ctx.ActorId) || ctx.ActorId != flow.Applicant)
@@ -325,7 +338,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Approval
             return ApprovalActionResult.Success(flow.Id, flow.TargetId);
         }
 
-        async Task<ApprovalActionResult> ConfirmAsync(Context ctx, FlowRow flow, List<MemberRow> members, ApprovalActionRequest request)
+        async Task<ApprovalActionResult> ConfirmAsync(Context ctx, FlowRow flow, List<MemberRow> members, ApprovalCommand request)
         {
             //回覧は到達済み (= 正規化で Waiting になっている) なら確認できる。フロー終了後も可
             var member = members.FirstOrDefault(e => e.StepType == ApprovalStepType.Confirmation.ToDesignValue()

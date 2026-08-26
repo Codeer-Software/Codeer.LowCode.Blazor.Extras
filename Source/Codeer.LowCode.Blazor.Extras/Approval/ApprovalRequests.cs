@@ -1,47 +1,38 @@
-using Codeer.LowCode.Blazor.DataIO;
+﻿using Codeer.LowCode.Blazor.DataIO;
 
 namespace Codeer.LowCode.Blazor.Extras.Approval
 {
     /// <summary>
-    /// 申請 / 再申請の要求。申請書の保存データを同梱し、サーバーが
+    /// command API の要求 (1 エンドポイント)。Action で操作を指定し、サーバー (ApprovalEngine) が振り分ける。
+    /// Submit / Resubmit は申請書の保存データを同梱し、サーバーが
     /// 「親保存 → 経路検証 → フロー生成 → FK 設定 → 履歴」を同一トランザクションで行う。
     /// </summary>
-    public class ApprovalSubmitRequest
+    public class ApprovalCommand
     {
+        /// <summary>操作。</summary>
+        public ApprovalAction Action { get; set; }
+
         /// <summary>申請書モジュール名。</summary>
         public string TargetModuleName { get; set; } = string.Empty;
 
         /// <summary>申請書モジュール上の ApprovalFlowField 名 (サーバーはこのデザインからモジュール名等を解決する)。</summary>
         public string FieldName { get; set; } = string.Empty;
 
-        /// <summary>申請書の保存データ (Module.GetSubmitData)。</summary>
+        /// <summary>対象フローの Id (Submit 以外で必須)。</summary>
+        public string FlowId { get; set; } = string.Empty;
+
+        /// <summary>楽観ロック検証値 (フロー行の OptimisticLocking 値。Submit 以外で必須。二重承認・同時操作の防止)。</summary>
+        public string ExpectedVersion { get; set; } = string.Empty;
+
+        public string Comment { get; set; } = string.Empty;
+
+        /// <summary>Submit / Resubmit のみ: 申請書の保存データ (Module.GetSubmitData)。</summary>
         public ModuleSubmitData? TargetSubmitData { get; set; }
 
-        /// <summary>スクリプトで組み立てた経路。誰が組んだかは履歴に不変記録される。</summary>
+        /// <summary>Submit / Resubmit のみ: スクリプトで組み立てた経路。誰が組んだかは履歴に不変記録される。</summary>
         public ApprovalRouteData? Route { get; set; }
 
-        public string Comment { get; set; } = string.Empty;
-
-        /// <summary>再申請時のみ: 対象フローの Id。</summary>
-        public string FlowId { get; set; } = string.Empty;
-
-        /// <summary>再申請時のみ: 楽観ロック検証値 (フロー行の OptimisticLocking 値)。</summary>
-        public string ExpectedVersion { get; set; } = string.Empty;
-    }
-
-    /// <summary>承認・却下・差し戻し・取り下げ・確認の要求。</summary>
-    public class ApprovalActionRequest
-    {
-        public string TargetModuleName { get; set; } = string.Empty;
-        public string FieldName { get; set; } = string.Empty;
-        public string FlowId { get; set; } = string.Empty;
-
-        /// <summary>楽観ロック検証値。二重承認・同時操作の防止に必須。</summary>
-        public string ExpectedVersion { get; set; } = string.Empty;
-
-        public string Comment { get; set; } = string.Empty;
-
-        /// <summary>差し戻し先ステップ番号 (Return のみ。null = 申請者へ)。</summary>
+        /// <summary>Return のみ: 差し戻し先ステップ番号 (null = 申請者へ)。</summary>
         public int? TargetStepNo { get; set; }
     }
 

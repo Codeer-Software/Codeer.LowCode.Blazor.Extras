@@ -25,33 +25,10 @@ namespace Extras.Server.Controllers
         public async ValueTask DisposeAsync()
             => await _dataService.DisposeAsync();
 
-        [HttpPost("submit")]
-        public async Task<ApprovalActionResult> SubmitAsync(ApprovalSubmitRequest request)
-            => await CreateEngine().SubmitAsync(request);
-
-        [HttpPost("resubmit")]
-        public async Task<ApprovalActionResult> ResubmitAsync(ApprovalSubmitRequest request)
-            => await CreateEngine().ResubmitAsync(request);
-
-        [HttpPost("approve")]
-        public async Task<ApprovalActionResult> ApproveAsync(ApprovalActionRequest request)
-            => await CreateEngine().ExecuteAsync(ApprovalAction.Approve.ToDesignValue(), request);
-
-        [HttpPost("reject")]
-        public async Task<ApprovalActionResult> RejectAsync(ApprovalActionRequest request)
-            => await CreateEngine().ExecuteAsync(ApprovalAction.Reject.ToDesignValue(), request);
-
-        [HttpPost("return")]
-        public async Task<ApprovalActionResult> ReturnAsync(ApprovalActionRequest request)
-            => await CreateEngine().ExecuteAsync(ApprovalAction.Return.ToDesignValue(), request);
-
-        [HttpPost("withdraw")]
-        public async Task<ApprovalActionResult> WithdrawAsync(ApprovalActionRequest request)
-            => await CreateEngine().ExecuteAsync(ApprovalAction.Withdraw.ToDesignValue(), request);
-
-        [HttpPost("confirm")]
-        public async Task<ApprovalActionResult> ConfirmAsync(ApprovalActionRequest request)
-            => await CreateEngine().ExecuteAsync(ApprovalAction.Confirm.ToDesignValue(), request);
+        //すべての操作 (申請/再申請/承認/却下/差し戻し/取り下げ/確認) を 1 本で受け、ApprovalEngine が Action で振り分ける
+        [HttpPost]
+        public async Task<ApprovalActionResult> ExecuteAsync(ApprovalCommand command)
+            => await CreateEngine().ExecuteAsync(command);
 
         //承認データの書き込みはシステムの記録なので、操作ユーザーの書き込み権限に依存しない内部経路で行う
         ApprovalEngine CreateEngine()

@@ -294,8 +294,9 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Approval
 
         async Task<ApprovalActionResult> SubmitAsync(string userId = "1", ApprovalRouteData? route = null)
         {
-            var result = await CreateEngine(userId).SubmitAsync(new ApprovalSubmitRequest
+            var result = await CreateEngine(userId).ExecuteAsync(new ApprovalCommand
             {
+                Action = ApprovalAction.Submit,
                 TargetModuleName = "Request",
                 FieldName = "Approval",
                 TargetSubmitData = CreateNewRequestSubmit("経費申請"),
@@ -307,8 +308,9 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Approval
 
         async Task<ApprovalActionResult> ExecuteAsync(string userId, string action, string flowId,
             string? comment = null, int? targetStepNo = null)
-            => await CreateEngine(userId).ExecuteAsync(action, new ApprovalActionRequest
+            => await CreateEngine(userId).ExecuteAsync(new ApprovalCommand
             {
+                Action = Enum.Parse<ApprovalAction>(action),
                 TargetModuleName = "Request",
                 FieldName = "Approval",
                 FlowId = flowId,
@@ -378,8 +380,9 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Approval
         {
             //ステップなし
             var empty = new ApprovalRouteData { Name = "R" };
-            var r1 = await CreateEngine("1").SubmitAsync(new ApprovalSubmitRequest
-            { TargetModuleName = "Request", FieldName = "Approval", TargetSubmitData = CreateNewRequestSubmit("A"), Route = empty });
+            var r1 = await CreateEngine("1").ExecuteAsync(new ApprovalCommand
+            {
+                Action = ApprovalAction.Submit, TargetModuleName = "Request", FieldName = "Approval", TargetSubmitData = CreateNewRequestSubmit("A"), Route = empty });
             Assert.That(r1.IsSuccess, Is.False);
 
             //承認ステップなし (回覧のみ)
@@ -387,15 +390,17 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Approval
             var step = confirmationOnly.AddStep("回覧");
             step.StepType = ApprovalStepType.Confirmation.ToDesignValue();
             step.AddMember("2");
-            var r2 = await CreateEngine("1").SubmitAsync(new ApprovalSubmitRequest
-            { TargetModuleName = "Request", FieldName = "Approval", TargetSubmitData = CreateNewRequestSubmit("A"), Route = confirmationOnly });
+            var r2 = await CreateEngine("1").ExecuteAsync(new ApprovalCommand
+            {
+                Action = ApprovalAction.Submit, TargetModuleName = "Request", FieldName = "Approval", TargetSubmitData = CreateNewRequestSubmit("A"), Route = confirmationOnly });
             Assert.That(r2.IsSuccess, Is.False);
 
             //空のユーザーId
             var emptyUser = new ApprovalRouteData { Name = "R" };
             emptyUser.AddStep("承認").AddMember("");
-            var r3 = await CreateEngine("1").SubmitAsync(new ApprovalSubmitRequest
-            { TargetModuleName = "Request", FieldName = "Approval", TargetSubmitData = CreateNewRequestSubmit("A"), Route = emptyUser });
+            var r3 = await CreateEngine("1").ExecuteAsync(new ApprovalCommand
+            {
+                Action = ApprovalAction.Submit, TargetModuleName = "Request", FieldName = "Approval", TargetSubmitData = CreateNewRequestSubmit("A"), Route = emptyUser });
             Assert.That(r3.IsSuccess, Is.False);
         }
 
@@ -444,8 +449,9 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Approval
         {
             var submit = await SubmitAsync();
 
-            var result = await CreateEngine("2").ExecuteAsync(ApprovalAction.Approve.ToDesignValue(), new ApprovalActionRequest
+            var result = await CreateEngine("2").ExecuteAsync(new ApprovalCommand
             {
+                Action = ApprovalAction.Approve,
                 TargetModuleName = "Request",
                 FieldName = "Approval",
                 FlowId = submit.FlowId,
@@ -487,8 +493,9 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Approval
             Assert.That(await GetFlowValueAsync(submit.FlowId, "Status"), Is.EqualTo(ApprovalFlowStatus.Returned.ToDesignValue()));
 
             //申請者以外の再申請は拒否
-            var deny = await CreateEngine("2").ResubmitAsync(new ApprovalSubmitRequest
+            var deny = await CreateEngine("2").ExecuteAsync(new ApprovalCommand
             {
+                Action = ApprovalAction.Resubmit,
                 TargetModuleName = "Request",
                 FieldName = "Approval",
                 TargetSubmitData = CreateUpdateRequestSubmit(submit.TargetId, "修正済"),
@@ -498,8 +505,9 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Approval
             });
             Assert.That(deny.IsSuccess, Is.False);
 
-            var r2 = await CreateEngine("1").ResubmitAsync(new ApprovalSubmitRequest
+            var r2 = await CreateEngine("1").ExecuteAsync(new ApprovalCommand
             {
+                Action = ApprovalAction.Resubmit,
                 TargetModuleName = "Request",
                 FieldName = "Approval",
                 TargetSubmitData = CreateUpdateRequestSubmit(submit.TargetId, "修正済"),
@@ -569,8 +577,9 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Approval
             Assert.That(members.All(e => S(e, "Status") == ApprovalMemberStatus.Skipped.ToDesignValue()));
 
             //取り下げ後は編集して再申請できる
-            var resubmit = await CreateEngine("1").ResubmitAsync(new ApprovalSubmitRequest
+            var resubmit = await CreateEngine("1").ExecuteAsync(new ApprovalCommand
             {
+                Action = ApprovalAction.Resubmit,
                 TargetModuleName = "Request",
                 FieldName = "Approval",
                 TargetSubmitData = CreateUpdateRequestSubmit(submit.TargetId, "修正版"),
@@ -725,8 +734,9 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Approval
             var submit = await SubmitAsync();
 
             //同一レコードへの再度の申請 (FK を無視して直接 command API を叩いた想定)
-            var again = await CreateEngine("1").SubmitAsync(new ApprovalSubmitRequest
+            var again = await CreateEngine("1").ExecuteAsync(new ApprovalCommand
             {
+                Action = ApprovalAction.Submit,
                 TargetModuleName = "Request",
                 FieldName = "Approval",
                 TargetSubmitData = CreateUpdateRequestSubmit(submit.TargetId, "改ざん"),
