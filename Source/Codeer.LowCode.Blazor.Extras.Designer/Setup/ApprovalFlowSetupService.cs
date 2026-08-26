@@ -1,4 +1,4 @@
-using System.Text.RegularExpressions;
+﻿using System.Text.RegularExpressions;
 using Codeer.LowCode.Blazor.DataIO.Db.Definition;
 using Codeer.LowCode.Blazor.DesignLogic;
 using Codeer.LowCode.Blazor.Json;
@@ -162,7 +162,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
         static string CreateNextStepsNote(ApprovalSetupOptions options, Dictionary<string, string> nameMap)
         {
             var route = options.RouteMaster == ApprovalRouteMasterKind.None
-                ? $"    var route = Approval.NewRoute(\"標準経路\"); route.AddStep(\"上長承認\").AddMember(CurrentUser.Id, true); return route;"
+                ? $"    var route = new ApprovalRouteData(); route.AddStep(\"上長承認\").AddMember(CurrentUser.Id, true); return route;"
                 : $"    return new {nameMap[Route.BaseName]}().Load(\"標準経路\");";
             return $$"""
                 承認モジュール群を生成しました。申請書モジュール側は次の手順で仕上げてください:

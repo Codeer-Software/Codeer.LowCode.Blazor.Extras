@@ -21,7 +21,6 @@ ApprovalRouteData Load(string routeName)
     steps.OrderBy(s => s.StepNo.Value);
 
     var route = new ApprovalRouteData();
-    route.Name = master.RouteName.Value;
     foreach (var s in steps.Execute())
     {
         var step = route.AddStep(s.StepName.Value);

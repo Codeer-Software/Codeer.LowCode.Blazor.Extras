@@ -1,4 +1,4 @@
-using Codeer.LowCode.Blazor.DataIO.Db.Definition;
+﻿using Codeer.LowCode.Blazor.DataIO.Db.Definition;
 using Codeer.LowCode.Blazor.DesignLogic;
 using Codeer.LowCode.Blazor.DesignLogic.Check;
 using Codeer.LowCode.Blazor.Extras.Approval;
@@ -221,7 +221,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Setup
             {
                 "ApprovalFlow", "ApprovalFlowMember", "ApprovalHistory", "MyApprovalList", "ApprovalStatusList",
             }));
-            Assert.That(string.Join("\n", result.Notes), Does.Contain("NewRoute").And.Not.Contain(".Load("));
+            Assert.That(string.Join("\n", result.Notes), Does.Contain("new ApprovalRouteData()").And.Not.Contain(".Load("));
             Assert.That(Load().PageFrames.Find("Main")!.Left.Links.Select(e => e.Module), Does.Not.Contain("ApprovalRoute"));
         }
 

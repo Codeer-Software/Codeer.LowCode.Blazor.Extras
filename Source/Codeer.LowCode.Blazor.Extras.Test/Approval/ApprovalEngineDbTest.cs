@@ -269,7 +269,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Approval
 
         static ApprovalRouteData CreateRoute()
         {
-            var route = new ApprovalRouteData { Name = "TestRoute" };
+            var route = new ApprovalRouteData();
             route.AddStep("課長承認").AddMember("2", true);
             route.AddStep("部長承認").AddMember("3", true);
             return route;
@@ -379,14 +379,14 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Approval
         public async Task 申請_不正な経路は拒否()
         {
             //ステップなし
-            var empty = new ApprovalRouteData { Name = "R" };
+            var empty = new ApprovalRouteData();
             var r1 = await CreateEngine("1").ExecuteAsync(new ApprovalCommand
             {
                 Action = ApprovalAction.Submit, TargetModuleName = "Request", FieldName = "Approval", TargetSubmitData = CreateNewRequestSubmit("A"), Route = empty });
             Assert.That(r1.IsSuccess, Is.False);
 
             //承認ステップなし (回覧のみ)
-            var confirmationOnly = new ApprovalRouteData { Name = "R" };
+            var confirmationOnly = new ApprovalRouteData();
             var step = confirmationOnly.AddStep("回覧");
             step.StepType = ApprovalStepType.Confirmation.ToDesignValue();
             step.AddMember("2");
@@ -396,7 +396,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Approval
             Assert.That(r2.IsSuccess, Is.False);
 
             //空のユーザーId
-            var emptyUser = new ApprovalRouteData { Name = "R" };
+            var emptyUser = new ApprovalRouteData();
             emptyUser.AddStep("承認").AddMember("");
             var r3 = await CreateEngine("1").ExecuteAsync(new ApprovalCommand
             {
@@ -539,7 +539,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Approval
             Assert.That(deny.IsSuccess, Is.False);
 
             //AnyPreviousStep なら過去ステップへ戻せる
-            var route = new ApprovalRouteData { Name = "R2" };
+            var route = new ApprovalRouteData();
             route.AddStep("課長承認").AddMember("2");
             var step2 = route.AddStep("部長承認");
             step2.ReturnScope = ApprovalReturnScope.AnyPreviousStep.ToDesignValue();
@@ -624,7 +624,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Approval
         public async Task 完了ポリシー_必須全員と任意1人()
         {
             //必須2人 + 任意1人: 必須2人の承認で完了 (任意はステップ完了で Skipped = 承認不要になった)
-            var route = new ApprovalRouteData { Name = "R" };
+            var route = new ApprovalRouteData();
             var step = route.AddStep("合議");
             step.AddMember("2", true).AddMember("3", true).AddMember("4", false);
 
@@ -637,7 +637,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Approval
             Assert.That(S(optional[2], "Status"), Is.EqualTo(ApprovalMemberStatus.Skipped.ToDesignValue()));
 
             //必須ゼロ: 任意1人の承認で完了 (現行テンプレート互換)
-            var anyRoute = new ApprovalRouteData { Name = "R" };
+            var anyRoute = new ApprovalRouteData();
             anyRoute.AddStep("誰か1人").AddMember("2", false).AddMember("3", false);
             var submit2 = await SubmitAsync(route: anyRoute);
             await ExecuteAsync("3", ApprovalAction.Approve.ToDesignValue(), submit2.FlowId);
@@ -648,7 +648,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Approval
         public async Task 並列ステップ_他の人の承認で完了したら相方はスキップされ承認できない()
         {
             //Any: 部長 or 経理 → 次の承認へ。承認しなかった方は Skipped (承認待ちに残らない・押しても拒否)
-            var route = new ApprovalRouteData { Name = "R" };
+            var route = new ApprovalRouteData();
             route.AddStep("課長承認").AddMember("2");
             var any = route.AddStep("部長または経理");
             any.CompletionPolicy = ApprovalCompletionPolicy.Any.ToDesignValue();
@@ -672,7 +672,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Approval
         [Test]
         public async Task 並列ステップ_過去ステップへ差し戻すとスキップされた相方も承認待ちに戻る()
         {
-            var route = new ApprovalRouteData { Name = "R" };
+            var route = new ApprovalRouteData();
             var any = route.AddStep("部長または経理");
             any.CompletionPolicy = ApprovalCompletionPolicy.Any.ToDesignValue();
             any.AddMember("3").AddMember("4");
@@ -698,7 +698,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Approval
         [Test]
         public async Task 回覧_フローをブロックせず確認を記録する()
         {
-            var route = new ApprovalRouteData { Name = "R" };
+            var route = new ApprovalRouteData();
             route.AddStep("課長承認").AddMember("2");
             var confirmation = route.AddStep("経理回覧");
             confirmation.StepType = ApprovalStepType.Confirmation.ToDesignValue();
@@ -887,7 +887,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Approval
         [Test]
         public async Task 通知_却下では飛ばず_過去ステップ差し戻しで再度飛ぶ()
         {
-            var route = new ApprovalRouteData { Name = "TestRoute" };
+            var route = new ApprovalRouteData();
             route.AddStep("課長承認").AddMember("2", true);
             var step2 = route.AddStep("部長承認");
             step2.ReturnScope = ApprovalReturnScope.AnyPreviousStep.ToDesignValue();
@@ -913,7 +913,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Approval
         [Test]
         public async Task 通知_アドレスの無い承認者はスキップされる()
         {
-            var route = new ApprovalRouteData { Name = "TestRoute" };
+            var route = new ApprovalRouteData();
             var step = route.AddStep("承認");
             step.AddMember("2", true);
             step.AddMember("4", true); //Email 空

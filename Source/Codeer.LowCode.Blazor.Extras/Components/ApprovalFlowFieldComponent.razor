@@ -1,4 +1,4 @@
-@using Codeer.LowCode.Blazor.Components
+﻿@using Codeer.LowCode.Blazor.Components
 @using Codeer.LowCode.Blazor.DesignLogic
 @using Codeer.LowCode.Blazor.Extras.Approval
 @using Codeer.LowCode.Blazor.Extras.Fields
@@ -92,7 +92,7 @@ else
           <button type="button" class="btn btn-outline-secondary" disabled="@Field.IsBusy"
                   @onclick="@(async () => await ExecuteAsync(ApprovalAction.Withdraw.ToDesignValue()))">@R.ApprovalAction_Withdraw</button>
         }
-        @if (Field.CanResubmitNow)
+        @if (Field.CanResubmit)
         {
           <button type="button" class="btn btn-primary" disabled="@Field.IsBusy"
                   @onclick="@(async () => await SubmitAsync(isResubmit: true))">@R.ApprovalAction_Resubmit</button>
@@ -130,7 +130,7 @@ else
     if (!Field.IsLoaded) await Field.ReloadAsync();
   }
 
-  bool HasAnyAction => Field.CanApprove || Field.CanConfirm || Field.CanWithdraw || Field.CanResubmitNow;
+  bool HasAnyAction => Field.CanApprove || Field.CanConfirm || Field.CanWithdraw || Field.CanResubmit;
 
   bool ShowCommentBox => Field.Design.ShowComment;
 

@@ -169,12 +169,8 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             => !IsSubmitted && !string.IsNullOrEmpty(Design.OnBuildRoute);
 
         /// <summary>再申請ボタンを出せるか (再申請可能状態・申請者・OnBuildRoute 設定済み。表示制御用)。</summary>
-        public bool CanResubmitNow
+        public bool CanResubmit
             => ApprovalFlowStatusLogic.CanResubmit(FlowStatus) && IsApplicant && !string.IsNullOrEmpty(Design.OnBuildRoute);
-
-        /// <summary>経路の組み立てを開始する (スクリプト用)。</summary>
-        [ScriptName("NewRoute")]
-        public ApprovalRouteData NewRoute(string name) => new() { Name = name };
 
         /// <summary>申請する。経路は OnBuildRoute スクリプトが組み立てる (組み込み申請ボタンと同じ経路)。</summary>
         [ScriptName("Submit")]
@@ -199,19 +195,6 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             if (Module == null || string.IsNullOrEmpty(Design.OnBuildRoute)) return null;
             return await Module.ExecuteScriptAsync(Design.OnBuildRoute) as ApprovalRouteData;
         }
-
-        /// <summary>
-        /// 申請する (申請書の保存と同一トランザクション)。成功時は確定したレコードへ遷移する。
-        /// 経路はスクリプトで組み立てたものを渡す。
-        /// </summary>
-        [ScriptName("SubmitWithRoute")]
-        public async Task<ApprovalActionResult> SubmitWithRouteAsync(ApprovalRouteData route)
-            => await SubmitCoreAsync(route, isResubmit: false);
-
-        /// <summary>再申請する (却下・差し戻し・取り戻し後)。経路は再度組み立てて渡す。</summary>
-        [ScriptName("ResubmitWithRoute")]
-        public async Task<ApprovalActionResult> ResubmitWithRouteAsync(ApprovalRouteData route)
-            => await SubmitCoreAsync(route, isResubmit: true);
 
         /// <summary>承認する。</summary>
         [ScriptName("Approve")]
@@ -330,8 +313,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         }
 
         /// <summary>フロー・メンバー・履歴の表示データを読み込む (未申請なら何もしない)。</summary>
-        [ScriptName("Reload")]
-        public async Task ReloadAsync()
+        internal async Task ReloadAsync()
         {
             IsLoaded = true;
             ResetView();

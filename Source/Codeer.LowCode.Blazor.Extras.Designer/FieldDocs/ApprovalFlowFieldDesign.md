@@ -182,7 +182,7 @@ DDL は自動実行されないため、生成後にテーブルを作成する�
 // 経路の組み立て (プロパティ「経路組み立て」に設定。組み込みの申請/再申請ボタンが呼ぶ)
 ApprovalRouteData OnBuildRoute()
 {
-    var route = 承認.NewRoute("経費ルート");
+    var route = new ApprovalRouteData();
     var step1 = route.AddStep("課長承認");
     step1.AddMember(課長選択.Value, true);       // 解決済みユーザー Id を渡す
     var step2 = route.AddStep("経理回覧");
@@ -195,10 +195,6 @@ ApprovalRouteData OnBuildRoute()
 var result = 承認.Submit();                       // OnBuildRoute を呼んで申請 (保存と同一トランザクション)
 承認.Resubmit();                                  // 再申請 (差し戻し・取り下げ・却下後)
 if (!result.IsSuccess) Logger.Error(result.ErrorMessage);
-
-// 経路を自前で渡す形も可
-承認.SubmitWithRoute(route);
-承認.ResubmitWithRoute(route);
 
 // 経路マスタから読む。マスタはただのユーザー定義モジュール (契約なし・形は自由) で、
 // 承認フロー側はこのスクリプトが返す経路しか見ない。名指し / 役職や部署からの解決 / 決め打ちロジック、
@@ -226,7 +222,6 @@ ApprovalRouteData Load(string routeName)
     steps.OrderBy(s => s.StepNo.Value);
 
     var route = new ApprovalRouteData();
-    route.Name = master.RouteName.Value;
     foreach (var s in steps.Execute())
     {
         var step = route.AddStep(s.StepName.Value);
@@ -253,7 +248,6 @@ ApprovalRouteData Load(string routeName)
 承認.ReturnToStep(1, "課長からやり直し");        // ステップ設定の ReturnScope=AnyPreviousStep が必要
 承認.Withdraw("");                                // 取り下げ (承認が始まる前のみ)
 承認.Confirm("");
-承認.Reload();                                    // 表示データの再読込
 
 // 状態参照
 var status = 承認.FlowStatus;                     // "InProgress" 等 (未申請は空文字)
@@ -264,7 +258,7 @@ var submitted = 承認.IsSubmitted;
 承認ボタン.IsVisible = 承認.CanApprove;
 確認ボタン.IsVisible = 承認.CanConfirm;
 取り下げボタン.IsVisible = 承認.CanWithdraw;
-再申請ボタン.IsVisible = 承認.CanResubmitNow;
+再申請ボタン.IsVisible = 承認.CanResubmit;
 
 // 外付けボタンの OnClick は、アクション後の表示更新まで自分のスクリプトでやる。
 // 編集ロックのクライアント評価はページ読込時のデータ基準のため、その場では変わらない

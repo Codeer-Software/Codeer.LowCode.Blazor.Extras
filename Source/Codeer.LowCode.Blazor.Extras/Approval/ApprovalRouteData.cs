@@ -10,7 +10,6 @@ namespace Codeer.LowCode.Blazor.Extras.Approval
     /// </summary>
     public class ApprovalRouteData
     {
-        public string Name { get; set; } = string.Empty;
         public List<ApprovalStepData> Steps { get; set; } = new();
 
         /// <summary>ステップを追加して返す (流れるように書ける)。</summary>
