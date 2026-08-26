@@ -81,6 +81,10 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
         /// 呼び名から送信インフラを引き当てる。引き当てられないときは null + 理由
         /// (どちらの設定漏れなのかが分かる文言。送信経路はこれを失敗結果にして返す)。
         /// </summary>
+        /// <summary>呼び名の送信インフラの一斉送信上限。対応表に無ければ null (プレビューの注意表示用)。</summary>
+        internal int? TryGetMaxBulkCount(string mailInfraName)
+            => string.IsNullOrEmpty(mailInfraName) ? null : _senderFactory(mailInfraName)?.MaxBulkCount;
+
         IMailSender? FindSender(string mailInfraName, out string error)
         {
             //空を対応表に渡さない = アプリの対応表が「空 = 何かのインフラ」と解釈して
@@ -232,7 +236,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
         }
 
         //インジェクション対策: 変数値にはユーザー入力が入りうる
-        static MailBulkRecipient EncodeHtmlVariables(MailBulkRecipient recipient)
+        internal static MailBulkRecipient EncodeHtmlVariables(MailBulkRecipient recipient)
             => new()
             {
                 To = recipient.To,

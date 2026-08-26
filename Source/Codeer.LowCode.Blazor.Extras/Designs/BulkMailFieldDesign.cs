@@ -76,9 +76,9 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         [Designer(Index = 9, DisplayName = "$MailFieldIsFromCurrentUser")]
         public bool IsFromCurrentUser { get; set; }
 
-        /// <summary>ボタンの表示テキスト。空なら既定の文言。</summary>
-        [Designer(Index = 13, DisplayName = "$MailFieldButtonText")]
-        public string ButtonText { get; set; } = string.Empty;
+        /// <summary>送信ボタンの横にプレビューボタン (解決後の文面を HTML でダウンロード) を出すか。</summary>
+        [Designer(Index = 14, DisplayName = "$MailFieldShowPreviewButton")]
+        public bool ShowPreviewButton { get; set; } = true;
 
         public override string GetWebComponentTypeFullName() => typeof(BulkMailFieldComponent).FullName!;
 

@@ -29,7 +29,8 @@
    - 本文: `{Customer.Name.Value} 様\nご注文を受け付けました。`
 3. サーバーの `appsettings.json` に送信インフラの設定を書く (後述)
 
-これで詳細画面に「メールを送る」ボタンが現れ、押すとそのレコードの値でメールが送られます。
+これで詳細画面に送信アイコンのボタンが現れ、押すと確認ダイアログ (件名・宛先数) の後にそのレコードの値でメールが送られます。
+文字付きのボタンにしたい場合は ButtonField を置いてスクリプトから `フィールド名.Send()` を呼びます。
 `{変数}` は自レコードの値で置き換えられます (数値・日付はフィールドの書式で整形)。
 
 ### 一斉送信 (BulkMailField)
@@ -68,7 +69,7 @@
 | 自分を差出人にする | ON = 操作ユーザー本人のアドレス・表示名が差出人になる (サーバーが解決)。差出人アドレスの直接指定はできない (なりすまし防止)。ユーザーモジュールに**差出人契約**が必要 |
 | HTML本文 | 本文を HTML として送る |
 | メールインフラ名 | どの送信インフラで送るかの呼び名。**通常は空**にしてサーバー設定の既定を使う |
-| ボタンテキスト | 送信ボタンの文言 |
+| プレビューボタンを表示 | 送信アイコンの横にプレビュー (HTML ダウンロード) を出す (既定 ON) |
 
 - 宛先 (値か変数) と、件名・本文のどちらかは必須 (デザインチェックが検証)
 - 変数はデザインチェックで存在検証され、フィールドのリネームに追従します
@@ -95,7 +96,7 @@ ReceiptMail.Send();                                        // 添付は送信後
 |---|---|
 | 宛先リスト | 同一モジュール上の List / DetailList / TileList のフィールド名。その先のモジュールに**一斉送信の宛先契約**が必要 |
 | 件名 / 件名変数、本文 / 本文変数 | MailField と同じ規則。`{変数}` は**宛先行**で解決される (`{Contact.Name.Value}` のようなリンクパス可) |
-| 自分を差出人にする / HTML本文 / 返信先 / メールインフラ名 / ボタンテキスト | MailField と同じ |
+| 自分を差出人にする / HTML本文 / 返信先 / メールインフラ名 / プレビューボタンを表示 | MailField と同じ |
 
 動作:
 
@@ -124,6 +125,21 @@ ReceiptMail.Send();                                        // 添付は送信後
 
 スクリプトからは `Send()` (確認ダイアログなし・戻り値 `MailSendResult`) が使えます。
 
+### プレビュー (送らずに「送るとこうなる」を確認する)
+
+MailField / BulkMailField の送信ボタンの横に **プレビュー** ボタンがあり (プロパティ「プレビューボタンを表示」で非表示にできます)、
+押すと**自己完結の HTML ファイル**がダウンロードされます。ブラウザで開くだけで、外部への通信はしません。
+文面と宛先の解決は**送信と同じサーバー経路**なので、プレビューと実際の送信内容は一致します。
+
+- **単発 (MailField)**: 差出人 (「自分を差出人にする」の解決結果) / To / Cc / Bcc / 返信先 / 添付 / 件名 / 本文を 1 枚で表示
+- **一斉 (BulkMailField)**: 左に宛先一覧、右に選んだ宛先で解決した件名・本文。**除外された行も理由付き** (配信停止 / アドレスなし) で一覧に残り、
+  「除外のみ」の絞り込み・検索・キーボード移動 (↑↓、`n` = 次の除外) ができます。1 万件でも軽く動きます
+- **変数ハイライト**: テンプレートの `{変数}` が入った箇所に色が付き、原文の変数名がツールチップで見えます (空になった変数は「(空)」と表示)
+- HTML 本文は sandbox 内で描画。「ソースを表示」で切替
+- 一覧に人の名前を出すには、宛先契約の任意役割 **DisplayName** (例: `Contact.Name.Value`) を設定します
+- 一斉送信のプレビューは保存済みの内容 (テンプレート・名簿) で作られます。未保存の変更は反映されません
+- スクリプトからは `フィールド名.Preview()` で同じ HTML をダウンロードできます
+
 ### 契約フィールド (どの値を使うかの宣言)
 
 UI もデータも持たない「宣言用」のフィールドです。役割 → フィールド (変数) の対応を宣言します。
@@ -132,7 +148,7 @@ UI もデータも持たない「宣言用」のフィールドです。役割 �
 | 契約 | 置く先 | 役割 | 使う機能 |
 |---|---|---|---|
 | **差出人契約** (MailSenderContractField) | 現在のユーザーのモジュール (AppUser 等) | Email (必須) / DisplayName | 「自分を差出人にする」、Gmail トークン検索 |
-| **一斉送信の宛先契約** (BulkMailRecipientContractField) | 一斉送信の宛先リストが指すモジュール | Email (必須) / OptOut | BulkMailField の宛先解決 |
+| **一斉送信の宛先契約** (BulkMailRecipientContractField) | 一斉送信の宛先リストが指すモジュール | Email (必須) / OptOut / DisplayName | BulkMailField の宛先解決・プレビューの一覧表示 |
 | **メール履歴契約** (MailHistoryContractField) | 送信履歴モジュール | SentAt (必須) / MailInfraName / Subject / TotalCount / SuccessCount / FailureDetails / SourceModule / SourceId / Details | 送信履歴の記録 |
 | **メール送信明細契約** (MailHistoryDetailContractField) | 送信明細モジュール (履歴の Details 一覧の参照先) | History (必須) / To (必須) / Subject / Body / IsSuccess / Error | 宛先ごとの明細 (任意) |
 
@@ -197,10 +213,10 @@ Gmail では「管理者権限なしで本人名義で送る」ために本人�
 
 新しいアプリテンプレートには最初から入っています。既存アプリに足す場合の要点:
 
-- `MailController` — `MailTransport.SendMailEndPoint` (`/api/mail`) と `BulkSearchMailEndPoint` (`/api/mail/bulk_search`) の受け口
+- `MailController` — `MailTransport.SendMailEndPoint` (`/api/mail`) / `BulkSearchMailEndPoint` (`/api/mail/bulk_search`) / `PreviewMailEndPoint` (`/api/mail/preview`) / `BulkPreviewMailEndPoint` (`/api/mail/bulk_preview`) の受け口 (プレビューは `MailPreviewBuilder` が HTML を作る)
 - `MailSenderTable` — 呼び名 → `IMailSender` の対応表
 - `CustomizedModuleDataIO` — GmailTokenField を使う場合、保存前に `GmailTokenHelper.ProtectGmailTokens(...)` を呼ぶ (トークンの暗号化)
-- クライアント起動時: `MailTransport.SendMailEndPoint` / `BulkSearchMailEndPoint` に URL を設定
+- クライアント起動時: `MailTransport.SendMailEndPoint` / `BulkSearchMailEndPoint` / `PreviewMailEndPoint` / `BulkPreviewMailEndPoint` に URL を設定
 
 ### デザインチェックで検出されるもの
 

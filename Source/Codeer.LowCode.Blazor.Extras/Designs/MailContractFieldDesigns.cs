@@ -63,8 +63,12 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         [Designer(Index = 4, CandidateType = CandidateType.Variable, DisplayName = "$BulkMailRecipientContractOptOut")]
         public string OptOut { get; set; } = string.Empty;
 
+        /// <summary>宛先の表示名 (任意。プレビューの一覧で人を見分けるため)。"Name.Value" / リンクパス "Contact.Name.Value"。空 = アドレスだけ。</summary>
+        [Designer(Index = 5, CandidateType = CandidateType.Variable, DisplayName = "$BulkMailRecipientContractDisplayName")]
+        public string DisplayName { get; set; } = string.Empty;
+
         private protected override HashSet<string> VariableRoleNames
-            => new() { nameof(Email), nameof(OptOut) };
+            => new() { nameof(Email), nameof(OptOut), nameof(DisplayName) };
 
         //アドレスだけ必須。配信停止は空にすれば判定しない
         private protected override HashSet<string> RequiredRoleNames => new() { nameof(Email) };

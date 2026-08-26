@@ -51,7 +51,7 @@
 | IsFromCurrentUser | bool | - | ON = 操作ユーザー本人のアドレスが差出人 (サーバーが解決)。OFF = 送信インフラ設定の差出人。**差出人のアドレス指定はできない** (なりすましの構造的排除)。要: 現在のユーザーのモジュールに**差出人契約 (MailSenderContractField)** |
 | ReplyToVariable | string | - | 返信先アドレスの変数 (自モジュールの変数・リンクパス可)。ReplyTo (値) が入っている場合はそちらが優先 |
 | ReplyTo | string | - | 返信先アドレス (値) |
-| ButtonText | string | - | ボタンの表示テキスト。空なら既定の文言 |
+| ShowPreviewButton | bool | - | 送信ボタンの横に「プレビュー」を出す (既定 true)。押すと左に宛先一覧 (除外行も理由付き)・右に宛先ごとに解決した件名/本文 (変数ハイライト) の自己完結 HTML をダウンロードする。宛先の解決は送信と同じサーバー経路。保存済みの内容で作られる。サーバーの MailTransport.BulkPreviewMailEndPoint が必要 |
 
 件名・本文などの「変数 / 値」ペアは**値が入っていれば値、空なら変数**です (MailField と同じ規則)。
 どちらも空のままだとデザインチェックが知らせます。
@@ -98,6 +98,7 @@
 
 - `Send()` … 送信を実行し `MailSendResult` を返す。確認ダイアログ・トーストは出さない
   (呼び出し側で MessageBox 等を使って制御する)。未保存の変更があると失敗を返す
+- `Preview()` … 送らずにプレビュー HTML をダウンロードする (プレビューボタンと同じ)。未保存なら失敗
 
 一斉送信の入口はこのフィールドに一本化されています。単発送信 (個別の宛先へスクリプトから送る)
 は MailField を使います (値プロパティをスクリプトから設定すれば動的送信も可能)。
@@ -106,5 +107,6 @@
 
 ### CSS カスタマイズ
 
-Bootstrap のボタン (`btn btn-outline-primary`、封筒アイコン + テキスト) として描画されます。
-`data-system="bulk-mail"` 属性を持ちます。最終送信結果は `form-text` で表示されます。
+Bootstrap のボタングループ (`btn-group`、アイコンのみ) として描画されます: 送信 (`btn btn-outline-primary`、送信アイコン。件数の確認ダイアログ付き) と、
+その右にプレビュー (ダウンロードアイコン。ShowPreviewButton=false で非表示)。文字付きのボタンにしたい場合は ButtonField を置いてスクリプトから `Send()` / `Preview()` を呼びます。
+`data-system="bulk-mail"` 属性を持ちます。

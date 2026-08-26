@@ -95,6 +95,58 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             return await SendCoreAsync(listField) ?? MailSendResult.Failure(string.Empty, "Sending is already in progress.");
         }
 
+        /// <summary>
+        /// 送信せずに「送るとこうなる」を HTML でダウンロードする (左: 宛先一覧 (除外理由付き)・右: 宛先ごとに解決した本文)。
+        /// 宛先の解決は送信と同じサーバー経路。未保存の内容 (テンプレート・名簿) は反映されないので保存してから使う。
+        /// サーバー側のプレビュー対応 (MailTransport.BulkPreviewMailEndPoint) が必要。
+        /// </summary>
+        [ScriptName("Preview")]
+        public async Task<bool> PreviewAsync()
+        {
+            if (Services.AppInfoService.IsDesignMode || Module == null) return false;
+            if (Module.IsNewData || Module.IsModified)
+            {
+                await Services.UIService.NotifyError(Properties.Resources.MailPreviewSaveBeforePreview);
+                return false;
+            }
+            var listField = Module.GetField<ListField>(Design.RecipientListFieldName);
+            if (listField?.GetSearchCondition() == null)
+            {
+                await Services.UIService.NotifyError(Properties.Resources.BulkMailTargetListInvalid);
+                return false;
+            }
+            var html = await MailTransport.PreviewBulkSearchAsync(Services.Provider?.GetService<IHttpService>(), BuildRequest(listField));
+            if (html == null)
+            {
+                await Services.UIService.NotifyError(Properties.Resources.MailPreviewFailed);
+                return false;
+            }
+            await Services.UIService.DownloadFile(new MemoryStream(html), $"bulk-mail-preview-{Design.Name}.html");
+            return true;
+        }
+
+        //送信要求を組み立てる (送信とプレビューで共有 = 同じ宛先解決になる)
+        MailBulkSearchRequest BuildRequest(ListField listField)
+        {
+            //リストの検索条件に合致する全行を対象にする(表示中のページ・列に縛られない)
+            var condition = listField.GetSearchCondition()!;
+            condition.LimitCount = null;
+            condition.SelectFields = new(); //必要列はサーバーがテンプレ変数から組み直す
+
+            return new MailBulkSearchRequest
+            {
+                MailInfraName = Design.MailInfraName,
+                IsFromCurrentUser = Design.IsFromCurrentUser,
+                Subject = ResolveValueFirst(Design.Subject, Design.SubjectVariable),
+                Body = ResolveValueFirst(Design.Body, Design.BodyVariable),
+                IsBodyHtml = Design.IsBodyHtml,
+                ReplyTo = ResolveValueFirst(Design.ReplyTo, Design.ReplyToVariable),
+                Condition = condition,
+                SourceModule = Module!.Design.Name,
+                SourceId = Module.GetIdText(),
+            };
+        }
+
         async Task<MailSendResult?> SendCoreAsync(ListField listField)
         {
             if (_isSending) return null;
@@ -102,26 +154,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             NotifyStateChanged();
             try
             {
-                //リストの検索条件に合致する全行を対象にする(表示中のページ・列に縛られない)
-                var condition = listField.GetSearchCondition()!;
-                condition.LimitCount = null;
-                condition.SelectFields = new(); //必要列はサーバーがテンプレ変数から組み直す
-
-                var subject = ResolveValueFirst(Design.Subject, Design.SubjectVariable);
-                var body = ResolveValueFirst(Design.Body, Design.BodyVariable);
-
-                var request = new MailBulkSearchRequest
-                {
-                    MailInfraName = Design.MailInfraName,
-                    IsFromCurrentUser = Design.IsFromCurrentUser,
-                    Subject = subject,
-                    Body = body,
-                    IsBodyHtml = Design.IsBodyHtml,
-                    ReplyTo = ResolveValueFirst(Design.ReplyTo, Design.ReplyToVariable),
-                    Condition = condition,
-                    SourceModule = Module!.Design.Name,
-                    SourceId = Module.GetIdText(),
-                };
+                var request = BuildRequest(listField);
                 var result = await MailTransport.SendBulkSearchAsync(Services.Provider?.GetService<IHttpService>(), request);
                 await MailSendLogger.LogFailuresAsync(Services, result);
                 return result;

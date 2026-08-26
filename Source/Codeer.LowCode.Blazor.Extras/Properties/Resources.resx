@@ -534,11 +534,16 @@
   <data name="MailFieldFromDisplayName" xml:space="preserve">
     <value>From Display Name</value>
   </data>
-  <data name="MailFieldDefaultButtonText" xml:space="preserve">
-    <value>Send Mail</value>
-  </data>
   <data name="MailFieldSentToast" xml:space="preserve">
     <value>The mail has been sent.</value>
+  </data>
+  <data name="MailFieldSendButtonTitle" xml:space="preserve">
+    <value>Send</value>
+  </data>
+  <data name="MailFieldConfirmSendFormat" xml:space="preserve">
+    <value>Send this mail?
+Subject: {0}
+Recipients: {1}</value>
   </data>
   <data name="MailFieldSendFailedFormat" xml:space="preserve">
     <value>Failed to send the mail: {0}</value>
@@ -606,6 +611,18 @@
   <data name="BulkMailRecipientContractOptOut" xml:space="preserve">
     <value>Opt Out</value>
   </data>
+  <data name="BulkMailRecipientContractDisplayName" xml:space="preserve">
+    <value>Display Name (for preview list)</value>
+  </data>
+  <data name="MailFieldPreviewButtonText" xml:space="preserve">
+    <value>Download preview as HTML (nothing is sent)</value>
+  </data>
+  <data name="MailPreviewFailed" xml:space="preserve">
+    <value>Could not create the preview (the server must support mail preview).</value>
+  </data>
+  <data name="MailPreviewSaveBeforePreview" xml:space="preserve">
+    <value>Save the record before previewing.</value>
+  </data>
   <data name="MailHistoryContractSentAt" xml:space="preserve">
     <value>Sent At (required)</value>
   </data>
@@ -657,8 +674,8 @@
   <data name="BulkMailRecipientListFieldName" xml:space="preserve">
     <value>Recipient List</value>
   </data>
-  <data name="MailFieldButtonText" xml:space="preserve">
-    <value>Button Text</value>
+  <data name="MailFieldShowPreviewButton" xml:space="preserve">
+    <value>Show Preview Button</value>
   </data>
   <data name="BulkMailRecipientListFieldRequired" xml:space="preserve">
     <value>Set the recipient list field.</value>
@@ -683,9 +700,6 @@
   </data>
   <data name="BulkMailSentWithFailuresFormat" xml:space="preserve">
     <value>Sent {0} of {1} mails. Check the log for failures.</value>
-  </data>
-  <data name="BulkMailDefaultButtonText" xml:space="preserve">
-    <value>Send Bulk Mail</value>
   </data>
   <data name="ApprovalFlowField" xml:space="preserve">
     <value>Approval Flow</value>

@@ -78,8 +78,9 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         public bool IsBodyHtml { get; set; }
 
         /// <summary>レイアウトに置いたときの送信ボタンの表示テキスト。空なら既定の文言。</summary>
-        [Designer(Index = 16, DisplayName = "$MailFieldButtonText")]
-        public string ButtonText { get; set; } = string.Empty;
+        /// <summary>送信ボタンの横にプレビューボタン (解決後の文面を HTML でダウンロード) を出すか。</summary>
+        [Designer(Index = 17, DisplayName = "$MailFieldShowPreviewButton")]
+        public bool ShowPreviewButton { get; set; } = true;
 
         /// <summary>返信先アドレスの変数 (リンクパス可)。ReplyTo (値) が入っている場合はそちらが優先。</summary>
         [Designer(Index = 13, CandidateType = CandidateType.Variable, DisplayName = "$MailFieldReplyToVariable")]

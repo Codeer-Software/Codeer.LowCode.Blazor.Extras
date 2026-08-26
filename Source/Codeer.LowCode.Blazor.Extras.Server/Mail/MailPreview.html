@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mail Preview</title>
+<style>
+  :root { --bg:#f6f7f9; --panel:#fff; --line:#dde1e6; --text:#1f2328; --muted:#6b7280; --ok:#1a7f37; --ng:#b42318; --mark:#fff3b0; --sel:#e8f0fe; }
+  * { box-sizing:border-box; }
+  html, body { margin:0; height:100%; background:var(--bg); color:var(--text); font:14px/1.6 -apple-system, "Segoe UI", "Yu Gothic UI", "Hiragino Sans", Meiryo, sans-serif; }
+  body { display:flex; flex-direction:column; overflow:hidden; }
+  header { flex:none; background:var(--panel); border-bottom:1px solid var(--line); padding:10px 16px; }
+  header h1 { font-size:16px; margin:0 0 4px; }
+  header .meta { color:var(--muted); font-size:12px; display:flex; gap:16px; flex-wrap:wrap; }
+  header .summary { margin-top:6px; display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
+  .badge { display:inline-block; padding:1px 8px; border-radius:10px; font-size:12px; border:1px solid var(--line); background:#fff; }
+  .badge.ok { color:var(--ok); border-color:#b7e1c1; background:#ecfdf0; }
+  .badge.ng { color:var(--ng); border-color:#f3c2bd; background:#fef2f0; }
+  .warn { margin-top:6px; color:#8a5a00; background:#fff8e1; border:1px solid #f1d38a; padding:6px 10px; border-radius:6px; font-size:13px; }
+  .note { color:var(--muted); font-size:12px; }
+  .chips button { border:1px solid var(--line); background:#fff; border-radius:12px; padding:2px 10px; margin-right:4px; cursor:pointer; font-size:12px; }
+  .chips button.active { background:var(--text); color:#fff; border-color:var(--text); }
+  input[type=search] { border:1px solid var(--line); border-radius:6px; padding:3px 8px; font-size:13px; width:220px; }
+  main { flex:1; min-height:0; }
+  main.bulk { display:grid; grid-template-columns:340px 1fr; }
+  main.single { overflow:auto; padding:16px; }
+  .list { border-right:1px solid var(--line); background:var(--panel); overflow:auto; position:relative; outline:none; }
+  .list .spacer { position:relative; }
+  .row { position:absolute; left:0; right:0; height:44px; padding:4px 10px; border-bottom:1px solid #eef0f3; cursor:pointer; display:flex; gap:8px; align-items:center; }
+  .row:hover { background:#f3f4f6; }
+  .row.selected { background:var(--sel); }
+  .row .st { width:16px; text-align:center; font-weight:bold; }
+  .row .st.ok { color:var(--ok); } .row .st.ng { color:var(--ng); }
+  .row .who { flex:1; min-width:0; }
+  .row .name { font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .row .addr { font-size:12px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .row .why { font-size:11px; color:var(--ng); white-space:nowrap; }
+  .detail { overflow:auto; padding:16px; }
+  .mail { background:var(--panel); border:1px solid var(--line); border-radius:8px; max-width:960px; margin:0 auto; }
+  .mail .hdr { padding:12px 16px; border-bottom:1px solid var(--line); display:grid; grid-template-columns:90px 1fr; gap:4px 8px; font-size:13px; }
+  .mail .hdr .k { color:var(--muted); }
+  .mail .hdr .subject { font-size:15px; font-weight:600; }
+  .mail .excl { padding:8px 16px; background:#fef2f0; color:var(--ng); border-bottom:1px solid #f3c2bd; font-size:13px; }
+  .mail .tools { padding:6px 16px; border-bottom:1px solid var(--line); display:flex; gap:8px; align-items:center; font-size:12px; color:var(--muted); }
+  .mail .tools button { border:1px solid var(--line); background:#fff; border-radius:6px; padding:2px 8px; cursor:pointer; font-size:12px; }
+  .mail .tools button.active { background:var(--text); color:#fff; border-color:var(--text); }
+  .body { padding:16px; white-space:pre-wrap; word-break:break-word; min-height:120px; }
+  .body.src { font-family:Consolas, "Courier New", monospace; font-size:12px; }
+  iframe.html { width:100%; min-height:480px; border:0; }
+  mark { background:var(--mark); padding:0 1px; border-bottom:1px dotted #c9a800; }
+  mark.empty::before { content:"(空)"; color:#b42318; font-size:11px; }
+  .empty { padding:40px; text-align:center; color:var(--muted); }
+  .kbd { font-family:Consolas, monospace; background:#eef0f3; border-radius:3px; padding:0 4px; }
+</style>
+</head>
+<body>
+<header>
+  <h1 id="title"></h1>
+  <div class="meta" id="meta"></div>
+  <div class="summary" id="summary"></div>
+  <div class="warn" id="warn" hidden></div>
+</header>
+<main id="main"></main>
+
+<script id="data" type="application/json">/*__PREVIEW_DATA__*/</script>
+<script>
+(function () {
+  const doc = JSON.parse(document.getElementById('data').textContent);
+  const $ = (s, p) => (p || document).querySelector(s);
+  const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+  const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const reason = r => r === 'OptOut' ? '配信停止' : r === 'NoAddress' ? 'アドレスなし' : '';
+  let highlight = true, showSource = false;
+
+  // ---- header ----
+  $('#title').textContent = (doc.kind === 'bulk' ? '一斉送信プレビュー: ' : 'メールプレビュー: ') + (doc.title || '');
+  const meta = $('#meta');
+  meta.append(el('span', '', '生成 ' + doc.generatedAt));
+  if (doc.mailInfraName) meta.append(el('span', '', '送信インフラ: ' + doc.mailInfraName));
+  meta.append(el('span', '', '差出人: ' + (doc.isFromCurrentUser
+    ? (doc.from ? (doc.fromDisplayName ? doc.fromDisplayName + ' <' + doc.from + '>' : doc.from) + ' (自分を差出人にする)' : '(操作ユーザーを解決できません)')
+    : '送信インフラの既定の差出人')));
+  if (doc.replyTo) meta.append(el('span', '', '返信先: ' + doc.replyTo));
+  if (doc.attachments && doc.attachments.length) meta.append(el('span', '', '添付: ' + doc.attachments.join(', ')));
+  meta.append(el('span', 'note', 'これはプレビューです。メールは送信していません。'));
+  if (doc.subjectTemplate) meta.append(el('span', '', '件名テンプレート: ' + doc.subjectTemplate));
+  if (doc.warning) { $('#warn').textContent = doc.warning; $('#warn').hidden = false; }
+
+  // ---- body rendering with highlight ----
+  function renderText(text, spans) {
+    if (!highlight || !spans || !spans.length) return esc(text);
+    let out = '', pos = 0;
+    spans.slice().sort((a, b) => a.start - b.start).forEach(sp => {
+      if (sp.start < pos) return;
+      out += esc(text.slice(pos, sp.start));
+      const v = text.slice(sp.start, sp.start + sp.length);
+      out += '<mark class="' + (v ? '' : 'empty') + '" title="{' + esc(sp.name) + '}">' + esc(v) + '</mark>';
+      pos = sp.start + sp.length;
+    });
+    return out + esc(text.slice(pos));
+  }
+
+  function renderMail(item) {
+    const m = el('div', 'mail');
+    const hdr = el('div', 'hdr');
+    const add = (k, v, cls) => { hdr.append(el('div', 'k', k)); const d = el('div', cls || ''); d.innerHTML = v; hdr.append(d); };
+    add('To', esc(item.to || '(なし)'));
+    if (item.cc && item.cc.length) add('Cc', esc(item.cc.join(', ')));
+    if (item.bcc && item.bcc.length) add('Bcc', esc(item.bcc.join(', ')));
+    add('件名', renderText(item.subject, item.subjectSpans), 'subject');
+    m.append(hdr);
+    if (item.excluded) m.append(el('div', 'excl', 'この宛先には送信されません: ' + reason(item.excluded) + ' (以下は参考の解決結果)'));
+
+    const tools = el('div', 'tools');
+    const bh = el('button', highlight ? 'active' : '', '変数ハイライト');
+    bh.onclick = () => { highlight = !highlight; show(current); };
+    tools.append(bh);
+    if (doc.isBodyHtml) {
+      const bs = el('button', showSource ? 'active' : '', showSource ? 'HTML 表示に戻す' : 'ソースを表示');
+      bs.onclick = () => { showSource = !showSource; show(current); };
+      tools.append(bs);
+    }
+    const bc = el('button', '', '本文をコピー');
+    bc.onclick = () => navigator.clipboard && navigator.clipboard.writeText(item.body || '');
+    tools.append(bc);
+    tools.append(el('span', '', '本文 ' + (item.body || '').length + ' 文字'));
+    m.append(tools);
+
+    if (doc.isBodyHtml && !showSource) {
+      const f = el('iframe', 'html');
+      f.setAttribute('sandbox', '');
+      f.srcdoc = item.body || '';
+      f.onload = () => { try { f.style.height = Math.max(480, f.contentDocument.documentElement.scrollHeight + 20) + 'px'; } catch (e) {} };
+      m.append(f);
+    } else {
+      const b = el('div', 'body' + (doc.isBodyHtml ? ' src' : ''));
+      b.innerHTML = renderText(item.body, item.bodySpans);
+      m.append(b);
+    }
+    return m;
+  }
+
+  // ---- single ----
+  const main = $('#main');
+  let current = 0;
+  if (doc.kind !== 'bulk') {
+    main.className = 'single';
+    $('#summary').append(el('span', 'badge ok', '送信対象 1 件'));
+    const show0 = () => { main.innerHTML = ''; main.append(renderMail(doc.items[0])); };
+    window.show = show0; show0();
+    return;
+  }
+
+  // ---- bulk: summary / filter / search ----
+  const summary = $('#summary');
+  summary.append(el('span', 'badge', '対象 ' + doc.total + ' 件'));
+  summary.append(el('span', 'badge ok', '✔ 送信 ' + doc.sendCount));
+  const excluded = doc.total - doc.sendCount;
+  summary.append(el('span', 'badge ng', '✖ 除外 ' + excluded + ' (配信停止 ' + doc.excludedByOptOut + ' / アドレスなし ' + doc.excludedByNoAddress + ')'));
+  const chips = el('span', 'chips');
+  let filter = 'all', query = '';
+  [['all', '全部'], ['send', '送信のみ'], ['excluded', '除外のみ']].forEach(([k, label]) => {
+    const b = el('button', k === filter ? 'active' : '', label);
+    b.onclick = () => { filter = k; chips.querySelectorAll('button').forEach(x => x.classList.toggle('active', x === b)); refresh(); };
+    chips.append(b);
+  });
+  summary.append(chips);
+  const search = el('input'); search.type = 'search'; search.placeholder = '名前・アドレスで検索 ( / )';
+  search.oninput = () => { query = search.value.trim().toLowerCase(); refresh(); };
+  summary.append(search);
+  summary.append(el('span', 'note', '↑↓ 移動 / n 次の除外 / Enter で本文へ'));
+
+  main.className = 'bulk';
+  const list = el('div', 'list'); list.tabIndex = 0;
+  const spacer = el('div', 'spacer');
+  list.append(spacer);
+  const detail = el('div', 'detail');
+  main.append(list, detail);
+
+  const ROW = 44;
+  let visible = [];
+  function refresh() {
+    visible = [];
+    doc.items.forEach((it, i) => {
+      if (filter === 'send' && it.excluded) return;
+      if (filter === 'excluded' && !it.excluded) return;
+      if (query && !((it.displayName || '').toLowerCase().includes(query) || (it.to || '').toLowerCase().includes(query))) return;
+      visible.push(i);
+    });
+    spacer.style.height = (visible.length * ROW) + 'px';
+    if (!visible.includes(current)) current = visible.length ? visible[0] : -1;
+    renderRows(); show(current);
+  }
+  function renderRows() {
+    spacer.innerHTML = '';
+    const first = Math.max(0, Math.floor(list.scrollTop / ROW) - 5);
+    const last = Math.min(visible.length, Math.ceil((list.scrollTop + list.clientHeight) / ROW) + 5);
+    for (let v = first; v < last; v++) {
+      const i = visible[v], it = doc.items[i];
+      const r = el('div', 'row' + (i === current ? ' selected' : ''));
+      r.style.top = (v * ROW) + 'px';
+      r.append(el('span', 'st ' + (it.excluded ? 'ng' : 'ok'), it.excluded ? '✖' : '✔'));
+      const who = el('div', 'who');
+      who.append(el('div', 'name', it.displayName || it.to || '(アドレスなし)'));
+      who.append(el('div', 'addr', it.displayName ? (it.to || '(アドレスなし)') : ''));
+      r.append(who);
+      if (it.excluded) r.append(el('span', 'why', reason(it.excluded)));
+      r.onclick = () => { current = i; renderRows(); show(i); };
+      spacer.append(r);
+    }
+  }
+  function show(i) {
+    detail.innerHTML = '';
+    if (i < 0 || !doc.items[i]) { detail.append(el('div', 'empty', '該当する宛先がありません')); return; }
+    detail.append(renderMail(doc.items[i]));
+  }
+  function move(delta) {
+    const v = visible.indexOf(current);
+    const nv = Math.min(visible.length - 1, Math.max(0, v + delta));
+    if (nv < 0) return;
+    current = visible[nv]; renderRows(); show(current);
+    const top = nv * ROW;
+    if (top < list.scrollTop) list.scrollTop = top;
+    else if (top + ROW > list.scrollTop + list.clientHeight) list.scrollTop = top + ROW - list.clientHeight;
+  }
+  function nextExcluded() {
+    const v = visible.indexOf(current);
+    for (let k = v + 1; k < visible.length; k++) if (doc.items[visible[k]].excluded) { move(k - v); return; }
+  }
+  list.addEventListener('scroll', renderRows);
+  window.addEventListener('resize', renderRows);
+  document.addEventListener('keydown', e => {
+    if (e.target === search) { if (e.key === 'Escape') { search.blur(); } return; }
+    if (e.key === 'ArrowDown') { e.preventDefault(); move(1); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); move(-1); }
+    else if (e.key === 'n') nextExcluded();
+    else if (e.key === '/') { e.preventDefault(); search.focus(); }
+    else if (e.key === 'Enter') detail.focus();
+  });
+  window.show = show;
+  refresh();
+  list.focus({ preventScroll: true });
+})();
+</script>
+</body>
+</html>
