@@ -427,7 +427,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
                         StepNo = stepNo,
                         //StepName is optional: fall back to the step number
                         StepName = GetStringOrDefault(member, MemberNames.StepName, stepNo.ToString()),
-                        StepType = GetString(member, MemberNames.StepType) ?? ApprovalStepType.Approval.ToDesignValue(),
+                        StepType = GetStringOrDefault(member, MemberNames.StepType, ApprovalMemberDefaults.StepType),
                         IsCurrent = FlowStatus == ApprovalFlowStatus.InProgress.ToDesignValue() && stepNo == CurrentStepNo,
                     };
                     Steps.Add(step);

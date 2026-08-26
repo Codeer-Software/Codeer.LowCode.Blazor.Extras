@@ -39,7 +39,7 @@
    ```
 
 4. 申請書の「データによる認可 (書き込み)」に編集ロック条件を設定 (未申請 / 差し戻し / 取り下げ / 却下のときだけ書ける)
-5. 申請種別 enum `ApprovalRequestType` に申請書モジュールを追加 (一覧の「開く」で使う)
+5. 承認対象モジュール enum `ApprovalTargetModule` に申請書モジュールを追加 (名前 = モジュール名 / 表示 = 申請書の名前。一覧の「申請種別」列でモジュール名を読み替えるためのもので、無くても承認は動く)
 
 これで詳細画面に「申請」ボタンが現れ、申請後はステッパー・承認ボタン・コメント・履歴が表示されます。
 
@@ -176,7 +176,7 @@ Rejected / Returned / Withdrawn からは申請書を編集して**再申請**�
 | 契約 | 必須の役割 | 任意の役割 (空 = 使わない) |
 |---|---|---|
 | フロー契約 | Status / TargetModuleName / TargetId / Applicant / AttemptNo / CurrentStepNo / Members / Histories | — |
-| メンバー契約 | Flow / AttemptNo / StepNo / StepType / ApproverUser / Status | StepName / IsFinalStep / ActedAt (表示用。空なら書かない)、CompletionPolicy / ReturnScope / IsCommentRequiredOnReject / IsRequired (空ならそれぞれ RequiredMembers / ApplicantOnly / false / true で動く)、TurnNotifyMail |
+| メンバー契約 | Flow / AttemptNo / StepNo / ApproverUser / Status | StepName / IsFinalStep / ActedAt (表示用。空なら書かない)、StepType / CompletionPolicy / ReturnScope / IsCommentRequiredOnReject / IsRequired (空ならそれぞれ Approval / RequiredMembers / ApplicantOnly / false / true で動く)、TurnNotifyMail |
 | 履歴契約 | Flow | AttemptNo / Action / ActorUser / Comment / ActedAt (空なら記録しない) |
 
 任意の役割を空にすると、その列を持たない小さな構成にできます。ポリシー系を空にした場合、経路スクリプトで
@@ -229,6 +229,6 @@ var r = 承認.Submit();          if (!r.IsSuccess) Logger.Error(r.ErrorMessage)
 ```
 
 - 生成物: ApprovalFlow / ApprovalFlowMember / ApprovalHistory、MyApprovalList / ApprovalStatusList、
-  経路マスタ 3 モジュール (`--route standard` のとき)、申請種別 enum `ApprovalRequestType`、PageFrame のリンク、DDL
+  経路マスタ 3 モジュール (`--route standard` のとき)、承認対象モジュール enum `ApprovalTargetModule`、PageFrame のリンク、DDL
 - 冪等: 既にあるモジュールは生成しません (承認モジュール群は 1 セットを全申請書で共有)
 - 通知メールを含める場合は、先に **メールのセットアップ** を実行しておきます

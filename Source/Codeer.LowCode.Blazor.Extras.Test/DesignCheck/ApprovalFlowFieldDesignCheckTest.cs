@@ -272,7 +272,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.DesignCheck
             var contract = member.Fields.OfType<ApprovalMemberContractFieldDesign>().First();
             var optional = new[]
             {
-                nameof(contract.StepName), nameof(contract.CompletionPolicy), nameof(contract.IsCommentRequiredOnReject),
+                nameof(contract.StepName), nameof(contract.StepType), nameof(contract.CompletionPolicy), nameof(contract.IsCommentRequiredOnReject),
                 nameof(contract.ReturnScope), nameof(contract.IsRequired), nameof(contract.IsFinalStep), nameof(contract.ActedAt),
                 nameof(contract.TurnNotifyMail),
             };
@@ -285,7 +285,6 @@ namespace Codeer.LowCode.Blazor.Extras.Test.DesignCheck
             member.Fields.Add(new LinkFieldDesign { Name = "Flow", DbColumn = "flow" });
             member.Fields.Add(new NumberFieldDesign { Name = "AttemptNo", DbColumn = "attempt_no" });
             member.Fields.Add(new NumberFieldDesign { Name = "StepNo", DbColumn = "step_no" });
-            member.Fields.Add(new SelectFieldDesign { Name = "StepType", DbColumn = "step_type" });
             member.Fields.Add(new LinkFieldDesign { Name = "ApproverUser", DbColumn = "approver_user" });
             member.Fields.Add(new SelectFieldDesign { Name = "Status", DbColumn = "status" });
 

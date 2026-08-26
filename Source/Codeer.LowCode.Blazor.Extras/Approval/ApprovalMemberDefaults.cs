@@ -1,4 +1,4 @@
-using Codeer.LowCode.Blazor.DesignLogic;
+﻿using Codeer.LowCode.Blazor.DesignLogic;
 
 namespace Codeer.LowCode.Blazor.Extras.Approval
 {
@@ -8,6 +8,9 @@ namespace Codeer.LowCode.Blazor.Extras.Approval
     /// </summary>
     public static class ApprovalMemberDefaults
     {
+        /// <summary>ステップ種別: 承認 (回覧の概念を持たないアプリ)。</summary>
+        public static readonly string StepType = ApprovalStepType.Approval.ToDesignValue();
+
         /// <summary>ステップ完了条件: 必須メンバー全員承認。</summary>
         public static readonly string CompletionPolicy = ApprovalCompletionPolicy.RequiredMembers.ToDesignValue();
 

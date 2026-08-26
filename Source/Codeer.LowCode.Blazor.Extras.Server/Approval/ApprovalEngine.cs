@@ -450,7 +450,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Approval
         {
             public string Id { get; init; } = string.Empty;
             public int StepNo { get; init; }
-            public string StepType { get; init; } = ApprovalStepType.Approval.ToDesignValue();
+            public string StepType { get; init; } = ApprovalMemberDefaults.StepType;
             public string CompletionPolicy { get; init; } = ApprovalMemberDefaults.CompletionPolicy;
             public bool IsCommentRequired { get; init; } = ApprovalMemberDefaults.IsCommentRequiredOnReject;
             public string ReturnScope { get; init; } = ApprovalMemberDefaults.ReturnScope;
@@ -536,7 +536,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Approval
             {
                 Id = GetId(e),
                 StepNo = GetInt(e, ctx.Member.StepNo),
-                StepType = GetString(e, ctx.Member.StepType),
+                StepType = GetStringOrDefault(e, ctx.Member.StepType, ApprovalMemberDefaults.StepType),
                 CompletionPolicy = GetStringOrDefault(e, ctx.Member.CompletionPolicy, ApprovalMemberDefaults.CompletionPolicy),
                 IsCommentRequired = GetBoolOrDefault(e, ctx.Member.IsCommentRequiredOnReject, ApprovalMemberDefaults.IsCommentRequiredOnReject),
                 ReturnScope = GetStringOrDefault(e, ctx.Member.ReturnScope, ApprovalMemberDefaults.ReturnScope),

@@ -123,7 +123,7 @@
       "Name": "TargetModuleName",
       "DbColumn": "target_module_name",
       "DisplayName": "申請種別",
-      "EnumName": "ApprovalRequestType",
+      "EnumName": "ApprovalTargetModule",
       "Candidates": [],
       "EmptyCandidateType": "StringEmpty",
       "AllowOrSearch": true,

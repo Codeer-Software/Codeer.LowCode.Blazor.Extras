@@ -84,12 +84,12 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Setup
             Assert.That(inboxSql, Does.Contain("@current_user_id").And.Contain("LEFT JOIN app_users u").And.Contain("u.name AS applicant_name"));
             //承認状況の検索 (状態 / 申請者 / 申請種別) は出力列への通常検索。申請種別 = 申請書モジュール名の enum (メンバーはユーザーが足す)
             var statusList = d.Modules.Find("ApprovalStatusList")!;
-            Assert.That(((SelectFieldDesign)statusList.Fields.First(e => e.Name == "TargetModuleName")).EnumName, Is.EqualTo("ApprovalRequestType"));
+            Assert.That(((SelectFieldDesign)statusList.Fields.First(e => e.Name == "TargetModuleName")).EnumName, Is.EqualTo("ApprovalTargetModule"));
             Assert.That(((SelectFieldDesign)d.Modules.Find("MyApprovalList")!.Fields.First(e => e.Name == "TargetModuleName")).EnumName,
-                Is.EqualTo("ApprovalRequestType"));
-            var requestType = d.Enums.Single(e => e.Name == "ApprovalRequestType");
+                Is.EqualTo("ApprovalTargetModule"));
+            var requestType = d.Enums.Single(e => e.Name == "ApprovalTargetModule");
             Assert.That(requestType.Members, Is.Empty);
-            Assert.That(File.Exists(Path.Combine(ProjectDir, "Enums", "ApprovalRequestType.enum.json")), Is.True);
+            Assert.That(File.Exists(Path.Combine(ProjectDir, "Enums", "ApprovalTargetModule.enum.json")), Is.True);
             var applicant = (SelectFieldDesign)statusList.Fields.First(e => e.Name == "Applicant");
             Assert.That(applicant.SearchCondition.ModuleName, Is.EqualTo("AppUser"));
             Assert.That(((SelectFieldDesign)statusList.Fields.First(e => e.Name == "Status")).AllowOrSearch, Is.True);

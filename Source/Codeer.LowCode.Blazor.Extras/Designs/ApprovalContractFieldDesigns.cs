@@ -128,11 +128,11 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         //Required = what the engine needs to identify a member and drive the state machine.
         //Optional roles fall into two kinds:
         //  snapshot/display only (StepName / IsFinalStep / ActedAt): empty = not written, UI shows without them
-        //  policy (CompletionPolicy / ReturnScope / IsCommentRequiredOnReject / IsRequired): empty = engine uses the default
-        //  (RequiredMembers / ApplicantOnly / false / true). See ApprovalMemberDefaults.
+        //  policy (StepType / CompletionPolicy / ReturnScope / IsCommentRequiredOnReject / IsRequired): empty = engine uses the default
+        //  (Approval / RequiredMembers / ApplicantOnly / false / true). See ApprovalMemberDefaults.
         private protected override HashSet<string> RequiredRoleNames => new()
         {
-            nameof(Flow), nameof(AttemptNo), nameof(StepNo), nameof(StepType), nameof(ApproverUser), nameof(Status),
+            nameof(Flow), nameof(AttemptNo), nameof(StepNo), nameof(ApproverUser), nameof(Status),
         };
 
         public override List<DesignCheckInfo> CheckDesign(DesignCheckContext context)

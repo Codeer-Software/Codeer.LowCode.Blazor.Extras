@@ -12,7 +12,7 @@
 - 必須の役割 (デザイナの表示名に「(必須)」) はエンジンがメンバーの特定と状態遷移に使うもの。空・名指ししたフィールドの不在はデザインチェックがエラー
 - 任意の役割は空にできる (= このアプリではその項目を使わない)。名指しした場合のフィールド不在はエラー
   - 表示・スナップショット系 (StepName / IsFinalStep / ActedAt): 空なら書かれない。UI はそれ無しで表示する (ステップ名はステップ番号で代替)
-  - ポリシー系 (CompletionPolicy / ReturnScope / IsCommentRequiredOnReject / IsRequired): 空ならエンジンは **既定値** で動く。
+  - ポリシー系 (StepType / CompletionPolicy / ReturnScope / IsCommentRequiredOnReject / IsRequired): 空ならエンジンは **既定値** で動く。
     経路マスタ側に同名の設定があってもメンバー行に写らない (= 既定で動く) ので、その概念を使わないアプリだけ空にする
 
 | 役割 (表示名) | 内容 | 必須 | 空のときの既定 |
@@ -21,7 +21,7 @@
 | AttemptNo (試行番号) | 展開時の試行番号 | ○ | |
 | StepNo (ステップ番号) | 1 始まり | ○ | |
 | StepName (ステップ名) | 表示用のステップ名 | - | ステップ番号を表示 |
-| StepType (ステップ種別) | 承認 / 確認 (`ApprovalStepType`) | ○ | |
+| StepType (ステップ種別) | Select (`ApprovalStepType`) 承認 / 確認 | - | `Approval` (回覧を使わないアプリ) |
 | CompletionPolicy (ステップ完了条件) | Select (`ApprovalCompletionPolicy`) | - | `RequiredMembers` (必須メンバー全員承認) |
 | IsCommentRequiredOnReject (却下時のコメント必須) | Boolean | - | `false` |
 | ReturnScope (差し戻し先の範囲) | Select (`ApprovalReturnScope`) | - | `ApplicantOnly` (申請者へのみ) |

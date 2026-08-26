@@ -83,8 +83,8 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Approval
             Assert.That(searchFields, Is.EquivalentTo(new[] { "Status", "Applicant", "TargetModuleName" }));
             Assert.That(((SelectFieldDesign)statusList.Fields.First(e => e.Name == "Status")).AllowOrSearch, Is.True);
             Assert.That(((SelectFieldDesign)statusList.Fields.First(e => e.Name == "Applicant")).SearchCondition.ModuleName, Is.EqualTo("AppUser"));
-            Assert.That(((SelectFieldDesign)statusList.Fields.First(e => e.Name == "TargetModuleName")).EnumName, Is.EqualTo("ApprovalRequestType"));
-            Assert.That(d.Enums.Single(e => e.Name == "ApprovalRequestType").Members.Select(e => e.GetValue()), Is.EqualTo(new[] { "PurchaseRequest" }));
+            Assert.That(((SelectFieldDesign)statusList.Fields.First(e => e.Name == "TargetModuleName")).EnumName, Is.EqualTo("ApprovalTargetModule"));
+            Assert.That(d.Enums.Single(e => e.Name == "ApprovalTargetModule").Members.Select(e => e.GetValue()), Is.EqualTo(new[] { "PurchaseRequest" }));
             //待ち手 (今 Waiting のメンバー名) が一覧に出る。申請種別は Select の表示名で見せる (モジュール名そのものは出さない)
             var columns = statusList.ListLayouts[""].Elements[0].Select(e => e.FieldName).ToList();
             Assert.That(columns, Does.Contain("WaitingNames").And.Contain("TargetModuleName"));

@@ -35,8 +35,8 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
         static readonly TemplateInfo RouteStep = new("ApprovalRouteStep", "approval_route_steps", true);
         static readonly TemplateInfo RouteStepMember = new("ApprovalRouteStepMember", "approval_route_step_members", true);
 
-        /// <summary>申請種別 enum の名前 (検索用モジュールの「申請種別」。メンバー名 = 申請書モジュール名)。</summary>
-        internal const string RequestTypeEnumName = "ApprovalRequestType";
+        /// <summary>承認対象モジュール enum の名前 (検索用モジュールの「申請種別」列の読み替え。メンバー名 = 申請書モジュール名 / 表示 = 申請書の名前)。</summary>
+        internal const string TargetModuleEnumName = "ApprovalTargetModule";
 
         public static SetupResult Run(DesignData designData, string designDir, ApprovalSetupOptions options,
             DataSourceType dataSourceType, List<DbTableDefinition>? existingTables = null)
@@ -82,7 +82,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
 
                 //検索用モジュールの「申請種別」(TargetModuleName の Select) は申請種別 enum を参照する
                 if (template.IsQuery)
-                    json = ModuleTemplateEngine.SetSelectEnum(json, "TargetModuleName", RequestTypeEnumName);
+                    json = ModuleTemplateEngine.SetSelectEnum(json, "TargetModuleName", TargetModuleEnumName);
 
                 //型付きで読み直して正規化する (プロパティ名・型の崩れをここで検出し、デザイナ保存と同じ形で書き出す)
                 var module = JsonConverterEx.DeserializeObject<ModuleDesign>(json)
@@ -173,7 +173,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
                 {{route}}
                    }
                 3. 申請書の編集ロック: DataWriteCondition に「(フィールド名).Status が 未申請(null) / Returned / Withdrawn / Rejected」の Or 条件を設定
-                4. 申請種別 enum {{RequestTypeEnumName}} にメンバー (名前 = 申請書モジュール名 / 表示 = 申請書の名前) を追加
+                4. 承認対象モジュール enum {{TargetModuleEnumName}} にメンバー (名前 = 申請書モジュール名 / 表示 = 申請書の名前) を追加 (一覧の「申請種別」列の表示名になる)
                 """;
         }
 
@@ -241,12 +241,12 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
         //申請種別 enum を生成する (既存なら触らない)。メンバーはユーザーが申請書ごとに足す (名前 = 申請書モジュール名)
         static void EnsureRequestTypeEnum(DesignData designData, string designDir, SetupResult result)
         {
-            var path = Path.Combine(designDir, "Enums", $"{RequestTypeEnumName}.enum.json");
-            if (designData.Enums.Any(e => e.Name == RequestTypeEnumName) || File.Exists(path)) return;
+            var path = Path.Combine(designDir, "Enums", $"{TargetModuleEnumName}.enum.json");
+            if (designData.Enums.Any(e => e.Name == TargetModuleEnumName) || File.Exists(path)) return;
 
-            var enumDesign = new EnumDesign { Name = RequestTypeEnumName, ValueType = EnumValueType.String };
+            var enumDesign = new EnumDesign { Name = TargetModuleEnumName, ValueType = EnumValueType.String };
             designData.Enums.Add(enumDesign);
-            SaveDesignFile(designDir, "Enums", $"{RequestTypeEnumName}.enum.json", JsonConverterEx.SerializeObject(enumDesign));
+            SaveDesignFile(designDir, "Enums", $"{TargetModuleEnumName}.enum.json", JsonConverterEx.SerializeObject(enumDesign));
         }
 
         internal static void SaveDesignFile(string designDir, string subDir, string fileName, string content)

@@ -1,4 +1,4 @@
-using Codeer.LowCode.Blazor.DataIO;
+﻿using Codeer.LowCode.Blazor.DataIO;
 using Codeer.LowCode.Blazor.DesignLogic;
 using Codeer.LowCode.Blazor.Extras.Approval;
 using Codeer.LowCode.Blazor.Extras.Data;
@@ -57,19 +57,19 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Approval
             member.Fields.Add(new LinkFieldDesign { Name = "Flow", SearchCondition = new SearchCondition("ApprovalFlow"), DbColumn = "FlowId" });
             member.Fields.Add(new NumberFieldDesign { Name = "AttemptNo", DbColumn = "AttemptNo" });
             member.Fields.Add(new NumberFieldDesign { Name = "StepNo", DbColumn = "StepNo" });
-            member.Fields.Add(new TextFieldDesign { Name = "StepType", DbColumn = "StepType" });
             member.Fields.Add(new LinkFieldDesign { Name = "ApproverUser", SearchCondition = new SearchCondition("AppUser"), DbColumn = "ApproverUser" });
             member.Fields.Add(new TextFieldDesign { Name = "Status", DbColumn = "Status" });
             var memberContract = new ApprovalMemberContractFieldDesign { Name = "Contract", TurnNotifyMail = string.Empty };
             if (minimalContracts)
             {
-                memberContract.StepName = memberContract.IsFinalStep = memberContract.ActedAt = string.Empty;
+                memberContract.StepName = memberContract.IsFinalStep = memberContract.ActedAt = memberContract.StepType = string.Empty;
                 memberContract.CompletionPolicy = memberContract.ReturnScope = string.Empty;
                 memberContract.IsCommentRequiredOnReject = memberContract.IsRequired = string.Empty;
             }
             else
             {
                 member.Fields.Add(new TextFieldDesign { Name = "StepName", DbColumn = "StepName" });
+                member.Fields.Add(new TextFieldDesign { Name = "StepType", DbColumn = "StepType" });
                 member.Fields.Add(new TextFieldDesign { Name = "CompletionPolicy", DbColumn = "CompletionPolicy" });
                 member.Fields.Add(new BooleanFieldDesign { Name = "IsCommentRequiredOnReject", DbColumn = "IsCommentRequiredOnReject" });
                 member.Fields.Add(new TextFieldDesign { Name = "ReturnScope", DbColumn = "ReturnScope" });
@@ -133,10 +133,10 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Approval
                     ? new List<ModuleData>
                     {
                         Row("ApprovalFlowMember", ("Id", new IdFieldData { Value = "100" }), ("AttemptNo", Number(1)), ("StepNo", Number(1)),
-                            ("StepType", Text(ApprovalStepType.Approval.ToDesignValue())), ("ApproverUser", Link("2", "課長")),
+                            ("ApproverUser", Link("2", "課長")),
                             ("Status", Text(ApprovalMemberStatus.Waiting.ToDesignValue()))),
                         Row("ApprovalFlowMember", ("Id", new IdFieldData { Value = "101" }), ("AttemptNo", Number(1)), ("StepNo", Number(2)),
-                            ("StepType", Text(ApprovalStepType.Approval.ToDesignValue())), ("ApproverUser", Link("3", "部長")),
+                            ("ApproverUser", Link("3", "部長")),
                             ("Status", Text(ApprovalMemberStatus.Pending.ToDesignValue()))),
                     }
                     : new List<ModuleData>
@@ -184,7 +184,8 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Approval
             Assert.That(field.Steps[1].StepName, Is.EqualTo("2"));
             Assert.That(field.Steps[0].IsCurrent, Is.True);
 
-            //IsRequired 既定 true / コメント必須 既定 false
+            //StepType 既定 Approval / IsRequired 既定 true / コメント必須 既定 false
+            Assert.That(field.Steps[0].StepType, Is.EqualTo(ApprovalStepType.Approval.ToDesignValue()));
             Assert.That(field.Steps[0].Members.Single().IsRequired, Is.True);
             Assert.That(field.IsCommentRequiredOnReject, Is.False);
 

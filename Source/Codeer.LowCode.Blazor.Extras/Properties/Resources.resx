@@ -913,7 +913,7 @@
     <value>Step Name</value>
   </data>
   <data name="ApprovalMemberContractStepType" xml:space="preserve">
-    <value>Step Type (required)</value>
+    <value>Step Type</value>
   </data>
   <data name="ApprovalMemberContractCompletionPolicy" xml:space="preserve">
     <value>Completion Policy</value>

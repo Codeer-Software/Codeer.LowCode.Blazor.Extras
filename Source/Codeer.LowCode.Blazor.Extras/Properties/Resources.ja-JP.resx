@@ -913,7 +913,7 @@
     <value>ステップ名</value>
   </data>
   <data name="ApprovalMemberContractStepType" xml:space="preserve">
-    <value>ステップ種別 (承認/確認) (必須)</value>
+    <value>ステップ種別 (承認/確認)</value>
   </data>
   <data name="ApprovalMemberContractCompletionPolicy" xml:space="preserve">
     <value>ステップ完了条件</value>

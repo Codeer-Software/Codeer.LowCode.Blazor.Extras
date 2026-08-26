@@ -954,7 +954,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Approval
         {
             var member = _designData.Modules.Find("ApprovalFlowMember")!;
             var mc = member.Fields.OfType<ApprovalMemberContractFieldDesign>().Single();
-            foreach (var role in new[] { nameof(mc.StepName), nameof(mc.IsFinalStep), nameof(mc.ActedAt),
+            foreach (var role in new[] { nameof(mc.StepName), nameof(mc.IsFinalStep), nameof(mc.ActedAt), nameof(mc.StepType),
                 nameof(mc.CompletionPolicy), nameof(mc.ReturnScope), nameof(mc.IsCommentRequiredOnReject), nameof(mc.IsRequired) })
             {
                 member.Fields.Remove(member.Fields.First(e => e.Name == role));
@@ -981,9 +981,8 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Approval
             var rows = await _db.QueryAsync(Ds,
                 $"SELECT StepNo, StepType, ApproverUser, Status, StepName, CompletionPolicy, ReturnScope, IsCommentRequiredOnReject, IsRequired, IsFinalStep, ActedAt FROM ApprovalFlowMembers WHERE FlowId = {submit.FlowId} ORDER BY StepNo", new());
             Assert.That(rows.Count, Is.EqualTo(2));
-            Assert.That(S(rows[0], "StepType"), Is.EqualTo(ApprovalStepType.Approval.ToDesignValue()));
             Assert.That(S(rows[0], "Status"), Is.EqualTo(ApprovalMemberStatus.Waiting.ToDesignValue()));
-            foreach (var col in new[] { "StepName", "CompletionPolicy", "ReturnScope", "IsCommentRequiredOnReject", "IsRequired", "IsFinalStep", "ActedAt" })
+            foreach (var col in new[] { "StepName", "StepType", "CompletionPolicy", "ReturnScope", "IsCommentRequiredOnReject", "IsRequired", "IsFinalStep", "ActedAt" })
                 Assert.That(IsDbNull(rows[0][col]), Is.True, col);
 
             //履歴行: Flow だけ

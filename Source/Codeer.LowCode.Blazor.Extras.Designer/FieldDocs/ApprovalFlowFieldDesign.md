@@ -14,7 +14,7 @@
   [--no-mail] [--no-pageframe] [--ddl-out <path.sql>]`
 
 生成内容: 承認モジュール群 (フロー / メンバー / 履歴 + 検索用の承認待ち・承認状況 + 任意で経路マスタ 3 つ) +
-申請種別 enum `ApprovalRequestType` (空) + PageFrame のページリンク + テーブル作成 DDL。**それだけ**。
+承認対象モジュール enum `ApprovalTargetModule` (空。一覧の「申請種別」列でモジュール名を申請書の名前に読み替える) + PageFrame のページリンク + テーブル作成 DDL。**それだけ**。
 **冪等**: 既存モジュールは生成しない (承認モジュール群は 1 セット。申請書が増えても共有する)。
 DDL は自動実行されないため、生成後にテーブルを作成すること。
 
@@ -27,7 +27,7 @@ DDL は自動実行されないため、生成後にテーブルを作成する�
 1. 申請書モジュールに ApprovalFlowField を置く (FlowModuleName = `ApprovalFlow`、FK 列 (例 `approval_id`) を DB に追加)
 2. 申請書のスクリプトに `OnBuildRoute` を書き、フィールドの「経路組み立て」に設定する (下記「経路の組み立て」)
 3. 編集ロック: 申請書の DataWriteCondition に「(フィールド名).Status が 未申請(null) / Returned / Withdrawn / Rejected」の Or 条件
-4. 申請種別 enum `ApprovalRequestType` にメンバー (名前 = 申請書モジュール名 / 表示 = 申請書の名前) を追加
+4. 承認対象モジュール enum `ApprovalTargetModule` にメンバー (名前 = 申請書モジュール名 / 表示 = 申請書の名前) を追加
 
 ## Design
 
