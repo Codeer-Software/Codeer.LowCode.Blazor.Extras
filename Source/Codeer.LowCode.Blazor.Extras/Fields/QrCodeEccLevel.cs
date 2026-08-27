@@ -1,3 +1,5 @@
+using Codeer.LowCode.Blazor.Repository.Design;
+
 namespace Codeer.LowCode.Blazor.Extras.Fields
 {
     /// <summary>
@@ -6,15 +8,12 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
     public enum QrCodeEccLevel
     {
         /// <summary>約7%まで復元可能。</summary>
-        L,
-
+        [Designer(DisplayName = "$QrCodeEccLevel_L")] L,
         /// <summary>約15%まで復元可能 (既定)。</summary>
-        M,
-
+        [Designer(DisplayName = "$QrCodeEccLevel_M")] M,
         /// <summary>約25%まで復元可能。</summary>
-        Q,
-
+        [Designer(DisplayName = "$QrCodeEccLevel_Q")] Q,
         /// <summary>約30%まで復元可能。</summary>
-        H,
+        [Designer(DisplayName = "$QrCodeEccLevel_H")] H,
     }
 }

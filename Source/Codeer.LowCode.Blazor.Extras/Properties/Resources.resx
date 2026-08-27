@@ -992,4 +992,85 @@ Recipients: {1}</value>
   <data name="ApprovalHistoryContractActedAt" xml:space="preserve">
     <value>Acted At</value>
   </data>
+  <data name="CsvDelimiterKind_Comma" xml:space="preserve">
+    <value>Comma</value>
+  </data>
+  <data name="CsvDelimiterKind_Tab" xml:space="preserve">
+    <value>Tab</value>
+  </data>
+  <data name="CsvDelimiterKind_Semicolon" xml:space="preserve">
+    <value>Semicolon</value>
+  </data>
+  <data name="CsvDelimiterKind_None" xml:space="preserve">
+    <value>None (Fixed Length)</value>
+  </data>
+  <data name="CsvEncodingKind_Utf8Bom" xml:space="preserve">
+    <value>UTF-8 (with BOM)</value>
+  </data>
+  <data name="CsvEncodingKind_Utf8" xml:space="preserve">
+    <value>UTF-8</value>
+  </data>
+  <data name="CsvEncodingKind_ShiftJis" xml:space="preserve">
+    <value>Shift_JIS</value>
+  </data>
+  <data name="ExcelReportFormat_Xlsx" xml:space="preserve">
+    <value>Excel (xlsx)</value>
+  </data>
+  <data name="ExcelReportFormat_Pdf" xml:space="preserve">
+    <value>PDF</value>
+  </data>
+  <data name="FixedLengthWidthUnitKind_Byte" xml:space="preserve">
+    <value>Byte</value>
+  </data>
+  <data name="FixedLengthWidthUnitKind_Char" xml:space="preserve">
+    <value>Character</value>
+  </data>
+  <data name="FixedLengthAlignmentKind_Left" xml:space="preserve">
+    <value>Left</value>
+  </data>
+  <data name="FixedLengthAlignmentKind_Right" xml:space="preserve">
+    <value>Right</value>
+  </data>
+  <data name="FixedLengthPaddingCharKind_Space" xml:space="preserve">
+    <value>Space</value>
+  </data>
+  <data name="FixedLengthPaddingCharKind_Zero" xml:space="preserve">
+    <value>Zero</value>
+  </data>
+  <data name="OrientationKind_Landscape" xml:space="preserve">
+    <value>Landscape</value>
+  </data>
+  <data name="OrientationKind_Portrait" xml:space="preserve">
+    <value>Portrait</value>
+  </data>
+  <data name="ProgressDisplayType_Bar" xml:space="preserve">
+    <value>Bar</value>
+  </data>
+  <data name="ProgressDisplayType_Meter" xml:space="preserve">
+    <value>Meter</value>
+  </data>
+  <data name="ProgressScale_Percent" xml:space="preserve">
+    <value>Percent (100 = 100%)</value>
+  </data>
+  <data name="ProgressScale_Ratio" xml:space="preserve">
+    <value>Ratio (1.0 = 100%)</value>
+  </data>
+  <data name="QrCodeEccLevel_L" xml:space="preserve">
+    <value>L (approx. 7%)</value>
+  </data>
+  <data name="QrCodeEccLevel_M" xml:space="preserve">
+    <value>M (approx. 15%)</value>
+  </data>
+  <data name="QrCodeEccLevel_Q" xml:space="preserve">
+    <value>Q (approx. 25%)</value>
+  </data>
+  <data name="QrCodeEccLevel_H" xml:space="preserve">
+    <value>H (approx. 30%)</value>
+  </data>
+  <data name="ApprovalWithdrawPolicy_BeforeFirstApproval" xml:space="preserve">
+    <value>Before First Approval</value>
+  </data>
+  <data name="ApprovalWithdrawPolicy_Anytime" xml:space="preserve">
+    <value>Anytime While In Progress</value>
+  </data>
 </root>

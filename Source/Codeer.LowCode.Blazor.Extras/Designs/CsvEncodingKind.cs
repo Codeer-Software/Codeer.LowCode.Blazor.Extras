@@ -1,10 +1,12 @@
+using Codeer.LowCode.Blazor.Repository.Design;
+
 namespace Codeer.LowCode.Blazor.Extras.Designs
 {
     /// <summary>CSV のエンコーディング。</summary>
     public enum CsvEncodingKind
     {
-        Utf8Bom,
-        Utf8,
-        ShiftJis,
+        [Designer(DisplayName = "$CsvEncodingKind_Utf8Bom")] Utf8Bom,
+        [Designer(DisplayName = "$CsvEncodingKind_Utf8")] Utf8,
+        [Designer(DisplayName = "$CsvEncodingKind_ShiftJis")] ShiftJis,
     }
 }

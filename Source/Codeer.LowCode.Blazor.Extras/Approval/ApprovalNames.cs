@@ -95,10 +95,9 @@ namespace Codeer.LowCode.Blazor.Extras.Approval
     public enum ApprovalWithdrawPolicy
     {
         /// <summary>承認が始まる前のみ (Garoon 等の「取り戻し」と同じ。既定)。</summary>
-        BeforeFirstApproval,
-
+        [Designer(DisplayName = "$ApprovalWithdrawPolicy_BeforeFirstApproval")] BeforeFirstApproval,
         /// <summary>進行中ならいつでも。</summary>
-        Anytime,
+        [Designer(DisplayName = "$ApprovalWithdrawPolicy_Anytime")] Anytime,
     }
 
     /// <summary>

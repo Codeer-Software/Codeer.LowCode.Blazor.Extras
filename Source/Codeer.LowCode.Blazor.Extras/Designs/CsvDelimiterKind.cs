@@ -1,3 +1,5 @@
+using Codeer.LowCode.Blazor.Repository.Design;
+
 namespace Codeer.LowCode.Blazor.Extras.Designs
 {
     /// <summary>
@@ -6,10 +8,10 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
     /// </summary>
     public enum CsvDelimiterKind
     {
-        Comma,
-        Tab,
-        Semicolon,
-        None,
+        [Designer(DisplayName = "$CsvDelimiterKind_Comma")] Comma,
+        [Designer(DisplayName = "$CsvDelimiterKind_Tab")] Tab,
+        [Designer(DisplayName = "$CsvDelimiterKind_Semicolon")] Semicolon,
+        [Designer(DisplayName = "$CsvDelimiterKind_None")] None,
     }
 
     /// <summary>CsvDelimiterKind の拡張。</summary>

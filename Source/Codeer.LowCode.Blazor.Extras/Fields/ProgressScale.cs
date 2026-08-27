@@ -1,13 +1,14 @@
+using Codeer.LowCode.Blazor.Repository.Design;
+
 namespace Codeer.LowCode.Blazor.Extras.Fields
 {
     /// <summary>進捗値のスケール解釈。ProgressField / GanttField で共有する。</summary>
     public enum ProgressScale
     {
         /// <summary>値をそのままパーセントとして扱う (100 で 100%)。</summary>
-        Percent,
-
+        [Designer(DisplayName = "$ProgressScale_Percent")] Percent,
         /// <summary>0.0〜1.0 の割合として扱う (1.0 で 100%)。</summary>
-        Ratio,
+        [Designer(DisplayName = "$ProgressScale_Ratio")] Ratio,
     }
 
     internal static class ProgressScaleExtensions

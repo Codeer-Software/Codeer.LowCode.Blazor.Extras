@@ -2043,5 +2043,166 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
 
 
 
+            internal static string CsvDelimiterKind_Comma {
+            get {
+                return ResourceManager.GetString("CsvDelimiterKind_Comma", resourceCulture);
+            }
+        }
+
+        internal static string CsvDelimiterKind_Tab {
+            get {
+                return ResourceManager.GetString("CsvDelimiterKind_Tab", resourceCulture);
+            }
+        }
+
+        internal static string CsvDelimiterKind_Semicolon {
+            get {
+                return ResourceManager.GetString("CsvDelimiterKind_Semicolon", resourceCulture);
+            }
+        }
+
+        internal static string CsvDelimiterKind_None {
+            get {
+                return ResourceManager.GetString("CsvDelimiterKind_None", resourceCulture);
+            }
+        }
+
+        internal static string CsvEncodingKind_Utf8Bom {
+            get {
+                return ResourceManager.GetString("CsvEncodingKind_Utf8Bom", resourceCulture);
+            }
+        }
+
+        internal static string CsvEncodingKind_Utf8 {
+            get {
+                return ResourceManager.GetString("CsvEncodingKind_Utf8", resourceCulture);
+            }
+        }
+
+        internal static string CsvEncodingKind_ShiftJis {
+            get {
+                return ResourceManager.GetString("CsvEncodingKind_ShiftJis", resourceCulture);
+            }
+        }
+
+        internal static string ExcelReportFormat_Xlsx {
+            get {
+                return ResourceManager.GetString("ExcelReportFormat_Xlsx", resourceCulture);
+            }
+        }
+
+        internal static string ExcelReportFormat_Pdf {
+            get {
+                return ResourceManager.GetString("ExcelReportFormat_Pdf", resourceCulture);
+            }
+        }
+
+        internal static string FixedLengthWidthUnitKind_Byte {
+            get {
+                return ResourceManager.GetString("FixedLengthWidthUnitKind_Byte", resourceCulture);
+            }
+        }
+
+        internal static string FixedLengthWidthUnitKind_Char {
+            get {
+                return ResourceManager.GetString("FixedLengthWidthUnitKind_Char", resourceCulture);
+            }
+        }
+
+        internal static string FixedLengthAlignmentKind_Left {
+            get {
+                return ResourceManager.GetString("FixedLengthAlignmentKind_Left", resourceCulture);
+            }
+        }
+
+        internal static string FixedLengthAlignmentKind_Right {
+            get {
+                return ResourceManager.GetString("FixedLengthAlignmentKind_Right", resourceCulture);
+            }
+        }
+
+        internal static string FixedLengthPaddingCharKind_Space {
+            get {
+                return ResourceManager.GetString("FixedLengthPaddingCharKind_Space", resourceCulture);
+            }
+        }
+
+        internal static string FixedLengthPaddingCharKind_Zero {
+            get {
+                return ResourceManager.GetString("FixedLengthPaddingCharKind_Zero", resourceCulture);
+            }
+        }
+
+        internal static string OrientationKind_Landscape {
+            get {
+                return ResourceManager.GetString("OrientationKind_Landscape", resourceCulture);
+            }
+        }
+
+        internal static string OrientationKind_Portrait {
+            get {
+                return ResourceManager.GetString("OrientationKind_Portrait", resourceCulture);
+            }
+        }
+
+        internal static string ProgressDisplayType_Bar {
+            get {
+                return ResourceManager.GetString("ProgressDisplayType_Bar", resourceCulture);
+            }
+        }
+
+        internal static string ProgressDisplayType_Meter {
+            get {
+                return ResourceManager.GetString("ProgressDisplayType_Meter", resourceCulture);
+            }
+        }
+
+        internal static string ProgressScale_Percent {
+            get {
+                return ResourceManager.GetString("ProgressScale_Percent", resourceCulture);
+            }
+        }
+
+        internal static string ProgressScale_Ratio {
+            get {
+                return ResourceManager.GetString("ProgressScale_Ratio", resourceCulture);
+            }
+        }
+
+        internal static string QrCodeEccLevel_L {
+            get {
+                return ResourceManager.GetString("QrCodeEccLevel_L", resourceCulture);
+            }
+        }
+
+        internal static string QrCodeEccLevel_M {
+            get {
+                return ResourceManager.GetString("QrCodeEccLevel_M", resourceCulture);
+            }
+        }
+
+        internal static string QrCodeEccLevel_Q {
+            get {
+                return ResourceManager.GetString("QrCodeEccLevel_Q", resourceCulture);
+            }
+        }
+
+        internal static string QrCodeEccLevel_H {
+            get {
+                return ResourceManager.GetString("QrCodeEccLevel_H", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalWithdrawPolicy_BeforeFirstApproval {
+            get {
+                return ResourceManager.GetString("ApprovalWithdrawPolicy_BeforeFirstApproval", resourceCulture);
+            }
+        }
+
+        internal static string ApprovalWithdrawPolicy_Anytime {
+            get {
+                return ResourceManager.GetString("ApprovalWithdrawPolicy_Anytime", resourceCulture);
+            }
+        }
     }
 }

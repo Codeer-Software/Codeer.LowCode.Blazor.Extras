@@ -1,3 +1,5 @@
+using Codeer.LowCode.Blazor.Repository.Design;
+
 namespace Codeer.LowCode.Blazor.Extras.Designs
 {
     /// <summary>
@@ -7,7 +9,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
     /// </summary>
     public enum FixedLengthWidthUnitKind
     {
-        Byte,
-        Char,
+        [Designer(DisplayName = "$FixedLengthWidthUnitKind_Byte")] Byte,
+        [Designer(DisplayName = "$FixedLengthWidthUnitKind_Char")] Char,
     }
 }

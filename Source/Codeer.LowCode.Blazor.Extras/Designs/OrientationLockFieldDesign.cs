@@ -13,8 +13,8 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
     {
         public enum OrientationKind
         {
-            Landscape,
-            Portrait,
+            [Designer(DisplayName = "$OrientationKind_Landscape")] Landscape,
+            [Designer(DisplayName = "$OrientationKind_Portrait")] Portrait,
         }
 
         [Designer]

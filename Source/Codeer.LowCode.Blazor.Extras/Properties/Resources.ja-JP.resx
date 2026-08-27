@@ -992,4 +992,85 @@
   <data name="ApprovalHistoryContractActedAt" xml:space="preserve">
     <value>操作日時</value>
   </data>
+  <data name="CsvDelimiterKind_Comma" xml:space="preserve">
+    <value>カンマ</value>
+  </data>
+  <data name="CsvDelimiterKind_Tab" xml:space="preserve">
+    <value>タブ</value>
+  </data>
+  <data name="CsvDelimiterKind_Semicolon" xml:space="preserve">
+    <value>セミコロン</value>
+  </data>
+  <data name="CsvDelimiterKind_None" xml:space="preserve">
+    <value>なし (固定長)</value>
+  </data>
+  <data name="CsvEncodingKind_Utf8Bom" xml:space="preserve">
+    <value>UTF-8 (BOM付き)</value>
+  </data>
+  <data name="CsvEncodingKind_Utf8" xml:space="preserve">
+    <value>UTF-8</value>
+  </data>
+  <data name="CsvEncodingKind_ShiftJis" xml:space="preserve">
+    <value>Shift_JIS</value>
+  </data>
+  <data name="ExcelReportFormat_Xlsx" xml:space="preserve">
+    <value>Excel (xlsx)</value>
+  </data>
+  <data name="ExcelReportFormat_Pdf" xml:space="preserve">
+    <value>PDF</value>
+  </data>
+  <data name="FixedLengthWidthUnitKind_Byte" xml:space="preserve">
+    <value>バイト</value>
+  </data>
+  <data name="FixedLengthWidthUnitKind_Char" xml:space="preserve">
+    <value>文字</value>
+  </data>
+  <data name="FixedLengthAlignmentKind_Left" xml:space="preserve">
+    <value>左寄せ</value>
+  </data>
+  <data name="FixedLengthAlignmentKind_Right" xml:space="preserve">
+    <value>右寄せ</value>
+  </data>
+  <data name="FixedLengthPaddingCharKind_Space" xml:space="preserve">
+    <value>空白</value>
+  </data>
+  <data name="FixedLengthPaddingCharKind_Zero" xml:space="preserve">
+    <value>ゼロ</value>
+  </data>
+  <data name="OrientationKind_Landscape" xml:space="preserve">
+    <value>横向き</value>
+  </data>
+  <data name="OrientationKind_Portrait" xml:space="preserve">
+    <value>縦向き</value>
+  </data>
+  <data name="ProgressDisplayType_Bar" xml:space="preserve">
+    <value>バー</value>
+  </data>
+  <data name="ProgressDisplayType_Meter" xml:space="preserve">
+    <value>メーター</value>
+  </data>
+  <data name="ProgressScale_Percent" xml:space="preserve">
+    <value>パーセント (100 = 100%)</value>
+  </data>
+  <data name="ProgressScale_Ratio" xml:space="preserve">
+    <value>割合 (1.0 = 100%)</value>
+  </data>
+  <data name="QrCodeEccLevel_L" xml:space="preserve">
+    <value>L (約7%)</value>
+  </data>
+  <data name="QrCodeEccLevel_M" xml:space="preserve">
+    <value>M (約15%)</value>
+  </data>
+  <data name="QrCodeEccLevel_Q" xml:space="preserve">
+    <value>Q (約25%)</value>
+  </data>
+  <data name="QrCodeEccLevel_H" xml:space="preserve">
+    <value>H (約30%)</value>
+  </data>
+  <data name="ApprovalWithdrawPolicy_BeforeFirstApproval" xml:space="preserve">
+    <value>最初の承認前まで</value>
+  </data>
+  <data name="ApprovalWithdrawPolicy_Anytime" xml:space="preserve">
+    <value>進行中はいつでも</value>
+  </data>
 </root>

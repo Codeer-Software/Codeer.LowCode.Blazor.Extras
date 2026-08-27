@@ -11,15 +11,15 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
     /// <summary>固定長形式での値の寄せ (パディングは逆側に入る)。</summary>
     public enum FixedLengthAlignmentKind
     {
-        Left,
-        Right,
+        [Designer(DisplayName = "$FixedLengthAlignmentKind_Left")] Left,
+        [Designer(DisplayName = "$FixedLengthAlignmentKind_Right")] Right,
     }
 
     /// <summary>固定長形式でのパディング文字。数値のゼロ埋めは Zero + 右寄せで表現する。</summary>
     public enum FixedLengthPaddingCharKind
     {
-        Space,
-        Zero,
+        [Designer(DisplayName = "$FixedLengthPaddingCharKind_Space")] Space,
+        [Designer(DisplayName = "$FixedLengthPaddingCharKind_Zero")] Zero,
     }
 
     /// <summary>
