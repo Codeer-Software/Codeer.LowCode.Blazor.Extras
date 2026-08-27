@@ -73,8 +73,11 @@
         /// <summary>差出人の表示名。</summary>
         public string SenderDisplayName { get; set; } = string.Empty;
 
-        /// <summary>一斉送信1回の件数上限。Gmail の送信上限は低いので小さめにする。</summary>
-        public int MaxBulkCount { get; set; } = 10000;
+        /// <summary>
+        /// 一斉送信1回の件数上限。Gmail の送信上限は低い (Workspace = 1 ユーザー 1 日 2,000 通、無料 Gmail = 500 通。
+        /// 超えると残りが quota exceeded で失敗) ので既定は 500。大量配信は配信サービス系のインフラで行う。
+        /// </summary>
+        public int MaxBulkCount { get; set; } = 500;
 
         /// <summary>
         /// サービスアカウントの JSON キー (ドメイン全体の委任モード)、または

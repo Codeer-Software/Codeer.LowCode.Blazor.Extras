@@ -200,12 +200,14 @@ Gmail では「管理者権限なしで本人名義で送る」ために本人�
   "ClientSecret": "client_secret.json のパス",
   "TokenSecret": "システム送信者のトークン (JSON のパス)",
   "TokenEncryptionKey": "(環境変数で与える)",
-  "MaxBulkCount": 10000
+  "MaxBulkCount": 500
 }
 ```
 
 - `Mail` は共通設定、送信インフラごとの設定 (`Gmail` など) は独立したセクションです
-- 現在提供している送信インフラは **Gmail (Gmail API)** です
+- 現在提供している送信インフラは **Gmail (Gmail API)** です。Gmail の上限 (Workspace: 1 ユーザー 1 日 2,000 通 / 無料: 500 通、約 2.5 通/秒) に合わせて、
+  一斉送信は 400ms 間隔で逐次送信し、レート制限 (429 / 503) は指数バックオフ (2s→32s・最大 5 回) で再試行、日次上限に達したら残りを打ち切って失敗として返します。
+  `MaxBulkCount` の既定は 500。数千通規模の配信は配信サービス系のインフラ (`IMailSender` 実装) を使ってください
 - 独自の送信手段 (社内メールゲートウェイなど) は `IMailSender` を実装し、アプリの
   `MailSenderTable` (呼び名 → 実装の対応表) に 1 行足すだけで使えます
 

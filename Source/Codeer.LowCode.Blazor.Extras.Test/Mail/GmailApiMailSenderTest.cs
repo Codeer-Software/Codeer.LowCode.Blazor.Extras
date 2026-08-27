@@ -239,5 +239,104 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Mail
             var raw = JsonDocument.Parse(firstSend).RootElement.GetProperty("raw").GetString()!;
             Assert.That(DecodeBase64Url(raw), Does.Contain("Subject: Hello user0"));
         }
+
+        //---- レート制限・日次上限 ----
+
+        static (GmailApiMailSender Sender, List<TimeSpan> Delays) CreateThrottled(FakeHttpHandler handler)
+        {
+            var delays = new List<TimeSpan>();
+            var sender = new GmailApiMailSender(Settings, handler.CreateClient())
+            {
+                DelayAsync = d => { delays.Add(d); return Task.CompletedTask; },
+            };
+            return (sender, delays);
+        }
+
+        [Test]
+        public async Task レート制限429は指数バックオフで再試行して成功する()
+        {
+            var handler = CreateHandler();
+            var baseResponder = handler.Responder;
+            var gmailCalls = 0;
+            handler.Responder = (request, body) =>
+            {
+                if (request.RequestUri!.Host != "gmail.googleapis.com") return baseResponder(request, body);
+                gmailCalls++;
+                return gmailCalls <= 2
+                    ? new HttpResponseMessage((HttpStatusCode)429) { Content = new StringContent("""{"error":{"message":"Rate Limit Exceeded"}}""") }
+                    : new HttpResponseMessage(HttpStatusCode.OK);
+            };
+            var (sender, delays) = CreateThrottled(handler);
+
+            var result = await sender.SendAsync(new MailMessage { To = { "a@example.com" } });
+
+            Assert.That(result.IsSuccess, Is.True);
+            Assert.That(gmailCalls, Is.EqualTo(3));
+            Assert.That(delays, Is.EqualTo(new[] { TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(4) })); //2s → 4s
+        }
+
+        [Test]
+        public async Task レート制限が続けば上限回数で失敗を返す()
+        {
+            var handler = CreateHandler();
+            var baseResponder = handler.Responder;
+            var gmailCalls = 0;
+            handler.Responder = (request, body) =>
+            {
+                if (request.RequestUri!.Host != "gmail.googleapis.com") return baseResponder(request, body);
+                gmailCalls++;
+                return new HttpResponseMessage((HttpStatusCode)429) { Content = new StringContent("rate") };
+            };
+            var (sender, delays) = CreateThrottled(handler);
+
+            var result = await sender.SendAsync(new MailMessage { To = { "a@example.com" } });
+
+            Assert.That(result.IsSuccess, Is.False);
+            Assert.That(gmailCalls, Is.EqualTo(6)); //初回 + 再試行 5 回
+            Assert.That(delays.Last(), Is.EqualTo(TimeSpan.FromSeconds(32)));
+        }
+
+        [Test]
+        public async Task 日次上限超過は残りを再試行せず打ち切る()
+        {
+            var handler = CreateHandler();
+            var baseResponder = handler.Responder;
+            var gmailCalls = 0;
+            handler.Responder = (request, body) =>
+            {
+                if (request.RequestUri!.Host != "gmail.googleapis.com") return baseResponder(request, body);
+                gmailCalls++;
+                return gmailCalls == 1
+                    ? new HttpResponseMessage(HttpStatusCode.OK)
+                    : new HttpResponseMessage(HttpStatusCode.Forbidden)
+                    { Content = new StringContent("""{"error":{"message":"Daily user sending quota exceeded. 550 5.4.5"}}""") };
+            };
+            var (sender, delays) = CreateThrottled(handler);
+            var recipients = Enumerable.Range(0, 4).Select(i => new MailBulkRecipient { To = $"u{i}@example.com" }).ToList();
+
+            var result = await sender.SendBulkAsync(new MailBulkTemplate { Subject = "s", Body = "b" }, recipients);
+
+            Assert.That(result.SuccessCount, Is.EqualTo(1));
+            Assert.That(gmailCalls, Is.EqualTo(2));             //2 通目で上限 → 3, 4 通目は送信を試みない
+            Assert.That(result.Failures.Select(e => e.To), Is.EqualTo(new[] { "u1@example.com", "u2@example.com", "u3@example.com" }));
+            Assert.That(result.Failures.All(e => e.Error.Contains("quota exceeded")), Is.True);
+        }
+
+        [Test]
+        public async Task 一斉送信は最短間隔を空けて送る()
+        {
+            var handler = CreateHandler();
+            var (sender, delays) = CreateThrottled(handler);
+            sender.MinSendInterval = TimeSpan.FromMilliseconds(400);
+            var recipients = Enumerable.Range(0, 3).Select(i => new MailBulkRecipient { To = $"u{i}@example.com" }).ToList();
+
+            var result = await sender.SendBulkAsync(new MailBulkTemplate { Subject = "s", Body = "b" }, recipients);
+
+            Assert.That(result.SuccessCount, Is.EqualTo(3));
+            //1 通目の前は待たない。2, 3 通目の前に (400ms - 経過時間) の待機が入る
+            Assert.That(delays.Count, Is.EqualTo(2));
+            Assert.That(delays.All(d => d > TimeSpan.Zero && d <= TimeSpan.FromMilliseconds(400)), Is.True);
+        }
+
     }
 }

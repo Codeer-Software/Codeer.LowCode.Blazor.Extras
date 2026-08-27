@@ -24,7 +24,17 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
     public class GmailApiMailSender : IMailSender
     {
         static readonly HttpClient _sharedClient = new();
-        const int MaxRetryCount = 3;
+
+        //レート制限 (429 / 503) の再試行回数と指数バックオフの初期値 (2s → 4s → 8s → 16s → 32s)。Retry-After があればそれに従う。
+        //Gmail API はユーザーあたり 250 quota units/秒 (messages.send = 100 units ≒ 2.5 通/秒)
+        const int MaxRetryCount = 5;
+        static readonly TimeSpan RetryBaseDelay = TimeSpan.FromSeconds(2);
+
+        /// <summary>一斉送信で連続する送信の最短間隔。レート上限 (約 2.5 通/秒) に張り付かせず 429 を避ける。</summary>
+        internal TimeSpan MinSendInterval { get; set; } = TimeSpan.FromMilliseconds(400);
+
+        /// <summary>待機の差し替え口 (テストで実時間を待たないため)。</summary>
+        internal Func<TimeSpan, Task> DelayAsync { get; set; } = Task.Delay;
         //ユーザー同意モードのトークンキャッシュキー (委任モードは委任ユーザーごと)
         const string OAuthUserCacheKey = "(oauth-user)";
 
@@ -62,12 +72,28 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
         public async Task<MailSendResult> SendBulkAsync(MailBulkTemplate template, List<MailBulkRecipient> recipients)
         {
             var result = new MailSendResult { TotalCount = recipients.Count };
-            foreach (var recipient in recipients)
+            var stopwatch = new System.Diagnostics.Stopwatch();
+            for (var i = 0; i < recipients.Count; i++)
             {
+                var recipient = recipients[i];
+                //前の送信から MinSendInterval 空ける (レート上限に張り付かせない)
+                if (stopwatch.IsRunning)
+                {
+                    var remaining = MinSendInterval - stopwatch.Elapsed;
+                    if (remaining > TimeSpan.Zero) await DelayAsync(remaining);
+                }
+                stopwatch.Restart();
                 try
                 {
                     await SendCoreAsync(SmtpMailSender.CreateResolvedMessage(template, recipient));
                     result.SuccessCount++;
+                }
+                catch (GmailDailyQuotaExceededException ex)
+                {
+                    //1 日の送信上限に達した = その日はもう送れない。残りをリトライで待たずに失敗として打ち切る
+                    for (var j = i; j < recipients.Count; j++)
+                        result.Failures.Add(new MailSendFailure { To = recipients[j].To, Error = ex.Message });
+                    break;
                 }
                 catch (Exception ex)
                 {
@@ -94,16 +120,25 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
                 var response = await _http.SendAsync(request);
                 if (response.IsSuccessStatusCode) return;
 
-                //レート制限時は Retry-After に従って再試行
-                if (response.StatusCode == (HttpStatusCode)429 && retry < MaxRetryCount)
+                //レート制限 (429) / 一時的なサービス不可 (503) は指数バックオフで再試行 (Retry-After があればそれに従う)
+                if ((response.StatusCode == (HttpStatusCode)429 || response.StatusCode == HttpStatusCode.ServiceUnavailable) && retry < MaxRetryCount)
                 {
-                    var wait = response.Headers.RetryAfter?.Delta ?? TimeSpan.FromSeconds(2);
-                    await Task.Delay(wait);
+                    var wait = response.Headers.RetryAfter?.Delta ?? RetryBaseDelay * Math.Pow(2, retry);
+                    await DelayAsync(wait);
                     continue;
                 }
-                throw new InvalidOperationException($"Gmail send failed ({(int)response.StatusCode}): {await response.Content.ReadAsStringAsync()}");
+                var body = await response.Content.ReadAsStringAsync();
+                var error = $"Gmail send failed ({(int)response.StatusCode}): {body}";
+                //1 日の送信上限 (Workspace 2,000 通 / 無料 500 通) はリトライしても回復しない。一斉送信は残りを打ち切る
+                if (IsDailyQuotaExceeded(body)) throw new GmailDailyQuotaExceededException(error);
+                throw new InvalidOperationException(error);
             }
         }
+
+        static bool IsDailyQuotaExceeded(string body)
+            => body.Contains("Daily user sending quota exceeded", StringComparison.OrdinalIgnoreCase)
+               || body.Contains("dailyLimitExceeded", StringComparison.OrdinalIgnoreCase)
+               || body.Contains("5.4.5", StringComparison.Ordinal);
 
         async Task<byte[]> CreateRawMimeAsync(MailMessage message)
         {
@@ -237,5 +272,11 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
 
         static string Base64Url(byte[] bytes)
             => Convert.ToBase64String(bytes).TrimEnd('=').Replace('+', '-').Replace('/', '_');
+    }
+
+    /// <summary>Gmail の 1 日の送信上限に達した (その日はリトライしても送れない)。</summary>
+    internal class GmailDailyQuotaExceededException : InvalidOperationException
+    {
+        public GmailDailyQuotaExceededException(string message) : base(message) { }
     }
 }
