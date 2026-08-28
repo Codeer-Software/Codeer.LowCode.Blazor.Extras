@@ -19,7 +19,7 @@
                   @bind="Field.Comment"></textarea>
       }
       <div class="approval-actions">
-        <button type="button" class="btn btn-primary" disabled="@Field.IsBusy"
+        <button type="button" class="btn btn-primary" disabled="@Field.IsBusy" data-system="approval-submit"
                 @onclick="@(async () => await SubmitAsync(isResubmit: false))">@R.ApprovalAction_Submit</button>
       </div>
     }
@@ -75,26 +75,26 @@ else
       <div class="approval-actions">
         @if (Field.CanApprove)
         {
-          <button type="button" class="btn btn-primary" disabled="@Field.IsBusy"
+          <button type="button" class="btn btn-primary" disabled="@Field.IsBusy" data-system="approval-approve"
                   @onclick="@(async () => await ExecuteAsync(ApprovalAction.Approve.ToDesignValue()))">@R.ApprovalAction_Approve</button>
-          <button type="button" class="btn btn-outline-danger" disabled="@Field.IsBusy"
+          <button type="button" class="btn btn-outline-danger" disabled="@Field.IsBusy" data-system="approval-reject"
                   @onclick="@(async () => await ExecuteAsync(ApprovalAction.Reject.ToDesignValue()))">@R.ApprovalAction_Reject</button>
-          <button type="button" class="btn btn-outline-secondary" disabled="@Field.IsBusy"
+          <button type="button" class="btn btn-outline-secondary" disabled="@Field.IsBusy" data-system="approval-return"
                   @onclick="@(async () => await ExecuteAsync(ApprovalAction.Return.ToDesignValue()))">@R.ApprovalAction_Return</button>
         }
         @if (Field.CanConfirm)
         {
-          <button type="button" class="btn btn-outline-primary" disabled="@Field.IsBusy"
+          <button type="button" class="btn btn-outline-primary" disabled="@Field.IsBusy" data-system="approval-confirm"
                   @onclick="@(async () => await ExecuteAsync(ApprovalAction.Confirm.ToDesignValue()))">@R.ApprovalAction_Confirm</button>
         }
         @if (Field.CanWithdraw)
         {
-          <button type="button" class="btn btn-outline-secondary" disabled="@Field.IsBusy"
+          <button type="button" class="btn btn-outline-secondary" disabled="@Field.IsBusy" data-system="approval-withdraw"
                   @onclick="@(async () => await ExecuteAsync(ApprovalAction.Withdraw.ToDesignValue()))">@R.ApprovalAction_Withdraw</button>
         }
         @if (Field.CanResubmit)
         {
-          <button type="button" class="btn btn-primary" disabled="@Field.IsBusy"
+          <button type="button" class="btn btn-primary" disabled="@Field.IsBusy" data-system="approval-resubmit"
                   @onclick="@(async () => await SubmitAsync(isResubmit: true))">@R.ApprovalAction_Resubmit</button>
         }
       </div>

@@ -1,0 +1,25 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <Version>0.1.0</Version>
+    <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
+    <PackageId>Codeer.LowCode.Blazor.Extras.SeleniumDrivers</PackageId>
+    <Description>Selenium drivers for the fields of Codeer.LowCode.Blazor.Extras. Used together with Codeer.LowCode.Blazor.SeleniumDrivers.</Description>
+    <PackageProjectUrl>https://github.com/Codeer-Software/Codeer.LowCode.Blazor.Extras</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/Codeer-Software/Codeer.LowCode.Blazor.Extras</RepositoryUrl>
+    <PackageTags>Codeer.LowCode.Blazor;Selenium</PackageTags>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
+    <PackageReleaseNotes>
+- Initial release.
+    </PackageReleaseNotes>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Codeer.LowCode.Blazor.SeleniumDrivers" Version="0.28.0" />
+  </ItemGroup>
+
+</Project>
