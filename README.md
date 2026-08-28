@@ -37,7 +37,7 @@
 | 機能 | 説明 |
 |---|---|
 | [メール送信](docs/Mail.md) | MailField (単発送信ボタン) / BulkMailField (名簿への一斉送信) / 送信履歴 / プレビュー。宛先・文面はレコードの値から組み立てる |
-| [MailSender](docs/MailSender.md) | 担当者本人の Gmail アカウント名義で送る Windows アプリ。Web のプレビュー HTML を開いて送信。トークンは本人の PC にだけ置く。Web アプリのシステム送信者用トークンの発行にも使う |
+| [MailSender](docs/MailSender.md) | 担当者本人の Gmail アカウント名義で送る Windows アプリ (`Tools/MailSender` をビルドして使う)。Web のプレビュー HTML を開いて送信。トークンは本人の PC にだけ置く。Web アプリのシステム送信者用トークンの発行にも使う |
 | [承認フロー](docs/ApprovalFlow.md) | ApprovalFlowField を申請書に置くだけで申請・承認・却下・差し戻し・取り下げ・再申請・回覧。承認データは通常のモジュール。状態遷移はサーバーが検証 |
 
 どちらもデザイナの **Tools > メールのセットアップ / 承認フローのセットアップ** (または CLI の `mail-setup` / `approval-setup`) で

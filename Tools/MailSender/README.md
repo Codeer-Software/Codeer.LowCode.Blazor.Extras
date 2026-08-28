@@ -59,7 +59,7 @@ Web アプリ側は同意フローを実行しない (リフレッシュトー�
 dotnet publish Tools\MailSender\MailSender.csproj -c Release -r win-x64 --self-contained false -p:PublishSingleFile=true -o Tools\MailSender\publish
 ```
 
-`publish\MailSender.exe` を配布します (.NET 10 デスクトップ ランタイムが必要)。成果物は git に入れず GitHub Releases に置きます。
+`publish\MailSender.exe` を配布します (.NET 10 デスクトップ ランタイムが必要)。成果物は git に入れません (配布パッケージは未整備。当面はソースからビルドして使う。利用者向けの説明は `docs/MailSender.md`)。
 
 ## 仕組み
 

@@ -9,6 +9,35 @@
 
 ![MailSender](images/mailsender_main.png)
 
+## 入手方法 (ソースからビルドする)
+
+インストーラや配布パッケージはまだありません。このリポジトリのソースからビルドして、できた exe を使います。
+必要なのは **.NET 10 SDK** だけです (Visual Studio は不要)。
+
+1. [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0) をインストールする (`dotnet --version` で `10.` 以上が出れば OK)
+2. リポジトリを取得して、単一 exe として発行する
+
+   ```
+   git clone https://github.com/Codeer-Software/Codeer.LowCode.Blazor.Extras.git
+   cd Codeer.LowCode.Blazor.Extras
+   dotnet publish Tools\MailSender\MailSender.csproj -c Release -r win-x64 -p:PublishSingleFile=true -o Tools\MailSender\publish
+   ```
+
+3. `Tools\MailSender\publish\MailSender.exe` ができます。これ 1 ファイルを任意のフォルダ (例: `C:\Tools\MailSender\`) に置いて起動します。
+   組織内で配る場合も、この exe をコピーするだけです
+
+実行に必要なもの (ビルドした PC 以外で動かす場合):
+
+| 必要なもの | 備考 |
+|---|---|
+| Windows 10 / 11 (64bit) | |
+| [.NET 10 デスクトップ ランタイム](https://dotnet.microsoft.com/download/dotnet/10.0) | SDK が入っていれば含まれています。無い PC では起動時にインストールを案内するダイアログが出ます (「.NET Desktop Runtime」の x64) |
+| WebView2 ランタイム | HTML メールの本文プレビューに使います。Windows 11 と最近の Windows 10 には同梱済み。無い環境では本文がソース表示になるだけで、送信はできます |
+
+初回起動時は「設定」で OAuth クライアントの登録が必要です ([事前準備](#事前準備-組織で-1-回) → [使い方](#使い方))。
+組織内で配る場合は、管理者が Google Cloud でクライアントを 1 つ作り、その ID とシークレットを利用者に伝えてください
+(利用者ごとに Google Cloud の作業は不要です)。
+
 ## 動作の流れ
 
 ```
@@ -128,22 +157,14 @@ Web アプリ用には、Google Cloud で種類 **ウェブ アプリケーシ�
 ウェブ種別で発行したアカウントは一覧に「[ウェブ]」と表示され、同じアドレスをデスクトップ用・ウェブ用の両方で持つことができます。
 送信時はそのアカウントを発行したクライアントが自動で使われるので、設定を切り替える必要はありません。
 
-## 配布とビルド
-
-ソースは `Tools/MailSender` にあります。.NET 10 SDK でビルドし、単一の exe として発行します。
-
-```
-dotnet publish Tools\MailSender\MailSender.csproj -c Release -r win-x64 -p:PublishSingleFile=true -o Tools\MailSender\publish
-```
-
-`Tools\MailSender\publish\MailSender.exe` を配布します。実行には **.NET 10 デスクトップ ランタイム** と、
-HTML メールのプレビューに **WebView2 ランタイム** (Windows 11 / 最近の Windows 10 には同梱) が必要です。
-WebView2 が無い環境では本文がソース表示になります。成果物は git に入れず GitHub Releases に置きます。
+## プロジェクト構成
 
 | フォルダ | 内容 |
 |---|---|
 | `Tools/MailSender` | WPF アプリ本体 (WPF-UI / WebView2)。Codeer.LowCode.Blazor には依存しない |
 | `Tools/MailSender/Codeer.Mail.Gmail` | Gmail API / OAuth (PKCE・ループバック受信) の送信部品。UI に依存しないため CLI などに転用できる |
+
+ビルドと発行の手順は [入手方法](#入手方法-ソースからビルドする) のとおりです。成果物 (`publish/`) は git に入れません。
 
 ## 関連
 
