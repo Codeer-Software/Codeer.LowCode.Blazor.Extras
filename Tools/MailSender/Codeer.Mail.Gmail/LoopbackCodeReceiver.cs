@@ -5,8 +5,9 @@ using System.Web;
 namespace Codeer.Mail.Gmail
 {
     /// <summary>
-    /// デスクトップアプリの同意フローで、Google からのリダイレクト (http://127.0.0.1:port/) を 1 回だけ受ける。
-    /// ポートは空いているものを自動で選ぶ (Google はデスクトップ種別のクライアントでループバックの任意ポートを許可する)。
+    /// 同意フローで、Google からのリダイレクト (ループバック) を 1 回だけ受ける。
+    /// デスクトップ種別: ポートは空いているものを自動で選ぶ (Google はループバックの任意ポートを許可する)。
+    /// Web 種別: 事前登録したリダイレクト URI と完全一致が必要なので、固定 URI を指定する。
     /// </summary>
     public sealed class LoopbackCodeReceiver : IDisposable
     {
@@ -14,10 +15,13 @@ namespace Codeer.Mail.Gmail
 
         public string RedirectUri { get; }
 
-        public LoopbackCodeReceiver()
+        /// <param name="fixedRedirectUri">Web 種別クライアント用の固定 URI (例 http://localhost:53682/)。null なら空きポートを自動で選ぶ。</param>
+        public LoopbackCodeReceiver(string? fixedRedirectUri = null)
         {
-            var port = GetFreePort();
-            RedirectUri = $"http://127.0.0.1:{port}/";
+            //HttpListener の prefix は末尾 / が必要 (Google に登録する値も末尾 / 付きで揃える)
+            RedirectUri = string.IsNullOrEmpty(fixedRedirectUri)
+                ? $"http://127.0.0.1:{GetFreePort()}/"
+                : fixedRedirectUri.EndsWith('/') ? fixedRedirectUri : fixedRedirectUri + "/";
             _listener.Prefixes.Add(RedirectUri);
             _listener.Start();
         }

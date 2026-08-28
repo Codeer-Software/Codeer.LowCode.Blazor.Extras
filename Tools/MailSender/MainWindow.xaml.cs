@@ -74,6 +74,7 @@ namespace MailSender
         public MainWindow(string? initialFile)
         {
             InitializeComponent();
+            ApplyZoom(_settings.Zoom, save: false);
             RefreshAccount();
             RefreshSendButton();
             if (!string.IsNullOrEmpty(initialFile)) Loaded += (_, _) => LoadPackage(initialFile);
@@ -82,20 +83,43 @@ namespace MailSender
         // ---------- アカウント (トークン)
 
         /// <summary>ComboBox の 1 行。</summary>
-        record AccountEntry(StoredAccount Token)
+        record AccountEntry(StoredAccount Token, GmailClientSettings? Client)
         {
-            public override string ToString() => $"{Token.Email}  (発行: {Token.IssuedAt:yyyy-MM-dd HH:mm})";
+            public override string ToString()
+                => Token.Email
+                   + (Client == null ? " [発行クライアントが未登録]" : Client.IsWebClient ? " [ウェブ]" : string.Empty)
+                   + $"  ({Token.IssuedAt:yyyy-MM-dd})";
+        }
+
+        /// <summary>
+        /// このアカウントのトークンをリフレッシュできるクライアント (発行したもの)。設定に無ければ null = 送れない。
+        /// 古い行 (ClientId 無し) はデスクトップ扱い。
+        /// </summary>
+        GmailClientSettings? ResolveClient(StoredAccount? token)
+            => token == null ? null
+             : string.IsNullOrEmpty(token.ClientId) ? (_settings.Gmail.Desktop.IsConfigured ? _settings.Gmail.Desktop : null)
+             : _settings.Gmail.Find(token.ClientId);
+
+        bool IsTokenUsable(StoredAccount? token) => ResolveClient(token) != null;
+
+        /// <summary>選択中アカウントの説明 (発行クライアントと、各ボタンが何に効くか)。</summary>
+        string DescribeSelected()
+        {
+            if (_accounts.Accounts.Count == 0) return "未登録 (「アカウントを追加」で Google アカウントの同意を取ります)";
+            var client = ResolveClient(_token);
+            if (client == null) return "このアカウントを発行した OAuth クライアントが設定にありません。設定に登録し直すか、「再発行」してください";
+            return $"発行クライアント: {client.DisplayName}  —  再発行・トークンの書き出し・破棄はこのアカウント ({_token!.Email} / {client.DisplayName}) に対して行います";
         }
 
         void RefreshAccount()
         {
             _token = _accounts.Selected;
-            _accounts.SelectedEmail = _token?.Email ?? string.Empty;
+            _accounts.Select(_token);
 
             _refreshingAccounts = true;
             try
             {
-                _accountsCombo.ItemsSource = _accounts.Accounts.Select(e => new AccountEntry(e)).ToList();
+                _accountsCombo.ItemsSource = _accounts.Accounts.Select(e => new AccountEntry(e, ResolveClient(e))).ToList();
                 _accountsCombo.SelectedIndex = _token == null ? -1 : _accounts.Accounts.IndexOf(_token);
             }
             finally
@@ -104,9 +128,7 @@ namespace MailSender
             }
 
             _accountsCombo.Visibility = _accounts.Accounts.Count == 0 ? Visibility.Collapsed : Visibility.Visible;
-            _accountText.Text = _accounts.Accounts.Count == 0
-                ? "未登録 (「アカウントを追加」で Google アカウントの同意を取ります)"
-                : $"{_accounts.Accounts.Count} 件登録。送信はここで選んだアカウントの名義になります";
+            _accountText.Text = DescribeSelected();
             _accountsCombo.IsEnabled = !_busy;
             _reissueButton.IsEnabled = _token != null && !_busy;
             _revokeButton.IsEnabled = _token != null && !_busy;
@@ -120,27 +142,54 @@ namespace MailSender
             if (_refreshingAccounts) return;
             if (_accountsCombo.SelectedItem is AccountEntry entry)
             {
-                _accounts.SelectedEmail = entry.Token.Email;
+                _accounts.Select(entry.Token);
                 TokenStore.Save(_accounts);
                 _token = entry.Token;
+                _accountText.Text = DescribeSelected();
                 RefreshSendButton();
             }
         }
 
-        /// <summary>別の Google アカウントを追加する (ブラウザでアカウントを選ぶ)。</summary>
-        void OnAddAccount(object sender, RoutedEventArgs e) => _ = IssueTokenAsync(null);
-
-        /// <summary>選択中アカウントのトークンを発行し直す。</summary>
-        void OnReissueToken(object sender, RoutedEventArgs e)
+        /// <summary>
+        /// Google アカウントを追加する (ブラウザでアカウントを選ぶ)。
+        /// OAuth クライアントが 2 つ登録されていれば、どちらで発行するかをメニューで選ぶ (1 つならそのまま)。
+        /// </summary>
+        void OnAddAccount(object sender, RoutedEventArgs e)
         {
-            if (_token != null) _ = IssueTokenAsync(_token.Email);
+            var clients = _settings.Gmail.Configured.ToList();
+            if (clients.Count <= 1)
+            {
+                _ = IssueTokenAsync(null, clients.FirstOrDefault());
+                return;
+            }
+            var menu = new ContextMenu { PlacementTarget = _addButton, Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom };
+            foreach (var client in clients)
+            {
+                var item = new Wpf.Ui.Controls.MenuItem { Header = $"{client.DisplayName} で追加" };
+                item.Click += (_, _) => _ = IssueTokenAsync(null, client);
+                menu.Items.Add(item);
+            }
+            menu.IsOpen = true;
         }
 
-        async Task IssueTokenAsync(string? loginHint)
+        /// <summary>選択中アカウントのトークンを、そのアカウントを発行したクライアントで発行し直す。</summary>
+        void OnReissueToken(object sender, RoutedEventArgs e)
         {
-            if (!_settings.Gmail.IsConfigured)
+            if (_token == null) return;
+            var client = ResolveClient(_token);
+            if (client == null)
             {
-                MessageBox.Show(this, "先に「設定」で OAuth クライアントの JSON (client_secret.json) を選んでください。", "MailSender", MessageBoxButton.OK, MessageBoxImage.Information);
+                MessageBox.Show(this, "このアカウントを発行した OAuth クライアントが設定にありません。設定に登録し直してください。", "MailSender", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+            _ = IssueTokenAsync(_token.Email, client);
+        }
+
+        async Task IssueTokenAsync(string? loginHint, GmailClientSettings? client)
+        {
+            if (client == null)
+            {
+                MessageBox.Show(this, "先に「設定」で OAuth クライアント (ID とシークレット) を登録してください。", "MailSender", MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
             SetBusy(true, "ブラウザで Google アカウントの同意を待っています... (ブラウザを閉じてしまったら「中止」)");
@@ -149,11 +198,12 @@ namespace MailSender
             _cancelButton.IsEnabled = true;
             try
             {
-                using var receiver = new LoopbackCodeReceiver();
+                //Web 種別クライアントは登録済みの固定 URI で受ける (デスクトップ種別は任意ポート)
+                using var receiver = new LoopbackCodeReceiver(client.IsWebClient ? client.RedirectUri : null);
                 var pkce = GmailPkce.Create();
                 var state = GmailApiClient.Base64Url(RandomNumberGenerator.GetBytes(16));
                 //追加 = アカウント選択画面から。再発行 = そのアカウントを login_hint で指定
-                var url = GmailOAuth.CreateAuthorizationUrl(_settings.Gmail.ClientId, receiver.RedirectUri, GmailOAuth.SendWithEmailScope, state, pkce,
+                var url = GmailOAuth.CreateAuthorizationUrl(client.ClientId, receiver.RedirectUri, GmailOAuth.SendWithEmailScope, state, pkce,
                     loginHint, selectAccount: loginHint == null);
                 Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
 
@@ -164,7 +214,7 @@ namespace MailSender
                     return;
                 }
 
-                var response = await new GmailOAuth().ExchangeCodeAsync(_settings.Gmail.ClientId, _settings.Gmail.ClientSecret, code, receiver.RedirectUri, pkce);
+                var response = await new GmailOAuth().ExchangeCodeAsync(client.ClientId, client.ClientSecret, code, receiver.RedirectUri, pkce);
                 if (string.IsNullOrEmpty(response.RefreshToken))
                 {
                     MessageBox.Show(this,
@@ -177,8 +227,15 @@ namespace MailSender
                     MessageBox.Show(this, "Google からメールアドレスが返されませんでした。もう一度発行してください。", "MailSender", MessageBoxButton.OK, MessageBoxImage.Warning);
                     return;
                 }
-                var token = new StoredAccount { Provider = MailProviders.Gmail, RefreshToken = response.RefreshToken, Email = response.Email, IssuedAt = DateTime.Now };
-                var replaced = _accounts.Accounts.Any(a => a.Email == token.Email);
+                var token = new StoredAccount
+                {
+                    Provider = MailProviders.Gmail,
+                    RefreshToken = response.RefreshToken,
+                    Email = response.Email,
+                    IssuedAt = DateTime.Now,
+                    ClientId = client.ClientId,
+                };
+                var replaced = _accounts.Accounts.Any(a => a.Email == token.Email && a.ClientId == token.ClientId);
                 _accounts.AddOrReplace(token);
                 TokenStore.Save(_accounts);
                 _statusText.Text = replaced ? $"{token.Email} のトークンを再発行しました" : $"{token.Email} を追加しました";
@@ -259,6 +316,9 @@ namespace MailSender
         void OnSettings(object sender, RoutedEventArgs e)
         {
             new SettingsWindow(_settings) { Owner = this }.ShowDialog();
+            //クライアントを差し替えると使えるアカウントが変わる
+            RefreshAccount();
+            RefreshSendButton();
         }
 
         // ---------- パッケージ
@@ -324,6 +384,28 @@ namespace MailSender
             }
         }
 
+        // ---------- 拡大縮小 (Ctrl + ホイール)
+
+        const double MinZoom = 0.7, MaxZoom = 2.0, ZoomStep = 0.1;
+
+        void OnPreviewMouseWheel(object sender, System.Windows.Input.MouseWheelEventArgs e)
+        {
+            if ((System.Windows.Input.Keyboard.Modifiers & System.Windows.Input.ModifierKeys.Control) == 0) return;
+            ApplyZoom(_settings.Zoom + (e.Delta > 0 ? ZoomStep : -ZoomStep), save: true);
+            e.Handled = true;
+        }
+
+        void ApplyZoom(double zoom, bool save)
+        {
+            zoom = Math.Round(Math.Clamp(zoom, MinZoom, MaxZoom), 2);
+            _settings.Zoom = zoom;
+            _zoom.ScaleX = _zoom.ScaleY = zoom;
+            //WebView2 は HwndHost なので LayoutTransform が中身に効かない → 自前のズームで追従
+            if (_webViewReady) _bodyHtml.ZoomFactor = zoom;
+            Title = zoom == 1.0 ? "MailSender" : $"MailSender ({zoom:P0})";
+            if (save) _settings.Save();
+        }
+
         // ---------- 本文プレビュー (HTML メールは WebView2、プレーンテキストは TextBox)
 
         /// <summary>
@@ -378,6 +460,7 @@ namespace MailSender
                 core.NavigationStarting += (_, args) => { if (!IsLocalPreviewUri(args.Uri)) args.Cancel = true; };
                 core.NewWindowRequested += (_, args) => args.Handled = true;
                 _webViewReady = true;
+                _bodyHtml.ZoomFactor = _settings.Zoom;
             }
             catch (Exception ex)
             {
@@ -398,7 +481,7 @@ namespace MailSender
         void RefreshSendButton()
         {
             var targets = SelectedRows.Count;
-            _sendButton.IsEnabled = !_busy && _token != null && targets > 0;
+            _sendButton.IsEnabled = !_busy && IsTokenUsable(_token) && targets > 0;
             _sendButton.Content = targets > 0 ? $"送信 ({targets} 件)" : "送信";
             _selectAllButton.IsEnabled = !_busy && _rows.Count > 0;
             _clearAllButton.IsEnabled = !_busy && _rows.Count > 0;
@@ -448,7 +531,7 @@ namespace MailSender
             });
             try
             {
-                await new SendService(_settings.Gmail, _token.RefreshToken).SendAsync(_package, targets.Select(r => r.Item), progress, _sendCancellation.Token);
+                await new SendService(ResolveClient(_token)!, _token.RefreshToken).SendAsync(_package, targets.Select(r => r.Item), progress, _sendCancellation.Token);
                 _statusText.Text = $"完了: 成功 {success} 件 / 失敗 {done - success} 件 (ログ: {SendService.LogFolder})";
             }
             catch (Exception ex)
