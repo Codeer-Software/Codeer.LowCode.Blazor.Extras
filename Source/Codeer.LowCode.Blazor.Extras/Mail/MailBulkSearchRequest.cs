@@ -11,8 +11,6 @@ namespace Codeer.LowCode.Blazor.Extras.Mail
     public class MailBulkSearchRequest
     {
         public string MailInfraName { get; set; } = string.Empty;
-        /// <summary>自分 (操作ユーザー) を差出人にする。差出人はクライアント値でなくサーバーが解決する (なりすましの構造的排除)。</summary>
-        public bool IsFromCurrentUser { get; set; }
         /// <summary>件名テンプレート。{変数} は宛先ごとに差し込まれる。</summary>
         public string Subject { get; set; } = string.Empty;
         /// <summary>本文テンプレート。{変数} は宛先ごとに差し込まれる。</summary>

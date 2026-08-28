@@ -44,13 +44,12 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
             _checkTurnMail.Unchecked += (_, _) => _comboUserEmailField.IsEnabled = false;
         }
 
-        //選んだユーザーモジュールのフィールドを候補にする。既に差出人契約があれば、その宣言を初期選択にする
+        //選んだユーザーモジュールのフィールドを候補にする
         void FillUserFields()
         {
             var module = _designData.Modules.Find((string?)_comboUserModule.SelectedItem ?? string.Empty);
-            var (emailField, displayNameField) = MailSetupService.ReadSenderRoles(module);
-            SetupUi.FillFields(_comboUserNameField, module, displayNameField, "Name");
-            SetupUi.FillFields(_comboUserEmailField, module, emailField, "Email");
+            SetupUi.FillFields(_comboUserNameField, module, null, "Name");
+            SetupUi.FillFields(_comboUserEmailField, module, null, "Email");
         }
 
         internal static ApprovalSetupOptions? ShowDialog(DesignData designData, List<string> dataSourceNames)

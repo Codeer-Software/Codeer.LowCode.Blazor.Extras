@@ -61,22 +61,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
                 ReplyTo = request.ReplyTo,
                 Attachments = request.Attachments,
             };
-            //差出人はクライアントの値を信用せず、「自分を差出人にする」のときだけサーバーが操作ユーザーを解決する
-            if (request.IsFromCurrentUser)
-            {
-                var user = await _dispatcher.GetCurrentUserAsync();
-                if (user == null)
-                {
-                    var fromFailure = new MailSendResult
-                    {
-                        TotalCount = recipients.Count,
-                        Failures = recipients.Select(e => new MailSendFailure { To = e.To, Error = MailDispatcher.CurrentUserUnresolvedError }).ToList(),
-                    };
-                    return fromFailure;
-                }
-                template.From = user.Email;
-                template.FromDisplayName = user.DisplayName;
-            }
+            //差出人はクライアントの値を信用せず、常に送信インフラ設定のシステム送信者
             return await _dispatcher.SendBulkAsync(request.MailInfraName, template, recipients,
                 MailDispatcher.CreateSource(request.SourceModule, request.SourceId));
         }

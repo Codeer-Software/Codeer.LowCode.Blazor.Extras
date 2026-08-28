@@ -20,7 +20,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
         public static void AddApprovalFlowSetup(DesignerEnvironment env)
             => env.AddMainMenu(() => RunApprovalSetup(env), "Tools", Properties.Resources.SetupMenuApprovalFlow);
 
-        /// <summary>Tools &gt; メールのセットアップ。差出人契約・Gmail トークン欄・送信履歴モジュール・サーバー設定の案内。</summary>
+        /// <summary>Tools &gt; メールのセットアップ。送信履歴モジュール・サーバー設定の案内。</summary>
         public static void AddMailSetup(DesignerEnvironment env)
             => env.AddMainMenu(() => RunMailSetup(env), "Tools", Properties.Resources.SetupMenuMail);
 

@@ -32,7 +32,6 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
         public string MailInfraName { get; set; } = string.Empty;
         public string From { get; set; } = string.Empty;
         public string FromDisplayName { get; set; } = string.Empty;
-        public bool IsFromCurrentUser { get; set; }
         public string ReplyTo { get; set; } = string.Empty;
         public bool IsBodyHtml { get; set; }
         public string SubjectTemplate { get; set; } = string.Empty;
@@ -94,7 +93,6 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
                 Title = string.IsNullOrEmpty(request.SourceModule) ? "Bulk mail" : $"{request.SourceModule} #{request.SourceId}",
                 GeneratedAt = DateTime.Now.ToString("yyyy-MM-dd HH:mm"),
                 MailInfraName = infraName,
-                IsFromCurrentUser = request.IsFromCurrentUser,
                 ReplyTo = request.ReplyTo,
                 IsBodyHtml = request.IsBodyHtml,
                 SubjectTemplate = request.Subject,
@@ -102,7 +100,6 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
                 Attachments = request.Attachments.Select(e => e.FileName).ToList(),
                 MaxBulkCount = _dispatcher.TryGetMaxBulkCount(infraName),
             };
-            await FillFromAsync(doc, request.IsFromCurrentUser);
 
             foreach (var entry in set.Entries)
             {
@@ -146,7 +143,6 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
                 Title = request.Title,
                 GeneratedAt = DateTime.Now.ToString("yyyy-MM-dd HH:mm"),
                 MailInfraName = _dispatcher.ResolveInfraName(request.MailInfraName),
-                IsFromCurrentUser = request.IsFromCurrentUser,
                 ReplyTo = message.ReplyTo,
                 IsBodyHtml = message.IsBodyHtml,
                 SubjectTemplate = request.SubjectTemplate,
@@ -155,7 +151,6 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
                 Total = 1,
                 SendCount = 1,
             };
-            await FillFromAsync(doc, request.IsFromCurrentUser);
             doc.Items.Add(new MailPreviewItem
             {
                 To = string.Join(", ", message.To),
@@ -169,19 +164,6 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
             return doc;
         }
 
-        //差出人: 「自分を差出人にする」なら操作ユーザー (送信時と同じ解決)。それ以外は送信インフラ設定の既定
-        async Task FillFromAsync(MailPreviewDocument doc, bool isFromCurrentUser)
-        {
-            if (!isFromCurrentUser) return;
-            var user = await _dispatcher.GetCurrentUserAsync();
-            if (user == null)
-            {
-                doc.Warning = MailDispatcher.CurrentUserUnresolvedError;
-                return;
-            }
-            doc.From = user.Email;
-            doc.FromDisplayName = user.DisplayName;
-        }
     }
 
     /// <summary>プレビューを自己完結 HTML (JS 内蔵・外部依存なし) にする。</summary>

@@ -11,28 +11,6 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
     static class ContractFieldChecks
     {
         /// <summary>
-        /// デザインの「現在のユーザーのモジュール」が契約 TContract を実装していること
-        /// (「自分を差出人にする」や GmailTokenField が使う差出人契約の検証)。
-        /// </summary>
-        internal static void CheckCurrentUserModuleImplementsContract<TContract>(DesignCheckContext context,
-            List<DesignCheckInfo> result, string ownerFieldName, string memberName) where TContract : ContractFieldDesignBase
-        {
-            var moduleName = context.DesignData.AppSettings.CurrentUserModuleDesignName;
-            if (string.IsNullOrEmpty(moduleName)) return; //CurrentUser モジュール未設定はアプリ設定側のチェック対象
-            var module = context.DesignData.Modules.Find(moduleName);
-            if (module == null) return;
-            if (module.Fields.OfType<TContract>().Any()) return;
-
-            result.Add(new FieldDesignCheckInfo
-            {
-                Location = new FieldDesignDataLocation
-                { Module = context.OwnerModule, Field = ownerFieldName, Member = memberName },
-                Message = string.Format(Properties.Resources.ApprovalCheck_ContractFieldMissingFormat,
-                    module.Name, typeof(TContract).Name),
-            });
-        }
-
-        /// <summary>
         /// 指定フィールドが一覧フィールドであること + その一覧の先のモジュールが契約 TContract を実装していること。
         /// </summary>
         internal static void CheckListImplementsContract<TContract>(DesignCheckContext context, List<DesignCheckInfo> result,

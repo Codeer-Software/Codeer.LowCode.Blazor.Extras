@@ -56,15 +56,13 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Mail
         }
 
         [Test]
-        public async Task 単発プレビューは差出人をサーバーで解決し文面と区間をそのまま載せる()
+        public async Task 単発プレビューは文面と区間をそのまま載せる()
         {
-            var dispatcher = new MailDispatcher(new MailConfig { DefaultInfraName = "Gmail" }, _ => null,
-                currentUserResolver: () => Task.FromResult<MailCurrentUser?>(new MailCurrentUser { Email = "me@example.com", DisplayName = "私" }));
+            var dispatcher = new MailDispatcher(new MailConfig { DefaultInfraName = "Gmail" }, _ => null);
             var builder = new MailPreviewBuilder(dispatcher, null!, new Codeer.LowCode.Blazor.DesignLogic.DesignData());
 
             var doc = await builder.BuildSingleAsync(new MailPreviewRequest
             {
-                IsFromCurrentUser = true,
                 Title = "Order #1",
                 SubjectTemplate = "注文 {No}",
                 Message = new MailMessage { To = { "a@example.com" }, Cc = { "c@example.com" }, Subject = "注文 100", Body = "本文" },
@@ -73,22 +71,11 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Mail
 
             Assert.That(doc.Kind, Is.EqualTo("single"));
             Assert.That(doc.MailInfraName, Is.EqualTo("Gmail"));      //省略時の既定インフラ
-            Assert.That(doc.From, Is.EqualTo("me@example.com"));       //自分を差出人にする = サーバー解決
-            Assert.That(doc.FromDisplayName, Is.EqualTo("私"));
+            Assert.That(doc.From, Is.Empty);                          //差出人は送信インフラ設定のシステム送信者 (プレビューには載せない)
             Assert.That(doc.Items.Single().To, Is.EqualTo("a@example.com"));
             Assert.That(doc.Items.Single().Cc, Is.EqualTo(new[] { "c@example.com" }));
             Assert.That(doc.Items.Single().SubjectSpans.Single().Name, Is.EqualTo("No"));
             Assert.That(doc.Warning, Is.Empty);
-        }
-
-        [Test]
-        public async Task 単発プレビューで操作ユーザーを解決できなければ警告になる()
-        {
-            var dispatcher = new MailDispatcher(new MailConfig(), _ => null);
-            var builder = new MailPreviewBuilder(dispatcher, null!, new Codeer.LowCode.Blazor.DesignLogic.DesignData());
-            var doc = await builder.BuildSingleAsync(new MailPreviewRequest { IsFromCurrentUser = true });
-            Assert.That(doc.Warning, Is.EqualTo(MailDispatcher.CurrentUserUnresolvedError));
-            Assert.That(doc.From, Is.Empty);
         }
 
         [Test]

@@ -68,14 +68,6 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         [Designer(Index = 11, DisplayName = "$MailFieldReplyTo")]
         public string ReplyTo { get; set; } = string.Empty;
 
-        /// <summary>
-        /// 自分 (操作ユーザー) を差出人にする。差出人アドレスはサーバーが操作ユーザーから解決する
-        /// (アドレス指定は不可 = なりすましの構造的排除)。false = 送信インフラ設定の差出人 (システムのアドレス)。
-        /// 要: デザインの CurrentUser モジュールに MailSenderContractField。
-        /// </summary>
-        [Designer(Index = 9, DisplayName = "$MailFieldIsFromCurrentUser")]
-        public bool IsFromCurrentUser { get; set; }
-
         /// <summary>送信ボタンの横にプレビューボタン (解決後の文面を HTML でダウンロード) を出すか。</summary>
         [Designer(Index = 14, DisplayName = "$MailFieldShowPreviewButton")]
         public bool ShowPreviewButton { get; set; } = true;
@@ -111,12 +103,6 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
             context.CheckFieldVariableExistence(Name, nameof(BodyVariable), BodyVariable).AddTo(result);
             context.CheckFieldVariableExistence(Name, nameof(ReplyToVariable), ReplyToVariable).AddTo(result);
 
-            //「自分を差出人にする」は CurrentUser モジュールの差出人契約からアドレスを解決する
-            if (IsFromCurrentUser)
-            {
-                ContractFieldChecks.CheckCurrentUserModuleImplementsContract<MailSenderContractFieldDesign>(
-                    context, result, Name, nameof(IsFromCurrentUser));
-            }
             if (string.IsNullOrEmpty(SubjectVariable) && string.IsNullOrEmpty(Subject) &&
                 string.IsNullOrEmpty(BodyVariable) && string.IsNullOrEmpty(Body))
             {

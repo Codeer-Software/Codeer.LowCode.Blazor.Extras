@@ -165,32 +165,6 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Mail
         }
 
         [Test]
-        public async Task ユーザー同意モード_差出人のユーザートークンがあればその人として送る()
-        {
-            var handler = CreateHandler();
-            var resolved = new List<string>();
-            var sender = new GmailApiMailSender(OAuthSettings, handler.CreateClient(),
-                userRefreshTokenResolver: mail =>
-                {
-                    resolved.Add(mail);
-                    return Task.FromResult<string?>(mail == "tanaka@example.com" ? """{"refresh_token":"TANAKA1"}""" : null);
-                });
-
-            //ユーザートークンあり → その人のリフレッシュトークンで交換
-            var result = await sender.SendAsync(new MailMessage { To = { "a@example.com" }, From = "tanaka@example.com" });
-            Assert.That(result.IsSuccess, Is.True);
-            Assert.That(handler.Requests[0].Body, Does.Contain("refresh_token=TANAKA1"));
-
-            //ユーザートークンなし → システムの TokenSecret にフォールバック
-            var result2 = await sender.SendAsync(new MailMessage { To = { "b@example.com" }, From = "unknown@example.com" });
-            Assert.That(result2.IsSuccess, Is.True);
-            var tokenBodies = handler.Requests.Where(e => e.Request.RequestUri!.Host == "oauth2.googleapis.com").Select(e => e.Body).ToList();
-            Assert.That(tokenBodies, Has.Count.EqualTo(2));
-            Assert.That(tokenBodies[1], Does.Contain("refresh_token=REFRESH1"));
-            Assert.That(resolved, Is.EqualTo(new[] { "tanaka@example.com", "unknown@example.com" }));
-        }
-
-        [Test]
         public async Task ユーザー同意モード_TokenSecret未設定は明確なエラー()
         {
             var handler = CreateHandler();
@@ -338,5 +312,28 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Mail
             Assert.That(delays.All(d => d > TimeSpan.Zero && d <= TimeSpan.FromMilliseconds(400)), Is.True);
         }
 
+            [Test]
+        public void 設定値の解決_jsonで終わればファイル_それ以外は中身そのもの()
+        {
+            Assert.That(GmailApiMailSender.ReadPathOrJson(""" {"refresh_token":"R"} """), Is.EqualTo("""{"refresh_token":"R"}"""));
+            Assert.That(GmailApiMailSender.ReadPathOrJson("RAWTOKEN"), Is.EqualTo("RAWTOKEN"));
+
+            var file = Path.Combine(Path.GetTempPath(), $"gmail_{Guid.NewGuid():N}.json");
+            File.WriteAllText(file, """{"refresh_token":"FROMFILE"}""");
+            try
+            {
+                Assert.That(GmailApiMailSender.ReadPathOrJson(file), Is.EqualTo("""{"refresh_token":"FROMFILE"}"""));
+                Assert.That(GmailApiMailSender.ReadPathOrJson(file.ToUpperInvariant().Replace(Path.GetTempPath().ToUpperInvariant(), Path.GetTempPath())), Is.EqualTo("""{"refresh_token":"FROMFILE"}"""));
+            }
+            finally
+            {
+                File.Delete(file);
+            }
+
+            //TokenSecret はトークン文字列そのものでも JSON でもよい
+            Assert.That(GmailApiMailSender.ParseRefreshToken("RAWTOKEN"), Is.EqualTo("RAWTOKEN"));
+            Assert.That(GmailApiMailSender.ParseRefreshToken("""{"refresh_token":"R"}"""), Is.EqualTo("R"));
+            Assert.That(GmailApiMailSender.ParseRefreshToken("""{"access_token":"x"}"""), Is.Null);
+        }
     }
 }

@@ -17,7 +17,6 @@ namespace Codeer.LowCode.Blazor.Extras.Mail
     public class MailPreviewRequest
     {
         public string MailInfraName { get; set; } = string.Empty;
-        public bool IsFromCurrentUser { get; set; }
         public MailMessage Message { get; set; } = new();
 
         /// <summary>解決前のテンプレート (プレビューのヘッダに出す)。</summary>

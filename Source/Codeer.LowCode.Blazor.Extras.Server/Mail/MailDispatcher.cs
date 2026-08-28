@@ -26,7 +26,6 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
         readonly MailConfig _config;
         readonly Func<string, IMailSender?> _senderFactory;
         readonly MailHistoryWriter? _historyWriter;
-        readonly Func<Task<MailCurrentUser?>>? _currentUserResolver;
 
         /// <param name="senderFactory">
         /// 呼び名 → 送信インフラの対応表 (テンプレートの MailSenderTable)。
@@ -34,20 +33,12 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
         /// 空の呼び名はここには来ない (呼び名が空 = 設定漏れとして製品側がエラーにする)。
         /// </param>
         public MailDispatcher(MailConfig config, Func<string, IMailSender?> senderFactory,
-            MailHistoryWriter? historyWriter = null, Func<Task<MailCurrentUser?>>? currentUserResolver = null)
+            MailHistoryWriter? historyWriter = null)
         {
             _config = config;
             _senderFactory = senderFactory;
             _historyWriter = historyWriter;
-            _currentUserResolver = currentUserResolver;
         }
-
-        /// <summary>
-        /// 「自分を差出人にする」(IsFromCurrentUser) の操作ユーザー情報。
-        /// 未結線・未設定・解決不能は null (呼び出し側が失敗にする)。
-        /// </summary>
-        internal async Task<MailCurrentUser?> GetCurrentUserAsync()
-            => _currentUserResolver == null ? null : await _currentUserResolver();
 
         /// <summary>単発送信の呼び名: 明示名 → DefaultInfraName (どちらも空なら空)。</summary>
         internal string ResolveInfraName(string? mailInfraName)
@@ -144,32 +135,15 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
 
         /// <summary>
         /// 単発送信のワイヤリクエスト (POST /api/mail) をそのまま送る。Controller を薄く保つための入口。
-        /// 差出人はクライアントの値を信用せず、IsFromCurrentUser (自分を差出人にする) のときだけ
-        /// サーバーが解決した操作ユーザーのアドレスにする (なりすましの構造的排除)。
+        /// 差出人はクライアントの値を信用せず、常に送信インフラ設定のシステム送信者にする (なりすましの構造的排除)。
         /// </summary>
         public async Task<MailSendResult> SendAsync(MailSendRequest request)
         {
             var message = request.Message;
             message.From = string.Empty;
             message.FromDisplayName = string.Empty;
-            if (request.IsFromCurrentUser)
-            {
-                var user = await GetCurrentUserAsync();
-                if (user == null)
-                {
-                    var failure = MailSendResult.Failure(string.Join(";", message.To), CurrentUserUnresolvedError);
-                    if (_historyWriter != null) await _historyWriter.WriteAsync(request.MailInfraName, message.Subject, failure,
-                        CreateSource(request.SourceModule, request.SourceId), DetailsOf(message, failure));
-                    return failure;
-                }
-                message.From = user.Email;
-                message.FromDisplayName = user.DisplayName;
-            }
             return await SendAsync(request.MailInfraName, message, CreateSource(request.SourceModule, request.SourceId));
         }
-
-        internal const string CurrentUserUnresolvedError =
-            "IsFromCurrentUser requires the current user's mail address (set the current user module in the design, put a MailSenderContractField on it, and make sure the user has an address).";
 
         internal static MailHistorySource? CreateSource(string sourceModule, string sourceId)
             => string.IsNullOrEmpty(sourceModule)

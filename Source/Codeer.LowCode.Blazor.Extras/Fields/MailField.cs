@@ -43,9 +43,6 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         /// <summary>返信先アドレス。入っていれば ReplyToVariable より優先。</summary>
         public string ReplyTo { get; set; } = design.ReplyTo;
 
-        /// <summary>自分 (操作ユーザー) を差出人にする (差出人アドレスはサーバーが解決)。false = 送信インフラ設定の差出人。</summary>
-        public bool IsFromCurrentUser { get; set; } = design.IsFromCurrentUser;
-
         bool _isSending;
 
         /// <summary>送信中か (ボタンの二重実行防止)。</summary>
@@ -149,7 +146,6 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             var preview = new MailPreviewRequest
             {
                 MailInfraName = request.MailInfraName,
-                IsFromCurrentUser = request.IsFromCurrentUser,
                 Message = request.Message,
                 SubjectTemplate = _lastSubjectTemplate,
                 BodyTemplate = _lastBodyTemplate,
@@ -205,7 +201,6 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             var request = new MailSendRequest
             {
                 MailInfraName = Design.MailInfraName,
-                IsFromCurrentUser = IsFromCurrentUser,
                 SourceModule = Module.Design.Name,
                 SourceId = MailVariableResolver.GetValueText(data, Codeer.LowCode.Blazor.DesignLogic.SystemFieldNames.Id),
                 Message = new MailMessage

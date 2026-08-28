@@ -6,7 +6,7 @@
 ## セットアップ (メールのセットアップで自動生成)
 
 履歴モジュールは手で作らず**メールのセットアップで生成できる** (契約フィールド・保護条件・一覧・ページリンク同梱。
-同時にユーザーモジュールの差出人契約や Gmail トークン欄、サーバー設定の案内も揃う):
+同時にサーバー設定の案内も揃う):
 
 - デザイナ: メニュー Tools > メールのセットアップ
 - CLI (headless): `<designer.exe> mail-setup "<projectDir>" [--history-name MailHistory] [--data-source <name>]

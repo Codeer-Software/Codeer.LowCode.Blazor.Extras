@@ -144,22 +144,10 @@
   <data name="SetupMenuMail" xml:space="preserve">
     <value>メールのセットアップ</value>
   </data>
-  <data name="SetupSenderContract" xml:space="preserve">
-    <value>差出人契約 (MailSenderContractField) を追加 — 「自分を差出人にする」の前提</value>
-  </data>
-  <data name="SetupGmailToken" xml:space="preserve">
-    <value>Gmail ユーザートークン欄 (GmailTokenField) を追加 — Gmail で本人名義に送る場合のみ</value>
-  </data>
   <data name="SetupMailHistory" xml:space="preserve">
     <value>送信履歴モジュールを生成</value>
   </data>
   <data name="SetupMailHistoryDetail" xml:space="preserve">
     <value>送信明細モジュール (1 宛先 1 行・解決後の本文) も生成</value>
-  </data>
-  <data name="SetupUserGroup" xml:space="preserve">
-    <value>ユーザーモジュール (差出人 = 操作ユーザーを使う場合)</value>
-  </data>
-  <data name="SetupUserGroupHelp" xml:space="preserve">
-    <value>システムのアドレスから送るだけなら設定不要です。MailField / BulkMailField の「自分を差出人にする」を使う、または Gmail で本人名義に送る場合に、ユーザーモジュールのどのフィールドがアドレス・表示名かを宣言します (差出人契約)。</value>
   </data>
 </root>

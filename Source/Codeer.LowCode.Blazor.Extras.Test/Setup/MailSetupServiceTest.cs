@@ -3,6 +3,7 @@ using Codeer.LowCode.Blazor.DesignLogic.Check;
 using Codeer.LowCode.Blazor.Extras.Designer.Setup;
 using Codeer.LowCode.Blazor.Extras.Designs;
 using Codeer.LowCode.Blazor.Extras.Mail;
+using Codeer.LowCode.Blazor.Repository.Design;
 using Codeer.LowCode.Blazor.Repository.Match;
 using Codeer.LowCode.Blazor.SystemSettings;
 
@@ -13,11 +14,10 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Setup
         static MailSetupOptions DefaultOptions() => new()
         {
             DataSourceName = "Main",
-            AddSenderContract = true,
         };
 
         [Test]
-        public void 差出人契約と履歴モジュールが揃い契約が解決する()
+        public void 履歴モジュールが揃い契約が解決する()
         {
             CreateFixture();
             var result = MailSetupService.Run(Load(), ProjectDir, DefaultOptions(), DataSourceType.SQLite);
@@ -25,12 +25,6 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Setup
             Assert.That(result.CreatedModules, Is.EquivalentTo(new[] { "MailHistory", "MailHistoryDetail" }));
 
             var d = Load();
-            var user = d.Modules.Find("AppUser")!;
-            var sender = user.Fields.OfType<MailSenderContractFieldDesign>().Single();
-            Assert.That(sender.Email, Is.EqualTo("Email.Value"));
-            Assert.That(sender.DisplayName, Is.EqualTo("Name.Value"));
-            Assert.That(user.Fields.OfType<GmailTokenFieldDesign>().Any(), Is.False);
-
             var module = d.Modules.Find("MailHistory")!;
             Assert.That(module.DbTable, Is.EqualTo("mail_histories"));
             Assert.That(MailContracts.History(module), Is.Not.Null);
@@ -39,7 +33,11 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Setup
             var dbDefs = new Dictionary<string, List<DbTableDefinition>>();
             Assert.That(module.Fields.OfType<MailHistoryContractFieldDesign>().Single()
                 .CheckDesign(new DesignCheckContext("MailHistory", d, dbDefs)), Is.Empty);
-            Assert.That(sender.CheckDesign(new DesignCheckContext("AppUser", d, dbDefs)), Is.Empty);
+
+            //明細モジュールの History リンクは値の変数付き (モジュール指定時は必須。無いと設計チェックがエラー)
+            var historyLink = d.Modules.Find("MailHistoryDetail")!.Fields.OfType<LinkFieldDesign>().Single(e => e.Name == "History");
+            Assert.That(historyLink.ValueVariable, Is.EqualTo("Id.Value"));
+            Assert.That(historyLink.CheckDesign(new DesignCheckContext("MailHistoryDetail", d, dbDefs)), Is.Empty);
 
             //履歴はシステムの記録 = 画面からは誰も書けない
             var protect = (FieldValueMatchCondition)module.UserWriteCondition.Condition!;
@@ -77,38 +75,21 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Setup
         }
 
         [Test]
-        public void Gmailトークン欄を追加すると列DDLと鍵の案内が出る()
+        public void 履歴の保護条件はデザインのCurrentUserモジュール()
         {
             CreateFixture();
-            var options = DefaultOptions();
-            options.AddGmailTokenField = true;
-            var result = MailSetupService.Run(Load(), ProjectDir, options, DataSourceType.SQLite);
-
-            var user = Load().Modules.Find("AppUser")!;
-            var token = user.Fields.OfType<GmailTokenFieldDesign>().Single();
-            Assert.That(token.DbColumnToken, Is.EqualTo("gmail_token"));
-            Assert.That(string.Join("\n", result.Ddl), Does.Contain("gmail_token"));
-            Assert.That(string.Join("\n", result.Notes), Does.Contain("TokenEncryptionKey"));
-        }
-
-        [Test]
-        public void 既定は差出人契約なしで履歴の保護条件はデザインのCurrentUserモジュール()
-        {
-            CreateFixture();
-            var options = new MailSetupOptions { DataSourceName = "Main", UserModuleName = "Nobody" };
+            var options = new MailSetupOptions { DataSourceName = "Main" };
             var result = MailSetupService.Run(Load(), ProjectDir, options, DataSourceType.SQLite);
 
             var d = Load();
-            Assert.That(d.Modules.Find("AppUser")!.Fields.OfType<MailSenderContractFieldDesign>().Any(), Is.False);
             Assert.That(d.Modules.Find("MailHistory")!.UserWriteCondition.ModuleName, Is.EqualTo("AppUser"));
         }
 
         [Test]
-        public void 履歴なし差出人契約なしでも案内だけ出る()
+        public void 履歴なしでも案内だけ出る()
         {
             CreateFixture();
             var options = DefaultOptions();
-            options.AddSenderContract = false;
             options.CreateHistoryModule = false;
             var before = ReadModuleJson("AppUser");
             var result = MailSetupService.Run(Load(), ProjectDir, options, DataSourceType.SQLite);
@@ -132,20 +113,6 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Setup
             Assert.That(second.SkippedModules, Is.EquivalentTo(new[] { "MailHistory" }));
             Assert.That(ReadModuleJson("MailHistory"), Is.EqualTo(history));
             Assert.That(ReadModuleJson("AppUser"), Is.EqualTo(user));
-            Assert.That(Load().Modules.Find("AppUser")!.Fields.OfType<MailSenderContractFieldDesign>().Count(), Is.EqualTo(1));
-        }
-
-        [Test]
-        public void メールアドレスフィールドが無ければ差出人契約は追加せず案内する()
-        {
-            CreateFixture();
-            var options = DefaultOptions();
-            options.UserEmailField = "NoSuchField";
-            options.CreateHistoryModule = false;
-            var result = MailSetupService.Run(Load(), ProjectDir, options, DataSourceType.SQLite);
-
-            Assert.That(Load().Modules.Find("AppUser")!.Fields.OfType<MailSenderContractFieldDesign>().Any(), Is.False);
-            Assert.That(string.Join("\n", result.Notes), Does.Contain("NoSuchField"));
         }
     }
 }

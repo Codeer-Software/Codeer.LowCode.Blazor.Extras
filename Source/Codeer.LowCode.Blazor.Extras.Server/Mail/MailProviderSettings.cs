@@ -6,7 +6,7 @@
     //Not published yet: only Gmail has been verified by real sending. Keep internal until verified, then make public and wire into MailSenderTable / SystemConfig / Program.cs
     internal class SmtpSettings
     {
-        /// <summary>差出人アドレス (「自分を差出人にする」がOFFのときの差出人)。</summary>
+        /// <summary>差出人アドレス (システム送信者。メールは常にこのアドレスから送られる)。</summary>
         public string SenderMailAddress { get; set; } = string.Empty;
 
         /// <summary>差出人の表示名。</summary>
@@ -82,23 +82,17 @@
         /// <summary>
         /// サービスアカウントの JSON キー (ドメイン全体の委任モード)、または
         /// OAuth クライアントの client_secret JSON (installed/web = ユーザー同意モード)。
-        /// どちらもファイルパスか JSON 文字列そのもの。
+        /// 値が ".json" で終わればファイルパス、それ以外は JSON 文字列そのもの
+        /// (環境変数 Gmail__ClientSecret 等に直接入れられる。ファイルを置かなくてよい)。
         /// </summary>
         public string ClientSecret { get; set; } = string.Empty;
 
         /// <summary>
-        /// ユーザー同意モードで使う、同意で得たリフレッシュトークンの JSON
-        /// ({"refresh_token":"..."}。ファイルパスか JSON 文字列そのもの)。
-        /// システム送信者 (ユーザートークン未登録時のフォールバック) の位置づけ。
+        /// ユーザー同意モードで使う、同意で得たリフレッシュトークン。
+        /// 値が ".json" で終わればファイルパス、それ以外は JSON ({"refresh_token":"..."}) かトークン文字列そのもの
+        /// (環境変数 Gmail__TokenSecret 等に直接入れられる)。
+        /// システム送信者の位置づけ (メールは常にこのアカウントから送られる)。
         /// </summary>
         public string TokenSecret { get; set; } = string.Empty;
-
-        /// <summary>
-        /// GmailTokenField をDBに保存するときの暗号化鍵 (AES-GCM)。
-        /// 長さ自由の文字列を SHA-256 で 256bit 鍵に畳む。
-        /// **未設定のままトークンを保存しようとするとエラーになる** (平文で保存しない)。
-        /// 環境変数で上書き可 (例 Gmail__TokenEncryptionKey)。リポジトリやデザインファイルには置かないこと。
-        /// </summary>
-        public string TokenEncryptionKey { get; set; } = string.Empty;
     }
 }

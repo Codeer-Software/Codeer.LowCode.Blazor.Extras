@@ -146,15 +146,8 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Properties
 
         public static string SetupMenuMail => GetString("SetupMenuMail");
 
-        public static string SetupSenderContract => GetString("SetupSenderContract");
-
-        public static string SetupGmailToken => GetString("SetupGmailToken");
-
         public static string SetupMailHistory => GetString("SetupMailHistory");
         public static string SetupMailHistoryDetail => GetString("SetupMailHistoryDetail");
 
-        public static string SetupUserGroup => GetString("SetupUserGroup");
-
-        public static string SetupUserGroupHelp => GetString("SetupUserGroupHelp");
     }
 }

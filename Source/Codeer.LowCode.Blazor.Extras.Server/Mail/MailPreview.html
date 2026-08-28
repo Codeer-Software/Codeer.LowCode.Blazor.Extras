@@ -77,9 +77,7 @@
   const meta = $('#meta');
   meta.append(el('span', '', '生成 ' + doc.generatedAt));
   if (doc.mailInfraName) meta.append(el('span', '', '送信インフラ: ' + doc.mailInfraName));
-  meta.append(el('span', '', '差出人: ' + (doc.isFromCurrentUser
-    ? (doc.from ? (doc.fromDisplayName ? doc.fromDisplayName + ' <' + doc.from + '>' : doc.from) + ' (自分を差出人にする)' : '(操作ユーザーを解決できません)')
-    : '送信インフラの既定の差出人')));
+  meta.append(el('span', '', '差出人: 送信インフラの差出人 (システム送信者)'));
   if (doc.replyTo) meta.append(el('span', '', '返信先: ' + doc.replyTo));
   if (doc.attachments && doc.attachments.length) meta.append(el('span', '', '添付: ' + doc.attachments.join(', ')));
   meta.append(el('span', 'note', 'これはプレビューです。メールは送信していません。'));

@@ -186,27 +186,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Setup
             var d = Load();
             Assert.That(d.Modules.Find("ApprovalFlowMember")!.Fields.Any(e => e is MailFieldDesign), Is.True);
             Assert.That(d.Modules.Find("MailHistory"), Is.Null);
-            Assert.That(d.Modules.Find("AppUser")!.Fields.OfType<MailSenderContractFieldDesign>().Any(), Is.False);
             Assert.That(string.Join("\n", result.Notes), Does.Contain("メールのセットアップ"));
-        }
-
-        [Test]
-        public void ユーザーモジュールに差出人契約があればその宣言をユーザー項目に使う()
-        {
-            CreateFixture(userModuleName: "Staff", userNameField: "DisplayName", userEmailField: "MailAddress");
-            var staff = Load().Modules.Find("Staff")!;
-            staff.Fields.Add(new MailSenderContractFieldDesign { Name = "MailSender", Email = "MailAddress.Value", DisplayName = "DisplayName.Value" });
-            SaveModule(staff);
-
-            //オプションは既定 (Name / Email) のまま = 契約の宣言が勝つ
-            var options = new ApprovalSetupOptions { DataSourceName = "Main", UserModuleName = "Staff" };
-            ApprovalFlowSetupService.Run(Load(), ProjectDir, options, DataSourceType.SQLite);
-
-            var d = Load();
-            var mail = d.Modules.Find("ApprovalFlowMember")!.Fields.OfType<MailFieldDesign>().Single();
-            Assert.That(mail.ToVariable, Is.EqualTo("ApproverUser.MailAddress.Value"));
-            var applicant = (LinkFieldDesign)d.Modules.Find("ApprovalFlow")!.Fields.First(e => e.Name == "Applicant");
-            Assert.That(applicant.DisplayTextVariable, Is.EqualTo("DisplayName.Value"));
         }
 
         [Test]

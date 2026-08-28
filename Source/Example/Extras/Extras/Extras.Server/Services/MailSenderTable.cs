@@ -17,12 +17,12 @@ namespace Extras.Server.Services
     /// </remarks>
     public static class MailSenderTable
     {
-        public static IMailSender? Create(string name, Func<string, Task<string?>>? gmailUserTokenResolver = null)
+        public static IMailSender? Create(string name)
         {
             var config = SystemConfig.Instance;
             return name switch
             {
-                "Gmail" => new GmailApiMailSender(config.Gmail, userRefreshTokenResolver: gmailUserTokenResolver),
+                "Gmail" => new GmailApiMailSender(config.Gmail),
                 _ => null,
             };
         }

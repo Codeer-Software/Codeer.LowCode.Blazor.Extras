@@ -18,11 +18,9 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
     ///    --no-mail = 通知メールを含めない。メール側の準備は先に mail-setup で行う)
     ///
     /// mail-setup:
-    ///   &lt;designer.exe&gt; mail-setup "&lt;projectDir&gt;" [--user-module AppUser] [--user-email-field Email] [--user-name-field Name]
-    ///     [--sender-contract] [--gmail-token] [--no-history] [--history-name MailHistory]
+    ///   &lt;designer.exe&gt; mail-setup "&lt;projectDir&gt;" [--no-history] [--history-name MailHistory]
     ///     [--no-history-detail] [--history-detail-name MailHistoryDetail] [--data-source &lt;name&gt;]
     ///     [--no-pageframe] [--ddl-out "&lt;path.sql&gt;"]
-    ///   (--sender-contract = 差出人契約をユーザーモジュールに追加。「自分を差出人にする」/ Gmail 本人名義のときだけ)
     ///
     /// DDL は実行しない (--ddl-out へ書き出し、適用は sql verb またはユーザーが行う)。
     /// 終了コード: 0 = 成功 / 2 = 失敗。
@@ -84,13 +82,6 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
 
             var options = new MailSetupOptions
             {
-                UserModuleName = named.GetValueOrDefault("--user-module",
-                    string.IsNullOrEmpty(designData.AppSettings.CurrentUserModuleDesignName)
-                        ? "AppUser" : designData.AppSettings.CurrentUserModuleDesignName),
-                UserEmailField = named.GetValueOrDefault("--user-email-field", "Email"),
-                UserDisplayNameField = named.GetValueOrDefault("--user-name-field", "Name"),
-                AddSenderContract = args.Contains("--sender-contract"),
-                AddGmailTokenField = args.Contains("--gmail-token"),
                 CreateHistoryModule = !args.Contains("--no-history"),
                 HistoryModuleName = named.GetValueOrDefault("--history-name", "MailHistory"),
                 CreateHistoryDetailModule = !args.Contains("--no-history-detail"),

@@ -1103,11 +1103,6 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
             }
         }
 
-        internal static string MailFieldIsFromCurrentUser {
-            get {
-                return ResourceManager.GetString("MailFieldIsFromCurrentUser", resourceCulture);
-            }
-        }
 
         internal static string MailFieldBccVariable {
             get {
@@ -1139,53 +1134,13 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
             }
         }
 
-        internal static string GmailTokenField {
-            get {
-                return ResourceManager.GetString("GmailTokenField", resourceCulture);
-            }
-        }
 
-        internal static string GmailTokenFieldPlaceholder {
-            get {
-                return ResourceManager.GetString("GmailTokenFieldPlaceholder", resourceCulture);
-            }
-        }
 
-        internal static string GmailTokenFieldLoadFile {
-            get {
-                return ResourceManager.GetString("GmailTokenFieldLoadFile", resourceCulture);
-            }
-        }
 
-        internal static string GmailTokenFieldClear {
-            get {
-                return ResourceManager.GetString("GmailTokenFieldClear", resourceCulture);
-            }
-        }
 
-        internal static string GmailTokenFieldPendingNote {
-            get {
-                return ResourceManager.GetString("GmailTokenFieldPendingNote", resourceCulture);
-            }
-        }
 
-        internal static string GmailTokenFieldClearedNote {
-            get {
-                return ResourceManager.GetString("GmailTokenFieldClearedNote", resourceCulture);
-            }
-        }
 
-        internal static string GmailTokenFieldFileTooLarge {
-            get {
-                return ResourceManager.GetString("GmailTokenFieldFileTooLarge", resourceCulture);
-            }
-        }
 
-        internal static string GmailTokenFieldViewOnlyNote {
-            get {
-                return ResourceManager.GetString("GmailTokenFieldViewOnlyNote", resourceCulture);
-            }
-        }
 
         internal static string MailFieldSentToast {
             get {
@@ -1217,23 +1172,8 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
             }
         }
 
-        internal static string MailSenderContractField {
-            get {
-                return ResourceManager.GetString("MailSenderContractField", resourceCulture);
-            }
-        }
 
-        internal static string MailSenderContractEmail {
-            get {
-                return ResourceManager.GetString("MailSenderContractEmail", resourceCulture);
-            }
-        }
 
-        internal static string MailSenderContractDisplayName {
-            get {
-                return ResourceManager.GetString("MailSenderContractDisplayName", resourceCulture);
-            }
-        }
 
         internal static string BulkMailRecipientContractField {
             get {
@@ -2204,5 +2144,21 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
                 return ResourceManager.GetString("ApprovalWithdrawPolicy_Anytime", resourceCulture);
             }
         }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     }
 }

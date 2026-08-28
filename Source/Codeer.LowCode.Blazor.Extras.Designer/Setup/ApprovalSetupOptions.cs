@@ -29,7 +29,7 @@
 
         /// <summary>
         /// 順番到達通知メール (メンバーモジュールの MailField + 契約 TurnNotifyMail) を含めるか。
-        /// メール側の準備 (差出人契約・送信履歴・サーバー設定) はメールのセットアップで先に済ませておく。
+        /// メール側の準備 (送信履歴・サーバー設定) はメールのセットアップで先に済ませておく。
         /// </summary>
         public bool UseTurnNotifyMail { get; set; } = true;
 
@@ -40,24 +40,6 @@
     /// <summary>メールのセットアップのオプション。</summary>
     public class MailSetupOptions
     {
-        /// <summary>差出人 (操作ユーザー) のモジュール名。デザインの「現在のユーザーのモジュール」。</summary>
-        public string UserModuleName { get; set; } = "AppUser";
-
-        /// <summary>ユーザーモジュールのメールアドレスフィールド名 (差出人契約の Email 役割)。</summary>
-        public string UserEmailField { get; set; } = "Email";
-
-        /// <summary>ユーザーモジュールの表示名フィールド名 (差出人契約の DisplayName 役割)。</summary>
-        public string UserDisplayNameField { get; set; } = "Name";
-
-        /// <summary>
-        /// 差出人契約 (MailSenderContractField) をユーザーモジュールに追加するか。
-        /// 「自分を差出人にする」(IsFromCurrentUser) や Gmail で本人名義に送る場合だけ必要 (システムのアドレスから送るだけなら不要)。
-        /// </summary>
-        public bool AddSenderContract { get; set; }
-
-        /// <summary>Gmail ユーザートークン欄 (GmailTokenField) をユーザーモジュールに追加するか (Gmail で本人名義に送る場合のみ)。</summary>
-        public bool AddGmailTokenField { get; set; }
-
         /// <summary>送信履歴モジュールを生成するか。</summary>
         public bool CreateHistoryModule { get; set; } = true;
 

@@ -432,30 +432,6 @@
   <data name="OrientationLockField" xml:space="preserve">
     <value>Orientation Lock</value>
   </data>
-  <data name="GmailTokenField" xml:space="preserve">
-    <value>Gmail Token</value>
-  </data>
-  <data name="GmailTokenFieldPlaceholder" xml:space="preserve">
-    <value>Paste the token JSON, or load it from a file (leave empty to keep the current registration)</value>
-  </data>
-  <data name="GmailTokenFieldLoadFile" xml:space="preserve">
-    <value>Load from file</value>
-  </data>
-  <data name="GmailTokenFieldClear" xml:space="preserve">
-    <value>Unregister</value>
-  </data>
-  <data name="GmailTokenFieldPendingNote" xml:space="preserve">
-    <value>Saving will register the new token.</value>
-  </data>
-  <data name="GmailTokenFieldClearedNote" xml:space="preserve">
-    <value>Saving will remove the registration.</value>
-  </data>
-  <data name="GmailTokenFieldFileTooLarge" xml:space="preserve">
-    <value>The file is too large. Select the token JSON file.</value>
-  </data>
-  <data name="GmailTokenFieldViewOnlyNote" xml:space="preserve">
-    <value>The token cannot be displayed.</value>
-  </data>
   <data name="PasswordHashField" xml:space="preserve">
     <value>Password Hash</value>
   </data>
@@ -548,9 +524,6 @@ Recipients: {1}</value>
   <data name="MailFieldSendFailedFormat" xml:space="preserve">
     <value>Failed to send the mail: {0}</value>
   </data>
-  <data name="MailFieldIsFromCurrentUser" xml:space="preserve">
-    <value>Send as Current User</value>
-  </data>
   <data name="MailFieldCc" xml:space="preserve">
     <value>Cc (; separated)</value>
   </data>
@@ -589,15 +562,6 @@ Recipients: {1}</value>
   </data>
   <data name="MailHistoryContractField" xml:space="preserve">
     <value>Mail History Contract</value>
-  </data>
-  <data name="MailSenderContractField" xml:space="preserve">
-    <value>Mail Sender Contract</value>
-  </data>
-  <data name="MailSenderContractEmail" xml:space="preserve">
-    <value>Mail Address (required)</value>
-  </data>
-  <data name="MailSenderContractDisplayName" xml:space="preserve">
-    <value>Display Name</value>
   </data>
   <data name="BulkMailRecipientContractField" xml:space="preserve">
     <value>Bulk Mail Recipient Contract</value>

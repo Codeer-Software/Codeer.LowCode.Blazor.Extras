@@ -138,7 +138,6 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Mail
             field.Bcc = "bcc@example.com";
             field.Subject = "【上書き】{Title.Value}";    //値もテンプレートとして解決される
             field.IsBodyHtml = true;
-            field.IsFromCurrentUser = true;
             field.ReplyTo = "reply@example.com";
             field.AddTextAttachment("a.txt", "attach");
 
@@ -161,7 +160,6 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Mail
             Assert.That(sent.Message.Bcc, Is.EqualTo(new[] { "bcc@example.com" }));
             Assert.That(sent.Message.Subject, Is.EqualTo("【上書き】経費精算"));
             Assert.That(sent.Message.IsBodyHtml, Is.True);
-            Assert.That(sent.IsFromCurrentUser, Is.True); //差出人はアドレス指定不可 = フラグだけがワイヤに乗る
             Assert.That(sent.Message.From, Is.Empty);
             Assert.That(sent.Message.ReplyTo, Is.EqualTo("reply@example.com"));
             Assert.That(sent.Message.Attachments, Is.Empty); //1通目で送られてクリア済み

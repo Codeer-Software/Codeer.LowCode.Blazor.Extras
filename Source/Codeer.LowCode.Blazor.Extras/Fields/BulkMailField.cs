@@ -136,7 +136,6 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             return new MailBulkSearchRequest
             {
                 MailInfraName = Design.MailInfraName,
-                IsFromCurrentUser = Design.IsFromCurrentUser,
                 Subject = ResolveValueFirst(Design.Subject, Design.SubjectVariable),
                 Body = ResolveValueFirst(Design.Body, Design.BodyVariable),
                 IsBodyHtml = Design.IsBodyHtml,

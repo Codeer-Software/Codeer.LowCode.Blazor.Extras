@@ -4,38 +4,6 @@ using Codeer.LowCode.Blazor.Repository.Design;
 namespace Codeer.LowCode.Blazor.Extras.Designs
 {
     /// <summary>
-    /// **差出人 (操作ユーザー) モジュールの契約**。デザインの「現在のユーザーのモジュール」
-    /// (AppSettings.CurrentUserModuleDesignName) に1つ置き、「メールアドレス / 表示名」がどの値なのかを宣言する
-    /// (UI もデータも持たない)。
-    /// </summary>
-    /// <remarks>
-    /// 使うのは**「自分を差出人にする」(IsFromCurrentUser) の差出人解決**と、
-    /// **GmailTokenField のユーザー単位トークン検索** (差出人アドレスで人を引く)。
-    /// 差出人の解決はプロバイダ非依存の共通層 (MailDispatcher) が行うので、この契約もプロバイダに依存しない。
-    /// 役割の値は自モジュールのフィールドの変数、またはリンクパス ("Email.Value" / "Employee.Email.Value")。
-    /// </remarks>
-    [Designer(DisplayName = "$MailSenderContractField")]
-    [ToolboxIcon(PackIconMaterialKind = "CheckDecagramOutline")]
-    public class MailSenderContractFieldDesign : ContractFieldDesignBase
-    {
-        public MailSenderContractFieldDesign() : base(typeof(MailSenderContractFieldDesign).FullName!) { }
-
-        /// <summary>メールアドレス (必須)。"Email.Value" / リンクパス可。</summary>
-        [Designer(Index = 3, CandidateType = CandidateType.Variable, DisplayName = "$MailSenderContractEmail")]
-        public string Email { get; set; } = "Email.Value";
-
-        /// <summary>差出人の表示名 (任意。空 = 表示名なし)。</summary>
-        [Designer(Index = 4, CandidateType = CandidateType.Variable, DisplayName = "$MailSenderContractDisplayName")]
-        public string DisplayName { get; set; } = string.Empty;
-
-        private protected override HashSet<string> VariableRoleNames
-            => new() { nameof(Email), nameof(DisplayName) };
-
-        //アドレスだけ必須。表示名は空にすれば使わない
-        private protected override HashSet<string> RequiredRoleNames => new() { nameof(Email) };
-    }
-
-    /// <summary>
     /// **一斉送信の宛先モジュールの契約**。BulkMailField の宛先リストが指しているモジュールに1つ置き、
     /// 「メールアドレス / 配信停止」がどの値なのかを宣言する (UI もデータも持たない)。
     /// 使うのは一斉送信だけ (単発送信や差出人の解決には関与しない)。

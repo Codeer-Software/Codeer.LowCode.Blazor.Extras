@@ -432,30 +432,6 @@
   <data name="OrientationLockField" xml:space="preserve">
     <value>画面向きロック</value>
   </data>
-  <data name="GmailTokenField" xml:space="preserve">
-    <value>Gmailトークン</value>
-  </data>
-  <data name="GmailTokenFieldPlaceholder" xml:space="preserve">
-    <value>トークンJSONを貼り付け、またはファイルから読み込み (空のまま保存すると現在の登録を維持)</value>
-  </data>
-  <data name="GmailTokenFieldLoadFile" xml:space="preserve">
-    <value>ファイルから読み込む</value>
-  </data>
-  <data name="GmailTokenFieldClear" xml:space="preserve">
-    <value>登録を解除</value>
-  </data>
-  <data name="GmailTokenFieldPendingNote" xml:space="preserve">
-    <value>保存すると新しいトークンを登録します</value>
-  </data>
-  <data name="GmailTokenFieldClearedNote" xml:space="preserve">
-    <value>保存すると登録を解除します</value>
-  </data>
-  <data name="GmailTokenFieldFileTooLarge" xml:space="preserve">
-    <value>ファイルが大きすぎます。トークンのJSONファイルを選んでください。</value>
-  </data>
-  <data name="GmailTokenFieldViewOnlyNote" xml:space="preserve">
-    <value>トークンは表示できません</value>
-  </data>
   <data name="PasswordHashField" xml:space="preserve">
     <value>パスワードハッシュ</value>
   </data>
@@ -548,9 +524,6 @@
   <data name="MailFieldSendFailedFormat" xml:space="preserve">
     <value>メール送信に失敗しました: {0}</value>
   </data>
-  <data name="MailFieldIsFromCurrentUser" xml:space="preserve">
-    <value>自分を差出人にする</value>
-  </data>
   <data name="MailFieldCc" xml:space="preserve">
     <value>Cc (;で複数可)</value>
   </data>
@@ -589,15 +562,6 @@
   </data>
   <data name="MailHistoryContractField" xml:space="preserve">
     <value>メール履歴契約</value>
-  </data>
-  <data name="MailSenderContractField" xml:space="preserve">
-    <value>差出人契約</value>
-  </data>
-  <data name="MailSenderContractEmail" xml:space="preserve">
-    <value>メールアドレス (必須)</value>
-  </data>
-  <data name="MailSenderContractDisplayName" xml:space="preserve">
-    <value>表示名</value>
   </data>
   <data name="BulkMailRecipientContractField" xml:space="preserve">
     <value>一斉送信の宛先契約</value>

@@ -2,7 +2,6 @@
 using Codeer.LowCode.Blazor.Extras.Server.Mail;
 using Microsoft.AspNetCore.Mvc;
 using Extras.Server.Services;
-using System.Security.Claims;
 
 namespace Extras.Server.Controllers
 {
@@ -57,27 +56,10 @@ namespace Extras.Server.Controllers
                 ? null
                 : new MailHistoryWriter(mail.HistoryModuleName, DesignerService.GetDesignData(),
                     data => _dataService.ModuleDataIO.AddSystemRecordAsync(data), e => _logger.LogError("{Error}", e));
-            return new MailDispatcher(mail, CreateSender, historyWriter, CreateCurrentUserResolver());
+            return new MailDispatcher(mail, CreateSender, historyWriter);
         }
 
         //呼び名→送信インフラの対応表は MailSenderTable (独自インフラはそこに足す)
-        IMailSender? CreateSender(string name)
-            => MailSenderTable.Create(name, mailAddress => CreateGmailUserTokenStore().FindRefreshTokenAsync(mailAddress));
-
-        //「自分を差出人にする」(IsFromCurrentUser) の操作ユーザー解決
-        //(認証ユーザーId → デザインの CurrentUser モジュールのメール/表示名)
-        Func<Task<MailCurrentUser?>>? CreateCurrentUserResolver()
-        {
-            var mail = SystemConfig.Instance.Mail;
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
-            var resolver = new MailCurrentUserResolver(DesignerService.GetDesignData(), _dataService.ModuleDataIO, e => _logger.LogError("{Error}", e));
-            return () => resolver.FindCurrentUserAsync(userId);
-        }
-
-        //Gmail ユーザー同意モードの差出人ごとのユーザートークン (Gmail 送信器からだけ呼ばれる)。
-        //トークン列は書き込み専用+暗号化のため、パスワードハッシュのログイン照合と同じくサーバー側の SQL で読んで復号する
-        //(SQL はデザインのテーブル名・列名から組み立てられ、実行だけ DbAccess に渡す。CurrentUser モジュールに GmailTokenField が無ければ使われない)
-        GmailUserTokenStore CreateGmailUserTokenStore()
-            => new(DesignerService.GetDesignData(), _dataService.DbAccess, SystemConfig.Instance.Gmail, e => _logger.LogError("{Error}", e));
+        static IMailSender? CreateSender(string name) => MailSenderTable.Create(name);
     }
 }

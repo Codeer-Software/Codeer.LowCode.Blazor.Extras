@@ -18,7 +18,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
     /// - 冪等: 同名モジュールが既に存在すれば生成しない (承認モジュール群は 1 セット。申請書が増えても同じセットを共有する)。
     /// - 生成後は通常のモジュール (フィールド追加・画面カスタム・リネームすべて自由。契約フィールドが正)。
     /// - DDL は雛形として返す (実行は呼び出し側でユーザーの確認を挟む)。
-    /// - 通知メールを含める場合、メール側の準備 (差出人契約・送信履歴・サーバー設定) は先にメールのセットアップで済ませておく。
+    /// - 通知メールを含める場合、メール側の準備 (送信履歴・サーバー設定) は先にメールのセットアップで済ませておく。
     /// </summary>
     public static class ApprovalFlowSetupService
     {
@@ -42,11 +42,6 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
             DataSourceType dataSourceType, List<DbTableDefinition>? existingTables = null)
         {
             var result = new SetupResult();
-
-            //ユーザーモジュールに差出人契約があれば、メールアドレス・表示名はその宣言に従う (二重に聞かない)
-            var (contractEmail, contractDisplayName) = MailSetupService.ReadSenderRoles(designData.Modules.Find(options.UserModuleName));
-            options.UserEmailField = contractEmail ?? options.UserEmailField;
-            options.UserDisplayNameField = contractDisplayName ?? options.UserDisplayNameField;
 
             var templates = SelectTemplates(options.RouteMaster);
             //生成名 = テンプレート名 (承認モジュール群は 1 セット)
@@ -136,7 +131,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
             result.Notes.Add(CreateNextStepsNote(options, nameMap));
             if (options.UseTurnNotifyMail)
             {
-                result.Notes.Add("通知メールを送るにはメール側の準備が必要です。まだなら Tools > メールのセットアップ (差出人契約・送信履歴・サーバー設定の案内) を実行してください。");
+                result.Notes.Add("通知メールを送るにはメール側の準備が必要です。まだなら Tools > メールのセットアップ (送信履歴・サーバー設定の案内) を実行してください。");
             }
 
             return result;

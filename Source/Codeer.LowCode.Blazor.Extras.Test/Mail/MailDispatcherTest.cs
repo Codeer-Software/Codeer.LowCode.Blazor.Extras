@@ -257,35 +257,14 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Mail
             Assert.That(result.Failures.Single().Error, Does.Contain("Mail.DefaultInfraName"));
         }
 
-        //================= 差出人 (IsFromCurrentUser = 自分を差出人にする) =================
-
-        static (MailDispatcher dispatcher, FakeMailSender fake) CreateWithCurrentUser(MailCurrentUser? user)
-        {
-            var fake = new FakeMailSender();
-            return (new MailDispatcher(new MailConfig { DefaultInfraName = "Main" }, _ => fake,
-                currentUserResolver: () => Task.FromResult(user)), fake);
-        }
-
-        [Test]
-        public async Task From_フラグONでサーバーが解決した操作ユーザーになる()
-        {
-            var (dispatcher, fake) = CreateWithCurrentUser(new MailCurrentUser { Email = "sales@example.com", DisplayName = "営業 太郎" });
-            var result = await dispatcher.SendAsync(new MailSendRequest
-            {
-                IsFromCurrentUser = true,
-                Message = new MailMessage { To = { "to@example.com" }, Subject = "s" },
-            });
-
-            Assert.That(result.IsSuccess, Is.True);
-            Assert.That(fake.Sent.Single().From, Is.EqualTo("sales@example.com"));
-            Assert.That(fake.Sent.Single().FromDisplayName, Is.EqualTo("営業 太郎"));
-        }
+        //================= 差出人 =================
 
         [Test]
         public async Task From_クライアントが載せたFromは無視される()
         {
-            //ワイヤ経由の From はなりすまし防止のため常に破棄される (フラグOFF = システム差出人)
-            var (dispatcher, fake) = CreateWithCurrentUser(new MailCurrentUser { Email = "sales@example.com" });
+            //ワイヤ経由の From はなりすまし防止のため常に破棄される (差出人は送信インフラ設定のシステム送信者)
+            var fake = new FakeMailSender();
+            var dispatcher = new MailDispatcher(new MailConfig { DefaultInfraName = "Main" }, _ => fake);
             var result = await dispatcher.SendAsync(new MailSendRequest
             {
                 Message = new MailMessage { From = "spoof@evil.com", FromDisplayName = "偽", To = { "to@example.com" }, Subject = "s" },
@@ -294,40 +273,6 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Mail
             Assert.That(result.IsSuccess, Is.True);
             Assert.That(fake.Sent.Single().From, Is.Empty);
             Assert.That(fake.Sent.Single().FromDisplayName, Is.Empty);
-        }
-
-        [Test]
-        public async Task From_フラグONで操作ユーザーが解決できなければ失敗()
-        {
-            var (dispatcher, fake) = CreateWithCurrentUser(null);
-            var result = await dispatcher.SendAsync(new MailSendRequest
-            {
-                IsFromCurrentUser = true,
-                Message = new MailMessage { To = { "to@example.com" }, Subject = "s" },
-            });
-
-            Assert.That(result.IsSuccess, Is.False);
-            Assert.That(result.Failures.Single().Error, Does.Contain("IsFromCurrentUser"));
-            Assert.That(fake.Sent, Is.Empty);
-        }
-
-        [Test]
-        public async Task From_リダイレクト時も維持される()
-        {
-            var fake = new FakeMailSender();
-            var config = new MailConfig { DebugRedirectAllTo = "test@example.com", DefaultInfraName = "Main" };
-            var dispatcher = new MailDispatcher(config, _ => fake,
-                currentUserResolver: () => Task.FromResult<MailCurrentUser?>(new() { Email = "sales@example.com" }));
-
-            var result = await dispatcher.SendAsync(new MailSendRequest
-            {
-                IsFromCurrentUser = true,
-                Message = new MailMessage { To = { "customer@other.com" }, Subject = "s" },
-            });
-
-            Assert.That(result.IsSuccess, Is.True);
-            Assert.That(fake.Sent.Single().To, Is.EqualTo(new[] { "test@example.com" }));
-            Assert.That(fake.Sent.Single().From, Is.EqualTo("sales@example.com"));
         }
     }
 }

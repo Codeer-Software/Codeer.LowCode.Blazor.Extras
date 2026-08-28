@@ -17,8 +17,9 @@
 | レコードの内容で 1 通送る (受付通知・依頼メールなど) | **MailField** |
 | 名簿 (リスト) の全員に一斉送信する (キャンペーン・お知らせ) | **BulkMailField** |
 | 送信した記録を残す | 送信履歴モジュール (**メールのセットアップ**で生成) |
-| 操作した本人の名前・アドレスで送る | 「自分を差出人にする」＋ **差出人契約** |
-| Gmail で本人のメールボックスから送る | **GmailTokenField** |
+
+差出人は常に**送信インフラ設定のシステム送信者** (`SenderMailAddress` / `SenderDisplayName`) です。
+本人の Gmail (担当者個人のアカウント) から送る用途は、トークンを各自の PC にだけ置く**別の Windows 送信アプリ**として提供予定 (サーバーにはトークンを置かない)。
 
 ### 最短の使い方 (MailField)
 
@@ -42,7 +43,7 @@
 
 ### セットアップ (デザイナ)
 
-**Tools > メールのセットアップ** で、送信履歴モジュール・差出人契約・Gmail トークン欄と、
+**Tools > メールのセットアップ** で、送信履歴モジュール (＋送信明細) と
 サーバー設定の案内をまとめて用意できます (使うものだけ選べます)。
 コマンドラインからは `<designer.exe> mail-setup "<projectDir>"` で同じことができます。
 
@@ -66,7 +67,6 @@
 
 | プロパティ | 説明 |
 |---|---|
-| 自分を差出人にする | ON = 操作ユーザー本人のアドレス・表示名が差出人になる (サーバーが解決)。差出人アドレスの直接指定はできない (なりすまし防止)。ユーザーモジュールに**差出人契約**が必要 |
 | HTML本文 | 本文を HTML として送る |
 | メールインフラ名 | どの送信インフラで送るかの呼び名。**通常は空**にしてサーバー設定の既定を使う |
 | プレビューボタンを表示 | 送信アイコンの横にプレビュー (HTML ダウンロード) を出す (既定 ON) |
@@ -96,7 +96,7 @@ ReceiptMail.Send();                                        // 添付は送信後
 |---|---|
 | 宛先リスト | 同一モジュール上の List / DetailList / TileList のフィールド名。その先のモジュールに**一斉送信の宛先契約**が必要 |
 | 件名 / 件名変数、本文 / 本文変数 | MailField と同じ規則。`{変数}` は**宛先行**で解決される (`{Contact.Name.Value}` のようなリンクパス可) |
-| 自分を差出人にする / HTML本文 / 返信先 / メールインフラ名 / プレビューボタンを表示 | MailField と同じ |
+| HTML本文 / 返信先 / メールインフラ名 / プレビューボタンを表示 | MailField と同じ |
 
 動作:
 
@@ -131,7 +131,7 @@ MailField / BulkMailField の送信ボタンの横に **プレビュー** ボタ
 押すと**自己完結の HTML ファイル**がダウンロードされます。ブラウザで開くだけで、外部への通信はしません。
 文面と宛先の解決は**送信と同じサーバー経路**なので、プレビューと実際の送信内容は一致します。
 
-- **単発 (MailField)**: 差出人 (「自分を差出人にする」の解決結果) / To / Cc / Bcc / 返信先 / 添付 / 件名 / 本文を 1 枚で表示
+- **単発 (MailField)**: To / Cc / Bcc / 返信先 / 添付 / 件名 / 本文を 1 枚で表示
 - **一斉 (BulkMailField)**: 左に宛先一覧、右に選んだ宛先で解決した件名・本文。**除外された行も理由付き** (配信停止 / アドレスなし) で一覧に残り、
   「除外のみ」の絞り込み・検索・キーボード移動 (↑↓、`n` = 次の除外) ができます。1 万件でも軽く動きます
 - **変数ハイライト**: テンプレートの `{変数}` が入った箇所に色が付き、原文の変数名がツールチップで見えます (空になった変数は「(空)」と表示)
@@ -147,7 +147,6 @@ UI もデータも持たない「宣言用」のフィールドです。役割 �
 
 | 契約 | 置く先 | 役割 | 使う機能 |
 |---|---|---|---|
-| **差出人契約** (MailSenderContractField) | 現在のユーザーのモジュール (AppUser 等) | Email (必須) / DisplayName | 「自分を差出人にする」、Gmail トークン検索 |
 | **一斉送信の宛先契約** (BulkMailRecipientContractField) | 一斉送信の宛先リストが指すモジュール | Email (必須) / OptOut / DisplayName | BulkMailField の宛先解決・プレビューの一覧表示 |
 | **メール履歴契約** (MailHistoryContractField) | 送信履歴モジュール | SentAt (必須) / MailInfraName / Subject / TotalCount / SuccessCount / FailureDetails / SourceModule / SourceId / Details | 送信履歴の記録 |
 | **メール送信明細契約** (MailHistoryDetailContractField) | 送信明細モジュール (履歴の Details 一覧の参照先) | History (必須) / To (必須) / Subject / Body / IsSuccess / Error | 宛先ごとの明細 (任意) |
@@ -169,21 +168,9 @@ UI もデータも持たない「宣言用」のフィールドです。役割 �
 
 ### 差出人の考え方
 
-- 既定の差出人は**送信インフラ設定のアドレス** (システムのアドレス)
-- 「自分を差出人にする」を ON にすると、操作ユーザーの**差出人契約**が宣言するアドレス・表示名が使われる
-- 差出人アドレスを直接指定する手段はありません (なりすましの構造的排除)
-
-### GmailTokenField (Gmail で本人名義に送る)
-
-Gmail では「管理者権限なしで本人名義で送る」ために本人の OAuth 同意で得たトークンが必要です。
-ユーザーモジュールにこのフィールドを置くと、ユーザーが自分のトークンを登録でき、
-「自分を差出人にする」送信が**本人の Gmail** から送られます (送信済みも本人に残る)。
-
-- トークンは**書き込み専用**の列に AES-GCM で暗号化して保存され、クライアントには一切返さない
-- 鍵は `appsettings` の `Gmail.TokenEncryptionKey` (環境変数 `Gmail__TokenEncryptionKey` で与えるのが安全)。鍵未設定では保存できない
-- 入力欄は毎回空から始まり、空のまま保存すれば既存トークンを維持 (パスワード変更欄と同じ)。「登録を解除」で削除
-- 未登録のユーザーはシステム送信者にフォールバック
-- 誰が登録できるかは、そのモジュールの書き込み権限がそのまま効く (本人だけが自分の行を編集できる設計にする)
+- 差出人は常に**送信インフラ設定のアドレス・表示名** (システム送信者)。部署共通アドレスなどはインフラ (呼び名) を分けて表現する
+- 差出人アドレスを指定する手段はありません (なりすましの構造的排除)。クライアントが載せた From はサーバーで常に破棄される
+- 本人の Gmail (担当者個人のアカウント) から送る用途は、トークンを各自の PC にだけ置く**別の Windows 送信アプリ**として提供予定 (サーバーにはトークンを置かない)。
 
 ### サーバー設定 (appsettings.json)
 
@@ -197,14 +184,16 @@ Gmail では「管理者権限なしで本人名義で送る」ために本人�
 "Gmail": {
   "SenderMailAddress": "notify@your-domain.example",
   "SenderDisplayName": "業務システム",
-  "ClientSecret": "client_secret.json のパス",
-  "TokenSecret": "システム送信者のトークン (JSON のパス)",
-  "TokenEncryptionKey": "(環境変数で与える)",
+  "ClientSecret": "client_secret.json のパス、または JSON そのもの",
+  "TokenSecret": "システム送信者のトークン (JSON のパス、または JSON / トークン文字列そのもの)",
   "MaxBulkCount": 500
 }
 ```
 
 - `Mail` は共通設定、送信インフラごとの設定 (`Gmail` など) は独立したセクションです
+- `ClientSecret` / `TokenSecret` は値が `.json` で終わればファイルパス、それ以外は中身そのものとして扱います。
+  秘密をファイルで置きたくない場合は環境変数 (`Gmail__ClientSecret` / `Gmail__TokenSecret`) に
+  JSON やトークン文字列を直接入れてください
 - 現在提供している送信インフラは **Gmail (Gmail API)** です。Gmail の上限 (Workspace: 1 ユーザー 1 日 2,000 通 / 無料: 500 通、約 2.5 通/秒) に合わせて、
   一斉送信は 400ms 間隔で逐次送信し、レート制限 (429 / 503) は指数バックオフ (2s→32s・最大 5 回) で再試行、日次上限に達したら残りを打ち切って失敗として返します。
   `MaxBulkCount` の既定は 500。数千通規模の配信は配信サービス系のインフラ (`IMailSender` 実装) を使ってください
@@ -217,14 +206,11 @@ Gmail では「管理者権限なしで本人名義で送る」ために本人�
 
 - `MailController` — `MailTransport.SendMailEndPoint` (`/api/mail`) / `BulkSearchMailEndPoint` (`/api/mail/bulk_search`) / `PreviewMailEndPoint` (`/api/mail/preview`) / `BulkPreviewMailEndPoint` (`/api/mail/bulk_preview`) の受け口 (プレビューは `MailPreviewBuilder` が HTML を作る)
 - `MailSenderTable` — 呼び名 → `IMailSender` の対応表
-- `CustomizedModuleDataIO` — GmailTokenField を使う場合、保存前に `GmailTokenHelper.ProtectGmailTokens(...)` を呼ぶ (トークンの暗号化)
 - クライアント起動時: `MailTransport.SendMailEndPoint` / `BulkSearchMailEndPoint` / `PreviewMailEndPoint` / `BulkPreviewMailEndPoint` に URL を設定
 
 ### デザインチェックで検出されるもの
 
 - MailField / BulkMailField: 宛先未設定、件名・本文とも空、変数の不在
-- 「自分を差出人にする」が ON なのに現在のユーザーのモジュールに差出人契約が無い
-- GmailTokenField を置いたモジュールに差出人契約が無い
 - BulkMailField の宛先リストの先に宛先契約が無い
 - 契約の必須役割が空、名指ししたフィールドの不在
 

@@ -153,6 +153,9 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
                 Name = "History",
                 DbColumn = "history_id",
                 SearchCondition = new SearchCondition(historyModuleName),
+                //リンクはモジュール指定時に値の変数が必須 (無いとデザインチェックがエラーになり実行時も解決できない)
+                ValueVariable = "Id.Value",
+                DisplayTextVariable = "Subject.Value",
             });
             foreach (var (label, field) in rows)
             {

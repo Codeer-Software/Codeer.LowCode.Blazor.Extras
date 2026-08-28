@@ -40,18 +40,13 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
 
         readonly GmailSettings _settings;
         readonly HttpClient _http;
-        //差出人アドレス→ユーザー単位のリフレッシュトークン (ユーザー同意モード。null/未解決 = システムトークンで送る)。
-        //実装は GmailUserTokenStore.FindRefreshTokenAsync (差出人でユーザーモジュールを検索) をテンプレの MailController が結線する
-        readonly Func<string, Task<string?>>? _userRefreshTokenResolver;
         //委任ユーザー (sub) ごとのトークンキャッシュ (動的 From はそのユーザーとして送るため)
         readonly Dictionary<string, (string Token, DateTime ExpiresAtUtc)> _tokens = new();
 
-        public GmailApiMailSender(GmailSettings settings, HttpClient? httpClient = null,
-            Func<string, Task<string?>>? userRefreshTokenResolver = null)
+        public GmailApiMailSender(GmailSettings settings, HttpClient? httpClient = null)
         {
             _settings = settings;
             _http = httpClient ?? _sharedClient;
-            _userRefreshTokenResolver = userRefreshTokenResolver;
         }
 
         public int MaxBulkCount => _settings.MaxBulkCount;
@@ -160,14 +155,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
                     ["assertion"] = CreateAssertion(key.ClientEmail, key.PrivateKeyPem, sendAsUser),
                 });
 
-            //ユーザー同意モード: 差出人にユーザー単位トークンが登録されていれば「その人として」送る
-            //(本人の送信済みに残る)。無ければシステムのトークン (TokenSecret) で送る
-            if (_tokens.TryGetValue(sendAsUser, out var cached) && DateTime.UtcNow < cached.ExpiresAtUtc) return cached.Token;
-            var userToken = _userRefreshTokenResolver == null || string.IsNullOrEmpty(sendAsUser)
-                ? null
-                : ParseRefreshToken(await _userRefreshTokenResolver(sendAsUser));
-            if (userToken != null)
-                return await GetOrExchangeAsync(sendAsUser, () => CreateRefreshTokenForm(key, userToken));
+            //ユーザー同意モード: システムのトークン (TokenSecret) で送る
             return await GetOrExchangeAsync(OAuthUserCacheKey, () => CreateRefreshTokenForm(key, LoadRefreshToken()));
         }
 
@@ -196,7 +184,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
         }
 
         //ユーザー行のトークン列の値 (JSON {"refresh_token":"..."} かトークン文字列そのもの) からリフレッシュトークンを取り出す
-        static string? ParseRefreshToken(string? value)
+        internal static string? ParseRefreshToken(string? value)
         {
             if (string.IsNullOrWhiteSpace(value)) return null;
             value = value.Trim();
@@ -234,12 +222,14 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
             return $"{header}.{claims}.{signature}";
         }
 
-        record GmailKey(bool IsServiceAccount, string ClientEmail, string PrivateKeyPem, string ClientId, string ClientSecret);
+        internal record GmailKey(bool IsServiceAccount, string ClientEmail, string PrivateKeyPem, string ClientId, string ClientSecret);
+
+        GmailKey LoadKey() => LoadKey(_settings);
 
         //ClientSecret の JSON の種類で認証モードを判定する
-        GmailKey LoadKey()
+        internal static GmailKey LoadKey(GmailSettings settings)
         {
-            using var json = JsonDocument.Parse(ReadPathOrJson(_settings.ClientSecret));
+            using var json = JsonDocument.Parse(ReadPathOrJson(settings.ClientSecret));
             var root = json.RootElement;
 
             //サービスアカウントキー (ドメイン全体の委任モード)
@@ -261,14 +251,20 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
                 throw new InvalidOperationException(
                     "Gmail TokenSecret is not configured. The OAuth client mode needs a refresh token JSON ({\"refresh_token\":\"...\"}) obtained by the user's one-time consent.");
 
-            using var json = JsonDocument.Parse(ReadPathOrJson(_settings.TokenSecret));
-            if (json.RootElement.TryGetProperty("refresh_token", out var token) && token.GetString() is { Length: > 0 } value)
-                return value;
-            throw new InvalidOperationException("Gmail TokenSecret JSON does not contain \"refresh_token\".");
+            //JSON ({"refresh_token":"..."}) でもトークン文字列そのものでもよい
+            return ParseRefreshToken(ReadPathOrJson(_settings.TokenSecret))
+                ?? throw new InvalidOperationException("Gmail TokenSecret is neither a JSON with \"refresh_token\" nor a token string.");
         }
 
-        static string ReadPathOrJson(string value)
-            => value.TrimStart().StartsWith('{') ? value : File.ReadAllText(value);
+        /// <summary>
+        /// 設定値の解決: ".json" で終わればファイルパスとして読み、それ以外は値そのものを使う
+        /// (環境変数や接続文字列の置き場に JSON / トークン文字列を直接入れられる = ファイルを置かなくてよい)。
+        /// </summary>
+        internal static string ReadPathOrJson(string value)
+        {
+            var trimmed = value.Trim();
+            return trimmed.EndsWith(".json", StringComparison.OrdinalIgnoreCase) ? File.ReadAllText(trimmed) : trimmed;
+        }
 
         static string Base64Url(byte[] bytes)
             => Convert.ToBase64String(bytes).TrimEnd('=').Replace('+', '-').Replace('/', '_');

@@ -48,7 +48,6 @@
 | Body | string | - | 本文テンプレート (デザインに直接書く方・複数行)。`{変数}` は宛先行で解決される |
 | MailInfraName | string | - | 送信先の呼び名 (どの送信インフラで送るか。対応づけはアプリの MailController の対応表)。**省略可**で、省略 (空) なら appsettings の `Mail.DefaultBulkInfraName` → `DefaultInfraName` (どれも空なら「呼び名未指定」の送信エラー)。「一斉は配信サービス、単発は通知系」の対を appsettings 側で決めておき、フィールドには書かないのが基本形 |
 | IsBodyHtml | bool | - | 本文を HTML として送るか (変数値は HTML エスケープされる) |
-| IsFromCurrentUser | bool | - | ON = 操作ユーザー本人のアドレスが差出人 (サーバーが解決)。OFF = 送信インフラ設定の差出人。**差出人のアドレス指定はできない** (なりすましの構造的排除)。要: 現在のユーザーのモジュールに**差出人契約 (MailSenderContractField)** |
 | ReplyToVariable | string | - | 返信先アドレスの変数 (自モジュールの変数・リンクパス可)。ReplyTo (値) が入っている場合はそちらが優先 |
 | ReplyTo | string | - | 返信先アドレス (値) |
 | ShowPreviewButton | bool | - | 送信ボタンの横に「プレビュー」を出す (既定 true)。押すと左に宛先一覧 (除外行も理由付き)・右に宛先ごとに解決した件名/本文 (変数ハイライト) の自己完結 HTML をダウンロードする。宛先の解決は送信と同じサーバー経路。保存済みの内容で作られる。サーバーの MailTransport.BulkPreviewMailEndPoint が必要 |
