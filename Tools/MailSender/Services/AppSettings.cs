@@ -117,8 +117,14 @@ namespace MailSender.Services
     /// </summary>
     public class AppSettings
     {
+        /// <summary>
+        /// データフォルダ。既定は %LOCALAPPDATA%\Codeer\MailSender。
+        /// 環境変数 MAILSENDER_DATA_FOLDER で差し替えられる (検証・スクリーンショット撮影用に本番の設定/トークンと分けるため)。
+        /// </summary>
         public static string DataFolder { get; } =
-            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Codeer", "MailSender");
+            Environment.GetEnvironmentVariable("MAILSENDER_DATA_FOLDER") is { Length: > 0 } custom
+                ? custom
+                : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Codeer", "MailSender");
 
         static string FilePath => Path.Combine(DataFolder, "settings.json");
 

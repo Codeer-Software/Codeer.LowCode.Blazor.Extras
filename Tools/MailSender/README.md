@@ -47,9 +47,11 @@ Web アプリ側は同意フローを実行しない (リフレッシュトー�
 
 | ファイル | 内容 |
 |---|---|
-| `settings.json` | OAuth クライアント (client_secret.json から取り込んだ client_id / client_secret) |
+| `settings.json` | OAuth クライアント (デスクトップ / ウェブ それぞれの client_id / client_secret)、画面の拡大率 |
 | `accounts.bin` | 登録アカウントごとのリフレッシュトークン + 選択中アカウント (DPAPI で暗号化。他の Windows アカウントでは読めない) |
 | `logs\yyyyMMdd.log` | 送信ログ (日時 / 宛先 / 件名 / 結果 / 元ファイル) |
+
+環境変数 `MAILSENDER_DATA_FOLDER` でこのフォルダを差し替えられます (検証やスクリーンショット撮影で本番の設定・トークンと分けるため)。
 
 ## 発行 (単一 exe)
 
@@ -57,7 +59,7 @@ Web アプリ側は同意フローを実行しない (リフレッシュトー�
 dotnet publish Tools\MailSender\MailSender.csproj -c Release -r win-x64 --self-contained false -p:PublishSingleFile=true -o Tools\MailSender\publish
 ```
 
-`publish\MailSender.exe` を配布します (.NET 8 デスクトップ ランタイムが必要)。成果物は git に入れず GitHub Releases に置きます。
+`publish\MailSender.exe` を配布します (.NET 10 デスクトップ ランタイムが必要)。成果物は git に入れず GitHub Releases に置きます。
 
 ## 仕組み
 
