@@ -122,12 +122,16 @@
     bc.onclick = () => navigator.clipboard && navigator.clipboard.writeText(item.body || '');
     tools.append(bc);
     tools.append(el('span', '', '本文 ' + (item.body || '').length + ' 文字'));
+    if (doc.isBodyHtml) tools.append(el('span', '', '外部画像は読み込みません (開封検知の誤発火防止)'));
     m.append(tools);
 
     if (doc.isBodyHtml && !showSource) {
       const f = el('iframe', 'html');
       f.setAttribute('sandbox', '');
-      f.srcdoc = item.body || '';
+      // 外部リソースを一切読み込ませない (default-src 'none')。
+      // 開封検知用の追跡画像を踏んで「開封済み」を誤発火させない / 閲覧者の IP を配信先に渡さないため。
+      // sandbox だけでは画像の読み込みは止まらないので CSP を本文の先頭に差し込む。
+      f.srcdoc = "<meta http-equiv=\"Content-Security-Policy\" content=\"default-src 'none'; style-src 'unsafe-inline';\">" + (item.body || '');
       f.onload = () => { try { f.style.height = Math.max(480, f.contentDocument.documentElement.scrollHeight + 20) + 'px'; } catch (e) {} };
       m.append(f);
     } else {

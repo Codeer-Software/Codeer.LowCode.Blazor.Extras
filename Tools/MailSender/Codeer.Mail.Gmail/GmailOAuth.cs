@@ -27,8 +27,8 @@ namespace Codeer.Mail.Gmail
 
     /// <summary>
     /// Google OAuth 2.0 (認可コードフロー) の素の REST。同意画面 URL・コード交換・リフレッシュ・取り消し。
-    /// デスクトップアプリ種別のクライアントは client_secret を持たず PKCE を使う
-    /// (Google の仕様上、リフレッシュ時の client_secret は Optional。リフレッシュトークン + client_id で更新できる)。
+    /// デスクトップアプリ種別でも Google は client_secret を発行する (秘密扱いではない)。ここでは PKCE と併用し、
+    /// client_secret があれば交換/リフレッシュ時に一緒に送る (無ければ省く)。
     /// </summary>
     public class GmailOAuth
     {
@@ -51,8 +51,9 @@ namespace Codeer.Mail.Gmail
         /// 同意画面の URL。access_type=offline + prompt=consent でリフレッシュトークンを毎回もらう
         /// (2 回目以降の同意で refresh_token が省かれるのを防ぐ)。
         /// </summary>
+        /// <param name="selectAccount">true ならブラウザ側で先にアカウント選択画面を出す (別アカウントの追加用)。</param>
         public static string CreateAuthorizationUrl(string clientId, string redirectUri, string scope, string state,
-            GmailPkce? pkce = null, string? loginHint = null)
+            GmailPkce? pkce = null, string? loginHint = null, bool selectAccount = false)
         {
             var query = new Dictionary<string, string>
             {
@@ -61,7 +62,7 @@ namespace Codeer.Mail.Gmail
                 ["response_type"] = "code",
                 ["scope"] = scope,
                 ["access_type"] = "offline",
-                ["prompt"] = "consent",
+                ["prompt"] = selectAccount ? "select_account consent" : "consent",
                 ["include_granted_scopes"] = "true",
                 ["state"] = state,
             };

@@ -1,4 +1,4 @@
-using Codeer.Mail.Gmail;
+﻿using Codeer.Mail.Gmail;
 using System.IO;
 
 namespace MailSender.Services
@@ -19,23 +19,23 @@ namespace MailSender.Services
     /// </summary>
     public class SendService
     {
-        readonly string _clientId;
+        readonly GmailClientSettings _client;
         readonly string _refreshToken;
         readonly GmailApiClient _api = new();
         readonly GmailOAuth _oauth = new();
         string? _accessToken;
         DateTime _accessTokenExpiresAtUtc;
 
-        public SendService(string clientId, string refreshToken)
+        public SendService(GmailClientSettings client, string refreshToken)
         {
-            _clientId = clientId;
+            _client = client;
             _refreshToken = refreshToken;
         }
 
-        /// <summary>送信対象 (除外されていない) を順に送る。<paramref name="progress"/> は 1 件ごとに結果を通知する。</summary>
-        public async Task<List<SendItemResult>> SendAsync(MailPackage package, IProgress<SendItemResult> progress, CancellationToken cancellationToken)
+        /// <summary>指定された項目 (画面でチェックされたもの) を順に送る。<paramref name="progress"/> は 1 件ごとに結果を通知する。</summary>
+        public async Task<List<SendItemResult>> SendAsync(MailPackage package, IEnumerable<MailPackageItem> items, IProgress<SendItemResult> progress, CancellationToken cancellationToken)
         {
-            var targets = package.Items.Where(e => e.IsSendTarget).Select(e => new SendItemResult(e)).ToList();
+            var targets = items.Select(e => new SendItemResult(e)).ToList();
             var attachments = package.AttachmentFiles.Select(e => new GmailAttachment { FileName = e.FileName, ContentBase64 = e.ContentBase64 }).ToList();
 
             for (var i = 0; i < targets.Count; i++)
@@ -95,7 +95,7 @@ namespace MailSender.Services
         async Task<string> GetAccessTokenAsync()
         {
             if (_accessToken != null && DateTime.UtcNow < _accessTokenExpiresAtUtc) return _accessToken;
-            var response = await _oauth.RefreshAsync(_clientId, null, _refreshToken);
+            var response = await _oauth.RefreshAsync(_client.ClientId, _client.ClientSecret, _refreshToken);
             _accessToken = response.AccessToken;
             _accessTokenExpiresAtUtc = DateTime.UtcNow.AddSeconds(Math.Max(60, response.ExpiresInSeconds - 60));
             return _accessToken;
