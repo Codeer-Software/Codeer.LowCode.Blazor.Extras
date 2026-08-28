@@ -1,0 +1,65 @@
+using MimeKit;
+
+namespace Codeer.Mail.Gmail
+{
+    /// <summary>添付 1 件 (内容は Base64)。</summary>
+    public class GmailAttachment
+    {
+        public string FileName { get; set; } = string.Empty;
+        public string ContentBase64 { get; set; } = string.Empty;
+    }
+
+    /// <summary>
+    /// Gmail で送る 1 通。<see cref="From"/> が空なら差出人ヘッダを付けず、Gmail がトークンのアカウントのアドレスで補う
+    /// (本人のトークンで送るデスクトップ送信はこれ。エイリアス (Send As) を使うときだけ指定する)。
+    /// </summary>
+    public class GmailMessage
+    {
+        public string From { get; set; } = string.Empty;
+        public string FromDisplayName { get; set; } = string.Empty;
+        public List<string> To { get; set; } = new();
+        public List<string> Cc { get; set; } = new();
+        public List<string> Bcc { get; set; } = new();
+        public string ReplyTo { get; set; } = string.Empty;
+        public string Subject { get; set; } = string.Empty;
+        public string Body { get; set; } = string.Empty;
+        public bool IsBodyHtml { get; set; }
+        public List<GmailAttachment> Attachments { get; set; } = new();
+
+        /// <summary>追加ヘッダ ("X-" で始めること)。</summary>
+        public Dictionary<string, string> Headers { get; set; } = new();
+    }
+
+    /// <summary>MIME (RFC 2822) の組み立て。Gmail API はこれを base64url にした "raw" で受け取る。</summary>
+    public static class GmailMimeBuilder
+    {
+        public static MimeMessage CreateMimeMessage(GmailMessage message)
+        {
+            var mime = new MimeMessage();
+            if (!string.IsNullOrEmpty(message.From))
+                mime.From.Add(new MailboxAddress(message.FromDisplayName, message.From));
+            foreach (var e in message.To) mime.To.Add(MailboxAddress.Parse(e));
+            foreach (var e in message.Cc) mime.Cc.Add(MailboxAddress.Parse(e));
+            foreach (var e in message.Bcc) mime.Bcc.Add(MailboxAddress.Parse(e));
+            if (!string.IsNullOrEmpty(message.ReplyTo)) mime.ReplyTo.Add(MailboxAddress.Parse(message.ReplyTo));
+            mime.Subject = message.Subject;
+            foreach (var e in message.Headers) mime.Headers.Add(e.Key, e.Value);
+
+            var builder = new BodyBuilder();
+            if (message.IsBodyHtml) builder.HtmlBody = message.Body;
+            else builder.TextBody = message.Body;
+            foreach (var e in message.Attachments)
+                builder.Attachments.Add(e.FileName, Convert.FromBase64String(e.ContentBase64));
+            mime.Body = builder.ToMessageBody();
+            return mime;
+        }
+
+        /// <summary>MIME 全体のバイト列。</summary>
+        public static async Task<byte[]> CreateRawAsync(GmailMessage message)
+        {
+            using var stream = new MemoryStream();
+            await CreateMimeMessage(message).WriteToAsync(stream);
+            return stream.ToArray();
+        }
+    }
+}

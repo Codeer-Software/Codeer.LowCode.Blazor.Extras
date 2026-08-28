@@ -172,6 +172,18 @@ UI もデータも持たない「宣言用」のフィールドです。役割 �
 - 差出人アドレスを指定する手段はありません (なりすましの構造的排除)。クライアントが載せた From はサーバーで常に破棄される
 - 本人の Gmail (担当者個人のアカウント) から送る用途は、トークンを各自の PC にだけ置く**別の Windows 送信アプリ**として提供予定 (サーバーにはトークンを置かない)。
 
+### 担当者本人の Gmail から送る (MailSender アプリ)
+
+サーバーには本人のトークンを置かない方針のため、本人名義の送信は Windows アプリ **MailSender** (`Tools/MailSender`) が担います。
+
+1. Web で MailField / BulkMailField の **プレビュー** をダウンロードする (宛先・変数は解決済み。添付の内容も同梱される)
+2. そのプレビュー HTML を MailSender で開く (ダブルクリック / ドラッグ & ドロップ)
+3. 内容を確認して「送信」→ 本人の PC に DPAPI で保存したトークンで Gmail API から送る。サーバーは関与しない
+
+トークンの発行 (Google の同意画面・デスクトップ種別の OAuth クライアント・PKCE・client_secret 不要) と破棄もアプリで行います。
+使い方は `Tools/MailSender/README.md`。プレビュー HTML は人が読む体裁のまま、`<script id="data" type="application/json">` に
+送信パッケージ (`packageVersion` / `items` の宛先・件名・本文 / `attachmentFiles` / `replyTo` / `isBodyHtml`) を持っています。
+
 ### サーバー設定 (appsettings.json)
 
 ```json

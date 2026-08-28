@@ -37,6 +37,15 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
         public string SubjectTemplate { get; set; } = string.Empty;
         public string BodyTemplate { get; set; } = string.Empty;
         public List<string> Attachments { get; set; } = new();
+
+        /// <summary>
+        /// 送信パッケージ形式のバージョン。プレビュー HTML は Windows の MailSender アプリが開いて
+        /// 本人のトークンで送る「送信パッケージ」を兼ねる (Items の宛先・件名・本文 + AttachmentFiles + ReplyTo / IsBodyHtml)。
+        /// </summary>
+        public int PackageVersion { get; set; } = 1;
+
+        /// <summary>添付の内容 (送信パッケージ用。<see cref="Attachments"/> は表示用の名前だけ)。</summary>
+        public List<MailAttachment> AttachmentFiles { get; set; } = new();
         public int Total { get; set; }
         public int SendCount { get; set; }
         public int ExcludedByOptOut { get; set; }
@@ -98,6 +107,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
                 SubjectTemplate = request.Subject,
                 BodyTemplate = request.Body,
                 Attachments = request.Attachments.Select(e => e.FileName).ToList(),
+                AttachmentFiles = request.Attachments.ToList(),
                 MaxBulkCount = _dispatcher.TryGetMaxBulkCount(infraName),
             };
 
@@ -148,6 +158,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
                 SubjectTemplate = request.SubjectTemplate,
                 BodyTemplate = request.BodyTemplate,
                 Attachments = message.Attachments.Select(e => e.FileName).ToList(),
+                AttachmentFiles = message.Attachments.ToList(),
                 Total = 1,
                 SendCount = 1,
             };

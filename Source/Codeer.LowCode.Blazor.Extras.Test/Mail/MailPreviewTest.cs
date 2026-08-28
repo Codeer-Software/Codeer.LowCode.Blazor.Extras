@@ -65,7 +65,11 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Mail
             {
                 Title = "Order #1",
                 SubjectTemplate = "注文 {No}",
-                Message = new MailMessage { To = { "a@example.com" }, Cc = { "c@example.com" }, Subject = "注文 100", Body = "本文" },
+                Message = new MailMessage
+                {
+                    To = { "a@example.com" }, Cc = { "c@example.com" }, Subject = "注文 100", Body = "本文",
+                    Attachments = { new MailAttachment { FileName = "a.txt", ContentBase64 = Convert.ToBase64String("abc"u8.ToArray()) } },
+                },
                 SubjectSpans = { new MailTemplateSpan { Start = 3, Length = 3, Name = "No" } },
             });
 
@@ -76,6 +80,13 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Mail
             Assert.That(doc.Items.Single().Cc, Is.EqualTo(new[] { "c@example.com" }));
             Assert.That(doc.Items.Single().SubjectSpans.Single().Name, Is.EqualTo("No"));
             Assert.That(doc.Warning, Is.Empty);
+
+            //送信パッケージ (MailSender アプリが読む): 添付の内容と形式バージョンが JSON に載る
+            Assert.That(doc.PackageVersion, Is.EqualTo(1));
+            Assert.That(doc.Attachments, Is.EqualTo(new[] { "a.txt" }));
+            Assert.That(doc.AttachmentFiles.Single().ContentBase64, Is.EqualTo(Convert.ToBase64String("abc"u8.ToArray())));
+            var json = doc.ToJson();
+            Assert.That(json, Does.Contain("\"packageVersion\":1").And.Contain("\"attachmentFiles\"").And.Contain("\"contentBase64\""));
         }
 
         [Test]

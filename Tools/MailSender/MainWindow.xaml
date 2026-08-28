@@ -1,0 +1,88 @@
+<Window x:Class="MailSender.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="MailSender" Width="960" Height="680" MinWidth="720" MinHeight="480"
+        AllowDrop="True" Drop="OnDrop" DragOver="OnDragOver">
+    <Grid Margin="12">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- アカウント (トークン) -->
+        <Border Grid.Row="0" BorderBrush="#CCC" BorderThickness="1" Padding="10" Margin="0,0,0,10">
+            <DockPanel>
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                    <Button x:Name="_issueButton" Content="トークンを発行" Click="OnIssueToken" />
+                    <Button x:Name="_revokeButton" Content="トークンを破棄" Click="OnRevokeToken" />
+                    <Button x:Name="_settingsButton" Content="設定" Click="OnSettings" Margin="0" />
+                </StackPanel>
+                <StackPanel>
+                    <TextBlock Text="Gmail アカウント" FontWeight="Bold" />
+                    <TextBlock x:Name="_accountText" Margin="0,4,0,0" />
+                </StackPanel>
+            </DockPanel>
+        </Border>
+
+        <!-- パッケージ -->
+        <Border Grid.Row="1" BorderBrush="#CCC" BorderThickness="1" Padding="10" Margin="0,0,0,10">
+            <DockPanel>
+                <Button DockPanel.Dock="Right" x:Name="_openButton" Content="プレビュー HTML を開く" Click="OnOpen" Margin="0" />
+                <StackPanel>
+                    <TextBlock Text="送信パッケージ (Web でダウンロードしたプレビュー HTML)" FontWeight="Bold" />
+                    <TextBlock x:Name="_packageText" Margin="0,4,0,0" Text="ファイルを開くか、ここにドロップしてください" TextWrapping="Wrap" />
+                </StackPanel>
+            </DockPanel>
+        </Border>
+
+        <!-- 一覧 + 本文 -->
+        <Grid Grid.Row="2">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="3*" />
+                <ColumnDefinition Width="6" />
+                <ColumnDefinition Width="2*" />
+            </Grid.ColumnDefinitions>
+            <ListView x:Name="_items" SelectionChanged="OnItemSelected">
+                <ListView.View>
+                    <GridView>
+                        <GridViewColumn Header="宛先" Width="220" DisplayMemberBinding="{Binding To}" />
+                        <GridViewColumn Header="件名" Width="260" DisplayMemberBinding="{Binding Subject}" />
+                        <GridViewColumn Header="状態" Width="200" DisplayMemberBinding="{Binding Status}" />
+                    </GridView>
+                </ListView.View>
+                <ListView.ItemContainerStyle>
+                    <Style TargetType="ListViewItem">
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsExcluded}" Value="True">
+                                <Setter Property="Foreground" Value="#999" />
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding IsFailed}" Value="True">
+                                <Setter Property="Foreground" Value="#C00" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </ListView.ItemContainerStyle>
+            </ListView>
+            <GridSplitter Grid.Column="1" HorizontalAlignment="Stretch" Background="Transparent" />
+            <DockPanel Grid.Column="2">
+                <TextBlock DockPanel.Dock="Top" x:Name="_bodyHeader" FontWeight="Bold" Margin="0,0,0,4" Text="本文" />
+                <TextBox x:Name="_body" IsReadOnly="True" TextWrapping="Wrap" AcceptsReturn="True"
+                         VerticalScrollBarVisibility="Auto" FontFamily="Consolas, MS Gothic" />
+            </DockPanel>
+        </Grid>
+
+        <!-- 送信 -->
+        <DockPanel Grid.Row="3" Margin="0,10,0,0">
+            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                <Button x:Name="_cancelButton" Content="中止" Click="OnCancel" IsEnabled="False" />
+                <Button x:Name="_sendButton" Content="送信" Click="OnSend" Margin="0" FontWeight="Bold" />
+            </StackPanel>
+            <StackPanel VerticalAlignment="Center" Margin="0,0,12,0">
+                <TextBlock x:Name="_statusText" />
+                <ProgressBar x:Name="_progress" Height="8" Margin="0,4,0,0" />
+            </StackPanel>
+        </DockPanel>
+    </Grid>
+</Window>

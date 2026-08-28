@@ -1,0 +1,40 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    MailSender: Web (CLB) でダウンロードしたメールのプレビュー HTML を開き、本人の Gmail トークンで送る Windows アプリ。
+    トークンは本人の PC (DPAPI) にだけ置く。Codeer.LowCode.Blazor には依存しない。
+    発行手順は README.md (dotnet publish 単一 exe)
+  -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+    <AssemblyName>MailSender</AssemblyName>
+    <RootNamespace>MailSender</RootNamespace>
+    <Version>0.1.0</Version>
+    <Company>Codeer</Company>
+    <Product>MailSender</Product>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <DebugType>embedded</DebugType>
+    <SelfContained>false</SelfContained>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+  </PropertyGroup>
+
+  <!-- 送信部品はサブフォルダの別プロジェクト (この csproj の既定グロブから除外して参照だけする) -->
+  <ItemGroup>
+    <Compile Remove="Codeer.Mail.Gmail\**" />
+    <None Remove="Codeer.Mail.Gmail\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="Codeer.Mail.Gmail\Codeer.Mail.Gmail.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="8.0.0" />
+  </ItemGroup>
+
+</Project>

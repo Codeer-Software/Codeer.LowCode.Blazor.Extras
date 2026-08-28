@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    MailSender アプリ専用の Gmail 送信部品 (MIME 組み立て / Gmail REST / OAuth 同意・トークン交換 / ループバック受信)。
+    Codeer.LowCode.Blazor にも Extras の製品コードにも依存せず、製品側もこれを参照しない (アプリは製品と独立)。
+  -->
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="MailKit" Version="4.17.0" />
+  </ItemGroup>
+
+</Project>
