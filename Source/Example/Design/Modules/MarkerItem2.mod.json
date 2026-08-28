@@ -130,10 +130,7 @@
       "OnAfterInitialization": "",
       "OnLocationChanging": "",
       "OnFieldDataChanged": "",
-      "DataOnlyFields": [
-        "X",
-        "Y"
-      ],
+      "DataOnlyFields": [],
       "ClassName": "",
       "Color": "",
       "BackgroundColor": "",

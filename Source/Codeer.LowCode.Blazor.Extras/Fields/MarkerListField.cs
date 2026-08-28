@@ -107,7 +107,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         [ScriptName("Reload")]
         public async Task ReloadAsync()
         {
-            var modules = await this.GetChildModulesAsync(GetSearchCondition(), ModuleLayoutType.Detail, Design.DetailLayoutName);
+            var modules = await this.GetChildModulesAsync(GetSearchCondition(), ModuleLayoutType.Detail, Design.DetailLayoutName, GetMarkerFieldNames());
             _modules.ApplyLoaded(modules);
             MarkerList.Clear();
             MarkerList.AddRange(modules.Select(ConvertToMarker));
@@ -228,6 +228,11 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             if (string.IsNullOrEmpty(fieldName)) return string.Empty;
             return (data.GetField(fieldName)?.GetData() as ValueFieldDataBase<string>)?.Value ?? string.Empty;
         }
+
+        //マーカー描画に使うフィールドはDetailレイアウト(やDataOnlyFields)に置かれていなくてもロードする
+        private IEnumerable<string> GetMarkerFieldNames()
+            => new[] { Design.XField, Design.YField, Design.LabelField, Design.MarkerColorField }
+                .Where(e => !string.IsNullOrEmpty(e));
 
         private SearchCondition GetSearchCondition()
             => Design.SearchCondition.MergeSearchCondition(_additionalCondition);

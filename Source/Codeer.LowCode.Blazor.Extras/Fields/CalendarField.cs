@@ -136,7 +136,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
 
             await SetAdditionalConditionAsync(condition, 0);
 
-            var modules = await this.GetChildModulesAsync(GetSearchCondition(), ModuleLayoutType.Detail, Design.DetailLayoutName);
+            var modules = await this.GetChildModulesAsync(GetSearchCondition(), ModuleLayoutType.Detail, Design.DetailLayoutName, GetItemFieldNames());
             _modules.ApplyLoaded(modules);
             Items.Clear();
             Items.AddRange(modules.Select(ConvertToCalendarItem).OrderByStart());
@@ -355,6 +355,11 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
                 [new DialogButton("btn btn-outline-primary", Properties.Resources.Yes), new DialogButton("btn btn-outline-primary", Properties.Resources.No)]);
             return result == Properties.Resources.Yes;
         }
+
+        //予定描画に使うフィールドはDetailレイアウト(やDataOnlyFields)に置かれていなくてもロードする
+        private IEnumerable<string> GetItemFieldNames()
+            => new[] { Design.TextField, Design.StartField, Design.EndField, Design.AllDayField, Design.ColorField }
+                .Where(e => !string.IsNullOrEmpty(e));
 
         private SearchCondition GetSearchCondition()
             => Design.SearchCondition.MergeSearchCondition(_additionalCondition);

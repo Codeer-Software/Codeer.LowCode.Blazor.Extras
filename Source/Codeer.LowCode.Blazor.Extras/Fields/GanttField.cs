@@ -202,7 +202,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
 
             await SetAdditionalConditionAsync(condition, 0);
 
-            var items = await this.GetChildModulesAsync(GetSearchCondition(), ModuleLayoutType.Detail, Design.DetailLayoutName);
+            var items = await this.GetChildModulesAsync(GetSearchCondition(), ModuleLayoutType.Detail, Design.DetailLayoutName, GetItemFieldNames());
             _tasks.ApplyLoaded(items);
             Items.Clear();
             Items.AddRange(items.Select(ConvertToGanttItem).Where(e => e.Start != default).OrderBy(e => e.Start));
@@ -600,6 +600,11 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
                 [new DialogButton("btn btn-outline-primary", Properties.Resources.Yes), new DialogButton("btn btn-outline-primary", Properties.Resources.No)]);
             return result == Properties.Resources.Yes;
         }
+
+        //タスク描画に使うフィールドはDetailレイアウト(やDataOnlyFields)に置かれていなくてもロードする
+        private IEnumerable<string> GetItemFieldNames()
+            => new[] { Design.TextField, Design.StartField, Design.EndField, Design.ProgressField, Design.IdField, Design.ProcessingCounterField, Design.BarColorField }
+                .Where(e => !string.IsNullOrEmpty(e));
 
         private SearchCondition GetSearchCondition()
             => Design.SearchCondition.MergeSearchCondition(_additionalCondition);
