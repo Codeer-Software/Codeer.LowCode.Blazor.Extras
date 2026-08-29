@@ -1,0 +1,95 @@
+<ui:FluentWindow x:Class="MailSender.SmtpAccountWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+        Title="SMTP アカウント" Width="620" SizeToContent="Height" ResizeMode="NoResize"
+        ExtendsContentIntoTitleBar="True" WindowBackdropType="Mica" WindowCornerPreference="Round"
+        WindowStartupLocation="CenterOwner" ShowInTaskbar="False">
+    <ui:FluentWindow.Resources>
+        <Style x:Key="FieldLabel" TargetType="TextBlock">
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Margin" Value="0,0,12,8" />
+        </Style>
+        <Style x:Key="Field" TargetType="ui:TextBox" BasedOn="{StaticResource {x:Type ui:TextBox}}">
+            <Setter Property="Margin" Value="0,0,0,8" />
+        </Style>
+    </ui:FluentWindow.Resources>
+    <StackPanel>
+        <ui:TitleBar Title="SMTP アカウント" ShowMaximize="False" ShowMinimize="False">
+            <ui:TitleBar.Icon>
+                <ui:SymbolIcon Symbol="MailArrowUp24" />
+            </ui:TitleBar.Icon>
+        </ui:TitleBar>
+
+        <StackPanel Margin="16,4,16,16">
+            <TextBlock Margin="0,0,0,10" Style="{StaticResource Hint}"
+                       Text="社内メールサーバーやプロバイダの SMTP で、登録した差出人アドレスから送ります。パスワードはこの PC にだけ暗号化して保存します (Gmail / Outlook.com の個人アカウントはアプリ パスワードが必要な場合があります)。" />
+
+            <ui:Card Padding="16,12">
+                <StackPanel>
+                    <TextBlock Text="差出人" Style="{StaticResource SectionTitle}" />
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <TextBlock Grid.Row="0" Text="メールアドレス" Style="{StaticResource FieldLabel}" />
+                        <ui:TextBox Grid.Row="0" Grid.Column="1" x:Name="_email" Style="{StaticResource Field}" PlaceholderText="you@example.com" TextChanged="OnChanged" />
+                        <TextBlock Grid.Row="1" Text="表示名" Style="{StaticResource FieldLabel}" />
+                        <ui:TextBox Grid.Row="1" Grid.Column="1" x:Name="_displayName" Style="{StaticResource Field}" PlaceholderText="山田 太郎 (省略可)" />
+                    </Grid>
+                </StackPanel>
+            </ui:Card>
+
+            <ui:Card Padding="16,12" Margin="0,12,0,0">
+                <StackPanel>
+                    <TextBlock Text="SMTP サーバー" Style="{StaticResource SectionTitle}" />
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="90" />
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <TextBlock Grid.Row="0" Text="ホスト" Style="{StaticResource FieldLabel}" />
+                        <ui:TextBox Grid.Row="0" Grid.Column="1" x:Name="_host" Style="{StaticResource Field}" PlaceholderText="smtp.example.com" TextChanged="OnChanged" />
+                        <TextBlock Grid.Row="0" Grid.Column="2" Text="ポート" Style="{StaticResource FieldLabel}" Margin="12,0,12,8" />
+                        <ui:TextBox Grid.Row="0" Grid.Column="3" x:Name="_port" Style="{StaticResource Field}" Text="587" TextChanged="OnChanged" />
+
+                        <TextBlock Grid.Row="1" Text="暗号化" Style="{StaticResource FieldLabel}" />
+                        <ComboBox Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="3" x:Name="_encryption" Margin="0,0,0,8" SelectionChanged="OnEncryptionChanged">
+                            <ComboBoxItem Content="STARTTLS (通常はポート 587)" />
+                            <ComboBoxItem Content="SSL/TLS (通常はポート 465)" />
+                            <ComboBoxItem Content="なし (社内サーバー・検証用)" />
+                        </ComboBox>
+
+                        <TextBlock Grid.Row="2" Text="ユーザー名" Style="{StaticResource FieldLabel}" />
+                        <ui:TextBox Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="3" x:Name="_userName" Style="{StaticResource Field}" PlaceholderText="空 = メールアドレス" />
+
+                        <TextBlock Grid.Row="3" Text="パスワード" Style="{StaticResource FieldLabel}" Margin="0,0,12,0" />
+                        <ui:PasswordBox Grid.Row="3" Grid.Column="1" Grid.ColumnSpan="3" x:Name="_password" PlaceholderText="空 = 認証なし" />
+                    </Grid>
+                    <DockPanel Margin="0,10,0,0">
+                        <ui:Button DockPanel.Dock="Left" x:Name="_testButton" Content="接続テスト" Icon="{ui:SymbolIcon PlugConnected24}" Appearance="Secondary" Padding="10,4" Click="OnTest" />
+                        <TextBlock x:Name="_testResult" Margin="12,0,0,0" VerticalAlignment="Center" TextWrapping="Wrap" Style="{StaticResource Hint}" />
+                    </DockPanel>
+                </StackPanel>
+            </ui:Card>
+
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,16,0,0">
+                <ui:Button x:Name="_okButton" Content="OK" Appearance="Primary" IsDefault="True" MinWidth="96" Click="OnOk" />
+                <ui:Button Content="キャンセル" IsCancel="True" MinWidth="96" Margin="8,0,0,0" />
+            </StackPanel>
+        </StackPanel>
+    </StackPanel>
+</ui:FluentWindow>

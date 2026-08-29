@@ -112,8 +112,25 @@ namespace MailSender.Services
     }
 
     /// <summary>
+    /// Microsoft 365 (Graph) の設定。Entra ID のアプリ登録 1 つ (パブリック クライアント = シークレット無し)。
+    /// 「モバイル アプリケーションとデスクトップ アプリケーション」に http://localhost を登録し、委任されたアクセス許可 Mail.Send / User.Read を持つ。
+    /// アカウント (本人のトークン) は accounts.bin 側。
+    /// </summary>
+    public class GraphSettings
+    {
+        public string ClientId { get; set; } = string.Empty;
+
+        /// <summary>テナント。"organizations" (任意の職場/学校アカウント) / "common" (個人アカウントも) / テナント ID。アプリ登録の「サポートされているアカウントの種類」に合わせる。</summary>
+        public string TenantId { get; set; } = Codeer.Mail.Graph.GraphOAuth.DefaultTenant;
+
+        public bool IsConfigured => !string.IsNullOrEmpty(ClientId);
+
+        public string EffectiveTenantId => string.IsNullOrEmpty(TenantId) ? Codeer.Mail.Graph.GraphOAuth.DefaultTenant : TenantId.Trim();
+    }
+
+    /// <summary>
     /// アプリ設定 (%LOCALAPPDATA%\Codeer\MailSender\settings.json)。
-    /// プロバイダごとのセクションを持つ (今は Gmail だけ。Graph / SMTP を足すときは横に並べる)。
+    /// プロバイダごとのセクションを持つ (Gmail = OAuth クライアント 2 種 / GraphApi = Entra アプリ登録。SMTP はサーバー情報をアカウント側に持つので設定は無い)。
     /// </summary>
     public class AppSettings
     {
@@ -129,6 +146,7 @@ namespace MailSender.Services
         static string FilePath => Path.Combine(DataFolder, "settings.json");
 
         public GmailSettings Gmail { get; set; } = new();
+        public GraphSettings GraphApi { get; set; } = new();
 
         /// <summary>画面の拡大率 (Ctrl + マウスホイール)。</summary>
         public double Zoom { get; set; } = 1.0;

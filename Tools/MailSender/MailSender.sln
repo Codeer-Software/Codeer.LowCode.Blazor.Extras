@@ -4,7 +4,7 @@ VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MailSender", "MailSender.csproj", "{7E4A5B6C-0D1E-4F2A-9B3C-4D5E6F7A8B9C}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Codeer.Mail.Gmail", "Codeer.Mail.Gmail\Codeer.Mail.Gmail.csproj", "{1F2E3D4C-5B6A-4798-8C9D-0E1F2A3B4C5D}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Codeer.Mail", "Codeer.Mail\Codeer.Mail.csproj", "{1F2E3D4C-5B6A-4798-8C9D-0E1F2A3B4C5D}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

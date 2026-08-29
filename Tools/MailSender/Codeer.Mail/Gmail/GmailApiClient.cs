@@ -6,7 +6,7 @@ using System.Text.Json;
 namespace Codeer.Mail.Gmail
 {
     /// <summary>Gmail の 1 日の送信上限に達した (その日はリトライしても送れない)。</summary>
-    public class GmailDailyQuotaExceededException : InvalidOperationException
+    public class GmailDailyQuotaExceededException : MailSendAbortException
     {
         public GmailDailyQuotaExceededException(string message) : base(message) { }
     }
@@ -52,15 +52,15 @@ namespace Codeer.Mail.Gmail
         }
 
         /// <summary>1 通送る。<paramref name="accessTokenProvider"/> は再試行のたびに呼ばれる (期限切れの更新を任せる)。失敗は例外。</summary>
-        public async Task SendAsync(Func<Task<string>> accessTokenProvider, GmailMessage message)
-            => await SendRawAsync(accessTokenProvider, await GmailMimeBuilder.CreateRawAsync(message));
+        public async Task SendAsync(Func<Task<string>> accessTokenProvider, MailMessage message)
+            => await SendRawAsync(accessTokenProvider, await MimeBuilder.CreateRawAsync(message));
 
         /// <summary>MIME バイト列をそのまま送る。</summary>
         public async Task SendRawAsync(Func<Task<string>> accessTokenProvider, byte[] rawMime)
         {
             //Gmail は MIME 全体を base64url の "raw" で受け取る。この JSON エンドポイントは数MB 上限のため、
             //それを超える添付は別のアップロードエンドポイントが必要になる。
-            var payload = JsonSerializer.Serialize(new { raw = Base64Url(rawMime) });
+            var payload = JsonSerializer.Serialize(new { raw = Base64Url.Encode(rawMime) });
             for (var retry = 0; ; retry++)
             {
                 var request = new HttpRequestMessage(HttpMethod.Post, SendEndpoint);
@@ -88,8 +88,5 @@ namespace Codeer.Mail.Gmail
             => body.Contains("Daily user sending quota exceeded", StringComparison.OrdinalIgnoreCase)
                || body.Contains("dailyLimitExceeded", StringComparison.OrdinalIgnoreCase)
                || body.Contains("5.4.5", StringComparison.Ordinal);
-
-        public static string Base64Url(byte[] bytes)
-            => Convert.ToBase64String(bytes).TrimEnd('=').Replace('+', '-').Replace('/', '_');
     }
 }

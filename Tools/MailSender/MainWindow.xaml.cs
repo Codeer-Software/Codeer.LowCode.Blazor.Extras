@@ -1,4 +1,6 @@
-﻿using Codeer.Mail.Gmail;
+﻿using Codeer.Mail;
+using Codeer.Mail.Gmail;
+using Codeer.Mail.Graph;
 using MailSender.Services;
 using Microsoft.Win32;
 using System.ComponentModel;
@@ -80,35 +82,43 @@ namespace MailSender
             if (!string.IsNullOrEmpty(initialFile)) Loaded += (_, _) => LoadPackage(initialFile);
         }
 
-        // ---------- アカウント (トークン)
+        // ---------- アカウント
 
         /// <summary>ComboBox の 1 行。</summary>
-        record AccountEntry(StoredAccount Token, GmailClientSettings? Client)
+        record AccountEntry(StoredAccount Account, string Label)
         {
-            public override string ToString()
-                => Token.Email
-                   + (Client == null ? " [発行クライアントが未登録]" : Client.IsWebClient ? " [ウェブ]" : string.Empty)
-                   + $"  ({Token.IssuedAt:yyyy-MM-dd})";
+            public override string ToString() => Label;
         }
 
-        /// <summary>
-        /// このアカウントのトークンをリフレッシュできるクライアント (発行したもの)。設定に無ければ null = 送れない。
-        /// 古い行 (ClientId 無し) はデスクトップ扱い。
-        /// </summary>
-        GmailClientSettings? ResolveClient(StoredAccount? token)
-            => token == null ? null
-             : string.IsNullOrEmpty(token.ClientId) ? (_settings.Gmail.Desktop.IsConfigured ? _settings.Gmail.Desktop : null)
-             : _settings.Gmail.Find(token.ClientId);
+        string LabelOf(StoredAccount account)
+        {
+            var kind = account.Provider switch
+            {
+                MailProviders.GraphApi => "Microsoft 365",
+                MailProviders.Smtp => $"SMTP {account.Smtp?.Host}",
+                _ => AccountSender.ResolveGmailClient(_settings, account) is { } c ? (c.IsWebClient ? "Gmail ウェブ" : "Gmail") : "Gmail [発行クライアントが未登録]",
+            };
+            return $"{account.Email}  [{kind}]  ({account.IssuedAt:yyyy-MM-dd})";
+        }
 
-        bool IsTokenUsable(StoredAccount? token) => ResolveClient(token) != null;
+        /// <summary>このアカウントで送れるか (OAuth 系は発行クライアント / アプリ登録が設定にあること)。</summary>
+        bool IsAccountUsable(StoredAccount? account)
+            => account != null && AccountSender.Create(_settings, account, () => { }) != null;
 
-        /// <summary>選択中アカウントの説明 (発行クライアントと、各ボタンが何に効くか)。</summary>
+        /// <summary>選択中アカウントの説明 (各ボタンが何に効くか)。</summary>
         string DescribeSelected()
         {
-            if (_accounts.Accounts.Count == 0) return "未登録 (「アカウントを追加」で Google アカウントの同意を取ります)";
-            var client = ResolveClient(_token);
+            if (_accounts.Accounts.Count == 0) return "未登録 (「アカウントを追加」から Gmail / Microsoft 365 / SMTP のアカウントを登録します)";
+            if (_token == null) return string.Empty;
+            if (_token.IsSmtp) return $"SMTP {_token.Smtp?.Host}:{_token.Smtp?.Port} から {_token.Email} 名義で送ります  —  「編集」でサーバー・パスワードを変更、「破棄」でこの PC から削除";
+            if (_token.IsGraphApi)
+            {
+                if (!_settings.GraphApi.IsConfigured) return "Microsoft 365 のアプリ登録が設定にありません。「設定」でアプリケーション (クライアント) ID を登録してください";
+                return $"Microsoft 365 の本人名義 ({_token.Email}) で送り、送信済みアイテムに残ります  —  「再発行」でサインインし直し、「破棄」でこの PC から削除";
+            }
+            var client = AccountSender.ResolveGmailClient(_settings, _token);
             if (client == null) return "このアカウントを発行した OAuth クライアントが設定にありません。設定に登録し直すか、「再発行」してください";
-            return $"発行クライアント: {client.DisplayName}  —  再発行・トークンの書き出し・破棄はこのアカウント ({_token!.Email} / {client.DisplayName}) に対して行います";
+            return $"発行クライアント: {client.DisplayName}  —  再発行・トークンの書き出し・破棄はこのアカウント ({_token.Email} / {client.DisplayName}) に対して行います";
         }
 
         void RefreshAccount()
@@ -119,7 +129,7 @@ namespace MailSender
             _refreshingAccounts = true;
             try
             {
-                _accountsCombo.ItemsSource = _accounts.Accounts.Select(e => new AccountEntry(e, ResolveClient(e))).ToList();
+                _accountsCombo.ItemsSource = _accounts.Accounts.Select(e => new AccountEntry(e, LabelOf(e))).ToList();
                 _accountsCombo.SelectedIndex = _token == null ? -1 : _accounts.Accounts.IndexOf(_token);
             }
             finally
@@ -131,8 +141,12 @@ namespace MailSender
             _accountText.Text = DescribeSelected();
             _accountsCombo.IsEnabled = !_busy;
             _reissueButton.IsEnabled = _token != null && !_busy;
+            _reissueButton.Content = _token?.IsSmtp == true ? "編集" : "再発行";
+            _reissueButton.Icon = new SymbolIcon(_token?.IsSmtp == true ? SymbolRegular.Edit24 : SymbolRegular.ArrowSync24);
             _revokeButton.IsEnabled = _token != null && !_busy;
-            _exportButton.IsEnabled = _token != null && !_busy;
+            //トークンの書き出し (Web アプリの Gmail.TokenSecret 用) は Gmail だけ
+            _exportButton.Visibility = _token?.IsGmail == true ? Visibility.Visible : Visibility.Collapsed;
+            _exportButton.IsEnabled = _token?.IsGmail == true && !_busy;
         }
 
         bool _refreshingAccounts;
@@ -142,103 +156,100 @@ namespace MailSender
             if (_refreshingAccounts) return;
             if (_accountsCombo.SelectedItem is AccountEntry entry)
             {
-                _accounts.Select(entry.Token);
+                _accounts.Select(entry.Account);
                 TokenStore.Save(_accounts);
-                _token = entry.Token;
-                _accountText.Text = DescribeSelected();
+                _token = entry.Account;
+                RefreshAccount();
                 RefreshSendButton();
             }
         }
 
-        /// <summary>
-        /// Google アカウントを追加する (ブラウザでアカウントを選ぶ)。
-        /// OAuth クライアントが 2 つ登録されていれば、どちらで発行するかをメニューで選ぶ (1 つならそのまま)。
-        /// </summary>
+        /// <summary>アカウントを追加する。種類 (Gmail のクライアント / Microsoft 365 / SMTP) をメニューで選ぶ。</summary>
         void OnAddAccount(object sender, RoutedEventArgs e)
         {
-            var clients = _settings.Gmail.Configured.ToList();
-            if (clients.Count <= 1)
-            {
-                _ = IssueTokenAsync(null, clients.FirstOrDefault());
-                return;
-            }
             var menu = new ContextMenu { PlacementTarget = _addButton, Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom };
-            foreach (var client in clients)
+            foreach (var client in _settings.Gmail.Configured)
             {
-                var item = new Wpf.Ui.Controls.MenuItem { Header = $"{client.DisplayName} で追加" };
-                item.Click += (_, _) => _ = IssueTokenAsync(null, client);
+                var item = new Wpf.Ui.Controls.MenuItem { Header = $"Gmail ({client.DisplayName}) で追加", Icon = new SymbolIcon(SymbolRegular.Mail24) };
+                item.Click += (_, _) => _ = IssueGmailTokenAsync(null, client);
                 menu.Items.Add(item);
             }
+            if (!_settings.Gmail.Configured.Any())
+            {
+                menu.Items.Add(new Wpf.Ui.Controls.MenuItem { Header = "Gmail で追加 (設定で OAuth クライアントを登録してください)", IsEnabled = false, Icon = new SymbolIcon(SymbolRegular.Mail24) });
+            }
+            var graph = new Wpf.Ui.Controls.MenuItem
+            {
+                Header = _settings.GraphApi.IsConfigured ? "Microsoft 365 で追加" : "Microsoft 365 で追加 (設定でアプリ登録の ID を登録してください)",
+                IsEnabled = _settings.GraphApi.IsConfigured,
+                Icon = new SymbolIcon(SymbolRegular.BuildingMultiple24),
+            };
+            graph.Click += (_, _) => _ = IssueGraphTokenAsync(null);
+            menu.Items.Add(graph);
+            var smtp = new Wpf.Ui.Controls.MenuItem { Header = "SMTP サーバーのアカウントを追加...", Icon = new SymbolIcon(SymbolRegular.MailArrowUp24) };
+            smtp.Click += (_, _) => EditSmtpAccount(null);
+            menu.Items.Add(smtp);
             menu.IsOpen = true;
         }
 
-        /// <summary>選択中アカウントのトークンを、そのアカウントを発行したクライアントで発行し直す。</summary>
+        /// <summary>選択中アカウントの再発行 (OAuth) / 編集 (SMTP)。</summary>
         void OnReissueToken(object sender, RoutedEventArgs e)
         {
             if (_token == null) return;
-            var client = ResolveClient(_token);
+            if (_token.IsSmtp)
+            {
+                EditSmtpAccount(_token);
+                return;
+            }
+            if (_token.IsGraphApi)
+            {
+                if (!_settings.GraphApi.IsConfigured)
+                {
+                    MessageBox.Show(this, "先に「設定」で Microsoft 365 のアプリケーション (クライアント) ID を登録してください。", "MailSender", MessageBoxButton.OK, MessageBoxImage.Information);
+                    return;
+                }
+                _ = IssueGraphTokenAsync(_token.Email);
+                return;
+            }
+            var client = AccountSender.ResolveGmailClient(_settings, _token);
             if (client == null)
             {
                 MessageBox.Show(this, "このアカウントを発行した OAuth クライアントが設定にありません。設定に登録し直してください。", "MailSender", MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
-            _ = IssueTokenAsync(_token.Email, client);
+            _ = IssueGmailTokenAsync(_token.Email, client);
         }
 
-        async Task IssueTokenAsync(string? loginHint, GmailClientSettings? client)
+        void EditSmtpAccount(StoredAccount? existing)
         {
-            if (client == null)
-            {
-                MessageBox.Show(this, "先に「設定」で OAuth クライアント (ID とシークレット) を登録してください。", "MailSender", MessageBoxButton.OK, MessageBoxImage.Information);
-                return;
-            }
-            SetBusy(true, "ブラウザで Google アカウントの同意を待っています... (ブラウザを閉じてしまったら「中止」)");
-            //ブラウザを閉じられてもこちらには何も届かないので、「中止」で待機を抜けられるようにする (5 分で自動打ち切り)
+            var window = new SmtpAccountWindow(existing) { Owner = this };
+            if (window.ShowDialog() != true || window.Account == null) return;
+            //編集で差出人やホストが変わったら旧行は消す (キーが変わるので AddOrReplace では置き換わらない)
+            if (existing != null) _accounts.Accounts.Remove(existing);
+            var replaced = _accounts.AddOrReplace(window.Account) || existing != null;
+            TokenStore.Save(_accounts);
+            _statusText.Text = replaced ? $"{window.Account.Email} (SMTP) を更新しました" : $"{window.Account.Email} (SMTP) を追加しました";
+            RefreshAccount();
+            RefreshSendButton();
+        }
+
+        /// <summary>ブラウザでの同意を待つ共通部分。ブラウザを閉じられてもこちらには何も届かないので、「中止」で待機を抜けられるようにする (5 分で自動打ち切り)。</summary>
+        async Task RunConsentAsync(string waitingMessage, Func<CancellationToken, Task<StoredAccount?>> consent)
+        {
+            SetBusy(true, waitingMessage);
             _issueCancellation = new CancellationTokenSource(TimeSpan.FromMinutes(5));
             _cancelButton.IsEnabled = true;
             try
             {
-                //Web 種別クライアントは登録済みの固定 URI で受ける (デスクトップ種別は任意ポート)
-                using var receiver = new LoopbackCodeReceiver(client.IsWebClient ? client.RedirectUri : null);
-                var pkce = GmailPkce.Create();
-                var state = GmailApiClient.Base64Url(RandomNumberGenerator.GetBytes(16));
-                //追加 = アカウント選択画面から。再発行 = そのアカウントを login_hint で指定
-                var url = GmailOAuth.CreateAuthorizationUrl(client.ClientId, receiver.RedirectUri, GmailOAuth.SendWithEmailScope, state, pkce,
-                    loginHint, selectAccount: loginHint == null);
-                Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
-
-                var code = await receiver.WaitForCodeAsync(state, _issueCancellation.Token);
-                if (code == null)
+                var account = await consent(_issueCancellation.Token);
+                if (account == null)
                 {
                     _statusText.Text = _issueCancellation.IsCancellationRequested ? "発行を中止しました (中止ボタン、または 5 分経過)" : "同意はキャンセルされました";
                     return;
                 }
-
-                var response = await new GmailOAuth().ExchangeCodeAsync(client.ClientId, client.ClientSecret, code, receiver.RedirectUri, pkce);
-                if (string.IsNullOrEmpty(response.RefreshToken))
-                {
-                    MessageBox.Show(this,
-                        "Google からリフレッシュトークンが返されませんでした。\nGoogle アカウントの「セキュリティ > サードパーティ製のアプリとサービス」でこのアプリのアクセスを削除してから、もう一度発行してください。",
-                        "MailSender", MessageBoxButton.OK, MessageBoxImage.Warning);
-                    return;
-                }
-                if (string.IsNullOrEmpty(response.Email))
-                {
-                    MessageBox.Show(this, "Google からメールアドレスが返されませんでした。もう一度発行してください。", "MailSender", MessageBoxButton.OK, MessageBoxImage.Warning);
-                    return;
-                }
-                var token = new StoredAccount
-                {
-                    Provider = MailProviders.Gmail,
-                    RefreshToken = response.RefreshToken,
-                    Email = response.Email,
-                    IssuedAt = DateTime.Now,
-                    ClientId = client.ClientId,
-                };
-                var replaced = _accounts.Accounts.Any(a => a.Email == token.Email && a.ClientId == token.ClientId);
-                _accounts.AddOrReplace(token);
+                var replaced = _accounts.AddOrReplace(account);
                 TokenStore.Save(_accounts);
-                _statusText.Text = replaced ? $"{token.Email} のトークンを再発行しました" : $"{token.Email} を追加しました";
+                _statusText.Text = replaced ? $"{account.Email} のトークンを再発行しました" : $"{account.Email} ({MailProviders.DisplayName(account.Provider)}) を追加しました";
             }
             catch (Exception ex)
             {
@@ -253,23 +264,104 @@ namespace MailSender
             }
         }
 
+        static string NewState() => Base64Url.Encode(RandomNumberGenerator.GetBytes(16));
+
+        /// <summary>Google アカウントの同意 (追加 = アカウント選択画面から / 再発行 = そのアカウントを login_hint で指定)。</summary>
+        Task IssueGmailTokenAsync(string? loginHint, GmailClientSettings client)
+            => RunConsentAsync("ブラウザで Google アカウントの同意を待っています... (ブラウザを閉じてしまったら「中止」)", async cancellationToken =>
+            {
+                //Web 種別クライアントは登録済みの固定 URI で受ける (デスクトップ種別は任意ポート)
+                using var receiver = new LoopbackCodeReceiver(client.IsWebClient ? client.RedirectUri : null);
+                var pkce = Pkce.Create();
+                var state = NewState();
+                var url = GmailOAuth.CreateAuthorizationUrl(client.ClientId, receiver.RedirectUri, GmailOAuth.SendWithEmailScope, state, pkce,
+                    loginHint, selectAccount: loginHint == null);
+                Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
+
+                var code = await receiver.WaitForCodeAsync(state, cancellationToken);
+                if (code == null) return null;
+
+                var response = await new GmailOAuth().ExchangeCodeAsync(client.ClientId, client.ClientSecret, code, receiver.RedirectUri, pkce);
+                if (string.IsNullOrEmpty(response.RefreshToken))
+                    throw new InvalidOperationException(
+                        "Google からリフレッシュトークンが返されませんでした。\nGoogle アカウントの「セキュリティ > サードパーティ製のアプリとサービス」でこのアプリのアクセスを削除してから、もう一度発行してください。");
+                if (string.IsNullOrEmpty(response.Email))
+                    throw new InvalidOperationException("Google からメールアドレスが返されませんでした。もう一度発行してください。");
+                return new StoredAccount
+                {
+                    Provider = MailProviders.Gmail,
+                    RefreshToken = response.RefreshToken,
+                    Email = response.Email,
+                    IssuedAt = DateTime.Now,
+                    ClientId = client.ClientId,
+                };
+            });
+
+        /// <summary>Microsoft アカウント (職場・学校) のサインインと同意。</summary>
+        Task IssueGraphTokenAsync(string? loginHint)
+            => RunConsentAsync("ブラウザで Microsoft アカウントのサインインを待っています... (ブラウザを閉じてしまったら「中止」)", async cancellationToken =>
+            {
+                var graph = _settings.GraphApi;
+                //Entra のデスクトップ登録は http://localhost (任意ポート) を許可する
+                using var receiver = new LoopbackCodeReceiver(null, host: "localhost");
+                var pkce = Pkce.Create();
+                var state = NewState();
+                var url = GraphOAuth.CreateAuthorizationUrl(graph.EffectiveTenantId, graph.ClientId, receiver.RedirectUri, state, pkce, loginHint, selectAccount: loginHint == null);
+                Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
+
+                var code = await receiver.WaitForCodeAsync(state, cancellationToken);
+                if (code == null) return null;
+
+                var response = await new GraphOAuth().ExchangeCodeAsync(graph.EffectiveTenantId, graph.ClientId, code, receiver.RedirectUri, pkce);
+                if (string.IsNullOrEmpty(response.RefreshToken))
+                    throw new InvalidOperationException("Microsoft からリフレッシュトークンが返されませんでした。アプリ登録で「パブリック クライアント フローを許可する」が「はい」になっているか確認してください。");
+                //本人のアドレスは /me から (mail が無ければ UPN)。取れなければ id_token の preferred_username
+                string email, displayName = string.Empty;
+                try
+                {
+                    (email, displayName) = await new GraphApiClient().GetMeAsync(response.AccessToken);
+                }
+                catch
+                {
+                    email = string.Empty;
+                }
+                if (string.IsNullOrEmpty(email)) email = response.UserName ?? string.Empty;
+                if (string.IsNullOrEmpty(email))
+                    throw new InvalidOperationException("Microsoft からメールアドレスが返されませんでした。アプリ登録に User.Read の委任されたアクセス許可があるか確認してください。");
+                return new StoredAccount
+                {
+                    Provider = MailProviders.GraphApi,
+                    RefreshToken = response.RefreshToken,
+                    Email = email,
+                    DisplayName = displayName,
+                    IssuedAt = DateTime.Now,
+                    ClientId = graph.ClientId,
+                };
+            });
+
         async void OnRevokeToken(object sender, RoutedEventArgs e)
         {
             if (_token == null) return;
             var target = _token;
-            if (MessageBox.Show(this, $"{target.Email} を破棄しますか？\nGoogle 側でトークンを無効化し、この PC から削除します。", "MailSender",
+            var detail = target.IsGmail ? "Google 側でトークンを無効化し、この PC から削除します。"
+                       : target.IsGraphApi ? "この PC から削除します (Microsoft 側の同意は「マイ アカウント > アプリのアクセス許可」から取り消せます)。"
+                       : "この PC から削除します (サーバーのパスワードは変わりません)。";
+            if (MessageBox.Show(this, $"{target.Email} ({MailProviders.DisplayName(target.Provider)}) を破棄しますか？\n{detail}", "MailSender",
                     MessageBoxButton.OKCancel, MessageBoxImage.Question) != MessageBoxResult.OK) return;
-            SetBusy(true, "トークンを破棄しています...");
+            SetBusy(true, "アカウントを破棄しています...");
             try
             {
-                try
+                if (target.IsGmail)
                 {
-                    await new GmailOAuth().RevokeAsync(target.RefreshToken);
-                }
-                catch (Exception ex)
-                {
-                    //Google 側の取り消しに失敗してもローカルは消す (既に無効な場合など)
-                    AppendLog($"revoke failed: {ex.Message}");
+                    try
+                    {
+                        await new GmailOAuth().RevokeAsync(target.RefreshToken);
+                    }
+                    catch (Exception ex)
+                    {
+                        //Google 側の取り消しに失敗してもローカルは消す (既に無効な場合など)
+                        AppendLog($"revoke failed: {ex.Message}");
+                    }
                 }
                 _accounts.Remove(target);
                 TokenStore.Save(_accounts);
@@ -282,12 +374,12 @@ namespace MailSender
         }
 
         /// <summary>
-        /// 選択中アカウントのリフレッシュトークンを Web アプリの Gmail.TokenSecret 用 JSON ({"refresh_token":"..."}) として保存する。
+        /// 選択中の Gmail アカウントのリフレッシュトークンを Web アプリの Gmail.TokenSecret 用 JSON ({"refresh_token":"..."}) として保存する。
         /// 共通送信者 (システムアカウント) のトークンをサーバーへ持ち込む用途。平文なので扱いは慎重に。
         /// </summary>
         void OnExportToken(object sender, RoutedEventArgs e)
         {
-            if (_token == null) return;
+            if (_token == null || !_token.IsGmail) return;
             if (MessageBox.Show(this,
                     $"{_token.Email} のリフレッシュトークンを平文の JSON ファイルに書き出します。\n" +
                     "このファイルを持つ人は、このアカウントの名義でメールを送れます。\n" +
@@ -316,7 +408,7 @@ namespace MailSender
         void OnSettings(object sender, RoutedEventArgs e)
         {
             new SettingsWindow(_settings) { Owner = this }.ShowDialog();
-            //クライアントを差し替えると使えるアカウントが変わる
+            //クライアント / アプリ登録を差し替えると使えるアカウントが変わる
             RefreshAccount();
             RefreshSendButton();
         }
@@ -481,7 +573,7 @@ namespace MailSender
         void RefreshSendButton()
         {
             var targets = SelectedRows.Count;
-            _sendButton.IsEnabled = !_busy && IsTokenUsable(_token) && targets > 0;
+            _sendButton.IsEnabled = !_busy && IsAccountUsable(_token) && targets > 0;
             _sendButton.Content = targets > 0 ? $"送信 ({targets} 件)" : "送信";
             _selectAllButton.IsEnabled = !_busy && _rows.Count > 0;
             _clearAllButton.IsEnabled = !_busy && _rows.Count > 0;
@@ -502,7 +594,9 @@ namespace MailSender
             if (_package == null || _token == null) return;
             var targets = SelectedRows;
             if (targets.Count == 0) return;
-            if (MessageBox.Show(this, $"チェックした {targets.Count} 件を送信します。\n差出人: {_token.Email}", "MailSender",
+            var accountSender = AccountSender.Create(_settings, _token, () => TokenStore.Save(_accounts));
+            if (accountSender == null) return;
+            if (MessageBox.Show(this, $"チェックした {targets.Count} 件を送信します。\n差出人: {_token.Email} ({MailProviders.DisplayName(_token.Provider)})", "MailSender",
                     MessageBoxButton.OKCancel, MessageBoxImage.Question) != MessageBoxResult.OK) return;
 
             foreach (var r in _rows)
@@ -531,7 +625,7 @@ namespace MailSender
             });
             try
             {
-                await new SendService(ResolveClient(_token)!, _token.RefreshToken).SendAsync(_package, targets.Select(r => r.Item), progress, _sendCancellation.Token);
+                await new SendService(accountSender).SendAsync(_package, targets.Select(r => r.Item), progress, _sendCancellation.Token);
                 _statusText.Text = $"完了: 成功 {success} 件 / 失敗 {done - success} 件 (ログ: {SendService.LogFolder})";
             }
             catch (Exception ex)

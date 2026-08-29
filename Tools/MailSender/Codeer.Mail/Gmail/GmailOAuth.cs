@@ -14,17 +14,6 @@ namespace Codeer.Mail.Gmail
         public string? Email { get; set; }
     }
 
-    /// <summary>PKCE の code_verifier / code_challenge (S256)。</summary>
-    public record GmailPkce(string CodeVerifier, string CodeChallenge)
-    {
-        public static GmailPkce Create()
-        {
-            var verifier = GmailApiClient.Base64Url(RandomNumberGenerator.GetBytes(32));
-            var challenge = GmailApiClient.Base64Url(SHA256.HashData(Encoding.ASCII.GetBytes(verifier)));
-            return new GmailPkce(verifier, challenge);
-        }
-    }
-
     /// <summary>
     /// Google OAuth 2.0 (認可コードフロー) の素の REST。同意画面 URL・コード交換・リフレッシュ・取り消し。
     /// デスクトップアプリ種別でも Google は client_secret を発行する (秘密扱いではない)。ここでは PKCE と併用し、
@@ -53,7 +42,7 @@ namespace Codeer.Mail.Gmail
         /// </summary>
         /// <param name="selectAccount">true ならブラウザ側で先にアカウント選択画面を出す (別アカウントの追加用)。</param>
         public static string CreateAuthorizationUrl(string clientId, string redirectUri, string scope, string state,
-            GmailPkce? pkce = null, string? loginHint = null, bool selectAccount = false)
+            Pkce? pkce = null, string? loginHint = null, bool selectAccount = false)
         {
             var query = new Dictionary<string, string>
             {
@@ -76,7 +65,7 @@ namespace Codeer.Mail.Gmail
         }
 
         /// <summary>認可コードをトークンに交換する。client_secret は web 種別のときだけ。</summary>
-        public async Task<GmailTokenResponse> ExchangeCodeAsync(string clientId, string? clientSecret, string code, string redirectUri, GmailPkce? pkce = null)
+        public async Task<GmailTokenResponse> ExchangeCodeAsync(string clientId, string? clientSecret, string code, string redirectUri, Pkce? pkce = null)
         {
             var form = new Dictionary<string, string>
             {
@@ -133,7 +122,7 @@ namespace Codeer.Mail.Gmail
                 AccessToken = root.GetProperty("access_token").GetString()!,
                 RefreshToken = root.TryGetProperty("refresh_token", out var r) ? r.GetString() : null,
                 ExpiresInSeconds = root.TryGetProperty("expires_in", out var e) ? e.GetInt32() : 300,
-                Email = root.TryGetProperty("id_token", out var i) ? GetEmailFromIdToken(i.GetString()) : null,
+                Email = root.TryGetProperty("id_token", out var i) ? IdToken.GetClaim(i.GetString(), "email") : null,
             };
         }
 
@@ -141,8 +130,8 @@ namespace Codeer.Mail.Gmail
         public static string CreateServiceAccountAssertion(string clientEmail, string privateKeyPem, string subject, string scope = SendScope)
         {
             var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-            var header = GmailApiClient.Base64Url(JsonSerializer.SerializeToUtf8Bytes(new { alg = "RS256", typ = "JWT" }));
-            var claims = GmailApiClient.Base64Url(JsonSerializer.SerializeToUtf8Bytes(new
+            var header = Base64Url.Encode(JsonSerializer.SerializeToUtf8Bytes(new { alg = "RS256", typ = "JWT" }));
+            var claims = Base64Url.Encode(JsonSerializer.SerializeToUtf8Bytes(new
             {
                 iss = clientEmail,
                 sub = subject,
@@ -153,7 +142,7 @@ namespace Codeer.Mail.Gmail
             }));
             using var rsa = RSA.Create();
             rsa.ImportFromPem(privateKeyPem);
-            var signature = GmailApiClient.Base64Url(rsa.SignData(Encoding.ASCII.GetBytes($"{header}.{claims}"),
+            var signature = Base64Url.Encode(rsa.SignData(Encoding.ASCII.GetBytes($"{header}.{claims}"),
                 HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1));
             return $"{header}.{claims}.{signature}";
         }
@@ -168,25 +157,6 @@ namespace Codeer.Mail.Gmail
             {
                 using var json = JsonDocument.Parse(value);
                 return json.RootElement.TryGetProperty("refresh_token", out var token) && token.GetString() is { Length: > 0 } t ? t : null;
-            }
-            catch
-            {
-                return null;
-            }
-        }
-
-        //id_token (Google から TLS で直接受け取った JWT) の payload から email を読む。署名検証は不要 (発行元から直接受け取っている)
-        public static string? GetEmailFromIdToken(string? idToken)
-        {
-            if (string.IsNullOrEmpty(idToken)) return null;
-            var parts = idToken.Split('.');
-            if (parts.Length < 2) return null;
-            try
-            {
-                var payload = parts[1].Replace('-', '+').Replace('_', '/');
-                var bytes = Convert.FromBase64String(payload.PadRight((payload.Length + 3) / 4 * 4, '='));
-                using var json = JsonDocument.Parse(bytes);
-                return json.RootElement.TryGetProperty("email", out var e) ? e.GetString() : null;
             }
             catch
             {

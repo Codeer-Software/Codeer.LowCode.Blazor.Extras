@@ -1,19 +1,19 @@
 using MimeKit;
 
-namespace Codeer.Mail.Gmail
+namespace Codeer.Mail
 {
     /// <summary>添付 1 件 (内容は Base64)。</summary>
-    public class GmailAttachment
+    public class MailAttachment
     {
         public string FileName { get; set; } = string.Empty;
         public string ContentBase64 { get; set; } = string.Empty;
     }
 
     /// <summary>
-    /// Gmail で送る 1 通。<see cref="From"/> が空なら差出人ヘッダを付けず、Gmail がトークンのアカウントのアドレスで補う
-    /// (本人のトークンで送るデスクトップ送信はこれ。エイリアス (Send As) を使うときだけ指定する)。
+    /// 送る 1 通 (プロバイダ共通)。<see cref="From"/> が空なら差出人はアカウント側で決まる
+    /// (Gmail / Graph = トークンのアカウント本人。SMTP はアカウントに登録したアドレス)。
     /// </summary>
-    public class GmailMessage
+    public class MailMessage
     {
         public string From { get; set; } = string.Empty;
         public string FromDisplayName { get; set; } = string.Empty;
@@ -24,16 +24,16 @@ namespace Codeer.Mail.Gmail
         public string Subject { get; set; } = string.Empty;
         public string Body { get; set; } = string.Empty;
         public bool IsBodyHtml { get; set; }
-        public List<GmailAttachment> Attachments { get; set; } = new();
+        public List<MailAttachment> Attachments { get; set; } = new();
 
         /// <summary>追加ヘッダ ("X-" で始めること)。</summary>
         public Dictionary<string, string> Headers { get; set; } = new();
     }
 
-    /// <summary>MIME (RFC 2822) の組み立て。Gmail API はこれを base64url にした "raw" で受け取る。</summary>
-    public static class GmailMimeBuilder
+    /// <summary>MIME (RFC 2822) の組み立て。Gmail API は base64url にした "raw" で、SMTP はそのまま送る。</summary>
+    public static class MimeBuilder
     {
-        public static MimeMessage CreateMimeMessage(GmailMessage message)
+        public static MimeMessage CreateMimeMessage(MailMessage message)
         {
             var mime = new MimeMessage();
             if (!string.IsNullOrEmpty(message.From))
@@ -55,11 +55,20 @@ namespace Codeer.Mail.Gmail
         }
 
         /// <summary>MIME 全体のバイト列。</summary>
-        public static async Task<byte[]> CreateRawAsync(GmailMessage message)
+        public static async Task<byte[]> CreateRawAsync(MailMessage message)
         {
             using var stream = new MemoryStream();
             await CreateMimeMessage(message).WriteToAsync(stream);
             return stream.ToArray();
         }
+    }
+
+    /// <summary>
+    /// 残りを送っても無駄な失敗 (1 日の送信上限、接続不能、認証失敗など)。送信ループはこれで残りを打ち切る。
+    /// </summary>
+    public class MailSendAbortException : InvalidOperationException
+    {
+        public MailSendAbortException(string message) : base(message) { }
+        public MailSendAbortException(string message, Exception inner) : base(message, inner) { }
     }
 }

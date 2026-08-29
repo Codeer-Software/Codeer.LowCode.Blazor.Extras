@@ -27,6 +27,8 @@ namespace MailSender
                 Load(settings.Gmail.Desktop, _desktopId, _desktopSecret);
                 Load(settings.Gmail.Web, _webId, _webSecret);
                 _webRedirectUri = settings.Gmail.Web.RedirectUri;
+                _graphClientId.Text = settings.GraphApi.ClientId;
+                _graphTenantId.Text = settings.GraphApi.TenantId;
             }
             finally
             {
@@ -46,6 +48,12 @@ namespace MailSender
         {
             Desktop = new GmailClientSettings { IsWebClient = false, ClientId = _desktopId.Text.Trim(), ClientSecret = _desktopSecret.Text.Trim() },
             Web = new GmailClientSettings { IsWebClient = true, ClientId = _webId.Text.Trim(), ClientSecret = _webSecret.Text.Trim(), RedirectUri = _webRedirectUri },
+        };
+
+        GraphSettings CollectGraph() => new()
+        {
+            ClientId = _graphClientId.Text.Trim(),
+            TenantId = string.IsNullOrWhiteSpace(_graphTenantId.Text) ? Codeer.Mail.Graph.GraphOAuth.DefaultTenant : _graphTenantId.Text.Trim(),
         };
 
         void Refresh()
@@ -142,7 +150,17 @@ namespace MailSender
             {
                 return;
             }
+            var graph = CollectGraph();
+            if (graph.IsConfigured && !Guid.TryParse(graph.ClientId, out _) &&
+                MessageBox.Show(this,
+                    "Microsoft 365 のアプリケーション (クライアント) ID は通常 GUID (00000000-0000-...) の形式です。\n" +
+                    "Entra ID のアプリ登録の「概要」に表示される「アプリケーション (クライアント) ID」の値を入れてください。\n\nこのまま保存しますか？",
+                    "MailSender", MessageBoxButton.OKCancel, MessageBoxImage.Warning) != MessageBoxResult.OK)
+            {
+                return;
+            }
             _settings.Gmail = gmail;
+            _settings.GraphApi = graph;
             _settings.Save();
             DialogResult = true;
         }

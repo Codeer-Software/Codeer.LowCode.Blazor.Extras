@@ -1,8 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <!--
-    MailSender: Web (CLB) でダウンロードしたメールのプレビュー HTML を開き、本人の Gmail トークンで送る Windows アプリ。
-    トークンは本人の PC (DPAPI) にだけ置く。Codeer.LowCode.Blazor には依存しない。
+    MailSender: Web (CLB) でダウンロードしたメールのプレビュー HTML を開き、本人のアカウント (Gmail / Microsoft 365 / SMTP) で送る Windows アプリ。
+    トークン・パスワードは本人の PC (DPAPI) にだけ置く。Codeer.LowCode.Blazor には依存しない。
     発行手順は README.md (dotnet publish 単一 exe)
   -->
   <PropertyGroup>
@@ -25,12 +25,12 @@
 
   <!-- 送信部品はサブフォルダの別プロジェクト (この csproj の既定グロブから除外して参照だけする) -->
   <ItemGroup>
-    <Compile Remove="Codeer.Mail.Gmail\**" />
-    <None Remove="Codeer.Mail.Gmail\**" />
+    <Compile Remove="Codeer.Mail\**" />
+    <None Remove="Codeer.Mail\**" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="Codeer.Mail.Gmail\Codeer.Mail.Gmail.csproj" />
+    <ProjectReference Include="Codeer.Mail\Codeer.Mail.csproj" />
   </ItemGroup>
 
   <ItemGroup>

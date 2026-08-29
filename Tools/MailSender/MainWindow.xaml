@@ -38,7 +38,7 @@
                             <ui:Button x:Name="_addButton" Content="アカウントを追加" Icon="{ui:SymbolIcon PersonAdd24}" Style="{StaticResource ToolButton}" Click="OnAddAccount" />
                             <ui:Button x:Name="_settingsButton" Content="設定" Icon="{ui:SymbolIcon Settings24}" Style="{StaticResource ToolButton}" Click="OnSettings" />
                         </StackPanel>
-                        <TextBlock Text="差出人 (Gmail アカウント)" Style="{StaticResource SectionTitle}" Margin="0" VerticalAlignment="Center" />
+                        <TextBlock Text="差出人 (アカウント)" Style="{StaticResource SectionTitle}" Margin="0" VerticalAlignment="Center" />
                     </DockPanel>
                     <!-- 2 行目: 選択中のアカウント + そのアカウントへの操作 (再発行 / 書き出し / 破棄) -->
                     <DockPanel>
