@@ -87,10 +87,12 @@ namespace Codeer.LowCode.Blazor.Extras.Test.FileStorage
         }
 
         [Test]
-        public void Azure推奨形式はURIとコンテナ名が必須()
+        public void Azure設定は接続文字列かURIのどちらかとコンテナ名が必須()
         {
-            var ok = new AzureBlobFileStorage(new AzureBlobStorageSettings { Name = "Az", BlobServiceUri = "https://acct.blob.core.windows.net", ContainerName = "files" });
-            Assert.That(ok.Name, Is.EqualTo("Az"));
+            var byUri = new AzureBlobFileStorage(new AzureBlobStorageSettings { Name = "Az", BlobServiceUri = "https://acct.blob.core.windows.net", ContainerName = "files" });
+            Assert.That(byUri.Name, Is.EqualTo("Az"));
+            var byCs = new AzureBlobFileStorage(new AzureBlobStorageSettings { Name = "Az2", ConnectionString = "UseDevelopmentStorage=true", ContainerName = "files" });
+            Assert.That(byCs.Name, Is.EqualTo("Az2"));
             Assert.Throws<LowCodeException>(() => new AzureBlobFileStorage(new AzureBlobStorageSettings { Name = "Az", ContainerName = "files" }));
             Assert.Throws<LowCodeException>(() => new AzureBlobFileStorage(new AzureBlobStorageSettings { Name = "Az", BlobServiceUri = "https://acct.blob.core.windows.net" }));
         }

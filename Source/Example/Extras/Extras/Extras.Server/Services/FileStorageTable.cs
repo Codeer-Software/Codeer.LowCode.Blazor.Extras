@@ -15,9 +15,10 @@ namespace Extras.Server.Services
             {
                 list.Add(new FileSystemFileStorage(e));
             }
-            //Azure Blob (推奨形式): 接続文字列ではなく DefaultAzureCredential (Managed Identity 等) で認証する
+            //Azure Blob: 接続文字列 (ConnectionStrings:<Name> にも置ける) か、無ければ BlobServiceUri + DefaultAzureCredential (Managed Identity 等)
             foreach (var e in config.GetSection("AzureBlobStorages").Get<AzureBlobStorageSettings[]>() ?? [])
             {
+                if (string.IsNullOrEmpty(e.ConnectionString) && string.IsNullOrEmpty(e.BlobServiceUri)) e.ConnectionString = config.GetConnectionString(e.Name) ?? string.Empty;
                 list.Add(new AzureBlobFileStorage(e));
             }
             foreach (var e in config.GetSection("S3Storages").Get<S3StorageSettings[]>() ?? [])

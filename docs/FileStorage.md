@@ -12,7 +12,7 @@ FileField がアップロードしたファイルの実体を置く場所です�
 | 設定クラス / 実装 | 保存先 | セクション (テンプレート既定) | プロパティ |
 |---|---|---|---|
 | `FileSystemStorageSettings` / `FileSystemFileStorage` | サーバーのフォルダ | `FileSystemStorages` | `Name` / `Directory` |
-| `AzureBlobStorageSettings` / `AzureBlobFileStorage` | Azure Blob Storage (Managed Identity 等の `DefaultAzureCredential` 認証) | `AzureBlobStorages` | `Name` / `BlobServiceUri` / `ContainerName` |
+| `AzureBlobStorageSettings` / `AzureBlobFileStorage` | Azure Blob Storage | `AzureBlobStorages` | `Name` / `ContainerName` / `ConnectionString` または `BlobServiceUri` |
 | `S3StorageSettings` / `S3FileStorage` | Amazon S3、および S3 互換 API (MinIO / Cloudflare R2 / Wasabi など) | `S3Storages` | `Name` / `BucketName` / `Region` / `ServiceUrl` / `ProfileName` / `KeyPrefix` |
 
 ファイルはどの保存先でも Guid をキーにフラットに置かれます (フォルダ階層は作りません)。
@@ -24,7 +24,8 @@ FileField がアップロードしたファイルの実体を置く場所です�
   { "Name": "Local", "Directory": "C:\\Files" }
 ],
 "AzureBlobStorages": [
-  { "Name": "Azure", "BlobServiceUri": "https://myaccount.blob.core.windows.net", "ContainerName": "files" }
+  { "Name": "Azure", "BlobServiceUri": "https://myaccount.blob.core.windows.net", "ContainerName": "files" },
+  { "Name": "AzureByKey", "ContainerName": "files" }
 ],
 "S3Storages": [
   { "Name": "S3", "BucketName": "my-app-files", "Region": "ap-northeast-1" },
@@ -47,10 +48,12 @@ FileField がアップロードしたファイルの実体を置く場所です�
 
 ### Azure の資格情報
 
-種別別形式の Azure Blob は接続文字列 (共有キー) を使わず、`DefaultAzureCredential` で認証します
-(環境変数 → Workload Identity → **Managed Identity** (App Service / Container Apps / VM) → Visual Studio / Azure CLI のログイン)。
-ストレージアカウント (またはコンテナ) に「ストレージ BLOB データ共同作成者」ロールを付けてください。
-接続文字列で繋ぐ必要があるときは下の簡易形式を使います。
+どちらでも接続できます。
+
+- **`ConnectionString` を指定** → 接続文字列 (共有キー) で接続。`ConnectionStrings:<Name>` に置いてもよい (上の例の `AzureByKey`)。DB と同じ運用でよい場合
+- **`ConnectionString` が空** → `BlobServiceUri` に対して `DefaultAzureCredential` で認証
+  (環境変数 → Workload Identity → **Managed Identity** (App Service / Container Apps / VM) → Visual Studio / Azure CLI のログイン)。
+  ストレージアカウント (またはコンテナ) に「ストレージ BLOB データ共同作成者」ロールを付ける。キーを一切持たないので本番はこちらを推奨
 
 ### S3 の資格情報
 
@@ -71,7 +74,11 @@ public static List<IFileStorage> Create(IConfiguration config)
     foreach (var e in config.GetSection("FileSystemStorages").Get<FileSystemStorageSettings[]>() ?? [])
         list.Add(new FileSystemFileStorage(e));
     foreach (var e in config.GetSection("AzureBlobStorages").Get<AzureBlobStorageSettings[]>() ?? [])
+    {
+        //接続文字列は ConnectionStrings:<Name> にも置ける (無ければ BlobServiceUri + DefaultAzureCredential)
+        if (string.IsNullOrEmpty(e.ConnectionString) && string.IsNullOrEmpty(e.BlobServiceUri)) e.ConnectionString = config.GetConnectionString(e.Name) ?? string.Empty;
         list.Add(new AzureBlobFileStorage(e));
+    }
     foreach (var e in config.GetSection("S3Storages").Get<S3StorageSettings[]>() ?? [])
         list.Add(new S3FileStorage(e));
     return list;
