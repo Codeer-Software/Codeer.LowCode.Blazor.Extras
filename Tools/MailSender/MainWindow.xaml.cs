@@ -9,9 +9,6 @@ using System.IO;
 using System.Security.Cryptography;
 using System.Windows;
 using Wpf.Ui.Controls;
-using MessageBox = System.Windows.MessageBox;
-using MessageBoxButton = System.Windows.MessageBoxButton;
-using MessageBoxResult = System.Windows.MessageBoxResult;
 using System.Windows.Controls;
 
 namespace MailSender
@@ -193,7 +190,7 @@ namespace MailSender
         }
 
         /// <summary>選択中アカウントの再発行 (OAuth) / 編集 (SMTP)。</summary>
-        void OnReissueToken(object sender, RoutedEventArgs e)
+        async void OnReissueToken(object sender, RoutedEventArgs e)
         {
             if (_token == null) return;
             if (_token.IsSmtp)
@@ -205,7 +202,7 @@ namespace MailSender
             {
                 if (!_settings.GraphApi.IsConfigured)
                 {
-                    MessageBox.Show(this, "先に「設定」で Microsoft 365 のアプリケーション (クライアント) ID を登録してください。", "MailSender", MessageBoxButton.OK, MessageBoxImage.Information);
+                    await Dialogs.InfoAsync(this, "先に「設定」で Microsoft 365 のアプリケーション (クライアント) ID を登録してください。");
                     return;
                 }
                 _ = IssueGraphTokenAsync(_token.Email);
@@ -214,7 +211,7 @@ namespace MailSender
             var client = AccountSender.ResolveGmailClient(_settings, _token);
             if (client == null)
             {
-                MessageBox.Show(this, "このアカウントを発行した OAuth クライアントが設定にありません。設定に登録し直してください。", "MailSender", MessageBoxButton.OK, MessageBoxImage.Information);
+                await Dialogs.InfoAsync(this, "このアカウントを発行した OAuth クライアントが設定にありません。設定に登録し直してください。");
                 return;
             }
             _ = IssueGmailTokenAsync(_token.Email, client);
@@ -253,7 +250,7 @@ namespace MailSender
             }
             catch (Exception ex)
             {
-                MessageBox.Show(this, ex.Message, "トークンの発行に失敗しました", MessageBoxButton.OK, MessageBoxImage.Error);
+                await Dialogs.ErrorAsync(this, ex.Message, "トークンの発行に失敗しました");
             }
             finally
             {
@@ -346,8 +343,7 @@ namespace MailSender
             var detail = target.IsGmail ? "Google 側でトークンを無効化し、この PC から削除します。"
                        : target.IsGraphApi ? "この PC から削除します (Microsoft 側の同意は「マイ アカウント > アプリのアクセス許可」から取り消せます)。"
                        : "この PC から削除します (サーバーのパスワードは変わりません)。";
-            if (MessageBox.Show(this, $"{target.Email} ({MailProviders.DisplayName(target.Provider)}) を破棄しますか？\n{detail}", "MailSender",
-                    MessageBoxButton.OKCancel, MessageBoxImage.Question) != MessageBoxResult.OK) return;
+            if (!await Dialogs.ConfirmAsync(this, $"{target.Email} ({MailProviders.DisplayName(target.Provider)}) を破棄しますか？\n{detail}", okText: "破棄", danger: true)) return;
             SetBusy(true, "アカウントを破棄しています...");
             try
             {
@@ -377,14 +373,14 @@ namespace MailSender
         /// 選択中の Gmail アカウントのリフレッシュトークンを Web アプリの Gmail.TokenSecret 用 JSON ({"refresh_token":"..."}) として保存する。
         /// 共通送信者 (システムアカウント) のトークンをサーバーへ持ち込む用途。平文なので扱いは慎重に。
         /// </summary>
-        void OnExportToken(object sender, RoutedEventArgs e)
+        async void OnExportToken(object sender, RoutedEventArgs e)
         {
             if (_token == null || !_token.IsGmail) return;
-            if (MessageBox.Show(this,
+            if (!await Dialogs.ConfirmAsync(this,
                     $"{_token.Email} のリフレッシュトークンを平文の JSON ファイルに書き出します。\n" +
                     "このファイルを持つ人は、このアカウントの名義でメールを送れます。\n" +
                     "Web アプリの Gmail.TokenSecret に設定したら、ファイルは安全な場所に置くか削除してください。",
-                    "MailSender", MessageBoxButton.OKCancel, MessageBoxImage.Warning) != MessageBoxResult.OK) return;
+                    okText: "書き出す", warning: true)) return;
 
             var dialog = new SaveFileDialog
             {
@@ -401,7 +397,7 @@ namespace MailSender
             }
             catch (Exception ex)
             {
-                MessageBox.Show(this, ex.Message, "書き出しに失敗しました", MessageBoxButton.OK, MessageBoxImage.Error);
+                await Dialogs.ErrorAsync(this, ex.Message, "書き出しに失敗しました");
             }
         }
 
@@ -433,7 +429,7 @@ namespace MailSender
             if (e.Data.GetData(DataFormats.FileDrop) is string[] files && files.Length > 0) LoadPackage(files[0]);
         }
 
-        void LoadPackage(string path)
+        async void LoadPackage(string path)
         {
             try
             {
@@ -455,7 +451,7 @@ namespace MailSender
                 _items.ItemsSource = null;
                 _packageText.Text = "ファイルを開くか、ここにドロップしてください";
                 _body.Text = string.Empty;
-                MessageBox.Show(this, ex.Message, "開けませんでした", MessageBoxButton.OK, MessageBoxImage.Warning);
+                await Dialogs.WarningAsync(this, ex.Message, "開けませんでした");
             }
             RefreshSendButton();
         }
@@ -596,8 +592,7 @@ namespace MailSender
             if (targets.Count == 0) return;
             var accountSender = AccountSender.Create(_settings, _token, () => TokenStore.Save(_accounts));
             if (accountSender == null) return;
-            if (MessageBox.Show(this, $"チェックした {targets.Count} 件を送信します。\n差出人: {_token.Email} ({MailProviders.DisplayName(_token.Provider)})", "MailSender",
-                    MessageBoxButton.OKCancel, MessageBoxImage.Question) != MessageBoxResult.OK) return;
+            if (!await Dialogs.ConfirmAsync(this, $"チェックした {targets.Count} 件を送信します。\n差出人: {_token.Email} ({MailProviders.DisplayName(_token.Provider)})", okText: "送信")) return;
 
             foreach (var r in _rows)
             {
@@ -630,7 +625,7 @@ namespace MailSender
             }
             catch (Exception ex)
             {
-                MessageBox.Show(this, ex.Message, "送信に失敗しました", MessageBoxButton.OK, MessageBoxImage.Error);
+                await Dialogs.ErrorAsync(this, ex.Message, "送信に失敗しました");
             }
             finally
             {

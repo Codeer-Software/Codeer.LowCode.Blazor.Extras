@@ -4,9 +4,6 @@ using System.Diagnostics;
 using System.IO;
 using System.Windows;
 using Wpf.Ui.Controls;
-using MessageBox = System.Windows.MessageBox;
-using MessageBoxButton = System.Windows.MessageBoxButton;
-using MessageBoxResult = System.Windows.MessageBoxResult;
 
 namespace MailSender
 {
@@ -71,7 +68,7 @@ namespace MailSender
 
         static bool IsWeb(object sender) => (sender as FrameworkElement)?.Tag as string == "web";
 
-        void OnBrowse(object sender, RoutedEventArgs e)
+        async void OnBrowse(object sender, RoutedEventArgs e)
         {
             var dialog = new OpenFileDialog { Filter = "OAuth クライアント JSON (*.json)|*.json|すべてのファイル (*.*)|*.*" };
             if (dialog.ShowDialog(this) != true) return;
@@ -80,9 +77,7 @@ namespace MailSender
                 var client = GmailClientSettings.FromClientSecretJson(dialog.FileName);
                 if (client.IsWebClient != IsWeb(sender))
                 {
-                    MessageBox.Show(this,
-                        $"この JSON は「{client.DisplayName}」種別のクライアントです。{(client.IsWebClient ? "ウェブ" : "デスクトップ")}側の「JSON を読み込む」で読み込んでください。",
-                        "MailSender", MessageBoxButton.OK, MessageBoxImage.Information);
+                    await Dialogs.InfoAsync(this, $"この JSON は「{client.DisplayName}」種別のクライアントです。{(client.IsWebClient ? "ウェブ" : "デスクトップ")}側の「JSON を読み込む」で読み込んでください。");
                     return;
                 }
                 if (client.IsWebClient)
@@ -98,12 +93,12 @@ namespace MailSender
             }
             catch (Exception ex)
             {
-                MessageBox.Show(this, ex.Message, "読み込めませんでした", MessageBoxButton.OK, MessageBoxImage.Warning);
+                await Dialogs.WarningAsync(this, ex.Message, "読み込めませんでした");
             }
         }
 
         /// <summary>Web アプリの Gmail.ClientSecret に置く JSON (Google の client_secret.json と同じ形) を書き出す。</summary>
-        void OnExportJson(object sender, RoutedEventArgs e)
+        async void OnExportJson(object sender, RoutedEventArgs e)
         {
             var gmail = Collect();
             var client = IsWeb(sender) ? gmail.Web : gmail.Desktop;
@@ -120,11 +115,11 @@ namespace MailSender
             }
             catch (Exception ex)
             {
-                MessageBox.Show(this, ex.Message, "書き出しに失敗しました", MessageBoxButton.OK, MessageBoxImage.Error);
+                await Dialogs.ErrorAsync(this, ex.Message, "書き出しに失敗しました");
             }
         }
 
-        void OnOpenDataFolder(object sender, RoutedEventArgs e)
+        async void OnOpenDataFolder(object sender, RoutedEventArgs e)
         {
             try
             {
@@ -133,29 +128,29 @@ namespace MailSender
             }
             catch (Exception ex)
             {
-                MessageBox.Show(this, ex.Message, "開けませんでした", MessageBoxButton.OK, MessageBoxImage.Warning);
+                await Dialogs.WarningAsync(this, ex.Message, "開けませんでした");
             }
         }
 
-        void OnOk(object sender, RoutedEventArgs e)
+        async void OnOk(object sender, RoutedEventArgs e)
         {
             var gmail = Collect();
             //よくある間違い: クライアントの「名前」を入れてしまう。ID は 数字-英数字.apps.googleusercontent.com
             var odd = gmail.Configured.FirstOrDefault(c => !c.ClientId.EndsWith(".apps.googleusercontent.com", StringComparison.OrdinalIgnoreCase));
             if (odd != null &&
-                MessageBox.Show(this,
+                !await Dialogs.ConfirmAsync(this,
                     $"{odd.DisplayName}のクライアント ID は通常「数字-英数字.apps.googleusercontent.com」の形式です。\n" +
                     "Google Cloud の「認証情報」に表示されるクライアントの名前ではなく、「クライアント ID」の値を入れてください。\n\nこのまま保存しますか？",
-                    "MailSender", MessageBoxButton.OKCancel, MessageBoxImage.Warning) != MessageBoxResult.OK)
+                    okText: "保存", warning: true))
             {
                 return;
             }
             var graph = CollectGraph();
             if (graph.IsConfigured && !Guid.TryParse(graph.ClientId, out _) &&
-                MessageBox.Show(this,
+                !await Dialogs.ConfirmAsync(this,
                     "Microsoft 365 のアプリケーション (クライアント) ID は通常 GUID (00000000-0000-...) の形式です。\n" +
                     "Entra ID のアプリ登録の「概要」に表示される「アプリケーション (クライアント) ID」の値を入れてください。\n\nこのまま保存しますか？",
-                    "MailSender", MessageBoxButton.OKCancel, MessageBoxImage.Warning) != MessageBoxResult.OK)
+                    okText: "保存", warning: true))
             {
                 return;
             }

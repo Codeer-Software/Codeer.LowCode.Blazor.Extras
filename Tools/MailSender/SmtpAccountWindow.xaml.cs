@@ -2,8 +2,6 @@ using Codeer.Mail.Smtp;
 using MailSender.Services;
 using System.Windows;
 using Wpf.Ui.Controls;
-using MessageBox = System.Windows.MessageBox;
-using MessageBoxButton = System.Windows.MessageBoxButton;
 
 namespace MailSender
 {
@@ -92,12 +90,12 @@ namespace MailSender
             }
         }
 
-        void OnOk(object sender, RoutedEventArgs e)
+        async void OnOk(object sender, RoutedEventArgs e)
         {
             var settings = Collect();
             if (Validate(settings) is { } error)
             {
-                MessageBox.Show(this, error, "MailSender", MessageBoxButton.OK, MessageBoxImage.Information);
+                await Dialogs.InfoAsync(this, error);
                 return;
             }
             Account = new StoredAccount
