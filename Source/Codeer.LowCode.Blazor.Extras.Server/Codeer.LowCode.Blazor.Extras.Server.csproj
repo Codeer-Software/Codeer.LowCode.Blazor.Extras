@@ -5,7 +5,7 @@
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>enable</Nullable>
 		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
-		<Version>0.8.1</Version>
+		<Version>0.8.2</Version>
 		<Authors>Codeer</Authors>
 		<Company>Codeer</Company>
 		<Description>Server-side services for Codeer.LowCode.Blazor apps. Includes AI document analysis (Azure Document Intelligence + Azure OpenAI), SMTP mail sending, file storage (file system / Azure Blob), and ASP.NET Core helpers (hot reload, ETag file responses).</Description>
@@ -16,7 +16,8 @@
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>
 		<PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
-		<PackageReleaseNotes>Compatibility: the 0.5.0 mail API (SmtpMailService / MailSettings, together with ScriptObjects.MailService / MailMessage in Codeer.LowCode.Blazor.Extras 0.8.0) is available again, so projects created from the 0.5.0 templates build and run unchanged after upgrading. SmtpMailService now sends through SmtpMailSender (MailKit). Requires Codeer.LowCode.Blazor.Extras 0.8.0.
+		<PackageReleaseNotes>Mail preview HTML: a variable that resolved to an empty value was rendered as a large box overlapping the toolbar (CSS class collision with the "no recipients" placeholder). It is now shown as a small "(empty)" mark inline.
+(0.8.1) Compatibility: the 0.5.0 mail API (SmtpMailService / MailSettings, together with ScriptObjects.MailService / MailMessage in Codeer.LowCode.Blazor.Extras 0.8.0) is available again, so projects created from the 0.5.0 templates build and run unchanged after upgrading. SmtpMailService now sends through SmtpMailSender (MailKit). Requires Codeer.LowCode.Blazor.Extras 0.8.0.
 Note for custom code that passes an untyped [] or null as the storage list to TemporaryFileManager / StorageAccess (since 0.8.0): the IEnumerable&lt;IFileStorage&gt; overloads make that call ambiguous - pass Array.Empty&lt;IFileStorage&gt;() (typed FileStorage[] variables, as in the templates, are unaffected).</PackageReleaseNotes>
 		<PackageId>Codeer.LowCode.Blazor.Extras.Server</PackageId>
 	</PropertyGroup>

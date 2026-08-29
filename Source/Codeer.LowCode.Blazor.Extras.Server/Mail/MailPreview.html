@@ -48,7 +48,7 @@
   .body.src { font-family:Consolas, "Courier New", monospace; font-size:12px; }
   iframe.html { width:100%; min-height:480px; border:0; }
   mark { background:var(--mark); padding:0 1px; border-bottom:1px dotted #c9a800; }
-  mark.empty::before { content:"(空)"; color:#b42318; font-size:11px; }
+  mark.blank::before { content:"(空)"; color:#b42318; font-size:11px; }
   .empty { padding:40px; text-align:center; color:var(--muted); }
   .kbd { font-family:Consolas, monospace; background:#eef0f3; border-radius:3px; padding:0 4px; }
 </style>
@@ -92,7 +92,7 @@
       if (sp.start < pos) return;
       out += esc(text.slice(pos, sp.start));
       const v = text.slice(sp.start, sp.start + sp.length);
-      out += '<mark class="' + (v ? '' : 'empty') + '" title="{' + esc(sp.name) + '}">' + esc(v) + '</mark>';
+      out += '<mark class="' + (v ? '' : 'blank') + '" title="{' + esc(sp.name) + '}">' + esc(v) + '</mark>';
       pos = sp.start + sp.length;
     });
     return out + esc(text.slice(pos));
