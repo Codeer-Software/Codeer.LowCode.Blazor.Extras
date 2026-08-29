@@ -202,6 +202,14 @@ UI もデータも持たない「宣言用」のフィールドです。役割 �
   "Password": "",
   "MaxBulkCount": 10000
 },
+"GraphApi": {
+  "SenderMailAddress": "notify@your-domain.example",
+  "SenderDisplayName": "業務システム",
+  "TenantId": "",                       // クライアントシークレット認証では必須
+  "ClientId": "",                       // クライアントシークレット認証では必須
+  "ClientSecret": "",                   // 空 = DefaultAzureCredential (Managed Identity 等) で認証
+  "MaxBulkCount": 10000
+},
 "Gmail": {
   "SenderMailAddress": "notify@your-domain.example",
   "SenderDisplayName": "業務システム",
@@ -211,15 +219,24 @@ UI もデータも持たない「宣言用」のフィールドです。役割 �
 }
 ```
 
-- `Mail` は共通設定、送信インフラごとの設定 (`Smtp` / `Gmail` など) は独立したセクションです。使うものだけ書きます
+- `Mail` は共通設定、送信インフラごとの設定 (`Smtp` / `GraphApi` / `Gmail` など) は独立したセクションです。使うものだけ書きます
 - `ClientSecret` / `TokenSecret` は値が `.json` で終わればファイルパス、それ以外は中身そのものとして扱います。
   秘密をファイルで置きたくない場合は環境変数 (`Gmail__ClientSecret` / `Gmail__TokenSecret`) に
   JSON やトークン文字列を直接入れてください
-- 提供している送信インフラは **SMTP** と **Gmail (Gmail API)** です
+- 提供している送信インフラは **SMTP**、**GraphApi (Microsoft Graph)**、**Gmail (Gmail API)** です
 - **SMTP** は社内メールサーバーや各種メールサービスの SMTP エンドポイントに送ります (MailKit)。一斉送信は 1 接続で逐次送信します。
   `Password` は環境変数 (`Smtp__Password`) やユーザーシークレットに置いてください。
   開発時は [smtp4dev](https://github.com/rnwood/smtp4dev) (`dotnet tool install -g Rnwood.Smtp4dev`) をローカルに立て、`Host: localhost` / `Port: 25` / `SSL: false` で送ると
   実際のメールを出さずにブラウザ (http://localhost:5000) で受信内容を確認できます
+- **GraphApi** は Microsoft 365 (Exchange Online) のメールボックスから Microsoft Graph の `sendMail` で送ります。
+  Entra ID にアプリを登録し、Microsoft Graph の**アプリケーションの許可** `Mail.Send` に管理者の同意を与えてください
+  (差出人を特定のメールボックスに限定するには Exchange Online の Application Access Policy を使います)。
+  送ったメールは差出人の「送信済みアイテム」に残ります。認証は 2 通り:
+  - `ClientSecret` を設定 → クライアントシークレット認証 (`TenantId` / `ClientId` / `ClientSecret`)。シークレットは環境変数 (`GraphApi__ClientSecret`) やユーザーシークレットに置いてください
+  - `ClientSecret` が空 → `DefaultAzureCredential`。App Service 等では **Managed Identity** で動くので設定にシークレットを持ちません
+    (MI のサービスプリンシパルに `Mail.Send` のアプリロールを付与します。ポータルの UI は無く PowerShell の `New-MgServicePrincipalAppRoleAssignment` で行います)。
+    ローカル開発では Azure CLI / Visual Studio のログインが使われます (別テナント既定なら `TenantId` を指定)
+  Exchange Online のレート制限があるため大量の一斉送信には向きません (逐次送信、429 は Retry-After に従って再試行)
 - **Gmail** は Gmail の上限 (Workspace: 1 ユーザー 1 日 2,000 通 / 無料: 500 通、約 2.5 通/秒) に合わせて、
   一斉送信は 400ms 間隔で逐次送信し、レート制限 (429 / 503) は指数バックオフ (2s→32s・最大 5 回) で再試行、日次上限に達したら残りを打ち切って失敗として返します。
   `MaxBulkCount` の既定は 500。数千通規模の配信は配信サービス系のインフラ (`IMailSender` 実装) を使ってください

@@ -24,7 +24,12 @@
         public string Password { get; set; } = string.Empty;
     }
 
-    /// <summary>Microsoft Graph (sendMail・アプリケーション権限) の設定。</summary>
+    /// <summary>
+    /// Microsoft Graph (sendMail・アプリケーション権限 Mail.Send) の設定。
+    /// <see cref="ClientSecret"/> があればクライアントクレデンシャル (TenantId / ClientId / ClientSecret)、
+    /// 空なら DefaultAzureCredential (App Service 等の Managed Identity、ローカルは Azure CLI / Visual Studio のログイン)。
+    /// Managed Identity なら設定にシークレットを持たなくてよい (Mail.Send のアプリロールを MI のサービスプリンシパルに付与する)。
+    /// </summary>
     public class GraphApiSettings
     {
         /// <summary>差出人アドレス。アプリケーション権限 Mail.Send はテナント内の任意ユーザーとして送れる。</summary>
@@ -36,10 +41,13 @@
         /// <summary>一斉送信1回の件数上限。超過はエラー (黙って切り詰めない)。</summary>
         public int MaxBulkCount { get; set; } = 10000;
 
+        /// <summary>テナント ID。クライアントクレデンシャルでは必須。DefaultAzureCredential では任意 (ローカルログインが別テナント既定のときに指定)。</summary>
         public string TenantId { get; set; } = string.Empty;
+
+        /// <summary>アプリ登録のクライアント ID。クライアントクレデンシャルでは必須。Managed Identity では不要。</summary>
         public string ClientId { get; set; } = string.Empty;
 
-        /// <summary>アプリ登録のクライアントシークレット。</summary>
+        /// <summary>アプリ登録のクライアントシークレット。空なら DefaultAzureCredential で認証する。appsettings.Development.json / 環境変数 (GraphApi__ClientSecret) に置く。</summary>
         public string ClientSecret { get; set; } = string.Empty;
     }
 

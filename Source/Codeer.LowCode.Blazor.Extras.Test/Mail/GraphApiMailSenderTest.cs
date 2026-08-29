@@ -82,6 +82,22 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Mail
         }
 
         [Test]
+        public async Task ClientSecretが空ならDefaultAzureCredential経路でトークン要求を出さない()
+        {
+            var handler = CreateHandler();
+            var settings = new GraphApiSettings { SenderMailAddress = "system@example.com" };
+            var sender = new GraphApiMailSender(settings, handler.CreateClient(), () => Task.FromResult("MI-TOKEN"));
+
+            var result = await sender.SendAsync(new MailMessage { To = { "a@example.com" }, Subject = "s", Body = "b" });
+            await sender.SendAsync(new MailMessage { To = { "a@example.com" }, Subject = "s", Body = "b" });
+
+            Assert.That(result.IsSuccess, Is.True);
+            Assert.That(handler.Requests.Select(e => e.Request.RequestUri!.Host), Is.All.EqualTo("graph.microsoft.com"));
+            Assert.That(handler.Requests, Has.Count.EqualTo(2));
+            Assert.That(handler.Requests[0].Request.Headers.Authorization!.Parameter, Is.EqualTo("MI-TOKEN"));
+        }
+
+        [Test]
         public async Task トークンはキャッシュされ2通目では再取得しない()
         {
             var handler = CreateHandler();

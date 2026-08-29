@@ -1,4 +1,6 @@
-﻿using Codeer.LowCode.Blazor.Extras.Mail;
+﻿using Azure.Core;
+using Azure.Identity;
+using Codeer.LowCode.Blazor.Extras.Mail;
 using Codeer.LowCode.Blazor.Extras.ScriptObjects;
 using System.Net;
 using System.Text;
@@ -9,8 +11,9 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
 {
     /// <summary>
     /// <see cref="IMailSender"/> の Microsoft Graph (sendMail) 実装。
-    /// クライアントクレデンシャル + 素の REST (SDK なし)。組織のメールボックスから送る
-    /// 通知メール向き。Exchange Online のレート制限があるため大量の一斉送信には不向き。
+    /// 素の REST (SDK なし)。組織のメールボックスから送る通知メール向き。Exchange Online のレート制限があるため大量の一斉送信には不向き。
+    /// 認証は <see cref="GraphApiSettings.ClientSecret"/> があればクライアントクレデンシャル、
+    /// 空なら <c>DefaultAzureCredential</c> (Managed Identity / Azure CLI ログイン等。シークレットを設定に持たない)。
     /// </summary>
     public class GraphApiMailSender : IMailSender
     {
@@ -19,13 +22,18 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
 
         readonly GraphApiSettings _settings;
         readonly HttpClient _http;
+        readonly Func<Task<string>> _credentialTokenProvider;
         string? _token;
         DateTime _tokenExpiresAtUtc;
 
-        public GraphApiMailSender(GraphApiSettings settings, HttpClient? httpClient = null)
+        public GraphApiMailSender(GraphApiSettings settings, HttpClient? httpClient = null) : this(settings, httpClient, null) { }
+
+        //credentialTokenProvider = ClientSecret が空のときのトークン取得 (テスト差し替え用。既定は DefaultAzureCredential)
+        internal GraphApiMailSender(GraphApiSettings settings, HttpClient? httpClient, Func<Task<string>>? credentialTokenProvider)
         {
             _settings = settings;
             _http = httpClient ?? _sharedClient;
+            _credentialTokenProvider = credentialTokenProvider ?? GetTokenByDefaultAzureCredentialAsync;
         }
 
         public int MaxBulkCount => _settings.MaxBulkCount;
@@ -135,6 +143,14 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
         {
             if (_token != null && DateTime.UtcNow < _tokenExpiresAtUtc) return _token;
 
+            if (string.IsNullOrEmpty(_settings.ClientSecret))
+            {
+                //シークレット無し = DefaultAzureCredential (有効期限はプロバイダ側で管理されるので短めにキャッシュ)
+                _token = await _credentialTokenProvider();
+                _tokenExpiresAtUtc = DateTime.UtcNow.AddMinutes(5);
+                return _token;
+            }
+
             var response = await _http.PostAsync(
                 $"https://login.microsoftonline.com/{Uri.EscapeDataString(_settings.TenantId)}/oauth2/v2.0/token",
                 new FormUrlEncodedContent(new Dictionary<string, string>
@@ -153,6 +169,15 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
             var expiresIn = json.RootElement.TryGetProperty("expires_in", out var e) ? e.GetInt32() : 300;
             _tokenExpiresAtUtc = DateTime.UtcNow.AddSeconds(Math.Max(60, expiresIn - 60));
             return _token;
+        }
+
+        async Task<string> GetTokenByDefaultAzureCredentialAsync()
+        {
+            //TenantId があればそのテナントで (ローカルの Azure CLI / Visual Studio ログインが別テナント既定のとき用)。Managed Identity では不要
+            var options = new DefaultAzureCredentialOptions();
+            if (!string.IsNullOrEmpty(_settings.TenantId)) options.TenantId = _settings.TenantId;
+            var token = await new DefaultAzureCredential(options).GetTokenAsync(new TokenRequestContext(["https://graph.microsoft.com/.default"]));
+            return token.Token;
         }
     }
 }

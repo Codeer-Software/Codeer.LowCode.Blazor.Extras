@@ -23,6 +23,7 @@ namespace Extras.Server.Services
         //Mail = 製品(共通層)が読む設定。プロバイダごとの設定は個別のセクションとして持つ
         public MailConfig Mail { get; set; } = new();
         public SmtpSettings Smtp { get; set; } = new();
+        public GraphApiSettings GraphApi { get; set; } = new();
         public GmailSettings Gmail { get; set; } = new();
         public AISettings AISettings { get; set; } = new();
         public SystemConfigForFront ForFront() => new SystemConfigForFront { CanScriptDebug = CanScriptDebug, UseHotReload = UseHotReload };

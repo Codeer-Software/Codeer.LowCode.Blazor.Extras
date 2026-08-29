@@ -71,7 +71,7 @@
 ## サーバーサービス (Codeer.LowCode.Blazor.Extras.Server)
 
 - AITextAnalyzeService — Azure Document Intelligence + Azure OpenAI による帳票・テキスト解析 (AITextAnalyzerField のサーバー側)
-- メール送信 — MailDispatcher (テンプレート解決・一斉送信・送信履歴) と SMTP / Gmail API 送信。独自の送信手段は IMailSender で追加
+- メール送信 — MailDispatcher (テンプレート解決・一斉送信・送信履歴) と SMTP / Microsoft Graph / Gmail API 送信。独自の送信手段は IMailSender で追加
 - 承認フロー — ApprovalEngine (状態遷移の検証と実行)
 - StorageAccess / TemporaryFileManager — ファイルストレージ (ファイルシステム / Azure Blob) と一時ファイル管理
 - CustomFontResolver — Excel PDF 変換用のフォントリゾルバ
