@@ -25,8 +25,7 @@
     }
 
     /// <summary>Microsoft Graph (sendMail・アプリケーション権限) の設定。</summary>
-    //Not published yet: only Gmail / SMTP have been verified by real sending. Keep internal until verified, then make public and wire into MailSenderTable / SystemConfig / Program.cs
-    internal class GraphApiSettings
+    public class GraphApiSettings
     {
         /// <summary>差出人アドレス。アプリケーション権限 Mail.Send はテナント内の任意ユーザーとして送れる。</summary>
         public string SenderMailAddress { get; set; } = string.Empty;

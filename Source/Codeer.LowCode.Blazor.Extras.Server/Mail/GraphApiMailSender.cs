@@ -12,8 +12,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
     /// クライアントクレデンシャル + 素の REST (SDK なし)。組織のメールボックスから送る
     /// 通知メール向き。Exchange Online のレート制限があるため大量の一斉送信には不向き。
     /// </summary>
-    //Not published yet: only Gmail / SMTP have been verified by real sending. Keep internal until verified, then make public and wire into MailSenderTable / SystemConfig / Program.cs
-    internal class GraphApiMailSender : IMailSender
+    public class GraphApiMailSender : IMailSender
     {
         static readonly HttpClient _sharedClient = new();
         const int MaxRetryCount = 3;
