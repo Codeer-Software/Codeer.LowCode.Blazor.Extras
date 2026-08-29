@@ -2,6 +2,9 @@
 using Azure.Identity;
 using Codeer.LowCode.Blazor.Extras.Mail;
 using Codeer.LowCode.Blazor.Extras.ScriptObjects;
+//ScriptObjects には旧 API (0.5.0 互換) の MailMessage / MailAttachment もあるので、こちらは新 API の型を使う
+using MailAttachment = Codeer.LowCode.Blazor.Extras.Mail.MailAttachment;
+using MailMessage = Codeer.LowCode.Blazor.Extras.Mail.MailMessage;
 using System.Net;
 using System.Text;
 using System.Text.Json;

@@ -243,6 +243,11 @@ UI もデータも持たない「宣言用」のフィールドです。役割 �
 - 独自の送信手段 (社内メールゲートウェイなど) は `IMailSender` を実装し、アプリの
   `MailSenderTable` (呼び名 → 実装の対応表) に 1 行足すだけで使えます
 
+### 0.5.0 のメール API から移行する
+
+0.5.0 のテンプレートにあった `MailService` (スクリプトオブジェクト) / `MailMessage` / サーバーの `SmtpMailService` / `MailSettings` (appsettings の `MailSettings` セクション) は互換のために残してあり、
+そのままビルド・動作します (`SmtpMailService` の中身は `SmtpMailSender` になりました)。新しく作る画面では MailField / BulkMailField を使ってください。
+
 ### サーバー側の結線 (アプリテンプレートに含まれるもの)
 
 新しいアプリテンプレートには最初から入っています。既存アプリに足す場合の要点:

@@ -3,6 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
         Title="設定" Width="700" SizeToContent="Height" ResizeMode="NoResize"
+        MaxHeight="{Binding Source={x:Static SystemParameters.WorkArea}, Path=Height}"
         ExtendsContentIntoTitleBar="True" WindowBackdropType="Mica" WindowCornerPreference="Round"
         WindowStartupLocation="CenterOwner" ShowInTaskbar="False">
     <ui:FluentWindow.Resources>
@@ -11,13 +12,14 @@
             <Setter Property="Margin" Value="0,0,12,8" />
         </Style>
     </ui:FluentWindow.Resources>
-    <StackPanel>
-        <ui:TitleBar Title="設定" ShowMaximize="False" ShowMinimize="False">
+    <DockPanel>
+        <ui:TitleBar DockPanel.Dock="Top" Title="設定" ShowMaximize="False" ShowMinimize="False">
             <ui:TitleBar.Icon>
                 <ui:SymbolIcon Symbol="Settings24" />
             </ui:TitleBar.Icon>
         </ui:TitleBar>
 
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
         <StackPanel Margin="16,4,16,16">
             <TextBlock Margin="0,0,0,10" Style="{StaticResource Hint}"
                        Text="アカウントを追加するときに使う、Google / Microsoft 側のアプリ登録です。SMTP はサーバー情報をアカウントごとに持つので、ここでの設定はありません。" />
@@ -121,5 +123,6 @@
                 <ui:Button Content="キャンセル" IsCancel="True" MinWidth="96" Margin="8,0,0,0" />
             </StackPanel>
         </StackPanel>
-    </StackPanel>
+        </ScrollViewer>
+    </DockPanel>
 </ui:FluentWindow>
