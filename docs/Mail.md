@@ -192,6 +192,16 @@ UI もデータも持たない「宣言用」のフィールドです。役割 �
   "HistoryModuleName": "MailHistory",   // 送信履歴モジュール (空 = 記録しない)
   "DebugRedirectAllTo": ""              // 開発時: 全メールをこのアドレスへ転送 (空 = 無効)
 },
+"Smtp": {
+  "SenderMailAddress": "notify@your-domain.example",
+  "SenderDisplayName": "業務システム",
+  "Host": "smtp.your-domain.example",
+  "Port": "587",
+  "SSL": "true",                        // true: 465 は SSL 接続、他は STARTTLS / false: サーバーが対応していれば STARTTLS
+  "UserName": "",                       // 空 = SenderMailAddress で認証
+  "Password": "",
+  "MaxBulkCount": 10000
+},
 "Gmail": {
   "SenderMailAddress": "notify@your-domain.example",
   "SenderDisplayName": "業務システム",
@@ -201,11 +211,16 @@ UI もデータも持たない「宣言用」のフィールドです。役割 �
 }
 ```
 
-- `Mail` は共通設定、送信インフラごとの設定 (`Gmail` など) は独立したセクションです
+- `Mail` は共通設定、送信インフラごとの設定 (`Smtp` / `Gmail` など) は独立したセクションです。使うものだけ書きます
 - `ClientSecret` / `TokenSecret` は値が `.json` で終わればファイルパス、それ以外は中身そのものとして扱います。
   秘密をファイルで置きたくない場合は環境変数 (`Gmail__ClientSecret` / `Gmail__TokenSecret`) に
   JSON やトークン文字列を直接入れてください
-- 現在提供している送信インフラは **Gmail (Gmail API)** です。Gmail の上限 (Workspace: 1 ユーザー 1 日 2,000 通 / 無料: 500 通、約 2.5 通/秒) に合わせて、
+- 提供している送信インフラは **SMTP** と **Gmail (Gmail API)** です
+- **SMTP** は社内メールサーバーや各種メールサービスの SMTP エンドポイントに送ります (MailKit)。一斉送信は 1 接続で逐次送信します。
+  `Password` は環境変数 (`Smtp__Password`) やユーザーシークレットに置いてください。
+  開発時は [smtp4dev](https://github.com/rnwood/smtp4dev) (`dotnet tool install -g Rnwood.Smtp4dev`) をローカルに立て、`Host: localhost` / `Port: 25` / `SSL: false` で送ると
+  実際のメールを出さずにブラウザ (http://localhost:5000) で受信内容を確認できます
+- **Gmail** は Gmail の上限 (Workspace: 1 ユーザー 1 日 2,000 通 / 無料: 500 通、約 2.5 通/秒) に合わせて、
   一斉送信は 400ms 間隔で逐次送信し、レート制限 (429 / 503) は指数バックオフ (2s→32s・最大 5 回) で再試行、日次上限に達したら残りを打ち切って失敗として返します。
   `MaxBulkCount` の既定は 500。数千通規模の配信は配信サービス系のインフラ (`IMailSender` 実装) を使ってください
 - 独自の送信手段 (社内メールゲートウェイなど) は `IMailSender` を実装し、アプリの

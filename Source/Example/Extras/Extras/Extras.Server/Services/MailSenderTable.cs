@@ -7,7 +7,7 @@ namespace Extras.Server.Services
     /// 呼び名はフィールドの MailInfraName / appsettings の Mail.DefaultInfraName で指定する。
     /// </summary>
     /// <remarks>
-    /// プロバイダごとの設定は appsettings の**独立したセクション** ("Gmail") で、
+    /// プロバイダごとの設定は appsettings の**独立したセクション** ("Smtp" / "Gmail") で、
     /// Program.cs が個別に読んでいる ("Mail" は製品が読む共通設定)。
     /// 独自インフラ (社内メールGW 等) を使うときは <see cref="IMailSender"/> を実装して
     /// この switch に1行足す (設定もこのアプリの appsettings に好きな形で置ける)。
@@ -22,6 +22,7 @@ namespace Extras.Server.Services
             var config = SystemConfig.Instance;
             return name switch
             {
+                "Smtp" => new SmtpMailSender(config.Smtp),
                 "Gmail" => new GmailApiMailSender(config.Gmail),
                 _ => null,
             };

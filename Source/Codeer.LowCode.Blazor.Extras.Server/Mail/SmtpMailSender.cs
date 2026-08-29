@@ -9,8 +9,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
     /// <see cref="IMailSender"/> の SMTP 実装 (MailKit)。
     /// 一斉送信は宛先ごとにテンプレートを解決し、1つの接続で逐次送信する。
     /// </summary>
-    //Not published yet: only Gmail has been verified by real sending. Keep internal until verified, then make public and wire into MailSenderTable / SystemConfig / Program.cs
-    internal class SmtpMailSender : IMailSender
+    public class SmtpMailSender : IMailSender
     {
         readonly SmtpSettings _settings;
 

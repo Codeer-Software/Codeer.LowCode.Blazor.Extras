@@ -3,8 +3,7 @@
     /// <summary>
     /// SMTP (MailKit) の設定。appsettings のセクション名はアプリが決める (テンプレートの対応表が読む。既定は "Smtp")。
     /// </summary>
-    //Not published yet: only Gmail has been verified by real sending. Keep internal until verified, then make public and wire into MailSenderTable / SystemConfig / Program.cs
-    internal class SmtpSettings
+    public class SmtpSettings
     {
         /// <summary>差出人アドレス (システム送信者。メールは常にこのアドレスから送られる)。</summary>
         public string SenderMailAddress { get; set; } = string.Empty;
@@ -26,7 +25,7 @@
     }
 
     /// <summary>Microsoft Graph (sendMail・アプリケーション権限) の設定。</summary>
-    //Not published yet: only Gmail has been verified by real sending. Keep internal until verified, then make public and wire into MailSenderTable / SystemConfig / Program.cs
+    //Not published yet: only Gmail / SMTP have been verified by real sending. Keep internal until verified, then make public and wire into MailSenderTable / SystemConfig / Program.cs
     internal class GraphApiSettings
     {
         /// <summary>差出人アドレス。アプリケーション権限 Mail.Send はテナント内の任意ユーザーとして送れる。</summary>
@@ -46,7 +45,7 @@
     }
 
     /// <summary>SendGrid (v3 mail/send) の設定。</summary>
-    //Not published yet: only Gmail has been verified by real sending. Keep internal until verified, then make public and wire into MailSenderTable / SystemConfig / Program.cs
+    //Not published yet: only Gmail / SMTP have been verified by real sending. Keep internal until verified, then make public and wire into MailSenderTable / SystemConfig / Program.cs
     internal class SendGridSettings
     {
         /// <summary>差出人アドレス (ドメイン認証済みのもの)。</summary>
