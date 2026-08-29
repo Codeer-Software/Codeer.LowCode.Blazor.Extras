@@ -188,7 +188,8 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
 
         /// <summary>
         /// 検索用モジュールのテンプレート SQL (Example = SQLite 文) を生成先に合わせて書き換える。
-        /// ユーザーテーブル (app_users / u.name)、名前の連結 (GROUP_CONCAT)、パラメータ接頭辞 (Oracle は :)。
+        /// ユーザーテーブル (app_users / u.name)、名前の連結 (GROUP_CONCAT)、パラメータ接頭辞 (Oracle は :)、
+        /// Id と FK の結合の型合わせ (PostgreSQL は Id 側を text にキャスト)。
         /// </summary>
         internal static string RewriteQuerySql(string sql, DataSourceType dataSourceType,
             string userTable, string userNameColumn)
@@ -203,6 +204,10 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
                 _ => m.Value,
             });
             if (dataSourceType == DataSourceType.Oracle) sql = Regex.Replace(sql, @"@(\w+)", ":$1");
+            //Id 列は数値型、FK (Link) 列は文字列型で生成されるため、結合は「数値 = 文字列」になる。
+            //他の DB は暗黙変換で通るが PostgreSQL は bigint = text を許さないので Id 側を text にキャストする
+            //(SELECT 句の "f.id AS id" は対象外)
+            if (dataSourceType == DataSourceType.PostgreSQL) sql = Regex.Replace(sql, @"\b(f|u|u2)\.id\b(?!\s+AS\b)", "$1.id::text");
             return sql;
         }
 

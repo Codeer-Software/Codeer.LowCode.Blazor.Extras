@@ -219,6 +219,13 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Setup
             Assert.That(statusList, Does.Contain(concat));
             var myList = File.ReadAllText(Path.Combine(ProjectDir, "Modules", "MyApprovalList.Query.sql"));
             Assert.That(myList, Does.Contain(userParam).And.Contain("LEFT JOIN app_users u").And.Contain("u.name AS applicant_name"));
+
+            //Id(数値) と FK(文字列) の結合は PostgreSQL だけ暗黙変換されないので Id 側にキャストが付く。SELECT 句の別名付けは対象外
+            var idJoin = type == DataSourceType.PostgreSQL ? "f.id::text = m.flow_id" : "f.id = m.flow_id";
+            Assert.That(myList, Does.Contain(idJoin).And.Contain("f.id AS flow_id").And.Not.Contain("id::text AS"));
+            var userJoin = type == DataSourceType.PostgreSQL ? "u.id::text = f.applicant" : "u.id = f.applicant";
+            Assert.That(statusList, Does.Contain(userJoin).And.Contain("f.id AS id").And.Not.Contain("id::text AS"));
+            if (type == DataSourceType.PostgreSQL) Assert.That(statusList, Does.Contain("u2.id::text = m2.approver_user").And.Contain("h.flow_id = f.id::text"));
         }
     }
 }
