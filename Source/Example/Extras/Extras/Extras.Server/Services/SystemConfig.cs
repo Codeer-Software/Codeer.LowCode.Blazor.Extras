@@ -14,7 +14,8 @@ namespace Extras.Server.Services
         public bool CanScriptDebug { get; set; }
         public bool UseHotReload { get; set; }
         public DataSource[] DataSources { get; set; } = [];
-        public FileStorage[] FileStorages { get; set; } = [];
+        //保存先は種類ごとの設定 (FileSystemStorages / AzureBlobStorages / S3Storages) を FileStorageTable が IFileStorage に組み立てる
+        public List<IFileStorage> FileStorages { get; set; } = [];
         public DataChangeHistoryTableInfo[] DataChangeHistoryTableInfo { get; set; } = [];
         public TemporaryFileTableInfo[] TemporaryFileTableInfo { get; set; } = [];
         public string DesignFileDirectory { get; set; } = string.Empty;

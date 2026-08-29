@@ -8,7 +8,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.FileManagement
     {
         readonly IDbAccessor _dbAccessor;
         readonly TemporaryFileTableInfo[] _temporaryFilesManagements;
-        readonly FileStorage[] _fileStorages;
+        readonly IReadOnlyList<IFileStorage> _fileStorages;
 
         class SqlParts
         {
@@ -18,12 +18,15 @@ namespace Codeer.LowCode.Blazor.Extras.Server.FileManagement
                                                 _type == DataSourceType.MySQL ? $"`{x}`" : $"\"{x}\"";
         }
 
-        public TemporaryFileManager(IDbAccessor db, TemporaryFileTableInfo[] temporaryFilesManagements, FileStorage[] fileStorages)
+        public TemporaryFileManager(IDbAccessor db, TemporaryFileTableInfo[] temporaryFilesManagements, IEnumerable<IFileStorage> fileStorages)
         {
             _dbAccessor = db;
             _temporaryFilesManagements = temporaryFilesManagements;
-            _fileStorages = fileStorages;
+            _fileStorages = fileStorages.ToList();
         }
+
+        public TemporaryFileManager(IDbAccessor db, TemporaryFileTableInfo[] temporaryFilesManagements, FileStorage[] fileStorages)
+            : this(db, temporaryFilesManagements, fileStorages.ToFileStorages()) { }
 
         public async Task ToTemporaryFile(string dataSourceName, Guid guid)
         {

@@ -125,7 +125,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Approval
                 => throw new NotSupportedException();
         }
 
-        SystemIO CreateIO() => new(_designData, this, _db, new TemporaryFileManager(_db, [], []));
+        SystemIO CreateIO() => new(_designData, this, _db, new TemporaryFileManager(_db, [], new List<IFileStorage>()));
 
         DesignData CreateDesignData()
         {

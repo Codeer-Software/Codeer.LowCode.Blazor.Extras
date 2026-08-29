@@ -1,79 +1,33 @@
-using Azure.Storage.Blobs;
-using Codeer.LowCode.Blazor;
 using Codeer.LowCode.Blazor.DataIO;
 
 namespace Codeer.LowCode.Blazor.Extras.Server.FileManagement
 {
+    /// <summary>FileField の実体ファイルの読み書き。置き場所は名前で <see cref="IFileStorage"/> を選ぶ。簡易形式 (<see cref="FileStorage"/>[]) のオーバーロードも同じ経路に流れる。</summary>
     public class StorageAccess
     {
-        public static async Task<MemoryStream> ReadFileAsync(FileStorage[] storages, FileLocation file)
+        public static async Task<MemoryStream> ReadFileAsync(IEnumerable<IFileStorage> storages, FileLocation file)
+            => await storages.Find(file.StorageName).ReadAsync(file.Guid);
+
+        public static async Task DeleteFiles(IEnumerable<IFileStorage> storages, string storageName, Guid[] files)
         {
-            var storage = storages.FirstOrDefault(e => e.Name == file.StorageName);
-            if (storage == null) throw LowCodeException.Create($"{file.StorageName} Invalid storage name");
-
-            if (storage.FileStorageType == FileStorageType.AzureBlobStorage)
-            {
-                BlobContainerClient container = new(storage.ConnectionString, storage.ContainerName);
-                var blobClient = container.GetBlobClient($"{file.Guid}");
-                var memoryStream = new MemoryStream();
-                await blobClient.DownloadToAsync(memoryStream);
-                memoryStream.Position = 0;
-                return memoryStream;
-            }
-            else if (storage.FileStorageType == FileStorageType.FileSystem)
-            {
-                if (string.IsNullOrEmpty(storage.Directory)) throw LowCodeException.Create("invalid directory");
-                var path = Path.Combine(storage.Directory, file.Guid.ToString());
-                return new MemoryStream(await File.ReadAllBytesAsync(path));
-            }
-
-            throw LowCodeException.Create("invalid storage type");
-        }
-
-        public static async Task DeleteFiles(FileStorage[] storages, string storageName, Guid[] files)
-        {
-            var storage = storages.FirstOrDefault(e => e.Name == storageName);
-            if (storage == null) throw LowCodeException.Create($"{storageName} Invalid storage name");
-
+            var storage = storages.Find(storageName);
             foreach (var file in files)
             {
-                try
-                {
-                    if (storage.FileStorageType == FileStorageType.AzureBlobStorage)
-                    {
-                        BlobContainerClient container = new(storage.ConnectionString, storage.ContainerName);
-                        var blobClient = container.GetBlobClient($"{file}");
-                        await blobClient.DeleteIfExistsAsync();
-                    }
-                    else if (storage.FileStorageType == FileStorageType.FileSystem)
-                    {
-                        if (string.IsNullOrEmpty(storage.Directory)) throw LowCodeException.Create("invalid directory");
-                        var path = Path.Combine(storage.Directory, file.ToString());
-                        File.Delete(path);
-                    }
-                }
+                try { await storage.DeleteAsync(file); }
                 catch { }
             }
         }
 
-        public static async Task WriteFile(FileStorage[] storages, string? storageName, Guid guid, MemoryStream memoryStream)
-        {
-            var storage = storages.FirstOrDefault(e => e.Name == storageName);
-            if (storage == null) throw LowCodeException.Create($"{storageName} Invalid storage name");
+        public static async Task WriteFile(IEnumerable<IFileStorage> storages, string? storageName, Guid guid, MemoryStream memoryStream)
+            => await storages.Find(storageName).WriteAsync(guid, memoryStream);
 
-            if (storage.FileStorageType == FileStorageType.AzureBlobStorage)
-            {
-                BlobContainerClient container = new(storage.ConnectionString, storage.ContainerName);
-                var blobClient = container.GetBlobClient($"{guid}");
-                await blobClient.UploadAsync(memoryStream, true);
-            }
-            else if (storage.FileStorageType == FileStorageType.FileSystem)
-            {
-                if (string.IsNullOrEmpty(storage.Directory)) throw LowCodeException.Create("invalid directory");
-                Directory.CreateDirectory(storage.Directory);
-                var path = Path.Combine(storage.Directory, guid.ToString());
-                await File.WriteAllBytesAsync(path, memoryStream.ToArray());
-            }
-        }
+        public static Task<MemoryStream> ReadFileAsync(FileStorage[] storages, FileLocation file)
+            => ReadFileAsync(storages.ToFileStorages(), file);
+
+        public static Task DeleteFiles(FileStorage[] storages, string storageName, Guid[] files)
+            => DeleteFiles(storages.ToFileStorages(), storageName, files);
+
+        public static Task WriteFile(FileStorage[] storages, string? storageName, Guid guid, MemoryStream memoryStream)
+            => WriteFile(storages.ToFileStorages(), storageName, guid, memoryStream);
     }
 }
