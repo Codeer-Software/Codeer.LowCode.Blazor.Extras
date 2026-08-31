@@ -413,3 +413,6 @@ FodyWeavers.xsd
 # ローカル実機テスト環境の設定 (絶対パス・メールアドレス・暗号鍵が入るのでコミットしない)
 Source/Example/Extras/Extras/Extras.Server/appsettings.Approval.json
 Source/Example/Extras/Extras/Extras.Server/appsettings.MailTest.json
+# Visual Studio (GitHub Copilot / Azure MCP) auto-generated
+.github/copilot-instructions.md
+**/.github/copilot-instructions.md
