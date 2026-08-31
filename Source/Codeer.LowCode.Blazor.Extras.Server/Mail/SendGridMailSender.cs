@@ -14,8 +14,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
     /// 一斉送信はネイティブの personalizations (1リクエスト最大1000宛先) に対応させているため、
     /// 大量送信にはこのインフラを推奨。
     /// </summary>
-    //Not published yet: only Gmail / SMTP have been verified by real sending. Keep internal until verified, then make public and wire into MailSenderTable / SystemConfig / Program.cs
-    internal class SendGridMailSender : IMailSender
+    public class SendGridMailSender : IMailSender
     {
         static readonly HttpClient _sharedClient = new();
         const int PersonalizationsPerRequest = 1000;

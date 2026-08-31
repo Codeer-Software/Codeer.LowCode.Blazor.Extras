@@ -24,6 +24,7 @@ namespace Extras.Server.Services
         public MailConfig Mail { get; set; } = new();
         public SmtpSettings Smtp { get; set; } = new();
         public GraphApiSettings GraphApi { get; set; } = new();
+        public SendGridSettings SendGrid { get; set; } = new();
         public GmailSettings Gmail { get; set; } = new();
         public AISettings AISettings { get; set; } = new();
         public SystemConfigForFront ForFront() => new SystemConfigForFront { CanScriptDebug = CanScriptDebug, UseHotReload = UseHotReload };

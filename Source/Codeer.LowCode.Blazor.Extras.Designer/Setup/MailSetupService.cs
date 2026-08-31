@@ -81,10 +81,10 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
             return $$"""
                 メール送信はサーバー設定で有効になります。サーバーの appsettings.json に次を設定してください:
                   "Mail": {
-                    "DefaultInfraName": "<単発送信の既定インフラ (MailSenderTable の呼び名。例: Smtp / GraphApi / Gmail)>",
+                    "DefaultInfraName": "<単発送信の既定インフラ (MailSenderTable の呼び名。例: Smtp / GraphApi / SendGrid / Gmail)>",
                     "DefaultBulkInfraName": "<一斉送信の既定インフラ (省略時は単発と同じ)>"{{history}}
                   }
-                  使う送信インフラのセクション ("Smtp" / "GraphApi" / "Gmail" 等) をそれぞれ独立して書きます (使うものだけ)。
+                  使う送信インフラのセクション ("Smtp" / "GraphApi" / "SendGrid" / "Gmail" 等) をそれぞれ独立して書きます (使うものだけ)。
                   呼び名と設定の対応はアプリの MailSenderTable / Program.cs。秘密情報は環境変数やユーザーシークレットに置いてください。
                 """;
         }

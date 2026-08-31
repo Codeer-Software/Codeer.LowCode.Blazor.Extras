@@ -52,10 +52,9 @@
     }
 
     /// <summary>SendGrid (v3 mail/send) の設定。</summary>
-    //Not published yet: only Gmail / SMTP have been verified by real sending. Keep internal until verified, then make public and wire into MailSenderTable / SystemConfig / Program.cs
-    internal class SendGridSettings
+    public class SendGridSettings
     {
-        /// <summary>差出人アドレス (ドメイン認証済みのもの)。</summary>
+        /// <summary>差出人アドレス (SendGrid で検証済みのもの。Single Sender Verification またはドメイン認証)。</summary>
         public string SenderMailAddress { get; set; } = string.Empty;
 
         /// <summary>差出人の表示名。</summary>

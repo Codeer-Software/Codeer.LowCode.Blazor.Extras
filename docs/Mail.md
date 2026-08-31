@@ -210,6 +210,12 @@ UI もデータも持たない「宣言用」のフィールドです。役割 �
   "ClientSecret": "",                   // 空 = DefaultAzureCredential (Managed Identity 等) で認証
   "MaxBulkCount": 10000
 },
+"SendGrid": {
+  "SenderMailAddress": "notify@your-domain.example",  // SendGrid で検証済みのアドレス
+  "SenderDisplayName": "業務システム",
+  "ApiKey": "",                         // 環境変数 SendGrid__ApiKey 推奨
+  "MaxBulkCount": 10000
+},
 "Gmail": {
   "SenderMailAddress": "notify@your-domain.example",
   "SenderDisplayName": "業務システム",
@@ -219,11 +225,11 @@ UI もデータも持たない「宣言用」のフィールドです。役割 �
 }
 ```
 
-- `Mail` は共通設定、送信インフラごとの設定 (`Smtp` / `GraphApi` / `Gmail` など) は独立したセクションです。使うものだけ書きます
+- `Mail` は共通設定、送信インフラごとの設定 (`Smtp` / `GraphApi` / `SendGrid` / `Gmail` など) は独立したセクションです。使うものだけ書きます
 - `ClientSecret` / `TokenSecret` は値が `.json` で終わればファイルパス、それ以外は中身そのものとして扱います。
   秘密をファイルで置きたくない場合は環境変数 (`Gmail__ClientSecret` / `Gmail__TokenSecret`) に
   JSON やトークン文字列を直接入れてください
-- 提供している送信インフラは **SMTP**、**GraphApi (Microsoft Graph)**、**Gmail (Gmail API)** です
+- 提供している送信インフラは **SMTP**、**GraphApi (Microsoft Graph)**、**SendGrid**、**Gmail (Gmail API)** です
 - **SMTP** は社内メールサーバーや各種メールサービスの SMTP エンドポイントに送ります (MailKit)。一斉送信は 1 接続で逐次送信します。
   `Password` は環境変数 (`Smtp__Password`) やユーザーシークレットに置いてください。
   開発時は [smtp4dev](https://github.com/rnwood/smtp4dev) (`dotnet tool install -g Rnwood.Smtp4dev`) をローカルに立て、`Host: localhost` / `Port: 25` / `SSL: false` で送ると
@@ -237,6 +243,10 @@ UI もデータも持たない「宣言用」のフィールドです。役割 �
     (MI のサービスプリンシパルに `Mail.Send` のアプリロールを付与します。ポータルの UI は無く PowerShell の `New-MgServicePrincipalAppRoleAssignment` で行います)。
     ローカル開発では Azure CLI / Visual Studio のログインが使われます (別テナント既定なら `TenantId` を指定)
   Exchange Online のレート制限があるため大量の一斉送信には向きません (逐次送信、429 は Retry-After に従って再試行)
+- **SendGrid** は [Twilio SendGrid](https://sendgrid.com/) の v3 mail/send API で送ります (SDK 不使用の素の REST)。
+  差出人は SendGrid 側で検証済みであることが必要です (少量なら Single Sender Verification、本格運用は Settings > Sender Authentication のドメイン認証。未検証は 403 で拒否されます)。
+  一斉送信はネイティブの personalizations (1 リクエスト最大 1,000 宛先) を使い、`{変数}` の差し込みは SendGrid 側で行われるため、
+  **大量配信にはこのインフラを推奨**します。`ApiKey` は環境変数 (`SendGrid__ApiKey`) やユーザーシークレットに置いてください
 - **Gmail** は Gmail の上限 (Workspace: 1 ユーザー 1 日 2,000 通 / 無料: 500 通、約 2.5 通/秒) に合わせて、
   一斉送信は 400ms 間隔で逐次送信し、レート制限 (429 / 503) は指数バックオフ (2s→32s・最大 5 回) で再試行、日次上限に達したら残りを打ち切って失敗として返します。
   `MaxBulkCount` の既定は 500。数千通規模の配信は配信サービス系のインフラ (`IMailSender` 実装) を使ってください

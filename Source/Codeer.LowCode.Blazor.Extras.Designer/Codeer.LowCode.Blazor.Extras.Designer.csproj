@@ -6,7 +6,7 @@
     <UseWPF>true</UseWPF>
     <ImplicitUsings>enable</ImplicitUsings>
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
-	  <Version>0.8.0</Version>
+	  <Version>0.8.1</Version>
     <Authors>Codeer</Authors>
     <Company>Codeer</Company>
     <Description>Designer support for Codeer.LowCode.Blazor.Extras. Provides property controls and initializers for the LowCode Designer application.</Description>
@@ -17,7 +17,8 @@
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
     <PackageReadmeFile>README.md</PackageReadmeFile>
-    <PackageReleaseNotes>Mail setup (Tools menu / mail-setup CLI): the appsettings guidance now lists SMTP and Microsoft Graph ("Smtp" / "GraphApi") alongside Gmail as mail infrastructure sections; requires Codeer.LowCode.Blazor.Extras.Server 0.8.0 for those senders.</PackageReleaseNotes>
+    <PackageReleaseNotes>Mail setup (Tools menu / mail-setup CLI): the appsettings guidance now lists SendGrid ("SendGrid") among the mail infrastructure sections; requires Codeer.LowCode.Blazor.Extras.Server 0.8.3 for that sender.
+(0.8.0) Mail setup: the appsettings guidance now lists SMTP and Microsoft Graph ("Smtp" / "GraphApi") alongside Gmail as mail infrastructure sections; requires Codeer.LowCode.Blazor.Extras.Server 0.8.0 for those senders.</PackageReleaseNotes>
     <PackageId>Codeer.LowCode.Blazor.Extras.Designer</PackageId>
   </PropertyGroup>
 
