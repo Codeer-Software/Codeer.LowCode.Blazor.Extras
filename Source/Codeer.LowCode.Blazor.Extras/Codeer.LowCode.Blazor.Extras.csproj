@@ -6,7 +6,7 @@
 		<Nullable>enable</Nullable>
 		<AddRazorSupportForMvc>true</AddRazorSupportForMvc>
 		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
-		<Version>0.8.0</Version>
+		<Version>0.8.1</Version>
 		<Authors>Codeer</Authors>
 		<Company>Codeer</Company>
 		<Description>Extra field components and client-side services for Codeer.LowCode.Blazor. Includes Calendar, Gantt Chart, Task Board (Kanban), Rich Text Editor, Color Picker, Marker List, QR Code, Progress Bar, Password Hash, and AI Text Analyzer fields, plus built-in script objects (Excel, WebApi, Toaster, Mail) and client infrastructure services (HTTP, UI, logging, localization).</Description>
@@ -17,7 +17,8 @@
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>
 		<PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
-		<PackageReleaseNotes>Compatibility: the 0.5.0 mail API (ScriptObjects.MailService / MailMessage / MailAttachment) is available again so that projects created from the 0.5.0 templates build and run unchanged after upgrading (the server side SmtpMailService / MailSettings are in Codeer.LowCode.Blazor.Extras.Server). New projects should use MailField / BulkMailField instead.</PackageReleaseNotes>
+		<PackageReleaseNotes>Updated the Excel.Report.PDF dependency to 0.36.0.
+(0.8.0) Compatibility: the 0.5.0 mail API (ScriptObjects.MailService / MailMessage / MailAttachment) is available again so that projects created from the 0.5.0 templates build and run unchanged after upgrading (the server side SmtpMailService / MailSettings are in Codeer.LowCode.Blazor.Extras.Server). New projects should use MailField / BulkMailField instead.</PackageReleaseNotes>
 		<PackageId>Codeer.LowCode.Blazor.Extras</PackageId>
 	</PropertyGroup>
 
@@ -45,7 +46,7 @@
 		<PackageReference Include="Microsoft.AspNetCore.WebUtilities" Version="8.0.8" />
 		<PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="8.0.8" />
 		<PackageReference Include="Microsoft.Extensions.Http" Version="8.0.0" />
-		<PackageReference Include="Excel.Report.PDF" Version="0.32.0" />
+		<PackageReference Include="Excel.Report.PDF" Version="0.36.0" />
 		<PackageReference Include="Sotsera.Blazor.Toaster" Version="3.0.0" />
 	</ItemGroup>
 
