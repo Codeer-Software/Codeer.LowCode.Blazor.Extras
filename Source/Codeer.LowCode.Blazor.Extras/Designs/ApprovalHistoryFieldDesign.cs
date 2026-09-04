@@ -19,6 +19,12 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
     [Designer(DisplayName = "$ApprovalHistoryField")]
     public class ApprovalHistoryFieldDesign : FieldDesignBase
     {
+        /// <summary>デザインチェック指摘の番号。DesignCheckCode.Create で発行クラス名と結合して "クラス名:番号" になる。番号は固定(追加は末尾・欠番は再利用しない)。</summary>
+        public static class Codes
+        {
+            public const int NotApprovalFlowField = 1;
+        }
+
         public ApprovalHistoryFieldDesign() : base(typeof(ApprovalHistoryFieldDesign).FullName!) { }
 
         /// <summary>表示元の承認フローフィールド名。</summary>
@@ -48,6 +54,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
             {
                 result.Add(new FieldDesignCheckInfo
                 {
+                    Code = DesignCheckCode.Create(typeof(ApprovalHistoryFieldDesign), Codes.NotApprovalFlowField),
                     Location = new FieldDesignDataLocation
                     {
                         Module = context.OwnerModule,

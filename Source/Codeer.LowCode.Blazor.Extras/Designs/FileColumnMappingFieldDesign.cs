@@ -79,6 +79,13 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
     [IgnoreBaseProperties(nameof(FieldDesignBase.IgnoreModification), nameof(FieldDesignBase.OnValidateInput), nameof(FieldDesignBase.IsFocusSkip), nameof(FieldDesignBase.OnFocusMoving), nameof(FieldDesignBase.NextFocusField))]
     public class FileColumnMappingFieldDesign() : FieldDesignBase(typeof(FileColumnMappingFieldDesign).FullName!)
     {
+        /// <summary>デザインチェック指摘の番号。DesignCheckCode.Create で発行クラス名と結合して "クラス名:番号" になる。番号は固定(追加は末尾・欠番は再利用しない)。</summary>
+        public static class Codes
+        {
+            public const int FixedLengthWidthRequired = 1;
+            public const int FixedLengthZeroPaddingRequiresRight = 2;
+        }
+
         /// <summary>ファイルにヘッダ行があるか。出力時は ExternalName を1行目に出し、取込時は1行目を読み飛ばす。</summary>
         [Designer(DisplayName = "$FileColumnMappingHasHeader")]
         public bool HasHeader { get; set; } = true;
@@ -129,6 +136,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
                     {
                         result.Add(new FieldDesignCheckInfo
                         {
+                            Code = DesignCheckCode.Create(typeof(FileColumnMappingFieldDesign), Codes.FixedLengthWidthRequired),
                             Location = new() { Module = context.OwnerModule, Field = Name, Member = member },
                             Message = Properties.Resources.FileColumnMappingFixedLengthWidthRequired
                         });
@@ -138,6 +146,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
                     {
                         result.Add(new FieldDesignCheckInfo
                         {
+                            Code = DesignCheckCode.Create(typeof(FileColumnMappingFieldDesign), Codes.FixedLengthZeroPaddingRequiresRight),
                             Location = new() { Module = context.OwnerModule, Field = Name, Member = member },
                             Message = Properties.Resources.FileColumnMappingFixedLengthZeroPaddingRequiresRight
                         });

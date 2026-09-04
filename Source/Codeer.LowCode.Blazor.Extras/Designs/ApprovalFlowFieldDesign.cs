@@ -25,6 +25,12 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
     [Designer(DisplayName = "$ApprovalFlowField")]
     public class ApprovalFlowFieldDesign : FieldDesignBase
     {
+        /// <summary>デザインチェック指摘の番号。DesignCheckCode.Create で発行クラス名と結合して "クラス名:番号" になる。番号は固定(追加は末尾・欠番は再利用しない)。</summary>
+        public static class Codes
+        {
+            public const int ContractFieldMissing = 1;
+        }
+
         public ApprovalFlowFieldDesign() : base(typeof(ApprovalFlowFieldDesign).FullName!) { }
 
         /// <summary>承認フロー行への FK 列。</summary>
@@ -97,6 +103,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
             {
                 result.Add(new FieldDesignCheckInfo
                 {
+                    Code = DesignCheckCode.Create(typeof(ApprovalFlowFieldDesign), Codes.ContractFieldMissing),
                     Location = new FieldDesignDataLocation
                     {
                         Module = context.OwnerModule,

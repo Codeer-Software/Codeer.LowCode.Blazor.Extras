@@ -22,6 +22,12 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
     [IgnoreBaseProperties(nameof(FieldDesignBase.IgnoreModification), nameof(FieldDesignBase.OnValidateInput))]
     public class BulkFileTransferButtonFieldDesign() : FieldDesignBase(typeof(BulkFileTransferButtonFieldDesign).FullName!)
     {
+        /// <summary>デザインチェック指摘の番号。DesignCheckCode.Create で発行クラス名と結合して "クラス名:番号" になる。番号は固定(追加は末尾・欠番は再利用しない)。</summary>
+        public static class Codes
+        {
+            public const int ConditionSourceInvalid = 1;
+        }
+
         /// <summary>条件ソース: 検索フィールド名。その検索フィールドの現在の検索条件を使う。<see cref="ListFieldName"/> とどちらか一方だけを設定する。</summary>
         [Designer(Index = 1, Category = "$BulkFileTransferButtonSourceCategory", CandidateType = CandidateType.Field,
             DisplayName = "$BulkFileTransferButtonSearchFieldName")]
@@ -66,6 +72,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
             {
                 result.Add(new FieldDesignCheckInfo
                 {
+                    Code = DesignCheckCode.Create(typeof(BulkFileTransferButtonFieldDesign), Codes.ConditionSourceInvalid),
                     Location = new() { Module = context.OwnerModule, Field = Name },
                     Message = Properties.Resources.BulkFileTransferButtonConditionSourceInvalid
                 });

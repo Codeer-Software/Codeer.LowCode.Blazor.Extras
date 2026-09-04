@@ -10,6 +10,13 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
     /// </summary>
     static class ContractFieldChecks
     {
+        /// <summary>デザインチェック指摘の番号。DesignCheckCode.Create で発行クラス名と結合して "クラス名:番号" になる。番号は固定(追加は末尾・欠番は再利用しない)。</summary>
+        public static class Codes
+        {
+            public const int RoleMustBeList = 1;
+            public const int ContractFieldMissing = 2;
+        }
+
         /// <summary>
         /// 指定フィールドが一覧フィールドであること + その一覧の先のモジュールが契約 TContract を実装していること。
         /// </summary>
@@ -24,6 +31,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
             {
                 result.Add(new FieldDesignCheckInfo
                 {
+                    Code = DesignCheckCode.Create(typeof(ContractFieldChecks), Codes.RoleMustBeList),
                     Location = new FieldDesignDataLocation
                     { Module = context.OwnerModule, Field = ownerFieldName, Member = memberName },
                     Message = string.Format(Properties.Resources.ApprovalCheck_RoleMustBeListFormat, listFieldName),
@@ -37,6 +45,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
 
             result.Add(new FieldDesignCheckInfo
             {
+                Code = DesignCheckCode.Create(typeof(ContractFieldChecks), Codes.ContractFieldMissing),
                 Location = new FieldDesignDataLocation
                 { Module = context.OwnerModule, Field = ownerFieldName, Member = memberName },
                 Message = string.Format(Properties.Resources.ApprovalCheck_ContractFieldMissingFormat,
