@@ -698,11 +698,21 @@
     var newStart = mode switch
     {
       GanttViewMode.Day => DateTime.Today,
-      GanttViewMode.Month => new DateTime(Field.ViewStart.Year, Field.ViewStart.Month, 1),
+      GanttViewMode.Month => new DateTime(MonthAnchor().Year, MonthAnchor().Month, 1),
       _ => Field.ViewStart.Date.AddDays(-(int)Field.ViewStart.DayOfWeek),
     };
     await Field.SetViewModeAsync(mode);
     await Field.SetViewStartAsync(newStart);
+  }
+
+  // 月表示に切り替えたときに表示する月の基準日。
+  // 表示中の範囲に今日が含まれるなら今日(週の先頭が前月でも今月を開く)。
+  // 含まれないなら、週表示は週の中日(月をまたぐ週は日数の多い側の月)、それ以外は表示開始日。
+  private DateTime MonthAnchor()
+  {
+    var (start, end) = Field.GetViewDateRange();
+    if (DateTime.Today >= start && DateTime.Today < end) return DateTime.Today;
+    return Field.ViewMode == GanttViewMode.Week ? Field.ViewStart.Date.AddDays(3) : Field.ViewStart.Date;
   }
 
   bool _rangePopupOpen;

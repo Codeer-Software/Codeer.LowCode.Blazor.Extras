@@ -18,7 +18,8 @@
 		<PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
 		<PackageReleaseNotes>Design check findings of the Extras fields (approval flow / history / contract fields, mail field, CSV and fixed-length file format, file column mapping, Excel report button, bulk file transfer button) now carry a code (for example MailFieldDesign:1) so they can be suppressed through SuppressedDesignChecks of the field, like the built-in checks.
-Requires Codeer.LowCode.Blazor 1.3.26.</PackageReleaseNotes>
+GanttField: switching to the month view now opens the month that contains today when the current view contains today, and otherwise the month that most of the current week belongs to. Previously it opened the month of the week's first day, so in the first days of a month (when that week starts in the previous month) the month view showed the previous month and hid the tasks of the current one.
+Requires Codeer.LowCode.Blazor 1.3.27.</PackageReleaseNotes>
 		<PackageId>Codeer.LowCode.Blazor.Extras</PackageId>
 	</PropertyGroup>
 
@@ -41,7 +42,7 @@ Requires Codeer.LowCode.Blazor 1.3.26.</PackageReleaseNotes>
 	</ItemGroup>
 
 	<ItemGroup>
-		<PackageReference Include="Codeer.LowCode.Blazor" Version="1.3.26" />
+		<PackageReference Include="Codeer.LowCode.Blazor" Version="1.3.27" />
 		<PackageReference Include="QRCoder" Version="1.7.0" />
 		<PackageReference Include="Microsoft.AspNetCore.WebUtilities" Version="8.0.8" />
 		<PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="8.0.8" />
