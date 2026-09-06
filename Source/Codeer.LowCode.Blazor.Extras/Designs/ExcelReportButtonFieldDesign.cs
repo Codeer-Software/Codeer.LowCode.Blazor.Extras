@@ -20,10 +20,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
     public class ExcelReportButtonFieldDesign() : FieldDesignBase(typeof(ExcelReportButtonFieldDesign).FullName!)
     {
         /// <summary>デザインチェック指摘の番号。DesignCheckCode.Create で発行クラス名と結合して "クラス名:番号" になる。番号は固定(追加は末尾・欠番は再利用しない)。</summary>
-        public static class Codes
-        {
-            public const int TemplateRequired = 1;
-        }
+        private const int CodeTemplateRequired = 1;
 
         /// <summary>テンプレート Excel のリソースパス。テンプレート内の {{フィールド名}} が自モジュールの値で置換される。</summary>
         [Designer(Index = 1, CandidateType = CandidateType.Resource, DisplayName = "$ExcelReportButtonTemplateResourcePath")]
@@ -56,7 +53,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
             {
                 result.Add(new FieldDesignCheckInfo
                 {
-                    Code = DesignCheckCode.Create(typeof(ExcelReportButtonFieldDesign), Codes.TemplateRequired),
+                    Code = DesignCheckCode.Create(typeof(ExcelReportButtonFieldDesign), CodeTemplateRequired),
                     Location = new() { Module = context.OwnerModule, Field = Name, Member = nameof(TemplateResourcePath) },
                     Message = Properties.Resources.ExcelReportButtonTemplateRequired
                 });

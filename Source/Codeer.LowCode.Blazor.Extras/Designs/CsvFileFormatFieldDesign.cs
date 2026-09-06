@@ -26,10 +26,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
     public class CsvFileFormatFieldDesign() : FieldDesignBase(typeof(CsvFileFormatFieldDesign).FullName!), IBulkFileTransferFieldDesign
     {
         /// <summary>デザインチェック指摘の番号。DesignCheckCode.Create で発行クラス名と結合して "クラス名:番号" になる。番号は固定(追加は末尾・欠番は再利用しない)。</summary>
-        public static class Codes
-        {
-            public const int FixedLengthMappingRequired = 1;
-        }
+        private const int CodeFixedLengthMappingRequired = 1;
 
         /// <summary>CSV のエンコーディング。既定は UTF-8 (BOM 付き。Excel でダブルクリックしても文字化けしない)。</summary>
         [Designer(DisplayName = "$CsvFileFormatEncoding")]
@@ -74,7 +71,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
             {
                 result.Add(new FieldDesignCheckInfo
                 {
-                    Code = DesignCheckCode.Create(typeof(CsvFileFormatFieldDesign), Codes.FixedLengthMappingRequired),
+                    Code = DesignCheckCode.Create(typeof(CsvFileFormatFieldDesign), CodeFixedLengthMappingRequired),
                     Location = new() { Module = context.OwnerModule, Field = Name, Member = nameof(Delimiter) },
                     Message = Properties.Resources.CsvFileFormatFixedLengthMappingRequired
                 });

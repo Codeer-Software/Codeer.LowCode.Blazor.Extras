@@ -22,11 +22,8 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
     public class TotpResetButtonFieldDesign() : FieldDesignBase(typeof(TotpResetButtonFieldDesign).FullName!)
     {
         /// <summary>デザインチェック指摘の番号。DesignCheckCode.Create で発行クラス名と結合して "クラス名:番号" になる。番号は固定(追加は末尾・欠番は再利用しない)。</summary>
-        public static class Codes
-        {
-            public const int NotOnUserModule = 1;
-            public const int ColumnsMismatch = 2;
-        }
+        private const int CodeNotOnUserModule = 1;
+        private const int CodeColumnsMismatch = 2;
 
         /// <summary>ボタンの文字。空なら既定 ("認証アプリを解除")。</summary>
         [Designer(Index = 2, DisplayName = "$TotpResetButtonText")]
@@ -63,7 +60,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
             {
                 result.Add(new FieldDesignCheckInfo
                 {
-                    Code = DesignCheckCode.Create(typeof(TotpResetButtonFieldDesign), Codes.NotOnUserModule),
+                    Code = DesignCheckCode.Create(typeof(TotpResetButtonFieldDesign), CodeNotOnUserModule),
                     Location = new FieldDesignDataLocation { Module = context.OwnerModule, Field = Name, Member = nameof(Name) },
                     Message = Properties.Resources.TotpResetCheck_NotOnUserModule,
                 });
@@ -87,7 +84,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
             {
                 result.Add(new FieldDesignCheckInfo
                 {
-                    Code = DesignCheckCode.Create(typeof(TotpResetButtonFieldDesign), Codes.ColumnsMismatch),
+                    Code = DesignCheckCode.Create(typeof(TotpResetButtonFieldDesign), CodeColumnsMismatch),
                     Location = new FieldDesignDataLocation { Module = context.OwnerModule, Field = Name, Member = mismatch },
                     Message = Properties.Resources.TotpResetCheck_ColumnsMismatch,
                 });

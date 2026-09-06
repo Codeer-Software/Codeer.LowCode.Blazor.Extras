@@ -25,11 +25,8 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
     public class MailFieldDesign : FieldDesignBase
     {
         /// <summary>デザインチェック指摘の番号。DesignCheckCode.Create で発行クラス名と結合して "クラス名:番号" になる。番号は固定(追加は末尾・欠番は再利用しない)。</summary>
-        public static class Codes
-        {
-            public const int ToRequired = 1;
-            public const int SubjectOrBodyRequired = 2;
-        }
+        private const int CodeToRequired = 1;
+        private const int CodeSubjectOrBodyRequired = 2;
 
         public MailFieldDesign() : base(typeof(MailFieldDesign).FullName!) { }
 
@@ -116,7 +113,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
             {
                 result.Add(new FieldDesignCheckInfo
                 {
-                    Code = DesignCheckCode.Create(typeof(MailFieldDesign), Codes.ToRequired),
+                    Code = DesignCheckCode.Create(typeof(MailFieldDesign), CodeToRequired),
                     Location = new FieldDesignDataLocation
                     { Module = context.OwnerModule, Field = Name, Member = nameof(To) },
                     Message = Properties.Resources.MailFieldToRequired,
@@ -134,7 +131,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
             {
                 result.Add(new FieldDesignCheckInfo
                 {
-                    Code = DesignCheckCode.Create(typeof(MailFieldDesign), Codes.SubjectOrBodyRequired),
+                    Code = DesignCheckCode.Create(typeof(MailFieldDesign), CodeSubjectOrBodyRequired),
                     Location = new FieldDesignDataLocation
                     { Module = context.OwnerModule, Field = Name, Member = nameof(Subject) },
                     Message = Properties.Resources.MailSubjectOrBodyRequired,

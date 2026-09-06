@@ -24,11 +24,8 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
     public class LoginAccountContractFieldDesign : ContractFieldDesignBase
     {
         /// <summary>デザインチェック指摘の番号。DesignCheckCode.Create で発行クラス名と結合して "クラス名:番号" になる。番号は固定(追加は末尾・欠番は再利用しない)。</summary>
-        public new static class Codes
-        {
-            public const int PasswordColumnsPair = 1;
-            public const int TotpColumnsSet = 2;
-        }
+        private const int CodePasswordColumnsPair = 1;
+        private const int CodeTotpColumnsSet = 2;
 
         public LoginAccountContractFieldDesign() : base(typeof(LoginAccountContractFieldDesign).FullName!) { }
 
@@ -112,7 +109,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
             {
                 result.Add(new FieldDesignCheckInfo
                 {
-                    Code = DesignCheckCode.Create(typeof(LoginAccountContractFieldDesign), Codes.PasswordColumnsPair),
+                    Code = DesignCheckCode.Create(typeof(LoginAccountContractFieldDesign), CodePasswordColumnsPair),
                     Location = new FieldDesignDataLocation { Module = context.OwnerModule, Field = Name, Member = string.IsNullOrWhiteSpace(DbColumnPasswordHash) ? nameof(DbColumnPasswordHash) : nameof(DbColumnPasswordSalt) },
                     Message = Properties.Resources.LoginAccountCheck_PasswordColumnsPair,
                 });
@@ -126,7 +123,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
                     : string.IsNullOrWhiteSpace(DbColumnTotpConfirmed) ? nameof(DbColumnTotpConfirmed) : nameof(DbColumnTotpLastTimestep);
                 result.Add(new FieldDesignCheckInfo
                 {
-                    Code = DesignCheckCode.Create(typeof(LoginAccountContractFieldDesign), Codes.TotpColumnsSet),
+                    Code = DesignCheckCode.Create(typeof(LoginAccountContractFieldDesign), CodeTotpColumnsSet),
                     Location = new FieldDesignDataLocation { Module = context.OwnerModule, Field = Name, Member = member },
                     Message = Properties.Resources.LoginAccountCheck_TotpColumnsSet,
                 });

@@ -160,14 +160,14 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Auth
             Assert.That(CheckCodes(), Is.Empty);
 
             _design = CreateDesign(secretColumn: "totp_confirmed");
-            Assert.That(CheckCodes(), Does.Contain(DesignCheckCode.Create(typeof(TotpResetButtonFieldDesign), TotpResetButtonFieldDesign.Codes.ColumnsMismatch)));
+            Assert.That(CheckCodes(), Does.Contain(DesignCheckCode.Create(typeof(TotpResetButtonFieldDesign), 2 /* ColumnsMismatch */)));
         }
 
         [Test]
         public void デザインチェック_ユーザーモジュール以外はエラー()
         {
             _design.AppSettings.CurrentUserModuleDesignName = "Other";
-            Assert.That(CheckCodes(), Does.Contain(DesignCheckCode.Create(typeof(TotpResetButtonFieldDesign), TotpResetButtonFieldDesign.Codes.NotOnUserModule)));
+            Assert.That(CheckCodes(), Does.Contain(DesignCheckCode.Create(typeof(TotpResetButtonFieldDesign), 1 /* NotOnUserModule */)));
         }
     }
 }

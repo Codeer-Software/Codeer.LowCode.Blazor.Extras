@@ -26,10 +26,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
     public class ApprovalFlowFieldDesign : FieldDesignBase
     {
         /// <summary>デザインチェック指摘の番号。DesignCheckCode.Create で発行クラス名と結合して "クラス名:番号" になる。番号は固定(追加は末尾・欠番は再利用しない)。</summary>
-        public static class Codes
-        {
-            public const int ContractFieldMissing = 1;
-        }
+        private const int CodeContractFieldMissing = 1;
 
         public ApprovalFlowFieldDesign() : base(typeof(ApprovalFlowFieldDesign).FullName!) { }
 
@@ -103,7 +100,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
             {
                 result.Add(new FieldDesignCheckInfo
                 {
-                    Code = DesignCheckCode.Create(typeof(ApprovalFlowFieldDesign), Codes.ContractFieldMissing),
+                    Code = DesignCheckCode.Create(typeof(ApprovalFlowFieldDesign), CodeContractFieldMissing),
                     Location = new FieldDesignDataLocation
                     {
                         Module = context.OwnerModule,

@@ -20,11 +20,8 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
     public abstract class ContractFieldDesignBase : FieldDesignBase
     {
         /// <summary>デザインチェック指摘の番号。DesignCheckCode.Create で発行クラス名と結合して "クラス名:番号" になる。番号は固定(追加は末尾・欠番は再利用しない)。</summary>
-        public static class Codes
-        {
-            public const int ContractFieldDuplicated = 1;
-            public const int RoleRequired = 2;
-        }
+        private const int CodeContractFieldDuplicated = 1;
+        private const int CodeRoleRequired = 2;
 
         protected ContractFieldDesignBase(string typeFullName) : base(typeFullName) { }
 
@@ -71,7 +68,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
             {
                 result.Add(new FieldDesignCheckInfo
                 {
-                    Code = DesignCheckCode.Create(typeof(ContractFieldDesignBase), Codes.ContractFieldDuplicated),
+                    Code = DesignCheckCode.Create(typeof(ContractFieldDesignBase), CodeContractFieldDuplicated),
                     Location = new FieldDesignDataLocation
                     { Module = context.OwnerModule, Field = Name, Member = nameof(Name) },
                     Message = string.Format(Properties.Resources.ApprovalCheck_ContractFieldDuplicatedFormat,
@@ -89,7 +86,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
                     if (!RequiredRoleNames.Contains(role.Name)) continue;
                     result.Add(new FieldDesignCheckInfo
                     {
-                        Code = DesignCheckCode.Create(typeof(ContractFieldDesignBase), Codes.RoleRequired),
+                        Code = DesignCheckCode.Create(typeof(ContractFieldDesignBase), CodeRoleRequired),
                         Location = new FieldDesignDataLocation
                         { Module = context.OwnerModule, Field = Name, Member = role.Name },
                         Message = string.Format(Properties.Resources.ContractCheck_RoleRequiredFormat, role.Name),
