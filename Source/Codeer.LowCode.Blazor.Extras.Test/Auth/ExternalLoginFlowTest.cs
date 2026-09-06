@@ -42,8 +42,8 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Auth
         public object LoginOptions() => new { Password = true, Providers = _externalLogins.Options };
 
         [HttpGet("login/{provider}")]
-        public IActionResult ExternalLogin(string provider, string? returnUrl, bool mobile = false)
-            => _externalLogins.Challenge(this, provider, returnUrl, mobile);
+        public IActionResult ExternalLogin(string provider, string? returnUrl, bool mobile = false, bool persistent = false)
+            => _externalLogins.Challenge(this, provider, returnUrl, mobile, persistent);
 
         [HttpPost("login_ticket")]
         public async Task<IActionResult> LoginTicket(LoginTicket ticket)
@@ -274,12 +274,13 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Auth
                 if (cookie.Length > 0) request.Headers.Add("Cookie", cookie);
                 var client = uri.Host == "idp.test" ? _idp : _app;
                 var response = await client.SendAsync(request);
-                if (response.Headers.TryGetValues("Set-Cookie", out var setCookies))
-                {
-                    foreach (var c in setCookies) _cookies.SetCookies(uri, c);
-                }
+                LastSetCookies = response.Headers.TryGetValues("Set-Cookie", out var setCookies) ? setCookies.ToList() : new();
+                foreach (var c in LastSetCookies) _cookies.SetCookies(uri, c);
                 return response;
             }
+
+            /// <summary>直近の応答の Set-Cookie (Cookie の属性を見るため)。</summary>
+            public List<string> LastSetCookies { get; private set; } = new();
 
             public Task<HttpResponseMessage> GetAsync(string url) => SendAsync(HttpMethod.Get, url);
             public Task<HttpResponseMessage> PostAsync(string url, object body) => SendAsync(HttpMethod.Post, url, JsonContent.Create(body));
@@ -377,6 +378,30 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Auth
             var signedOut = await browser.GetAsync(back.Headers.Location!.ToString());
             Assert.That(signedOut.StatusCode, Is.EqualTo(HttpStatusCode.Redirect));
             Assert.That(signedOut.Headers.Location!.ToString(), Is.EqualTo("/login.html"));
+        }
+
+        [Test]
+        public async Task Persistent_MakesTheCookieSurviveTheBrowserSession()
+        {
+            await using var idp = new FakeIdp();
+            idp.Claims["preferred_username"] = "taro";
+            await idp.StartAsync();
+            await using var app = new App();
+            await app.StartAsync(idp, [new OidcLoginProvider(new() { Name = "Test", ClientId = "client-1", Authority = "https://idp.test" })]);
+            FakeResolver.Users["taro"] = "U1";
+
+            //既定はセッション Cookie (expires 無し)
+            var session = new Browser(app, idp);
+            await session.SignInThroughIdpAsync("/api/account/login/Test");
+            var sessionCookie = session.LastSetCookies.Single(c => c.StartsWith(".AspNetCore.Cookies="));
+            Assert.That(sessionCookie, Does.Not.Contain("expires="));
+
+            //「ログイン状態を保持する」= persistent: 有効期限付き
+            var persistent = new Browser(app, idp);
+            await persistent.SignInThroughIdpAsync("/api/account/login/Test?persistent=true");
+            var persistentCookie = persistent.LastSetCookies.Single(c => c.StartsWith(".AspNetCore.Cookies="));
+            Assert.That(persistentCookie, Does.Contain("expires="));
+            Assert.That(await (await persistent.GetAsync("/api/account/current_user")).Content.ReadAsStringAsync(), Is.EqualTo("U1"));
         }
 
         [Test]

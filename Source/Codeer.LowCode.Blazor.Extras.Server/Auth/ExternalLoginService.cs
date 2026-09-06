@@ -68,15 +68,17 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Auth
 
         /// <summary>
         /// 外部 IdP へのチャレンジ。ブラウザ遷移 (GET) から呼ぶ。
+        /// persistent = true はブラウザを閉じても残る Cookie にする (ログイン画面の「ログイン状態を保持する」。パスワードログインの IsPersistent と同じ)。
         /// mobile = true はシステムブラウザから来たネイティブアプリの要求で、サインイン後に Cookie ではなく使い捨てチケットを <see cref="ExternalLoginOptions.MobileCallbackUrl"/> へ返す。
         /// </summary>
-        public IActionResult Challenge(ControllerBase controller, string provider, string? returnUrl, bool mobile = false)
+        public IActionResult Challenge(ControllerBase controller, string provider, string? returnUrl, bool mobile = false, bool persistent = false)
         {
             var p = Find(provider);
             if (p == null) return controller.NotFound();
             if (mobile && !IsMobileEnabled) return controller.NotFound();
 
-            var properties = new AuthenticationProperties { RedirectUri = SanitizeReturnUrl(returnUrl) };
+            //チャレンジのプロパティはそのまま Cookie のサインインに引き継がれる (IsPersistent もここで決まる)
+            var properties = new AuthenticationProperties { RedirectUri = SanitizeReturnUrl(returnUrl), IsPersistent = persistent };
             if (mobile) properties.Items[MobileItem] = "1";
             return controller.Challenge(properties, SchemeOf(p.Name));
         }

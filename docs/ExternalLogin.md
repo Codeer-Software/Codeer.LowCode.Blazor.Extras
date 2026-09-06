@@ -91,7 +91,7 @@ IdP の種類ごとに独立したセクション (メールの `Smtp` / `GraphA
 | エンドポイント | 用途 |
 |---|---|
 | `GET api/account/login_options` | `{ password: bool, providers: [{ name, displayName }] }` |
-| `GET api/account/login/{provider}?returnUrl=` | IdP へのチャレンジ (ブラウザ遷移)。`&mobile=true` はネイティブアプリ用 |
+| `GET api/account/login/{provider}?returnUrl=` | IdP へのチャレンジ (ブラウザ遷移)。`&persistent=true` でブラウザを閉じても残る Cookie (「ログイン状態を保持する」)、`&mobile=true` はネイティブアプリ用 |
 | `POST api/account/login_ticket` | ネイティブアプリ: 使い捨てチケットを Cookie に交換 |
 | `POST api/account/logout` | `{ redirect }` が返ったらそこへ遷移する (IdP セッションの終了はブラウザ遷移が要るため二段構え)。`?mobile=true` は Cookie 破棄のみ |
 | `GET api/account/logout/{provider}` | Cookie 破棄 + IdP ログアウト → `/login.html` |
