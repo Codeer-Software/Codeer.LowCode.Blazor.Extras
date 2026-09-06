@@ -4,32 +4,17 @@
 @using Microsoft.AspNetCore.Components.Web
 @inherits FieldComponentBase<TotpResetButtonField>
 
-@* 認証アプリの二要素認証を使っていない (Enabled=false)・新規行・状態未取得なら何も出さない。デザインモードでは形だけ出す *@
+@* 登録済みかどうかは分からない (列は書き込み専用) のでボタンだけ。新規行では出さない。デザインモードでは形だけ出す *@
 @if (IsDesignMode)
 {
-  <span class="d-inline-flex align-items-center gap-2">
-    <span class="small text-muted">@Field.StatusText</span>
-    <button type="button" class="btn btn-outline-danger btn-sm" disabled data-system="totp-reset">@Field.ButtonText</button>
-  </span>
+  <button type="button" class="btn btn-outline-danger btn-sm" disabled data-system="totp-reset">@Field.ButtonText</button>
 }
-else if (Field.IsRegistered != null)
+else if (Field.CanReset)
 {
-  <span class="d-inline-flex align-items-center gap-2" style="@Field.GetOwnStyleString()">
-    <span class="small text-muted" data-system="totp-status">@Field.StatusText</span>
-    @if (Field.IsRegistered == true)
-    {
-      <button type="button" class="btn btn-outline-danger btn-sm" disabled="@(Field.IsBusy || !Field.IsEnabled)"
-              @onclick="@(async () => await Field.ResetAsync())" data-system="totp-reset">@Field.ButtonText</button>
-    }
-  </span>
+  <button type="button" class="btn btn-outline-danger btn-sm" style="@Field.GetOwnStyleString()" disabled="@Field.IsBusy"
+          @onclick="@(async () => await Field.ResetAsync())" data-system="totp-reset">@Field.ButtonText</button>
 }
 
 @code {
   bool IsDesignMode => Field.Services.AppInfoService.IsDesignMode;
-
-  protected override async Task OnParametersSetAsync()
-  {
-    await base.OnParametersSetAsync();
-    await Field.EnsureStatusAsync();
-  }
 }

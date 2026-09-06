@@ -599,9 +599,6 @@
   <data name="LoginAccountCheck_TotpColumnsSet" xml:space="preserve">
     <value>認証アプリの 3 列 (秘密鍵 / 確認済み / 最終タイムステップ) はすべて設定するか、すべて空にしてください。</value>
   </data>
-  <data name="TotpResetButtonField" xml:space="preserve">
-    <value>認証アプリ解除ボタン</value>
-  </data>
   <data name="TotpResetButtonText" xml:space="preserve">
     <value>ボタンの文字</value>
   </data>
@@ -629,8 +626,17 @@
   <data name="TotpResetButton_Failed" xml:space="preserve">
     <value>解除できませんでした (権限が無いか、サーバーが対応していません)</value>
   </data>
+  <data name="TotpResetButtonField" xml:space="preserve">
+    <value>認証アプリ解除ボタン</value>
+  </data>
   <data name="TotpResetCheck_NotOnUserModule" xml:space="preserve">
     <value>TotpResetButtonField はログインユーザーモジュール (AppSettings の CurrentUserModuleDesignName) に置いてください。</value>
+  </data>
+  <data name="TotpResetCheck_ColumnsMismatch" xml:space="preserve">
+    <value>認証アプリの列は、同じモジュールのログインアカウント契約 (LoginAccountContractField) の列と同じにしてください。</value>
+  </data>
+  <data name="TotpResetButton_ConfirmSelf" xml:space="preserve">
+    <value>自分の認証アプリの登録を解除します。次回ログイン時に再登録が必要になります。よろしいですか？</value>
   </data>
   <data name="MyTotpResetButtonField" xml:space="preserve">
     <value>自分の認証アプリ解除ボタン</value>

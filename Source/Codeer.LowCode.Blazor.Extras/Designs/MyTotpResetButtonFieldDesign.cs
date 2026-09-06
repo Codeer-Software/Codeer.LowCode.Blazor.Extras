@@ -9,7 +9,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
     /// <summary>
     /// ログイン中の自分の認証アプリ (TOTP) 登録を解除するボタン。どのモジュールにも置ける (設定画面・マイページ等)。
     /// 対象は常にログイン中のユーザーで、表示中の行とは無関係。登録済みなら「認証アプリ: 登録済み」と解除ボタン、未登録なら状態だけ。
-    /// 認証アプリの二要素認証を使っていないアプリでは何も出さない。他人の登録を解除するのは TotpResetButtonField (ユーザーモジュールの詳細画面に置く)。
+    /// 認証アプリの二要素認証を使っていないアプリでは何も出さない。他人の登録を解除するのは TotpResetButtonField (ログインユーザーモジュールの詳細画面に置き、Submit の権限で制御)。
     /// </summary>
     [ToolboxIcon(PackIconMaterialKind = "CellphoneKey")]
     [Designer(DisplayName = "$MyTotpResetButtonField")]

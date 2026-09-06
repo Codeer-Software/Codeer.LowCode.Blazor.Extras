@@ -599,9 +599,6 @@ Recipients: {1}</value>
   <data name="LoginAccountCheck_TotpColumnsSet" xml:space="preserve">
     <value>Set all three authenticator-app columns (secret / confirmed / last time step), or none.</value>
   </data>
-  <data name="TotpResetButtonField" xml:space="preserve">
-    <value>Authenticator Reset Button</value>
-  </data>
   <data name="TotpResetButtonText" xml:space="preserve">
     <value>Button text</value>
   </data>
@@ -627,10 +624,19 @@ Recipients: {1}</value>
     <value>The authenticator app registration was removed.</value>
   </data>
   <data name="TotpResetButton_Failed" xml:space="preserve">
-    <value>Could not reset (no permission, or the server does not support it).</value>
+    <value>Could not reset (the server does not support it).</value>
+  </data>
+  <data name="TotpResetButtonField" xml:space="preserve">
+    <value>Authenticator Reset Button</value>
   </data>
   <data name="TotpResetCheck_NotOnUserModule" xml:space="preserve">
     <value>Place TotpResetButtonField on the login user module (AppSettings.CurrentUserModuleDesignName).</value>
+  </data>
+  <data name="TotpResetCheck_ColumnsMismatch" xml:space="preserve">
+    <value>The authenticator-app columns must be the same as the ones on the LoginAccountContractField of this module.</value>
+  </data>
+  <data name="TotpResetButton_ConfirmSelf" xml:space="preserve">
+    <value>Remove your authenticator app registration? You will register again at the next login.</value>
   </data>
   <data name="MyTotpResetButtonField" xml:space="preserve">
     <value>My Authenticator Reset Button</value>

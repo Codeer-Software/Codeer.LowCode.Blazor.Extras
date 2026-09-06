@@ -9,12 +9,12 @@
 アプリで認証アプリの二要素認証を使っていない (ログインアカウント契約に TOTP の列が無い) ときは何も出さない。
 
 - 用途: 機種変更の前に自分で解除しておく。解除すると次回ログイン時に QR から再登録になる (弱くなる方向ではない)。確認ダイアログ付き
-- 他人 (任意のユーザー) の登録を解除するのは [TotpResetButtonField](TotpResetButtonFieldDesign.md) (ログインユーザーモジュールの詳細画面に置き、表示中の行が対象。管理者用)
+- 他人 (任意のユーザー) の登録を解除するのは [TotpResetButtonField](TotpResetButtonFieldDesign.md) (ログインユーザーモジュールの詳細画面に置き、表示中の行が対象。Submit の権限で制御)
 - 状態は表示時にサーバーへ問い合わせる
 
 ### サーバ側
 
-テンプレート (Starter の Cookie ホスト) に組み込み済み: `GET api/account/totp/status/{userId}` / `POST api/account/totp/reset/{userId}` (自分の userId は常に許可)。
+テンプレート (Starter の Cookie ホスト) に組み込み済み: `GET api/account/totp/status` / `POST api/account/totp/reset` (ログイン中のユーザーが対象)。
 独自ホストなら同じ形のエンドポイントを用意し、`TotpResetClient.StatusEndPoint` / `ResetEndPoint` に結線する (テンプレートは `ServiceInitializer` で設定)。
 
 ### プロパティ

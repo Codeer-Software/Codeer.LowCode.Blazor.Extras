@@ -41,7 +41,7 @@ if (accounts.HasTwoFactorEmail)
 - パスワードの検証とサインインはこれまでどおりテンプレートの `AccountController`。パッケージ (`TotpLogin`) は「パスワードが通った後にコードを検証する」部分だけを持ち、
   表・列名はデザインから引いて SQL で直接読み書きする (ログイン時はまだ認証済みユーザーがいないため、パスワード照合と同じ経路)
 - 登録は最初のログイン時。パスワードが通ったユーザーに QR を出し、そのコードが合ったときに登録が確定する
-- リセット (機種変更・紛失) は `MyTotpResetButtonField` (本人用。設定画面などどこにでも置ける) / `TotpResetButtonField` (管理者用。ユーザーモジュールの詳細画面で表示中の行のユーザーを解除。その行を編集できる人だけ) か、3 列を空にする (`TotpLogin.ResetAsync`)
+- リセットは `MyTotpResetButtonField` (本人用。設定画面などどこにでも置ける) / `TotpResetButtonField` (管理者用。ユーザーモジュールの詳細画面で表示中の行のユーザーを解除。通常の保存と同じ権限で制御) か、3 列を空にする (`TotpLogin.ResetAsync`)
 
 ## 使い方
 

@@ -322,15 +322,6 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
         }
         
         /// <summary>
-        ///   TotpResetCheck_NotOnUserModule に類似しているローカライズされた文字列を検索します。
-        /// </summary>
-        internal static string TotpResetCheck_NotOnUserModule {
-            get {
-                return ResourceManager.GetString("TotpResetCheck_NotOnUserModule", resourceCulture);
-            }
-        }
-        
-        /// <summary>
         ///   LoginAccountContractField に類似しているローカライズされた文字列を検索します。
         /// </summary>
         internal static string LoginAccountContractField {
@@ -430,15 +421,6 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
         }
         
         /// <summary>
-        ///   TotpResetButtonField に類似しているローカライズされた文字列を検索します。
-        /// </summary>
-        internal static string TotpResetButtonField {
-            get {
-                return ResourceManager.GetString("TotpResetButtonField", resourceCulture);
-            }
-        }
-        
-        /// <summary>
         ///   TotpResetButtonText に類似しているローカライズされた文字列を検索します。
         /// </summary>
         internal static string TotpResetButtonText {
@@ -453,6 +435,42 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
         internal static string TotpResetButtonConfirmMessage {
             get {
                 return ResourceManager.GetString("TotpResetButtonConfirmMessage", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   TotpResetButtonField に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string TotpResetButtonField {
+            get {
+                return ResourceManager.GetString("TotpResetButtonField", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   TotpResetCheck_NotOnUserModule に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string TotpResetCheck_NotOnUserModule {
+            get {
+                return ResourceManager.GetString("TotpResetCheck_NotOnUserModule", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   TotpResetCheck_ColumnsMismatch に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string TotpResetCheck_ColumnsMismatch {
+            get {
+                return ResourceManager.GetString("TotpResetCheck_ColumnsMismatch", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   TotpResetButton_ConfirmSelf に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string TotpResetButton_ConfirmSelf {
+            get {
+                return ResourceManager.GetString("TotpResetButton_ConfirmSelf", resourceCulture);
             }
         }
         

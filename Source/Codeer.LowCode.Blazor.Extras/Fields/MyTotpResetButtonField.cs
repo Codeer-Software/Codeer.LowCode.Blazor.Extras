@@ -46,7 +46,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         {
             if (Services.AppInfoService.IsDesignMode || _loaded) return;
             _loaded = true;
-            _status = await TotpResetClient.GetStatusAsync(Services, Services.AppInfoService.CurrentUserId);
+            _status = await TotpResetClient.GetStatusAsync(Services);
             NotifyStateChanged();
         }
 
@@ -59,7 +59,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             NotifyStateChanged();
             try
             {
-                var status = await TotpResetClient.ConfirmAndResetAsync(Services, Services.AppInfoService.CurrentUserId, Design.ConfirmMessage);
+                var status = await TotpResetClient.ConfirmAndResetAsync(Services, Design.ConfirmMessage);
                 if (status == null) return false;
                 _status = status;
                 return true;
