@@ -15,6 +15,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Auth
     /// セッションは常に Cookie で、外部 IdP は本人確認の手段。確認できた本人をアプリのユーザーに解決するのは
     /// アプリが登録する <see cref="IExternalLoginUserResolver"/>。
     /// <code>
+    /// builder.Services.AddDistributedMemoryCache();   // 使い捨てチケット / メール認証コードの置き場。複数インスタンスなら Redis 等
     /// builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     ///     .AddCookie(...)
     ///     .AddExternalLogins(SystemConfig.Instance.ExternalLogins, o => o.MobileCallbackUrl = "lowcodeapp://auth");
@@ -42,10 +43,11 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Auth
             var duplicated = list.GroupBy(p => p.Name, StringComparer.OrdinalIgnoreCase).FirstOrDefault(g => g.Count() > 1);
             if (duplicated != null) throw new InvalidOperationException($"External login: provider name '{duplicated.Key}' is registered more than once.");
 
-            //モバイル用チケットの置き場。アプリが Redis 等の IDistributedCache を登録していればそれが使われる (複数インスタンス構成)
-            builder.Services.AddDistributedMemoryCache();
+            //モバイル用チケットの置き場は IDistributedCache。登録はアプリの責任 (テンプレートの CookieAuthentication.cs)。
+            //単一インスタンスなら AddDistributedMemoryCache、複数インスタンス (スケールアウト) なら Redis / SQL Server 等の共有キャッシュ
             builder.Services.AddSingleton(sp => new ExternalLoginService(list, options,
-                sp.GetRequiredService<IDistributedCache>(), sp.GetRequiredService<IOptionsMonitor<OpenIdConnectOptions>>()));
+                sp.GetService<IDistributedCache>() ?? throw new InvalidOperationException("External logins need an IDistributedCache. Register AddDistributedMemoryCache() (single instance) or a shared cache such as Redis (multiple instances) before AddExternalLogins."),
+                sp.GetRequiredService<IOptionsMonitor<OpenIdConnectOptions>>()));
 
             foreach (var provider in list)
             {

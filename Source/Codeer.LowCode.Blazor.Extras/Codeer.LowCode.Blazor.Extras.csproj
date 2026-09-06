@@ -18,7 +18,8 @@
 		<PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
 		<PackageReleaseNotes>TotpSecretField: a declaration field for the user module that names the three write-only columns (secret / confirmed / last time step) used by the TOTP two-factor login of Codeer.LowCode.Blazor.Extras.Server 0.8.5 (TotpLogin). Placing it on the current-user module turns the template login into a two-step login; it has no UI and no submit data, like PasswordHashField.
-LoginAccountContractField: a contract field for the current-user module that declares how its rows act as login accounts: login ID (required), the field matched against external identity providers, an active flag and a display name. The templates' login (Codeer.LowCode.Blazor.Extras.Server.Auth.LoginAccountStore) resolves the user table and columns from the module design (IdField, this contract, PasswordHashField) instead of a PasswordCheckUserTableInfo section in appsettings. Existing designs and hosts keep working; add the contract when moving a design to the new templates.</PackageReleaseNotes>
+LoginAccountContractField: a contract field for the current-user module that declares how its rows act as login accounts: login ID (required), the field matched against external identity providers, an active flag and a display name. The templates' login (Codeer.LowCode.Blazor.Extras.Server.Auth.LoginAccountStore) resolves the user table and columns from the module design (IdField, this contract, PasswordHashField) instead of a PasswordCheckUserTableInfo section in appsettings. Existing designs and hosts keep working; add the contract when moving a design to the new templates.
+LoginAccountContractField.TwoFactorEmail: the field holding the address for e-mail one-time-code two-factor login.</PackageReleaseNotes>
 		<PackageId>Codeer.LowCode.Blazor.Extras</PackageId>
 	</PropertyGroup>
 

@@ -10,6 +10,7 @@ UI もデータも持たない (DB 列不要)。
 - 外部 IdP (Entra ID / Google / AWS Cognito / OIDC): IdP が確認した本人 (Entra = UPN、Google = メール) を `ExternalLoginName` の列 (空なら `LoginName` の列) と突き合わせて行に解決する
 - `IsActive` が偽の行はどちらの経路でもログインできない (退職・停止)
 - `DisplayName` は画面のユーザー表示 (Cookie の Name) と二要素認証の QR のアカウント名
+- `TwoFactorEmail` を設定すると、メールのワンタイムコードによる二要素認証になる (`TotpSecretField` があれば認証アプリが優先)
 - 初回起動時にユーザーが 0 件なら `admin` / `admin` を作る (`PasswordHashField` があるときだけ。表示名・有効フラグの列があれば埋める)
 
 パスワードを使わない構成 (外部 IdP 専用) でもログイン ID の宣言は要るので、`PasswordHashField` ではなくこの契約が持つ。
@@ -28,6 +29,7 @@ UI もデータも持たない (DB 列不要)。
 | ExternalLoginName (外部 IdP の突き合わせ) | 外部 IdP の本人 (UPN・メール) と比較するフィールド。空なら LoginName と同じ列。社内のログイン ID とメールが別のときにメールのフィールドを指定する | - |
 | IsActive (有効フラグ) | 偽ならログイン拒否 (Boolean / 0・1 の数値 / "true"・"1" の文字列)。NULL は無効扱い。空なら判定しない | - |
 | DisplayName (表示名) | 画面のユーザー表示と TOTP の QR に使う名前。空なら LoginName | - |
+| TwoFactorEmail (二要素認証のメール送信先) | 設定するとパスワード成功後にワンタイムコードをこのフィールドのメールアドレスへ送り、入力を求める (メールの体裁・有効期限はサーバー設定 `EmailOtpLogin`)。同じモジュールに `TotpSecretField` があれば認証アプリが優先。空なら無効 | - |
 
 ## JSON例
 
@@ -37,6 +39,7 @@ UI もデータも持たない (DB 列不要)。
   "ExternalLoginName": "Email",
   "IsActive": "IsActive",
   "DisplayName": "Name",
+  "TwoFactorEmail": "Email",
   "Name": "LoginAccount",
   "TypeFullName": "Codeer.LowCode.Blazor.Extras.Designs.LoginAccountContractFieldDesign"
 }

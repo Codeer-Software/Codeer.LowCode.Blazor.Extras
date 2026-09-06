@@ -578,6 +578,9 @@ Recipients: {1}</value>
   <data name="LoginAccountContractDisplayName" xml:space="preserve">
     <value>Display name (empty = Login ID)</value>
   </data>
+  <data name="LoginAccountContractTwoFactorEmail" xml:space="preserve">
+    <value>Two-factor e-mail (one-time code; empty = off)</value>
+  </data>
   <data name="MailHistoryContractField" xml:space="preserve">
     <value>Mail History Contract</value>
   </data>

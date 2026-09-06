@@ -30,7 +30,8 @@
 | [FileStorage](docs/FileStorage.md) | FileField のファイル保存先。FileSystem / Azure Blob / Amazon S3 (S3互換含む) と独自プロバイダ |
 | [EnterFocusMoveField](docs/EnterFocusMoveField.md) | Enterキーでモジュール内の次の入力要素にフォーカスを移動させるユーティリティフィールド |
 | [LoginAccountContractField](Source/Codeer.LowCode.Blazor.Extras.Designer/FieldDocs/LoginAccountContractFieldDesign.md) | ユーザーモジュールに置く契約フィールド。ログイン ID・外部 IdP の突き合わせ・有効フラグ・表示名を役割で宣言し、テンプレートのログイン (パスワード照合 / 外部 IdP の解決 / 停止ユーザーの拒否) はこれでユーザー行を扱う |
-| [TotpSecretField](docs/TotpLogin.md) | ユーザーモジュールに置くと ID/パスワードのログインが二要素認証 (TOTP) 付きになる宣言フィールド (秘密鍵列 3 つを書き込み専用で名指し。サーバ側は Extras.Server の TotpLogin) |
+| [二要素認証 (メールのワンタイムコード)](docs/TwoFactorLogin.md) | LoginAccountContractField の TwoFactorEmail を設定すると、パスワード成功後にメールで 6 桁コードを送って入力を求める (Extras.Server の EmailOtpLogin。列不要) |
+| [TotpSecretField](docs/TwoFactorLogin.md) | ユーザーモジュールに置くと ID/パスワードのログインが二要素認証 (TOTP) 付きになる宣言フィールド (秘密鍵列 3 つを書き込み専用で名指し。サーバ側は Extras.Server の TotpLogin) |
 | [PasswordHashField](docs/PasswordHashField.md) | パスワードを Submit 時にハッシュ + ソルトへ変換して DB に書き込む補助フィールド (サーバサイド実装が必要) |
 | [OrientationLockField](docs/OrientationLockField.md) | タッチ端末で画面の向き(横/縦)が指定と異なるとき、全画面オーバーレイで回転を促すフィールド |
 | [AITextAnalyzerField](docs/AITextAnalyzerField.md) | 帳票ファイルや自由テキストを AI で解析し、モジュールのフィールドへ自動入力する入力補助フィールド (Azure OpenAI + Document Intelligence を使用) |
@@ -182,7 +183,7 @@ ExtrasDesignerInitializer.Setup(DesignerEnvironment);
 - [QrCodeField - QRコード](docs/QrCodeField.md)
 - [ProgressField - 進捗バー / メーター](docs/ProgressField.md)
 - [EnterFocusMoveField - Enterキーでフォーカス移動](docs/EnterFocusMoveField.md)
-- [TotpSecretField / 二要素認証 (TOTP)](docs/TotpLogin.md)
+- [TotpSecretField / 二要素認証 (TOTP)](docs/TwoFactorLogin.md)
 - [PasswordHashField - パスワードハッシュ](docs/PasswordHashField.md)
 - [OrientationLockField - 画面の向き制御](docs/OrientationLockField.md)
 - [AITextAnalyzerField - AI 帳票解析](docs/AITextAnalyzerField.md)

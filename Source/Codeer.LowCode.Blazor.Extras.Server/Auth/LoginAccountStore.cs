@@ -11,7 +11,8 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Auth
     /// <param name="UserId">ユーザー ID (IdField の値)。</param>
     /// <param name="LoginName">ログイン ID。二要素認証の QR のアカウント名にも使う。</param>
     /// <param name="DisplayName">表示名。契約の DisplayName が空なら LoginName。</param>
-    public record LoginAccount(string UserId, string LoginName, string DisplayName);
+    /// <param name="TwoFactorEmail">メールのワンタイムコードの送信先。契約の TwoFactorEmail が空 (無効) なら null。</param>
+    public record LoginAccount(string UserId, string LoginName, string DisplayName, string? TwoFactorEmail = null);
 
     /// <summary>
     /// ログイン時のユーザー行の読み書き。表・列はユーザーモジュール (AppSettings.CurrentUserModuleDesignName) のデザインから引く:
@@ -34,6 +35,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Auth
         readonly string _externalLoginNameColumn;
         readonly string? _isActiveColumn;
         readonly string? _displayNameColumn;
+        readonly string? _twoFactorEmailColumn;
         readonly string? _hashColumn;
         readonly string? _saltColumn;
 
@@ -63,6 +65,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Auth
             _externalLoginNameColumn = RoleColumn(userModule, contract, nameof(contract.ExternalLoginName), contract.ExternalLoginName) ?? _loginNameColumn;
             _isActiveColumn = RoleColumn(userModule, contract, nameof(contract.IsActive), contract.IsActive);
             _displayNameColumn = RoleColumn(userModule, contract, nameof(contract.DisplayName), contract.DisplayName);
+            _twoFactorEmailColumn = RoleColumn(userModule, contract, nameof(contract.TwoFactorEmail), contract.TwoFactorEmail);
             _hashColumn = passwordHash?.DbColumnHash;
             _saltColumn = passwordHash?.DbColumnSalt;
         }
@@ -83,6 +86,9 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Auth
 
         /// <summary>ユーザーモジュールに PasswordHashField があり、ID/パスワードのログインができるか。</summary>
         public bool HasPassword => _hashColumn != null;
+
+        /// <summary>契約の TwoFactorEmail が設定され、メールのワンタイムコードによる二要素認証が有効か。</summary>
+        public bool HasTwoFactorEmail => _twoFactorEmailColumn != null;
 
         /// <summary>
         /// ログイン ID とパスワードを照合する。ユーザーが無い・パスワード不一致・パスワード未設定 (外部 IdP 専用ユーザー)・停止中は
@@ -143,6 +149,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Auth
             var (q, p) = Sql();
             var columns = new List<string> { q(_idColumn), q(_loginNameColumn) };
             if (_displayNameColumn != null) columns.Add(q(_displayNameColumn));
+            if (_twoFactorEmailColumn != null) columns.Add(q(_twoFactorEmailColumn));
             if (_isActiveColumn != null) columns.Add(q(_isActiveColumn));
             if (HasPassword) { columns.Add(q(_hashColumn!)); columns.Add(q(_saltColumn!)); }
             var sql = $"select {string.Join(", ", columns.Distinct())} from {q(_table)} where {q(keyColumn)} = {p}1";
@@ -166,7 +173,8 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Auth
         {
             var loginName = Convert.ToString(Value(row, _loginNameColumn)) ?? string.Empty;
             var displayName = _displayNameColumn == null ? null : Convert.ToString(Value(row, _displayNameColumn));
-            return new(Convert.ToString(Value(row, _idColumn)) ?? string.Empty, loginName, string.IsNullOrEmpty(displayName) ? loginName : displayName);
+            var twoFactorEmail = _twoFactorEmailColumn == null ? null : Convert.ToString(Value(row, _twoFactorEmailColumn));
+            return new(Convert.ToString(Value(row, _idColumn)) ?? string.Empty, loginName, string.IsNullOrEmpty(displayName) ? loginName : displayName, twoFactorEmail);
         }
 
         //識別子の引用符とパラメータ接頭辞は DB の種類で変わる (TemporaryFileManager と同じ)

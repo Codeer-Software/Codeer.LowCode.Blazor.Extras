@@ -17,7 +17,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Auth
         DbAccessor _db = null!;
 
         static DesignData CreateDesign(string loginName = "UserName", string externalLoginName = "", string isActive = "", string displayName = "",
-            bool withContract = true, bool withPasswordHash = true)
+            bool withContract = true, bool withPasswordHash = true, string twoFactorEmail = "")
         {
             var d = new DesignData();
             d.AppSettings.CurrentUserModuleDesignName = "AppUser";
@@ -29,7 +29,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Auth
             user.Fields.Add(new BooleanFieldDesign { Name = "IsActive", DbColumn = "is_active" });
             user.Fields.Add(new PasswordFieldDesign { Name = "Password" });
             if (withPasswordHash) user.Fields.Add(new PasswordHashFieldDesign { Name = "Hash", PasswordFieldName = "Password", DbColumnHash = "hash", DbColumnSalt = "salt" });
-            if (withContract) user.Fields.Add(new LoginAccountContractFieldDesign { Name = "LoginAccount", LoginName = loginName, ExternalLoginName = externalLoginName, IsActive = isActive, DisplayName = displayName });
+            if (withContract) user.Fields.Add(new LoginAccountContractFieldDesign { Name = "LoginAccount", LoginName = loginName, ExternalLoginName = externalLoginName, IsActive = isActive, DisplayName = displayName, TwoFactorEmail = twoFactorEmail });
             d.AddModule(user);
             return d;
         }
@@ -131,6 +131,20 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Auth
         }
 
         [Test]
+        public async Task TwoFactorEmail_Role()
+        {
+            var off = LoginAccountStore.Create(CreateDesign(), _db)!;
+            Assert.That(off.HasTwoFactorEmail, Is.False);
+            await InsertAsync("taro", "taro@example.co.jp", "Taro", 1, "p@ss");
+            Assert.That((await off.VerifyPasswordAsync("taro", "p@ss"))!.TwoFactorEmail, Is.Null, "役割が無ければ null");
+
+            var on = LoginAccountStore.Create(CreateDesign(twoFactorEmail: "Email"), _db)!;
+            Assert.That(on.HasTwoFactorEmail, Is.True);
+            Assert.That((await on.VerifyPasswordAsync("taro", "p@ss"))!.TwoFactorEmail, Is.EqualTo("taro@example.co.jp"));
+            Assert.That((await on.FindByExternalLoginNameAsync("taro"))!.TwoFactorEmail, Is.EqualTo("taro@example.co.jp"));
+        }
+
+        [Test]
         public async Task VerifyPassword_RejectsRowsWithoutHash()
         {
             var accounts = LoginAccountStore.Create(CreateDesign(), _db)!;
@@ -159,6 +173,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Auth
             Assert.That(contract.ExternalLoginName, Is.Empty);
             Assert.That(contract.IsActive, Is.Empty);
             Assert.That(contract.DisplayName, Is.Empty);
+            Assert.That(contract.TwoFactorEmail, Is.Empty);
         }
     }
 }

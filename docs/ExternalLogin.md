@@ -115,7 +115,14 @@ Web と同じサーバー実装を使う。違うのは「発行された Cookie
 3. アプリは `POST api/account/login_ticket` でチケットを Cookie に交換する
 
 テンプレート側: `Services/ServerSettings.LoginCallbackUrl` (appsettings `Server:LoginCallbackUrl`)、Android `WebAuthenticatorCallbackActivity` の `DataScheme`、
-iOS `Info.plist` の `CFBundleURLTypes` を同じスキームにそろえる。チケットの置き場は `IDistributedCache` (既定はメモリ。複数インスタンスなら Redis 等を登録する)。
+iOS `Info.plist` の `CFBundleURLTypes` を同じスキームにそろえる。
+
+## 複数インスタンス (スケールアウト) の注意
+
+チケット (と メール認証コード) の置き場は `IDistributedCache` で、登録はアプリの責任 (テンプレートは `CookieAuthentication.cs` で `AddDistributedMemoryCache()`)。
+メモリ実装はプロセス内なので、複数インスタンスでは発行したインスタンスと検証するインスタンスが違うと失敗する。スケールアウトするときは
+`AddStackExchangeRedisCache` (Redis) や `AddDistributedSqlServerCache` (SQL Server) に差し替える。Cookie の復号に使う Data Protection の鍵も
+インスタンス間で共有されている必要がある (App Service は既定で共有。自前のコンテナ等では `PersistKeysTo...` で共有先を指定する)。
 
 ## 導入時に決めること (顧客と)
 

@@ -220,6 +220,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Auth
                 {
                     builder.Services.PostConfigure<OpenIdConnectOptions>(ExternalLoginService.SchemeOf(p.Name), o => o.Backchannel = new HttpClient(new ToFakeIdpHandler(idp.Server.CreateHandler())));
                 }
+                builder.Services.AddDistributedMemoryCache();
                 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
                     .AddCookie(o =>
                     {

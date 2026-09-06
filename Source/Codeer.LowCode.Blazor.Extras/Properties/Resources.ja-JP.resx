@@ -578,6 +578,9 @@
   <data name="LoginAccountContractDisplayName" xml:space="preserve">
     <value>表示名 (空なら ログイン ID)</value>
   </data>
+  <data name="LoginAccountContractTwoFactorEmail" xml:space="preserve">
+    <value>二要素認証のメール送信先 (ワンタイムコード。空なら無効)</value>
+  </data>
   <data name="MailHistoryContractField" xml:space="preserve">
     <value>メール履歴契約</value>
   </data>

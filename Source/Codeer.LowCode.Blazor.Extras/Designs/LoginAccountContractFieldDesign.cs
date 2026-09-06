@@ -36,6 +36,13 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         [Designer(Index = 6, CandidateType = CandidateType.Field, DisplayName = "$LoginAccountContractDisplayName")]
         public string DisplayName { get; set; } = string.Empty;
 
+        /// <summary>
+        /// メールのワンタイムコードによる二要素認証の送信先 (メールアドレスのフィールド)。設定するとパスワード成功後にコードを送って入力を求める。
+        /// 空なら無効。同じモジュールに TotpSecretField があればそちら (認証アプリ) が優先される。
+        /// </summary>
+        [Designer(Index = 7, CandidateType = CandidateType.Field, DisplayName = "$LoginAccountContractTwoFactorEmail")]
+        public string TwoFactorEmail { get; set; } = string.Empty;
+
         private protected override HashSet<string> RequiredRoleNames => new() { nameof(LoginName) };
     }
 }
