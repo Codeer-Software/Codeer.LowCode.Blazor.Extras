@@ -5,22 +5,18 @@
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>enable</Nullable>
 		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
-		<Version>0.8.4</Version>
+		<Version>0.8.5</Version>
 		<Authors>Codeer</Authors>
 		<Company>Codeer</Company>
-		<Description>Server-side services for Codeer.LowCode.Blazor apps. Includes AI document analysis (Azure Document Intelligence + Azure OpenAI), SMTP mail sending, file storage (file system / Azure Blob), and ASP.NET Core helpers (hot reload, ETag file responses).</Description>
+		<Description>Server-side services for Codeer.LowCode.Blazor apps. Includes AI document analysis (Azure Document Intelligence + Azure OpenAI), mail sending (SMTP / Microsoft Graph / SendGrid / Gmail), file storage (file system / Azure Blob / S3), external logins (Entra ID / Google / AWS Cognito / OIDC), and ASP.NET Core helpers (hot reload, ETag file responses).</Description>
 		<PackageProjectUrl>https://github.com/Codeer-Software/Codeer.LowCode.Blazor.Extras</PackageProjectUrl>
 		<RepositoryUrl>https://github.com/Codeer-Software/Codeer.LowCode.Blazor.Extras</RepositoryUrl>
 		<RepositoryType>git</RepositoryType>
-		<PackageTags>Blazor;LowCode;Codeer;AI;Mail;Excel;PDF</PackageTags>
+		<PackageTags>Blazor;LowCode;Codeer;AI;Mail;Excel;PDF;OpenIdConnect;EntraID</PackageTags>
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>
 		<PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
-		<PackageReleaseNotes>Updated the Excel.Report.PDF dependency to 0.36.0. Requires Codeer.LowCode.Blazor.Extras 0.8.1.
-(0.8.3) Mail: the SendGrid sender (SendGridSettings / SendGridMailSender, v3 mail/send REST) is now public, verified by real sending. Bulk sending uses native personalizations (up to 1000 recipients per request) with server-side {variable} substitutions, so SendGrid is the recommended infrastructure for large campaigns. The sender address must be verified in SendGrid (Single Sender Verification or domain authentication). Wire it in your app's MailSenderTable with a "SendGrid" configuration section.
-(0.8.2) Mail preview HTML: a variable that resolved to an empty value was rendered as a large box overlapping the toolbar (CSS class collision with the "no recipients" placeholder). It is now shown as a small "(empty)" mark inline.
-(0.8.1) Compatibility: the 0.5.0 mail API (SmtpMailService / MailSettings, together with ScriptObjects.MailService / MailMessage in Codeer.LowCode.Blazor.Extras 0.8.0) is available again, so projects created from the 0.5.0 templates build and run unchanged after upgrading. SmtpMailService now sends through SmtpMailSender (MailKit). Requires Codeer.LowCode.Blazor.Extras 0.8.0.
-Note for custom code that passes an untyped [] or null as the storage list to TemporaryFileManager / StorageAccess (since 0.8.0): the IEnumerable&lt;IFileStorage&gt; overloads make that call ambiguous - pass Array.Empty&lt;IFileStorage&gt;() (typed FileStorage[] variables, as in the templates, are unaffected).</PackageReleaseNotes>
+		<PackageReleaseNotes>External logins (Codeer.LowCode.Blazor.Extras.Server.Auth): sign in with Microsoft Entra ID, Google, AWS Cognito or any OpenID Connect provider on top of the cookie authentication. AddExternalLogins(...) registers every provider that has a ClientId in the ExternalLogins configuration section; the verified identity is mapped to a user row by the application's IExternalLoginUserResolver, so authorization (user module, UserRead/Write conditions) is unchanged. Includes per-provider validation (Entra UPN / guest rejection / issuer format for multi-tenant, verified e-mail for Google and Cognito, allowed domains), two-step logout that also ends the IdP session, and a one-time ticket flow for native (MAUI) clients that sign in through the system browser. See docs/ExternalLogin.md.</PackageReleaseNotes>
 		<PackageId>Codeer.LowCode.Blazor.Extras.Server</PackageId>
 	</PropertyGroup>
 
@@ -52,6 +48,7 @@ Note for custom code that passes an untyped [] or null as the storage list to Te
 		<PackageReference Include="Azure.Storage.Blobs" Version="12.23.0" />
 		<PackageReference Include="Excel.Report.PDF" Version="0.36.0" />
 		<PackageReference Include="MailKit" Version="4.17.0" />
+		<PackageReference Include="Microsoft.AspNetCore.Authentication.OpenIdConnect" Version="8.0.8" />
 		<PackageReference Include="System.Text.Encoding.CodePages" Version="8.0.0" />
 	</ItemGroup>
 

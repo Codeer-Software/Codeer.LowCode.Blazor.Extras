@@ -19,6 +19,8 @@
     <!-- 承認エンジンの実DB(E2E)テスト用。プロバイダはパッケージに焼き込まない方針のためテスト側で参照する -->
     <PackageReference Include="Codeer.LowCode.Blazor.DbAccess" Version="0.1.0" />
     <PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.8" />
+    <!-- 外部ログイン (OIDC) の統合テスト用。偽 IdP とアプリを TestServer で立てて本物の OpenIdConnect ハンドラを通す -->
+    <PackageReference Include="Microsoft.AspNetCore.TestHost" Version="8.0.8" />
   </ItemGroup>
 
   <ItemGroup>
