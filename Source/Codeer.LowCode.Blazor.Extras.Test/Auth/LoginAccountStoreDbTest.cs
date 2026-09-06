@@ -28,8 +28,13 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Auth
             user.Fields.Add(new TextFieldDesign { Name = "Name", DbColumn = "name" });
             user.Fields.Add(new BooleanFieldDesign { Name = "IsActive", DbColumn = "is_active" });
             user.Fields.Add(new PasswordFieldDesign { Name = "Password" });
+            //PasswordHashField は「書く側」(ユーザー登録画面)。照合は契約の列で行う
             if (withPasswordHash) user.Fields.Add(new PasswordHashFieldDesign { Name = "Hash", PasswordFieldName = "Password", DbColumnHash = "hash", DbColumnSalt = "salt" });
-            if (withContract) user.Fields.Add(new LoginAccountContractFieldDesign { Name = "LoginAccount", LoginName = loginName, ExternalLoginName = externalLoginName, IsActive = isActive, DisplayName = displayName, TwoFactorEmail = twoFactorEmail });
+            if (withContract) user.Fields.Add(new LoginAccountContractFieldDesign
+            {
+                Name = "LoginAccount", LoginName = loginName, ExternalLoginName = externalLoginName, IsActive = isActive, DisplayName = displayName, TwoFactorEmail = twoFactorEmail,
+                DbColumnPasswordHash = withPasswordHash ? "hash" : "", DbColumnPasswordSalt = withPasswordHash ? "salt" : "",
+            });
             d.AddModule(user);
             return d;
         }
@@ -63,7 +68,9 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Auth
         {
             Assert.That(LoginAccountStore.Create(CreateDesign(), _db)?.HasPassword, Is.True);
             Assert.That(LoginAccountStore.Create(CreateDesign(withContract: false), _db), Is.Null, "契約が無ければ解決できない");
-            Assert.That(LoginAccountStore.Create(CreateDesign(withPasswordHash: false), _db)?.HasPassword, Is.False, "PasswordHashField 無し = 外部 IdP 専用");
+            Assert.That(LoginAccountStore.Create(CreateDesign(withPasswordHash: false), _db)?.HasPassword, Is.False, "契約にパスワード列無し = 外部 IdP 専用");
+            var half = CreateDesign(); half.Modules.Find("AppUser")!.Fields.OfType<LoginAccountContractFieldDesign>().First().DbColumnPasswordSalt = "";
+            Assert.Throws<InvalidOperationException>(() => LoginAccountStore.Create(half, _db), "ハッシュとソルトは両方");
 
             var noUserModule = new DesignData();
             noUserModule.AppSettings.CurrentUserModuleDesignName = "Missing";
@@ -174,6 +181,8 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Auth
             Assert.That(contract.IsActive, Is.Empty);
             Assert.That(contract.DisplayName, Is.Empty);
             Assert.That(contract.TwoFactorEmail, Is.Empty);
+            Assert.That(contract.HasPassword, Is.False);
+            Assert.That(contract.HasTotp, Is.False);
         }
     }
 }

@@ -54,11 +54,12 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         /// <summary>その役割が必須か (空にできないか)。機能側 (エンジン) の実行時検証でも使う。</summary>
         internal bool IsRoleRequired(string roleName) => RequiredRoleNames.Contains(roleName);
 
-        /// <summary>役割プロパティ (プロパティ名 = 役割名) の一覧。チェックとリネーム追従で使う。</summary>
+        /// <summary>役割プロパティ (プロパティ名 = 役割名) の一覧。チェックとリネーム追従で使う。DbColumn 属性付き (DB 列の宣言) は役割ではない。</summary>
         internal IEnumerable<System.Reflection.PropertyInfo> GetRoleProperties()
             => GetType().GetProperties()
                 .Where(e => e.DeclaringType != typeof(FieldDesignBase) && e.PropertyType == typeof(string) &&
-                            e.GetCustomAttributes(typeof(DesignerAttribute), true).Length > 0);
+                            e.GetCustomAttributes(typeof(DesignerAttribute), true).Length > 0 &&
+                            e.GetCustomAttributes(typeof(DbColumnAttribute), true).Length == 0);
 
         public override List<DesignCheckInfo> CheckDesign(DesignCheckContext context)
         {

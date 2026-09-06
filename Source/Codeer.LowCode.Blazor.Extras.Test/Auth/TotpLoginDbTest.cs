@@ -10,7 +10,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Auth
 {
     /// <summary>
     /// TotpLogin の 2 段階の流れを実 DB (SQLite) で: 初回登録 → 確認 → 以降はコード要求 → リプレイ拒否 → リセット。
-    /// 表・列はユーザーモジュールのデザイン (IdField + TotpSecretField) から引く。
+    /// 表・列はユーザーモジュールのデザイン (IdField + LoginAccountContractField の TOTP 列) から引く。
     /// </summary>
     public class TotpLoginDbTest
     {
@@ -27,10 +27,9 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Auth
             var user = new ModuleDesign { Name = "AppUser", DataSourceName = Ds, DbTable = "app_users" };
             user.Fields.Add(new IdFieldDesign { Name = "Id", DbColumn = "id" });
             user.Fields.Add(new TextFieldDesign { Name = "UserName", DbColumn = "user_name" });
-            if (withTotpField)
-            {
-                user.Fields.Add(new TotpSecretFieldDesign { Name = "TotpSecret", DbColumnSecret = "totp_secret", DbColumnConfirmed = "totp_confirmed", DbColumnLastTimestep = "totp_last_timestep" });
-            }
+            user.Fields.Add(withTotpField
+                ? new LoginAccountContractFieldDesign { Name = "LoginAccount", LoginName = "UserName", DbColumnTotpSecret = "totp_secret", DbColumnTotpConfirmed = "totp_confirmed", DbColumnTotpLastTimestep = "totp_last_timestep" }
+                : new LoginAccountContractFieldDesign { Name = "LoginAccount", LoginName = "UserName" });
             d.AddModule(user);
             return d;
         }
@@ -58,10 +57,10 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Auth
         static string CurrentCode(string secret) => Totp.ComputeCode(secret, DateTimeOffset.UtcNow.ToUnixTimeSeconds() / Totp.PeriodSeconds);
 
         [Test]
-        public void Create_RequiresTotpSecretFieldOnUserModule()
+        public void Create_RequiresTotpColumnsOnTheContract()
         {
             Assert.That(_totp, Is.Not.Null);
-            Assert.That(TotpLogin.Create(CreateDesign(withTotpField: false), new(), _db), Is.Null, "フィールドが無ければ二要素認証なし");
+            Assert.That(TotpLogin.Create(CreateDesign(withTotpField: false), new(), _db), Is.Null, "契約に TOTP 列が無ければ認証アプリの二要素認証なし");
 
             var noUserModule = new DesignData();
             noUserModule.AppSettings.CurrentUserModuleDesignName = "Missing";
@@ -72,9 +71,9 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Auth
         public void Ctor_RequiresColumns()
         {
             var module = _design.Modules.Find("AppUser")!;
-            Assert.Throws<InvalidOperationException>(() => new TotpLogin(module, new TotpSecretFieldDesign { Name = "T", DbColumnSecret = "s" }, new(), _db), "列未設定");
+            Assert.Throws<InvalidOperationException>(() => new TotpLogin(module, new LoginAccountContractFieldDesign { Name = "T", DbColumnTotpSecret = "s" }, new(), _db), "列未設定");
             var noId = new ModuleDesign { Name = "X", DataSourceName = Ds, DbTable = "app_users" };
-            Assert.Throws<InvalidOperationException>(() => new TotpLogin(noId, module.Fields.OfType<TotpSecretFieldDesign>().First(), new(), _db), "IdField 無し");
+            Assert.Throws<InvalidOperationException>(() => new TotpLogin(noId, module.Fields.OfType<LoginAccountContractFieldDesign>().First(), new(), _db), "IdField 無し");
         }
 
         [Test]

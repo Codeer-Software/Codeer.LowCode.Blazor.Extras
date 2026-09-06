@@ -435,9 +435,6 @@
   <data name="PasswordHashField" xml:space="preserve">
     <value>Password Hash</value>
   </data>
-  <data name="TotpSecretField" xml:space="preserve">
-    <value>TOTP Secret</value>
-  </data>
   <data name="ProgressField" xml:space="preserve">
     <value>Progress Bar</value>
   </data>
@@ -580,6 +577,27 @@ Recipients: {1}</value>
   </data>
   <data name="LoginAccountContractTwoFactorEmail" xml:space="preserve">
     <value>Two-factor e-mail (one-time code; empty = off)</value>
+  </data>
+  <data name="LoginAccountContractDbColumnPasswordHash" xml:space="preserve">
+    <value>Password hash column (for login check)</value>
+  </data>
+  <data name="LoginAccountContractDbColumnPasswordSalt" xml:space="preserve">
+    <value>Password salt column (for login check)</value>
+  </data>
+  <data name="LoginAccountContractDbColumnTotpSecret" xml:space="preserve">
+    <value>Authenticator app: secret column</value>
+  </data>
+  <data name="LoginAccountContractDbColumnTotpConfirmed" xml:space="preserve">
+    <value>Authenticator app: confirmed column</value>
+  </data>
+  <data name="LoginAccountContractDbColumnTotpLastTimestep" xml:space="preserve">
+    <value>Authenticator app: last time step column</value>
+  </data>
+  <data name="LoginAccountCheck_PasswordColumnsPair" xml:space="preserve">
+    <value>Set both the password hash column and the salt column, or neither.</value>
+  </data>
+  <data name="LoginAccountCheck_TotpColumnsSet" xml:space="preserve">
+    <value>Set all three authenticator-app columns (secret / confirmed / last time step), or none.</value>
   </data>
   <data name="MailHistoryContractField" xml:space="preserve">
     <value>Mail History Contract</value>

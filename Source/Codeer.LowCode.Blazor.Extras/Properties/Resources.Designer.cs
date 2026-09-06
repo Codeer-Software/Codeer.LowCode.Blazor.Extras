@@ -241,6 +241,24 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
         }
         
         /// <summary>
+        ///   LoginAccountCheck_PasswordColumnsPair に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string LoginAccountCheck_PasswordColumnsPair {
+            get {
+                return ResourceManager.GetString("LoginAccountCheck_PasswordColumnsPair", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   LoginAccountCheck_TotpColumnsSet に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string LoginAccountCheck_TotpColumnsSet {
+            get {
+                return ResourceManager.GetString("LoginAccountCheck_TotpColumnsSet", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Week に類似しているローカライズされた文字列を検索します。
         /// </summary>
         internal static string Week {

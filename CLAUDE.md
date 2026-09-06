@@ -116,19 +116,13 @@ dotnet build Source/Codeer.LowCode.Blazor.Extras/Codeer.LowCode.Blazor.Extras.cs
 
 #### LoginAccountContractField - ログインアカウント契約
 - **状態**: 実装済み (Extras.Designer FieldDocs/LoginAccountContractFieldDesign.md)
-- **機能**: ユーザーモジュール (CurrentUserModule) に置き、行がログインアカウントとしてどう振る舞うかを役割で宣言する契約フィールド: LoginName (必須) / ExternalLoginName (外部 IdP の突き合わせ。空なら LoginName) / IsActive (偽なら拒否) / DisplayName (Cookie の Name と TOTP の QR)。テンプレートのログイン (Extras.Server `LoginAccountStore`) がこれでユーザー行を扱う: ID/パスワード照合 (PasswordHashField の列)、外部 IdP の本人解決、停止ユーザーの拒否、初回 admin 作成。パスワードを使わない構成でも必要
+- **機能**: ユーザーモジュール (CurrentUserModule) に置き、行がログインアカウントとしてどう振る舞うかを宣言する契約フィールド。役割 (フィールド参照): LoginName (必須) / ExternalLoginName (外部 IdP の突き合わせ。空なら LoginName) / IsActive (偽なら拒否) / DisplayName (Cookie の Name と TOTP の QR) / TwoFactorEmail (メール二要素の送信先)。ログイン用の書き込み専用列: DbColumnPasswordHash + Salt (照合用。空 = パスワードログイン無し)、DbColumnTotp* 3 列 (認証アプリの二要素。空 = 無効)。テンプレートのログイン (Extras.Server `LoginAccountStore` / `TotpLogin` / `EmailOtpLogin`) はこの契約だけを見る。PasswordHashField は「書く側」として別に置く
 - **ファイル**: `Designs/LoginAccountContractFieldDesign.cs` (`ContractFieldDesignBase` 派生。UI・データ無し)
 
 #### EmailOtpLogin - 二要素認証 (メールのワンタイムコード)
 - **状態**: 実装済み (docs/TwoFactorLogin.md)。Extras.Server `Auth/EmailOtpLogin.cs` (フィールドは無し)
-- **機能**: LoginAccountContractField の TwoFactorEmail (送信先フィールド) を設定するとパスワード成功後に 6 桁コードをメールで送り入力を求める。コードはサーバーのキャッシュ (IDistributedCache) に有効期限付き。試行超過で破棄。TotpSecretField があれば認証アプリ優先
+- **機能**: LoginAccountContractField の TwoFactorEmail (送信先フィールド) を設定するとパスワード成功後に 6 桁コードをメールで送り入力を求める。コードはサーバーのキャッシュ (IDistributedCache) に有効期限付き。試行超過で破棄。契約の TOTP 列があれば認証アプリ優先
 - **設定**: appsettings `EmailOtpLogin` (MailInfraName / Subject / Body / CodeLifetimeMinutes / MaxAttempts、すべて任意)
-
-#### TotpSecretField - 二要素認証 (TOTP) の秘密鍵列
-- **状態**: 実装済み (docs/TwoFactorLogin.md)
-- **機能**: ユーザーモジュール (CurrentUserModule) に置き、ユーザー行の 3 列 (秘密鍵 / 確認済み / 最終タイムステップ) を書き込み専用で名指しする宣言フィールド。UI も submit データも持たない。これがあるとテンプレートのログインが二要素認証付き (パスワード成功後にオーセンティケータのコード) になる
-- **要件**: サーバ側 `Codeer.LowCode.Blazor.Extras.Server.Auth.TotpLogin.Create(designData, settings, db)` (テンプレートの AccountController に組み込み済み) がログイン時に列を直接読み書きする
-- **ファイル**: `Designs/TotpSecretFieldDesign.cs`, `Fields/TotpSecretField.cs`, `Data/TotpSecretFieldData.cs`, `Components/TotpSecretFieldComponent.razor`
 
 #### PasswordHashField - パスワードハッシュ
 - **状態**: 実装済み (docs/PasswordHashField.md)

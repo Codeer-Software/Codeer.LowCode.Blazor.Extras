@@ -17,7 +17,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Auth
     /// <summary>
     /// ログイン時のユーザー行の読み書き。表・列はユーザーモジュール (AppSettings.CurrentUserModuleDesignName) のデザインから引く:
     /// 表 = モジュールの DbTable、ユーザー ID = <see cref="IdFieldDesign"/> の列、ログイン ID / 外部 IdP の突き合わせ / 有効フラグ / 表示名 = <see cref="LoginAccountContractFieldDesign"/> の役割、
-    /// ハッシュ / ソルト = <see cref="PasswordHashFieldDesign"/> の書き込み専用列 (あれば。無ければパスワードログインなし = 外部 IdP 専用)。
+    /// ハッシュ / ソルト = 契約の DbColumnPasswordHash / DbColumnPasswordSalt (書き込み専用。空ならパスワードログインなし = 外部 IdP 専用。書く側は PasswordHashField)。
     /// ログイン時はまだ認証済みユーザーがいないためモジュールの読み書き (権限モデル) は通せず、ここだけが SQL で直接読む (TotpLogin と同じ作法)。
     /// <code>
     /// var accounts = LoginAccountStore.Create(designData, dataService.DbAccess);   // ユーザーモジュールに LoginAccountContractField が無ければ null
@@ -45,17 +45,17 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Auth
             var module = designData.Modules.Find(designData.AppSettings.CurrentUserModuleDesignName);
             var contract = module?.Fields.OfType<LoginAccountContractFieldDesign>().FirstOrDefault();
             if (module == null || contract == null) return null;
-            return new LoginAccountStore(module, contract, module.Fields.OfType<PasswordHashFieldDesign>().FirstOrDefault(), db);
+            return new LoginAccountStore(module, contract, db);
         }
 
-        public LoginAccountStore(ModuleDesign userModule, LoginAccountContractFieldDesign contract, PasswordHashFieldDesign? passwordHash, IDbAccessor db)
+        public LoginAccountStore(ModuleDesign userModule, LoginAccountContractFieldDesign contract, IDbAccessor db)
         {
             var id = userModule.Fields.OfType<IdFieldDesign>().FirstOrDefault()
                 ?? throw new InvalidOperationException($"LoginAccountStore: module '{userModule.Name}' has no IdField.");
             if (string.IsNullOrWhiteSpace(userModule.DbTable)) throw new InvalidOperationException($"LoginAccountStore: DbTable of module '{userModule.Name}' is not set.");
             if (string.IsNullOrWhiteSpace(id.DbColumn)) throw new InvalidOperationException($"LoginAccountStore: DbColumn of IdField '{id.Name}' in module '{userModule.Name}' is not set.");
-            if (passwordHash != null && (string.IsNullOrWhiteSpace(passwordHash.DbColumnHash) || string.IsNullOrWhiteSpace(passwordHash.DbColumnSalt)))
-                throw new InvalidOperationException($"LoginAccountStore: DbColumnHash / DbColumnSalt of PasswordHashField '{passwordHash.Name}' in module '{userModule.Name}' are not set.");
+            if (string.IsNullOrWhiteSpace(contract.DbColumnPasswordHash) != string.IsNullOrWhiteSpace(contract.DbColumnPasswordSalt))
+                throw new InvalidOperationException($"LoginAccountStore: set both DbColumnPasswordHash and DbColumnPasswordSalt of {contract.Name} in module '{userModule.Name}', or neither.");
 
             _db = db;
             _dataSourceName = userModule.DataSourceName;
@@ -66,8 +66,8 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Auth
             _isActiveColumn = RoleColumn(userModule, contract, nameof(contract.IsActive), contract.IsActive);
             _displayNameColumn = RoleColumn(userModule, contract, nameof(contract.DisplayName), contract.DisplayName);
             _twoFactorEmailColumn = RoleColumn(userModule, contract, nameof(contract.TwoFactorEmail), contract.TwoFactorEmail);
-            _hashColumn = passwordHash?.DbColumnHash;
-            _saltColumn = passwordHash?.DbColumnSalt;
+            _hashColumn = contract.HasPassword ? contract.DbColumnPasswordHash : null;
+            _saltColumn = contract.HasPassword ? contract.DbColumnPasswordSalt : null;
         }
 
         //役割 → 自モジュールの DB 列。必須の役割が空なら例外、任意の役割が空なら null
@@ -84,7 +84,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Auth
             return field.DbColumn;
         }
 
-        /// <summary>ユーザーモジュールに PasswordHashField があり、ID/パスワードのログインができるか。</summary>
+        /// <summary>契約にパスワードのハッシュ / ソルト列があり、ID/パスワードのログインができるか。</summary>
         public bool HasPassword => _hashColumn != null;
 
         /// <summary>契約の TwoFactorEmail が設定され、メールのワンタイムコードによる二要素認証が有効か。</summary>
@@ -96,7 +96,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Auth
         /// </summary>
         public async Task<LoginAccount?> VerifyPasswordAsync(string? loginName, string? password)
         {
-            if (!HasPassword) throw new InvalidOperationException("LoginAccountStore: the user module has no PasswordHashField.");
+            if (!HasPassword) throw new InvalidOperationException("LoginAccountStore: the login account contract has no password columns.");
             if (string.IsNullOrEmpty(loginName)) return null;
             var row = await FindRowAsync(_loginNameColumn, loginName);
             if (row == null || !IsActive(row)) return null;
@@ -132,7 +132,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Auth
         /// </summary>
         public async Task AddAsync(string loginName, string password)
         {
-            if (!HasPassword) throw new InvalidOperationException("LoginAccountStore: the user module has no PasswordHashField.");
+            if (!HasPassword) throw new InvalidOperationException("LoginAccountStore: the login account contract has no password columns.");
             var (q, p) = Sql();
             var hashed = PasswordHashHelper.CreateHash(password);
             var columns = new List<string> { q(_loginNameColumn), q(_hashColumn!), q(_saltColumn!) };

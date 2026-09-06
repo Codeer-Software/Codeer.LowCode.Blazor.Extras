@@ -8,8 +8,8 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Auth
 {
     /// <summary>
     /// ID/パスワードのログインに足す二要素認証 (TOTP) の設定。appsettings のセクション名はアプリが決める (テンプレートは "TotpLogin")。
-    /// 有効・無効と列はデザインで決まる: ユーザーモジュール (AppSettings.CurrentUserModuleDesignName) に
-    /// <see cref="TotpSecretFieldDesign"/> を置くと有効。ここにあるのは表示用の設定だけ。
+    /// 有効・無効と列はデザインで決まる: ユーザーモジュール (AppSettings.CurrentUserModuleDesignName) の
+    /// <see cref="LoginAccountContractFieldDesign"/> に TOTP の 3 列 (秘密鍵 / 確認済み / 最終タイムステップ) を設定すると有効。ここにあるのは表示用の設定だけ。
     /// </summary>
     public class TotpLoginSettings
     {
@@ -55,7 +55,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Auth
     /// <summary>
     /// ID/パスワード検証の後に呼ぶ二要素認証。パスワードの検証とサインインはアプリ (AccountController) が行い、
     /// ここはコードの検証・初回登録・リプレイ防止と、ユーザー行の TOTP 列の読み書きだけを持つ。
-    /// 表・列はユーザーモジュールのデザイン (<see cref="IdFieldDesign"/> の列と <see cref="TotpSecretFieldDesign"/> の 3 列) から引く。
+    /// 表・列はユーザーモジュールのデザイン (<see cref="IdFieldDesign"/> の列と <see cref="LoginAccountContractFieldDesign"/> の TOTP 3 列) から引く。
     /// 列は書き込み専用なので通常のモジュール読み書きには出てこず、ここだけが SQL で直接触る (パスワードハッシュと同じ作法)。
     /// <code>
     /// var totp = TotpLogin.Create(designData, SystemConfig.Instance.TotpLogin, dataService.DbAccess);   // フィールドが無ければ null
@@ -81,21 +81,21 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Auth
         readonly string _confirmedColumn;
         readonly string _lastTimestepColumn;
 
-        /// <summary>ユーザーモジュールに <see cref="TotpSecretFieldDesign"/> があれば作る。無ければ null (二要素認証なし)。</summary>
+        /// <summary>ユーザーモジュールの <see cref="LoginAccountContractFieldDesign"/> に TOTP の 3 列が設定されていれば作る。無ければ null (認証アプリの二要素認証なし)。</summary>
         public static TotpLogin? Create(DesignData designData, TotpLoginSettings settings, IDbAccessor db)
         {
             var module = designData.Modules.Find(designData.AppSettings.CurrentUserModuleDesignName);
-            var field = module?.Fields.OfType<TotpSecretFieldDesign>().FirstOrDefault();
-            if (module == null || field == null) return null;
-            return new TotpLogin(module, field, settings, db);
+            var contract = module?.Fields.OfType<LoginAccountContractFieldDesign>().FirstOrDefault();
+            if (module == null || contract == null || !contract.HasTotp) return null;
+            return new TotpLogin(module, contract, settings, db);
         }
 
-        public TotpLogin(ModuleDesign userModule, TotpSecretFieldDesign field, TotpLoginSettings settings, IDbAccessor db)
+        public TotpLogin(ModuleDesign userModule, LoginAccountContractFieldDesign contract, TotpLoginSettings settings, IDbAccessor db)
         {
             var id = userModule.Fields.OfType<IdFieldDesign>().FirstOrDefault()
                 ?? throw new InvalidOperationException($"TotpLogin: module '{userModule.Name}' has no IdField.");
             foreach (var (name, value) in new[] { (nameof(userModule.DbTable), userModule.DbTable), (nameof(id.DbColumn), id.DbColumn),
-                (nameof(field.DbColumnSecret), field.DbColumnSecret), (nameof(field.DbColumnConfirmed), field.DbColumnConfirmed), (nameof(field.DbColumnLastTimestep), field.DbColumnLastTimestep) })
+                (nameof(contract.DbColumnTotpSecret), contract.DbColumnTotpSecret), (nameof(contract.DbColumnTotpConfirmed), contract.DbColumnTotpConfirmed), (nameof(contract.DbColumnTotpLastTimestep), contract.DbColumnTotpLastTimestep) })
             {
                 if (string.IsNullOrWhiteSpace(value)) throw new InvalidOperationException($"TotpLogin: {name} of module '{userModule.Name}' is not set.");
             }
@@ -104,9 +104,9 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Auth
             _dataSourceName = userModule.DataSourceName;
             _table = userModule.DbTable;
             _idColumn = id.DbColumn;
-            _secretColumn = field.DbColumnSecret;
-            _confirmedColumn = field.DbColumnConfirmed;
-            _lastTimestepColumn = field.DbColumnLastTimestep;
+            _secretColumn = contract.DbColumnTotpSecret;
+            _confirmedColumn = contract.DbColumnTotpConfirmed;
+            _lastTimestepColumn = contract.DbColumnTotpLastTimestep;
         }
 
         /// <summary>

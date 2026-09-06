@@ -4,7 +4,7 @@
 
 | 方式 | 有効にする方法 | 強度・特徴 |
 |---|---|---|
-| 認証アプリ (TOTP) | ユーザーモジュールに `TotpSecretField` を置く | RFC 6238 (HMAC-SHA1 / 30 秒 / 6 桁)。初回ログインで QR を登録。オフラインで動く。列が 3 つ要る |
+| 認証アプリ (TOTP) | ユーザーモジュールの `LoginAccountContractField` に TOTP の 3 列 (秘密鍵 / 確認済み / 最終タイムステップ) を設定 | RFC 6238 (HMAC-SHA1 / 30 秒 / 6 桁)。初回ログインで QR を登録。オフラインで動く |
 | メールのワンタイムコード | ユーザーモジュールの `LoginAccountContractField` の `TwoFactorEmail` に送信先のフィールドを設定 | 6 桁コードをメールで送る。ユーザー側の登録不要で導入が軽い。メールを受け取れる = 本人という前提。列は不要 (コードはサーバーのキャッシュ)。メール送信の設定 (docs/Mail.md) が前提 |
 
 両方あるときは認証アプリが優先される。クライアント (login.html / MAUI の Login.razor) は `POST api/account/login` の応答の `status` で 2 段階目の種類を知る。
@@ -19,7 +19,7 @@
 - コードの置き場は `IDistributedCache` (テンプレートは `CookieAuthentication.cs` で `AddDistributedMemoryCache()`)。複数インスタンスでは Redis 等の共有キャッシュに差し替える (docs/ExternalLogin.md の「複数インスタンスの注意」)
 
 ```csharp
-// AccountController.Login: パスワード検証の後 (TotpSecretField が無いときだけ)
+// AccountController.Login: パスワード検証の後 (契約に TOTP 列が無いときだけ)
 if (accounts.HasTwoFactorEmail)
 {
     var email = new EmailOtpLogin(SystemConfig.Instance.EmailOtpLogin, message => CreateMailDispatcher().SendAsync(...), _cache);
@@ -30,12 +30,12 @@ if (accounts.HasTwoFactorEmail)
 
 ## 認証アプリ (TOTP)
 
-`TotpSecretField` + `TotpLogin`。オーセンティケータアプリ (Google Authenticator / Microsoft Authenticator 等) の 6 桁コード。RFC 6238 (HMAC-SHA1 / 30 秒 / 6 桁)。QR コードは QRCoder。
+`LoginAccountContractField` の TOTP 列 + `TotpLogin`。オーセンティケータアプリ (Google Authenticator / Microsoft Authenticator 等) の 6 桁コード。RFC 6238 (HMAC-SHA1 / 30 秒 / 6 桁)。QR コードは QRCoder。
 
 ## 考え方
 
-- 有効・無効と列の場所は **デザインで決まる**: ユーザーモジュール (`AppSettings.CurrentUserModuleDesignName`) に `TotpSecretField` を置き、
-  ユーザー行の 3 列 (秘密鍵 / 確認済み / 最終タイムステップ) を名指しする。フィールドを外せば従来のログインに戻る。appsettings に列名の設定は無い
+- 有効・無効と列の場所は **デザインで決まる**: ユーザーモジュール (`AppSettings.CurrentUserModuleDesignName`) の `LoginAccountContractField` に
+  ユーザー行の 3 列 (秘密鍵 / 確認済み / 最終タイムステップ) を設定する。空に戻せば従来のログインに戻る。appsettings に列名の設定は無い
 - 3 列は書き込み専用 (PasswordHashField のハッシュ・ソルトと同じ)。通常のモジュール読み書きには出てこず、クライアントに秘密鍵が渡ることはない。
   ユーザーを画面で編集しても列は触られない
 - パスワードの検証とサインインはこれまでどおりテンプレートの `AccountController`。パッケージ (`TotpLogin`) は「パスワードが通った後にコードを検証する」部分だけを持ち、
@@ -53,7 +53,7 @@ if (accounts.HasTwoFactorEmail)
    totp_last_timestep INTEGER NULL
    ```
 
-2. デザイナでユーザーモジュールに `TotpSecretField` を追加し、3 列を割り当てる ([フィールドの説明](../Source/Codeer.LowCode.Blazor.Extras.Designer/FieldDocs/TotpSecretFieldDesign.md))
+2. デザイナでユーザーモジュールの `LoginAccountContractField` に 3 列を割り当てる ([契約の説明](../Source/Codeer.LowCode.Blazor.Extras.Designer/FieldDocs/LoginAccountContractFieldDesign.md))
 
 3. 任意: appsettings でオーセンティケータに表示するアプリ名を変える (既定 "LowCodeApp")
 
@@ -81,7 +81,7 @@ if (accounts.HasTwoFactorEmail)
 
 ```csharp
 // AccountController.Login: パスワード検証の後
-var totp = TotpLogin.Create(designData, SystemConfig.Instance.TotpLogin, _dataService.DbAccess);   // フィールドが無ければ null
+var totp = TotpLogin.Create(designData, SystemConfig.Instance.TotpLogin, _dataService.DbAccess);   // 契約に TOTP 列が無ければ null
 if (totp != null)
 {
     var result = await totp.VerifyAsync(account.UserId, account.LoginName, loginInfo.TwoFactorCode);
