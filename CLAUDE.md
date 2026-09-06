@@ -124,6 +124,17 @@ dotnet build Source/Codeer.LowCode.Blazor.Extras/Codeer.LowCode.Blazor.Extras.cs
 - **機能**: LoginAccountContractField の TwoFactorEmail (送信先フィールド) を設定するとパスワード成功後に 6 桁コードをメールで送り入力を求める。コードはサーバーのキャッシュ (IDistributedCache) に有効期限付き。試行超過で破棄。契約の TOTP 列があれば認証アプリ優先
 - **設定**: appsettings `EmailOtpLogin` (MailInfraName / Subject / Body / CodeLifetimeMinutes / MaxAttempts、すべて任意)
 
+#### TotpResetButtonField - 認証アプリ解除ボタン
+- **状態**: 実装済み (Extras.Designer FieldDocs/TotpResetButtonFieldDesign.md)
+- **機能**: ログインユーザーモジュールの詳細画面に置く。表示中の行のユーザーが認証アプリ (TOTP) 登録済みなら解除ボタン。自分の行は本人解除、他人の行は「その行を編集できる人」だけ (サーバーが CLB の権限で判定 = core `ModuleDataIO.CheckUpdateAuthorizationAsync`)。状態はサーバー問い合わせ (列は書き込み専用)
+- **結線**: 静的 `TotpResetClient.StatusEndPoint` / `ResetEndPoint` (テンプレートは api/account/totp/status, /reset)
+- **ファイル**: `Designs/TotpResetButtonFieldDesign.cs`, `Fields/TotpResetButtonField.cs`, `Fields/TotpResetClient.cs` (共通の状態取得・解除), `Components/TotpResetButtonFieldComponent.razor`
+
+#### MyTotpResetButtonField - 自分の認証アプリ解除ボタン
+- **状態**: 実装済み (Extras.Designer FieldDocs/MyTotpResetButtonFieldDesign.md)
+- **機能**: ログイン中の自分の認証アプリ登録を解除するボタン。表示中の行とは無関係で、どのモジュールにも置ける (設定画面・マイページ)。TotpResetButtonField (表示中の行のユーザー・管理者用) と TotpResetClient を共有
+- **ファイル**: `Designs/MyTotpResetButtonFieldDesign.cs`, `Fields/MyTotpResetButtonField.cs`, `Components/MyTotpResetButtonFieldComponent.razor`
+
 #### PasswordHashField - パスワードハッシュ
 - **状態**: 実装済み (docs/PasswordHashField.md)
 - **機能**: 平文 `PasswordField` を Submit 時にハッシュ+ソルトへ変換し、2つのDBカラムへ書き込む書き込み専用フィールド。UIなし

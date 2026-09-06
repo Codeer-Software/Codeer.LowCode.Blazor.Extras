@@ -599,6 +599,42 @@ Recipients: {1}</value>
   <data name="LoginAccountCheck_TotpColumnsSet" xml:space="preserve">
     <value>Set all three authenticator-app columns (secret / confirmed / last time step), or none.</value>
   </data>
+  <data name="TotpResetButtonField" xml:space="preserve">
+    <value>Authenticator Reset Button</value>
+  </data>
+  <data name="TotpResetButtonText" xml:space="preserve">
+    <value>Button text</value>
+  </data>
+  <data name="TotpResetButtonConfirmMessage" xml:space="preserve">
+    <value>Confirm message</value>
+  </data>
+  <data name="TotpResetButton_DefaultText" xml:space="preserve">
+    <value>Reset authenticator app</value>
+  </data>
+  <data name="TotpResetButton_Registered" xml:space="preserve">
+    <value>Authenticator app: registered</value>
+  </data>
+  <data name="TotpResetButton_NotRegistered" xml:space="preserve">
+    <value>Authenticator app: not registered</value>
+  </data>
+  <data name="TotpResetButton_Confirm" xml:space="preserve">
+    <value>Remove the authenticator app registration of this user? They will register again at the next login.</value>
+  </data>
+  <data name="TotpResetButton_Action" xml:space="preserve">
+    <value>Reset</value>
+  </data>
+  <data name="TotpResetButton_Done" xml:space="preserve">
+    <value>The authenticator app registration was removed.</value>
+  </data>
+  <data name="TotpResetButton_Failed" xml:space="preserve">
+    <value>Could not reset (no permission, or the server does not support it).</value>
+  </data>
+  <data name="TotpResetCheck_NotOnUserModule" xml:space="preserve">
+    <value>Place TotpResetButtonField on the login user module (AppSettings.CurrentUserModuleDesignName).</value>
+  </data>
+  <data name="MyTotpResetButtonField" xml:space="preserve">
+    <value>My Authenticator Reset Button</value>
+  </data>
   <data name="MailHistoryContractField" xml:space="preserve">
     <value>Mail History Contract</value>
   </data>

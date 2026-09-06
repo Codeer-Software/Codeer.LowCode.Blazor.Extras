@@ -259,6 +259,213 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
         }
         
         /// <summary>
+        ///   TotpResetButton_DefaultText に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string TotpResetButton_DefaultText {
+            get {
+                return ResourceManager.GetString("TotpResetButton_DefaultText", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   TotpResetButton_Registered に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string TotpResetButton_Registered {
+            get {
+                return ResourceManager.GetString("TotpResetButton_Registered", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   TotpResetButton_NotRegistered に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string TotpResetButton_NotRegistered {
+            get {
+                return ResourceManager.GetString("TotpResetButton_NotRegistered", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   TotpResetButton_Confirm に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string TotpResetButton_Confirm {
+            get {
+                return ResourceManager.GetString("TotpResetButton_Confirm", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   TotpResetButton_Action に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string TotpResetButton_Action {
+            get {
+                return ResourceManager.GetString("TotpResetButton_Action", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   TotpResetButton_Done に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string TotpResetButton_Done {
+            get {
+                return ResourceManager.GetString("TotpResetButton_Done", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   TotpResetButton_Failed に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string TotpResetButton_Failed {
+            get {
+                return ResourceManager.GetString("TotpResetButton_Failed", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   TotpResetCheck_NotOnUserModule に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string TotpResetCheck_NotOnUserModule {
+            get {
+                return ResourceManager.GetString("TotpResetCheck_NotOnUserModule", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   LoginAccountContractField に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string LoginAccountContractField {
+            get {
+                return ResourceManager.GetString("LoginAccountContractField", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   LoginAccountContractLoginName に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string LoginAccountContractLoginName {
+            get {
+                return ResourceManager.GetString("LoginAccountContractLoginName", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   LoginAccountContractExternalLoginName に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string LoginAccountContractExternalLoginName {
+            get {
+                return ResourceManager.GetString("LoginAccountContractExternalLoginName", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   LoginAccountContractIsActive に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string LoginAccountContractIsActive {
+            get {
+                return ResourceManager.GetString("LoginAccountContractIsActive", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   LoginAccountContractDisplayName に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string LoginAccountContractDisplayName {
+            get {
+                return ResourceManager.GetString("LoginAccountContractDisplayName", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   LoginAccountContractTwoFactorEmail に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string LoginAccountContractTwoFactorEmail {
+            get {
+                return ResourceManager.GetString("LoginAccountContractTwoFactorEmail", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   LoginAccountContractDbColumnPasswordHash に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string LoginAccountContractDbColumnPasswordHash {
+            get {
+                return ResourceManager.GetString("LoginAccountContractDbColumnPasswordHash", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   LoginAccountContractDbColumnPasswordSalt に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string LoginAccountContractDbColumnPasswordSalt {
+            get {
+                return ResourceManager.GetString("LoginAccountContractDbColumnPasswordSalt", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   LoginAccountContractDbColumnTotpSecret に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string LoginAccountContractDbColumnTotpSecret {
+            get {
+                return ResourceManager.GetString("LoginAccountContractDbColumnTotpSecret", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   LoginAccountContractDbColumnTotpConfirmed に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string LoginAccountContractDbColumnTotpConfirmed {
+            get {
+                return ResourceManager.GetString("LoginAccountContractDbColumnTotpConfirmed", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   LoginAccountContractDbColumnTotpLastTimestep に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string LoginAccountContractDbColumnTotpLastTimestep {
+            get {
+                return ResourceManager.GetString("LoginAccountContractDbColumnTotpLastTimestep", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   TotpResetButtonField に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string TotpResetButtonField {
+            get {
+                return ResourceManager.GetString("TotpResetButtonField", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   TotpResetButtonText に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string TotpResetButtonText {
+            get {
+                return ResourceManager.GetString("TotpResetButtonText", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   TotpResetButtonConfirmMessage に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string TotpResetButtonConfirmMessage {
+            get {
+                return ResourceManager.GetString("TotpResetButtonConfirmMessage", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   MyTotpResetButtonField に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string MyTotpResetButtonField {
+            get {
+                return ResourceManager.GetString("MyTotpResetButtonField", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Week に類似しているローカライズされた文字列を検索します。
         /// </summary>
         internal static string Week {

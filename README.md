@@ -31,6 +31,8 @@
 | [EnterFocusMoveField](docs/EnterFocusMoveField.md) | Enterキーでモジュール内の次の入力要素にフォーカスを移動させるユーティリティフィールド |
 | [LoginAccountContractField](Source/Codeer.LowCode.Blazor.Extras.Designer/FieldDocs/LoginAccountContractFieldDesign.md) | ユーザーモジュールに置く契約フィールド。ログイン ID・外部 IdP の突き合わせ・有効フラグ・表示名・メール二要素の送信先を役割で、パスワード照合用の列と認証アプリ (TOTP) の列を書き込み専用列で宣言する。テンプレートのログインはこれだけを見る |
 | [二要素認証](docs/TwoFactorLogin.md) | LoginAccountContractField の TOTP 列 (認証アプリ) か TwoFactorEmail (メールのワンタイムコード) を設定すると、パスワード成功後に 6 桁コードの入力を求める (Extras.Server の TotpLogin / EmailOtpLogin) |
+| [TotpResetButtonField](Source/Codeer.LowCode.Blazor.Extras.Designer/FieldDocs/TotpResetButtonFieldDesign.md) | 表示中のユーザーの認証アプリ (TOTP) 登録を解除するボタン (管理者用)。ユーザーモジュールの詳細画面に置く。その行を編集できる人だけが解除できる |
+| [MyTotpResetButtonField](Source/Codeer.LowCode.Blazor.Extras.Designer/FieldDocs/MyTotpResetButtonFieldDesign.md) | ログイン中の自分の認証アプリ登録を解除するボタン (本人用)。設定画面などどのモジュールにも置ける |
 | [PasswordHashField](docs/PasswordHashField.md) | パスワードを Submit 時にハッシュ + ソルトへ変換して DB に書き込む補助フィールド (サーバサイド実装が必要) |
 | [OrientationLockField](docs/OrientationLockField.md) | タッチ端末で画面の向き(横/縦)が指定と異なるとき、全画面オーバーレイで回転を促すフィールド |
 | [AITextAnalyzerField](docs/AITextAnalyzerField.md) | 帳票ファイルや自由テキストを AI で解析し、モジュールのフィールドへ自動入力する入力補助フィールド (Azure OpenAI + Document Intelligence を使用) |
