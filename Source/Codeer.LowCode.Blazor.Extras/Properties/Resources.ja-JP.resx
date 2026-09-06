@@ -435,6 +435,9 @@
   <data name="PasswordHashField" xml:space="preserve">
     <value>パスワードハッシュ</value>
   </data>
+  <data name="TotpSecretField" xml:space="preserve">
+    <value>TOTP 秘密鍵</value>
+  </data>
   <data name="ProgressField" xml:space="preserve">
     <value>プログレスバー</value>
   </data>
@@ -559,6 +562,21 @@
   </data>
   <data name="MailFieldNoRecipient" xml:space="preserve">
     <value>宛先が解決できませんでした</value>
+  </data>
+  <data name="LoginAccountContractField" xml:space="preserve">
+    <value>ログインアカウント契約</value>
+  </data>
+  <data name="LoginAccountContractLoginName" xml:space="preserve">
+    <value>ログイン ID (必須)</value>
+  </data>
+  <data name="LoginAccountContractExternalLoginName" xml:space="preserve">
+    <value>外部 IdP の突き合わせ (UPN・メール。空なら ログイン ID)</value>
+  </data>
+  <data name="LoginAccountContractIsActive" xml:space="preserve">
+    <value>有効フラグ (空なら判定しない)</value>
+  </data>
+  <data name="LoginAccountContractDisplayName" xml:space="preserve">
+    <value>表示名 (空なら ログイン ID)</value>
   </data>
   <data name="MailHistoryContractField" xml:space="preserve">
     <value>メール履歴契約</value>

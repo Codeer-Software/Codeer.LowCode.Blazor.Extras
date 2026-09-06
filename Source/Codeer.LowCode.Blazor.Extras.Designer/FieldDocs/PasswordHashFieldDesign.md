@@ -13,7 +13,7 @@
 このフィールドを置くだけでは**ハッシュは計算されない**。ハッシュ化はサーバ側のヘルパ `Codeer.LowCode.Blazor.Extras.Services.PasswordHashHelper` を呼んで行う。
 
 - 保存時にハッシュ化: `ModuleDataIO` の派生（通常 `CustomizedModuleDataIO.AddAsync` / `UpdateAsync`）で `PasswordHashHelper.ApplyPasswordHash(moduleDesign, data)` を呼ぶ。これでモジュール上の各 PasswordHashField について、参照先 PasswordField に値があればハッシュ＋ソルトを再計算して書き込む。
-- ログイン照合: `PasswordHashHelper.VerifyHash(password, hash, salt)` で検証する。
+- ログイン照合: テンプレートは `Codeer.LowCode.Blazor.Extras.Server.Auth.LoginAccountStore.Create(designData, db)` → `VerifyPasswordAsync(loginId, password)` を使う（表・列はユーザーモジュールのデザインから: ログイン ID は [LoginAccountContractField](LoginAccountContractFieldDesign.md)、ハッシュ / ソルトはこのフィールドの列）。独自に照合するなら `PasswordHashHelper.VerifyHash(password, hash, salt)`。
 
 ハッシュ仕様: PBKDF2-HMAC-SHA256 / 100,000 反復 / 32 バイトソルト / 32 バイトハッシュ / base64 文字列で保存。
 

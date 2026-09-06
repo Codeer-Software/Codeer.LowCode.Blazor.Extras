@@ -114,6 +114,17 @@ dotnet build Source/Codeer.LowCode.Blazor.Extras/Codeer.LowCode.Blazor.Extras.cs
 - **除外**: `<textarea>`, `contenteditable`, `data-consumes-enter` 属性を持つ要素, Submit ボタン
 - **ファイル**: `Designs/EnterFocusMoveFieldDesign.cs`, `Fields/EnterFocusMoveField.cs`, `Components/EnterFocusMoveFieldComponent.razor`, `wwwroot/enterfocusmove-interop.js`
 
+#### LoginAccountContractField - ログインアカウント契約
+- **状態**: 実装済み (Extras.Designer FieldDocs/LoginAccountContractFieldDesign.md)
+- **機能**: ユーザーモジュール (CurrentUserModule) に置き、行がログインアカウントとしてどう振る舞うかを役割で宣言する契約フィールド: LoginName (必須) / ExternalLoginName (外部 IdP の突き合わせ。空なら LoginName) / IsActive (偽なら拒否) / DisplayName (Cookie の Name と TOTP の QR)。テンプレートのログイン (Extras.Server `LoginAccountStore`) がこれでユーザー行を扱う: ID/パスワード照合 (PasswordHashField の列)、外部 IdP の本人解決、停止ユーザーの拒否、初回 admin 作成。パスワードを使わない構成でも必要
+- **ファイル**: `Designs/LoginAccountContractFieldDesign.cs` (`ContractFieldDesignBase` 派生。UI・データ無し)
+
+#### TotpSecretField - 二要素認証 (TOTP) の秘密鍵列
+- **状態**: 実装済み (docs/TotpLogin.md)
+- **機能**: ユーザーモジュール (CurrentUserModule) に置き、ユーザー行の 3 列 (秘密鍵 / 確認済み / 最終タイムステップ) を書き込み専用で名指しする宣言フィールド。UI も submit データも持たない。これがあるとテンプレートのログインが二要素認証付き (パスワード成功後にオーセンティケータのコード) になる
+- **要件**: サーバ側 `Codeer.LowCode.Blazor.Extras.Server.Auth.TotpLogin.Create(designData, settings, db)` (テンプレートの AccountController に組み込み済み) がログイン時に列を直接読み書きする
+- **ファイル**: `Designs/TotpSecretFieldDesign.cs`, `Fields/TotpSecretField.cs`, `Data/TotpSecretFieldData.cs`, `Components/TotpSecretFieldComponent.razor`
+
 #### PasswordHashField - パスワードハッシュ
 - **状態**: 実装済み (docs/PasswordHashField.md)
 - **機能**: 平文 `PasswordField` を Submit 時にハッシュ+ソルトへ変換し、2つのDBカラムへ書き込む書き込み専用フィールド。UIなし

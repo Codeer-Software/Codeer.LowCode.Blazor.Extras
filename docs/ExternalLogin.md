@@ -83,7 +83,7 @@ IdP の種類ごとに独立したセクション (メールの `Smtp` / `GraphA
    builder.Services.AddScoped<IExternalLoginUserResolver, ExternalLoginUserResolver>();
    ```
 3. **ユーザー解決** (`ExternalLoginUserResolver.cs`) — IdP が確認した本人 (`ExternalLoginIdentity`: `LoginName` / `Subject` / `Email` / `DisplayName` / 全クレーム) を
-   ユーザーテーブルの 1 行 (`ExternalLoginUser(UserId, UserName)`) にする。テンプレートは **事前登録制** (ユーザー名列と一致する行があるときだけ許可)。
+   ユーザーテーブルの 1 行 (`ExternalLoginUser(UserId, UserName)`) にする。テンプレートは **事前登録制** (ユーザーモジュールの `LoginAccountContractField` の ExternalLoginName の列 (空なら LoginName の列) と一致し、IsActive が偽でない行があるときだけ許可。`LoginAccountStore.FindByExternalLoginNameAsync`)。
    自動作成・招待制・`Subject` での紐付けはこのクラスを書き換える。`null` を返すとサインインしない
 
 `AccountController` のエンドポイント (API 契約。login.html はこれを使う参考実装で、ブランディングで自由に触ってよい):

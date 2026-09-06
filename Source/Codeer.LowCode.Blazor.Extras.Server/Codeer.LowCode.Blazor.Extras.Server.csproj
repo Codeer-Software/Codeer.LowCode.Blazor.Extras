@@ -8,7 +8,7 @@
 		<Version>0.8.5</Version>
 		<Authors>Codeer</Authors>
 		<Company>Codeer</Company>
-		<Description>Server-side services for Codeer.LowCode.Blazor apps. Includes AI document analysis (Azure Document Intelligence + Azure OpenAI), mail sending (SMTP / Microsoft Graph / SendGrid / Gmail), file storage (file system / Azure Blob / S3), external logins (Entra ID / Google / AWS Cognito / OIDC), and ASP.NET Core helpers (hot reload, ETag file responses).</Description>
+		<Description>Server-side services for Codeer.LowCode.Blazor apps. Includes AI document analysis (Azure Document Intelligence + Azure OpenAI), mail sending (SMTP / Microsoft Graph / SendGrid / Gmail), file storage (file system / Azure Blob / S3), external logins (Entra ID / Google / AWS Cognito / OIDC), TOTP two-factor authentication, and ASP.NET Core helpers (hot reload, ETag file responses).</Description>
 		<PackageProjectUrl>https://github.com/Codeer-Software/Codeer.LowCode.Blazor.Extras</PackageProjectUrl>
 		<RepositoryUrl>https://github.com/Codeer-Software/Codeer.LowCode.Blazor.Extras</RepositoryUrl>
 		<RepositoryType>git</RepositoryType>
@@ -16,7 +16,10 @@
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>
 		<PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
-		<PackageReleaseNotes>External logins (Codeer.LowCode.Blazor.Extras.Server.Auth): sign in with Microsoft Entra ID, Google, AWS Cognito or any OpenID Connect provider on top of the cookie authentication. AddExternalLogins(...) registers every provider that has a ClientId in the ExternalLogins configuration section; the verified identity is mapped to a user row by the application's IExternalLoginUserResolver, so authorization (user module, UserRead/Write conditions) is unchanged. Includes per-provider validation (Entra UPN / guest rejection / issuer format for multi-tenant, verified e-mail for Google and Cognito, allowed domains), two-step logout that also ends the IdP session, and a one-time ticket flow for native (MAUI) clients that sign in through the system browser. See docs/ExternalLogin.md.</PackageReleaseNotes>
+		<PackageReleaseNotes>Authentication (Codeer.LowCode.Blazor.Extras.Server.Auth), two additions to the cookie login of the templates.
+External logins: sign in with Microsoft Entra ID, Google, AWS Cognito or any OpenID Connect provider. IExternalLoginProvider with EntraLoginProvider / GoogleLoginProvider / CognitoLoginProvider / OidcLoginProvider, each taking its own settings class (the same shape as IMailSender / IFileStorage); the application lists the configured providers in a table (ExternalLoginTable in the templates) and passes them to AddExternalLogins(...). The verified identity is mapped to a user row by the application's IExternalLoginUserResolver, so authorization (user module, UserRead/Write conditions) is unchanged. Includes per-provider validation (Entra UPN / guest rejection / issuer format for multi-tenant, verified e-mail for Google and Cognito, allowed domains), two-step logout that also ends the IdP session, and a one-time ticket flow for native (MAUI) clients that sign in through the system browser. See docs/ExternalLogin.md.
+TOTP two-factor authentication (RFC 6238) for the ID/password login: TotpLogin verifies the authenticator code after the password check, enrolls on first login (QR code via QRCoder), keeps the secret in a table named by TotpLoginSettings (no DDL is issued) and rejects reused codes. See docs/TotpLogin.md.
+LoginAccountStore: the login-time access to the user table (verify ID/password, resolve an external identity to an account, reject inactive accounts, create the initial administrator). Table and columns come from the current-user module design: IdField, LoginAccountContractField (login ID / external match / active flag / display name) and PasswordHashField (hash / salt, optional for IdP-only apps). Requires Codeer.LowCode.Blazor.Extras 0.8.3.</PackageReleaseNotes>
 		<PackageId>Codeer.LowCode.Blazor.Extras.Server</PackageId>
 	</PropertyGroup>
 

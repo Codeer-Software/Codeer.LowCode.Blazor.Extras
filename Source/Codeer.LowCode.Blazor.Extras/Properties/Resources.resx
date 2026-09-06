@@ -435,6 +435,9 @@
   <data name="PasswordHashField" xml:space="preserve">
     <value>Password Hash</value>
   </data>
+  <data name="TotpSecretField" xml:space="preserve">
+    <value>TOTP Secret</value>
+  </data>
   <data name="ProgressField" xml:space="preserve">
     <value>Progress Bar</value>
   </data>
@@ -559,6 +562,21 @@ Recipients: {1}</value>
   </data>
   <data name="MailFieldNoRecipient" xml:space="preserve">
     <value>No recipient address could be resolved.</value>
+  </data>
+  <data name="LoginAccountContractField" xml:space="preserve">
+    <value>Login Account Contract</value>
+  </data>
+  <data name="LoginAccountContractLoginName" xml:space="preserve">
+    <value>Login ID (required)</value>
+  </data>
+  <data name="LoginAccountContractExternalLoginName" xml:space="preserve">
+    <value>External login match (UPN / e-mail; empty = Login ID)</value>
+  </data>
+  <data name="LoginAccountContractIsActive" xml:space="preserve">
+    <value>Active flag (empty = not checked)</value>
+  </data>
+  <data name="LoginAccountContractDisplayName" xml:space="preserve">
+    <value>Display name (empty = Login ID)</value>
   </data>
   <data name="MailHistoryContractField" xml:space="preserve">
     <value>Mail History Contract</value>
