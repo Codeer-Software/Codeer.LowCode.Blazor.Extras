@@ -60,6 +60,32 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Auth
         }
 
         [Test]
+        public void Oidc_EmailAsLoginName_RejectsUnverifiedEmail()
+        {
+            //ユーザー名が email から来るときだけ email_verified=false を拒否する (クレームが無い IdP は通す)
+            var provider = new OidcLoginProvider(new() { Name = "K", ClientId = "id", Authority = "https://idp" });
+            Assert.That(provider.CreateIdentity(Principal(("sub", "S1"), ("email", "e@x"), ("email_verified", "false")), out var error), Is.Null);
+            Assert.That(error, Is.EqualTo(ExternalLoginError.InvalidClaims));
+            Assert.That(provider.CreateIdentity(Principal(("sub", "S1"), ("email", "e@x"), ("email_verified", "true")), out _)?.LoginName, Is.EqualTo("e@x"));
+            Assert.That(provider.CreateIdentity(Principal(("sub", "S1"), ("email", "e@x")), out _)?.LoginName, Is.EqualTo("e@x"), "email_verified を返さない IdP は判定しない");
+
+            //preferred_username がユーザー名なら email の検証状態は関係ない
+            Assert.That(provider.CreateIdentity(Principal(("sub", "S1"), ("preferred_username", "u1"), ("email", "e@x"), ("email_verified", "false")), out _)?.LoginName, Is.EqualTo("u1"));
+
+            //LoginNameClaim = email を明示したときも同じ
+            var byEmail = new OidcLoginProvider(new() { Name = "K", ClientId = "id", Authority = "https://idp", LoginNameClaim = "email" });
+            Assert.That(byEmail.CreateIdentity(Principal(("sub", "S1"), ("preferred_username", "u1"), ("email", "e@x"), ("email_verified", "false")), out _), Is.Null);
+            Assert.That(byEmail.CreateIdentity(Principal(("sub", "S1"), ("email", "e@x"), ("email_verified", "true")), out _)?.LoginName, Is.EqualTo("e@x"));
+        }
+
+        [Test]
+        public void Oidc_ScopesAlwaysIncludeOpenId()
+        {
+            var options = Configure(new OidcLoginProvider(new() { Name = "K", ClientId = "id", Authority = "https://idp", Scopes = ["email", "roles"] }));
+            Assert.That(options.Scope, Is.EquivalentTo(new[] { "openid", "email", "roles" }), "openid を落とした設定でも OIDC として成立させる");
+        }
+
+        [Test]
         public void Oidc_MissingSubject_IsInvalid()
         {
             var provider = new OidcLoginProvider(new() { Name = "K", ClientId = "id", Authority = "https://idp" });

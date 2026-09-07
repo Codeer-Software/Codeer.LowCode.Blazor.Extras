@@ -56,7 +56,7 @@ IdP の種類ごとに独立したセクション (メールの `Smtp` / `GraphA
 | `EntraLogin` | `EntraLoginProvider` | `ClientId` `ClientSecret` `TenantId` (GUID = そのテナントだけ / `organizations` (既定) = 任意の職場アカウント / `common` = 個人アカウントも) `AllowGuests` `AllowedDomains` `DisplayName` |
 | `GoogleLogin` | `GoogleLoginProvider` | `ClientId` `ClientSecret` `AllowedDomains` `DisplayName` |
 | `CognitoLogin` | `CognitoLoginProvider` | `ClientId` `ClientSecret` `Authority` (必須) `Domain` (ホスト UI。IdP ログアウトに使う) `LoginNameClaim` (既定 email。メール検証オフのプールは `cognito:username`) `AllowedDomains` |
-| `OidcLogins[]` | `OidcLoginProvider` | `Name` (必須) `ClientId` `ClientSecret` `Authority` (必須) `Scopes` (既定 openid email profile) `LoginNameClaim` (既定 preferred_username → email → sub) `AllowedDomains` `DisplayName` |
+| `OidcLogins[]` | `OidcLoginProvider` | `Name` (必須) `ClientId` `ClientSecret` `Authority` (必須) `Scopes` (既定 openid email profile) `LoginNameClaim` (既定 preferred_username → email → sub。一意・安定が仕様で保証されるのは sub だけなので、ユーザー名に使うクレームは IdP の運用に合わせて決める) `AllowedDomains` `DisplayName` |
 
 ## IdP 側の登録
 
@@ -102,7 +102,8 @@ IdP の種類ごとに独立したセクション (メールの `Smtp` / `GraphA
 
 - Entra: メールクレームは詐称できるので **UPN (`preferred_username`)** をユーザー名にする。ゲスト (`#EXT#`) は既定で拒否。
   `organizations` / `common` は issuer がテナントごとに違うため `https://login.microsoftonline.com/{GUID}/v2.0` の形式で検証
-- Google / Cognito: `email_verified == true` のメールだけ
+- Google / Cognito: `email_verified == true` のメールだけ。汎用 OIDC もユーザー名を `email` から取るときは `email_verified == false` を拒否する (クレームを返さない IdP は判定できないので通す)
+- `Scopes` に `openid` が無ければ自動で足す (無いと id_token が返らず OIDC として成立しない)
 - Authorization Code + PKCE。クレーム名は id_token のまま (`MapInboundClaims = false`)。IdP 側の失敗は詳細を漏らさずログイン画面へ
 - Cookie にはパスワードログインと同形の最小クレーム (`Name` / `NameIdentifier`) と経路 (`idp`) だけを積む。IdP のトークンは Cookie の認証プロパティに保持 (ログアウトの `id_token_hint` 用)
 

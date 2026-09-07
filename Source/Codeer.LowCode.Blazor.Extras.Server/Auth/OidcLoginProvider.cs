@@ -63,7 +63,9 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Auth
             _clientId = clientId;
             _clientSecret = clientSecret;
             _authority = authority.Trim();
-            _scopes = scopes.Length == 0 ? ["openid", "email", "profile"] : scopes;
+            //openid が無いと OIDC として成立しない (id_token が返らない) ので、明示された Scopes に無くても必ず足す
+            _scopes = scopes.Length == 0 ? ["openid", "email", "profile"]
+                : scopes.Any(s => s == "openid") ? scopes : ["openid", .. scopes];
             _loginNameClaim = loginNameClaim.Trim();
             _allowedDomains = allowedDomains;
         }
@@ -89,6 +91,14 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Auth
             var loginName = GetLoginName(principal);
             if (string.IsNullOrEmpty(loginName)) { error = ExternalLoginError.InvalidClaims; return null; }
 
+            //メールをユーザー名にするときは、IdP が「未検証」と言っているメールを信じない (OIDC Core 5.1: email_verified)。
+            //クレームを返さない IdP は判定できないので通す (Google / Cognito は各クラスで「true が必須」まで要求する)
+            if (LoginNameComesFromEmail(principal) && string.Equals(principal.FindFirst("email_verified")?.Value, "false", StringComparison.OrdinalIgnoreCase))
+            {
+                error = ExternalLoginError.InvalidClaims;
+                return null;
+            }
+
             if (!IsDomainAllowed(loginName)) { error = ExternalLoginError.DomainNotAllowed; return null; }
 
             return new ExternalLoginIdentity
@@ -111,6 +121,12 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Auth
 
         /// <summary>設定の LoginNameClaim (未設定なら空)。</summary>
         protected string LoginNameClaim => _loginNameClaim;
+
+        /// <summary>ユーザー名が email クレームから来るか (LoginNameClaim が email、または既定順で preferred_username が無く email がある)。</summary>
+        protected virtual bool LoginNameComesFromEmail(ClaimsPrincipal principal)
+            => string.IsNullOrEmpty(_loginNameClaim)
+                ? principal.FindFirst("preferred_username") == null && principal.FindFirst("email") != null
+                : _loginNameClaim == "email";
 
         /// <summary>email_verified クレームが true か。自己申告のメールを持てる IdP (Google / Cognito) はメールをユーザー名にする前にこれを見る。</summary>
         protected static bool IsEmailVerified(ClaimsPrincipal principal)
