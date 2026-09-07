@@ -1,0 +1,219 @@
+@using Microsoft.AspNetCore.Components.Web
+@using Microsoft.JSInterop
+@using Codeer.LowCode.Blazor.Components
+@using Codeer.LowCode.Blazor.Extras.Fields
+@using Codeer.LowCode.Blazor.Extras.Properties
+@inherits FieldComponentBase<AIChatField>
+@inject IJSRuntime JSRuntime
+
+<div class="aichat-root" id="@WebElementId" @ref="Element" style="@RootStyle" data-ai-chat="@Field.Design.Name">
+  @if (IsDesignMode)
+  {
+    <div class="aichat-messages">
+      @if (!string.IsNullOrEmpty(Field.Design.WelcomeMessage))
+      {
+        <div class="aichat-msg aichat-assistant"><div class="aichat-bubble aichat-reply">@((MarkupString)Field.Design.WelcomeMessage)</div></div>
+      }
+      <div class="aichat-msg aichat-user"><div class="aichat-bubble">@Resources.AIChat_DesignSampleUser</div></div>
+      <div class="aichat-msg aichat-assistant"><div class="aichat-bubble aichat-reply"><p>@Resources.AIChat_DesignSampleAssistant</p></div></div>
+    </div>
+    <div class="aichat-input-row">
+      <textarea class="form-control aichat-input" rows="1" placeholder="@Field.Design.Placeholder" disabled></textarea>
+      <button type="button" class="btn btn-primary aichat-send" disabled><i class="bi bi-send"></i></button>
+    </div>
+  }
+  else
+  {
+    <div class="aichat-toolbar">
+      <button type="button" class="btn btn-sm btn-link aichat-new" title="@Resources.AIChat_NewConversation"
+              disabled="@(!CanOperate || Field.Messages.Count == 0)" @onclick="NewConversationAsync">
+        <i class="bi bi-plus-circle"></i> @Resources.AIChat_NewConversation
+      </button>
+    </div>
+    <div class="aichat-messages" @ref="_messagesElement" data-role="messages">
+      @if (!string.IsNullOrEmpty(Field.Design.WelcomeMessage))
+      {
+        <div class="aichat-msg aichat-assistant aichat-welcome">
+          <div class="aichat-bubble aichat-reply">@((MarkupString)Field.Design.WelcomeMessage)</div>
+        </div>
+      }
+      @for (var i = 0; i < Field.Messages.Count; i++)
+      {
+        var index = i;
+        var msg = Field.Messages[i];
+        if (msg.IsUser)
+        {
+          <div class="aichat-msg aichat-user" data-index="@index" data-role="user">
+            <div class="aichat-bubble">@msg.Text</div>
+            <div class="aichat-time">@msg.Time.ToString("HH:mm")</div>
+          </div>
+        }
+        else
+        {
+          <div class="aichat-msg aichat-assistant @(msg.IsRunning ? "aichat-running" : "") @(msg.IsError ? "aichat-error" : "")" data-index="@index" data-role="assistant">
+            <div class="aichat-bubble">
+              @if (!string.IsNullOrEmpty(msg.Html))
+              {
+                <div class="aichat-reply" data-role="reply">@((MarkupString)msg.Html)</div>
+              }
+              @if (msg.IsRunning)
+              {
+                <div class="aichat-thinking" data-role="thinking">
+                  <span class="aichat-dots"><span></span><span></span><span></span></span>
+                  <span class="aichat-thinking-text">@(string.IsNullOrEmpty(msg.Progress) ? Resources.AIChat_Thinking : msg.Progress)</span>
+                  <span class="aichat-elapsed">@Elapsed(msg)</span>
+                </div>
+              }
+              else if (msg.IsError)
+              {
+                <div class="aichat-error-text" data-role="error">
+                  <i class="bi bi-exclamation-triangle"></i> @msg.Error
+                  @if (CanOperate)
+                  {
+                    <button type="button" class="btn btn-sm btn-outline-secondary aichat-retry" @onclick="() => Field.RetryAsync(msg)">
+                      <i class="bi bi-arrow-repeat"></i> @Resources.AIChat_Retry
+                    </button>
+                  }
+                </div>
+              }
+            </div>
+            @if (!msg.IsRunning && !msg.IsError)
+            {
+              <div class="aichat-time">
+                @msg.Time.ToString("HH:mm")
+                <button type="button" class="btn btn-sm btn-link aichat-copy" title="@Resources.AIChat_Copy" @onclick="() => CopyAsync(index)">
+                  <i class="bi bi-clipboard"></i>
+                </button>
+              </div>
+            }
+          </div>
+        }
+      }
+    </div>
+    <div class="aichat-input-row">
+      <textarea class="form-control aichat-input" rows="1" @ref="_inputElement" data-role="input"
+                placeholder="@Field.Design.Placeholder" disabled="@(!CanInput)" data-consumes-enter
+                @bind="_input" @bind:event="oninput"></textarea>
+      @if (Field.IsBusy)
+      {
+        <button type="button" class="btn btn-outline-secondary aichat-stop" title="@Resources.AIChat_Stop" data-role="stop" @onclick="Field.CancelAsync">
+          <i class="bi bi-stop-fill"></i>
+        </button>
+      }
+      else
+      {
+        <button type="button" class="btn btn-primary aichat-send" title="@Resources.AIChat_Send" data-role="send" @ref="_sendButton"
+                disabled="@(!CanInput || string.IsNullOrWhiteSpace(_input))" @onclick="SendAsync">
+          <i class="bi bi-send"></i>
+        </button>
+      }
+    </div>
+    @if (!Field.IsConfigured)
+    {
+      <div class="aichat-note">@Resources.AIChat_NotConfigured</div>
+    }
+  }
+</div>
+
+@code {
+  ElementReference _messagesElement;
+  ElementReference _inputElement;
+  ElementReference _sendButton;
+  IJSObjectReference? _jsModule;
+  string _input = string.Empty;
+  int _renderedVersion = -1;
+  bool _ticking;
+
+  bool IsDesignMode => Field.Services.AppInfoService.IsDesignMode;
+  bool CanOperate => Field.IsEnabled && !Field.IsViewOnly;
+  bool CanInput => CanOperate && Field.IsConfigured && !Field.IsBusy;
+
+  string RootStyle
+  {
+    get
+    {
+      var style = Field.Design.Height > 0 ? $"height: {Field.Design.Height}px;" : "height: 100%;";
+      return style + (Field.GetOwnStyleString() ?? string.Empty);
+    }
+  }
+
+  static string Elapsed(AIChatMessage msg)
+  {
+    var sec = (int)(DateTime.Now - msg.Time).TotalSeconds;
+    return sec < 3 ? string.Empty : $"{sec}s";
+  }
+
+  protected override async Task OnAfterRenderAsync(bool firstRender)
+  {
+    await base.OnAfterRenderAsync(firstRender);
+    if (IsDesignMode) return;
+
+    if (firstRender)
+    {
+      _jsModule = await JSRuntime.InvokeAsync<IJSObjectReference>(
+        "import", "./_content/Codeer.LowCode.Blazor.Extras/aichat-interop.js");
+      await _jsModule.InvokeVoidAsync("initialize", _inputElement, Math.Max(1, Field.Design.MaxInputRows));
+      _renderedVersion = Field.Version;
+      await _jsModule.InvokeVoidAsync("scrollToBottom", _messagesElement, true);
+    }
+    else if (_renderedVersion != Field.Version && _jsModule != null)
+    {
+      //自分が送った直後は必ず最下部へ。返事の逐次更新は、ユーザーが上へスクロール中なら追従しない
+      var force = Field.Messages.Count > 0 && Field.Messages[^1].IsUser;
+      _renderedVersion = Field.Version;
+      await _jsModule.InvokeVoidAsync("scrollToBottom", _messagesElement, force);
+    }
+
+    if (Field.IsBusy && !_ticking) _ = TickWhileBusyAsync();
+  }
+
+  //待ち中は経過秒数を進めるため 1 秒ごとに再描画する
+  async Task TickWhileBusyAsync()
+  {
+    _ticking = true;
+    try
+    {
+      while (Field.IsBusy)
+      {
+        await Task.Delay(1000);
+        await InvokeAsync(StateHasChanged);
+      }
+    }
+    finally
+    {
+      _ticking = false;
+    }
+  }
+
+  async Task SendAsync()
+  {
+    var text = _input;
+    if (string.IsNullOrWhiteSpace(text) || !CanInput) return;
+    _input = string.Empty;
+    if (_jsModule != null) await _jsModule.InvokeVoidAsync("resetInput", _inputElement);
+    await Field.SendAsync(text);
+    if (_jsModule != null) await _jsModule.InvokeVoidAsync("focus", _inputElement);
+  }
+
+  async Task NewConversationAsync()
+  {
+    await Field.ClearAsync();
+    if (_jsModule != null) await _jsModule.InvokeVoidAsync("focus", _inputElement);
+  }
+
+  async Task CopyAsync(int index)
+  {
+    if (_jsModule == null) return;
+    await _jsModule.InvokeVoidAsync("copyReply", Element, index);
+  }
+
+  public override async ValueTask DisposeAsync()
+  {
+    if (_jsModule != null)
+    {
+      try { await _jsModule.InvokeVoidAsync("dispose", _inputElement); } catch { }
+      try { await _jsModule.DisposeAsync(); } catch { }
+    }
+    await base.DisposeAsync();
+  }
+}

@@ -5,6 +5,7 @@ using Codeer.LowCode.Blazor.License;
 using Codeer.LowCode.Blazor.SystemSettings;
 using Extras.Server.Services;
 using Codeer.LowCode.Blazor.Extras.Server.AI;
+using Codeer.LowCode.Blazor.Extras.Server.AI.Chat;
 using Codeer.LowCode.Blazor.Extras.Server.Excel;
 using Codeer.LowCode.Blazor.Extras.Server.Mail;
 using Codeer.LowCode.Blazor.Extras.Server.Web;
@@ -102,6 +103,10 @@ builder.Services.Configure<RequestLocalizationOptions>(options =>
 });
 
 builder.Services.AddScoped<DataService>();
+
+//AIChatField の窓口 (AIChatController)。返事を作る Agent はダミー (AI 未接続)。本番は IAIChatAgent の実装に差し替える
+builder.Services.AddSingleton<IAIChatAgent, DummyAIChatAgent>();
+builder.Services.AddSingleton<AIChatJobStore>();
 
 //デモ用の簡易ログイン (パスワードなしのユーザー切替。AccountController / login.html)。
 //承認フローなど操作ユーザーが必要な機能をサンプルで確認するためのもので、実運用の認証ではない

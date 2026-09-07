@@ -1202,4 +1202,43 @@
   <data name="MarkdownTable" xml:space="preserve">
     <value>表</value>
   </data>
+  <data name="AIChatField" xml:space="preserve">
+    <value>AIチャット</value>
+  </data>
+  <data name="AIChat_Thinking" xml:space="preserve">
+    <value>考え中</value>
+  </data>
+  <data name="AIChat_Send" xml:space="preserve">
+    <value>送信</value>
+  </data>
+  <data name="AIChat_Stop" xml:space="preserve">
+    <value>停止</value>
+  </data>
+  <data name="AIChat_NewConversation" xml:space="preserve">
+    <value>新しい会話</value>
+  </data>
+  <data name="AIChat_Copy" xml:space="preserve">
+    <value>コピー</value>
+  </data>
+  <data name="AIChat_Retry" xml:space="preserve">
+    <value>再送</value>
+  </data>
+  <data name="AIChat_Failed" xml:space="preserve">
+    <value>返事を取得できませんでした。</value>
+  </data>
+  <data name="AIChat_Timeout" xml:space="preserve">
+    <value>時間内に返事がありませんでした。サーバー側では処理が続いている可能性があります。</value>
+  </data>
+  <data name="AIChat_Canceled" xml:space="preserve">
+    <value>中断しました。</value>
+  </data>
+  <data name="AIChat_NotConfigured" xml:space="preserve">
+    <value>チャットのエンドポイントが設定されていません。</value>
+  </data>
+  <data name="AIChat_DesignSampleUser" xml:space="preserve">
+    <value>こんにちは</value>
+  </data>
+  <data name="AIChat_DesignSampleAssistant" xml:space="preserve">
+    <value>ここに AI の返事が表示されます。</value>
+  </data>
 </root>

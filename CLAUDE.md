@@ -116,6 +116,15 @@ dotnet build Source/Codeer.LowCode.Blazor.Extras/Codeer.LowCode.Blazor.Extras.cs
 
 ### ユーティリティ系 (UIなし / 補助)
 
+#### AIChatField - AI チャット UI
+- **状態**: 実装済み (docs/AIChatField.md)。AI 本体は未接続 (サンプルは `DummyAIChatAgent`)
+- **機能**: チャット UI だけを担う。入力 (Enter 送信 / Shift+Enter 改行 / IME 対応 / 自動伸長)、考え中ドット + 途中経過 + 経過秒、逐次表示、エラー + 再送、停止、新しい会話、返事のコピー。返事は **HTML をそのまま表示** (Markdown / テキストはサーバーで HTML に変換する)
+- **通信**: `POST {EndPoint}` → 202 `{requestId}` → `GET {EndPoint}/{requestId}` をポーリング (最初の 10 秒は 1 秒、以後 2.5 秒) → `{status, reply, progress, error}`。`DELETE` で中断。やり取りする型は `AIChat/` (AIChatSendRequest / AIChatSendResponse / AIChatStatusResponse / AIChatJobStatus)。会話履歴は conversationId でサーバー側が持つ (クライアントは全履歴を送らない)
+- **サーバー** (Extras.Server `AI/Chat/`): `IAIChatAgent` (返事を作る側のインターフェース) / `AIChatJobStore` (プロセス内ジョブ置き場。シングルトン登録) / `ChatReplyHtml` (Markdig で Markdown→HTML、テキストはエスケープ、HTML は素通し + リンクに target=_blank) / `DummyAIChatAgent`。Controller はアプリ側 (Example: `AIChatController`、`/api/ai_chat`)
+- **結線**: 静的 `AIChatField.EndPoint` (テンプレートは "/api/ai_chat")。デスクトップは `AIChatField.SendCoreAsync` フック
+- **インターフェース**: `IFillHeightFieldDesign` (Height=0 で親の高さに合わせる)
+- **ファイル**: `Designs/AIChatFieldDesign.cs`, `Fields/AIChatField.cs`, `Components/AIChatFieldComponent.razor(.css)`, `wwwroot/aichat-interop.js`, `AIChat/*.cs`
+
 #### EnterFocusMoveField - Enterキーでフォーカス移動
 - **状態**: 実装済み (docs/EnterFocusMoveField.md)
 - **機能**: モジュール内で Enter キー押下時に次の入力要素にフォーカスを移動 (末尾→先頭ループ、tabindex尊重、IME対応)
