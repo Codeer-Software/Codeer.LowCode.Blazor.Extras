@@ -11,6 +11,10 @@
 
 ## メールのワンタイムコード
 
+パスワードが通ると、伏せ字の送信先とコード入力欄に切り替わる (login.html / MAUI の Login.razor 共通)。
+
+<img src="images/login_email_code.png" alt="メールのワンタイムコードの入力画面" style="border: 1px solid #ccc;" width="600">
+
 - 有効化: `LoginAccountContractField.TwoFactorEmail` にメールアドレスのフィールドを設定する (それだけ)
 - サーバー設定 (appsettings `EmailOtpLogin`、すべて任意): `MailInfraName` (送信インフラの呼び名。空なら `Mail.DefaultInfraName`) / `Subject` (既定 "認証コード: {code}") / `Body` ({code} と {minutes} が置き換わる) / `CodeLifetimeMinutes` (既定 10) / `MaxAttempts` (既定 5。超えるとコード破棄)
 - 流れ: パスワード成功 → コードを発行してメール送信 → `status: "email"` と伏せ字の送信先 (`maskedEmail`) を返す → `TwoFactorCode` 付きで再送 → `ok`

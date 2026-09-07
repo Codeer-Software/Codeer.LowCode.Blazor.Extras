@@ -15,6 +15,10 @@ Codeer.LowCode.Blazor 本体が持つのは**認可** (ログインしたユー�
 本体はそれを `app.clprj` の Current User Module の行に結びつけて `CurrentUser` と認可に使います。
 どの方式でログインしても (パスワード / Entra ID / Google / 二要素認証) 認可の設定は変わりません。
 
+ログイン画面はテンプレートの `login.html` が固定の枠を持ち、外部 IdP を設定するとボタンが増えます (パスワード入力の下)。
+
+<img src="images/login_external.png" alt="ログイン画面 (Entra ID を設定した状態)" style="border: 1px solid #ccc;" width="600">
+
 ## 部品
 
 ### ユーザーモジュールの契約: LoginAccountContractField
@@ -86,4 +90,4 @@ MAUI クライアントも同じサーバーの `api/account/*` を使います�
 - [外部ログイン (Entra ID / Google / AWS Cognito / OpenID Connect)](ExternalLogin.md)
 - [二要素認証 (認証アプリ TOTP / メールのワンタイムコード)](TwoFactorLogin.md)
 - [PasswordHashField](PasswordHashField.md)
-- [マニュアル: 認証 / 認可の概要](https://github.com/Codeer-Software/Codeer.LowCode.Blazor.Manual/blob/main/JP/authorization/authorization.md) / [認証付きプロジェクトの始め方](https://github.com/Codeer-Software/Codeer.LowCode.Blazor.Manual/blob/main/JP/authorization/auth_getting_started.md)
+- [マニュアル: 認証 / 認可の概要](https://github.com/Codeer-Software/Codeer.LowCode.Blazor.Manual/blob/main/JP/authorization/authorization.md) / [ログインとユーザーの初期設定](https://github.com/Codeer-Software/Codeer.LowCode.Blazor.Manual/blob/main/JP/authorization/auth_getting_started.md)

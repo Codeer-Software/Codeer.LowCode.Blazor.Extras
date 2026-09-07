@@ -14,6 +14,10 @@
 - 独自 IdP は `IExternalLoginProvider` を実装 (多くは `OidcLoginProvider` を継承して一部を上書き) し、テンプレートの対応表 `ExternalLoginTable` に足す
 - `ClientId` を書いたプロバイダだけが有効になり、ログイン画面のボタンとチャレンジ URL がそろって現れる。書かなければ何も変わらない
 
+`ClientId` を書いた IdP は、ログイン画面のパスワード入力の下にボタンとして現れる (`AllowPasswordLogin: false` ならボタンだけ、IdP が 1 つなら画面を出さずに遷移)。
+
+<img src="images/login_external.png" alt="ログイン画面に Entra ID のボタンが出た状態" style="border: 1px solid #ccc;" width="600">
+
 ## 設定 (appsettings)
 
 IdP の種類ごとに独立したセクション (メールの `Smtp` / `GraphApi`、ファイル保存の `S3Storages` と同じ)。使うものだけ書く。
