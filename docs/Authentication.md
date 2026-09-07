@@ -41,6 +41,8 @@ Codeer.LowCode.Blazor 本体が持つのは**認可** (ログインしたユー�
 
 デザイナのテンプレート (空のプロジェクト / 標準パターン集 / 業務テンプレート) の `AppUser` には配置済みです。
 
+<img src="images/login_account_contract.png" alt="デザイナで AppUser のログインアカウント契約を選択した状態" style="border: 1px solid #ccc;" width="800">
+
 ### パスワードの保存
 
 契約の `PasswordField` を指定すると、ユーザーを保存するときにサーバー (`PasswordHashHelper.ApplyPasswordHash`、テンプレートの `CustomizedModuleDataIO` が呼ぶ) が
