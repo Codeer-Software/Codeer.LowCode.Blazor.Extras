@@ -74,12 +74,12 @@ IdP の種類ごとに独立したセクション (メールの `Smtp` / `GraphA
 
 機構はパッケージ、方針はアプリ。アプリが持つのは次の 2 つだけ。
 
-1. **対応表** (`Services/ExternalLoginTable.cs`) — 上の各セクションを読んで `IExternalLoginProvider` の一覧にする。独自 IdP はここに 1 行足す
+1. **設定** — 上の各セクションを `SystemConfig` に束ねる (Program.cs。メールの Smtp / GraphApi と同じ)。**対応表** (`Services/ExternalLoginTable.cs`) がそれを読んで `IExternalLoginProvider` の一覧にする。独自 IdP はここに 1 行足す
 2. **配線** (`CookieAuthentication.cs`)
    ```csharp
    builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
        .AddCookie(...)
-       .AddExternalLogins(SystemConfig.Instance.ExternalLogins, o => o.MobileCallbackUrl = SystemConfig.Instance.MobileLoginCallbackUrl);
+       .AddExternalLogins(ExternalLoginTable.Create(), o => o.MobileCallbackUrl = SystemConfig.Instance.MobileLoginCallbackUrl);
    builder.Services.AddScoped<IExternalLoginUserResolver, ExternalLoginUserResolver>();
    ```
 3. **ユーザー解決** (`ExternalLoginUserResolver.cs`) — IdP が確認した本人 (`ExternalLoginIdentity`: `LoginName` / `Subject` / `Email` / `DisplayName` / 全クレーム) を

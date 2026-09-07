@@ -4,7 +4,7 @@ FileField がアップロードしたファイルの実体を置く場所です�
 `FileManagement` が担当します。FileField 側はデザインで `StorageName` を指定して保存先を選びます。
 
 設定の持ち方は 2 つあります。テンプレートが使うのは種別別形式で、メール送信と同じく**保存先の種類ごとに独立した設定クラスと appsettings セクション**を持ち、
-アプリ (テンプレートの `FileStorageTable`) がそれぞれを読んで `IFileStorage` の並びにして製品へ渡します。
+アプリが設定を `SystemConfig` に束ね (Program.cs)、テンプレートの `FileStorageTable` がそれを `IFileStorage` の並びにして製品へ渡します (メールの MailSenderTable と同じ考え方)。
 製品側は種類ごとの差を `IFileStorage` で吸収するので、独自の保存先も同じ並びに足すだけです。
 
 ## 組み込みの保存先
@@ -67,25 +67,24 @@ FileField がアップロードしたファイルの実体を置く場所です�
 ## アプリ側の結線 (テンプレート)
 
 ```csharp
-// Services/FileStorageTable.cs
-public static List<IFileStorage> Create(IConfiguration config)
+// Program.cs: 設定は SystemConfig に束ねる (Azure の接続文字列は ConnectionStrings:<Name> にも置ける)
+SystemConfig.Instance.FileSystemStorages = builder.Configuration.GetSection("FileSystemStorages").Get<FileSystemStorageSettings[]>() ?? [];
+SystemConfig.Instance.AzureBlobStorages = builder.Configuration.GetSection("AzureBlobStorages").Get<AzureBlobStorageSettings[]>() ?? [];
+SystemConfig.Instance.S3Storages = builder.Configuration.GetSection("S3Storages").Get<S3StorageSettings[]>() ?? [];
+
+// Services/FileStorageTable.cs: 設定 → IFileStorage (初回に組み立てて使い回す。Storages プロパティで取り出す)
+static List<IFileStorage> Create()
 {
+    var config = SystemConfig.Instance;
     var list = new List<IFileStorage>();
-    foreach (var e in config.GetSection("FileSystemStorages").Get<FileSystemStorageSettings[]>() ?? [])
-        list.Add(new FileSystemFileStorage(e));
-    foreach (var e in config.GetSection("AzureBlobStorages").Get<AzureBlobStorageSettings[]>() ?? [])
-    {
-        //接続文字列は ConnectionStrings:<Name> にも置ける (無ければ BlobServiceUri + DefaultAzureCredential)
-        if (string.IsNullOrEmpty(e.ConnectionString) && string.IsNullOrEmpty(e.BlobServiceUri)) e.ConnectionString = config.GetConnectionString(e.Name) ?? string.Empty;
-        list.Add(new AzureBlobFileStorage(e));
-    }
-    foreach (var e in config.GetSection("S3Storages").Get<S3StorageSettings[]>() ?? [])
-        list.Add(new S3FileStorage(e));
+    foreach (var e in config.FileSystemStorages) list.Add(new FileSystemFileStorage(e));
+    foreach (var e in config.AzureBlobStorages) list.Add(new AzureBlobFileStorage(e));   //接続文字列が無ければ BlobServiceUri + DefaultAzureCredential
+    foreach (var e in config.S3Storages) list.Add(new S3FileStorage(e));
     return list;
 }
 ```
 
-`TemporaryFileManager` と `StorageAccess` にはこの並びを渡します。独自の保存先は `IFileStorage` を実装して同じ並びに足してください。
+`TemporaryFileManager` と `StorageAccess` には `FileStorageTable.Storages` (この並び) を渡します。独自の保存先は `IFileStorage` を実装して同じ並びに足してください。
 テンプレートの `FileStorageTable` は下の簡易形式 (`FileStorages`) も読んで同じ並びに加えるので、両形式を混在させられます。
 
 ## 簡易形式 (`FileStorages` + `FileStorageType`)

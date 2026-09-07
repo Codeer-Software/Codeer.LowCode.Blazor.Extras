@@ -13,7 +13,7 @@
 |---|---|
 | Codeer.LowCode.Blazor.Extras | 拡張フィールド (メール送信・承認フローを含む)、スクリプトオブジェクト (Excel / WebApi / Toaster)、クライアントサービス |
 | Codeer.LowCode.Blazor.Extras.Designer | デザイナ統合 (ツールボックス登録・AI 用ドキュメント登録) |
-| Codeer.LowCode.Blazor.Extras.Server | サーバーサービス (メール送信 / 承認フローエンジン / AI ドキュメント解析 / ファイルストレージ / ASP.NET Core ヘルパ) |
+| Codeer.LowCode.Blazor.Extras.Server | サーバーサービス (認証: ID/パスワード照合・外部 IdP・二要素認証 / メール送信 / 承認フローエンジン / AI ドキュメント解析 / ファイルストレージ / ASP.NET Core ヘルパ) |
 
 ## 提供フィールド
 
@@ -29,13 +29,25 @@
 | [ProgressField](docs/ProgressField.md) | 進捗率を横バー / 半円メーターで表示する表示専用フィールド。値・色を別フィールドから参照 |
 | [FileStorage](docs/FileStorage.md) | FileField のファイル保存先。FileSystem / Azure Blob / Amazon S3 (S3互換含む) と独自プロバイダ |
 | [EnterFocusMoveField](docs/EnterFocusMoveField.md) | Enterキーでモジュール内の次の入力要素にフォーカスを移動させるユーティリティフィールド |
-| [LoginAccountContractField](Source/Codeer.LowCode.Blazor.Extras.Designer/FieldDocs/LoginAccountContractFieldDesign.md) | ユーザーモジュールに置く契約フィールド。ログイン ID・外部 IdP の突き合わせ・有効フラグ・表示名・メール二要素の送信先を役割で、パスワード照合用の列と認証アプリ (TOTP) の列を書き込み専用列で宣言する。テンプレートのログインはこれだけを見る |
+| [LoginAccountContractField](Source/Codeer.LowCode.Blazor.Extras.Designer/FieldDocs/LoginAccountContractFieldDesign.md) | ユーザーモジュールに置く契約フィールド。ログイン ID・外部 IdP の突き合わせ・有効フラグ・表示名・メール二要素の送信先・パスワード入力欄を役割で、パスワード照合用の列と認証アプリ (TOTP) の列を宣言する。サーバーのログイン処理はこの契約だけを見る ([認証の全体像](docs/Authentication.md)) |
 | [二要素認証](docs/TwoFactorLogin.md) | LoginAccountContractField の TOTP 列 (認証アプリ) か TwoFactorEmail (メールのワンタイムコード) を設定すると、パスワード成功後に 6 桁コードの入力を求める (Extras.Server の TotpLogin / EmailOtpLogin) |
 | [TotpResetButtonField](Source/Codeer.LowCode.Blazor.Extras.Designer/FieldDocs/TotpResetButtonFieldDesign.md) | 表示中のユーザーの認証アプリ (TOTP) 登録を解除するボタン (管理者用)。ユーザーモジュールの詳細画面に置く。通常の保存と同じ権限で制御される |
 | [MyTotpResetButtonField](Source/Codeer.LowCode.Blazor.Extras.Designer/FieldDocs/MyTotpResetButtonFieldDesign.md) | ログイン中の自分の認証アプリ登録を解除するボタン (本人用)。設定画面などどのモジュールにも置ける |
 | [PasswordHashField](docs/PasswordHashField.md) | パスワードを Submit 時にハッシュ + ソルトへ変換して DB に書き込む補助フィールド (サーバサイド実装が必要)。ログインユーザーモジュールでは LoginAccountContractField の PasswordField で代替できる |
 | [OrientationLockField](docs/OrientationLockField.md) | タッチ端末で画面の向き(横/縦)が指定と異なるとき、全画面オーバーレイで回転を促すフィールド |
 | [AITextAnalyzerField](docs/AITextAnalyzerField.md) | 帳票ファイルや自由テキストを AI で解析し、モジュールのフィールドへ自動入力する入力補助フィールド (Azure OpenAI + Document Intelligence を使用) |
+
+## 認証 (ログイン)
+
+Codeer.LowCode.Blazor 本体が持つのは認可だけで、認証 (ログイン) はライブラリに含まれません。認証はホストアプリの担当で、その実装をこの Extras が MIT で提供します。
+セッションは Cookie、ログインアカウントの宣言はユーザーモジュールの契約フィールド。パスワード / Entra ID / Google / AWS Cognito / OpenID Connect / 二要素認証のどれでログインしても、本体の認可 (CurrentUser・モジュール / 行 / PageFrame の条件) は変わりません。
+
+| ドキュメント | 内容 |
+|---|---|
+| [認証の全体像](docs/Authentication.md) | 本体 (認可) とホスト・Extras (認証) の役割分担、部品の一覧、ホストに入っているもの |
+| [外部ログイン](docs/ExternalLogin.md) | Entra ID / Google / AWS Cognito / 汎用 OpenID Connect。appsettings だけで有効化。MAUI 対応 |
+| [二要素認証](docs/TwoFactorLogin.md) | 認証アプリ (TOTP) とメールのワンタイムコード。解除ボタン |
+| [LoginAccountContractField](Source/Codeer.LowCode.Blazor.Extras.Designer/FieldDocs/LoginAccountContractFieldDesign.md) | ユーザーモジュールに置く契約フィールドの仕様 |
 
 ## 業務機能
 
@@ -75,6 +87,7 @@
 ## サーバーサービス (Codeer.LowCode.Blazor.Extras.Server)
 
 - AITextAnalyzeService — Azure Document Intelligence + Azure OpenAI による帳票・テキスト解析 (AITextAnalyzerField のサーバー側)
+- 認証 — LoginAccountStore (ID/パスワード照合・ユーザー行の解決) / 外部 IdP (OidcLoginProvider と Entra / Google / Cognito 実装) / TotpLogin・EmailOtpLogin (二要素認証)。[認証の全体像](docs/Authentication.md)
 - メール送信 — MailDispatcher (テンプレート解決・一斉送信・送信履歴) と SMTP / Microsoft Graph / SendGrid / Gmail API 送信。独自の送信手段は IMailSender で追加
 - 承認フロー — ApprovalEngine (状態遷移の検証と実行)
 - StorageAccess / TemporaryFileManager — ファイルストレージ (ファイルシステム / Azure Blob) と一時ファイル管理
@@ -184,6 +197,8 @@ ExtrasDesignerInitializer.Setup(DesignerEnvironment);
 - [QrCodeField - QRコード](docs/QrCodeField.md)
 - [ProgressField - 進捗バー / メーター](docs/ProgressField.md)
 - [EnterFocusMoveField - Enterキーでフォーカス移動](docs/EnterFocusMoveField.md)
+- [認証の全体像 (ログインアカウント契約 / パスワード / 外部 IdP / 二要素認証)](docs/Authentication.md)
+- [外部ログイン (Entra ID / Google / AWS Cognito / OpenID Connect)](docs/ExternalLogin.md)
 - [二要素認証 (認証アプリ TOTP / メールのワンタイムコード)](docs/TwoFactorLogin.md)
 - [PasswordHashField - パスワードハッシュ](docs/PasswordHashField.md)
 - [OrientationLockField - 画面の向き制御](docs/OrientationLockField.md)
