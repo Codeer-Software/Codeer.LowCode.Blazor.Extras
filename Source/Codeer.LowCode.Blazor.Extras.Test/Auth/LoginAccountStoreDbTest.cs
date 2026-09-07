@@ -176,7 +176,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Auth
         public void Contract_Defaults()
         {
             var contract = new LoginAccountContractFieldDesign();
-            Assert.That(contract.LoginName, Is.EqualTo("LoginName"), "必須の役割だけ既定名 (既定名でフィールドを作れば置くだけで動く)");
+            Assert.That(contract.LoginName, Is.Empty, "必須の役割も空が初期値 (空なら必須チェックが「指定してください」を出す)");
             Assert.That(contract.ExternalLoginName, Is.Empty);
             Assert.That(contract.IsActive, Is.Empty);
             Assert.That(contract.DisplayName, Is.Empty);

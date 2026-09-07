@@ -578,6 +578,9 @@ Recipients: {1}</value>
   <data name="LoginAccountContractTwoFactorEmail" xml:space="preserve">
     <value>Two-factor e-mail (one-time code; empty = off)</value>
   </data>
+  <data name="LoginAccountContractPasswordField" xml:space="preserve">
+    <value>Password input field (hashed on save; empty = not written here)</value>
+  </data>
   <data name="LoginAccountContractDbColumnPasswordHash" xml:space="preserve">
     <value>Password hash column (for login check)</value>
   </data>
@@ -637,6 +640,12 @@ Recipients: {1}</value>
   </data>
   <data name="TotpResetButton_ConfirmSelf" xml:space="preserve">
     <value>Remove your authenticator app registration? You will register again at the next login.</value>
+  </data>
+  <data name="LoginAccountCheck_PasswordFieldRequiresColumns" xml:space="preserve">
+    <value>The password input field needs the password hash column and the salt column to write to.</value>
+  </data>
+  <data name="LoginAccountCheck_PasswordFieldConflictsWithHashFieldFormat" xml:space="preserve">
+    <value>The password input field of the contract and the PasswordHashField '{0}' would both write the hash / salt columns. Remove the PasswordHashField from this module (the contract writes the hash) or clear the contract's password input field.</value>
   </data>
   <data name="MyTotpResetButtonField" xml:space="preserve">
     <value>My Authenticator Reset Button</value>

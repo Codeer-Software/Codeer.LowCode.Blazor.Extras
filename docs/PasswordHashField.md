@@ -1,5 +1,7 @@
 # PasswordHashField - パスワードハッシュ
 
+> ログインユーザーモジュール (AppSettings.CurrentUserModuleDesignName) では、LoginAccountContractField の `PasswordField` を指定すれば契約がハッシュ / ソルトを書くので、このフィールドは要りません。このフィールドは契約の無いモジュール (同じテーブルを参照するパスワード変更ダイアログなど) 向けです。
+
 平文の `PasswordField` を受け取り、Submit 時に **ハッシュ + ソルト** に変換して 2 つの DB カラムへ書き込む補助フィールドです。フィールド自体に UI はなく (描画されません)、登録/更新フローの裏で動きます。
 
 ## 機能

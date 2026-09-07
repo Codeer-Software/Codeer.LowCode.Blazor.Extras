@@ -36,20 +36,41 @@ namespace Codeer.LowCode.Blazor.Extras.Services
         }
 
         /// <summary>
-        /// For every <see cref="PasswordHashFieldDesign"/> on the module, if the referenced
-        /// <c>PasswordField</c> has a value, replace the hash field data with a freshly computed hash+salt.
+        /// 保存前にパスワードの平文をハッシュ + ソルトへ置き換える。
+        /// <list type="bullet">
+        /// <item><see cref="LoginAccountContractFieldDesign"/> の <c>PasswordField</c> が指す PasswordField に値があれば、契約のデータ (ハッシュ / ソルト列) を差し込む。</item>
+        /// <item><see cref="PasswordHashFieldDesign"/> は参照先の PasswordField に値があればハッシュ + ソルトを差し込む (契約が同じ列を書くモジュールでは飛ばす = 二重書き防止)。</item>
+        /// </list>
         /// </summary>
         public static void ApplyPasswordHash(ModuleDesign moduleDesign, ModuleData data)
         {
+            var contract = moduleDesign.Fields.OfType<LoginAccountContractFieldDesign>().FirstOrDefault(e => e.WritesPassword);
+            if (contract != null)
+            {
+                var password = PlainPassword(data, contract.PasswordField);
+                if (password != null)
+                {
+                    var hashed = CreateHash(password);
+                    data.Fields[contract.Name] = new LoginAccountContractFieldData { PasswordHash = hashed.Hash, PasswordSalt = hashed.Salt };
+                }
+            }
+
             foreach (var hashFieldDesign in moduleDesign.Fields.OfType<PasswordHashFieldDesign>())
             {
-                if (string.IsNullOrEmpty(hashFieldDesign.PasswordFieldName)) continue;
-                if (!data.Fields.TryGetValue(hashFieldDesign.PasswordFieldName, out var passwordFieldData)) continue;
-                var password = (passwordFieldData as PasswordFieldData)?.Value;
-                if (string.IsNullOrEmpty(password)) continue;
-
+                if (contract != null) continue;   //契約がハッシュを書くモジュールでは PasswordHashField は使わない (デザインチェックも併用をエラーにする)
+                var password = PlainPassword(data, hashFieldDesign.PasswordFieldName);
+                if (password == null) continue;
                 data.Fields[hashFieldDesign.Name] = CreateHash(password);
             }
+        }
+
+        //送られてきたデータにある PasswordField の平文 (無ければ null = 今回はパスワードを変えない)
+        static string? PlainPassword(ModuleData data, string passwordFieldName)
+        {
+            if (string.IsNullOrEmpty(passwordFieldName)) return null;
+            if (!data.Fields.TryGetValue(passwordFieldName, out var passwordFieldData)) return null;
+            var password = (passwordFieldData as PasswordFieldData)?.Value;
+            return string.IsNullOrEmpty(password) ? null : password;
         }
     }
 }

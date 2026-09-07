@@ -135,6 +135,10 @@ dotnet build Source/Codeer.LowCode.Blazor.Extras/Codeer.LowCode.Blazor.Extras.cs
 - **結線**: 静的 `TotpResetClient.StatusEndPoint` / `ResetEndPoint` (テンプレートは api/account/totp/status, /reset。ログイン中のユーザーが対象)
 - **ファイル**: `Designs/MyTotpResetButtonFieldDesign.cs`, `Fields/MyTotpResetButtonField.cs`, `Fields/TotpResetClient.cs`, `Components/MyTotpResetButtonFieldComponent.razor`
 
+#### LoginAccountContractField のパスワード書き込み (2026-09-07)
+- 契約の `PasswordField` (同モジュールの PasswordField 参照) を指定すると、`PasswordHashHelper.ApplyPasswordHash` が契約のデータ (`LoginAccountContractFieldData` = PasswordHash / PasswordSalt) を差し込み、本体が契約の書き込み専用列へ書く。ユーザーモジュールに PasswordHashField は不要 (併用はデザインチェック エラー・ヘルパーも契約を優先)
+- TOTP の 3 列は契約の列名プロパティだけ (DbColumn 属性なし)。本体の書き込みは「送られたフィールドの DbColumn メンバーを全部書く」ので、同じデータに載せるとパスワード保存で NULL 上書きされるため。`ContractFieldDesignBase.GetRoleProperties` は CandidateType.DbColumn のプロパティを役割から除外する
+
 #### PasswordHashField - パスワードハッシュ
 - **状態**: 実装済み (docs/PasswordHashField.md)
 - **機能**: 平文 `PasswordField` を Submit 時にハッシュ+ソルトへ変換し、2つのDBカラムへ書き込む書き込み専用フィールド。UIなし

@@ -8,6 +8,8 @@
 
 > [PasswordField](PasswordField.md)（core）との違い: PasswordField は値を 1 カラムに保存する入力フィールド。PasswordHashField は**入力欄を持たず**、別の PasswordField の入力をハッシュ化して保存する仕組み。ログインユーザーのパスワード保管など、平文を残したくない用途で使う。
 
+> **ログインユーザーモジュールでは不要。** [LoginAccountContractField](LoginAccountContractFieldDesign.md) の `PasswordField` を指定すれば契約がハッシュ / ソルトを書く (同じモジュールに両方置くとデザインチェックがエラーにする)。PasswordHashField は契約の無いモジュール (同じテーブルを参照するパスワード変更ダイアログなど) 向け。
+
 ### ⚠ サーバ側の実装が必須（重要）
 
 このフィールドを置くだけでは**ハッシュは計算されない**。ハッシュ化はサーバ側のヘルパ `Codeer.LowCode.Blazor.Extras.Services.PasswordHashHelper` を呼んで行う。

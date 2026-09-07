@@ -578,6 +578,9 @@
   <data name="LoginAccountContractTwoFactorEmail" xml:space="preserve">
     <value>二要素認証のメール送信先 (ワンタイムコード。空なら無効)</value>
   </data>
+  <data name="LoginAccountContractPasswordField" xml:space="preserve">
+    <value>パスワード入力フィールド (保存時にハッシュ化。空 = ここでは書かない)</value>
+  </data>
   <data name="LoginAccountContractDbColumnPasswordHash" xml:space="preserve">
     <value>パスワードのハッシュ列 (照合用)</value>
   </data>
@@ -637,6 +640,12 @@
   </data>
   <data name="TotpResetButton_ConfirmSelf" xml:space="preserve">
     <value>自分の認証アプリの登録を解除します。次回ログイン時に再登録が必要になります。よろしいですか？</value>
+  </data>
+  <data name="LoginAccountCheck_PasswordFieldRequiresColumns" xml:space="preserve">
+    <value>パスワード入力フィールドを指定するときは、書き先のパスワードのハッシュ列とソルト列も設定してください。</value>
+  </data>
+  <data name="LoginAccountCheck_PasswordFieldConflictsWithHashFieldFormat" xml:space="preserve">
+    <value>契約のパスワード入力フィールドと PasswordHashField '{0}' が同じハッシュ / ソルト列を書こうとします。このモジュールから PasswordHashField を外す (契約がハッシュを書く) か、契約のパスワード入力フィールドを空にしてください。</value>
   </data>
   <data name="MyTotpResetButtonField" xml:space="preserve">
     <value>自分の認証アプリ解除ボタン</value>

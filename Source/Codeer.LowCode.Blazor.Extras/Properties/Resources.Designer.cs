@@ -475,6 +475,33 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
         }
         
         /// <summary>
+        ///   LoginAccountContractPasswordField に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string LoginAccountContractPasswordField {
+            get {
+                return ResourceManager.GetString("LoginAccountContractPasswordField", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   LoginAccountCheck_PasswordFieldRequiresColumns に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string LoginAccountCheck_PasswordFieldRequiresColumns {
+            get {
+                return ResourceManager.GetString("LoginAccountCheck_PasswordFieldRequiresColumns", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   LoginAccountCheck_PasswordFieldConflictsWithHashFieldFormat に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string LoginAccountCheck_PasswordFieldConflictsWithHashFieldFormat {
+            get {
+                return ResourceManager.GetString("LoginAccountCheck_PasswordFieldConflictsWithHashFieldFormat", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   MyTotpResetButtonField に類似しているローカライズされた文字列を検索します。
         /// </summary>
         internal static string MyTotpResetButtonField {

@@ -2,24 +2,22 @@ using Codeer.LowCode.Blazor.Repository.Data;
 
 namespace Codeer.LowCode.Blazor.Extras.Data
 {
-    /// <summary>LoginAccountContractField のログイン用列の対応 (DbColumn 属性の DataMember 用)。ランタイムがこの値を送受信することは無い。</summary>
+    /// <summary>
+    /// LoginAccountContractField がパスワードのハッシュ / ソルト列に書く値。
+    /// クライアントは送受信しない。保存時にサーバー (PasswordHashHelper.ApplyPasswordHash) が契約の PasswordField の平文から作って
+    /// ModuleData に差し込み、本体が契約の書き込み専用列 (DbColumnPasswordHash / DbColumnPasswordSalt) へ書く。
+    /// 認証アプリ (TOTP) の列はここに含めない (含めるとパスワード保存のたびに NULL で上書きされる。TOTP の列はサーバーのログイン処理が直接読み書きする)。
+    /// </summary>
     public class LoginAccountContractFieldData : FieldDataBase
     {
         public LoginAccountContractFieldData() : base(typeof(LoginAccountContractFieldData).FullName!) { }
         public string? PasswordHash { get; set; }
         public string? PasswordSalt { get; set; }
-        public string? TotpSecret { get; set; }
-        public long? TotpConfirmed { get; set; }
-        public long? TotpLastTimestep { get; set; }
 
         public override bool Equals(object? obj)
-        {
-            var r = obj as LoginAccountContractFieldData;
-            if (r == null) return false;
-            return PasswordHash == r.PasswordHash && PasswordSalt == r.PasswordSalt && TotpSecret == r.TotpSecret && TotpConfirmed == r.TotpConfirmed && TotpLastTimestep == r.TotpLastTimestep;
-        }
+            => obj is LoginAccountContractFieldData r && PasswordHash == r.PasswordHash && PasswordSalt == r.PasswordSalt;
 
-        public override int GetHashCode() => (PasswordHash, PasswordSalt, TotpSecret, TotpConfirmed, TotpLastTimestep).GetHashCode();
+        public override int GetHashCode() => (PasswordHash, PasswordSalt).GetHashCode();
         public LoginAccountContractFieldData Clone() => (LoginAccountContractFieldData)MemberwiseClone();
     }
 }
