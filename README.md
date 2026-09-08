@@ -23,6 +23,7 @@
 | [GanttField](docs/GanttField.md) | SVGベースのガントチャート。タスクのドラッグ移動・リサイズ、依存関係の管理が可能 |
 | [TaskBoardField](docs/TaskBoardField.md) | カンバンボード。ドラッグ&ドロップでステータス変更が可能 |
 | [RichTextField](docs/RichTextField.md) | 書式付きテキストエディタ。太字・色・リンクなどのHTMLフォーマットに対応 |
+| [MarkdownField](docs/MarkdownField.md) | Markdown エディタ / ビューア。Markdown をプレーンテキストのまま保存し、閲覧時は HTML に描画。ツールバーとプレビュー (タブ / 左右並び) 付き。生 HTML は無効化 (外部ライブラリ Markdig を使用) |
 | [ColorPickerField](docs/ColorPickerField.md) | カラーピッカー。HTML5ネイティブカラーピッカーで色をHEX文字列として保存 |
 | [MarkerListField](docs/MarkerListField.md) | 画像上にマーカー(ピン)を配置・操作するフィールド |
 | [QrCodeField](docs/QrCodeField.md) | 文字列をQRコード画像として表示する表示専用フィールド (外部ライブラリ QRCoder を使用) |
@@ -192,6 +193,7 @@ ExtrasDesignerInitializer.Setup(DesignerEnvironment);
 - [GanttField - ガントチャート](docs/GanttField.md)
 - [TaskBoardField - カンバンボード](docs/TaskBoardField.md)
 - [RichTextField - リッチテキストエディタ](docs/RichTextField.md)
+- [MarkdownField - Markdown エディタ / ビューア](docs/MarkdownField.md)
 - [ColorPickerField - カラーピッカー](docs/ColorPickerField.md)
 - [MarkerListField - 画像マーカー](docs/MarkerListField.md)
 - [QrCodeField - QRコード](docs/QrCodeField.md)
@@ -211,3 +213,22 @@ ExtrasDesignerInitializer.Setup(DesignerEnvironment);
 ## ライセンス
 
 [MIT License](LICENSE)
+
+### 使用している OSS
+
+各パッケージが NuGet 参照で取り込む第三者ライブラリとそのライセンスです (Microsoft.* / Azure.* / System.* の Microsoft 製パッケージはすべて MIT)。
+いずれも商用利用・再配布が可能なライセンスで、NuGet パッケージ自体がライセンス文を同梱しているため、利用側で追加の手続きは要りません。
+
+| パッケージ | ライブラリ | ライセンス | 用途 |
+|---|---|---|---|
+| Codeer.LowCode.Blazor.Extras | [Markdig](https://github.com/xoofx/markdig) | BSD-2-Clause | MarkdownField の描画 |
+| Codeer.LowCode.Blazor.Extras | [QRCoder](https://github.com/codebude/QRCoder) | MIT | QrCodeField の QR 生成 |
+| Codeer.LowCode.Blazor.Extras | [Sotsera.Blazor.Toaster](https://github.com/sotsera/sotsera.blazor.toaster) | MIT | トースト通知 (ToastService) |
+| Codeer.LowCode.Blazor.Extras / .Server | [Excel.Report.PDF](https://github.com/Codeer-Software/Excel.Report.PDF) (Codeer) | MIT | Excel の読み書き・PDF 変換。推移的に [ClosedXML](https://github.com/ClosedXML/ClosedXML) (MIT)、[PdfSharp](https://github.com/empira/PDFsharp) (MIT)、[SixLabors.Fonts](https://github.com/SixLabors/Fonts) 1.0 (Apache-2.0) を含む |
+| Codeer.LowCode.Blazor.Extras.Server | [MailKit](https://github.com/jstedfast/MailKit) | MIT | SMTP 送信 |
+| Codeer.LowCode.Blazor.Extras.Server | [AWSSDK.S3](https://github.com/aws/aws-sdk-net) | Apache-2.0 | FileField の S3 保存先 |
+| Codeer.LowCode.Blazor.Extras.Server | Azure.AI.FormRecognizer / Azure.AI.OpenAI / Azure.Identity / Azure.Storage.Blobs | MIT | AI 帳票解析、Azure Blob 保存先、Entra ID |
+| Codeer.LowCode.Blazor.Extras.Server | Microsoft.AspNetCore.Authentication.OpenIdConnect | MIT | 外部ログイン |
+| Codeer.LowCode.Blazor.Extras.SeleniumDrivers | Codeer.LowCode.Blazor.SeleniumDrivers (Codeer) | MIT | 本体フィールドのドライバ |
+
+本体 (Codeer.LowCode.Blazor / .Designer) は Codeer の商用ライセンスです。

@@ -1,0 +1,167 @@
+@using Microsoft.AspNetCore.Components.Web
+@using Microsoft.JSInterop
+@using Codeer.LowCode.Blazor.Components
+@using Codeer.LowCode.Blazor.Components.Primitives
+@using Codeer.LowCode.Blazor.Extras.Designs
+@using Codeer.LowCode.Blazor.Extras.Fields
+@using Codeer.LowCode.Blazor.Extras.Markdown
+@using Codeer.LowCode.Blazor.Extras.Properties
+@inherits FieldComponentBase<MarkdownField>
+@inject IJSRuntime JSRuntime
+
+@if (Field.IsViewOnly)
+{
+  <div class="markdown-view" id="@WebElementId" style="@Field.GetOwnStyleString()" data-role="view">@((MarkupString)ViewHtml)</div>
+}
+else
+{
+  <div class="markdown-editor @(IsDisabled ? "markdown-disabled" : "") @(Field.IsValid ? "" : "is-invalid")" @ref="Element" style="@Field.GetOwnStyleString()">
+    @if (Field.Design.ShowToolbar || IsTabMode)
+    {
+      <div class="markdown-header">
+        @if (Field.Design.ShowToolbar)
+        {
+          <div class="markdown-toolbar" data-role="toolbar">
+            <button type="button" class="markdown-tool markdown-tool-heading" title="@Resources.MarkdownHeading" disabled="@ToolsDisabled" @onclick='() => ApplyAsync("heading")'>H</button>
+            <button type="button" class="markdown-tool markdown-tool-bold" title="@Resources.MarkdownBold" disabled="@ToolsDisabled" @onclick='() => ApplyAsync("bold")'><strong>B</strong></button>
+            <button type="button" class="markdown-tool markdown-tool-italic" title="@Resources.MarkdownItalic" disabled="@ToolsDisabled" @onclick='() => ApplyAsync("italic")'><em>I</em></button>
+            <button type="button" class="markdown-tool markdown-tool-strike" title="@Resources.MarkdownStrikethrough" disabled="@ToolsDisabled" @onclick='() => ApplyAsync("strike")'><s>S</s></button>
+            <span class="markdown-tool-sep"></span>
+            <button type="button" class="markdown-tool markdown-tool-ul" title="@Resources.MarkdownUnorderedList" disabled="@ToolsDisabled" @onclick='() => ApplyAsync("ul")'>&#8226;</button>
+            <button type="button" class="markdown-tool markdown-tool-ol" title="@Resources.MarkdownOrderedList" disabled="@ToolsDisabled" @onclick='() => ApplyAsync("ol")'>1.</button>
+            <button type="button" class="markdown-tool markdown-tool-task" title="@Resources.MarkdownTaskList" disabled="@ToolsDisabled" @onclick='() => ApplyAsync("task")'>&#9745;</button>
+            <button type="button" class="markdown-tool markdown-tool-quote" title="@Resources.MarkdownQuote" disabled="@ToolsDisabled" @onclick='() => ApplyAsync("quote")'>&rdquo;</button>
+            <span class="markdown-tool-sep"></span>
+            <button type="button" class="markdown-tool markdown-tool-link" title="@Resources.MarkdownLink" disabled="@ToolsDisabled" @onclick='() => ApplyAsync("link")'>&#128279;</button>
+            <button type="button" class="markdown-tool markdown-tool-code" title="@Resources.MarkdownCode" disabled="@ToolsDisabled" @onclick='() => ApplyAsync("code")'>&lt;/&gt;</button>
+            <button type="button" class="markdown-tool markdown-tool-codeblock" title="@Resources.MarkdownCodeBlock" disabled="@ToolsDisabled" @onclick='() => ApplyAsync("codeblock")'>```</button>
+            <button type="button" class="markdown-tool markdown-tool-table" title="@Resources.MarkdownTable" disabled="@ToolsDisabled" @onclick='() => ApplyAsync("table")'>&#9638;</button>
+          </div>
+        }
+        @if (IsTabMode)
+        {
+          <div class="markdown-tabs" data-role="tabs">
+            <button type="button" class="markdown-tab @(_preview ? "" : "active")" @onclick="() => SwitchAsync(false)">@Resources.MarkdownEdit</button>
+            <button type="button" class="markdown-tab @(_preview ? "active" : "")" @onclick="() => SwitchAsync(true)">@Resources.MarkdownPreview</button>
+          </div>
+        }
+      </div>
+    }
+    <div class="markdown-body @(IsSplitMode ? "markdown-split" : "")">
+      @if (!(IsTabMode && _preview))
+      {
+        <textarea class="form-control markdown-input"
+                  id="@WebElementId"
+                  @ref="_textarea"
+                  data-role="input"
+                  rows="@Math.Max(2, Field.Design.Rows)"
+                  maxlength="@Field.Design.MaxLength"
+                  placeholder="@Field.Design.Placeholder"
+                  disabled="@IsDisabled"
+                  spellcheck="false"
+                  value="@_text"
+                  @oninput="e => _text = e.Value?.ToString()"
+                  @onchange="CommitAsync"></textarea>
+      }
+      @if (IsSplitMode || (IsTabMode && _preview))
+      {
+        <div class="markdown-view markdown-preview" data-role="preview">
+          @if (string.IsNullOrWhiteSpace(_text))
+          {
+            <span class="markdown-preview-empty">@Resources.MarkdownPreviewEmpty</span>
+          }
+          else
+          {
+            @((MarkupString)MarkdownRenderer.ToHtml(_text))
+          }
+        </div>
+      }
+    </div>
+  </div>
+  <ValidationFeedback IsValid="@Field.IsValid" ErrorMessage="@Field.ErrorText" />
+}
+
+@code {
+  ElementReference _textarea;
+  IJSObjectReference? _jsModule;
+  MarkdownField? _boundField;
+  string? _text;
+  bool _preview;
+  bool _committing;
+
+  bool IsDisabled => Field.IsEnabled == false;
+  bool ToolsDisabled => IsDisabled || (IsTabMode && _preview);
+  bool IsTabMode => Field.Design.PreviewMode == MarkdownPreviewMode.Tab;
+  bool IsSplitMode => Field.Design.PreviewMode == MarkdownPreviewMode.Split;
+
+  string ViewHtml => Field.Services.AppInfoService.IsDesignMode && string.IsNullOrEmpty(Field.Value)
+    ? MarkdownRenderer.ToHtml("**Markdown**")
+    : Field.Html;
+
+  protected override async Task OnParametersSetAsync()
+  {
+    await base.OnParametersSetAsync();
+    if (!ReferenceEquals(_boundField, Field))
+    {
+      _boundField = Field;
+      _text = Field.Value;
+      //スクリプト等で値が変わったら編集欄へ反映する (自分の Commit 由来の変更は同値なので無害)
+      Field.OnDataChangedAsync = () =>
+      {
+        if (!_committing) _text = Field.Value;
+        return Task.CompletedTask;
+      };
+    }
+  }
+
+  protected override async Task OnAfterRenderAsync(bool firstRender)
+  {
+    await base.OnAfterRenderAsync(firstRender);
+    if (Field.IsViewOnly) return;
+    if (_jsModule == null)
+    {
+      _jsModule = await JSRuntime.InvokeAsync<IJSObjectReference>(
+        "import", "./_content/Codeer.LowCode.Blazor.Extras/markdown-interop.js");
+    }
+  }
+
+  //編集欄の内容を Field へ反映する (フォーカスが離れたとき・ツールバー操作・タブ切替)
+  async Task CommitAsync()
+  {
+    if (_text == Field.Value) return;
+    _committing = true;
+    try
+    {
+      await Field.SetValueAsync(_text);
+    }
+    finally
+    {
+      _committing = false;
+    }
+  }
+
+  async Task ApplyAsync(string action)
+  {
+    if (_jsModule == null || ToolsDisabled) return;
+    var text = await _jsModule.InvokeAsync<string?>("applyAction", _textarea, action);
+    if (text == null) return;
+    _text = text;
+    await CommitAsync();
+  }
+
+  async Task SwitchAsync(bool preview)
+  {
+    if (_preview == preview) return;
+    await CommitAsync();
+    _preview = preview;
+  }
+
+  public override async ValueTask DisposeAsync()
+  {
+    if (_jsModule != null)
+    {
+      try { await _jsModule.DisposeAsync(); } catch { }
+    }
+    await base.DisposeAsync();
+  }
+}

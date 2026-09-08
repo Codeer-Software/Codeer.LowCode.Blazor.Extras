@@ -1127,4 +1127,82 @@
   <data name="ApprovalWithdrawPolicy_Anytime" xml:space="preserve">
     <value>進行中はいつでも</value>
   </data>
+  <data name="MarkdownField" xml:space="preserve">
+    <value>Markdown</value>
+  </data>
+  <data name="MarkdownFieldDbColumn" xml:space="preserve">
+    <value>DBカラム</value>
+  </data>
+  <data name="MarkdownFieldPlaceholder" xml:space="preserve">
+    <value>プレースホルダ</value>
+  </data>
+  <data name="MarkdownFieldRows" xml:space="preserve">
+    <value>行数</value>
+  </data>
+  <data name="MarkdownFieldMaxLength" xml:space="preserve">
+    <value>最大文字数</value>
+  </data>
+  <data name="MarkdownFieldPreviewMode" xml:space="preserve">
+    <value>プレビュー（読取専用時はプレビューで表示）</value>
+  </data>
+  <data name="MarkdownPreviewMode_Tab" xml:space="preserve">
+    <value>タブ (編集 / プレビュー)</value>
+  </data>
+  <data name="MarkdownPreviewMode_Split" xml:space="preserve">
+    <value>左右に並べる</value>
+  </data>
+  <data name="MarkdownPreviewMode_None" xml:space="preserve">
+    <value>なし</value>
+  </data>
+  <data name="MarkdownFieldShowToolbar" xml:space="preserve">
+    <value>ツールバーを表示</value>
+  </data>
+  <data name="MarkdownFieldMaxLengthError" xml:space="preserve">
+    <value>{0} 文字以内で入力してください。</value>
+  </data>
+  <data name="MarkdownEdit" xml:space="preserve">
+    <value>編集</value>
+  </data>
+  <data name="MarkdownPreview" xml:space="preserve">
+    <value>プレビュー</value>
+  </data>
+  <data name="MarkdownPreviewEmpty" xml:space="preserve">
+    <value>プレビューする内容がありません。</value>
+  </data>
+  <data name="MarkdownHeading" xml:space="preserve">
+    <value>見出し (H1〜H3 を切替)</value>
+  </data>
+  <data name="MarkdownBold" xml:space="preserve">
+    <value>太字</value>
+  </data>
+  <data name="MarkdownItalic" xml:space="preserve">
+    <value>斜体</value>
+  </data>
+  <data name="MarkdownStrikethrough" xml:space="preserve">
+    <value>取り消し線</value>
+  </data>
+  <data name="MarkdownUnorderedList" xml:space="preserve">
+    <value>箇条書き</value>
+  </data>
+  <data name="MarkdownOrderedList" xml:space="preserve">
+    <value>番号付きリスト</value>
+  </data>
+  <data name="MarkdownTaskList" xml:space="preserve">
+    <value>チェックリスト</value>
+  </data>
+  <data name="MarkdownQuote" xml:space="preserve">
+    <value>引用</value>
+  </data>
+  <data name="MarkdownLink" xml:space="preserve">
+    <value>リンク</value>
+  </data>
+  <data name="MarkdownCode" xml:space="preserve">
+    <value>インラインコード</value>
+  </data>
+  <data name="MarkdownCodeBlock" xml:space="preserve">
+    <value>コードブロック</value>
+  </data>
+  <data name="MarkdownTable" xml:space="preserve">
+    <value>表</value>
+  </data>
 </root>

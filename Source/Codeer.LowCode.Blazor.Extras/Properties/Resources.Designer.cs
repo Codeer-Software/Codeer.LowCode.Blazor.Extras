@@ -2430,5 +2430,161 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
 
 
 
+        
+        internal static string MarkdownField {
+            get {
+                return ResourceManager.GetString("MarkdownField", resourceCulture);
+            }
+        }
+        
+        internal static string MarkdownFieldDbColumn {
+            get {
+                return ResourceManager.GetString("MarkdownFieldDbColumn", resourceCulture);
+            }
+        }
+        
+        internal static string MarkdownFieldPlaceholder {
+            get {
+                return ResourceManager.GetString("MarkdownFieldPlaceholder", resourceCulture);
+            }
+        }
+        
+        internal static string MarkdownFieldRows {
+            get {
+                return ResourceManager.GetString("MarkdownFieldRows", resourceCulture);
+            }
+        }
+        
+        internal static string MarkdownFieldMaxLength {
+            get {
+                return ResourceManager.GetString("MarkdownFieldMaxLength", resourceCulture);
+            }
+        }
+        
+        internal static string MarkdownFieldPreviewMode {
+            get {
+                return ResourceManager.GetString("MarkdownFieldPreviewMode", resourceCulture);
+            }
+        }
+        
+        internal static string MarkdownPreviewMode_Tab {
+            get {
+                return ResourceManager.GetString("MarkdownPreviewMode_Tab", resourceCulture);
+            }
+        }
+        
+        internal static string MarkdownPreviewMode_Split {
+            get {
+                return ResourceManager.GetString("MarkdownPreviewMode_Split", resourceCulture);
+            }
+        }
+        
+        internal static string MarkdownPreviewMode_None {
+            get {
+                return ResourceManager.GetString("MarkdownPreviewMode_None", resourceCulture);
+            }
+        }
+        
+        internal static string MarkdownFieldShowToolbar {
+            get {
+                return ResourceManager.GetString("MarkdownFieldShowToolbar", resourceCulture);
+            }
+        }
+        
+        internal static string MarkdownFieldMaxLengthError {
+            get {
+                return ResourceManager.GetString("MarkdownFieldMaxLengthError", resourceCulture);
+            }
+        }
+        
+        internal static string MarkdownEdit {
+            get {
+                return ResourceManager.GetString("MarkdownEdit", resourceCulture);
+            }
+        }
+        
+        internal static string MarkdownPreview {
+            get {
+                return ResourceManager.GetString("MarkdownPreview", resourceCulture);
+            }
+        }
+        
+        internal static string MarkdownPreviewEmpty {
+            get {
+                return ResourceManager.GetString("MarkdownPreviewEmpty", resourceCulture);
+            }
+        }
+        
+        internal static string MarkdownHeading {
+            get {
+                return ResourceManager.GetString("MarkdownHeading", resourceCulture);
+            }
+        }
+        
+        internal static string MarkdownBold {
+            get {
+                return ResourceManager.GetString("MarkdownBold", resourceCulture);
+            }
+        }
+        
+        internal static string MarkdownItalic {
+            get {
+                return ResourceManager.GetString("MarkdownItalic", resourceCulture);
+            }
+        }
+        
+        internal static string MarkdownStrikethrough {
+            get {
+                return ResourceManager.GetString("MarkdownStrikethrough", resourceCulture);
+            }
+        }
+        
+        internal static string MarkdownUnorderedList {
+            get {
+                return ResourceManager.GetString("MarkdownUnorderedList", resourceCulture);
+            }
+        }
+        
+        internal static string MarkdownOrderedList {
+            get {
+                return ResourceManager.GetString("MarkdownOrderedList", resourceCulture);
+            }
+        }
+        
+        internal static string MarkdownTaskList {
+            get {
+                return ResourceManager.GetString("MarkdownTaskList", resourceCulture);
+            }
+        }
+        
+        internal static string MarkdownQuote {
+            get {
+                return ResourceManager.GetString("MarkdownQuote", resourceCulture);
+            }
+        }
+        
+        internal static string MarkdownLink {
+            get {
+                return ResourceManager.GetString("MarkdownLink", resourceCulture);
+            }
+        }
+        
+        internal static string MarkdownCode {
+            get {
+                return ResourceManager.GetString("MarkdownCode", resourceCulture);
+            }
+        }
+        
+        internal static string MarkdownCodeBlock {
+            get {
+                return ResourceManager.GetString("MarkdownCodeBlock", resourceCulture);
+            }
+        }
+        
+        internal static string MarkdownTable {
+            get {
+                return ResourceManager.GetString("MarkdownTable", resourceCulture);
+            }
+        }
     }
 }

@@ -1127,4 +1127,82 @@ Recipients: {1}</value>
   <data name="ApprovalWithdrawPolicy_Anytime" xml:space="preserve">
     <value>Anytime While In Progress</value>
   </data>
+  <data name="MarkdownField" xml:space="preserve">
+    <value>Markdown</value>
+  </data>
+  <data name="MarkdownFieldDbColumn" xml:space="preserve">
+    <value>DB Column</value>
+  </data>
+  <data name="MarkdownFieldPlaceholder" xml:space="preserve">
+    <value>Placeholder</value>
+  </data>
+  <data name="MarkdownFieldRows" xml:space="preserve">
+    <value>Rows</value>
+  </data>
+  <data name="MarkdownFieldMaxLength" xml:space="preserve">
+    <value>Max Length</value>
+  </data>
+  <data name="MarkdownFieldPreviewMode" xml:space="preserve">
+    <value>Preview (read-only shows the preview)</value>
+  </data>
+  <data name="MarkdownPreviewMode_Tab" xml:space="preserve">
+    <value>Tab (Edit / Preview)</value>
+  </data>
+  <data name="MarkdownPreviewMode_Split" xml:space="preserve">
+    <value>Side by side</value>
+  </data>
+  <data name="MarkdownPreviewMode_None" xml:space="preserve">
+    <value>None</value>
+  </data>
+  <data name="MarkdownFieldShowToolbar" xml:space="preserve">
+    <value>Show Toolbar</value>
+  </data>
+  <data name="MarkdownFieldMaxLengthError" xml:space="preserve">
+    <value>Please enter no more than {0} characters.</value>
+  </data>
+  <data name="MarkdownEdit" xml:space="preserve">
+    <value>Edit</value>
+  </data>
+  <data name="MarkdownPreview" xml:space="preserve">
+    <value>Preview</value>
+  </data>
+  <data name="MarkdownPreviewEmpty" xml:space="preserve">
+    <value>Nothing to preview yet.</value>
+  </data>
+  <data name="MarkdownHeading" xml:space="preserve">
+    <value>Heading (cycle H1-H3)</value>
+  </data>
+  <data name="MarkdownBold" xml:space="preserve">
+    <value>Bold</value>
+  </data>
+  <data name="MarkdownItalic" xml:space="preserve">
+    <value>Italic</value>
+  </data>
+  <data name="MarkdownStrikethrough" xml:space="preserve">
+    <value>Strikethrough</value>
+  </data>
+  <data name="MarkdownUnorderedList" xml:space="preserve">
+    <value>Bulleted list</value>
+  </data>
+  <data name="MarkdownOrderedList" xml:space="preserve">
+    <value>Numbered list</value>
+  </data>
+  <data name="MarkdownTaskList" xml:space="preserve">
+    <value>Task list</value>
+  </data>
+  <data name="MarkdownQuote" xml:space="preserve">
+    <value>Quote</value>
+  </data>
+  <data name="MarkdownLink" xml:space="preserve">
+    <value>Link</value>
+  </data>
+  <data name="MarkdownCode" xml:space="preserve">
+    <value>Inline code</value>
+  </data>
+  <data name="MarkdownCodeBlock" xml:space="preserve">
+    <value>Code block</value>
+  </data>
+  <data name="MarkdownTable" xml:space="preserve">
+    <value>Table</value>
+  </data>
 </root>
