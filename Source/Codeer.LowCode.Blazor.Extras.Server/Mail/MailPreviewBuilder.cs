@@ -144,7 +144,8 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
             return doc;
         }
 
-        internal async Task<MailPreviewDocument> BuildSingleAsync(MailPreviewRequest request)
+        //Bulk 側と呼び出し形を揃えるため Task を返す (中身は同期)
+        internal Task<MailPreviewDocument> BuildSingleAsync(MailPreviewRequest request)
         {
             var message = request.Message;
             var doc = new MailPreviewDocument
@@ -172,7 +173,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
                 SubjectSpans = request.SubjectSpans,
                 BodySpans = request.BodySpans,
             });
-            return doc;
+            return Task.FromResult(doc);
         }
 
     }

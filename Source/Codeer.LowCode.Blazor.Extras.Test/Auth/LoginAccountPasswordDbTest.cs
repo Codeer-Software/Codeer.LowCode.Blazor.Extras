@@ -50,17 +50,23 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Auth
         }
 
         //ホスト (テンプレートの CustomizedModuleDataIO) と同じ: 保存前に ApplyPasswordHash
-        class HostIO(DesignData design, IAuthenticationContext auth, IDbAccessor db) : ModuleDataIO(design, auth, db, new TemporaryFileManager(db, [], new List<IFileStorage>()))
+        class HostIO : ModuleDataIO
         {
+            readonly DesignData _design;
+
+            public HostIO(DesignData design, IAuthenticationContext auth, IDbAccessor db)
+                : base(design, auth, db, new TemporaryFileManager(db, [], new List<IFileStorage>()))
+                => _design = design;
+
             protected override async Task<string> AddAsync(Guid transactionId, Guid moduleSubmitId, ModuleData data)
             {
-                PasswordHashHelper.ApplyPasswordHash(design.Modules.Find(data.Name)!, data);
+                PasswordHashHelper.ApplyPasswordHash(_design.Modules.Find(data.Name)!, data);
                 return await base.AddAsync(transactionId, moduleSubmitId, data);
             }
 
             protected override async Task UpdateAsync(Guid transactionId, Guid moduleSubmitId, ModuleData data)
             {
-                PasswordHashHelper.ApplyPasswordHash(design.Modules.Find(data.Name)!, data);
+                PasswordHashHelper.ApplyPasswordHash(_design.Modules.Find(data.Name)!, data);
                 await base.UpdateAsync(transactionId, moduleSubmitId, data);
             }
         }
