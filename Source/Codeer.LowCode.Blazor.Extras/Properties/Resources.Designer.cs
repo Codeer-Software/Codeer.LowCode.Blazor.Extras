@@ -2449,12 +2449,6 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
             }
         }
         
-        internal static string MarkdownFieldRows {
-            get {
-                return ResourceManager.GetString("MarkdownFieldRows", resourceCulture);
-            }
-        }
-        
         internal static string MarkdownFieldMaxLength {
             get {
                 return ResourceManager.GetString("MarkdownFieldMaxLength", resourceCulture);

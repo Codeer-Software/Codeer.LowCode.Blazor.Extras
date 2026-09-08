@@ -54,6 +54,47 @@ function insertBlock(value, start, end, block) {
   return { text, start: pos, end: pos };
 }
 
+// ===== 高さの自動伸長 =====
+// 通常の行では中身に合わせて textarea を伸ばす。FillAvailable や行 Height で外から高さが決まっているときは
+// 伸ばさず、flex の stretch に任せて内部スクロールにする。
+// 判定: textarea の高さを 0 にしても親 (.markdown-body) の高さが変わらなければ「外から決まっている」。
+const attached = new WeakMap();
+
+function autoSize(textarea) {
+  const body = textarea.closest('.markdown-body');
+  if (!body) return;
+  const before = body.clientHeight;
+  // CSS の min-height (最小 6 行) が効いていると 0 に縮まず判定できないので、判定の間だけ外す
+  textarea.style.minHeight = '0px';
+  textarea.style.height = '0px';
+  const constrained = body.clientHeight >= before - 1 && before > 0;
+  textarea.style.minHeight = '';
+  if (constrained) {
+    textarea.style.height = '';
+    return;
+  }
+  const style = getComputedStyle(textarea);
+  const border = parseFloat(style.borderTopWidth) + parseFloat(style.borderBottomWidth);
+  textarea.style.height = (textarea.scrollHeight + border) + 'px';
+}
+
+export function attach(textarea) {
+  if (!textarea) return;
+  if (!attached.has(textarea)) {
+    const onInput = () => autoSize(textarea);
+    textarea.addEventListener('input', onInput);
+    attached.set(textarea, onInput);
+  }
+  autoSize(textarea);
+}
+
+export function detach(textarea) {
+  const h = textarea && attached.get(textarea);
+  if (!h) return;
+  textarea.removeEventListener('input', h);
+  attached.delete(textarea);
+}
+
 export function applyAction(textarea, action) {
   if (!textarea) return null;
   const value = textarea.value;

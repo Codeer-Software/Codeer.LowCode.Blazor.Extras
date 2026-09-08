@@ -1136,9 +1136,6 @@ Recipients: {1}</value>
   <data name="MarkdownFieldPlaceholder" xml:space="preserve">
     <value>Placeholder</value>
   </data>
-  <data name="MarkdownFieldRows" xml:space="preserve">
-    <value>Rows</value>
-  </data>
   <data name="MarkdownFieldMaxLength" xml:space="preserve">
     <value>Max Length</value>
   </data>

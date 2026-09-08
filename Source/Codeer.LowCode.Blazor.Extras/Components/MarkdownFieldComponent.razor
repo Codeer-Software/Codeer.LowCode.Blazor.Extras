@@ -54,7 +54,7 @@ else
                   id="@WebElementId"
                   @ref="_textarea"
                   data-role="input"
-                  rows="@Math.Max(2, Field.Design.Rows)"
+                  rows="1"
                   maxlength="@Field.Design.MaxLength"
                   placeholder="@Field.Design.Placeholder"
                   disabled="@IsDisabled"
@@ -123,6 +123,12 @@ else
       _jsModule = await JSRuntime.InvokeAsync<IJSObjectReference>(
         "import", "./_content/Codeer.LowCode.Blazor.Extras/markdown-interop.js");
     }
+    //編集欄は中身に合わせて伸びる (FillAvailable 等で高さが決まっているときは JS 側が判定して伸ばさない)。
+    //タブ切替で textarea が作り直されるので毎描画で呼ぶ (JS 側は二重登録しない)
+    if (!(IsTabMode && _preview))
+    {
+      await _jsModule.InvokeVoidAsync("attach", _textarea);
+    }
   }
 
   //編集欄の内容を Field へ反映する (フォーカスが離れたとき・ツールバー操作・タブ切替)
@@ -160,6 +166,7 @@ else
   {
     if (_jsModule != null)
     {
+      try { await _jsModule.InvokeVoidAsync("detach", _textarea); } catch { }
       try { await _jsModule.DisposeAsync(); } catch { }
     }
     await base.DisposeAsync();

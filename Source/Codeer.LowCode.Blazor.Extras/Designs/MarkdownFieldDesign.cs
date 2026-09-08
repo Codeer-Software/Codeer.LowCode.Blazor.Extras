@@ -34,9 +34,8 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         [Designer(Index = 1, DisplayName = "$MarkdownFieldPlaceholder")]
         public string Placeholder { get; set; } = string.Empty;
 
-        /// <summary>編集欄の行数 (高さ)。</summary>
-        [Designer(Index = 2, DisplayName = "$MarkdownFieldRows")]
-        public int Rows { get; set; } = 8;
+        //高さは持たない: 編集欄は中身に合わせて伸び、FillAvailable の最終行では残り高さいっぱい、
+        //固定したいときは Grid の行 Height で (RichTextField と同じ。レイアウトの責務)
 
         /// <summary>最大文字数 (Markdown の文字数)。null なら制限なし。</summary>
         [Designer(Index = 3, DisplayName = "$MarkdownFieldMaxLength")]

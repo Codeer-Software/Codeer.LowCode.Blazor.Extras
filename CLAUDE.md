@@ -101,7 +101,7 @@ dotnet build Source/Codeer.LowCode.Blazor.Extras/Codeer.LowCode.Blazor.Extras.cs
 
 #### MarkdownField - Markdown エディタ / ビューア
 - **状態**: 実装済み (docs/MarkdownField.md)
-- **機能**: Markdown をプレーンテキストのまま DB 列に保存し、閲覧時 (IsViewOnly) は HTML に描画。編集時はツールバー (見出し/太字/斜体/取り消し線/箇条書き/番号付き/チェックリスト/引用/リンク/コード/コードブロック/表) と `PreviewMode` (Tab=タブ切替 / Split=左右並び / None。**編集中だけの設定で、読取専用時は常にプレビュー表示**。表示名は「プレビュー（読取専用時はプレビューで表示）」= 「なし」なのに閲覧で描画されて見える誤読への対策 2026-09-08)。`Rows` / `MaxLength` / `Placeholder` / `ShowToolbar`。必須と最大文字数の検証
+- **機能**: Markdown をプレーンテキストのまま DB 列に保存し、閲覧時 (IsViewOnly) は HTML に描画。編集時はツールバー (見出し/太字/斜体/取り消し線/箇条書き/番号付き/チェックリスト/引用/リンク/コード/コードブロック/表) と `PreviewMode` (Tab=タブ切替 / Split=左右並び / None。**編集中だけの設定で、読取専用時は常にプレビュー表示**。表示名は「プレビュー（読取専用時はプレビューで表示）」= 「なし」なのに閲覧で描画されて見える誤読への対策 2026-09-08)。`MaxLength` / `Placeholder` / `ShowToolbar`。必須と最大文字数の検証。**高さの設定は持たない** (0.9.1 で Rows 撤去。JS `attach`/`autoSize` が中身に合わせて伸ばす=最小 6 行。FillAvailable の最終行や行 Height で外から高さが決まっているときは「textarea を 0 にしても .markdown-body が縮まない」で判定して伸ばさず stretch+内部スクロール。RichText と同じ振る舞い)
 - **描画**: `Markdown/MarkdownRenderer` (Markdig 0.37.0、AdvancedExtensions + 単独改行を `<br>` + **`DisableHtml` で生 HTML 無効化** = 信頼できないテキストを描く前提) + リンクに target=_blank。表示 CSS は `.markdown-view ::deep`。閲覧・プレビューで共通
 - **編集の同期**: textarea はローカル `_text` を oninput で持ち、blur (onchange) / ツールバー操作 / タブ切替で `Field.SetValueAsync` (キー入力ごとに OnDataChanged を起こさない)。外部からの値変更は `Field.OnDataChangedAsync` で `_text` へ戻す。ツールバーは `wwwroot/markdown-interop.js` の `applyAction` が選択範囲を書き換えて全文を返す
 - **RichTextField との住み分け**: 書き手が記法を知っている人か AI なら Markdown、記法を知らない利用者なら RichText (HTML 保存)

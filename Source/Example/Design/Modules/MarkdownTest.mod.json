@@ -31,7 +31,6 @@
     {
       "DbColumn": "",
       "Placeholder": "Markdown で入力 (Enter は改行)",
-      "Rows": 8,
       "MaxLength": null,
       "PreviewMode": "Tab",
       "ShowToolbar": true,
@@ -57,7 +56,6 @@
     {
       "DbColumn": "",
       "Placeholder": "",
-      "Rows": 10,
       "MaxLength": 200,
       "PreviewMode": "Split",
       "ShowToolbar": true,
@@ -83,7 +81,6 @@
     {
       "DbColumn": "",
       "Placeholder": "",
-      "Rows": 4,
       "MaxLength": null,
       "PreviewMode": "None",
       "ShowToolbar": false,
@@ -109,7 +106,6 @@
     {
       "DbColumn": "",
       "Placeholder": "",
-      "Rows": 8,
       "MaxLength": null,
       "PreviewMode": "Tab",
       "ShowToolbar": true,

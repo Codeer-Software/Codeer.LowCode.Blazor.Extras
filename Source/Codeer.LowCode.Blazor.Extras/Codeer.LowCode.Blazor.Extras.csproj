@@ -6,7 +6,7 @@
 		<Nullable>enable</Nullable>
 		<AddRazorSupportForMvc>true</AddRazorSupportForMvc>
 		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
-		<Version>0.9.0</Version>
+		<Version>0.9.1</Version>
 		<Authors>Codeer</Authors>
 		<Company>Codeer</Company>
 		<Description>Extra field components and client-side services for Codeer.LowCode.Blazor. Includes Calendar, Gantt Chart, Task Board (Kanban), Rich Text Editor, Markdown Editor, Color Picker, Marker List, QR Code, Progress Bar, Password Hash, and AI Text Analyzer fields, plus built-in script objects (Excel, WebApi, Toaster, Mail) and client infrastructure services (HTTP, UI, logging, localization).</Description>
@@ -17,7 +17,7 @@
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>
 		<PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
-		<PackageReleaseNotes>MarkdownField: a Markdown editor / viewer. The value is stored as Markdown text in the DB column and rendered to HTML when the field is read-only, so notes, specifications, procedures and AI-written text keep a searchable plain-text form. Editing offers a toolbar (heading, bold, italic, strikethrough, bulleted / numbered / task list, quote, link, inline code, code block, table) and a preview that is either a tab (Edit / Preview), side by side, or off (PreviewMode; read-only always shows the rendered preview). Properties: DbColumn, Placeholder, Rows, MaxLength, PreviewMode, ShowToolbar; validation for required and maximum length. Script API: Value, Html, PlainText, AppendLine(line). Rendering uses Markdig (BSD-2-Clause) with GitHub-style extensions, soft line breaks as line breaks and raw HTML disabled (untrusted text is rendered safely); links open in a new tab. Use RichTextField when the author does not know Markdown; use MarkdownField when the author is a Markdown user or an AI.</PackageReleaseNotes>
+		<PackageReleaseNotes>MarkdownField: the editor now sizes itself to its content (minimum six lines) instead of a fixed number of rows, and fills the remaining height when placed in the last row of a fill-available grid or in a row with an explicit Height (internal scrolling), the same way RichTextField does. The Rows property is removed (a value saved by 0.9.0 is ignored). The preview pane scrolls inside the editor frame.</PackageReleaseNotes>
 		<PackageId>Codeer.LowCode.Blazor.Extras</PackageId>
 	</PropertyGroup>
 

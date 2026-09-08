@@ -1136,9 +1136,6 @@
   <data name="MarkdownFieldPlaceholder" xml:space="preserve">
     <value>プレースホルダ</value>
   </data>
-  <data name="MarkdownFieldRows" xml:space="preserve">
-    <value>行数</value>
-  </data>
   <data name="MarkdownFieldMaxLength" xml:space="preserve">
     <value>最大文字数</value>
   </data>
