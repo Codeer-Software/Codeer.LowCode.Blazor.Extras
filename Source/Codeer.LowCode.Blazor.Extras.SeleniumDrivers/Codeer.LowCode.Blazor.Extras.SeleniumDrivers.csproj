@@ -4,7 +4,7 @@
     <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <Version>0.1.0</Version>
+    <Version>0.2.0</Version>
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
     <PackageId>Codeer.LowCode.Blazor.Extras.SeleniumDrivers</PackageId>
     <Description>Selenium drivers for the fields of Codeer.LowCode.Blazor.Extras. Used together with Codeer.LowCode.Blazor.SeleniumDrivers.</Description>
@@ -13,9 +13,7 @@
     <PackageTags>Codeer.LowCode.Blazor;Selenium</PackageTags>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
-    <PackageReleaseNotes>
-- Initial release.
-    </PackageReleaseNotes>
+    <PackageReleaseNotes>MarkdownFieldDriver: driver for MarkdownField (Codeer.LowCode.Blazor.Extras 0.9.0) - the Markdown textarea, the Edit / Preview tabs, the toolbar buttons and the rendered HTML of the preview or the read-only view.</PackageReleaseNotes>
   </PropertyGroup>
 
   <ItemGroup>
