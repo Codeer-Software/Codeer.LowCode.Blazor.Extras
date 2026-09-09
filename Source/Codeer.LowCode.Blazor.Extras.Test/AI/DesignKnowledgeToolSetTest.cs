@@ -8,7 +8,7 @@ using System.Text.Json;
 
 namespace Codeer.LowCode.Blazor.Extras.Test.AI
 {
-    /// <summary>DesignKnowledgeToolSet: デザイン定義の一覧・詳細 (候補値・Enum・リンク・論理削除・Query SQL・スクリプト) と補足文書。</summary>
+    /// <summary>DesignKnowledgeToolSet: デザイン定義の一覧・詳細 (候補値・Enum・リンク・論理削除・スクリプト) と補足文書。</summary>
     public class DesignKnowledgeToolSetTest
     {
         sealed class Progress : IAIChatProgress
@@ -36,12 +36,12 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
                 Members = { new EnumMemberDesign { Name = "Open", Value = "1", DisplayText = "受付" }, new EnumMemberDesign { Name = "Closed", Value = "9", DisplayText = "完了" } },
             });
 
-            var customer = new ModuleDesign { Name = "Customer", PageTitle = "得意先", DataSourceName = "Main", DbTable = "customers" };
+            var customer = new ModuleDesign { Name = "Customer", DataSourceName = "Main", DbTable = "customers" };
             customer.Fields.Add(new IdFieldDesign { Name = "Id", DbColumn = "id" });
             customer.Fields.Add(new TextFieldDesign { Name = "Name", DisplayName = "得意先名", DbColumn = "name", IsRequired = true });
             design.AddModule(customer);
 
-            var order = new ModuleDesign { Name = "Order", PageTitle = "受注", DataSourceName = "Main", DbTable = "orders" };
+            var order = new ModuleDesign { Name = "Order", DataSourceName = "Main", DbTable = "orders" };
             order.Fields.Add(new IdFieldDesign { Name = "Id", DbColumn = "id" });
             order.Fields.Add(new BooleanFieldDesign { Name = "LogicalDelete", DbColumn = "is_deleted" });
             order.Fields.Add(new NumberFieldDesign { Name = "Amount", DisplayName = "金額", DbColumn = "amount" });
@@ -52,15 +52,15 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
             var link = new LinkFieldDesign { Name = "Customer", DisplayName = "得意先", DbColumn = "customer_id", ValueVariable = "Id", DisplayTextVariable = "Name" };
             link.SearchCondition.ModuleName = "Customer";
             order.Fields.Add(link);
-            var query = new QueryFieldDesign { Name = "MonthlyTotal" };
-            query.QuerySetting.QueryText = "SELECT strftime('%Y-%m', order_date) AS ym, SUM(amount) FROM orders WHERE is_deleted = 0 GROUP BY ym";
-            order.Fields.Add(query);
+            order.Fields.Add(new QueryFieldDesign { Name = "MonthlyTotal" });   //SQL は .sql ファイル側。describe_module は型だけ出す
             design.AddModule(order);
             design.Scripts["Order"] = "void Amount_OnDataChanged() { Total.Value = Amount.Value * 1.1m; }";
 
-            //ページフレーム Main のサイドバーに Order へのリンク (URL セグメントは orders)。Customer にはリンクが無い → ルートのフレームの下で組む
+            //ページフレーム Main のサイドバーに Order へのリンク (表示名「受注」= モジュールの呼び名になる。URL セグメントは orders)。
+            //Customer はリンクではなく「その他のページ」(一覧ページのタイトル「得意先」が呼び名。セグメント未指定 → モジュール名)
             var main = new PageFrameDesign { Name = "Main", IsApplicationRoot = true };
             main.Left.Links.Add(new PageLink { Title = "受注", Module = "Order", ModuleUrlSegment = "orders", ModulePageType = ModulePageType.List });
+            main.OtherPageModuleDesigns.Add(new ModulePageDesign { Module = "Customer", ListPageDesign = { PageTitle = "得意先" } });
             ((IEditablePageFrameDesign)design.PageFrames).Add(main);
             return design;
         }
@@ -90,7 +90,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
         }
 
         [Test]
-        public async Task describe_moduleはフィールドと候補値とリンクと論理削除とSQLとスクリプトを返す()
+        public async Task describe_moduleはフィールドと候補値とリンクと論理削除とスクリプトを返す()
         {
             var design = CreateDesign();
             var tools = new DesignKnowledgeToolSet(() => design, null).CreateTools(Context()).ToList();
@@ -104,8 +104,8 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
             Assert.That(text, Does.Contain("候補値: 1=受付, 9=完了"), "Enum 参照の候補値");
             Assert.That(text, Does.Contain("候補値: N=通常, S=特注"), "Candidates (表示,値) の候補値");
             Assert.That(text, Does.Contain("リンク → Customer.Id (表示は Name)"));
-            Assert.That(text, Does.Contain("```sql"));
-            Assert.That(text, Does.Contain("GROUP BY ym"));
+            Assert.That(text, Does.Contain("- MonthlyTotal Query"));
+            Assert.That(text, Does.Not.Contain("```sql"), "Query の SQL は実行エンジン専用のバッファなので出さない");
             Assert.That(text, Does.Contain("Amount_OnDataChanged"));
         }
 

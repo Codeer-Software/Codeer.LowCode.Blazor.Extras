@@ -116,7 +116,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
                 Name = "OrderStatus",
                 Members = { new EnumMemberDesign { Name = "Open", Value = "1", DisplayText = "受付" }, new EnumMemberDesign { Name = "Closed", Value = "9", DisplayText = "完了" } },
             });
-            var order = new ModuleDesign { Name = "Order", PageTitle = "受注", DataSourceName = Ds, DbTable = "Orders" };
+            var order = new ModuleDesign { Name = "Order", DataSourceName = Ds, DbTable = "Orders" };
             order.Fields.Add(new IdFieldDesign { Name = "Id", DbColumn = "Id" });
             order.Fields.Add(new TextFieldDesign { Name = "Customer", DisplayName = "得意先", DbColumn = "Customer" });
             order.Fields.Add(new NumberFieldDesign { Name = "Amount", DisplayName = "金額", DbColumn = "Amount" });

@@ -7,7 +7,8 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat.DesignKnowledge
     /// <summary>
     /// デザイン定義 (DesignData) を AI が読める文章に要約する。JSON を丸ごと渡すと大きすぎるので、
     /// 業務の意味に効くものだけを抜く: モジュール名・表・データソース、フィールドの表示名と型と DB 列、候補値 (コード → 名称)、
-    /// リンク (結合の相手とキー)、システム項目 (Id / 論理削除)、行の閲覧条件の有無、Query の SQL、スクリプト。
+    /// リンク (結合の相手とキー)、システム項目 (Id / 論理削除)、行の閲覧条件の有無、スクリプト。
+    /// QueryField の SQL はデザインプロジェクトの .sql ファイルにあり実行エンジン専用のバッファに読まれるだけなので出さない (AI はスキーマと定義から自分で SQL を書く)。
     /// </summary>
     internal static class DesignDescriber
     {
@@ -21,7 +22,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat.DesignKnowledge
                 var module = design.Modules.Find(name);
                 if (module == null) continue;
                 sb.Append("- ").Append(module.Name);
-                if (!string.IsNullOrEmpty(module.PageTitle) && module.PageTitle != module.Name) sb.Append(" (").Append(module.PageTitle).Append(')');
+                AppendTitle(sb, design, module);
                 if (!string.IsNullOrEmpty(module.DbTable))
                     sb.Append(": 表 ").Append(module.DbTable).Append(string.IsNullOrEmpty(module.DataSourceName) ? "" : " @ " + module.DataSourceName);
                 else
@@ -36,25 +37,60 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat.DesignKnowledge
         }
 
         /// <summary>
+        /// モジュールのページ定義 (そのモジュールを表示するページフレーム上の設定)。サイドバーのリンク → その他のページ → トップページの順で探す。無ければ null。
+        /// 画面の呼び名 (タイトル) や URL セグメントはモジュール定義ではなくここにある。
+        /// </summary>
+        public static (PageFrameDesign Frame, ModulePageDesign Page)? FindModulePage(DesignData design, ModuleDesign module)
+        {
+            foreach (var name in design.PageFrames.GetPageFrameNames())
+            {
+                var frame = design.PageFrames.Find(name);
+                if (frame == null) continue;
+                var page = frame.Left.Links.Concat(frame.Right.Links).FirstOrDefault(l => l.Module == module.Name)
+                           ?? frame.OtherPageModuleDesigns.FirstOrDefault(p => p.Module == module.Name)
+                           ?? (frame.TopPageModuleDesign?.Module == module.Name ? frame.TopPageModuleDesign : null);
+                if (page != null) return (frame, page);
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// モジュールの画面上の呼び名。サイドバーのリンクの表示名 → 一覧ページのタイトル → 詳細ページのタイトルの順。どれも無ければ null (モジュール名だけで呼ぶ)。
+        /// </summary>
+        public static string? Title(DesignData design, ModuleDesign module)
+        {
+            var found = FindModulePage(design, module);
+            if (found == null) return null;
+            var page = found.Value.Page;
+            var title = (page as PageLink)?.Title;
+            if (string.IsNullOrEmpty(title)) title = page.ListPageDesign.PageTitle;
+            if (string.IsNullOrEmpty(title)) title = page.DetailPageDesign.PageTitle;
+            return string.IsNullOrEmpty(title) || title == module.Name ? null : title;
+        }
+
+        static void AppendTitle(StringBuilder sb, DesignData design, ModuleDesign module)
+        {
+            var title = Title(design, module);
+            if (title != null) sb.Append(" (").Append(title).Append(')');
+        }
+
+        /// <summary>
         /// モジュールの画面 URL (一覧と詳細の雛形)。CLB の URL は /{ページフレーム}/{モジュールの URL セグメント}[/{Id}]。
-        /// ページフレームのサイドバーにそのモジュールへのリンクがあればそのフレームとセグメントを使い、無ければアプリのルートのフレーム (無ければ最初のフレーム) の下で組む。
+        /// ページフレームにそのモジュールのページがあればそのフレームとセグメントを使い、無ければアプリのルートのフレーム (無ければ最初のフレーム) の下で組む。
         /// フレームが 1 つも無ければ null。
         /// </summary>
         public static (string List, string Detail)? PageUrls(DesignData design, ModuleDesign module)
         {
             string? frameName = null;
             var segment = module.Name;
-            foreach (var name in design.PageFrames.GetPageFrameNames())
+            var found = FindModulePage(design, module);
+            if (found != null)
             {
-                var frame = design.PageFrames.Find(name);
-                if (frame == null) continue;
-                var link = frame.Left.Links.Concat(frame.Right.Links).FirstOrDefault(l => l.Module == module.Name);
-                if (link == null) continue;
-                frameName = string.IsNullOrEmpty(link.PageFrame) ? frame.Name : link.PageFrame;
-                if (!string.IsNullOrEmpty(link.ModuleUrlSegment)) segment = link.ModuleUrlSegment;
-                break;
+                var (frame, page) = found.Value;
+                frameName = string.IsNullOrEmpty(page.PageFrame) ? frame.Name : page.PageFrame;
+                if (!string.IsNullOrEmpty(page.ModuleUrlSegment)) segment = page.ModuleUrlSegment;
             }
-            if (frameName == null)
+            else
             {
                 var names = design.PageFrames.GetPageFrameNames();
                 frameName = names.FirstOrDefault(n => design.PageFrames.Find(n)?.IsApplicationRoot == true) ?? names.FirstOrDefault();
@@ -70,16 +106,16 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat.DesignKnowledge
             var module = design.Modules.Find(moduleName);
             if (module == null)
             {
-                //大文字小文字・表示名での寄せ
+                //大文字小文字・画面の呼び名での寄せ
                 var alt = design.Modules.GetModuleNames().FirstOrDefault(n => string.Equals(n, moduleName, StringComparison.OrdinalIgnoreCase))
-                          ?? design.Modules.GetModuleNames().FirstOrDefault(n => design.Modules.Find(n)?.PageTitle == moduleName);
+                          ?? design.Modules.GetModuleNames().FirstOrDefault(n => design.Modules.Find(n) is { } m && Title(design, m) == moduleName);
                 if (alt == null) return null;
                 module = design.Modules.Find(alt)!;
             }
 
             var sb = new StringBuilder();
             sb.Append("# モジュール ").Append(module.Name);
-            if (!string.IsNullOrEmpty(module.PageTitle) && module.PageTitle != module.Name) sb.Append(" (").Append(module.PageTitle).Append(')');
+            AppendTitle(sb, design, module);
             sb.AppendLine();
             if (!string.IsNullOrEmpty(module.DbTable))
                 sb.Append("表: ").Append(module.DbTable).Append(string.IsNullOrEmpty(module.DataSourceName) ? "" : " (データソース " + module.DataSourceName + ")").AppendLine();
@@ -119,21 +155,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat.DesignKnowledge
                     sb.Append(", リンク → ").Append(link.SearchCondition.ModuleName).Append('.').Append(string.IsNullOrEmpty(link.ValueVariable) ? SystemFieldNames.Id : link.ValueVariable);
                     if (!string.IsNullOrEmpty(link.DisplayTextVariable)) sb.Append(" (表示は ").Append(link.DisplayTextVariable).Append(')');
                 }
-                if (field is QueryFieldDesign query && !string.IsNullOrWhiteSpace(query.QuerySetting.QueryText))
-                    sb.Append(", 定義 SQL は下記");
                 sb.AppendLine();
-            }
-
-            var queries = module.Fields.OfType<QueryFieldDesign>().Where(q => !string.IsNullOrWhiteSpace(q.QuerySetting.QueryText)).ToList();
-            if (queries.Count > 0)
-            {
-                sb.AppendLine();
-                sb.AppendLine("## Query フィールドの SQL (設計者が書いた集計の実例。書き方の参考にする)");
-                foreach (var query in queries)
-                {
-                    sb.Append("### ").AppendLine(query.Name);
-                    sb.AppendLine("```sql").AppendLine(query.QuerySetting.QueryText.Trim()).AppendLine("```");
-                }
             }
 
             if (design.Scripts.TryGetValue(module.Name, out var script) && !string.IsNullOrWhiteSpace(script))

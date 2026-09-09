@@ -11,7 +11,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat.DesignKnowledge
     /// <summary>
     /// アプリの設計 (デザインプロジェクト) を AI に読ませるツール群。業務の意味を持っているのは DB スキーマではなくデザインなので、
     /// モデルには「モジュールと業務語で考え、表と列は describe_module で確かめる」よう促す。
-    /// <c>list_modules</c> (一覧) / <c>describe_module</c> (フィールド・候補値・リンク・Query の SQL・スクリプト) /
+    /// <c>list_modules</c> (一覧) / <c>describe_module</c> (フィールド・候補値・リンク・スクリプト) /
     /// <c>read_document</c> (デザインプロジェクトに置いた補足の文書。<see cref="AIChatDocument"/>。どのフォルダを渡すかは AIChatField のデザインの
     /// DocumentFolder で決まり、チャットごとに違う文書の組を選べる。合計が小さければ全文をプロンプトに入れ、大きければ一覧と抜粋だけ入れてツールで読ませる)。
     /// デザインはホットリロードで変わるので Func で都度取る。
@@ -43,7 +43,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat.DesignKnowledge
                 {
                     sb.AppendLine("このアプリの設計 (モジュール = 画面とデータの単位) を参照できます。業務の意味は DB スキーマではなく設計にあります。");
                     sb.AppendLine("- 質問に出てくる業務語 (受注、得意先、状態など) は、まず list_modules / describe_module でどのモジュール・フィールド・候補値に当たるかを確かめてください。");
-                    sb.AppendLine("- describe_module には表と DB 列、候補値 (コード=名称)、リンク (どの表とどのキーで結ぶか)、論理削除、設計者が書いた Query の SQL、スクリプトが出ます。SQL はこれに基づいて書き、これで表と列が分かるなら DB スキーマ (get_schema) は読まないでください。");
+                    sb.AppendLine("- describe_module には表と DB 列、候補値 (コード=名称)、リンク (どの表とどのキーで結ぶか)、論理削除、スクリプトが出ます。SQL はこれに基づいて書き、これで表と列が分かるなら DB スキーマ (get_schema) は読まないでください。");
                     sb.AppendLine("- 論理削除の列がある表は、削除済みの行を除いて集計してください。");
                     sb.AppendLine("- 個々の行 (伝票や案件など) を挙げるときは、describe_module の「画面 URL」を使って詳細ページへの Markdown リンクを付けてください (例: [開く](/Main/Order/123))。{Id} には SQL で一緒に取った Id 列の値を入れます。集計値だけの答えにはリンクは要りません。");
                 }
@@ -82,7 +82,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat.DesignKnowledge
                 yield return AIFunctionFactory.Create(
                     ([Description("モジュール名 (list_modules の名前)。")] string moduleName) => DescribeModule(moduleName, context),
                     "describe_module",
-                    "モジュールの詳細を返す: フィールド (表示名・型・DB 列・候補値)、リンク (結合相手とキー)、論理削除、Query の SQL、スクリプト。");
+                    "モジュールの詳細を返す: フィールド (表示名・型・DB 列・候補値)、リンク (結合相手とキー)、論理削除、スクリプト。");
             }
             if (_documents != null && SafeDocuments(context).Count > 0)
             {

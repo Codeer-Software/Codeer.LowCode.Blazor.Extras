@@ -80,7 +80,7 @@ DELETE {EndPoint}/{requestId}   // 中断
 | `IAIChatAgent` | 返事を作る側のインターフェース。`ReplyAsync(request, progress, cancellationToken)` で `AIChatReply` (テキスト / Markdown / HTML / Auto) を返す。途中経過は `IAIChatProgress` に報告。`request.AgentName` にデザインの Agent 名が入る |
 | `AIChatJobStore` | プロセス内のジョブ置き場。コンストラクタで対応表 (`Func<string, IAIChatAgent?>`。Agent が 1 つなら `IAIChatAgent` を直接) を受け、送信で Agent をバックグラウンド実行し、状態をポーリングに返す。`Start(owner, conversationId, message, agentName, documentFolder)` で Agent 名と文書フォルダを渡す。対応表に無い名前は error になる。プロセスに 1 つ (アプリの静的プロパティ) |
 | `ChatClientAgent` (+ `ChatClientAgentOptions`) | 標準 Agent。Microsoft.Extensions.AI の `IChatClient` で返事を作る素の会話 Agent (システムプロンプト、会話履歴、逐次表示、Markdown → HTML)。履歴の鍵は「ログイン ID + 会話 ID」(認証の無いアプリでは会話 ID だけ) で、保持期限つき。トークンの膨張は 3 段で抑える: 直近 `KeepToolResultsForTurns` ターンより古いターンからはツール呼び出しと結果を落として文章だけ残す / `MaxHistoryTurns` を超えた古いターンを捨てる / `MaxHistoryCharacters` を超えたら古いターンから捨てる。モデルの選択と認証はアプリが `Func<IChatClient>` で渡す。FAQ のような「知識だけで答える」用途 |
-| `RawDataAccessAgent` (+ `RawDataAccessOptions`) | アプリの設計を読み、DB を直接読んで集計・グラフで答える Agent (`ChatClientAgent` を中に持って委譲)。内部のツール: `list_modules` / `describe_module` (モジュール定義: フィールドの表示名・型・DB 列、候補値 (コード=名称)、リンク (結合相手とキー)、論理削除、設計者が書いた Query の SQL、スクリプト)、`read_document` (補足文書)、画面 URL (一覧 `/{フレーム}/{セグメント}`・詳細 `/{フレーム}/{セグメント}/{Id}` をページフレームのリンクから組み、行を挙げる返事に「開く」リンクを付ける)、`get_schema` (引数なしなら表名の目次だけ、`tables` を指定した表の列だけを 1 表 1 行で。方言はシステムプロンプトに常時入っていて、設計で表と列が分かるときは呼ばない指示にしている = トークン節約)、`execute_sql` (指定データソースで読み取り専用 SELECT を 1 文。行数・文字数・時間の上限、監査ログ)、`render_chart` (棒 / 折れ線 / 円。サーバーで SVG を作るので数字が狂わない)。依存 (IChatClient と IDbAccessor の作り方、デザイン定義、文書) はコンストラクタ、設定 (`RawDataAccessOptions`: データソース名の一覧と上限) は別 |
+| `RawDataAccessAgent` (+ `RawDataAccessOptions`) | アプリの設計を読み、DB を直接読んで集計・グラフで答える Agent (`ChatClientAgent` を中に持って委譲)。内部のツール: `list_modules` / `describe_module` (モジュール定義: フィールドの表示名・型・DB 列、候補値 (コード=名称)、リンク (結合相手とキー)、論理削除、スクリプト)、`read_document` (補足文書)、画面 URL (一覧 `/{フレーム}/{セグメント}`・詳細 `/{フレーム}/{セグメント}/{Id}` をページフレームのリンクから組み、行を挙げる返事に「開く」リンクを付ける)、`get_schema` (引数なしなら表名の目次だけ、`tables` を指定した表の列だけを 1 表 1 行で。方言はシステムプロンプトに常時入っていて、設計で表と列が分かるときは呼ばない指示にしている = トークン節約)、`execute_sql` (指定データソースで読み取り専用 SELECT を 1 文。行数・文字数・時間の上限、監査ログ)、`render_chart` (棒 / 折れ線 / 円。サーバーで SVG を作るので数字が狂わない)。依存 (IChatClient と IDbAccessor の作り方、デザイン定義、文書) はコンストラクタ、設定 (`RawDataAccessOptions`: データソース名の一覧と上限) は別 |
 | `AIChatDocument` | Agent に渡す補足文書 (名前と本文)。出所はホストが決める。標準はデザインプロジェクトの `Resources/{DocumentFolder}/*.md` (フォルダはフィールドの `DocumentFolder`) |
 | (内部) HTML 化 | 返事は `AIChatJobStore` の中で HTML に揃えられる。Markdown は [Markdig](https://github.com/xoofx/markdig) (表・タスクリスト・自動リンク、単独改行は `<br>`)、テキストはエスケープ、HTML は素通し (リンクに `target="_blank"` を付けるだけ)。Agent 側で HTML 化のコードを書く必要はない |
 
@@ -108,7 +108,8 @@ public static class AIChatAgentTable
             chatClientFactory,                                           // IChatClient の作り方 (下記)
             () => new DbAccessor(SystemConfig.Instance.DataSources),     // IDbAccessor の作り方 (SQL ごとに作って捨てる)
             () => DesignerService.GetDesignData(),                       // デザイン定義 (ホットリロードで変わるので都度。null 可)
-            folder => AIChatDocuments.Read(folder),                      // 補足文書 = デザインの Resources/{DocumentFolder}/*.md (null 可)
+            folder => DesignDataFileManager.GetResourceTexts(designFileDirectory, folder, ".md", ".txt")   // 補足文書 = デザインの Resources/{DocumentFolder}/*.md|*.txt (本体 1.3.32 以降。null 可)
+                          .Select(e => new AIChatDocument(e.Name, e.Text)).ToList(),
             new RawDataAccessOptions { DataSourceNames = { "Analytics" } }),  // AI 用の読み取り専用 DB ユーザーで接続するデータソース (複数可)
         _ => null,                                                   // 知らない名前 → ジョブは error
     };
@@ -139,7 +140,7 @@ public class AIChatController : ControllerBase
 ```
 
 ```csharp
-// IChatClient の作り方はアプリの責務 (Example/Extras/Extras/Extras.Server/AI/AIChatClientFactory.cs。Azure OpenAI の例)
+// IChatClient の作り方はアプリの責務 (Example の AIChatAgentTable.CreateAzureOpenAI。Azure OpenAI の例)
 var client = new AzureOpenAIClient(new Uri(endpoint), new AzureKeyCredential(key));
 Func<IChatClient> chatClientFactory = () => client.GetChatClient(model).AsIChatClient();   // Microsoft.Extensions.AI.OpenAI
 ```
@@ -184,7 +185,7 @@ AIChatField.EndPoint = "/api/ai_chat";
 
 ### 設計と補足文書を AI に渡す
 
-業務の意味は DB スキーマではなくデザインプロジェクトにあります。`RawDataAccessAgent` はデザイン定義 (`DesignData`) を受け取り、モデルに「業務語はまずモジュール定義で確かめ、表と列は describe_module で確認してから SQL を書く」よう指示します。モジュール定義に書けないこと (用語の定義、集計の決まり、データの見方) は、デザインプロジェクトの `Resources` の下のフォルダに Markdown で置き、フィールドの `DocumentFolder` でそのフォルダを指定します (例: `Resources/AIChat/Sales/` に置いて `DocumentFolder` = `AIChat/Sales`)。チャットごとに別のフォルダを指せるので、売上分析のチャットには売上の説明書だけ、在庫のチャットには在庫の説明書だけ、と分けられます。App.zip に入ってデプロイで反映されます。文書の合計が小さい (既定 8000 文字以下) うちは全文がシステムプロンプトに入り、大きくなると一覧と冒頭の抜粋だけが入って AI が `read_document` で必要なものを読みます (Example の `AI/AIChatDocuments.cs` が App.zip から読む実装)。用語の定義 (「売上」は完了分だけ、など) は列名からは分からないので、ここに書くと答えの精度が目に見えて変わります。
+業務の意味は DB スキーマではなくデザインプロジェクトにあります。`RawDataAccessAgent` はデザイン定義 (`DesignData`) を受け取り、モデルに「業務語はまずモジュール定義で確かめ、表と列は describe_module で確認してから SQL を書く」よう指示します。モジュール定義に書けないこと (用語の定義、集計の決まり、データの見方) は、デザインプロジェクトの `Resources` の下のフォルダに Markdown で置き、フィールドの `DocumentFolder` でそのフォルダを指定します (例: `Resources/AIChat/Sales/` に置いて `DocumentFolder` = `AIChat/Sales`)。チャットごとに別のフォルダを指せるので、売上分析のチャットには売上の説明書だけ、在庫のチャットには在庫の説明書だけ、と分けられます。App.zip に入ってデプロイで反映されます。文書の合計が小さい (既定 8000 文字以下) うちは全文がシステムプロンプトに入り、大きくなると一覧と冒頭の抜粋だけが入って AI が `read_document` で必要なものを読みます (App.zip からの読み出しは Codeer.LowCode.Blazor 1.3.32 以降の `DesignDataFileManager.GetResourceTexts` で行います)。用語の定義 (「売上」は完了分だけ、など) は列名からは分からないので、ここに書くと答えの精度が目に見えて変わります。
 
 ### Agent を実装する
 

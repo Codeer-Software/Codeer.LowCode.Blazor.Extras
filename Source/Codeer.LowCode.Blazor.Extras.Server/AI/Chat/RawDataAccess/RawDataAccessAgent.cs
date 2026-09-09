@@ -20,7 +20,8 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat.RawDataAccess
     ///     chatClientFactory,                                          // IChatClient の作り方 (アプリの責務)
     ///     () => new DbAccessor(SystemConfig.Instance.DataSources),    // IDbAccessor の作り方 (SQL ごとに作って捨てる)
     ///     () => DesignerService.GetDesignData(),                      // デザイン定義 (ホットリロードで変わるので都度。null 可)
-    ///     folder => AIChatDocuments.Read(folder),                     // 補足文書 (デザインの Resources/{DocumentFolder}/*.md。null 可)
+    ///     folder => DesignDataFileManager.GetResourceTexts(dir, folder, ".md", ".txt")   // 補足文書 (デザインの Resources/{DocumentFolder}。null 可)
+    ///         .Select(e => new AIChatDocument(e.Name, e.Text)).ToList(),
     ///     new RawDataAccessOptions { DataSourceNames = { "Analytics" } }); // AI 用の読み取り専用ユーザーで接続するデータソース
     /// </code>
     /// </summary>
