@@ -43,7 +43,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat.DesignKnowledge
                 {
                     sb.AppendLine("このアプリの設計 (モジュール = 画面とデータの単位) を参照できます。業務の意味は DB スキーマではなく設計にあります。");
                     sb.AppendLine("- 質問に出てくる業務語 (受注、得意先、状態など) は、まず list_modules / describe_module でどのモジュール・フィールド・候補値に当たるかを確かめてください。");
-                    sb.AppendLine("- describe_module には表と DB 列、候補値 (コード=名称)、リンク (どの表とどのキーで結ぶか)、論理削除、設計者が書いた Query の SQL、スクリプトが出ます。SQL はこれに基づいて書いてください。");
+                    sb.AppendLine("- describe_module には表と DB 列、候補値 (コード=名称)、リンク (どの表とどのキーで結ぶか)、論理削除、設計者が書いた Query の SQL、スクリプトが出ます。SQL はこれに基づいて書き、これで表と列が分かるなら DB スキーマ (get_schema) は読まないでください。");
                     sb.AppendLine("- 論理削除の列がある表は、削除済みの行を除いて集計してください。");
                     sb.AppendLine("- 個々の行 (伝票や案件など) を挙げるときは、describe_module の「画面 URL」を使って詳細ページへの Markdown リンクを付けてください (例: [開く](/Main/Order/123))。{Id} には SQL で一緒に取った Id 列の値を入れます。集計値だけの答えにはリンクは要りません。");
                 }

@@ -6,7 +6,7 @@ AI の実体と会話の履歴はサーバー側の持ち物で、このフィ�
 
 ## 機能
 
-- **入力**: Enter で送信、Shift+Enter で改行 (IME の確定 Enter は送信しない)。入力欄は内容に合わせて伸びる (`MaxInputRows` まで)
+- **入力**: Ctrl+Enter は常に送信、Shift+Enter は常に改行。Enter は `SendOnEnter` (既定 true) で送信か改行かを選べる (IME の確定 Enter は送信しない)。入力欄は内容に合わせて伸びる (`MaxInputRows` まで)
 - **考え中**: 送信直後にアシスタント側の吹き出しを出し、点滅ドット・途中経過 (Agent が報告した場合)・経過秒数を表示
 - **逐次表示**: Agent が「ここまでの返事」を報告すれば、確定前から吹き出しの中身が更新される
 - **停止**: 待ち中は送信ボタンが停止ボタンになり、サーバーに中断を伝える
@@ -21,11 +21,10 @@ AI の実体と会話の履歴はサーバー側の持ち物で、このフィ�
 |---|---|---|---|
 | Agent | string | - | 返事を作るサーバー側 Agent の名前。空なら既定の Agent。サーバー側の対応表にある名前 (例: `RawDataAccess`) を指定し、同じフィールドで用途の違う Agent を使い分ける |
 | DocumentFolder | string | - | この会話に渡す補足文書のフォルダ (デザインプロジェクトの `Resources` からの相対パス。例: `AIChat/Sales`)。そのフォルダの `.md` / `.txt` が用語の定義や集計の決まりとして Agent に渡る。空なら文書なし。チャットごとに別のフォルダを指定して、用途に合った文書だけを渡す (トークンの節約にもなる) |
-| Placeholder | string | - | 入力欄のプレースホルダ |
-| WelcomeMessage | string (複数行, HTML 可) | - | 会話の先頭に表示するアシスタントの挨拶。空なら表示しない |
 | Height | int | - | 高さ (px)。0 なら親の高さに合わせる。`IsFillAvailable` のグリッドに置くか Height を指定する |
 | TimeoutSeconds | int | - | 返事を待つ上限 (秒)。既定 600。超えたら問い合わせをやめてエラー表示にする (サーバー側の処理は止めない) |
 | MaxInputRows | int | - | 入力欄が自動で伸びる上限の行数。既定 6 |
+| SendOnEnter | bool | - | Enter キーで送信するか。既定 true。false なら Enter は改行。Shift+Enter (改行) と Ctrl+Enter (送信) はこの設定に関係なく固定 |
 | OnReplyReceived | string (スクリプトイベント) | - | 返事が確定したときに呼ぶスクリプト。`void Xxx(string replyHtml)` |
 
 ## スクリプト API
@@ -58,7 +57,7 @@ void Chat_OnReplyReceived(string replyHtml)
 クライアントは HTML を表示するだけで内容を解釈しません。Markdown やテキストを HTML にするのはサーバーの仕事です。返事に時間がかかる Agent を想定し、HTTP を張ったまま待たず、受付番号でポーリングします。
 
 ```
-POST   {EndPoint}               { "conversationId": "…", "message": "…", "agent": "" }   // agent = デザインの Agent 名 (空 = 既定)
+POST   {EndPoint}               { "conversationId": "…", "message": "…", "agent": "", "documentFolder": "" }   // agent = デザインの Agent 名 (空 = 既定)、documentFolder = 補足文書のフォルダ (空 = なし)
        → 202 { "requestId": "…" }
 GET    {EndPoint}/{requestId}
        → { "status": "running" | "done" | "error" | "canceled",
@@ -79,10 +78,10 @@ DELETE {EndPoint}/{requestId}   // 中断
 | 型 | 役割 |
 |---|---|
 | `IAIChatAgent` | 返事を作る側のインターフェース。`ReplyAsync(request, progress, cancellationToken)` で `AIChatReply` (テキスト / Markdown / HTML / Auto) を返す。途中経過は `IAIChatProgress` に報告。`request.AgentName` にデザインの Agent 名が入る |
-| `AIChatJobStore` | プロセス内のジョブ置き場。コンストラクタで対応表 (`Func<string, IAIChatAgent?>`。Agent が 1 つなら `IAIChatAgent` を直接) を受け、送信で Agent をバックグラウンド実行し、状態をポーリングに返す。`Start(owner, conversationId, message, agentName)` で Agent 名を渡す。対応表に無い名前は error になる。プロセスに 1 つ (アプリの静的プロパティ) |
+| `AIChatJobStore` | プロセス内のジョブ置き場。コンストラクタで対応表 (`Func<string, IAIChatAgent?>`。Agent が 1 つなら `IAIChatAgent` を直接) を受け、送信で Agent をバックグラウンド実行し、状態をポーリングに返す。`Start(owner, conversationId, message, agentName, documentFolder)` で Agent 名と文書フォルダを渡す。対応表に無い名前は error になる。プロセスに 1 つ (アプリの静的プロパティ) |
 | `ChatClientAgent` (+ `ChatClientAgentOptions`) | 標準 Agent。Microsoft.Extensions.AI の `IChatClient` で返事を作る素の会話 Agent (システムプロンプト、会話履歴、逐次表示、Markdown → HTML)。履歴の鍵は「ログイン ID + 会話 ID」(認証の無いアプリでは会話 ID だけ) で、保持期限つき。トークンの膨張は 3 段で抑える: 直近 `KeepToolResultsForTurns` ターンより古いターンからはツール呼び出しと結果を落として文章だけ残す / `MaxHistoryTurns` を超えた古いターンを捨てる / `MaxHistoryCharacters` を超えたら古いターンから捨てる。モデルの選択と認証はアプリが `Func<IChatClient>` で渡す。FAQ のような「知識だけで答える」用途 |
-| `RawDataAccessAgent` (+ `RawDataAccessOptions`) | アプリの設計を読み、DB を直接読んで集計・グラフで答える Agent (`ChatClientAgent` を中に持って委譲)。内部のツール: `list_modules` / `describe_module` (モジュール定義: フィールドの表示名・型・DB 列、候補値 (コード=名称)、リンク (結合相手とキー)、論理削除、設計者が書いた Query の SQL、スクリプト)、`read_document` (補足文書)、画面 URL (一覧 `/{フレーム}/{セグメント}`・詳細 `/{フレーム}/{セグメント}/{Id}` をページフレームのリンクから組み、行を挙げる返事に「開く」リンクを付ける)、`get_schema` (データソースごとの表と列。方言と業務名を添える)、`execute_sql` (指定データソースで読み取り専用 SELECT を 1 文。行数・文字数・時間の上限、監査ログ)、`render_chart` (棒 / 折れ線 / 円。サーバーで SVG を作るので数字が狂わない)。依存 (IChatClient と IDbAccessor の作り方、デザイン定義、文書) はコンストラクタ、設定 (`RawDataAccessOptions`: データソース名の一覧と上限) は別 |
-| `AIChatDocument` | Agent に渡す補足文書 (名前と本文)。出所はホストが決める。標準はデザインプロジェクトの `Resources/AIChat/*.md` |
+| `RawDataAccessAgent` (+ `RawDataAccessOptions`) | アプリの設計を読み、DB を直接読んで集計・グラフで答える Agent (`ChatClientAgent` を中に持って委譲)。内部のツール: `list_modules` / `describe_module` (モジュール定義: フィールドの表示名・型・DB 列、候補値 (コード=名称)、リンク (結合相手とキー)、論理削除、設計者が書いた Query の SQL、スクリプト)、`read_document` (補足文書)、画面 URL (一覧 `/{フレーム}/{セグメント}`・詳細 `/{フレーム}/{セグメント}/{Id}` をページフレームのリンクから組み、行を挙げる返事に「開く」リンクを付ける)、`get_schema` (引数なしなら表名の目次だけ、`tables` を指定した表の列だけを 1 表 1 行で。方言はシステムプロンプトに常時入っていて、設計で表と列が分かるときは呼ばない指示にしている = トークン節約)、`execute_sql` (指定データソースで読み取り専用 SELECT を 1 文。行数・文字数・時間の上限、監査ログ)、`render_chart` (棒 / 折れ線 / 円。サーバーで SVG を作るので数字が狂わない)。依存 (IChatClient と IDbAccessor の作り方、デザイン定義、文書) はコンストラクタ、設定 (`RawDataAccessOptions`: データソース名の一覧と上限) は別 |
+| `AIChatDocument` | Agent に渡す補足文書 (名前と本文)。出所はホストが決める。標準はデザインプロジェクトの `Resources/{DocumentFolder}/*.md` (フォルダはフィールドの `DocumentFolder`) |
 | (内部) HTML 化 | 返事は `AIChatJobStore` の中で HTML に揃えられる。Markdown は [Markdig](https://github.com/xoofx/markdig) (表・タスクリスト・自動リンク、単独改行は `<br>`)、テキストはエスケープ、HTML は素通し (リンクに `target="_blank"` を付けるだけ)。Agent 側で HTML 化のコードを書く必要はない |
 
 Example の `DummyAIChatAgent` (`Example/Extras/Extras/Extras.Server/AI/`) は AI を呼ばないダミーで、UI の確認と、自分で `IAIChatAgent` を書くときの雛形です。発言に `html` / `text` / `error` / `slow` を含めると振る舞いが変わります。
@@ -127,7 +126,7 @@ public class AIChatController : ControllerBase
 
     [HttpPost]
     public ActionResult<AIChatSendResponse> Send([FromBody] AIChatSendRequest request)
-        => Accepted(new AIChatSendResponse { RequestId = jobs.Start(Owner, request.ConversationId, request.Message, request.Agent) });
+        => Accepted(new AIChatSendResponse { RequestId = jobs.Start(Owner, request.ConversationId, request.Message, request.Agent, request.DocumentFolder) });
 
     [HttpGet("{requestId}")]
     public ActionResult<AIChatStatusResponse> Status(string requestId)

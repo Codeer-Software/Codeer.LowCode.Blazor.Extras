@@ -1,5 +1,5 @@
 // AIChatField の入力欄と表示の補助。
-// - Enter で送信 (Shift+Enter は改行、IME 変換中は無視)
+// - Ctrl+Enter は常に送信、Shift+Enter は常に改行、Enter は sendOnEnter (デザインの SendOnEnter) に従う。IME 変換中は無視
 // - 入力欄を内容に合わせて伸ばす (上限行数まで)
 // - 返事が増えたら最下部へスクロール (ユーザーが上を読んでいる間は追従しない)
 // - 返事のコピー
@@ -21,10 +21,12 @@ function autoSize(textarea, maxRows) {
   textarea.style.height = Math.min(textarea.scrollHeight + border, max) + 'px';
 }
 
-export function initialize(textarea, maxRows) {
+export function initialize(textarea, maxRows, sendOnEnter) {
   if (!textarea || handlers.has(textarea)) return;
   const onKeyDown = (e) => {
-    if (e.key !== 'Enter' || e.shiftKey) return;
+    if (e.key !== 'Enter') return;
+    if (e.shiftKey) return;                          // Shift+Enter は常に改行 (既定の動作に任せる)
+    if (!e.ctrlKey && sendOnEnter === false) return; // Enter で送信しない設定なら改行
     // IME 確定の Enter は送信しない
     if (e.isComposing || e.keyCode === 229) return;
     e.preventDefault();

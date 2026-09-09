@@ -10,15 +10,11 @@
   @if (IsDesignMode)
   {
     <div class="aichat-messages">
-      @if (!string.IsNullOrEmpty(Field.Design.WelcomeMessage))
-      {
-        <div class="aichat-msg aichat-assistant"><div class="aichat-bubble aichat-reply">@((MarkupString)Field.Design.WelcomeMessage)</div></div>
-      }
       <div class="aichat-msg aichat-user"><div class="aichat-bubble">@Resources.AIChat_DesignSampleUser</div></div>
       <div class="aichat-msg aichat-assistant"><div class="aichat-bubble aichat-reply"><p>@Resources.AIChat_DesignSampleAssistant</p></div></div>
     </div>
     <div class="aichat-input-row">
-      <textarea class="form-control aichat-input" rows="1" placeholder="@Field.Design.Placeholder" disabled></textarea>
+      <textarea class="form-control aichat-input" rows="1" disabled></textarea>
       <button type="button" class="btn btn-primary aichat-send" disabled><i class="bi bi-send"></i></button>
     </div>
   }
@@ -31,12 +27,6 @@
       </button>
     </div>
     <div class="aichat-messages" @ref="_messagesElement" data-role="messages">
-      @if (!string.IsNullOrEmpty(Field.Design.WelcomeMessage))
-      {
-        <div class="aichat-msg aichat-assistant aichat-welcome">
-          <div class="aichat-bubble aichat-reply">@((MarkupString)Field.Design.WelcomeMessage)</div>
-        </div>
-      }
       @for (var i = 0; i < Field.Messages.Count; i++)
       {
         var index = i;
@@ -92,7 +82,7 @@
     </div>
     <div class="aichat-input-row">
       <textarea class="form-control aichat-input" rows="1" @ref="_inputElement" data-role="input"
-                placeholder="@Field.Design.Placeholder" disabled="@(!CanInput)" data-consumes-enter
+                disabled="@(!CanInput)" data-consumes-enter
                 @bind="_input" @bind:event="oninput"></textarea>
       @if (Field.IsBusy)
       {
@@ -152,7 +142,7 @@
     {
       _jsModule = await JSRuntime.InvokeAsync<IJSObjectReference>(
         "import", "./_content/Codeer.LowCode.Blazor.Extras/aichat-interop.js");
-      await _jsModule.InvokeVoidAsync("initialize", _inputElement, Math.Max(1, Field.Design.MaxInputRows));
+      await _jsModule.InvokeVoidAsync("initialize", _inputElement, Math.Max(1, Field.Design.MaxInputRows), Field.Design.SendOnEnter);
       _renderedVersion = Field.Version;
       await _jsModule.InvokeVoidAsync("scrollToBottom", _messagesElement, true);
     }

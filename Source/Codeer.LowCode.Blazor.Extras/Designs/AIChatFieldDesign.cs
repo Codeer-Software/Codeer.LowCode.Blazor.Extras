@@ -31,14 +31,6 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         [Designer]
         public string DocumentFolder { get; set; } = string.Empty;
 
-        /// <summary>入力欄のプレースホルダ。</summary>
-        [Designer]
-        public string Placeholder { get; set; } = string.Empty;
-
-        /// <summary>会話の先頭に表示するアシスタントの挨拶 (HTML 可)。空なら表示しない。</summary>
-        [Designer(CandidateType = CandidateType.MultilineString)]
-        public string WelcomeMessage { get; set; } = string.Empty;
-
         /// <summary>高さ (px)。0 なら親の高さに合わせる (FillAvailable のグリッドに置く前提)。</summary>
         [Designer]
         public int Height { get; set; }
@@ -50,6 +42,13 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         /// <summary>入力欄が自動で伸びる上限の行数。</summary>
         [Designer]
         public int MaxInputRows { get; set; } = 6;
+
+        /// <summary>
+        /// Enter キーで送信するか (既定 true)。false なら Enter は改行になる。
+        /// Shift+Enter は常に改行、Ctrl+Enter は常に送信 (この 2 つは設定に関係なく固定)。
+        /// </summary>
+        [Designer]
+        public bool SendOnEnter { get; set; } = true;
 
         /// <summary>返事が確定したときに呼ぶスクリプト。引数は返事の HTML。</summary>
         [Designer(CandidateType = CandidateType.ScriptEvent),

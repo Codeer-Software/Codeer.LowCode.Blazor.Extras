@@ -75,15 +75,26 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
             module.Fields.Add(status);
             designs.AddModule(module);
 
-            var tools = Create(design: designs).CreateTools(Context()).ToList();
-            var schema = await InvokeAsync(tools, "get_schema");
+            var toolSet = Create(design: designs);
+            var tools = toolSet.CreateTools(Context()).ToList();
 
-            Assert.That(schema, Does.Contain("## データソース AiDb"));
-            Assert.That(schema, Does.Contain("SQLite"));
-            Assert.That(schema, Does.Contain("Orders [モジュール 受注]"));
-            Assert.That(schema, Does.Contain("Amount REAL  [金額]"));
-            Assert.That(schema, Does.Contain("[状態; 候補値: 0=未処理, 1=処理済]"));
-            Assert.That(schema, Does.Contain("Secrets"));
+            //引数なし = 目次 (表名・列数・モジュール名) だけ。列は出ない
+            var index = await InvokeAsync(tools, "get_schema");
+            Assert.That(index, Does.Contain("## データソース AiDb (SQLite"));
+            Assert.That(index, Does.Contain("- Orders (4 列) [モジュール 受注]"));
+            Assert.That(index, Does.Contain("- Secrets (2 列)"));
+            Assert.That(index, Does.Not.Contain("Amount"));
+
+            //tables 指定 = その表の列だけ、1 表 1 行
+            var detail = await InvokeAsync(tools, "get_schema", new() { ["tables"] = new[] { "orders" } });
+            Assert.That(detail, Does.Contain("- Orders [モジュール 受注](Id INTEGER, Customer TEXT, Amount REAL [金額], Status INTEGER [状態; 候補値: 0=未処理, 1=処理済])"));
+            Assert.That(detail, Does.Not.Contain("Secrets"));
+
+            var missing = await InvokeAsync(tools, "get_schema", new() { ["tables"] = new[] { "Nope" } });
+            Assert.That(missing, Does.Contain("見つかりません"));
+
+            //方言はプロンプト側にも出る (get_schema を呼ばなくても分かる)
+            Assert.That(toolSet.GetInstructions(Context()), Does.Contain("AiDb = SQLite"));
         }
 
         [Test]
@@ -93,6 +104,8 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
             var schema = await InvokeAsync(tools, "get_schema");
             Assert.That(schema, Does.Contain("Orders"));
             Assert.That(schema, Does.Not.Contain("Secrets"));
+            var detail = await InvokeAsync(tools, "get_schema", new() { ["tables"] = new[] { "Secrets" } });
+            Assert.That(detail, Does.Contain("見つかりません"), "除外した表は名指ししても出ない");
         }
 
         [Test]
@@ -175,6 +188,9 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
                 Assert.That(schema, Does.Contain("## データソース AiDb"));
                 Assert.That(schema, Does.Contain("## データソース Other"));
                 Assert.That(schema.IndexOf("Products", StringComparison.Ordinal), Is.GreaterThan(schema.IndexOf("## データソース Other", StringComparison.Ordinal)));
+                var only = await InvokeAsync(tools, "get_schema", new() { ["dataSource"] = "Other" });
+                Assert.That(only, Does.Not.Contain("## データソース AiDb"));
+                Assert.That(only, Does.Contain("Products"));
 
                 var ok = await InvokeAsync(tools, "execute_sql", new() { ["sql"] = "SELECT COUNT(*) AS N FROM Products", ["purpose"] = "", ["dataSource"] = "other" });
                 Assert.That(ok, Does.Contain("\"dataSource\":\"Other\""));

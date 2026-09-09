@@ -18,8 +18,6 @@
       "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.LabelFieldDesign"
     },
     {
-      "Placeholder": "データについて質問 (例: 得意先別の受注金額を棒グラフで)",
-      "WelcomeMessage": "<p><b>RawDataAccess Agent</b> です。DB を直接読んで集計やグラフで答えます (AISettings に Azure OpenAI の設定が必要)。</p>",
       "Height": 0,
       "TimeoutSeconds": 600,
       "MaxInputRows": 6,

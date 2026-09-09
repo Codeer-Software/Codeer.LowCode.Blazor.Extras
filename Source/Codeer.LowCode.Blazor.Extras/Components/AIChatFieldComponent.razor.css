@@ -23,7 +23,7 @@
 
 .aichat-messages {
   flex: 1 1 auto;
-  min-height: 0;
+  min-height: 16rem; /* 初期表示 (返事が無いとき) でも会話の領域として見える高さを確保する。FillAvailable のときは残り高さいっぱいに伸びる */
   overflow-y: auto;
   overflow-x: hidden;
   padding: 0.75rem;

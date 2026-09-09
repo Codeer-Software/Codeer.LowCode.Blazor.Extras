@@ -36,8 +36,9 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat.RawDataAccess
         readonly RawDataAccessOptions _options;
         readonly List<string> _dataSourceNames;
         readonly object _schemaLock = new();
-        string? _schemaText;
+        Dictionary<string, List<DbSchemaReader.Column>>? _schemaCache;   //データソース名 → 列 (表・列・型)
         DateTime _schemaLoaded;
+        string? _dialects;                                              //プロンプト用: データソースごとの方言 (接続はしない)
 
         /// <param name="dbAccessorFactory">データソースへ接続する IDbAccessor を作る (SQL 1 回ごとに作って捨てる。バックグラウンド実行のためリクエストの寿命に乗れない)。例: <c>() => new DbAccessor(SystemConfig.Instance.DataSources)</c></param>
         /// <param name="design">デザイン定義 (ホットリロードで変わるので都度取る)。表と列に業務上の名前 (モジュール名・フィールド名・候補値) を添えてスキーマを説明する。null でも動く</param>
@@ -53,28 +54,49 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat.RawDataAccess
 
         public string GetInstructions(AIChatToolContext context)
         {
+            var sb = new StringBuilder();
+            sb.AppendLine("アプリのデータベースに問い合わせることができます。");
+            sb.Append("- データソースと SQL の方言: ").AppendLine(Dialects());
+            if (_dataSourceNames.Count > 1)
+                sb.AppendLine("- 1 つの SQL は 1 つのデータソースにしか届きません (データソースをまたぐ JOIN はできません)。またがる質問は、データソースごとに問い合わせて結果を自分で突き合わせてください。execute_sql には dataSource を指定します。");
+            sb.AppendLine("- 表と列を知る順番: まず補足文書とモジュール定義 (describe_module に表名と DB 列が出ます)。それで足りるなら get_schema は呼ばないでください。設計に無い表 (レガシー等) や、列名が確かでないときだけ get_schema を使います。");
+            sb.AppendLine("- get_schema は引数なしなら表名の目次だけ (小さい)、tables を指定するとその表の列だけを返します。全表の列を一度に取ろうとしないでください。名前を推測してはいけません。");
+            sb.AppendLine("- execute_sql は読み取り専用の SELECT を 1 文だけ実行します。それ以外は拒否され、DB ユーザーも読み取り専用です。");
+            sb.AppendLine($"- 結果は絞ってください (最大 {_options.MaxRows} 行まで返ります)。生の行を取るより、集計 (GROUP BY, SUM, COUNT) を優先してください。");
+            sb.AppendLine("- 結果は Markdown の表で示し、続けて短い解釈を書いてください。数値はクエリ結果に基づくもの以外を書かないこと。");
+            sb.AppendLine("- クエリが失敗したらエラーを読み、SQL を直して再試行してください (数回まで)。");
+            if (!string.IsNullOrWhiteSpace(_options.AdditionalInstructions)) sb.AppendLine().Append(_options.AdditionalInstructions.Trim());
+            return sb.ToString();
+        }
+
+        //"Main = PostgreSQL (…), Archive = SQLite (…)" のような一覧。DataSource の種別だけ見る (接続はしない)
+        string Dialects()
+        {
+            if (_dialects != null) return _dialects;
+            var db = _dbAccessorFactory();
+            try
             {
-                var sb = new StringBuilder();
-                sb.AppendLine("アプリのデータベースに問い合わせることができます。");
-                sb.AppendLine(_dataSourceNames.Count == 1
-                    ? $"- データソースは {_dataSourceNames[0]} の 1 つです。"
-                    : $"- データソースは {string.Join(", ", _dataSourceNames)} の {_dataSourceNames.Count} つです。1 つの SQL は 1 つのデータソースにしか届きません (データソースをまたぐ JOIN はできません)。またがる質問は、データソースごとに問い合わせて結果を自分で突き合わせてください。");
-                sb.AppendLine("- どの表や列があるか確かでないときは、先に get_schema を呼んでください。名前を推測してはいけません。");
-                sb.AppendLine("- execute_sql は読み取り専用の SELECT を 1 文だけ実行します。それ以外は拒否され、DB ユーザーも読み取り専用です。");
-                sb.AppendLine($"- 結果は絞ってください (最大 {_options.MaxRows} 行まで返ります)。生の行を取るより、集計 (GROUP BY, SUM, COUNT) を優先してください。");
-                sb.AppendLine("- 結果は Markdown の表で示し、続けて短い解釈を書いてください。数値はクエリ結果に基づくもの以外を書かないこと。");
-                sb.AppendLine("- クエリが失敗したらエラーを読み、SQL を直して再試行してください (数回まで)。");
-                if (!string.IsNullOrWhiteSpace(_options.AdditionalInstructions)) sb.AppendLine().Append(_options.AdditionalInstructions.Trim());
-                return sb.ToString();
+                _dialects = string.Join(", ", _dataSourceNames.Select(n =>
+                {
+                    var ds = db.GetDataSource(n);
+                    return ds == null ? n + " (未定義)" : n + " = " + DbSchemaReader.DialectName(ds.DataSourceType);
+                }));
             }
+            finally
+            {
+                db.DisposeAsync().AsTask().GetAwaiter().GetResult();
+            }
+            return _dialects;
         }
 
         public IEnumerable<AITool> CreateTools(AIChatToolContext context)
         {
             yield return AIFunctionFactory.Create(
-                () => GetSchemaAsync(context),
+                ([Description("列を知りたい表の名前 (複数可)。省略すると表名の目次だけを返す。")] string[]? tables = null,
+                 [Description("データソース名。省略すると全データソース。")] string? dataSource = null)
+                    => GetSchemaAsync(tables, dataSource, context),
                 "get_schema",
-                "問い合わせに使えるデータソースごとの表と列の一覧を返す。SQL の方言と、分かる範囲で業務上の名前 (モジュール・フィールド・候補値) を添える。");
+                "DB の表と列を返す。引数なし = 表名の目次 (表ごとの列数とモジュール名)。tables を指定 = その表の列 (型と、分かる範囲で業務上の名前・候補値・リンク)。");
             yield return AIFunctionFactory.Create(
                 ([Description("この DB の方言で書いた、読み取り専用の SELECT 文 1 つ。")] string sql,
                  [Description("このクエリで何を調べるかを一文で (ユーザーに進捗として表示される)。")] string purpose,
@@ -84,59 +106,81 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat.RawDataAccess
                 "指定したデータソースで SELECT 文を 1 つ実行し、列と行を JSON で返す。上限を超えた行は切り捨てられる (truncated=true)。");
         }
 
-        async Task<string> GetSchemaAsync(AIChatToolContext context)
+        async Task<string> GetSchemaAsync(string[]? tables, string? dataSource, AIChatToolContext context)
         {
             context.Progress.Report(Resources.AIChat_ReadingSchema);
-            lock (_schemaLock)
+            var wanted = (tables ?? Array.Empty<string>()).Where(t => !string.IsNullOrWhiteSpace(t)).Select(t => t.Trim()).ToList();
+            var sources = _dataSourceNames;
+            if (!string.IsNullOrWhiteSpace(dataSource))
             {
-                if (_schemaText != null && DateTime.UtcNow - _schemaLoaded < _options.SchemaCacheDuration) return _schemaText;
+                var found = _dataSourceNames.FirstOrDefault(n => string.Equals(n, dataSource.Trim(), StringComparison.OrdinalIgnoreCase));
+                if (found == null) return $"データソース '{dataSource}' は使えません。使えるのは {string.Join(", ", _dataSourceNames)} です。";
+                sources = new List<string> { found };
             }
 
-            var sb = new StringBuilder();
+            var schema = await LoadSchemaAsync(context.CancellationToken);
             var design = _design?.Invoke();
-            var tableCount = 0;
+            var excluded = new HashSet<string>(_options.ExcludedTables, StringComparer.OrdinalIgnoreCase);
+            var sb = new StringBuilder();
+            var matched = 0;
+            foreach (var name in sources)
+            {
+                var byTable = schema[name].Where(c => !excluded.Contains(c.Table) && !excluded.Contains(TableNameOnly(c.Table))).GroupBy(c => c.Table).ToList();
+                var modules = ModuleInfoByTable(design, name);
+                sb.Append("## データソース ").Append(name).Append(" (").Append(Dialects().Split(", ").FirstOrDefault(d => d.StartsWith(name + " = ", StringComparison.OrdinalIgnoreCase))?[(name.Length + 3)..] ?? "").AppendLine(")");
+                if (wanted.Count == 0)
+                {
+                    //目次: 表名 (列数) [モジュール]
+                    foreach (var table in byTable)
+                    {
+                        sb.Append("- ").Append(table.Key).Append(" (").Append(table.Count()).Append(" 列)");
+                        if (modules.TryGetValue(TableNameOnly(table.Key), out var m)) sb.Append(" [モジュール ").Append(m.ModuleName).Append(']');
+                        sb.AppendLine();
+                    }
+                    if (byTable.Count == 0) sb.AppendLine("(この DB ユーザーから見える表はありません)");
+                    matched += byTable.Count;
+                }
+                else
+                {
+                    //指定された表だけ、1 表 1 行で: table(col TYPE [説明], ...)
+                    foreach (var table in byTable.Where(t => wanted.Any(w => string.Equals(w, t.Key, StringComparison.OrdinalIgnoreCase) || string.Equals(w, TableNameOnly(t.Key), StringComparison.OrdinalIgnoreCase))))
+                    {
+                        var info = modules.TryGetValue(TableNameOnly(table.Key), out var m) ? m : null;
+                        sb.Append("- ").Append(table.Key);
+                        if (info != null) sb.Append(" [モジュール ").Append(info.ModuleName).Append(']');
+                        sb.Append('(');
+                        sb.Append(string.Join(", ", table.Select(c =>
+                            c.Name + " " + c.DataType + (info != null && info.Columns.TryGetValue(c.Name, out var f) ? " [" + f + "]" : ""))));
+                        sb.AppendLine(")");
+                        matched++;
+                    }
+                }
+            }
+            if (wanted.Count > 0 && matched == 0) sb.AppendLine($"指定の表 ({string.Join(", ", wanted)}) は見つかりません。引数なしの get_schema で表名を確かめてください。");
+            context.Logger?.LogInformation("AIChat RawDataAccess schema by {User}: tables={Tables} matched={Matched}", context.Request.UserName, wanted.Count == 0 ? "(index)" : string.Join(",", wanted), matched);
+            return sb.ToString();
+        }
+
+        //全データソースの列情報 (10 分キャッシュ)。DB へ行くのはここだけ
+        async Task<Dictionary<string, List<DbSchemaReader.Column>>> LoadSchemaAsync(CancellationToken cancellationToken)
+        {
+            lock (_schemaLock)
+            {
+                if (_schemaCache != null && DateTime.UtcNow - _schemaLoaded < _options.SchemaCacheDuration) return _schemaCache;
+            }
+            var result = new Dictionary<string, List<DbSchemaReader.Column>>(StringComparer.OrdinalIgnoreCase);
             await using var db = _dbAccessorFactory();
             foreach (var name in _dataSourceNames)
             {
-                var dataSource = db.GetDataSource(name) ?? throw new InvalidOperationException($"Data source '{name}' is not defined.");
-                var columns = await DbSchemaReader.ReadAsync(db, name, _options.CommandTimeoutSeconds, context.CancellationToken);
-                tableCount += FormatSchema(sb, name, DbSchemaReader.DialectName(dataSource.DataSourceType), columns, ModuleInfoByTable(design, name));
+                if (db.GetDataSource(name) == null) throw new InvalidOperationException($"Data source '{name}' is not defined.");
+                result[name] = await DbSchemaReader.ReadAsync(db, name, _options.CommandTimeoutSeconds, cancellationToken);
             }
-            var text = sb.ToString();
             lock (_schemaLock)
             {
-                _schemaText = text;
+                _schemaCache = result;
                 _schemaLoaded = DateTime.UtcNow;
             }
-            context.Logger?.LogInformation("AIChat RawDataAccess schema read by {User}: {DataSources} data sources, {Tables} tables", context.Request.UserName, _dataSourceNames.Count, tableCount);
-            return text;
-        }
-
-        int FormatSchema(StringBuilder sb, string dataSourceName, string dialect, List<DbSchemaReader.Column> columns, Dictionary<string, ModuleInfo> modules)
-        {
-            var excluded = new HashSet<string>(_options.ExcludedTables, StringComparer.OrdinalIgnoreCase);
-            var byTable = columns.Where(c => !excluded.Contains(c.Table) && !excluded.Contains(TableNameOnly(c.Table)))
-                .GroupBy(c => c.Table).ToList();
-
-            sb.Append("## データソース ").AppendLine(dataSourceName);
-            sb.Append("SQL の方言: ").AppendLine(dialect);
-            sb.AppendLine("表 (名前: 列)。アプリの設計に業務上の名前があるものは [ ] で添えています。");
-            foreach (var table in byTable)
-            {
-                var info = modules.TryGetValue(TableNameOnly(table.Key), out var m) ? m : null;
-                sb.Append("- ").Append(table.Key);
-                if (info != null) sb.Append(" [モジュール ").Append(info.ModuleName).Append(']');
-                sb.AppendLine(":");
-                foreach (var column in table)
-                {
-                    sb.Append("    ").Append(column.Name).Append(' ').Append(column.DataType);
-                    if (info != null && info.Columns.TryGetValue(column.Name, out var field)) sb.Append("  [").Append(field).Append(']');
-                    sb.AppendLine();
-                }
-            }
-            if (byTable.Count == 0) sb.AppendLine("(この DB ユーザーから見える表はありません)");
-            sb.AppendLine();
-            return byTable.Count;
+            return result;
         }
 
         static string TableNameOnly(string table)
