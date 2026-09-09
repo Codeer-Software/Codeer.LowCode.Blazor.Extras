@@ -45,7 +45,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat
         /// Agent を起動し requestId を返す。ownerKey は取得・中断時の照合に使う (ログイン名等。匿名なら空)。
         /// agentName は AIChatField のデザインの Agent 名 (空なら既定)。未登録の名前でも requestId は返し、ジョブが error になる。
         /// </summary>
-        public string Start(string ownerKey, string conversationId, string message, string agentName = "")
+        public string Start(string ownerKey, string conversationId, string message, string agentName = "", string documentFolder = "")
         {
             Cleanup();
             var job = new Job(ownerKey ?? string.Empty);
@@ -63,6 +63,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat
                     Message = message ?? string.Empty,
                     UserName = ownerKey ?? string.Empty,
                     AgentName = agentName ?? string.Empty,
+                    DocumentFolder = documentFolder ?? string.Empty,
                 });
             });
             return job.Id;

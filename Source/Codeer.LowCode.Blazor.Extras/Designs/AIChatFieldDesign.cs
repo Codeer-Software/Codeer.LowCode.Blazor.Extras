@@ -23,6 +23,14 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         [Designer]
         public string Agent { get; set; } = string.Empty;
 
+        /// <summary>
+        /// この会話に渡す補足文書のフォルダ (デザインプロジェクトの Resources からの相対パス。例: "AIChat/Sales")。
+        /// そのフォルダの Markdown / テキストが業務用語の定義や集計の決まりとして Agent に渡る。空なら文書なし。
+        /// チャットごとに別のフォルダを指定して、用途に合った文書だけを渡す (トークンの節約にもなる)。
+        /// </summary>
+        [Designer]
+        public string DocumentFolder { get; set; } = string.Empty;
+
         /// <summary>入力欄のプレースホルダ。</summary>
         [Designer]
         public string Placeholder { get; set; } = string.Empty;

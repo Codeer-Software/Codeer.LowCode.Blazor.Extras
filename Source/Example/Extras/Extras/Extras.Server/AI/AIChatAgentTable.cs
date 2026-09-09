@@ -33,7 +33,7 @@ namespace Extras.Server.AI
             _ => null,
         };
 
-        //RawDataAccess が読むデータソースは appsettings の AIChat:RawDataAccessDataSource (既定 SampleSQLite)。
+        //RawDataAccess が読むデータソースは appsettings の AIChat:RawDataAccessDataSources (既定 SampleSQLite)。設計 (モジュール定義) と、フィールドの DocumentFolder が指す Resources/{folder}/*.md の文書も渡す。
         //本番では AI 用の読み取り専用 DB ユーザーで接続するデータソースを指す (何が読めるかは DB 側の権限で決める)
         static IAIChatAgent? CreateRawDataAccess()
         {
@@ -42,8 +42,9 @@ namespace Extras.Server.AI
             return new RawDataAccessAgent(
                 chatClientFactory,
                 () => new DbAccessor(SystemConfig.Instance.DataSources),
-                DesignerService.GetDesignData().Modules,
-                new RawDataAccessOptions { DataSourceName = SystemConfig.Instance.AIChat.RawDataAccessDataSource },
+                () => DesignerService.GetDesignData(),
+                folder => AIChatDocuments.Read(folder),
+                new RawDataAccessOptions { DataSourceNames = SystemConfig.Instance.AIChat.RawDataAccessDataSources },
                 new ChatClientAgentOptions
             {
                 SystemPrompt = RawDataAccessAgent.DefaultSystemPrompt,

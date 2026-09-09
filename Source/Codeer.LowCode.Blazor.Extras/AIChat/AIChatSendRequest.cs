@@ -14,5 +14,7 @@ namespace Codeer.LowCode.Blazor.Extras.AIChat
         public string Message { get; set; } = string.Empty;
         /// <summary>デザインで指定した Agent 名 (空なら既定)。サーバーはこの名前で返事を作る Agent を選ぶ。</summary>
         public string Agent { get; set; } = string.Empty;
+        /// <summary>デザインで指定した補足文書のフォルダ (Resources からの相対パス。空なら文書なし)。</summary>
+        public string DocumentFolder { get; set; } = string.Empty;
     }
 }

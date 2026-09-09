@@ -21,7 +21,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat
         static readonly Regex _startsWithTag = new(@"^\s*<([a-zA-Z][\w-]*)(\s[^<>]*)?/?>", RegexOptions.Compiled);
         static readonly Regex _anchor = new(@"<a\b([^>]*)>", RegexOptions.Compiled | RegexOptions.IgnoreCase);
         static readonly Regex _hasTarget = new(@"\btarget\s*=", RegexOptions.Compiled | RegexOptions.IgnoreCase);
-        static readonly Regex _hrefFragment = new(@"\bhref\s*=\s*[""']?#", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+        static readonly Regex _hrefExternal = new(@"\bhref\s*=\s*[""']?(https?:)?//", RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
         /// <summary>形式の申告に従って HTML にする。Auto は内容から判定。</summary>
         public static string Normalize(AIChatReply reply)
@@ -63,12 +63,15 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat
         public static bool LooksLikeHtml(string content)
             => !string.IsNullOrEmpty(content) && _startsWithTag.IsMatch(content);
 
-        /// <summary>チャットの中のリンクは別タブで開く (ページ内リンクと target 指定済みは除く)。</summary>
+        /// <summary>
+        /// チャットの中の外部リンク (http(s):// と //) は別タブで開く。アプリ内のリンク (/Main/Order/123 のような相対 URL) と
+        /// ページ内リンク、target 指定済みはそのまま (同じタブで CLB の画面へ遷移する)。
+        /// </summary>
         public static string AddLinkTargets(string html)
             => _anchor.Replace(html, m =>
             {
                 var attrs = m.Groups[1].Value;
-                if (_hasTarget.IsMatch(attrs) || _hrefFragment.IsMatch(attrs)) return m.Value;
+                if (_hasTarget.IsMatch(attrs) || !_hrefExternal.IsMatch(attrs)) return m.Value;
                 return $"<a{attrs} target=\"_blank\" rel=\"noopener noreferrer\">";
             });
     }

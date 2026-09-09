@@ -40,7 +40,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat.ChatClient
             var context = new AIChatToolContext(request, progress, cancellationToken, _logger);
             var tools = _options.ToolSets.SelectMany(t => t.CreateTools(context)).ToList();
 
-            var messages = new List<ChatMessage> { new(ChatRole.System, BuildSystemPrompt(request)) };
+            var messages = new List<ChatMessage> { new(ChatRole.System, BuildSystemPrompt(context)) };
             //履歴の鍵は所有者 (ログイン ID) + 会話 ID。別のユーザーが同じ会話 ID を送っても他人の会話には乗れない (所有者が空のデモ等は会話 ID だけ)
             var historyKey = ConversationHistory.Key(request.UserName, request.ConversationId);
             messages.AddRange(_history.Get(historyKey));
@@ -88,13 +88,15 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat.ChatClient
                 .Build();
         }
 
-        string BuildSystemPrompt(AIChatAgentRequest request)
+        string BuildSystemPrompt(AIChatToolContext context)
         {
+            var request = context.Request;
             var sb = new StringBuilder(_options.SystemPrompt);
             foreach (var toolSet in _options.ToolSets)
             {
-                if (string.IsNullOrWhiteSpace(toolSet.Instructions)) continue;
-                sb.AppendLine().AppendLine().Append(toolSet.Instructions.Trim());
+                var instructions = toolSet.GetInstructions(context);
+                if (string.IsNullOrWhiteSpace(instructions)) continue;
+                sb.AppendLine().AppendLine().Append(instructions.Trim());
             }
             if (!string.IsNullOrEmpty(request.UserName))
                 sb.AppendLine().AppendLine().Append("現在のユーザー: ").Append(request.UserName);

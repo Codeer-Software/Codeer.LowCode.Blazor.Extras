@@ -15,7 +15,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat.ChatClient
         const string ItemsKey = "Codeer.AIChat.Charts";
         static readonly Regex _placeholder = new(@"(?:<p>\s*)?\[\[chart:(\d+)\]\](?:\s*</p>)?", RegexOptions.Compiled);
 
-        public string Instructions =>
+        public string GetInstructions(AIChatToolContext context) =>
             "render_chart でグラフ (bar / line / pie) を描けます。ユーザーがグラフを求めたとき、または推移や比較が図のほうが分かりやすいときに使ってください。" +
             "渡す数値は取得したもの (推測ではない) だけにしてください。ツールは [[chart:1]] のようなプレースホルダを返すので、返事の中でグラフを置きたい位置に、その行だけで置いてください。自分でグラフを描いてはいけません。";
 

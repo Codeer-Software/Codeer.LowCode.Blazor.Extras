@@ -33,4 +33,10 @@
   <data name="AIChat_ChartNoData" xml:space="preserve">
     <value>no data</value>
   </data>
+  <data name="AIChat_ReadingDesign" xml:space="preserve">
+    <value>Reading the design…</value>
+  </data>
+  <data name="AIChat_ReadingDocument" xml:space="preserve">
+    <value>Reading a document…</value>
+  </data>
 </root>

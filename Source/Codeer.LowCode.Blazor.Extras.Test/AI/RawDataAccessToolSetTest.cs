@@ -44,15 +44,18 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
             if (File.Exists(_dbFile)) File.Delete(_dbFile);
         }
 
-        RawDataAccessToolSet Create(Action<RawDataAccessOptions>? configure = null, IModuleDesigns? modules = null)
+        RawDataAccessToolSet Create(Action<RawDataAccessOptions>? configure = null, DesignData? design = null)
         {
-            var options = new RawDataAccessOptions { DataSourceName = Ds, MaxRows = 10 };
+            var options = new RawDataAccessOptions { DataSourceNames = { Ds }, MaxRows = 10 };
             configure?.Invoke(options);
-            return new RawDataAccessToolSet(() => new DbAccessor(_dataSources), modules, options);
+            return new RawDataAccessToolSet(() => new DbAccessor(_dataSources), design == null ? null : () => design, options);
         }
 
         static AIChatToolContext Context(Progress? progress = null)
             => new(new AIChatAgentRequest { ConversationId = "c", Message = "m", UserName = "u" }, progress ?? new Progress(), CancellationToken.None, null);
+
+        //ツールの結果 JSON (非 ASCII はエスケープされる) から error を取り出す
+        static string ErrorOf(string json) => JsonDocument.Parse(json).RootElement.GetProperty("error").GetString() ?? string.Empty;
 
         static async Task<string> InvokeAsync(IEnumerable<AITool> tools, string name, Dictionary<string, object?>? args = null)
         {
@@ -72,13 +75,14 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
             module.Fields.Add(status);
             designs.AddModule(module);
 
-            var tools = Create(modules: designs.Modules).CreateTools(Context()).ToList();
+            var tools = Create(design: designs).CreateTools(Context()).ToList();
             var schema = await InvokeAsync(tools, "get_schema");
 
+            Assert.That(schema, Does.Contain("## データソース AiDb"));
             Assert.That(schema, Does.Contain("SQLite"));
             Assert.That(schema, Does.Contain("Orders [モジュール 受注]"));
             Assert.That(schema, Does.Contain("Amount REAL  [金額]"));
-            Assert.That(schema, Does.Contain("[状態; 候補値: 未処理,0, 処理済,1]"));
+            Assert.That(schema, Does.Contain("[状態; 候補値: 0=未処理, 1=処理済]"));
             Assert.That(schema, Does.Contain("Secrets"));
         }
 
@@ -149,6 +153,49 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
             var json = await InvokeAsync(tools, "execute_sql", new() { ["sql"] = "SELECT nope FROM Orders", ["purpose"] = "" });
             Assert.That(json, Does.Contain("\"error\""));
             Assert.That(json, Does.Contain("nope"));
+        }
+        [Test]
+        public async Task 複数のデータソースはスキーマを分けて出しexecute_sqlはdataSourceで選ぶ()
+        {
+            var second = Path.Combine(Path.GetTempPath(), $"aichat_raw2_{Guid.NewGuid():N}.db");
+            var sources = new[]
+            {
+                _dataSources[0],
+                new DataSource { Name = "Other", DataSourceType = DataSourceType.SQLite, ConnectionString = $"Data Source={second}" },
+            };
+            try
+            {
+                await using (var db = new DbAccessor(sources))
+                    await db.ExecuteAsync("Other", "CREATE TABLE Products (Id INTEGER PRIMARY KEY, Name TEXT)", new());
+
+                var options = new RawDataAccessOptions { DataSourceNames = { Ds, "Other" } };
+                var tools = new RawDataAccessToolSet(() => new DbAccessor(sources), null, options).CreateTools(Context()).ToList();
+
+                var schema = await InvokeAsync(tools, "get_schema");
+                Assert.That(schema, Does.Contain("## データソース AiDb"));
+                Assert.That(schema, Does.Contain("## データソース Other"));
+                Assert.That(schema.IndexOf("Products", StringComparison.Ordinal), Is.GreaterThan(schema.IndexOf("## データソース Other", StringComparison.Ordinal)));
+
+                var ok = await InvokeAsync(tools, "execute_sql", new() { ["sql"] = "SELECT COUNT(*) AS N FROM Products", ["purpose"] = "", ["dataSource"] = "other" });
+                Assert.That(ok, Does.Contain("\"dataSource\":\"Other\""));
+                Assert.That(ok, Does.Contain("[0]"));
+
+                var missing = await InvokeAsync(tools, "execute_sql", new() { ["sql"] = "SELECT 1", ["purpose"] = "" });
+                Assert.That(ErrorOf(missing), Does.Contain("dataSource を指定"));
+                var unknown = await InvokeAsync(tools, "execute_sql", new() { ["sql"] = "SELECT 1", ["purpose"] = "", ["dataSource"] = "Nope" });
+                Assert.That(ErrorOf(unknown), Does.Contain("使えるのは AiDb, Other"));
+            }
+            finally
+            {
+                Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
+                if (File.Exists(second)) File.Delete(second);
+            }
+        }
+
+        [Test]
+        public void データソースが空なら作れない()
+        {
+            Assert.Throws<ArgumentException>(() => new RawDataAccessToolSet(() => new DbAccessor(_dataSources), null, new RawDataAccessOptions()));
         }
     }
 }

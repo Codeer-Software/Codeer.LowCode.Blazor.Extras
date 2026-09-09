@@ -122,5 +122,23 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Properties {
                 return ResourceManager.GetString("AIChat_ToolRunning", resourceCulture);
             }
         }
+        /// <summary>
+        ///   Reading the design… に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string AIChat_ReadingDesign {
+            get {
+                return ResourceManager.GetString("AIChat_ReadingDesign", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Reading a document… に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string AIChat_ReadingDocument {
+            get {
+                return ResourceManager.GetString("AIChat_ReadingDocument", resourceCulture);
+            }
+        }
+        
     }
 }

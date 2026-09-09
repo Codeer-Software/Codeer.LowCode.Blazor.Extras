@@ -17,6 +17,7 @@ AI (サーバー側の Agent) と会話するチャット UI フィールドで�
 | プロパティ | 型 | 必須 | 説明 |
 |---|---|---|---|
 | Agent | string | - | 返事を作るサーバー側 Agent の名前。空なら既定の Agent。サーバー (ホスト) が登録した名前を指定する。標準で用意されているのは `RawDataAccess` (DB を直接読んで集計・グラフで答える。ホストが登録している場合のみ)。**存在しない名前を書くと返事がエラーになる**ので、使える名前はホスト側の対応表 (Example では `AI/AIChatAgentTable.cs`) を確認する |
+| DocumentFolder | string | - | この会話に渡す補足文書のフォルダ (デザインプロジェクトの `Resources` からの相対パス。例: `AIChat/Sales`)。そのフォルダの `.md` / `.txt` を Agent が用語の定義・集計の決まりとして参照する。空なら文書なし。チャットごとに用途に合ったフォルダを指定する |
 | Placeholder | string | - | 入力欄のプレースホルダ |
 | WelcomeMessage | string (複数行, HTML 可) | - | 会話の先頭に表示するアシスタントの挨拶。空なら表示しない |
 | Height | int | - | 高さ (px)。0 なら親の高さに合わせる。**`IsFillAvailable: true` のグリッドに置くか、Height を指定する** (どちらも無いと内容に合わせて伸び続ける) |
@@ -31,6 +32,7 @@ AI (サーバー側の Agent) と会話するチャット UI フィールドで�
 - Agent が未設定の環境 (デザイナのプレビュー等) では入力欄が無効になり、その旨を表示します
 - 会話の履歴はサーバー側 (Agent) が conversationId で保持します。「新しい会話」で conversationId が振り直されます
 - `RawDataAccess` は DB を生で読むため、見える範囲は AI 用の DB ユーザーの権限で決まり、ログインユーザーごとの行制限 (UserRead / DataRead 条件) は効きません。置くページやモジュールの UserReadCondition で「誰が使えるか」を絞ってください
+- `RawDataAccess` はモジュール定義 (フィールドの表示名・候補値・リンク・Query の SQL) を読んで業務語を解きます。定義に書けない決まり (用語の定義、集計のルール、データの見方) は、デザインプロジェクトの `Resources` の下のフォルダに Markdown で置き、`DocumentFolder` でそのフォルダを指定すると AI が参照します
 
 ### 注意事項
 

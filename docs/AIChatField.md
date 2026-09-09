@@ -20,6 +20,7 @@ AI の実体と会話の履歴はサーバー側の持ち物で、このフィ�
 | プロパティ | 型 | 必須 | 説明 |
 |---|---|---|---|
 | Agent | string | - | 返事を作るサーバー側 Agent の名前。空なら既定の Agent。サーバー側の対応表にある名前 (例: `RawDataAccess`) を指定し、同じフィールドで用途の違う Agent を使い分ける |
+| DocumentFolder | string | - | この会話に渡す補足文書のフォルダ (デザインプロジェクトの `Resources` からの相対パス。例: `AIChat/Sales`)。そのフォルダの `.md` / `.txt` が用語の定義や集計の決まりとして Agent に渡る。空なら文書なし。チャットごとに別のフォルダを指定して、用途に合った文書だけを渡す (トークンの節約にもなる) |
 | Placeholder | string | - | 入力欄のプレースホルダ |
 | WelcomeMessage | string (複数行, HTML 可) | - | 会話の先頭に表示するアシスタントの挨拶。空なら表示しない |
 | Height | int | - | 高さ (px)。0 なら親の高さに合わせる。`IsFillAvailable` のグリッドに置くか Height を指定する |
@@ -80,7 +81,8 @@ DELETE {EndPoint}/{requestId}   // 中断
 | `IAIChatAgent` | 返事を作る側のインターフェース。`ReplyAsync(request, progress, cancellationToken)` で `AIChatReply` (テキスト / Markdown / HTML / Auto) を返す。途中経過は `IAIChatProgress` に報告。`request.AgentName` にデザインの Agent 名が入る |
 | `AIChatJobStore` | プロセス内のジョブ置き場。コンストラクタで対応表 (`Func<string, IAIChatAgent?>`。Agent が 1 つなら `IAIChatAgent` を直接) を受け、送信で Agent をバックグラウンド実行し、状態をポーリングに返す。`Start(owner, conversationId, message, agentName)` で Agent 名を渡す。対応表に無い名前は error になる。プロセスに 1 つ (アプリの静的プロパティ) |
 | `ChatClientAgent` (+ `ChatClientAgentOptions`) | 標準 Agent。Microsoft.Extensions.AI の `IChatClient` で返事を作る素の会話 Agent (システムプロンプト、会話履歴、逐次表示、Markdown → HTML)。履歴の鍵は「ログイン ID + 会話 ID」(認証の無いアプリでは会話 ID だけ) で、保持期限つき。トークンの膨張は 3 段で抑える: 直近 `KeepToolResultsForTurns` ターンより古いターンからはツール呼び出しと結果を落として文章だけ残す / `MaxHistoryTurns` を超えた古いターンを捨てる / `MaxHistoryCharacters` を超えたら古いターンから捨てる。モデルの選択と認証はアプリが `Func<IChatClient>` で渡す。FAQ のような「知識だけで答える」用途 |
-| `RawDataAccessAgent` (+ `RawDataAccessOptions`) | DB を直接読んで集計・グラフで答える Agent (`ChatClientAgent` を中に持って委譲)。内部に `get_schema` (表と列。モジュール定義があれば業務名を添える)、`execute_sql` (読み取り専用の SELECT を 1 文実行。行数・文字数・時間の上限、監査ログ)、`render_chart` (棒 / 折れ線 / 円。数値からサーバーで SVG を作るので数字が狂わない) のツールを持つ。依存 (IChatClient と IDbAccessor の作り方、モジュール定義) はコンストラクタ、設定 (`RawDataAccessOptions`: データソース名と上限) は別 |
+| `RawDataAccessAgent` (+ `RawDataAccessOptions`) | アプリの設計を読み、DB を直接読んで集計・グラフで答える Agent (`ChatClientAgent` を中に持って委譲)。内部のツール: `list_modules` / `describe_module` (モジュール定義: フィールドの表示名・型・DB 列、候補値 (コード=名称)、リンク (結合相手とキー)、論理削除、設計者が書いた Query の SQL、スクリプト)、`read_document` (補足文書)、画面 URL (一覧 `/{フレーム}/{セグメント}`・詳細 `/{フレーム}/{セグメント}/{Id}` をページフレームのリンクから組み、行を挙げる返事に「開く」リンクを付ける)、`get_schema` (データソースごとの表と列。方言と業務名を添える)、`execute_sql` (指定データソースで読み取り専用 SELECT を 1 文。行数・文字数・時間の上限、監査ログ)、`render_chart` (棒 / 折れ線 / 円。サーバーで SVG を作るので数字が狂わない)。依存 (IChatClient と IDbAccessor の作り方、デザイン定義、文書) はコンストラクタ、設定 (`RawDataAccessOptions`: データソース名の一覧と上限) は別 |
+| `AIChatDocument` | Agent に渡す補足文書 (名前と本文)。出所はホストが決める。標準はデザインプロジェクトの `Resources/AIChat/*.md` |
 | (内部) HTML 化 | 返事は `AIChatJobStore` の中で HTML に揃えられる。Markdown は [Markdig](https://github.com/xoofx/markdig) (表・タスクリスト・自動リンク、単独改行は `<br>`)、テキストはエスケープ、HTML は素通し (リンクに `target="_blank"` を付けるだけ)。Agent 側で HTML 化のコードを書く必要はない |
 
 Example の `DummyAIChatAgent` (`Example/Extras/Extras/Extras.Server/AI/`) は AI を呼ばないダミーで、UI の確認と、自分で `IAIChatAgent` を書くときの雛形です。発言に `html` / `text` / `error` / `slow` を含めると振る舞いが変わります。
@@ -106,8 +108,9 @@ public static class AIChatAgentTable
         "RawDataAccess" => new RawDataAccessAgent(
             chatClientFactory,                                           // IChatClient の作り方 (下記)
             () => new DbAccessor(SystemConfig.Instance.DataSources),     // IDbAccessor の作り方 (SQL ごとに作って捨てる)
-            DesignerService.GetDesignData().Modules,                     // 表と列に業務名を添える (null 可)
-            new RawDataAccessOptions { DataSourceName = "Analytics" }),  // AI 用の読み取り専用 DB ユーザーで接続するデータソース
+            () => DesignerService.GetDesignData(),                       // デザイン定義 (ホットリロードで変わるので都度。null 可)
+            folder => AIChatDocuments.Read(folder),                      // 補足文書 = デザインの Resources/{DocumentFolder}/*.md (null 可)
+            new RawDataAccessOptions { DataSourceNames = { "Analytics" } }),  // AI 用の読み取り専用 DB ユーザーで接続するデータソース (複数可)
         _ => null,                                                   // 知らない名前 → ジョブは error
     };
 }
@@ -152,11 +155,15 @@ AIChatField.EndPoint = "/api/ai_chat";
 `RawDataAccessAgent` は名前どおり DB を生で読みます (SELECT を組んで実行し、結果を表とグラフにする)。**何が読めるかは DB 側で決めます**:
 
 - AI 用に読み取り専用の DB ユーザーを作り、見せてよい表・列だけに SELECT を GRANT する。ログイン情報 (パスワードハッシュ・TOTP シークレット等)、変更履歴、一時ファイルの表は GRANT しない
-- そのユーザーで接続するデータソースを appsettings の `DataSources` / `ConnectionStrings` に追加し、`RawDataAccessOptions.DataSourceName` に指定する (Options は文字列と数値だけなので appsettings のセクションからそのまま束縛できる)。アプリ本体と同じ接続を渡すと DB 全体が読める
+- そのユーザーで接続するデータソースを appsettings の `DataSources` / `ConnectionStrings` に追加し、`RawDataAccessOptions.DataSourceNames` に指定する (複数可。1 つの SQL は 1 つのデータソースにしか届かず、またがる質問は AI がデータソースごとに問い合わせて突き合わせる)。Options は文字列と数値だけなので appsettings のセクションからそのまま束縛できる。アプリ本体と同じ接続を渡すと DB 全体が読める
 - SQLite はユーザーが無いので接続文字列の `Mode=ReadOnly` で読み取り専用にする (表・列の限定はできない)
 - ログインユーザーごとの行制限 (モジュールの UserRead / DataRead 条件) は効かない。「誰がこのチャットを使えるか」は、フィールドを置くページやモジュールの UserReadCondition で絞る
 
 `execute_sql` 側の SELECT 判定 (1 文だけ・INSERT/UPDATE/DELETE 等の語を含まない) は補助で、書き込み拒否の本体は DB ユーザーの権限です。行数 (`MaxRows` 既定 200)、文字数 (`MaxResultChars` 既定 20000)、タイムアウト (`CommandTimeoutSeconds` 既定 30) の上限と、実行した SQL のログ (`ChatClientAgentOptions.LoggerFactory` を設定したとき) はツール側が担います。
+
+### 設計と補足文書を AI に渡す
+
+業務の意味は DB スキーマではなくデザインプロジェクトにあります。`RawDataAccessAgent` はデザイン定義 (`DesignData`) を受け取り、モデルに「業務語はまずモジュール定義で確かめ、表と列は describe_module で確認してから SQL を書く」よう指示します。モジュール定義に書けないこと (用語の定義、集計の決まり、データの見方) は、デザインプロジェクトの `Resources` の下のフォルダに Markdown で置き、フィールドの `DocumentFolder` でそのフォルダを指定します (例: `Resources/AIChat/Sales/` に置いて `DocumentFolder` = `AIChat/Sales`)。チャットごとに別のフォルダを指せるので、売上分析のチャットには売上の説明書だけ、在庫のチャットには在庫の説明書だけ、と分けられます。App.zip に入ってデプロイで反映されます。文書の合計が小さい (既定 8000 文字以下) うちは全文がシステムプロンプトに入り、大きくなると一覧と冒頭の抜粋だけが入って AI が `read_document` で必要なものを読みます (Example の `AI/AIChatDocuments.cs` が App.zip から読む実装)。用語の定義 (「売上」は完了分だけ、など) は列名からは分からないので、ここに書くと答えの精度が目に見えて変わります。
 
 ### Agent を実装する
 

@@ -10,8 +10,8 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat.ChatClient
     /// </summary>
     internal interface IAIChatToolSet
     {
-        /// <summary>システムプロンプトに追記する、このツール群の使い方。空でもよい。</summary>
-        string Instructions { get; }
+        /// <summary>システムプロンプトに追記する、このツール群の使い方 (依頼ごとに変わってよい。文書フォルダ等)。空でもよい。</summary>
+        string GetInstructions(AIChatToolContext context);
 
         /// <summary>ターンごとにツールを作る (ツールは context を閉じ込めて進捗報告・ログ・成果物の受け渡しをする)。</summary>
         IEnumerable<AITool> CreateTools(AIChatToolContext context);

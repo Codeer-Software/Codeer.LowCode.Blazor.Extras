@@ -63,5 +63,13 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
             Assert.That(ChatReplyHtml.FromMarkdown("  "), Is.Empty);
             Assert.That(ChatReplyHtml.FromHtml(""), Is.Empty);
         }
+        [Test]
+        public void 外部リンクだけ別タブでアプリ内の相対リンクはそのまま()
+        {
+            var html = ChatReplyHtml.FromMarkdown("[外部](https://example.com) [内部](/Main/Order/12) [ページ内](#top)");
+            Assert.That(html, Does.Contain("href=\"https://example.com\" target=\"_blank\""));
+            Assert.That(html, Does.Contain("<a href=\"/Main/Order/12\">"));
+            Assert.That(html, Does.Contain("<a href=\"#top\">"));
+        }
     }
 }

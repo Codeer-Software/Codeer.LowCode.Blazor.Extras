@@ -77,7 +77,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
         sealed class EchoToolSet : IAIChatToolSet
         {
             public List<string> Received { get; } = new();
-            public string Instructions => "Use echo to repeat text.";
+            public string GetInstructions(AIChatToolContext context) => "Use echo to repeat text.";
             public IEnumerable<AITool> CreateTools(AIChatToolContext context)
             {
                 yield return AIFunctionFactory.Create((string text) =>

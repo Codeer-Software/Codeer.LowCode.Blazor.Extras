@@ -28,7 +28,8 @@
       "IgnoreModification": false,
       "OnValidateInput": "",
       "TypeFullName": "Codeer.LowCode.Blazor.Extras.Designs.AIChatFieldDesign",
-      "Agent": "RawDataAccess"
+      "Agent": "RawDataAccess",
+      "DocumentFolder": "AIChat"
     },
     {
       "Text": "",

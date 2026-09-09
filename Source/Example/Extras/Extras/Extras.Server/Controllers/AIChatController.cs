@@ -23,7 +23,7 @@ namespace Extras.Server.Controllers
 
         [HttpPost]
         public ActionResult<AIChatSendResponse> Send([FromBody] AIChatSendRequest request)
-            => Accepted(new AIChatSendResponse { RequestId = _jobs.Start(Owner, request.ConversationId, request.Message, request.Agent) });
+            => Accepted(new AIChatSendResponse { RequestId = _jobs.Start(Owner, request.ConversationId, request.Message, request.Agent, request.DocumentFolder) });
 
         [HttpGet("{requestId}")]
         public ActionResult<AIChatStatusResponse> Status(string requestId)

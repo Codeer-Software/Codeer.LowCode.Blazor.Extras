@@ -165,7 +165,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
 
         async Task RunAsync(AIChatMessage assistant, string text, CancellationToken token)
         {
-            var request = new AIChatSendRequest { ConversationId = ConversationId, Message = text, Agent = Design.Agent ?? string.Empty };
+            var request = new AIChatSendRequest { ConversationId = ConversationId, Message = text, Agent = Design.Agent ?? string.Empty, DocumentFolder = Design.DocumentFolder ?? string.Empty };
             try
             {
                 if (SendCoreAsync != null)
