@@ -58,10 +58,46 @@ export function focus(textarea) {
   if (textarea && !textarea.disabled) textarea.focus();
 }
 
+// 追従の状態 (会話領域ごと)。follow = 最下部に追従する / programmatic = 自分で scrollTop を動かした直後 (その scroll イベントはユーザー操作ではない)
+const followStates = new WeakMap();
+
+// 会話領域の追従を始める。ユーザーが上へスクロールしたら追従を止め、最下部近くまで戻したら再開する。
+// 「描画後に最下部との距離を見る」方式だと、表やグラフが一度に大きく入ったときに距離が開いて追従が外れるので、状態で持つ
+export function initializeMessages(container) {
+  if (!container || followStates.has(container)) return;
+  const state = { follow: true, programmatic: false };
+  const onScroll = () => {
+    if (state.programmatic) { state.programmatic = false; return; }
+    state.follow = container.scrollHeight - container.scrollTop - container.clientHeight < 40;
+  };
+  container.addEventListener('scroll', onScroll);
+  state.onScroll = onScroll;
+  followStates.set(container, state);
+}
+
+export function disposeMessages(container) {
+  const state = container && followStates.get(container);
+  if (!state) return;
+  container.removeEventListener('scroll', state.onScroll);
+  followStates.delete(container);
+}
+
+// 返事や途中経過が描かれた後に呼ぶ。force (自分が送った直後) は必ず最下部へ行き追従も再開する。
+// それ以外は追従中のときだけ最下部へ。返事の逐次更新・完了のたびに呼ばれるので、追従中は常に最新の返事が見える
 export function scrollToBottom(container, force) {
   if (!container) return;
-  const nearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 80;
-  if (force || nearBottom) container.scrollTop = container.scrollHeight;
+  const state = followStates.get(container);
+  if (state && force) state.follow = true;
+  if (!force && state && !state.follow) return;
+  const scroll = () => {
+    const target = container.scrollHeight - container.clientHeight;
+    if (Math.abs(container.scrollTop - target) < 1) return;
+    if (state) state.programmatic = true;
+    // CSS の scroll-behavior:smooth だと途中経過の scroll イベントが何度も飛び、ユーザー操作と区別できなくなるので即時に動かす
+    container.scrollTo({ top: target, behavior: 'instant' });
+  };
+  scroll();
+  requestAnimationFrame(scroll);   // 画像や表の幅が確定した後の高さにも合わせる
 }
 
 export async function copyReply(root, index) {

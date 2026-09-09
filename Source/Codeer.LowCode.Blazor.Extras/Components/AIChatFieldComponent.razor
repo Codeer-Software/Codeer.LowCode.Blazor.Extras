@@ -143,12 +143,13 @@
       _jsModule = await JSRuntime.InvokeAsync<IJSObjectReference>(
         "import", "./_content/Codeer.LowCode.Blazor.Extras/aichat-interop.js");
       await _jsModule.InvokeVoidAsync("initialize", _inputElement, Math.Max(1, Field.Design.MaxInputRows), Field.Design.SendOnEnter);
+      await _jsModule.InvokeVoidAsync("initializeMessages", _messagesElement);
       _renderedVersion = Field.Version;
       await _jsModule.InvokeVoidAsync("scrollToBottom", _messagesElement, true);
     }
     else if (_renderedVersion != Field.Version && _jsModule != null)
     {
-      //自分が送った直後は必ず最下部へ。返事の逐次更新は、ユーザーが上へスクロール中なら追従しない
+      //自分が送った直後は必ず最下部へ (追従も再開)。返事の逐次更新・完了は追従中なら最下部へ、ユーザーが上へスクロールして読んでいる間は動かさない (判定は JS 側の状態)
       var force = Field.Messages.Count > 0 && Field.Messages[^1].IsUser;
       _renderedVersion = Field.Version;
       await _jsModule.InvokeVoidAsync("scrollToBottom", _messagesElement, force);
@@ -202,6 +203,7 @@
     if (_jsModule != null)
     {
       try { await _jsModule.InvokeVoidAsync("dispose", _inputElement); } catch { }
+      try { await _jsModule.InvokeVoidAsync("disposeMessages", _messagesElement); } catch { }
       try { await _jsModule.DisposeAsync(); } catch { }
     }
     await base.DisposeAsync();

@@ -19,6 +19,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat.ChatClient
 
         const double Width = 640, Height = 360;
         const double MarginLeft = 64, MarginRight = 24, MarginTop = 40, MarginBottom = 64;
+        const double TickCharWidth = 7.2;   //font-size 12px の数字・カンマのおおよその幅。縦軸の目盛りが収まる左マージンの計算に使う
 
         public static string Render(ChartType type, string title, IReadOnlyList<string> labels, IReadOnlyList<Series> series)
         {
@@ -56,14 +57,20 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat.ChatClient
             if (max == min) max = min + 1;
             var (niceMin, niceMax, step) = NiceScale(min, max, 5);
 
+            //目盛りの文字列を先に作り、いちばん長いものが収まる幅を左マージンにする (桁が多い金額でも左端が切れない)
+            var ticks = new List<(double Value, string Text)>();
+            for (var v = niceMin; v <= niceMax + step / 2; v += step) ticks.Add((v, FormatTick(v, step)));
+            plotLeft = Math.Max(MarginLeft, ticks.Max(t => t.Text.Length) * TickCharWidth + 8 + 8);
+            plotWidth = plotRight - plotLeft;
+
             double Y(double v) => plotBottom - (v - niceMin) / (niceMax - niceMin) * plotHeight;
 
             //目盛りと横線
-            for (var v = niceMin; v <= niceMax + step / 2; v += step)
+            foreach (var (v, text) in ticks)
             {
                 var y = Y(v);
                 sb.Append($"<line x1=\"{F(plotLeft)}\" y1=\"{F(y)}\" x2=\"{F(plotRight)}\" y2=\"{F(y)}\" stroke=\"#e0e0e0\" stroke-width=\"1\"/>");
-                sb.Append($"<text x=\"{F(plotLeft - 8)}\" y=\"{F(y + 4)}\" text-anchor=\"end\" fill=\"#555\">{E(FormatTick(v, step))}</text>");
+                sb.Append($"<text x=\"{F(plotLeft - 8)}\" y=\"{F(y + 4)}\" text-anchor=\"end\" fill=\"#555\">{E(text)}</text>");
             }
             var zeroY = Y(0);
             sb.Append($"<line x1=\"{F(plotLeft)}\" y1=\"{F(zeroY)}\" x2=\"{F(plotRight)}\" y2=\"{F(zeroY)}\" stroke=\"#888\" stroke-width=\"1\"/>");

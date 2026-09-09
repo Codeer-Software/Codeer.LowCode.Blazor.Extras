@@ -31,7 +31,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         [Designer]
         public string DocumentFolder { get; set; } = string.Empty;
 
-        /// <summary>高さ (px)。0 なら親の高さに合わせる (FillAvailable のグリッドに置く前提)。</summary>
+        /// <summary>高さ (px)。0 なら親の高さに合わせる (FillAvailable の最終行では残り全部、普通の行では会話の領域が 16rem。返事が増えても行は伸びない)。</summary>
         [Designer]
         public int Height { get; set; }
 

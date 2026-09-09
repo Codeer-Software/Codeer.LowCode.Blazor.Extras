@@ -22,8 +22,11 @@
 }
 
 .aichat-messages {
-  flex: 1 1 auto;
-  min-height: 16rem; /* 初期表示 (返事が無いとき) でも会話の領域として見える高さを確保する。FillAvailable のときは残り高さいっぱいに伸びる */
+  /* flex-basis 0: 会話の中身の高さを root の固有サイズに数えない。
+     高さが外から決まる (FillAvailable の最終行 / 行 Height / Design.Height) ときは残り高さいっぱいに伸びて内部スクロール、
+     決まらない普通の行では min-height の 16rem だけの領域になり、返事が増えても行が伸びない (伸びると下の行やページを押し出して崩れる) */
+  flex: 1 1 0;
+  min-height: 16rem;
   overflow-y: auto;
   overflow-x: hidden;
   padding: 0.75rem;

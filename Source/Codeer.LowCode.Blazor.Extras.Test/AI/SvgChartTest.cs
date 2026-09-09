@@ -42,6 +42,26 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
             Assert.That(svg, Does.Contain("25%"));
         }
 
+        //金額のような桁の多い目盛りでも左端が切れない: 目盛り文字の右端 (x, text-anchor=end) がその文字幅ぶん以上 右にある
+        [Test]
+        public void 縦軸の目盛りは桁数に応じて左マージンが広がり切れない()
+        {
+            var svg = SvgChart.Render(SvgChart.ChartType.Bar, "", new[] { "a", "b" }, new[] { new SvgChart.Series("s", new double?[] { 3_500_000, 8_000_000 }) });
+            var root = Parse(svg);
+            var ns = root.Name.Namespace;
+            var ticks = root.Descendants(ns + "text").Where(t => t.Attribute("text-anchor")?.Value == "end" && t.Attribute("transform") == null).ToList();
+            Assert.That(ticks.Select(t => t.Value), Does.Contain("8,000,000"));
+            foreach (var tick in ticks)
+            {
+                var x = double.Parse(tick.Attribute("x")!.Value, System.Globalization.CultureInfo.InvariantCulture);
+                Assert.That(x, Is.GreaterThanOrEqualTo(tick.Value.Length * 7.2), $"目盛り {tick.Value} が左に切れる (x={x})");
+            }
+            //小さい値のときは既定の余白のまま (むやみに広げない)
+            var small = Parse(SvgChart.Render(SvgChart.ChartType.Bar, "", new[] { "a" }, new[] { new SvgChart.Series("s", new double?[] { 5 }) }));
+            var smallX = small.Descendants(ns + "text").Where(t => t.Attribute("text-anchor")?.Value == "end").Select(t => double.Parse(t.Attribute("x")!.Value, System.Globalization.CultureInfo.InvariantCulture)).First();
+            Assert.That(smallX, Is.EqualTo(56));
+        }
+
         [Test]
         public void 負の値があってもゼロ線が引かれ描ける()
         {
