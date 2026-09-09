@@ -3,11 +3,8 @@ using Codeer.LowCode.Blazor.Extras.Fields;
 using Codeer.LowCode.Blazor.Json;
 using Codeer.LowCode.Blazor.License;
 using Codeer.LowCode.Blazor.SystemSettings;
-using Codeer.LowCode.Blazor.DbAccess;
 using Extras.Server.Services;
 using Codeer.LowCode.Blazor.Extras.Server.AI;
-using Codeer.LowCode.Blazor.Extras.Server.AI.Chat;
-using Codeer.LowCode.Blazor.Extras.Server.AI.Chat.Tools;
 using Extras.Server.AI;
 using Codeer.LowCode.Blazor.Extras.Server.Excel;
 using Codeer.LowCode.Blazor.Extras.Server.Mail;
@@ -49,6 +46,7 @@ SystemConfig.Instance.GraphApi = builder.Configuration.GetSection("GraphApi").Ge
 SystemConfig.Instance.SendGrid = builder.Configuration.GetSection("SendGrid").Get<SendGridSettings>() ?? new();
 SystemConfig.Instance.Gmail = builder.Configuration.GetSection("Gmail").Get<GmailSettings>() ?? new();
 SystemConfig.Instance.AISettings = builder.Configuration.GetSection("AISettings").Get<AISettings>() ?? new();
+SystemConfig.Instance.AIChat = builder.Configuration.GetSection("AIChat").Get<AIChatSettings>() ?? new();
 SystemConfig.Instance.DataSources.ToList().ForEach(e => e.ConnectionString = builder.Configuration.GetConnectionString(e.Name) ?? string.Empty);
 
 GlobalFontSettings.FontResolver = new CustomFontResolver(SystemConfig.Instance.FontFileDirectory);
@@ -107,23 +105,7 @@ builder.Services.Configure<RequestLocalizationOptions>(options =>
 
 builder.Services.AddScoped<DataService>();
 
-//AIChatField の窓口 (AIChatController)。AIChatField のデザインの Agent 名で返事を作る Agent を選ぶ。
-//  "" (既定)          = DummyAIChatAgent (AI を呼ばない。UI 確認用)
-//  "RawDataAccess"   = RawDataAccessAgent (DB を直接読んで集計・グラフで答える)。AISettings (Azure OpenAI) が設定されているときだけ登録
-//RawDataAccess が読むデータソースは AIChat:RawDataAccessDataSource (既定 SampleSQLite)。本番では AI 用の読み取り専用 DB ユーザーで接続するデータソースを指す
-var agents = new AIChatAgentRegistry().Add("", new DummyAIChatAgent());
-var chatClientFactory = AIChatClientFactory.CreateAzureOpenAI(SystemConfig.Instance.AISettings);
-if (chatClientFactory != null)
-{
-    agents.Add("RawDataAccess", new RawDataAccessAgent(chatClientFactory, new RawDataAccessOptions
-    {
-        DataSourceName = builder.Configuration["AIChat:RawDataAccessDataSource"] ?? "SampleSQLite",
-        DbAccessorFactory = () => new DbAccessor(SystemConfig.Instance.DataSources),
-        Modules = DesignerService.GetDesignData().Modules,
-    }, new ChatClientAgentOptions { SystemPrompt = RawDataAccessAgent.DefaultSystemPrompt, LoggerFactory = LoggerFactory.Create(b => b.AddConsole()) }));
-}
-builder.Services.AddSingleton(agents);
-builder.Services.AddSingleton(new AIChatJobStore(agents));
+//AIChatField の Agent は AI/AIChatAgentTable.cs の対応表 (Agent 名 → Agent) で決める。DI 登録は不要 (AIChatController が AIChatAgentTable.Jobs を使う)
 
 //デモ用の簡易ログイン (パスワードなしのユーザー切替。AccountController / login.html)。
 //承認フローなど操作ユーザーが必要な機能をサンプルで確認するためのもので、実運用の認証ではない

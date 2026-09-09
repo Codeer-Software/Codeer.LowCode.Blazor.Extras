@@ -33,10 +33,8 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat
             _logger = _options.LoggerFactory?.CreateLogger(GetType());
         }
 
-        public ChatClientAgentOptions Options => _options;
-
-        /// <summary>保持中の会話数 (テスト・監視用)。</summary>
-        public int ConversationCount => _history.Count;
+        /// <summary>保持中の会話数 (テスト用)。</summary>
+        internal int ConversationCount => _history.Count;
 
         public virtual async Task<AIChatReply> ReplyAsync(AIChatAgentRequest request, IAIChatProgress progress, CancellationToken cancellationToken)
         {
@@ -75,9 +73,6 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat
             _history.Append(request.ConversationId, userMessage, response.Messages);
             return AIChatReply.Html(ToHtml(final, context));
         }
-
-        /// <summary>会話履歴を捨てる (通常はクライアントが conversationId を振り直すので不要。明示的に切りたいとき用)。</summary>
-        public void ForgetConversation(string conversationId) => _history.Remove(conversationId);
 
         IChatClient CreateClient()
         {

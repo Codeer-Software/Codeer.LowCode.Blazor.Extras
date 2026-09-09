@@ -10,7 +10,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat
     /// クライアントは HTML を表示するだけで内容を解釈しないので、変換はすべてここで行う。
     /// Agent が返した HTML は加工せず通す (サーバーは信頼境界の内側。リンクの target だけ付ける)。
     /// </summary>
-    public static class ChatReplyHtml
+    internal static class ChatReplyHtml
     {
         static readonly MarkdownPipeline _pipeline = new MarkdownPipelineBuilder()
             .UseAdvancedExtensions()

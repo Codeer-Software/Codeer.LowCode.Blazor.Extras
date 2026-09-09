@@ -1,3 +1,5 @@
+using Codeer.LowCode.Blazor.DataIO.Db;
+using Codeer.LowCode.Blazor.DesignLogic;
 using Codeer.LowCode.Blazor.Extras.Server.AI.Chat.Tools;
 using Microsoft.Extensions.AI;
 
@@ -12,12 +14,11 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat
     /// このフィールドを置くページの UserReadCondition で「誰が使えるか」を絞る。
     /// </para>
     /// <code>
-    /// registry.Add("RawDataAccess", new RawDataAccessAgent(chatClientFactory, new RawDataAccessOptions
-    /// {
-    ///     DataSourceName = "Analytics",            // AI 用の読み取り専用ユーザーで接続するデータソース
-    ///     DbAccessorFactory = () => new DbAccessor(SystemConfig.Instance.DataSources),
-    ///     Modules = DesignerService.GetDesignData().Modules,
-    /// }));
+    /// new RawDataAccessAgent(
+    ///     chatClientFactory,                                          // IChatClient の作り方 (アプリの責務)
+    ///     () => new DbAccessor(SystemConfig.Instance.DataSources),    // IDbAccessor の作り方 (SQL ごとに作って捨てる)
+    ///     DesignerService.GetDesignData().Modules,                    // 表と列に業務名を添える (null 可)
+    ///     new RawDataAccessOptions { DataSourceName = "Analytics" }); // AI 用の読み取り専用ユーザーで接続するデータソース
     /// </code>
     /// </summary>
     public class RawDataAccessAgent : ChatClientAgent
@@ -27,14 +28,15 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat
             "Answer in the user's language, concisely, in Markdown. Show the figures you used (as a table) and a brief interpretation. " +
             "Never invent numbers: every figure must come from a query result. If the data cannot answer the question, say so and suggest what could be checked instead.";
 
-        public RawDataAccessAgent(Func<IChatClient> clientFactory, RawDataAccessOptions dataOptions, ChatClientAgentOptions? options = null)
-            : base(clientFactory, Configure(options ?? new ChatClientAgentOptions { SystemPrompt = DefaultSystemPrompt }, dataOptions))
+        public RawDataAccessAgent(Func<IChatClient> clientFactory, Func<IDbAccessor> dbAccessorFactory, IModuleDesigns? modules,
+            RawDataAccessOptions dataOptions, ChatClientAgentOptions? options = null)
+            : base(clientFactory, Configure(options ?? new ChatClientAgentOptions { SystemPrompt = DefaultSystemPrompt }, new RawDataAccessToolSet(dbAccessorFactory, modules, dataOptions)))
         {
         }
 
-        static ChatClientAgentOptions Configure(ChatClientAgentOptions options, RawDataAccessOptions dataOptions)
+        static ChatClientAgentOptions Configure(ChatClientAgentOptions options, RawDataAccessToolSet dataTools)
         {
-            options.ToolSets.Add(new RawDataAccessToolSet(dataOptions));
+            options.ToolSets.Add(dataTools);
             options.ToolSets.Add(new ChartToolSet());
             return options;
         }

@@ -47,11 +47,6 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat
             }
         }
 
-        public void Remove(string conversationId)
-        {
-            lock (_entries) _entries.Remove(conversationId);
-        }
-
         public int Count
         {
             get { lock (_entries) return _entries.Count; }

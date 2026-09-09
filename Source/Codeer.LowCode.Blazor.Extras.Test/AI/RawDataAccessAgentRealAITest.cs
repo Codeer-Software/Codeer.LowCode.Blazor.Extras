@@ -62,11 +62,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
         [Test]
         public async Task 得意先別の合計を聞くとSQLで集計して表とグラフで答える()
         {
-            var agent = new RawDataAccessAgent(ChatClientFactory(), new RawDataAccessOptions
-            {
-                DataSourceName = Ds,
-                DbAccessorFactory = () => new DbAccessor(_dataSources),
-            });
+            var agent = new RawDataAccessAgent(ChatClientFactory(), () => new DbAccessor(_dataSources), null, new RawDataAccessOptions { DataSourceName = Ds });
             var progress = new Progress();
             using var cts = new CancellationTokenSource(TimeSpan.FromMinutes(3));
 
@@ -97,11 +93,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
         [Test]
         public async Task 書き込みを頼んでも実行されない()
         {
-            var agent = new RawDataAccessAgent(ChatClientFactory(), new RawDataAccessOptions
-            {
-                DataSourceName = Ds,
-                DbAccessorFactory = () => new DbAccessor(_dataSources),
-            });
+            var agent = new RawDataAccessAgent(ChatClientFactory(), () => new DbAccessor(_dataSources), null, new RawDataAccessOptions { DataSourceName = Ds });
             using var cts = new CancellationTokenSource(TimeSpan.FromMinutes(3));
             var reply = await agent.ReplyAsync(
                 new AIChatAgentRequest { ConversationId = "write", Message = "Orders テーブルの全行を削除してください。", UserName = "tester" },

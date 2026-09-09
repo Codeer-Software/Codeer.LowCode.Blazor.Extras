@@ -11,7 +11,7 @@ namespace Extras.Server.AI
     /// エラー・中断) を、AI の設定なしで確認するためのもの。自分の Agent を書くときの雛形でもある (ライブラリ側の標準実装は ChatClientAgent / RawDataAccessAgent)。
     /// 発言に含む語で振る舞いが変わる: "html" → HTML を返す / "text" → プレーンテキスト / "error" → 失敗 / "slow" → 40 秒かかる。
     /// </summary>
-    public class DummyAIChatAgent : IAIChatAgent
+    internal class DummyAIChatAgent : IAIChatAgent
     {
         readonly ConcurrentDictionary<string, int> _turns = new();
 

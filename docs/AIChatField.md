@@ -19,7 +19,7 @@ AI の実体と会話の履歴はサーバー側の持ち物で、このフィ�
 
 | プロパティ | 型 | 必須 | 説明 |
 |---|---|---|---|
-| Agent | string | - | 返事を作るサーバー側 Agent の名前。空なら既定の Agent。サーバーが `AIChatAgentRegistry` に登録した名前 (例: `RawDataAccess`) を指定し、同じフィールドで用途の違う Agent を使い分ける |
+| Agent | string | - | 返事を作るサーバー側 Agent の名前。空なら既定の Agent。サーバー側の対応表にある名前 (例: `RawDataAccess`) を指定し、同じフィールドで用途の違う Agent を使い分ける |
 | Placeholder | string | - | 入力欄のプレースホルダ |
 | WelcomeMessage | string (複数行, HTML 可) | - | 会話の先頭に表示するアシスタントの挨拶。空なら表示しない |
 | Height | int | - | 高さ (px)。0 なら親の高さに合わせる。`IsFillAvailable` のグリッドに置くか Height を指定する |
@@ -73,31 +73,56 @@ DELETE {EndPoint}/{requestId}   // 中断
 
 ## サーバー側の実装
 
-`Codeer.LowCode.Blazor.Extras.Server` (名前空間 `Codeer.LowCode.Blazor.Extras.Server.AI.Chat`) に部品があります。Agent は「システムプロンプト + ツールセット」の組み合わせで作り、アプリは名前を付けて登録します。AIChatField はデザインの `Agent` でその名前を指定します。
+`Codeer.LowCode.Blazor.Extras.Server` (名前空間 `Codeer.LowCode.Blazor.Extras.Server.AI.Chat`) に部品があります。Agent は「システムプロンプト + ツールセット」の組み合わせで作り、アプリは「Agent 名 → Agent」の対応表 (メールの `MailSenderTable` と同じ位置づけの静的クラス) で持ちます。AIChatField はデザインの `Agent` でその名前を指定します。DI は要りません。
 
 | 型 | 役割 |
 |---|---|
 | `IAIChatAgent` | 返事を作る側のインターフェース。`ReplyAsync(request, progress, cancellationToken)` で `AIChatReply` (テキスト / Markdown / HTML / Auto) を返す。途中経過は `IAIChatProgress` に報告。`request.AgentName` にデザインの Agent 名が入る |
-| `AIChatAgentRegistry` | 名前 → Agent の対応表 (`IAIChatAgentResolver`)。空文字が既定。大文字小文字は区別しない。空文字の登録が無ければ最初に登録した Agent が既定 |
-| `AIChatJobStore` | プロセス内のジョブ置き場。送信で Agent をバックグラウンド実行し、状態をポーリングに返す。`Start(owner, conversationId, message, agentName)` で Agent 名を渡す。未登録の名前は error になる。シングルトンで登録する |
+| `AIChatJobStore` | プロセス内のジョブ置き場。コンストラクタで対応表 (`Func<string, IAIChatAgent?>`。Agent が 1 つなら `IAIChatAgent` を直接) を受け、送信で Agent をバックグラウンド実行し、状態をポーリングに返す。`Start(owner, conversationId, message, agentName)` で Agent 名を渡す。対応表に無い名前は error になる。プロセスに 1 つ (アプリの静的プロパティ) |
 | `ChatClientAgent` | 標準 Agent。Microsoft.Extensions.AI の `IChatClient` で返事を作る。会話履歴 (会話 ID ごと・保持期限つき)、ツール呼び出し (function calling) の往復、逐次表示、Markdown → HTML と後処理を担う。モデルの選択と認証はアプリが `Func<IChatClient>` で渡す |
 | `IAIChatToolSet` | `ChatClientAgent` に組み込むツールの束 (プロンプトへの説明文 + `AITool` の生成 + HTML の後処理)。アプリ固有のツールはこれを実装する |
-| `RawDataAccessToolSet` | ツールセット: `get_schema` (表と列。モジュール定義があれば業務名を添える) と `execute_sql` (読み取り専用の SELECT を 1 文実行。行数・文字数・時間の上限、監査ログ) |
+| `RawDataAccessToolSet` | ツールセット: `get_schema` (表と列。モジュール定義があれば業務名を添える) と `execute_sql` (読み取り専用の SELECT を 1 文実行。行数・文字数・時間の上限、監査ログ)。依存 (IDbAccessor の作り方・モジュール定義) はコンストラクタ、設定 (`RawDataAccessOptions`: データソース名と上限) は別 |
 | `ChartToolSet` | ツールセット: `render_chart` (棒 / 折れ線 / 円)。数値からサーバーで SVG を作り、返事の中のプレースホルダを置き換える (モデルに SVG を書かせないので数字が狂わない) |
 | `RawDataAccessAgent` | `ChatClientAgent` + `RawDataAccessToolSet` + `ChartToolSet` の設定済み Agent。DB を直接読んで集計・グラフで答える |
-| `ChatReplyHtml` | 返事を HTML に揃える。Markdown は [Markdig](https://github.com/xoofx/markdig) (表・タスクリスト・自動リンク、単独改行は `<br>`)、テキストはエスケープ、HTML は素通し (リンクに `target="_blank"` を付けるだけ) |
+| (内部) HTML 化 | 返事は `AIChatJobStore` の中で HTML に揃えられる。Markdown は [Markdig](https://github.com/xoofx/markdig) (表・タスクリスト・自動リンク、単独改行は `<br>`)、テキストはエスケープ、HTML は素通し (リンクに `target="_blank"` を付けるだけ)。Agent 側で HTML 化のコードを書く必要はない |
 
 Example の `DummyAIChatAgent` (`Example/Extras/Extras/Extras.Server/AI/`) は AI を呼ばないダミーで、UI の確認と、自分で `IAIChatAgent` を書くときの雛形です。発言に `html` / `text` / `error` / `slow` を含めると振る舞いが変わります。
 
-### Controller と登録 (アプリ側)
+### 対応表と Controller (アプリ側)
 
-Controller はアプリの持ち物です。サンプル (`Example/Extras/Extras/Extras.Server/Controllers/AIChatController.cs`):
+対応表と Controller はアプリの持ち物です。サンプル (`Example/Extras/Extras/Extras.Server/AI/AIChatAgentTable.cs` と `Controllers/AIChatController.cs`):
+
+```csharp
+// AI/AIChatAgentTable.cs: Agent 名 → Agent。AIChatField のデザインの Agent がこの名前を指す。自分の Agent はここに 1 行足す
+public static class AIChatAgentTable
+{
+    static readonly ConcurrentDictionary<string, Lazy<IAIChatAgent?>> _agents = new(StringComparer.OrdinalIgnoreCase);
+
+    public static AIChatJobStore Jobs { get; } = new(Create);   // プロセスに 1 つ
+
+    public static IAIChatAgent? Create(string name)              // 会話履歴を持つので名前ごとに 1 つを使い回す
+        => _agents.GetOrAdd(name ?? "", n => new Lazy<IAIChatAgent?>(() => CreateCore(n))).Value;
+
+    static IAIChatAgent? CreateCore(string name) => name switch
+    {
+        "" => new DummyAIChatAgent(),                              // 既定 (Agent が空のフィールド)
+        "RawDataAccess" => new RawDataAccessAgent(
+            chatClientFactory,                                           // IChatClient の作り方 (下記)
+            () => new DbAccessor(SystemConfig.Instance.DataSources),     // IDbAccessor の作り方 (SQL ごとに作って捨てる)
+            DesignerService.GetDesignData().Modules,                     // 表と列に業務名を添える (null 可)
+            new RawDataAccessOptions { DataSourceName = "Analytics" }),  // AI 用の読み取り専用 DB ユーザーで接続するデータソース
+        _ => null,                                                   // 知らない名前 → ジョブは error
+    };
+}
+```
 
 ```csharp
 [ApiController]
 [Route("api/ai_chat")]
-public class AIChatController(AIChatJobStore jobs) : ControllerBase
+public class AIChatController : ControllerBase
 {
+    static AIChatJobStore jobs => AIChatAgentTable.Jobs;
+
     string Owner => User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.Identity?.Name ?? string.Empty;
 
     [HttpPost]
@@ -112,20 +137,6 @@ public class AIChatController(AIChatJobStore jobs) : ControllerBase
     public IActionResult Cancel(string requestId)
         => jobs.Cancel(Owner, requestId) ? NoContent() : NotFound();
 }
-```
-
-```csharp
-// Program.cs: 名前で Agent を登録する。AIChatField のデザインの Agent がこの名前を指す
-var agents = new AIChatAgentRegistry()
-    .Add("", new DummyAIChatAgent())                       // 既定 (Agent が空のフィールド)
-    .Add("RawDataAccess", new RawDataAccessAgent(chatClientFactory, new RawDataAccessOptions
-    {
-        DataSourceName = "Analytics",                       // AI 用の読み取り専用 DB ユーザーで接続するデータソース
-        DbAccessorFactory = () => new DbAccessor(SystemConfig.Instance.DataSources),
-        Modules = DesignerService.GetDesignData().Modules,  // 表と列に業務名を添える (任意)
-    }));
-builder.Services.AddSingleton(agents);
-builder.Services.AddSingleton(new AIChatJobStore(agents));
 ```
 
 ```csharp
@@ -144,7 +155,7 @@ AIChatField.EndPoint = "/api/ai_chat";
 `RawDataAccessAgent` は名前どおり DB を生で読みます (SELECT を組んで実行し、結果を表とグラフにする)。**何が読めるかは DB 側で決めます**:
 
 - AI 用に読み取り専用の DB ユーザーを作り、見せてよい表・列だけに SELECT を GRANT する。ログイン情報 (パスワードハッシュ・TOTP シークレット等)、変更履歴、一時ファイルの表は GRANT しない
-- そのユーザーで接続するデータソースを appsettings の `DataSources` / `ConnectionStrings` に追加し、`RawDataAccessOptions.DataSourceName` に指定する。アプリ本体と同じ接続を渡すと DB 全体が読める
+- そのユーザーで接続するデータソースを appsettings の `DataSources` / `ConnectionStrings` に追加し、`RawDataAccessOptions.DataSourceName` に指定する (Options は文字列と数値だけなので appsettings のセクションからそのまま束縛できる)。アプリ本体と同じ接続を渡すと DB 全体が読める
 - SQLite はユーザーが無いので接続文字列の `Mode=ReadOnly` で読み取り専用にする (表・列の限定はできない)
 - ログインユーザーごとの行制限 (モジュールの UserRead / DataRead 条件) は効かない。「誰がこのチャットを使えるか」は、フィールドを置くページやモジュールの UserReadCondition で絞る
 
@@ -170,7 +181,7 @@ public class MyAgent : IAIChatAgent
 ```
 
 - 逐次表示したいときは、LLM のストリームを受けながら `progress.ReportPartial(AIChatReply.Markdown(ここまでの全文))` を呼ぶ (差分ではなく全体を渡す)
-- `AIChatJobStore` と `ChatClientAgent` の会話履歴は単一インスタンス前提のメモリ保持です。スケールアウトするなら ARR アフィニティか共有ストアへの置き換えが必要です
+- `AIChatJobStore` と `ChatClientAgent` の会話履歴は単一インスタンス前提のメモリ保持です。サーバーを複数インスタンスにするときはセッション固定 (Azure App Service の ARR アフィニティは既定でオン) が前提で、それが使えない構成では共有ストア (DB テーブル) への置き換えが必要です
 - 所有者 (ログイン ID) が一致しないジョブは見えません。匿名同士は共有になるので、認証のあるアプリで使ってください
 
 ## 注意事項

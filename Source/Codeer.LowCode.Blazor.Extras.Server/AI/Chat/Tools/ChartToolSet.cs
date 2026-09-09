@@ -19,7 +19,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat.Tools
             "Pass the numbers you obtained (never estimates). The tool returns a placeholder like [[chart:1]]; put that placeholder on its own line in your reply where the chart should appear. Do not draw charts yourself.";
 
         /// <summary>1 系列のデータ。</summary>
-        public class ChartSeries
+        internal class ChartSeries
         {
             [Description("Series name (shown in the legend).")]
             public string Name { get; set; } = string.Empty;

@@ -8,7 +8,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat
     /// </summary>
     public class AIChatToolContext
     {
-        public AIChatToolContext(AIChatAgentRequest request, IAIChatProgress progress, CancellationToken cancellationToken, ILogger? logger)
+        internal AIChatToolContext(AIChatAgentRequest request, IAIChatProgress progress, CancellationToken cancellationToken, ILogger? logger)
         {
             Request = request;
             Progress = progress;

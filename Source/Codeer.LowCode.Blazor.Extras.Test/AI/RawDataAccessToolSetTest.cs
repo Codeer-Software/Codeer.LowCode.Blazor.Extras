@@ -43,11 +43,11 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
             if (File.Exists(_dbFile)) File.Delete(_dbFile);
         }
 
-        RawDataAccessToolSet Create(Action<RawDataAccessOptions>? configure = null)
+        RawDataAccessToolSet Create(Action<RawDataAccessOptions>? configure = null, IModuleDesigns? modules = null)
         {
-            var options = new RawDataAccessOptions { DataSourceName = Ds, DbAccessorFactory = () => new DbAccessor(_dataSources), MaxRows = 10 };
+            var options = new RawDataAccessOptions { DataSourceName = Ds, MaxRows = 10 };
             configure?.Invoke(options);
-            return new RawDataAccessToolSet(options);
+            return new RawDataAccessToolSet(() => new DbAccessor(_dataSources), modules, options);
         }
 
         static AIChatToolContext Context(Progress? progress = null)
@@ -71,7 +71,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
             module.Fields.Add(status);
             designs.AddModule(module);
 
-            var tools = Create(o => o.Modules = designs.Modules).CreateTools(Context()).ToList();
+            var tools = Create(modules: designs.Modules).CreateTools(Context()).ToList();
             var schema = await InvokeAsync(tools, "get_schema");
 
             Assert.That(schema, Does.Contain("SQLite"));

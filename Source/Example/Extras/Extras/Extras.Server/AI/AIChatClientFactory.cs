@@ -9,7 +9,7 @@ namespace Extras.Server.AI
     /// AIChat の Agent に渡す IChatClient の作り方 (アプリの持ち物)。ライブラリは IChatClient 抽象しか知らないので、
     /// どのプロバイダ (Azure OpenAI / OpenAI / Ollama …) を使うかはここで決める。このサンプルは AISettings の Azure OpenAI。
     /// </summary>
-    public static class AIChatClientFactory
+    internal static class AIChatClientFactory
     {
         /// <summary>AISettings の OpenAIEndPoint / OpenAIKey / ChatModel が揃っているときだけファクトリを返す (欠けていれば null = AI Agent を登録しない)。</summary>
         public static Func<IChatClient>? CreateAzureOpenAI(AISettings settings)

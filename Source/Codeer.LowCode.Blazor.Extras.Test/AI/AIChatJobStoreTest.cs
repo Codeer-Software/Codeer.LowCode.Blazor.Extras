@@ -3,7 +3,7 @@ using Codeer.LowCode.Blazor.Extras.Server.AI.Chat;
 
 namespace Codeer.LowCode.Blazor.Extras.Test.AI
 {
-    /// <summary>送信→ポーリング→確定 / 中断 / 所有者違い / 失敗 / Agent 名での振り分け。Agent はテスト用 (FakeAIChatAgent)。</summary>
+    /// <summary>送信→ポーリング→確定 / 中断 / 所有者違い / 失敗 / Agent 名での振り分け (対応表は Func)。Agent はテスト用 (FakeAIChatAgent)。</summary>
     public class AIChatJobStoreTest
     {
         static AIChatJobStore CreateStore(TimeSpan? step = null)
@@ -130,38 +130,36 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
             Assert.That(other.Reply, Does.Contain("(1 回目)"));
         }
         [Test]
-        public async Task Agent名で登録したAgentに振り分けられ空なら既定になる()
+        public async Task Agent名で対応表のAgentに振り分けられ空なら既定になる()
         {
             var a = new FakeAIChatAgent();
             var b = new FakeAIChatAgent();
-            var registry = new AIChatAgentRegistry().Add("", a).Add("Raw", b);
-            using var store = new AIChatJobStore(registry);
+            IAIChatAgent? Table(string name) => name switch { "" => a, "Raw" => b, _ => null };
+            using var store = new AIChatJobStore(Table);
 
             await WaitDoneAsync(store, "u", store.Start("u", "c", "x"));
-            await WaitDoneAsync(store, "u", store.Start("u", "c", "y", "raw"));
+            await WaitDoneAsync(store, "u", store.Start("u", "c", "y", "Raw"));
             Assert.That(a.Requests.Select(r => r.Message), Is.EqualTo(new[] { "x" }));
             Assert.That(b.Requests.Select(r => r.Message), Is.EqualTo(new[] { "y" }));
-            Assert.That(b.Requests[0].AgentName, Is.EqualTo("raw"), "Agent 名は依頼に載る (大文字小文字は登録側で吸収)");
+            Assert.That(b.Requests[0].AgentName, Is.EqualTo("Raw"), "Agent 名は依頼にも載る");
         }
 
         [Test]
-        public async Task 未登録のAgent名はerrorになる()
+        public async Task 対応表に無いAgent名はerrorになる()
         {
-            var registry = new AIChatAgentRegistry().Add("", new FakeAIChatAgent());
-            using var store = new AIChatJobStore(registry);
+            using var store = new AIChatJobStore(name => name == "" ? new FakeAIChatAgent() : null);
             var done = await WaitDoneAsync(store, "u", store.Start("u", "c", "x", "NoSuchAgent"));
             Assert.That(done.Status, Is.EqualTo(AIChatJobStatus.Error));
             Assert.That(done.Error, Does.Contain("NoSuchAgent"));
         }
 
         [Test]
-        public void 空文字の登録が無ければ最初に登録したAgentが既定になる()
+        public async Task Agentを1つだけ渡したときは名前に関係なくそのAgentが使われる()
         {
-            var first = new FakeAIChatAgent();
-            var registry = new AIChatAgentRegistry().Add("Raw", first).Add("Other", new FakeAIChatAgent());
-            Assert.That(registry.Resolve(""), Is.SameAs(first));
-            Assert.That(registry.Resolve("RAW"), Is.SameAs(first));
-            Assert.That(registry.Resolve("missing"), Is.Null);
+            var agent = new FakeAIChatAgent();
+            using var store = new AIChatJobStore(agent);
+            await WaitDoneAsync(store, "u", store.Start("u", "c", "x", "anything"));
+            Assert.That(agent.Requests.Single().AgentName, Is.EqualTo("anything"));
         }
     }
 }

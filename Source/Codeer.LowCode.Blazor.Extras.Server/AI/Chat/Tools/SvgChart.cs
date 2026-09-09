@@ -8,7 +8,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat.Tools
     /// 依存なしの小さな SVG グラフ描画 (棒・折れ線・円)。チャットの返事に埋め込む用途に絞った最小限のもので、
     /// 幅はコンテナに合わせて伸縮する (viewBox + max-width:100%)。
     /// </summary>
-    public static class SvgChart
+    internal static class SvgChart
     {
         public enum ChartType { Bar, Line, Pie }
 

@@ -1,3 +1,5 @@
+using Codeer.LowCode.Blazor.DataIO.Db;
+using Codeer.LowCode.Blazor.DesignLogic;
 using Codeer.LowCode.Blazor.Repository.Design;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Logging;
@@ -27,14 +29,23 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat.Tools
         static readonly Regex _lineComment = new(@"--[^\r\n]*", RegexOptions.Compiled);
         static readonly Regex _blockComment = new(@"/\*.*?\*/", RegexOptions.Compiled | RegexOptions.Singleline);
 
+        readonly Func<IDbAccessor> _dbAccessorFactory;
+        readonly IModuleDesigns? _modules;
         readonly RawDataAccessOptions _options;
         readonly object _schemaLock = new();
         string? _schemaText;
         DateTime _schemaLoaded;
 
-        public RawDataAccessToolSet(RawDataAccessOptions options) => _options = options;
-
-        public RawDataAccessOptions Options => _options;
+        /// <param name="dbAccessorFactory">データソースへ接続する IDbAccessor を作る (SQL 1 回ごとに作って捨てる。バックグラウンド実行のためリクエストの寿命に乗れない)。例: <c>() => new DbAccessor(SystemConfig.Instance.DataSources)</c></param>
+        /// <param name="modules">モジュール定義。表と列に業務上の名前 (モジュール名・フィールド名・候補値) を添えてスキーマを説明する。null でも動く</param>
+        /// <param name="options">データソース名と上限値</param>
+        public RawDataAccessToolSet(Func<IDbAccessor> dbAccessorFactory, IModuleDesigns? modules, RawDataAccessOptions options)
+        {
+            if (string.IsNullOrEmpty(options.DataSourceName)) throw new ArgumentException("RawDataAccessOptions.DataSourceName is required.", nameof(options));
+            _dbAccessorFactory = dbAccessorFactory;
+            _modules = modules;
+            _options = options;
+        }
 
         public string Instructions
         {
@@ -73,7 +84,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat.Tools
             {
                 if (_schemaText != null && DateTime.UtcNow - _schemaLoaded < _options.SchemaCacheDuration) return _schemaText;
             }
-            await using var db = _options.DbAccessorFactory();
+            await using var db = _dbAccessorFactory();
             var dataSource = db.GetDataSource(_options.DataSourceName) ?? throw new InvalidOperationException($"Data source '{_options.DataSourceName}' is not defined.");
             var columns = await DbSchemaReader.ReadAsync(db, _options.DataSourceName, _options.CommandTimeoutSeconds, context.CancellationToken);
             var text = FormatSchema(DbSchemaReader.DialectName(dataSource.DataSourceType), columns);
@@ -128,10 +139,10 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat.Tools
         Dictionary<string, ModuleInfo> ModuleInfoByTable()
         {
             var result = new Dictionary<string, ModuleInfo>(StringComparer.OrdinalIgnoreCase);
-            if (_options.Modules == null) return result;
-            foreach (var name in _options.Modules.GetModuleNames())
+            if (_modules == null) return result;
+            foreach (var name in _modules.GetModuleNames())
             {
-                var module = _options.Modules.Find(name);
+                var module = _modules.Find(name);
                 if (module == null || string.IsNullOrEmpty(module.DbTable) || result.ContainsKey(module.DbTable)) continue;
                 var info = new ModuleInfo { ModuleName = module.Name };
                 foreach (var field in module.Fields)
@@ -163,7 +174,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat.Tools
 
             try
             {
-                await using var db = _options.DbAccessorFactory();
+                await using var db = _dbAccessorFactory();
                 var connection = db.GetConnection(_options.DataSourceName);
                 using var command = connection.CreateCommand();
                 command.CommandText = sql;
@@ -217,7 +228,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat.Tools
         };
 
         /// <summary>1 文の SELECT だけを通す簡易判定 (本体の防御は DB ユーザーの権限)。拒否理由を返し、通るなら null。</summary>
-        public static string? Validate(string sql)
+        internal static string? Validate(string sql)
         {
             if (string.IsNullOrWhiteSpace(sql)) return "SQL is empty.";
             var stripped = _blockComment.Replace(_lineComment.Replace(sql, " "), " ");
