@@ -2580,5 +2580,83 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
                 return ResourceManager.GetString("MarkdownTable", resourceCulture);
             }
         }
+        
+        internal static string AIChatField {
+            get {
+                return ResourceManager.GetString("AIChatField", resourceCulture);
+            }
+        }
+        
+        internal static string AIChat_Thinking {
+            get {
+                return ResourceManager.GetString("AIChat_Thinking", resourceCulture);
+            }
+        }
+        
+        internal static string AIChat_Send {
+            get {
+                return ResourceManager.GetString("AIChat_Send", resourceCulture);
+            }
+        }
+        
+        internal static string AIChat_Stop {
+            get {
+                return ResourceManager.GetString("AIChat_Stop", resourceCulture);
+            }
+        }
+        
+        internal static string AIChat_NewConversation {
+            get {
+                return ResourceManager.GetString("AIChat_NewConversation", resourceCulture);
+            }
+        }
+        
+        internal static string AIChat_Copy {
+            get {
+                return ResourceManager.GetString("AIChat_Copy", resourceCulture);
+            }
+        }
+        
+        internal static string AIChat_Retry {
+            get {
+                return ResourceManager.GetString("AIChat_Retry", resourceCulture);
+            }
+        }
+        
+        internal static string AIChat_Failed {
+            get {
+                return ResourceManager.GetString("AIChat_Failed", resourceCulture);
+            }
+        }
+        
+        internal static string AIChat_Timeout {
+            get {
+                return ResourceManager.GetString("AIChat_Timeout", resourceCulture);
+            }
+        }
+        
+        internal static string AIChat_Canceled {
+            get {
+                return ResourceManager.GetString("AIChat_Canceled", resourceCulture);
+            }
+        }
+        
+        internal static string AIChat_NotConfigured {
+            get {
+                return ResourceManager.GetString("AIChat_NotConfigured", resourceCulture);
+            }
+        }
+        
+        internal static string AIChat_DesignSampleUser {
+            get {
+                return ResourceManager.GetString("AIChat_DesignSampleUser", resourceCulture);
+            }
+        }
+        
+        internal static string AIChat_DesignSampleAssistant {
+            get {
+                return ResourceManager.GetString("AIChat_DesignSampleAssistant", resourceCulture);
+            }
+        }
     }
 }

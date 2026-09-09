@@ -1,0 +1,319 @@
+.aichat-root {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  width: 100%;
+  border: 1px solid var(--bs-border-color, #dee2e6);
+  border-radius: 0.5rem;
+  background: var(--bs-body-bg, #fff);
+  overflow: hidden;
+}
+
+.aichat-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0.15rem 0.5rem;
+  border-bottom: 1px solid var(--bs-border-color-translucent, rgba(0, 0, 0, 0.1));
+}
+
+.aichat-new {
+  text-decoration: none;
+  font-size: 0.8rem;
+}
+
+.aichat-messages {
+  flex: 1 1 auto;
+  min-height: 16rem; /* 初期表示 (返事が無いとき) でも会話の領域として見える高さを確保する。FillAvailable のときは残り高さいっぱいに伸びる */
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  scroll-behavior: smooth;
+}
+
+.aichat-msg {
+  display: flex;
+  flex-direction: column;
+  max-width: 85%;
+}
+
+.aichat-user {
+  align-self: flex-end;
+  align-items: flex-end;
+}
+
+.aichat-assistant {
+  align-self: flex-start;
+  align-items: flex-start;
+}
+
+.aichat-bubble {
+  padding: 0.5rem 0.8rem;
+  border-radius: 0.9rem;
+  line-height: 1.55;
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+.aichat-user .aichat-bubble {
+  background: var(--bs-primary, #0d6efd);
+  color: var(--bs-white, #fff);
+  border-bottom-right-radius: 0.25rem;
+  white-space: pre-wrap;
+}
+
+.aichat-assistant .aichat-bubble {
+  background: var(--bs-tertiary-bg, #f1f3f5);
+  color: var(--bs-body-color, #212529);
+  border-bottom-left-radius: 0.25rem;
+}
+
+.aichat-error .aichat-bubble {
+  background: var(--bs-danger-bg-subtle, #f8d7da);
+  color: var(--bs-danger-text-emphasis, #58151c);
+}
+
+.aichat-time {
+  font-size: 0.7rem;
+  color: var(--bs-secondary-color, #6c757d);
+  margin: 0.1rem 0.4rem 0;
+  display: flex;
+  align-items: center;
+  gap: 0.2rem;
+}
+
+.aichat-copy {
+  padding: 0 0.25rem;
+  font-size: 0.75rem;
+  line-height: 1;
+  color: var(--bs-secondary-color, #6c757d);
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.aichat-msg:hover .aichat-copy,
+.aichat-copy:focus-visible {
+  opacity: 1;
+}
+
+/* ===== 考え中 ===== */
+.aichat-thinking {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  color: var(--bs-secondary-color, #6c757d);
+}
+
+.aichat-reply + .aichat-thinking {
+  margin-top: 0.35rem;
+}
+
+.aichat-dots {
+  display: inline-flex;
+  gap: 0.2rem;
+}
+
+.aichat-dots span {
+  width: 0.4rem;
+  height: 0.4rem;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.35;
+  animation: aichat-blink 1.2s infinite ease-in-out;
+}
+
+.aichat-dots span:nth-child(2) { animation-delay: 0.2s; }
+.aichat-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes aichat-blink {
+  0%, 80%, 100% { opacity: 0.35; transform: translateY(0); }
+  40% { opacity: 1; transform: translateY(-2px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .aichat-dots span { animation: none; opacity: 0.7; }
+  .aichat-messages { scroll-behavior: auto; }
+}
+
+.aichat-elapsed {
+  font-variant-numeric: tabular-nums;
+  font-size: 0.75rem;
+}
+
+.aichat-error-text {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  font-size: 0.9rem;
+}
+
+/* ===== 入力 ===== */
+.aichat-input-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  border-top: 1px solid var(--bs-border-color-translucent, rgba(0, 0, 0, 0.1));
+}
+
+.aichat-input {
+  flex: 1 1 auto;
+  resize: none;
+  overflow-y: auto;
+  line-height: 1.5;
+}
+
+.aichat-send,
+.aichat-stop {
+  flex: 0 0 auto;
+  width: 2.5rem;
+  height: 2.375rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.aichat-note {
+  font-size: 0.75rem;
+  color: var(--bs-secondary-color, #6c757d);
+  padding: 0 0.75rem 0.5rem;
+}
+
+/* ===== Agent が返す HTML の見え方 (子要素は ::deep) ===== */
+.aichat-reply ::deep > :first-child { margin-top: 0; }
+.aichat-reply ::deep > :last-child { margin-bottom: 0; }
+
+.aichat-reply ::deep p {
+  margin: 0 0 0.6rem;
+}
+
+.aichat-reply ::deep h1,
+.aichat-reply ::deep h2,
+.aichat-reply ::deep h3,
+.aichat-reply ::deep h4,
+.aichat-reply ::deep h5,
+.aichat-reply ::deep h6 {
+  font-weight: 600;
+  line-height: 1.35;
+  margin: 0.8rem 0 0.4rem;
+}
+
+.aichat-reply ::deep h1 { font-size: 1.25em; }
+.aichat-reply ::deep h2 { font-size: 1.15em; }
+.aichat-reply ::deep h3 { font-size: 1.08em; }
+.aichat-reply ::deep h4,
+.aichat-reply ::deep h5,
+.aichat-reply ::deep h6 { font-size: 1em; }
+
+.aichat-reply ::deep ul,
+.aichat-reply ::deep ol {
+  margin: 0 0 0.6rem;
+  padding-left: 1.4rem;
+}
+
+.aichat-reply ::deep li { margin: 0.1rem 0; }
+
+.aichat-reply ::deep a {
+  color: var(--bs-link-color, #0d6efd);
+  text-decoration: underline;
+}
+
+.aichat-reply ::deep blockquote {
+  margin: 0.4rem 0 0.6rem;
+  padding: 0.2rem 0.8rem;
+  border-left: 3px solid var(--bs-border-color, #dee2e6);
+  color: var(--bs-secondary-color, #6c757d);
+}
+
+.aichat-reply ::deep hr {
+  margin: 0.6rem 0;
+  border: 0;
+  border-top: 1px solid var(--bs-border-color, #dee2e6);
+}
+
+.aichat-reply ::deep img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 0.25rem;
+}
+
+/* サーバー側 (ChartToolSet) が描いた SVG グラフ。バブル幅に合わせて縮む */
+.aichat-reply ::deep .aichat-chart {
+  margin: 0.4rem 0 0.6rem;
+  max-width: 100%;
+}
+
+.aichat-reply ::deep .aichat-chart svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  background: #fff;
+  border: 1px solid var(--bs-border-color, #dee2e6);
+  border-radius: 0.4rem;
+}
+
+.aichat-reply ::deep code {
+  font-family: var(--bs-font-monospace, SFMono-Regular, Menlo, Consolas, monospace);
+  font-size: 0.875em;
+  background: rgba(0, 0, 0, 0.06);
+  padding: 0.1em 0.35em;
+  border-radius: 0.25rem;
+}
+
+.aichat-reply ::deep pre {
+  margin: 0.4rem 0 0.6rem;
+  padding: 0.6rem 0.8rem;
+  background: var(--bs-dark, #212529);
+  color: var(--bs-light, #f8f9fa);
+  border-radius: 0.4rem;
+  overflow-x: auto;
+  font-size: 0.85em;
+  line-height: 1.5;
+}
+
+.aichat-reply ::deep pre code {
+  background: none;
+  padding: 0;
+  color: inherit;
+  font-size: inherit;
+  white-space: pre;
+}
+
+/* 表はバブル幅を超えたら表だけ横スクロール */
+.aichat-reply ::deep table {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+  border-collapse: collapse;
+  margin: 0.4rem 0 0.6rem;
+  font-size: 0.9em;
+}
+
+.aichat-reply ::deep th,
+.aichat-reply ::deep td {
+  border: 1px solid var(--bs-border-color, #dee2e6);
+  padding: 0.3rem 0.6rem;
+  text-align: left;
+  vertical-align: top;
+  white-space: nowrap;
+}
+
+.aichat-reply ::deep th {
+  background: rgba(0, 0, 0, 0.05);
+  font-weight: 600;
+}
+
+.aichat-reply ::deep tbody tr:nth-child(even) td {
+  background: rgba(0, 0, 0, 0.025);
+}
+
+.aichat-reply ::deep input[type="checkbox"] {
+  margin-right: 0.35rem;
+  vertical-align: middle;
+}

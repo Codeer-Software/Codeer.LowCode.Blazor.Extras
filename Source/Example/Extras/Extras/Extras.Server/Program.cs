@@ -5,6 +5,7 @@ using Codeer.LowCode.Blazor.License;
 using Codeer.LowCode.Blazor.SystemSettings;
 using Extras.Server.Services;
 using Codeer.LowCode.Blazor.Extras.Server.AI;
+using Extras.Server.AI;
 using Codeer.LowCode.Blazor.Extras.Server.Excel;
 using Codeer.LowCode.Blazor.Extras.Server.Mail;
 using Codeer.LowCode.Blazor.Extras.Server.Web;
@@ -45,6 +46,7 @@ SystemConfig.Instance.GraphApi = builder.Configuration.GetSection("GraphApi").Ge
 SystemConfig.Instance.SendGrid = builder.Configuration.GetSection("SendGrid").Get<SendGridSettings>() ?? new();
 SystemConfig.Instance.Gmail = builder.Configuration.GetSection("Gmail").Get<GmailSettings>() ?? new();
 SystemConfig.Instance.AISettings = builder.Configuration.GetSection("AISettings").Get<AISettings>() ?? new();
+SystemConfig.Instance.AIChat = builder.Configuration.GetSection("AIChat").Get<AIChatSettings>() ?? new();
 SystemConfig.Instance.DataSources.ToList().ForEach(e => e.ConnectionString = builder.Configuration.GetConnectionString(e.Name) ?? string.Empty);
 
 GlobalFontSettings.FontResolver = new CustomFontResolver(SystemConfig.Instance.FontFileDirectory);
@@ -102,6 +104,8 @@ builder.Services.Configure<RequestLocalizationOptions>(options =>
 });
 
 builder.Services.AddScoped<DataService>();
+
+//AIChatField の Agent は AI/AIChatAgentTable.cs の対応表 (Agent 名 → Agent) で決める。DI 登録は不要 (AIChatController が AIChatAgentTable.Jobs を使う)
 
 //デモ用の簡易ログイン (パスワードなしのユーザー切替。AccountController / login.html)。
 //承認フローなど操作ユーザーが必要な機能をサンプルで確認するためのもので、実運用の認証ではない

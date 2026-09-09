@@ -1,4 +1,4 @@
-﻿{
+{
   "Name": "ApprovalFlowMember",
   "DataSourceName": "SampleSQLite",
   "DbTable": "approval_flow_members",
@@ -150,6 +150,7 @@
       "DbColumn": "step_type",
       "EmptyCandidateType": "StringEmpty",
       "AllowOrSearch": false,
+      "OrSearchLayoutType": "Vertical",
       "IsUpdateProtected": false,
       "IsSimpleSearchParameter": false,
       "AllowEmptySearch": false,
@@ -187,6 +188,7 @@
       "DbColumn": "completion_policy",
       "EmptyCandidateType": "StringEmpty",
       "AllowOrSearch": false,
+      "OrSearchLayoutType": "Vertical",
       "IsUpdateProtected": false,
       "IsSimpleSearchParameter": false,
       "AllowEmptySearch": false,
@@ -245,6 +247,7 @@
       "DbColumn": "return_scope",
       "EmptyCandidateType": "StringEmpty",
       "AllowOrSearch": false,
+      "OrSearchLayoutType": "Vertical",
       "IsUpdateProtected": false,
       "IsSimpleSearchParameter": false,
       "AllowEmptySearch": false,
@@ -360,6 +363,7 @@
       "DbColumn": "status",
       "EmptyCandidateType": "StringEmpty",
       "AllowOrSearch": false,
+      "OrSearchLayoutType": "Vertical",
       "IsUpdateProtected": false,
       "IsSimpleSearchParameter": false,
       "AllowEmptySearch": false,
@@ -408,22 +412,38 @@
       "IsFinalStep": "IsFinalStep",
       "Status": "Status",
       "ActedAt": "ActedAt",
+      "TurnNotifyMail": "TurnMail",
       "Name": "Contract",
       "IgnoreModification": false,
       "OnValidateInput": "",
       "IsFocusSkip": false,
       "NextFocusField": "",
       "OnFocusMoving": "",
-      "TypeFullName": "Codeer.LowCode.Blazor.Extras.Designs.ApprovalMemberContractFieldDesign",
-      "TurnNotifyMail": "TurnMail"
+      "TypeFullName": "Codeer.LowCode.Blazor.Extras.Designs.ApprovalMemberContractFieldDesign"
     },
     {
-      "Name": "TurnMail",
       "ToVariable": "ApproverUser.Email.Value",
+      "To": "",
+      "CcVariable": "",
+      "Cc": "",
+      "BccVariable": "",
+      "Bcc": "",
+      "SubjectVariable": "",
       "Subject": "【承認依頼】{StepName.Value} の承認をお願いします",
+      "BodyVariable": "",
       "Body": "{ApproverUser.Name.Value} さん\n\n承認の順番が回ってきました。\nステップ: {StepNo.Value} {StepName.Value}\n承認画面から対応をお願いします。",
-      "TypeFullName": "Codeer.LowCode.Blazor.Extras.Designs.MailFieldDesign",
-      "ReplyToVariable": "Flow.Applicant.Email.Value"
+      "MailInfraName": "",
+      "IsBodyHtml": false,
+      "ShowPreviewButton": true,
+      "ReplyToVariable": "Flow.Applicant.Email.Value",
+      "ReplyTo": "",
+      "Name": "TurnMail",
+      "IgnoreModification": false,
+      "OnValidateInput": "",
+      "IsFocusSkip": false,
+      "NextFocusField": "",
+      "OnFocusMoving": "",
+      "TypeFullName": "Codeer.LowCode.Blazor.Extras.Designs.MailFieldDesign"
     }
   ],
   "UserWriteCondition": {
@@ -449,30 +469,97 @@
   },
   "DetailLayouts": {
     "": {
+      "OnBeforeInitialization": "",
+      "OnAfterInitialization": "",
+      "OnLocationChanging": "",
+      "OnFieldDataChanged": "",
+      "FocusControlMode": "Inherit",
+      "IsFocusWrap": false,
+      "InitialFocusField": "",
+      "DataOnlyFields": [],
+      "ClassName": "",
+      "Color": "",
+      "BackgroundColor": "",
+      "FontFamily": "",
       "Layout": {
+        "Name": "",
+        "Padding": {},
+        "IsBordered": false,
+        "UseBorderedShrinkWrap": false,
+        "IsExpandable": false,
+        "ExpanderLabel": "",
+        "IsExpanderDefaultOpened": false,
+        "IsFlowLayout": false,
+        "IsAutoFillWrap": false,
+        "IsFillAvailable": false,
+        "ScrollDirection": "Unset",
+        "OnKeyDown": "",
         "Rows": [
           {
+            "IsWrap": false,
+            "IsAutoFillWrap": false,
+            "Margin": {},
+            "GridRowType": "Normal",
+            "CanResize": false,
+            "BackgroundColor": "",
+            "KeepInFillAvailableGrid": false,
+            "IsProportionalScale": false,
+            "IsRowMarginRemoved": false,
             "Columns": [
-              {}
+              {
+                "IgnoreContentWidth": false,
+                "Padding": {},
+                "BackgroundColor": "",
+                "BorderStyle": {
+                  "LeftColor": "",
+                  "TopColor": "",
+                  "RightColor": "",
+                  "BottomColor": ""
+                },
+                "CanResize": false,
+                "AllowOverflow": false,
+                "Border": "None"
+              }
             ]
           }
         ],
+        "BackgroundColor": "",
         "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.GridLayoutDesign"
       }
     }
   },
   "ListLayouts": {
     "": {
+      "HeaderTitle": "",
       "DataOnlyFields": [
         "StepType",
         "IsFinalStep",
         "Status",
         "ApproverUser"
       ],
+      "FocusControlMode": "Inherit",
+      "IsFocusWrap": false,
+      "OnBeforeInitialization": "",
+      "OnAfterInitialization": "",
+      "OnFieldDataChanged": "",
       "Elements": [
         [
           {
-            "FieldName": ""
+            "FieldName": "",
+            "ContextMenu": "",
+            "Label": "",
+            "IsMaxWidthFixed": false,
+            "ColumnSpan": 1,
+            "RowSpan": 1,
+            "TextWrap": "Unset",
+            "CanResize": false,
+            "CanUserSort": true,
+            "ClassName": "",
+            "FontFamily": "",
+            "Color": "",
+            "BackgroundColor": "",
+            "DetailLayoutName": "",
+            "ListElementComponent": ""
           }
         ]
       ]

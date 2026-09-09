@@ -1,4 +1,4 @@
-﻿{
+{
   "Name": "ExpenseRequest",
   "DataSourceName": "SampleSQLite",
   "DbTable": "expense_requests",
