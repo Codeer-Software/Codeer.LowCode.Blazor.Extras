@@ -6,7 +6,7 @@
 		<Nullable>enable</Nullable>
 		<AddRazorSupportForMvc>true</AddRazorSupportForMvc>
 		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
-		<Version>0.9.1</Version>
+		<Version>0.10.0</Version>
 		<Authors>Codeer</Authors>
 		<Company>Codeer</Company>
 		<Description>Extra field components and client-side services for Codeer.LowCode.Blazor. Includes Calendar, Gantt Chart, Task Board (Kanban), Rich Text Editor, Markdown Editor, Color Picker, Marker List, QR Code, Progress Bar, Password Hash, and AI Text Analyzer fields, plus built-in script objects (Excel, WebApi, Toaster, Mail) and client infrastructure services (HTTP, UI, logging, localization).</Description>
@@ -17,7 +17,7 @@
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>
 		<PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
-		<PackageReleaseNotes>MarkdownField: the editor now sizes itself to its content (minimum six lines) instead of a fixed number of rows, and fills the remaining height when placed in the last row of a fill-available grid or in a row with an explicit Height (internal scrolling), the same way RichTextField does. The Rows property is removed (a value saved by 0.9.0 is ignored). The preview pane scrolls inside the editor frame.</PackageReleaseNotes>
+		<PackageReleaseNotes>AIChatField (new): a chat UI that talks to a server-side AI agent. The field sends the user's message to the host's chat API and shows the reply (HTML) with streaming, progress text, stop, retry, a new-conversation button and copy. Design properties: Agent (which server-side agent answers, selected by name), DocumentFolder (a folder under the design project's Resources whose Markdown/text files are handed to the agent as business definitions), Height (0 = fill the available height), TimeoutSeconds, MaxInputRows, SendOnEnter (Enter sends when true; Ctrl+Enter always sends and Shift+Enter always inserts a newline) and OnReplyReceived (script called with the reply HTML). The reply area keeps a minimum height so an empty chat is still visible, and server-rendered SVG charts display inside the reply. The request/response types live in Codeer.LowCode.Blazor.Extras.AIChat (AIChatSendRequest / AIChatSendResponse / AIChatStatusResponse). The host needs Codeer.LowCode.Blazor.Extras.Server 0.10.0 for the server side.</PackageReleaseNotes>
 		<PackageId>Codeer.LowCode.Blazor.Extras</PackageId>
 	</PropertyGroup>
 

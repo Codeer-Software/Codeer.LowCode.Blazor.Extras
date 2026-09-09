@@ -5,7 +5,7 @@
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>enable</Nullable>
 		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
-		<Version>0.9.0</Version>
+		<Version>0.10.0</Version>
 		<Authors>Codeer</Authors>
 		<Company>Codeer</Company>
 		<Description>Server-side services for Codeer.LowCode.Blazor apps. Includes AI document analysis (Azure Document Intelligence + Azure OpenAI), mail sending (SMTP / Microsoft Graph / SendGrid / Gmail), file storage (file system / Azure Blob / S3), external logins (Entra ID / Google / AWS Cognito / OIDC), TOTP two-factor authentication, and ASP.NET Core helpers (hot reload, ETag file responses).</Description>
@@ -16,7 +16,7 @@
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>
 		<PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
-		<PackageReleaseNotes>Version alignment with Codeer.LowCode.Blazor.Extras 0.9.0 (MarkdownField). No functional change on the server side; MailPreviewBuilder.BuildSingleAsync is no longer marked async (it was synchronous), which removes a compiler warning for consumers building from source.</PackageReleaseNotes>
+		<PackageReleaseNotes>AI chat agents for AIChatField (namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat). IAIChatAgent is the contract; AIChatJobStore runs an agent in the background and answers the field's polling (it takes an agent-name-to-agent table, so no DI registration is required). ChatClientAgent answers with any Microsoft.Extensions.AI IChatClient (Azure OpenAI, OpenAI, Ollama...), keeps per-conversation history keyed by the signed-in user and the conversation id, streams partial replies, and trims history (tool results are dropped from older turns, then by turn count and character budget) to keep token usage bounded. RawDataAccessAgent answers questions about the application's data: it reads the application design (list_modules / describe_module: fields with display names, candidate values, links with join keys, logical-delete columns, Query SQL, scripts and page URLs), reads the supplementary documents selected by the field's DocumentFolder, queries one or more data sources with read-only SQL (a two-level get_schema that returns a table index first and columns only for the requested tables; execute_sql limited to a single SELECT with row/character/time limits and an audit log; SQL dialect per data source), and renders bar/line/pie charts as SVG on the server so numbers are never transcribed by the model. Records in a reply link to their CLB detail page. Access control is done on the database side: point the agent at a data source whose connection uses a read-only DB user (or views) that exposes only the tables and columns the AI may read; the library does not decide permissions. User-facing texts (progress, errors) are localized (en, ja-JP); prompts are Japanese. See docs/AIChatField.md in the repository.</PackageReleaseNotes>
 		<PackageId>Codeer.LowCode.Blazor.Extras.Server</PackageId>
 	</PropertyGroup>
 
