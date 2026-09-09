@@ -4,7 +4,6 @@ using Codeer.LowCode.Blazor.DbAccess;
 using Codeer.LowCode.Blazor.DesignLogic;
 using Codeer.LowCode.Blazor.Extras.Server.AI;
 using Codeer.LowCode.Blazor.Extras.Server.AI.Chat;
-using Codeer.LowCode.Blazor.Extras.Server.AI.Chat.ChatClient;
 using Codeer.LowCode.Blazor.Extras.Server.AI.Chat.RawDataAccess;
 using Extras.Server.Services;
 using Microsoft.Extensions.AI;
@@ -50,8 +49,7 @@ namespace Extras.Server.AI
                 () => new DbAccessor(config.DataSources),
                 () => DesignerService.GetDesignData(),
                 folder => DesignDataFileManager.GetResourceTexts(config.DesignFileDirectory, folder, ".md", ".txt").Select(e => new AIChatDocument(e.Name, e.Text)).ToList(),
-                new RawDataAccessOptions { DataSourceNames = config.AIChat.RawDataAccessDataSources },
-                new ChatClientAgentOptions { SystemPrompt = RawDataAccessAgent.DefaultSystemPrompt });
+                new RawDataAccessOptions { DataSourceNames = config.AIChat.RawDataAccessDataSources });
         }
 
         //Agent に渡す IChatClient。ライブラリは IChatClient 抽象しか知らないので、どのプロバイダ (Azure OpenAI / OpenAI / Ollama …) を使うかはここで決める。

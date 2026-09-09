@@ -14,10 +14,10 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat.ChatClient
     /// var agent = new ChatClientAgent(() => azureClient.GetChatClient("gpt-4o").AsIChatClient(),
     ///     new ChatClientAgentOptions { SystemPrompt = "..." });
     /// </code>
-    /// ツール (function calling) を持つ Agent (<see cref="RawDataAccess.RawDataAccessAgent"/>) は、このクラスを中に持ってライブラリ内部のツールセットを Options に足し、委譲する。
-    /// アプリ独自のツールを持つ Agent は <see cref="IAIChatAgent"/> を直接実装する。
+    /// ライブラリ内部の会話エンジン。公開 Agent (<see cref="RawDataAccess.RawDataAccessAgent"/>) がこのクラスを中に持ってツールセットを Options に足し、委譲する。
+    /// アプリ独自の Agent は <see cref="IAIChatAgent"/> を直接実装する (このクラスは公開しない)。
     /// </summary>
-    public sealed class ChatClientAgent : IAIChatAgent
+    internal sealed class ChatClientAgent
     {
         readonly Func<IChatClient> _clientFactory;
         readonly ChatClientAgentOptions _options;

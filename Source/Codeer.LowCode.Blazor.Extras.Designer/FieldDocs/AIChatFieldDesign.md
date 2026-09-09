@@ -26,7 +26,7 @@ AI (サーバー側の Agent) と会話するチャット UI フィールドで�
 
 ### サーバー側設定が必須
 
-このフィールドはサーバーのチャット API (テンプレートは `/api/ai_chat`) を呼び出します。返事を作る Agent はサーバー側 (ホスト) が「Agent 名 → Agent」の対応表で持ち (`Codeer.LowCode.Blazor.Extras.Server` の `AIChatJobStore` にその表を渡す)、フィールドの `Agent` でどれを使うかを選びます。標準 Agent は `ChatClientAgent` (Microsoft.Extensions.AI の IChatClient で会話) と `RawDataAccessAgent` (DB を SQL で読んで集計・グラフ)。返事は Markdown・テキスト・HTML のどれで返してもよく、サーバーが HTML に揃えてから画面に届きます。
+このフィールドはサーバーのチャット API (テンプレートは `/api/ai_chat`) を呼び出します。返事を作る Agent はサーバー側 (ホスト) が「Agent 名 → Agent」の対応表で持ち (`Codeer.LowCode.Blazor.Extras.Server` の `AIChatJobStore` にその表を渡す)、フィールドの `Agent` でどれを使うかを選びます。標準 Agent は `RawDataAccessAgent` (Microsoft.Extensions.AI の IChatClient で会話し、DB を SQL で読んで集計・グラフ)。返事は Markdown・テキスト・HTML のどれで返してもよく、サーバーが HTML に揃えてから画面に届きます。
 
 - Agent が未設定の環境 (デザイナのプレビュー等) では入力欄が無効になり、その旨を表示します
 - 会話の履歴はサーバー側 (Agent) が conversationId で保持します。「新しい会話」で conversationId が振り直されます

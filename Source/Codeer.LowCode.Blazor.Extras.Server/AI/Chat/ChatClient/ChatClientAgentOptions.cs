@@ -3,8 +3,8 @@ using Microsoft.Extensions.Logging;
 
 namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat.ChatClient
 {
-    /// <summary><see cref="ChatClientAgent"/> の設定。</summary>
-    public class ChatClientAgentOptions
+    /// <summary><see cref="ChatClientAgent"/> の設定 (ライブラリ内部。公開 Agent は自分の Options から詰め替える)。</summary>
+    internal class ChatClientAgentOptions
     {
         /// <summary>
         /// システムプロンプト。ツールセットの <see cref="IAIChatToolSet.Instructions"/> と、依頼したユーザー名がこの後に続く。
