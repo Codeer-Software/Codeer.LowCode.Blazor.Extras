@@ -1,6 +1,6 @@
 // AIChatField の入力欄と表示の補助。
 // - Ctrl+Enter は常に送信、Shift+Enter は常に改行、Enter は sendOnEnter (デザインの SendOnEnter) に従う。IME 変換中は無視
-// - 入力欄を内容に合わせて伸ばす (上限行数まで)
+// - 入力欄は最小行数 (デザインの MinInputRows) を確保し、内容に合わせて 12 行まで伸ばす
 // - 返事が増えたら最下部へスクロール (ユーザーが上を読んでいる間は追従しない)
 // - 返事のコピー
 
@@ -12,16 +12,21 @@ function lineHeightPx(textarea) {
   return isNaN(lh) ? parseFloat(style.fontSize) * 1.5 : lh;
 }
 
-function autoSize(textarea, maxRows) {
+const MAX_INPUT_ROWS = 12;   // これ以上は入力欄の中でスクロール (プロパティにはしない)
+
+// 入力欄の高さ: minRows 行ぶんを最小にして、内容に合わせて MAX_INPUT_ROWS 行まで伸びる
+function autoSize(textarea, minRows) {
   const style = getComputedStyle(textarea);
   const padding = parseFloat(style.paddingTop) + parseFloat(style.paddingBottom);
   const border = parseFloat(style.borderTopWidth) + parseFloat(style.borderBottomWidth);
-  const max = lineHeightPx(textarea) * maxRows + padding + border;
+  const lh = lineHeightPx(textarea);
+  const min = lh * minRows + padding + border;
+  const max = lh * Math.max(minRows, MAX_INPUT_ROWS) + padding + border;
   textarea.style.height = 'auto';
-  textarea.style.height = Math.min(textarea.scrollHeight + border, max) + 'px';
+  textarea.style.height = Math.min(Math.max(textarea.scrollHeight + border, min), max) + 'px';
 }
 
-export function initialize(textarea, maxRows, sendOnEnter) {
+export function initialize(textarea, minRows, sendOnEnter) {
   if (!textarea || handlers.has(textarea)) return;
   const onKeyDown = (e) => {
     if (e.key !== 'Enter') return;
@@ -34,11 +39,11 @@ export function initialize(textarea, maxRows, sendOnEnter) {
     const send = row && row.querySelector('.aichat-send');
     if (send && !send.disabled) send.click();
   };
-  const onInput = () => autoSize(textarea, maxRows);
+  const onInput = () => autoSize(textarea, minRows);
   textarea.addEventListener('keydown', onKeyDown);
   textarea.addEventListener('input', onInput);
-  handlers.set(textarea, { onKeyDown, onInput });
-  autoSize(textarea, maxRows);
+  handlers.set(textarea, { onKeyDown, onInput, minRows });
+  autoSize(textarea, minRows);
 }
 
 export function dispose(textarea) {
@@ -49,9 +54,11 @@ export function dispose(textarea) {
   handlers.delete(textarea);
 }
 
+// 送信後: 内容が空になった高さ (= 最小行数) に戻す
 export function resetInput(textarea) {
   if (!textarea) return;
-  textarea.style.height = 'auto';
+  const h = handlers.get(textarea);
+  if (h) autoSize(textarea, h.minRows); else textarea.style.height = 'auto';
 }
 
 export function focus(textarea) {

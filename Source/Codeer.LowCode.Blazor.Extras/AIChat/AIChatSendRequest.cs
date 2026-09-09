@@ -16,5 +16,10 @@ namespace Codeer.LowCode.Blazor.Extras.AIChat
         public string Agent { get; set; } = string.Empty;
         /// <summary>デザインで指定した補足文書のフォルダ (Resources からの相対パス。空なら文書なし)。</summary>
         public string DocumentFolder { get; set; } = string.Empty;
+        /// <summary>
+        /// クライアントが表示しているこれまでの会話の写し (テキストのみ・直近数往復・文字数上限あり)。
+        /// サーバー側の会話履歴が保持期限や再起動で消えていたときに文脈を取り戻すための保険で、履歴が残っていればサーバーは無視する。
+        /// </summary>
+        public List<AIChatTranscriptMessage> Transcript { get; set; } = new();
     }
 }

@@ -14,7 +14,7 @@
       <div class="aichat-msg aichat-assistant"><div class="aichat-bubble aichat-reply"><p>@Resources.AIChat_DesignSampleAssistant</p></div></div>
     </div>
     <div class="aichat-input-row">
-      <textarea class="form-control aichat-input" rows="1" disabled></textarea>
+      <textarea class="form-control aichat-input" rows="@Math.Max(1, Field.Design.MinInputRows)" disabled></textarea>
       <button type="button" class="btn btn-primary aichat-send" disabled><i class="bi bi-send"></i></button>
     </div>
   }
@@ -81,7 +81,7 @@
       }
     </div>
     <div class="aichat-input-row">
-      <textarea class="form-control aichat-input" rows="1" @ref="_inputElement" data-role="input"
+      <textarea class="form-control aichat-input" rows="@Math.Max(1, Field.Design.MinInputRows)" @ref="_inputElement" data-role="input"
                 disabled="@(!CanInput)" data-consumes-enter
                 @bind="_input" @bind:event="oninput"></textarea>
       @if (Field.IsBusy)
@@ -122,7 +122,8 @@
   {
     get
     {
-      var style = Field.Design.Height > 0 ? $"height: {Field.Design.Height}px;" : "height: 100%;";
+      //高さは置いた場所 (FillAvailable の最終行 / 行の Height / 普通の行) に従う。会話の領域の最小高さは CSS 側
+      var style = "height: 100%;";
       return style + (Field.GetOwnStyleString() ?? string.Empty);
     }
   }
@@ -149,7 +150,7 @@
     {
       _jsModule = await JSRuntime.InvokeAsync<IJSObjectReference>(
         "import", "./_content/Codeer.LowCode.Blazor.Extras/aichat-interop.js");
-      await _jsModule.InvokeVoidAsync("initialize", _inputElement, Math.Max(1, Field.Design.MaxInputRows), Field.Design.SendOnEnter);
+      await _jsModule.InvokeVoidAsync("initialize", _inputElement, Math.Max(1, Field.Design.MinInputRows), Field.Design.SendOnEnter);
       await _jsModule.InvokeVoidAsync("initializeMessages", _messagesElement);
       _renderedVersion = Field.Version;
       await _jsModule.InvokeVoidAsync("scrollToBottom", _messagesElement, true);
@@ -207,6 +208,8 @@
 
   public override async ValueTask DisposeAsync()
   {
+    //画面から外れる: 会話 (KeepConversation なら保管庫に残り、ポーリングも続く) への通知を切る
+    try { await Field.DetachAsync(); } catch { }
     if (_jsModule != null)
     {
       try { await _jsModule.InvokeVoidAsync("dispose", _inputElement); } catch { }

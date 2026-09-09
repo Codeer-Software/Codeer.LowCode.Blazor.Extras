@@ -38,6 +38,18 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat.ChatClient
         public static string Key(string owner, string conversationId)
             => string.IsNullOrEmpty(owner) ? conversationId : owner + "\n" + conversationId;
 
+        /// <summary>履歴が空の会話に、クライアントの写し (文章だけ) を最初の履歴として入れる。既に履歴があれば何もしない。</summary>
+        public void Seed(string key, IEnumerable<ChatMessage> messages)
+        {
+            lock (_entries)
+            {
+                if (_entries.TryGetValue(key, out var existing) && existing.Messages.Count > 0) return;
+                var entry = new Entry();
+                entry.Messages.AddRange(messages);
+                _entries[key] = entry;
+            }
+        }
+
         /// <summary>履歴の写し (呼び出し側がメッセージを足して送る)。</summary>
         public List<ChatMessage> Get(string key)
         {

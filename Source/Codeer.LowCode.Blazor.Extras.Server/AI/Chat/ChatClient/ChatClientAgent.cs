@@ -43,6 +43,9 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat.ChatClient
             var messages = new List<ChatMessage> { new(ChatRole.System, BuildSystemPrompt(context)) };
             //履歴の鍵は所有者 (ログイン ID) + 会話 ID。別のユーザーが同じ会話 ID を送っても他人の会話には乗れない (所有者が空のデモ等は会話 ID だけ)
             var historyKey = ConversationHistory.Key(request.UserName, request.ConversationId);
+            //サーバーの履歴が無い (保持期限切れ・再起動・別インスタンス) のにクライアントが会話の写しを持っていれば、それで文脈を取り戻す。履歴があれば写しは無視
+            if (_history.Get(historyKey).Count == 0 && request.Transcript.Count > 0)
+                _history.Seed(historyKey, request.Transcript.Select(t => new ChatMessage(t.IsUser ? ChatRole.User : ChatRole.Assistant, t.Text)));
             messages.AddRange(_history.Get(historyKey));
             var userMessage = new ChatMessage(ChatRole.User, request.Message);
             messages.Add(userMessage);

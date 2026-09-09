@@ -21,6 +21,11 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat
         public string AgentName { get; init; } = string.Empty;
         /// <summary>AIChatField のデザインで指定された補足文書のフォルダ (Resources からの相対パス。空なら文書なし)。</summary>
         public string DocumentFolder { get; init; } = string.Empty;
+        /// <summary>
+        /// クライアントが持っているこれまでの会話の写し (テキストのみ)。会話履歴を自分で保持する Agent は、この会話 ID の履歴が無いとき
+        /// (保持期限切れ・再起動・別インスタンス) だけこれで文脈を復元し、履歴があれば無視する。
+        /// </summary>
+        public IReadOnlyList<Codeer.LowCode.Blazor.Extras.AIChat.AIChatTranscriptMessage> Transcript { get; init; } = Array.Empty<Codeer.LowCode.Blazor.Extras.AIChat.AIChatTranscriptMessage>();
     }
 
     /// <summary>Agent の返事。形式は Agent が申告する。Auto なら内容から判定する (先頭がタグなら HTML、それ以外は Markdown)。</summary>

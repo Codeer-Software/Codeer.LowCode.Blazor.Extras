@@ -1205,6 +1205,27 @@
   <data name="AIChatField" xml:space="preserve">
     <value>AIチャット</value>
   </data>
+  <data name="AIChatFieldAgent" xml:space="preserve">
+    <value>Agent 名</value>
+  </data>
+  <data name="AIChatFieldDocumentFolder" xml:space="preserve">
+    <value>補足文書のフォルダ (Resources 配下)</value>
+  </data>
+  <data name="AIChatFieldKeepConversation" xml:space="preserve">
+    <value>会話を保持する (画面を離れても)</value>
+  </data>
+  <data name="AIChatFieldSendOnEnter" xml:space="preserve">
+    <value>Enter で送信 (Shift+Enter 改行 / Ctrl+Enter 送信)</value>
+  </data>
+  <data name="AIChatFieldMinInputRows" xml:space="preserve">
+    <value>入力欄の行数 (最小)</value>
+  </data>
+  <data name="AIChatFieldTimeoutSeconds" xml:space="preserve">
+    <value>返事を待つ上限 (秒)</value>
+  </data>
+  <data name="AIChatFieldOnReplyReceived" xml:space="preserve">
+    <value>返事を受け取ったとき</value>
+  </data>
   <data name="AIChat_Thinking" xml:space="preserve">
     <value>考え中</value>
   </data>
@@ -1225,6 +1246,9 @@
   </data>
   <data name="AIChat_Failed" xml:space="preserve">
     <value>返事を取得できませんでした。</value>
+  </data>
+  <data name="AIChat_ReplyLost" xml:space="preserve">
+    <value>返事を受け取れませんでした (サーバーに残っていません)。もう一度送ってください。</value>
   </data>
   <data name="AIChat_Timeout" xml:space="preserve">
     <value>時間内に返事がありませんでした。サーバー側では処理が続いている可能性があります。</value>

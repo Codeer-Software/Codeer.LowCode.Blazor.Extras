@@ -1205,6 +1205,27 @@ Recipients: {1}</value>
   <data name="AIChatField" xml:space="preserve">
     <value>AI Chat</value>
   </data>
+  <data name="AIChatFieldAgent" xml:space="preserve">
+    <value>Agent</value>
+  </data>
+  <data name="AIChatFieldDocumentFolder" xml:space="preserve">
+    <value>Document Folder (under Resources)</value>
+  </data>
+  <data name="AIChatFieldKeepConversation" xml:space="preserve">
+    <value>Keep Conversation (across pages)</value>
+  </data>
+  <data name="AIChatFieldSendOnEnter" xml:space="preserve">
+    <value>Send on Enter (Shift+Enter: newline, Ctrl+Enter: send)</value>
+  </data>
+  <data name="AIChatFieldMinInputRows" xml:space="preserve">
+    <value>Input Rows (minimum)</value>
+  </data>
+  <data name="AIChatFieldTimeoutSeconds" xml:space="preserve">
+    <value>Reply Timeout (sec)</value>
+  </data>
+  <data name="AIChatFieldOnReplyReceived" xml:space="preserve">
+    <value>On Reply Received</value>
+  </data>
   <data name="AIChat_Thinking" xml:space="preserve">
     <value>Thinking</value>
   </data>
@@ -1225,6 +1246,9 @@ Recipients: {1}</value>
   </data>
   <data name="AIChat_Failed" xml:space="preserve">
     <value>Failed to get a reply.</value>
+  </data>
+  <data name="AIChat_ReplyLost" xml:space="preserve">
+    <value>The reply is no longer available on the server. Please send again.</value>
   </data>
   <data name="AIChat_Timeout" xml:space="preserve">
     <value>No reply within the time limit. The server may still be processing.</value>

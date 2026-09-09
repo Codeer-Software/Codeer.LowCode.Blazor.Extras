@@ -2587,6 +2587,48 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
             }
         }
         
+        internal static string AIChatFieldAgent {
+            get {
+                return ResourceManager.GetString("AIChatFieldAgent", resourceCulture);
+            }
+        }
+        
+        internal static string AIChatFieldDocumentFolder {
+            get {
+                return ResourceManager.GetString("AIChatFieldDocumentFolder", resourceCulture);
+            }
+        }
+        
+        internal static string AIChatFieldKeepConversation {
+            get {
+                return ResourceManager.GetString("AIChatFieldKeepConversation", resourceCulture);
+            }
+        }
+        
+        internal static string AIChatFieldSendOnEnter {
+            get {
+                return ResourceManager.GetString("AIChatFieldSendOnEnter", resourceCulture);
+            }
+        }
+        
+        internal static string AIChatFieldMinInputRows {
+            get {
+                return ResourceManager.GetString("AIChatFieldMinInputRows", resourceCulture);
+            }
+        }
+        
+        internal static string AIChatFieldTimeoutSeconds {
+            get {
+                return ResourceManager.GetString("AIChatFieldTimeoutSeconds", resourceCulture);
+            }
+        }
+        
+        internal static string AIChatFieldOnReplyReceived {
+            get {
+                return ResourceManager.GetString("AIChatFieldOnReplyReceived", resourceCulture);
+            }
+        }
+        
         internal static string AIChat_Thinking {
             get {
                 return ResourceManager.GetString("AIChat_Thinking", resourceCulture);
@@ -2626,6 +2668,12 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
         internal static string AIChat_Failed {
             get {
                 return ResourceManager.GetString("AIChat_Failed", resourceCulture);
+            }
+        }
+        
+        internal static string AIChat_ReplyLost {
+            get {
+                return ResourceManager.GetString("AIChat_ReplyLost", resourceCulture);
             }
         }
         

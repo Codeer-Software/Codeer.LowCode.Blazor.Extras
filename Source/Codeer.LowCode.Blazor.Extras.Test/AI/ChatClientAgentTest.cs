@@ -159,6 +159,31 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
             Assert.That(agent.ConversationCount, Is.EqualTo(2));
         }
 
+        //サーバーの履歴が消えた後 (保持期限・再起動) にクライアントが持っている会話の写しを送ると、それが履歴の代わりになる。履歴があるときは無視する
+        [Test]
+        public async Task 履歴が無いときはクライアントの写しで文脈を復元し履歴があれば写しは無視する()
+        {
+            var client = new FakeChatClient().Text("2 回目の答え").Text("3 回目の答え");
+            var agent = new ChatClientAgent(() => client, new ChatClientAgentOptions { StreamPartialReplies = false });
+            var transcript = new[]
+            {
+                new Codeer.LowCode.Blazor.Extras.AIChat.AIChatTranscriptMessage { IsUser = true, Text = "最初の質問" },
+                new Codeer.LowCode.Blazor.Extras.AIChat.AIChatTranscriptMessage { IsUser = false, Text = "最初の答え" },
+            };
+            await agent.ReplyAsync(new AIChatAgentRequest { ConversationId = "c1", Message = "2 回目の質問", Transcript = transcript }, new Progress(), default);
+            var texts = client.Calls[0].Select(m => m.Text).ToList();
+            Assert.That(texts, Does.Contain("最初の質問"), "写しのユーザー発言が履歴として入る");
+            Assert.That(texts, Does.Contain("最初の答え"), "写しの返事が履歴として入る");
+            Assert.That(client.Calls[0].Count(m => m.Role == ChatRole.Assistant && m.Text == "最初の答え"), Is.EqualTo(1));
+            Assert.That(texts.IndexOf("最初の質問"), Is.LessThan(texts.IndexOf("2 回目の質問")), "写しは新しい発言より前");
+
+            var stale = new[] { new Codeer.LowCode.Blazor.Extras.AIChat.AIChatTranscriptMessage { IsUser = true, Text = "古い写し" } };
+            await agent.ReplyAsync(new AIChatAgentRequest { ConversationId = "c1", Message = "3 回目の質問", Transcript = stale }, new Progress(), default);
+            var texts2 = client.Calls[1].Select(m => m.Text).ToList();
+            Assert.That(texts2, Does.Not.Contain("古い写し"), "履歴があるので写しは使わない");
+            Assert.That(texts2, Does.Contain("2 回目の答え"), "サーバーの履歴が使われる");
+        }
+
         [Test]
         public async Task 所有者が空のときは会話IDだけで履歴を引く()
         {

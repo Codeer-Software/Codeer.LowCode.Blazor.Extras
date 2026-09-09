@@ -18,16 +18,15 @@
       "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.LabelFieldDesign"
     },
     {
-      "Height": 0,
       "TimeoutSeconds": 600,
-      "MaxInputRows": 6,
       "OnReplyReceived": "Chat_OnReplyReceived",
       "Name": "RawChat",
       "IgnoreModification": false,
       "OnValidateInput": "",
       "TypeFullName": "Codeer.LowCode.Blazor.Extras.Designs.AIChatFieldDesign",
       "Agent": "RawDataAccess",
-      "DocumentFolder": "AIChat"
+      "DocumentFolder": "AIChat",
+      "MinInputRows": 3
     },
     {
       "Text": "",

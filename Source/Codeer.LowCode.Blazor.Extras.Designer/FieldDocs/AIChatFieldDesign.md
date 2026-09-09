@@ -18,15 +18,15 @@ AI (サーバー側の Agent) と会話するチャット UI フィールドで�
 |---|---|---|---|
 | Agent | string | - | 返事を作るサーバー側 Agent の名前。空なら既定の Agent。サーバー (ホスト) が登録した名前を指定する。標準で用意されているのは `RawDataAccess` (DB を直接読んで集計・グラフで答える。ホストが登録している場合のみ)。**存在しない名前を書くと返事がエラーになる**ので、使える名前はホスト側の対応表 (Example では `AI/AIChatAgentTable.cs`) を確認する |
 | DocumentFolder | string | - | この会話に渡す補足文書のフォルダ (デザインプロジェクトの `Resources` からの相対パス。例: `AIChat/Sales`)。そのフォルダの `.md` / `.txt` を Agent が用語の定義・集計の決まりとして参照する。空なら文書なし。チャットごとに用途に合ったフォルダを指定する |
-| Height | int | - | 高さ (px)。0 なら親の高さに合わせる。**`IsFillAvailable: true` のグリッドの最終行に置く** と残りの高さを使い切って会話だけが内部スクロールする。普通の行に置くと会話の領域は 16rem の固定 (返事が増えても行は伸びない)。それ以外の高さにしたいときだけ Height を指定する |
+| KeepConversation | bool | - | 画面を離れても会話を保持するか。既定 true。会話はアプリのメモリ (WASM ならブラウザのタブ) に置かれ、返事のリンクで別ページへ行って戻っても消えず、待ち中の返事も届く。リロードか「新しい会話」で消える。false なら画面を離れた時点で消える |
 | TimeoutSeconds | int | - | 返事を待つ上限 (秒)。既定 600。超えたら問い合わせをやめてエラー表示にする (サーバー側の処理は止めない) |
-| MaxInputRows | int | - | 入力欄が自動で伸びる上限の行数。既定 6 |
+| MinInputRows | int | - | 入力欄の行数 (最小)。既定 3。内容が増えれば 12 行まで自動で伸び、それ以上は入力欄の中でスクロール |
 | SendOnEnter | bool | - | Enter キーで送信するか。既定 true。長文を打つ画面や誤送信を避けたい画面では false にすると Enter が改行になる。Shift+Enter (改行) と Ctrl+Enter (送信) は常に固定 |
 | OnReplyReceived | string (スクリプトイベント) | - | 返事が確定したときに呼ぶスクリプト。`void Xxx(string replyHtml)` |
 
 ### サーバー側設定が必須
 
-このフィールドはサーバーのチャット API (テンプレートは `/api/ai_chat`) を呼び出します。返事を作る Agent はサーバー側 (ホスト) が「Agent 名 → Agent」の対応表で持ち (`Codeer.LowCode.Blazor.Extras.Server` の `AIChatJobStore` にその表を渡す)、フィールドの `Agent` でどれを使うかを選びます。標準 Agent は `RawDataAccessAgent` (Microsoft.Extensions.AI の IChatClient で会話し、DB を SQL で読んで集計・グラフ)。返事は Markdown・テキスト・HTML のどれで返してもよく、サーバーが HTML に揃えてから画面に届きます。
+このフィールドはサーバーのチャット API (テンプレートは `/api/ai_chat`) を呼び出します。返事を作る Agent はサーバー側 (ホスト) が「Agent 名 → Agent」の対応表で持ち (`Codeer.LowCode.Blazor.Extras.Server` の `AIChatJobStore` にその表を渡す)、フィールドの `Agent` でどれを使うかを選びます。標準 Agent は `RawDataAccessAgent` (Microsoft.Extensions.AI の IChatClient で会話し、DB を SQL で読んで集計・グラフ)。返事は Markdown・テキスト・HTML のどれで返してもよく、サーバーが HTML に揃えてから画面に届きます。会話は画面を離れてもアプリのメモリに残るので、返事の中のリンクで別ページへ行って戻っても消えません (リロードか「新しい会話」で消える。`KeepConversation` で切れる)。
 
 - Agent が未設定の環境 (デザイナのプレビュー等) では入力欄が無効になり、その旨を表示します
 - 会話の履歴はサーバー側 (Agent) が conversationId で保持します。「新しい会話」で conversationId が振り直されます
