@@ -1,4 +1,4 @@
-namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat.Tools
+namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat.RawDataAccess
 {
     /// <summary>
     /// <see cref="RawDataAccessToolSet"/> の設定 (文字列と数値だけ。appsettings のセクションからそのまま束縛できる)。

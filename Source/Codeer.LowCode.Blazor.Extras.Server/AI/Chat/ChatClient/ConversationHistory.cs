@@ -1,6 +1,7 @@
+using Codeer.LowCode.Blazor.Extras.Server.AI.Chat;
 using Microsoft.Extensions.AI;
 
-namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat
+namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat.ChatClient
 {
     /// <summary>
     /// 会話 ID ごとのメッセージ履歴 (プロセス内メモリ)。ツール呼び出しと結果も含めてそのまま持つ

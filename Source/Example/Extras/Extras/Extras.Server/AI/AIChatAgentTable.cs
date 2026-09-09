@@ -1,6 +1,7 @@
 using Codeer.LowCode.Blazor.DbAccess;
 using Codeer.LowCode.Blazor.Extras.Server.AI.Chat;
-using Codeer.LowCode.Blazor.Extras.Server.AI.Chat.Tools;
+using Codeer.LowCode.Blazor.Extras.Server.AI.Chat.ChatClient;
+using Codeer.LowCode.Blazor.Extras.Server.AI.Chat.RawDataAccess;
 using Codeer.LowCode.Blazor.SystemSettings;
 using Extras.Server.Services;
 using System.Collections.Concurrent;

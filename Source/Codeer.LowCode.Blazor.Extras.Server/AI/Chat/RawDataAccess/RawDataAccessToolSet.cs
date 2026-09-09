@@ -1,3 +1,5 @@
+using Codeer.LowCode.Blazor.Extras.Server.AI.Chat.ChatClient;
+using Codeer.LowCode.Blazor.Extras.Server.Properties;
 using Codeer.LowCode.Blazor.DataIO.Db;
 using Codeer.LowCode.Blazor.DesignLogic;
 using Codeer.LowCode.Blazor.Repository.Design;
@@ -9,7 +11,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 
-namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat.Tools
+namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat.RawDataAccess
 {
     /// <summary>
     /// AI に DB を直接読ませるツール群: <c>get_schema</c> (表と列。モジュール定義があれば業務上の名前を添える) と
@@ -20,7 +22,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat.Tools
     /// 実行した SQL のログ (<see cref="AIChatToolContext.Logger"/>) はこのクラスが担う。
     /// </para>
     /// </summary>
-    public class RawDataAccessToolSet : IAIChatToolSet
+    internal sealed class RawDataAccessToolSet : IAIChatToolSet
     {
         static readonly Regex _forbidden = new(
             @"\b(INSERT|UPDATE|DELETE|MERGE|DROP|ALTER|CREATE|TRUNCATE|GRANT|REVOKE|EXEC|EXECUTE|CALL|ATTACH|DETACH|PRAGMA|VACUUM|REINDEX|REPLACE|UPSERT|INTO)\b",
@@ -52,12 +54,12 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat.Tools
             get
             {
                 var sb = new StringBuilder();
-                sb.AppendLine("You can query the application's database.");
-                sb.AppendLine("- Call get_schema first when you are not sure which tables or columns exist. Never guess names.");
-                sb.AppendLine("- execute_sql runs exactly one read-only SELECT statement. Anything else is rejected, and the database user is read-only.");
-                sb.AppendLine($"- Limit result sets (at most {_options.MaxRows} rows are returned). Prefer aggregation (GROUP BY, SUM, COUNT) over fetching raw rows.");
-                sb.AppendLine("- Present results as a Markdown table, then a short interpretation. Numbers must come from query results; never invent values.");
-                sb.AppendLine("- If a query fails, read the error, fix the SQL and retry (at most a few times).");
+                sb.AppendLine("アプリのデータベースに問い合わせることができます。");
+                sb.AppendLine("- どの表や列があるか確かでないときは、先に get_schema を呼んでください。名前を推測してはいけません。");
+                sb.AppendLine("- execute_sql は読み取り専用の SELECT を 1 文だけ実行します。それ以外は拒否され、DB ユーザーも読み取り専用です。");
+                sb.AppendLine($"- 結果は絞ってください (最大 {_options.MaxRows} 行まで返ります)。生の行を取るより、集計 (GROUP BY, SUM, COUNT) を優先してください。");
+                sb.AppendLine("- 結果は Markdown の表で示し、続けて短い解釈を書いてください。数値はクエリ結果に基づくもの以外を書かないこと。");
+                sb.AppendLine("- クエリが失敗したらエラーを読み、SQL を直して再試行してください (数回まで)。");
                 if (!string.IsNullOrWhiteSpace(_options.AdditionalInstructions)) sb.AppendLine().Append(_options.AdditionalInstructions.Trim());
                 return sb.ToString();
             }
@@ -68,18 +70,18 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat.Tools
             yield return AIFunctionFactory.Create(
                 () => GetSchemaAsync(context),
                 "get_schema",
-                "Lists the tables and columns the assistant may query, with the SQL dialect and business names where known.");
+                "問い合わせに使える表と列の一覧を返す。SQL の方言と、分かる範囲で業務上の名前を添える。");
             yield return AIFunctionFactory.Create(
-                ([Description("A single read-only SELECT statement in the database's SQL dialect.")] string sql,
-                 [Description("One sentence: what this query answers (shown to the user as progress).")] string purpose)
+                ([Description("この DB の方言で書いた、読み取り専用の SELECT 文 1 つ。")] string sql,
+                 [Description("このクエリで何を調べるかを一文で (ユーザーに進捗として表示される)。")] string purpose)
                     => ExecuteSqlAsync(sql, purpose, context),
                 "execute_sql",
-                "Runs one SELECT statement and returns the columns and rows as JSON. Rows beyond the limit are cut off (truncated=true).");
+                "SELECT 文を 1 つ実行し、列と行を JSON で返す。上限を超えた行は切り捨てられる (truncated=true)。");
         }
 
         async Task<string> GetSchemaAsync(AIChatToolContext context)
         {
-            context.Progress.Report("Reading the schema…");
+            context.Progress.Report(Resources.AIChat_ReadingSchema);
             lock (_schemaLock)
             {
                 if (_schemaText != null && DateTime.UtcNow - _schemaLoaded < _options.SchemaCacheDuration) return _schemaText;
@@ -105,13 +107,13 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat.Tools
             var modules = ModuleInfoByTable();
 
             var sb = new StringBuilder();
-            sb.Append("SQL dialect: ").AppendLine(dialect);
-            sb.AppendLine("Tables (name: columns). Business names from the application design are given in brackets where known.");
+            sb.Append("SQL の方言: ").AppendLine(dialect);
+            sb.AppendLine("表 (名前: 列)。アプリの設計に業務上の名前があるものは [ ] で添えています。");
             foreach (var table in byTable)
             {
                 var info = modules.TryGetValue(TableNameOnly(table.Key), out var m) ? m : null;
                 sb.Append("- ").Append(table.Key);
-                if (info != null) sb.Append(" [module ").Append(info.ModuleName).Append(']');
+                if (info != null) sb.Append(" [モジュール ").Append(info.ModuleName).Append(']');
                 sb.AppendLine(":");
                 foreach (var column in table)
                 {
@@ -120,7 +122,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat.Tools
                     sb.AppendLine();
                 }
             }
-            if (byTable.Count == 0) sb.AppendLine("(no tables are visible to this database user)");
+            if (byTable.Count == 0) sb.AppendLine("(この DB ユーザーから見える表はありません)");
             return sb.ToString();
         }
 
@@ -151,7 +153,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat.Tools
                     if (string.IsNullOrEmpty(column)) continue;
                     var description = field.Name;
                     if (field is SelectFieldDesign select && select.Candidates.Count > 0)
-                        description += "; values: " + string.Join(", ", select.Candidates.Select(c => c.Replace("\r", " ").Replace("\n", " ")));
+                        description += "; 候補値: " + string.Join(", ", select.Candidates.Select(c => c.Replace("\r", " ").Replace("\n", " ")));
                     info.Columns[column] = description;
                 }
                 result[module.DbTable] = info;
@@ -169,7 +171,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat.Tools
                 return JsonSerializer.Serialize(new { error = rejection });
             }
 
-            context.Progress.Report(string.IsNullOrWhiteSpace(purpose) ? "Running a query…" : purpose.Trim());
+            context.Progress.Report(string.IsNullOrWhiteSpace(purpose) ? Resources.AIChat_RunningQuery : purpose.Trim());
             context.Logger?.LogInformation("AIChat RawDataAccess SQL by {User} (conversation {Conversation}): {Sql}", context.Request.UserName, context.Request.ConversationId, sql);
 
             try
@@ -230,15 +232,15 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat.Tools
         /// <summary>1 文の SELECT だけを通す簡易判定 (本体の防御は DB ユーザーの権限)。拒否理由を返し、通るなら null。</summary>
         internal static string? Validate(string sql)
         {
-            if (string.IsNullOrWhiteSpace(sql)) return "SQL is empty.";
+            if (string.IsNullOrWhiteSpace(sql)) return "SQL が空です。";
             var stripped = _blockComment.Replace(_lineComment.Replace(sql, " "), " ");
             var withoutLiterals = _stringLiteral.Replace(stripped, "''");
-            if (withoutLiterals.Contains(';')) return "Only one statement is allowed.";
+            if (withoutLiterals.Contains(';')) return "実行できるのは 1 文だけです。";
             var head = withoutLiterals.TrimStart();
             if (!head.StartsWith("SELECT", StringComparison.OrdinalIgnoreCase) && !head.StartsWith("WITH", StringComparison.OrdinalIgnoreCase))
-                return "Only SELECT statements are allowed.";
+                return "実行できるのは SELECT 文だけです。";
             var match = _forbidden.Match(withoutLiterals);
-            if (match.Success) return $"Only read-only SELECT statements are allowed ({match.Value.ToUpperInvariant()} is not permitted).";
+            if (match.Success) return $"実行できるのは読み取り専用の SELECT 文だけです ({match.Value.ToUpperInvariant()} は使えません)。";
             return null;
         }
     }

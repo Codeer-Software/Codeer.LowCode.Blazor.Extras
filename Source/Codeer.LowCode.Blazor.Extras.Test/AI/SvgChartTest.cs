@@ -1,4 +1,4 @@
-using Codeer.LowCode.Blazor.Extras.Server.AI.Chat.Tools;
+using Codeer.LowCode.Blazor.Extras.Server.AI.Chat.ChatClient;
 using System.Xml.Linq;
 
 namespace Codeer.LowCode.Blazor.Extras.Test.AI

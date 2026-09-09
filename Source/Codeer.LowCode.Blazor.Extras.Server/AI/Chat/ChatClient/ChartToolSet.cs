@@ -1,48 +1,49 @@
+using Codeer.LowCode.Blazor.Extras.Server.Properties;
 using Microsoft.Extensions.AI;
 using System.ComponentModel;
 using System.Text.RegularExpressions;
 
-namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat.Tools
+namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat.ChatClient
 {
     /// <summary>
     /// グラフを描くツール <c>render_chart</c>。数値を渡すとサーバー側で SVG を作り、返事の中に埋め込むためのプレースホルダ
     /// (<c>[[chart:1]]</c>) を返す。モデルに SVG を書かせないので、数字の写し間違いが起きない。
     /// プレースホルダは <see cref="PostProcessHtml"/> で SVG に置き換える (Markdown の段落に 1 つだけ置かれる想定)。
     /// </summary>
-    public class ChartToolSet : IAIChatToolSet
+    internal sealed class ChartToolSet : IAIChatToolSet
     {
         const string ItemsKey = "Codeer.AIChat.Charts";
         static readonly Regex _placeholder = new(@"(?:<p>\s*)?\[\[chart:(\d+)\]\](?:\s*</p>)?", RegexOptions.Compiled);
 
         public string Instructions =>
-            "You can draw charts with render_chart (bar, line or pie). Use it when the user asks for a chart, or when a trend or comparison is clearer as a picture. " +
-            "Pass the numbers you obtained (never estimates). The tool returns a placeholder like [[chart:1]]; put that placeholder on its own line in your reply where the chart should appear. Do not draw charts yourself.";
+            "render_chart でグラフ (bar / line / pie) を描けます。ユーザーがグラフを求めたとき、または推移や比較が図のほうが分かりやすいときに使ってください。" +
+            "渡す数値は取得したもの (推測ではない) だけにしてください。ツールは [[chart:1]] のようなプレースホルダを返すので、返事の中でグラフを置きたい位置に、その行だけで置いてください。自分でグラフを描いてはいけません。";
 
         /// <summary>1 系列のデータ。</summary>
         internal class ChartSeries
         {
-            [Description("Series name (shown in the legend).")]
+            [Description("系列名 (凡例に表示)。")]
             public string Name { get; set; } = string.Empty;
-            [Description("One value per label, in the same order as labels. Use null for missing.")]
+            [Description("labels と同じ順で 1 ラベルに 1 値。欠損は null。")]
             public double?[] Values { get; set; } = Array.Empty<double?>();
         }
 
         public IEnumerable<AITool> CreateTools(AIChatToolContext context)
         {
             yield return AIFunctionFactory.Create(
-                ([Description("bar, line or pie")] string chartType,
-                 [Description("Chart title (may be empty).")] string title,
-                 [Description("Category labels along the X axis (or pie slices).")] string[] labels,
-                 [Description("One or more series. Pie uses the first series only.")] ChartSeries[] series)
+                ([Description("bar / line / pie のいずれか")] string chartType,
+                 [Description("グラフのタイトル (空でもよい)。")] string title,
+                 [Description("X 軸の項目ラベル (円グラフでは各扇)。")] string[] labels,
+                 [Description("1 つ以上の系列。円グラフは最初の系列だけを使う。")] ChartSeries[] series)
                     => Render(chartType, title, labels, series, context),
                 "render_chart",
-                "Renders a chart from numbers and returns a placeholder to put in the reply.");
+                "数値からグラフを描き、返事に置くためのプレースホルダを返す。");
         }
 
         static string Render(string chartType, string title, string[] labels, ChartSeries[] series, AIChatToolContext context)
         {
-            if (labels == null || labels.Length == 0) return "error: labels is empty";
-            if (series == null || series.Length == 0) return "error: series is empty";
+            if (labels == null || labels.Length == 0) return "error: labels が空です";
+            if (series == null || series.Length == 0) return "error: series が空です";
             var type = (chartType ?? string.Empty).Trim().ToLowerInvariant() switch
             {
                 "line" => SvgChart.ChartType.Line,
@@ -55,7 +56,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat.Tools
             var charts = Charts(context);
             var index = charts.Count + 1;
             charts[index] = svg;
-            context.Progress.Report("Drawing a chart…");
+            context.Progress.Report(Resources.AIChat_DrawingChart);
             return $"[[chart:{index}]]";
         }
 

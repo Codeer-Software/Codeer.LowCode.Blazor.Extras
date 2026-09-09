@@ -1,3 +1,5 @@
+using Codeer.LowCode.Blazor.Extras.Server.Properties;
+using System.Globalization;
 using Codeer.LowCode.Blazor.Extras.AIChat;
 using System.Collections.Concurrent;
 
@@ -48,13 +50,21 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat
             Cleanup();
             var job = new Job(ownerKey ?? string.Empty);
             _jobs[job.Id] = job;
-            job.Task = Task.Run(() => RunAsync(job, new AIChatAgentRequest
+            //進捗やエラーの文言は依頼したユーザーのカルチャで出す (バックグラウンドスレッドに引き継ぐ)
+            var culture = CultureInfo.CurrentCulture;
+            var uiCulture = CultureInfo.CurrentUICulture;
+            job.Task = Task.Run(() =>
             {
-                ConversationId = conversationId ?? string.Empty,
-                Message = message ?? string.Empty,
-                UserName = ownerKey ?? string.Empty,
-                AgentName = agentName ?? string.Empty,
-            }));
+                CultureInfo.CurrentCulture = culture;
+                CultureInfo.CurrentUICulture = uiCulture;
+                return RunAsync(job, new AIChatAgentRequest
+                {
+                    ConversationId = conversationId ?? string.Empty,
+                    Message = message ?? string.Empty,
+                    UserName = ownerKey ?? string.Empty,
+                    AgentName = agentName ?? string.Empty,
+                });
+            });
             return job.Id;
         }
 
@@ -91,8 +101,8 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat
             {
                 var agent = _createAgent(request.AgentName ?? string.Empty)
                     ?? throw new InvalidOperationException(string.IsNullOrEmpty(request.AgentName)
-                        ? "No AI chat agent is registered."
-                        : $"AI chat agent '{request.AgentName}' is not registered.");
+                        ? Resources.AIChat_DefaultAgentNotRegistered
+                        : string.Format(Resources.AIChat_AgentNotRegistered, request.AgentName));
                 var reply = await agent.ReplyAsync(request, job, job.Cancellation.Token);
                 job.Complete(ChatReplyHtml.Normalize(reply));
             }

@@ -73,17 +73,14 @@ DELETE {EndPoint}/{requestId}   // 中断
 
 ## サーバー側の実装
 
-`Codeer.LowCode.Blazor.Extras.Server` (名前空間 `Codeer.LowCode.Blazor.Extras.Server.AI.Chat`) に部品があります。Agent は「システムプロンプト + ツールセット」の組み合わせで作り、アプリは「Agent 名 → Agent」の対応表 (メールの `MailSenderTable` と同じ位置づけの静的クラス) で持ちます。AIChatField はデザインの `Agent` でその名前を指定します。DI は要りません。
+`Codeer.LowCode.Blazor.Extras.Server` に部品があります。フォルダと名前空間は役割で分かれています: `AI/Chat/` (共有: 契約 `IAIChatAgent` と窓口 `AIChatJobStore`)、`AI/Chat/ChatClient/` (共有: 標準 Agent の基盤 `ChatClientAgent`)、`AI/Chat/RawDataAccess/` (専用: `RawDataAccessAgent` とその設定)。アプリに見える入口は、契約 `IAIChatAgent`、窓口 `AIChatJobStore`、標準 Agent 2 つ (`ChatClientAgent` / `RawDataAccessAgent`) だけです。アプリは「Agent 名 → Agent」の対応表 (メールの `MailSenderTable` と同じ位置づけの静的クラス) で Agent を持ち、AIChatField はデザインの `Agent` でその名前を指定します。DI は要りません。
 
 | 型 | 役割 |
 |---|---|
 | `IAIChatAgent` | 返事を作る側のインターフェース。`ReplyAsync(request, progress, cancellationToken)` で `AIChatReply` (テキスト / Markdown / HTML / Auto) を返す。途中経過は `IAIChatProgress` に報告。`request.AgentName` にデザインの Agent 名が入る |
 | `AIChatJobStore` | プロセス内のジョブ置き場。コンストラクタで対応表 (`Func<string, IAIChatAgent?>`。Agent が 1 つなら `IAIChatAgent` を直接) を受け、送信で Agent をバックグラウンド実行し、状態をポーリングに返す。`Start(owner, conversationId, message, agentName)` で Agent 名を渡す。対応表に無い名前は error になる。プロセスに 1 つ (アプリの静的プロパティ) |
-| `ChatClientAgent` | 標準 Agent。Microsoft.Extensions.AI の `IChatClient` で返事を作る。会話履歴 (会話 ID ごと・保持期限つき)、ツール呼び出し (function calling) の往復、逐次表示、Markdown → HTML と後処理を担う。モデルの選択と認証はアプリが `Func<IChatClient>` で渡す |
-| `IAIChatToolSet` | `ChatClientAgent` に組み込むツールの束 (プロンプトへの説明文 + `AITool` の生成 + HTML の後処理)。アプリ固有のツールはこれを実装する |
-| `RawDataAccessToolSet` | ツールセット: `get_schema` (表と列。モジュール定義があれば業務名を添える) と `execute_sql` (読み取り専用の SELECT を 1 文実行。行数・文字数・時間の上限、監査ログ)。依存 (IDbAccessor の作り方・モジュール定義) はコンストラクタ、設定 (`RawDataAccessOptions`: データソース名と上限) は別 |
-| `ChartToolSet` | ツールセット: `render_chart` (棒 / 折れ線 / 円)。数値からサーバーで SVG を作り、返事の中のプレースホルダを置き換える (モデルに SVG を書かせないので数字が狂わない) |
-| `RawDataAccessAgent` | `ChatClientAgent` + `RawDataAccessToolSet` + `ChartToolSet` の設定済み Agent。DB を直接読んで集計・グラフで答える |
+| `ChatClientAgent` (+ `ChatClientAgentOptions`) | 標準 Agent。Microsoft.Extensions.AI の `IChatClient` で返事を作る素の会話 Agent (システムプロンプト、会話履歴 (会話 ID ごと・保持期限つき)、逐次表示、Markdown → HTML)。モデルの選択と認証はアプリが `Func<IChatClient>` で渡す。FAQ のような「知識だけで答える」用途 |
+| `RawDataAccessAgent` (+ `RawDataAccessOptions`) | DB を直接読んで集計・グラフで答える Agent (`ChatClientAgent` を中に持って委譲)。内部に `get_schema` (表と列。モジュール定義があれば業務名を添える)、`execute_sql` (読み取り専用の SELECT を 1 文実行。行数・文字数・時間の上限、監査ログ)、`render_chart` (棒 / 折れ線 / 円。数値からサーバーで SVG を作るので数字が狂わない) のツールを持つ。依存 (IChatClient と IDbAccessor の作り方、モジュール定義) はコンストラクタ、設定 (`RawDataAccessOptions`: データソース名と上限) は別 |
 | (内部) HTML 化 | 返事は `AIChatJobStore` の中で HTML に揃えられる。Markdown は [Markdig](https://github.com/xoofx/markdig) (表・タスクリスト・自動リンク、単独改行は `<br>`)、テキストはエスケープ、HTML は素通し (リンクに `target="_blank"` を付けるだけ)。Agent 側で HTML 化のコードを書く必要はない |
 
 Example の `DummyAIChatAgent` (`Example/Extras/Extras/Extras.Server/AI/`) は AI を呼ばないダミーで、UI の確認と、自分で `IAIChatAgent` を書くときの雛形です。発言に `html` / `text` / `error` / `slow` を含めると振る舞いが変わります。
@@ -163,7 +160,7 @@ AIChatField.EndPoint = "/api/ai_chat";
 
 ### Agent を実装する
 
-ツールを足すだけなら `IAIChatToolSet` を実装して `ChatClientAgentOptions.ToolSets` に加えます (`RawDataAccessToolSet` / `ChartToolSet` と同居できます)。モデルを使わない Agent や独自の対話制御が要るときは `IAIChatAgent` を直接実装します:
+標準 Agent で足りないとき (独自のツールを持たせたい、モデルを使わない、独自の対話制御が要る) は `IAIChatAgent` を直接実装し、対応表に 1 行足します。モデルを呼ぶ部分は Microsoft.Extensions.AI をそのまま使えます (ツール呼び出しの往復は `FunctionInvokingChatClient` が肩代わりします):
 
 ```csharp
 public class MyAgent : IAIChatAgent

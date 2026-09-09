@@ -1,5 +1,5 @@
 using Codeer.LowCode.Blazor.Extras.Server.AI.Chat;
-using Codeer.LowCode.Blazor.Extras.Server.AI.Chat.Tools;
+using Codeer.LowCode.Blazor.Extras.Server.AI.Chat.ChatClient;
 using Microsoft.Extensions.AI;
 
 namespace Codeer.LowCode.Blazor.Extras.Test.AI

@@ -1,8 +1,9 @@
+using Codeer.LowCode.Blazor.Extras.Server.Properties;
 using System.Globalization;
 using System.Net;
 using System.Text;
 
-namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat.Tools
+namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat.ChatClient
 {
     /// <summary>
     /// 依存なしの小さな SVG グラフ描画 (棒・折れ線・円)。チャットの返事に埋め込む用途に絞った最小限のもので、
@@ -137,7 +138,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat.Tools
             var cx = Width * 0.38; var cy = (Height + MarginTop) / 2 - 10; var r = Math.Min(Width * 0.3, (Height - MarginTop - 40) / 2);
             if (total <= 0)
             {
-                sb.Append($"<text x=\"{F(cx)}\" y=\"{F(cy)}\" text-anchor=\"middle\" fill=\"#777\">no data</text>");
+                sb.Append($"<text x=\"{F(cx)}\" y=\"{F(cy)}\" text-anchor=\"middle\" fill=\"#777\">{E(Resources.AIChat_ChartNoData)}</text>");
                 return;
             }
             var angle = -Math.PI / 2;

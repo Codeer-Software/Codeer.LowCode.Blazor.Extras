@@ -1,12 +1,13 @@
+using Codeer.LowCode.Blazor.Extras.Server.AI.Chat;
 using Microsoft.Extensions.Logging;
 
-namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat
+namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat.ChatClient
 {
     /// <summary>
     /// 1 回の返事 (ターン) の間、ツールが共有する文脈。<see cref="ChatClientAgent"/> がターンごとに作り、
     /// <see cref="IAIChatToolSet.CreateTools"/> と <see cref="IAIChatToolSet.PostProcessHtml"/> に渡す。
     /// </summary>
-    public class AIChatToolContext
+    internal sealed class AIChatToolContext
     {
         internal AIChatToolContext(AIChatAgentRequest request, IAIChatProgress progress, CancellationToken cancellationToken, ILogger? logger)
         {

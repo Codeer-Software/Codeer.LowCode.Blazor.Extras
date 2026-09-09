@@ -1,24 +1,23 @@
+using Codeer.LowCode.Blazor.Extras.Server.Properties;
+using Codeer.LowCode.Blazor.Extras.Server.AI.Chat;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Logging;
 using System.Text;
 
-namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat
+namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat.ChatClient
 {
     /// <summary>
-    /// Microsoft.Extensions.AI の <see cref="IChatClient"/> で返事を作る標準 Agent。
-    /// 「システムプロンプト + ツールセット (<see cref="IAIChatToolSet"/>)」の組み合わせで振る舞いが決まり、
-    /// 会話履歴の保持、ツール呼び出し (function calling) の往復、逐次表示、Markdown → HTML と後処理までを担う。
+    /// Microsoft.Extensions.AI の <see cref="IChatClient"/> で返事を作る標準 Agent。システムプロンプトで振る舞いを決め、
+    /// 会話履歴の保持 (会話 ID ごと・保持期限つき)、逐次表示、Markdown → HTML までを担う。
     /// モデルの選択と認証はアプリの責務 (Azure OpenAI / OpenAI / Ollama 等の IChatClient を渡す)。
     /// <code>
-    /// var agent = new ChatClientAgent(() => azureClient.GetChatClient("gpt-4o").AsIChatClient(), new ChatClientAgentOptions
-    /// {
-    ///     SystemPrompt = "...",
-    ///     ToolSets = { new RawDataAccessToolSet(rawOptions), new ChartToolSet() },
-    /// });
+    /// var agent = new ChatClientAgent(() => azureClient.GetChatClient("gpt-4o").AsIChatClient(),
+    ///     new ChatClientAgentOptions { SystemPrompt = "..." });
     /// </code>
-    /// 名前付きの派生 (<see cref="RawDataAccessAgent"/> 等) はこのクラスの設定済みインスタンス。
+    /// ツール (function calling) を持つ Agent (<see cref="RawDataAccess.RawDataAccessAgent"/>) は、このクラスを中に持ってライブラリ内部のツールセットを Options に足し、委譲する。
+    /// アプリ独自のツールを持つ Agent は <see cref="IAIChatAgent"/> を直接実装する。
     /// </summary>
-    public class ChatClientAgent : IAIChatAgent
+    public sealed class ChatClientAgent : IAIChatAgent
     {
         readonly Func<IChatClient> _clientFactory;
         readonly ChatClientAgentOptions _options;
@@ -36,7 +35,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat
         /// <summary>保持中の会話数 (テスト用)。</summary>
         internal int ConversationCount => _history.Count;
 
-        public virtual async Task<AIChatReply> ReplyAsync(AIChatAgentRequest request, IAIChatProgress progress, CancellationToken cancellationToken)
+        public async Task<AIChatReply> ReplyAsync(AIChatAgentRequest request, IAIChatProgress progress, CancellationToken cancellationToken)
         {
             var context = new AIChatToolContext(request, progress, cancellationToken, _logger);
             var tools = _options.ToolSets.SelectMany(t => t.CreateTools(context)).ToList();
@@ -58,7 +57,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat
                 updates.Add(update);
                 foreach (var call in update.Contents.OfType<FunctionCallContent>())
                 {
-                    lastProgress = $"{call.Name} …";
+                    lastProgress = string.Format(Resources.AIChat_ToolRunning, call.Name);
                     progress.Report(lastProgress);
                     _logger?.LogInformation("AIChat tool call {Tool} by {User} (conversation {Conversation})", call.Name, request.UserName, request.ConversationId);
                 }
@@ -96,7 +95,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat
                 sb.AppendLine().AppendLine().Append(toolSet.Instructions.Trim());
             }
             if (!string.IsNullOrEmpty(request.UserName))
-                sb.AppendLine().AppendLine().Append("The current user is \"").Append(request.UserName).Append("\".");
+                sb.AppendLine().AppendLine().Append("現在のユーザー: ").Append(request.UserName);
             return sb.ToString();
         }
 

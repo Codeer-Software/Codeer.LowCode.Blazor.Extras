@@ -1,7 +1,8 @@
 using Codeer.LowCode.Blazor.DbAccess;
 using Codeer.LowCode.Blazor.DesignLogic;
 using Codeer.LowCode.Blazor.Extras.Server.AI.Chat;
-using Codeer.LowCode.Blazor.Extras.Server.AI.Chat.Tools;
+using Codeer.LowCode.Blazor.Extras.Server.AI.Chat.ChatClient;
+using Codeer.LowCode.Blazor.Extras.Server.AI.Chat.RawDataAccess;
 using Codeer.LowCode.Blazor.Repository;
 using Codeer.LowCode.Blazor.Repository.Design;
 using Codeer.LowCode.Blazor.SystemSettings;
@@ -75,9 +76,9 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
             var schema = await InvokeAsync(tools, "get_schema");
 
             Assert.That(schema, Does.Contain("SQLite"));
-            Assert.That(schema, Does.Contain("Orders [module 受注]"));
+            Assert.That(schema, Does.Contain("Orders [モジュール 受注]"));
             Assert.That(schema, Does.Contain("Amount REAL  [金額]"));
-            Assert.That(schema, Does.Contain("[状態; values: 未処理,0, 処理済,1]"));
+            Assert.That(schema, Does.Contain("[状態; 候補値: 未処理,0, 処理済,1]"));
             Assert.That(schema, Does.Contain("Secrets"));
         }
 

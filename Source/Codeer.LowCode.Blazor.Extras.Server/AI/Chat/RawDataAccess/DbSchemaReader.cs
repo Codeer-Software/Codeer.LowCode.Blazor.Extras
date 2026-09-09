@@ -2,7 +2,7 @@ using Codeer.LowCode.Blazor.DataIO.Db;
 using Codeer.LowCode.Blazor.SystemSettings;
 using System.Data.Common;
 
-namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat.Tools
+namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat.RawDataAccess
 {
     /// <summary>接続ユーザーに見える表と列を DB から読む (DB 種別ごとのカタログ問い合わせ)。</summary>
     internal static class DbSchemaReader
@@ -52,11 +52,11 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat.Tools
         /// <summary>SQL の方言名 (プロンプト用)。</summary>
         public static string DialectName(DataSourceType type) => type switch
         {
-            DataSourceType.SQLServer => "Microsoft SQL Server (T-SQL; use TOP or OFFSET/FETCH)",
-            DataSourceType.PostgreSQL => "PostgreSQL (use LIMIT; quote mixed-case identifiers with double quotes)",
-            DataSourceType.MySQL => "MySQL (use LIMIT)",
-            DataSourceType.Oracle => "Oracle (use FETCH FIRST n ROWS ONLY)",
-            DataSourceType.SQLite => "SQLite (use LIMIT; dates are stored as text)",
+            DataSourceType.SQLServer => "Microsoft SQL Server (T-SQL。行数制限は TOP か OFFSET/FETCH)",
+            DataSourceType.PostgreSQL => "PostgreSQL (行数制限は LIMIT。大文字小文字が混ざる識別子は二重引用符で囲む)",
+            DataSourceType.MySQL => "MySQL (行数制限は LIMIT)",
+            DataSourceType.Oracle => "Oracle (行数制限は FETCH FIRST n ROWS ONLY)",
+            DataSourceType.SQLite => "SQLite (行数制限は LIMIT。日付はテキストで格納)",
             _ => type.ToString(),
         };
     }
