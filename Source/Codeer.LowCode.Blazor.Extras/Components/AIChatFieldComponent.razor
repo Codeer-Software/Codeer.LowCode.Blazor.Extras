@@ -133,6 +133,13 @@
     return sec < 3 ? string.Empty : $"{sec}s";
   }
 
+  protected override async Task OnParametersSetAsync()
+  {
+    await base.OnParametersSetAsync();
+    //スクリプトの Focus() (例: 画面の初期化で Chat.Focus()) は root の div ではなく入力欄に当てる
+    Field.SetFocusReceiver(() => _inputElement.FocusAsync().AsTask());
+  }
+
   protected override async Task OnAfterRenderAsync(bool firstRender)
   {
     await base.OnAfterRenderAsync(firstRender);
