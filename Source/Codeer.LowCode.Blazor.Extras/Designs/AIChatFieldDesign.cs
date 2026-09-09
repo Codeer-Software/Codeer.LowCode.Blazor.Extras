@@ -16,6 +16,13 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
     [IgnoreBaseProperties(nameof(FieldDesignBase.IgnoreModification), nameof(FieldDesignBase.OnValidateInput))]
     public class AIChatFieldDesign() : FieldDesignBase(typeof(AIChatFieldDesign).FullName!), IFillHeightFieldDesign
     {
+        /// <summary>
+        /// 返事を作るサーバー側 Agent の名前。空なら既定の Agent。アプリがサーバーで登録した名前
+        /// (例: "RawDataAccess" = DB を直接読んで集計とグラフで答える Agent) を指定し、同じフィールドで用途の違う Agent を使い分ける。
+        /// </summary>
+        [Designer]
+        public string Agent { get; set; } = string.Empty;
+
         /// <summary>入力欄のプレースホルダ。</summary>
         [Designer]
         public string Placeholder { get; set; } = string.Empty;

@@ -7,7 +7,7 @@ namespace Extras.Server.Controllers
 {
     /// <summary>
     /// AIChatField の窓口。送信は即 requestId を返し (202)、クライアントは GET でポーリングする。
-    /// 返事を作るのは DI に登録した IAIChatAgent (このサンプルは DummyAIChatAgent)。
+    /// 返事を作る Agent は AIChatAgentRegistry に登録したもの (Program.cs)。AIChatField のデザインの Agent 名で選ばれる。
     /// </summary>
     [ApiController]
     [Route("api/ai_chat")]
@@ -23,7 +23,7 @@ namespace Extras.Server.Controllers
 
         [HttpPost]
         public ActionResult<AIChatSendResponse> Send([FromBody] AIChatSendRequest request)
-            => Accepted(new AIChatSendResponse { RequestId = _jobs.Start(Owner, request.ConversationId, request.Message) });
+            => Accepted(new AIChatSendResponse { RequestId = _jobs.Start(Owner, request.ConversationId, request.Message, request.Agent) });
 
         [HttpGet("{requestId}")]
         public ActionResult<AIChatStatusResponse> Status(string requestId)

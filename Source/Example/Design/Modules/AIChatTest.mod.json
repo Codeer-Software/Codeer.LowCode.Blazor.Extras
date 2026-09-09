@@ -7,7 +7,7 @@
   "CanDelete": true,
   "Fields": [
     {
-      "Text": "AIChatField 確認 (ダミー Agent: html / text / error / slow を含めると振る舞いが変わる)",
+      "Text": "AIChatField 確認 / RawDataAccess Agent (DB を SQL で読んで表とグラフで答える。AISettings の Azure OpenAI が必要)",
       "Icon": "",
       "Style": "H5",
       "RelativeField": "",
@@ -18,16 +18,17 @@
       "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.LabelFieldDesign"
     },
     {
-      "Placeholder": "メッセージを入力 (Enter で送信 / Shift+Enter で改行)",
-      "WelcomeMessage": "<p>こんにちは。<b>ダミー Agent</b> です。何か話しかけてください。</p>",
+      "Placeholder": "データについて質問 (例: 得意先別の受注金額を棒グラフで)",
+      "WelcomeMessage": "<p><b>RawDataAccess Agent</b> です。DB を直接読んで集計やグラフで答えます (AISettings に Azure OpenAI の設定が必要)。</p>",
       "Height": 0,
       "TimeoutSeconds": 600,
       "MaxInputRows": 6,
       "OnReplyReceived": "Chat_OnReplyReceived",
-      "Name": "Chat",
+      "Name": "RawChat",
       "IgnoreModification": false,
       "OnValidateInput": "",
-      "TypeFullName": "Codeer.LowCode.Blazor.Extras.Designs.AIChatFieldDesign"
+      "TypeFullName": "Codeer.LowCode.Blazor.Extras.Designs.AIChatFieldDesign",
+      "Agent": "RawDataAccess"
     },
     {
       "Text": "",
@@ -138,7 +139,7 @@
             "Columns": [
               {
                 "Layout": {
-                  "FieldName": "Chat",
+                  "FieldName": "RawChat",
                   "ContextMenu": "",
                   "ClassName": "",
                   "FontFamily": "",

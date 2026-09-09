@@ -2,11 +2,13 @@ using System.Collections.Concurrent;
 using System.Net;
 using System.Text;
 
-namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat
+using Codeer.LowCode.Blazor.Extras.Server.AI.Chat;
+
+namespace Extras.Server.AI
 {
     /// <summary>
     /// AI を呼ばないダミーの Agent。AIChatField の UI (考え中・途中経過・逐次表示・Markdown / HTML / テキストの表示・
-    /// エラー・中断) を、AI の設定なしで確認するためのもの。本番では <see cref="IAIChatAgent"/> を実装して差し替える。
+    /// エラー・中断) を、AI の設定なしで確認するためのもの。自分の Agent を書くときの雛形でもある (ライブラリ側の標準実装は ChatClientAgent / RawDataAccessAgent)。
     /// 発言に含む語で振る舞いが変わる: "html" → HTML を返す / "text" → プレーンテキスト / "error" → 失敗 / "slow" → 40 秒かかる。
     /// </summary>
     public class DummyAIChatAgent : IAIChatAgent

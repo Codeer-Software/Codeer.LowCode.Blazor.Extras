@@ -12,5 +12,7 @@ namespace Codeer.LowCode.Blazor.Extras.AIChat
         public string ConversationId { get; set; } = string.Empty;
         /// <summary>ユーザーの発言 (プレーンテキスト)。</summary>
         public string Message { get; set; } = string.Empty;
+        /// <summary>デザインで指定した Agent 名 (空なら既定)。サーバーはこの名前で返事を作る Agent を選ぶ。</summary>
+        public string Agent { get; set; } = string.Empty;
     }
 }

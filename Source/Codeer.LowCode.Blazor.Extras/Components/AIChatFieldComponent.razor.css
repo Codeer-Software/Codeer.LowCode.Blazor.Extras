@@ -243,6 +243,21 @@
   border-radius: 0.25rem;
 }
 
+/* サーバー側 (ChartToolSet) が描いた SVG グラフ。バブル幅に合わせて縮む */
+.aichat-reply ::deep .aichat-chart {
+  margin: 0.4rem 0 0.6rem;
+  max-width: 100%;
+}
+
+.aichat-reply ::deep .aichat-chart svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  background: #fff;
+  border: 1px solid var(--bs-border-color, #dee2e6);
+  border-radius: 0.4rem;
+}
+
 .aichat-reply ::deep code {
   font-family: var(--bs-font-monospace, SFMono-Regular, Menlo, Consolas, monospace);
   font-size: 0.875em;

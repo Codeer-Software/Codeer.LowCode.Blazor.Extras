@@ -3,11 +3,11 @@ using Codeer.LowCode.Blazor.Extras.Server.AI.Chat;
 
 namespace Codeer.LowCode.Blazor.Extras.Test.AI
 {
-    /// <summary>送信→ポーリング→確定 / 中断 / 所有者違い / 失敗。Agent はダミー (待ちを短くする)。</summary>
+    /// <summary>送信→ポーリング→確定 / 中断 / 所有者違い / 失敗 / Agent 名での振り分け。Agent はテスト用 (FakeAIChatAgent)。</summary>
     public class AIChatJobStoreTest
     {
         static AIChatJobStore CreateStore(TimeSpan? step = null)
-            => new(new DummyAIChatAgent { StepDelay = step ?? TimeSpan.FromMilliseconds(20) });
+            => new(new FakeAIChatAgent { StepDelay = step ?? TimeSpan.FromMilliseconds(20) });
 
         static async Task<AIChatStatusResponse> WaitDoneAsync(AIChatJobStore store, string owner, string id, int timeoutMs = 10000)
         {
@@ -107,7 +107,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
         [Test]
         public async Task 終了したジョブは保持期間を過ぎると次の送信で片付く()
         {
-            var agent = new DummyAIChatAgent { StepDelay = TimeSpan.FromMilliseconds(10) };
+            var agent = new FakeAIChatAgent { StepDelay = TimeSpan.FromMilliseconds(10) };
             using var store = new AIChatJobStore(agent, new AIChatJobStoreOptions { FinishedRetention = TimeSpan.Zero });
             var id = store.Start("u", "c", "a");
             await WaitDoneAsync(store, "u", id);
@@ -128,6 +128,40 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
             Assert.That(r1.Reply, Does.Contain("(1 回目)"));
             Assert.That(r2.Reply, Does.Contain("(2 回目)"));
             Assert.That(other.Reply, Does.Contain("(1 回目)"));
+        }
+        [Test]
+        public async Task Agent名で登録したAgentに振り分けられ空なら既定になる()
+        {
+            var a = new FakeAIChatAgent();
+            var b = new FakeAIChatAgent();
+            var registry = new AIChatAgentRegistry().Add("", a).Add("Raw", b);
+            using var store = new AIChatJobStore(registry);
+
+            await WaitDoneAsync(store, "u", store.Start("u", "c", "x"));
+            await WaitDoneAsync(store, "u", store.Start("u", "c", "y", "raw"));
+            Assert.That(a.Requests.Select(r => r.Message), Is.EqualTo(new[] { "x" }));
+            Assert.That(b.Requests.Select(r => r.Message), Is.EqualTo(new[] { "y" }));
+            Assert.That(b.Requests[0].AgentName, Is.EqualTo("raw"), "Agent 名は依頼に載る (大文字小文字は登録側で吸収)");
+        }
+
+        [Test]
+        public async Task 未登録のAgent名はerrorになる()
+        {
+            var registry = new AIChatAgentRegistry().Add("", new FakeAIChatAgent());
+            using var store = new AIChatJobStore(registry);
+            var done = await WaitDoneAsync(store, "u", store.Start("u", "c", "x", "NoSuchAgent"));
+            Assert.That(done.Status, Is.EqualTo(AIChatJobStatus.Error));
+            Assert.That(done.Error, Does.Contain("NoSuchAgent"));
+        }
+
+        [Test]
+        public void 空文字の登録が無ければ最初に登録したAgentが既定になる()
+        {
+            var first = new FakeAIChatAgent();
+            var registry = new AIChatAgentRegistry().Add("Raw", first).Add("Other", new FakeAIChatAgent());
+            Assert.That(registry.Resolve(""), Is.SameAs(first));
+            Assert.That(registry.Resolve("RAW"), Is.SameAs(first));
+            Assert.That(registry.Resolve("missing"), Is.Null);
         }
     }
 }

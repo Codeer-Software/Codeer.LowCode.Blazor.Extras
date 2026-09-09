@@ -117,11 +117,15 @@ dotnet build Source/Codeer.LowCode.Blazor.Extras/Codeer.LowCode.Blazor.Extras.cs
 ### ユーティリティ系 (UIなし / 補助)
 
 #### AIChatField - AI チャット UI
-- **状態**: 実装済み (docs/AIChatField.md)。AI 本体は未接続 (サンプルは `DummyAIChatAgent`)
-- **機能**: チャット UI だけを担う。入力 (Enter 送信 / Shift+Enter 改行 / IME 対応 / 自動伸長)、考え中ドット + 途中経過 + 経過秒、逐次表示、エラー + 再送、停止、新しい会話、返事のコピー。返事は **HTML をそのまま表示** (Markdown / テキストはサーバーで HTML に変換する)
-- **通信**: `POST {EndPoint}` → 202 `{requestId}` → `GET {EndPoint}/{requestId}` をポーリング (最初の 10 秒は 1 秒、以後 2.5 秒) → `{status, reply, progress, error}`。`DELETE` で中断。やり取りする型は `AIChat/` (AIChatSendRequest / AIChatSendResponse / AIChatStatusResponse / AIChatJobStatus)。会話履歴は conversationId でサーバー側が持つ (クライアントは全履歴を送らない)
-- **サーバー** (Extras.Server `AI/Chat/`): `IAIChatAgent` (返事を作る側のインターフェース) / `AIChatJobStore` (プロセス内ジョブ置き場。シングルトン登録) / `ChatReplyHtml` (Markdig で Markdown→HTML、テキストはエスケープ、HTML は素通し + リンクに target=_blank) / `DummyAIChatAgent`。Controller はアプリ側 (Example: `AIChatController`、`/api/ai_chat`)
-- **結線**: 静的 `AIChatField.EndPoint` (テンプレートは "/api/ai_chat")。デスクトップは `AIChatField.SendCoreAsync` フック
+- **状態**: 実装済み (docs/AIChatField.md)。サーバー側に標準 Agent (`ChatClientAgent` / `RawDataAccessAgent`) あり。Example の既定はダミー (`Example/.../Extras.Server/AI/DummyAIChatAgent.cs`)、`RawDataAccess` は AISettings (Azure OpenAI) があるときだけ登録
+- **機能**: チャット UI だけを担う。入力 (Enter 送信 / Shift+Enter 改行 / IME 対応 / 自動伸長)、考え中ドット + 途中経過 + 経過秒、逐次表示、エラー + 再送、停止、新しい会話、返事のコピー。返事は HTML をそのまま描画 (SVG グラフ含む)
+- **Agent の選択**: デザインの `Agent` (文字列、空 = 既定) を `AIChatSendRequest.Agent` で送り、サーバーの `AIChatAgentRegistry` (名前 → IAIChatAgent、大文字小文字無視、空登録が無ければ最初の登録が既定) が解決。未登録は error。`AIChatJobStore.Start(owner, conv, message, agentName)`
+- **通信**: `POST {EndPoint}` → 202 `{requestId}` → `GET {EndPoint}/{requestId}` をポーリング (最初の 10 秒は 1 秒、以後 2.5 秒) → `{status, reply, progress, error}`。`DELETE` で中断。やり取りする型は `AIChat/` (AIChatSendRequest / AIChatSendResponse / AIChatStatusResponse / AIChatJobStatus)
+- **サーバー** (Extras.Server `AI/Chat/`): `IAIChatAgent` / `IAIChatAgentResolver` + `AIChatAgentRegistry` / `AIChatJobStore` (プロセス内ジョブ。シングルトン) / `ChatReplyHtml` (Markdig で Markdown→HTML、テキストはエスケープ、HTML 素通し + target=_blank) / `ChatClientAgent` (Microsoft.Extensions.AI `IChatClient`。システムプロンプト + `IAIChatToolSet` 群、会話履歴 `ConversationHistory` (ターン境界で切る)、FunctionInvokingChatClient で往復上限、ストリーミング → ReportPartial、Markdown→HTML→ToolSet.PostProcessHtml) / `Tools/RawDataAccessToolSet` (get_schema = `DbSchemaReader` で DB 種別ごとのカタログ問い合わせ + モジュール定義の業務名、execute_sql = 1 文 SELECT 判定 `Validate` + DbCommand 直叩き (タイムアウト・MaxRows・MaxResultChars) + ログ) / `Tools/ChartToolSet` + `SvgChart` (render_chart → `[[chart:N]]` プレースホルダ → 後処理で `<div class="aichat-chart"><svg>`) / `RawDataAccessAgent` (= ChatClientAgent + 上 2 ツールセット)
+- **権限の考え方**: RawDataAccess は DB を生で読む。見える範囲 = `RawDataAccessOptions.DataSourceName` の接続 (AI 用の読み取り専用 DB ユーザーを GRANT で絞る) で決める。ログインユーザーごとの行制限は効かないので、置くページの UserReadCondition で使える人を絞る。SELECT 判定は補助
+- **IChatClient の作り方**: アプリの責務 (Example `AI/AIChatClientFactory.cs` = AISettings の Azure OpenAI を Microsoft.Extensions.AI.OpenAI の `AsIChatClient()` で)。ライブラリの依存は Microsoft.Extensions.AI 10.7.0 のみ
+- **結線**: 静的 `AIChatField.EndPoint` (テンプレートは "/api/ai_chat")。デスクトップは `AIChatField.SendCoreAsync` フック。Example の appsettings `AIChat:RawDataAccessDataSource` (既定 SampleSQLite)
+- **テスト**: `Test/AI/` (JobStore + Registry / ChatClientAgent は台本つき `FakeChatClient` / RawDataAccessToolSet は SQLite 実 DB / SvgChart)
 - **インターフェース**: `IFillHeightFieldDesign` (Height=0 で親の高さに合わせる)
 - **ファイル**: `Designs/AIChatFieldDesign.cs`, `Fields/AIChatField.cs`, `Components/AIChatFieldComponent.razor(.css)`, `wwwroot/aichat-interop.js`, `AIChat/*.cs`
 

@@ -16,6 +16,7 @@ AI (サーバー側の Agent) と会話するチャット UI フィールドで�
 
 | プロパティ | 型 | 必須 | 説明 |
 |---|---|---|---|
+| Agent | string | - | 返事を作るサーバー側 Agent の名前。空なら既定の Agent。サーバー (ホスト) が登録した名前を指定する。標準で用意されているのは `RawDataAccess` (DB を直接読んで集計・グラフで答える。ホストが登録している場合のみ)。**存在しない名前を書くと返事がエラーになる**ので、使える名前はホスト側の設定 (Program.cs の `AIChatAgentRegistry`) を確認する |
 | Placeholder | string | - | 入力欄のプレースホルダ |
 | WelcomeMessage | string (複数行, HTML 可) | - | 会話の先頭に表示するアシスタントの挨拶。空なら表示しない |
 | Height | int | - | 高さ (px)。0 なら親の高さに合わせる。**`IsFillAvailable: true` のグリッドに置くか、Height を指定する** (どちらも無いと内容に合わせて伸び続ける) |
@@ -25,10 +26,11 @@ AI (サーバー側の Agent) と会話するチャット UI フィールドで�
 
 ### サーバー側設定が必須
 
-このフィールドはサーバーのチャット API (テンプレートは `/api/ai_chat`) を呼び出します。サーバー側では `Codeer.LowCode.Blazor.Extras.Server` の `IAIChatAgent` を実装して返事を作り、`AIChatJobStore` と一緒に DI に登録します (Example の `AIChatController` / `Program.cs` を参照)。返事は Markdown・テキスト・HTML のどれで返してもよく、サーバーが HTML に揃えてから画面に届きます。
+このフィールドはサーバーのチャット API (テンプレートは `/api/ai_chat`) を呼び出します。返事を作る Agent はサーバー側 (ホスト) が名前を付けて登録し (`Codeer.LowCode.Blazor.Extras.Server` の `AIChatAgentRegistry` + `AIChatJobStore`)、フィールドの `Agent` でどれを使うかを選びます。標準 Agent は `ChatClientAgent` (Microsoft.Extensions.AI の IChatClient で会話) と `RawDataAccessAgent` (DB を SQL で読んで集計・グラフ)。返事は Markdown・テキスト・HTML のどれで返してもよく、サーバーが HTML に揃えてから画面に届きます。
 
 - Agent が未設定の環境 (デザイナのプレビュー等) では入力欄が無効になり、その旨を表示します
 - 会話の履歴はサーバー側 (Agent) が conversationId で保持します。「新しい会話」で conversationId が振り直されます
+- `RawDataAccess` は DB を生で読むため、見える範囲は AI 用の DB ユーザーの権限で決まり、ログインユーザーごとの行制限 (UserRead / DataRead 条件) は効きません。置くページやモジュールの UserReadCondition で「誰が使えるか」を絞ってください
 
 ### 注意事項
 

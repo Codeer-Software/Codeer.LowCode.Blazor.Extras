@@ -16,23 +16,32 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat
     /// クライアントは requestId で状態をポーリングする。返事は <see cref="ChatReplyHtml"/> で HTML に揃える。
     /// 単一インスタンス前提。スケールアウトするなら ARR アフィニティか共有ストアに置き換える。
     /// シングルトンで登録する (builder.Services.AddSingleton&lt;AIChatJobStore&gt;())。
+    /// どの Agent に渡すかは <see cref="IAIChatAgentResolver"/> (通常は <see cref="AIChatAgentRegistry"/>) が
+    /// AIChatField のデザインの Agent 名で決める。Agent が 1 つだけなら <see cref="IAIChatAgent"/> を直接渡してよい (名前は無視される)。
     /// </summary>
     public class AIChatJobStore : IDisposable
     {
-        readonly IAIChatAgent _agent;
+        readonly IAIChatAgentResolver _resolver;
         readonly AIChatJobStoreOptions _options;
         readonly ConcurrentDictionary<string, Job> _jobs = new();
 
-        public AIChatJobStore(IAIChatAgent agent) : this(agent, new AIChatJobStoreOptions()) { }
+        public AIChatJobStore(IAIChatAgent agent) : this(new SingleAgentResolver(agent), new AIChatJobStoreOptions()) { }
 
-        public AIChatJobStore(IAIChatAgent agent, AIChatJobStoreOptions options)
+        public AIChatJobStore(IAIChatAgent agent, AIChatJobStoreOptions options) : this(new SingleAgentResolver(agent), options) { }
+
+        public AIChatJobStore(IAIChatAgentResolver resolver) : this(resolver, new AIChatJobStoreOptions()) { }
+
+        public AIChatJobStore(IAIChatAgentResolver resolver, AIChatJobStoreOptions options)
         {
-            _agent = agent;
+            _resolver = resolver;
             _options = options;
         }
 
-        /// <summary>Agent を起動し requestId を返す。ownerKey は取得・中断時の照合に使う (ログイン名等。匿名なら空)。</summary>
-        public string Start(string ownerKey, string conversationId, string message)
+        /// <summary>
+        /// Agent を起動し requestId を返す。ownerKey は取得・中断時の照合に使う (ログイン名等。匿名なら空)。
+        /// agentName は AIChatField のデザインの Agent 名 (空なら既定)。未登録の名前でも requestId は返し、ジョブが error になる。
+        /// </summary>
+        public string Start(string ownerKey, string conversationId, string message, string agentName = "")
         {
             Cleanup();
             var job = new Job(ownerKey ?? string.Empty);
@@ -42,6 +51,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat
                 ConversationId = conversationId ?? string.Empty,
                 Message = message ?? string.Empty,
                 UserName = ownerKey ?? string.Empty,
+                AgentName = agentName ?? string.Empty,
             }));
             return job.Id;
         }
@@ -77,7 +87,11 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat
         {
             try
             {
-                var reply = await _agent.ReplyAsync(request, job, job.Cancellation.Token);
+                var agent = _resolver.Resolve(request.AgentName)
+                    ?? throw new InvalidOperationException(string.IsNullOrEmpty(request.AgentName)
+                        ? "No AI chat agent is registered."
+                        : $"AI chat agent '{request.AgentName}' is not registered.");
+                var reply = await agent.ReplyAsync(request, job, job.Cancellation.Token);
                 job.Complete(ChatReplyHtml.Normalize(reply));
             }
             catch (OperationCanceledException) when (job.Cancellation.IsCancellationRequested)
@@ -110,6 +124,11 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat
         {
             foreach (var job in _jobs.Values) job.Cancel();
             _jobs.Clear();
+        }
+
+        sealed class SingleAgentResolver(IAIChatAgent agent) : IAIChatAgentResolver
+        {
+            public IAIChatAgent? Resolve(string agentName) => agent;
         }
 
         sealed class Job : IAIChatProgress

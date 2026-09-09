@@ -17,6 +17,8 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat
         public string Message { get; init; } = string.Empty;
         /// <summary>依頼したユーザーの識別 (ログイン名等。匿名なら空)。</summary>
         public string UserName { get; init; } = string.Empty;
+        /// <summary>AIChatField のデザインで指定された Agent 名 (空なら既定)。複数の Agent を 1 つの実装で受けるときの分岐に使える。</summary>
+        public string AgentName { get; init; } = string.Empty;
     }
 
     /// <summary>Agent の返事。形式は Agent が申告する。Auto なら内容から判定する (先頭がタグなら HTML、それ以外は Markdown)。</summary>
