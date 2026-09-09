@@ -28,7 +28,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat.ChatClient
         {
             _clientFactory = clientFactory;
             _options = options ?? new ChatClientAgentOptions();
-            _history = new ConversationHistory(_options.MaxHistoryTurns, _options.HistoryRetention);
+            _history = new ConversationHistory(_options.MaxHistoryTurns, _options.KeepToolResultsForTurns, _options.MaxHistoryCharacters, _options.HistoryRetention);
             _logger = _options.LoggerFactory?.CreateLogger(GetType());
         }
 
@@ -41,7 +41,9 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat.ChatClient
             var tools = _options.ToolSets.SelectMany(t => t.CreateTools(context)).ToList();
 
             var messages = new List<ChatMessage> { new(ChatRole.System, BuildSystemPrompt(request)) };
-            messages.AddRange(_history.Get(request.ConversationId));
+            //履歴の鍵は所有者 (ログイン ID) + 会話 ID。別のユーザーが同じ会話 ID を送っても他人の会話には乗れない (所有者が空のデモ等は会話 ID だけ)
+            var historyKey = ConversationHistory.Key(request.UserName, request.ConversationId);
+            messages.AddRange(_history.Get(historyKey));
             var userMessage = new ChatMessage(ChatRole.User, request.Message);
             messages.Add(userMessage);
 
@@ -69,7 +71,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat.ChatClient
 
             var response = updates.ToChatResponse();
             var final = text.Length > 0 ? text.ToString() : response.Text;
-            _history.Append(request.ConversationId, userMessage, response.Messages);
+            _history.Append(historyKey, userMessage, response.Messages);
             return AIChatReply.Html(ToHtml(final, context));
         }
 

@@ -79,7 +79,7 @@ DELETE {EndPoint}/{requestId}   // 中断
 |---|---|
 | `IAIChatAgent` | 返事を作る側のインターフェース。`ReplyAsync(request, progress, cancellationToken)` で `AIChatReply` (テキスト / Markdown / HTML / Auto) を返す。途中経過は `IAIChatProgress` に報告。`request.AgentName` にデザインの Agent 名が入る |
 | `AIChatJobStore` | プロセス内のジョブ置き場。コンストラクタで対応表 (`Func<string, IAIChatAgent?>`。Agent が 1 つなら `IAIChatAgent` を直接) を受け、送信で Agent をバックグラウンド実行し、状態をポーリングに返す。`Start(owner, conversationId, message, agentName)` で Agent 名を渡す。対応表に無い名前は error になる。プロセスに 1 つ (アプリの静的プロパティ) |
-| `ChatClientAgent` (+ `ChatClientAgentOptions`) | 標準 Agent。Microsoft.Extensions.AI の `IChatClient` で返事を作る素の会話 Agent (システムプロンプト、会話履歴 (会話 ID ごと・保持期限つき)、逐次表示、Markdown → HTML)。モデルの選択と認証はアプリが `Func<IChatClient>` で渡す。FAQ のような「知識だけで答える」用途 |
+| `ChatClientAgent` (+ `ChatClientAgentOptions`) | 標準 Agent。Microsoft.Extensions.AI の `IChatClient` で返事を作る素の会話 Agent (システムプロンプト、会話履歴、逐次表示、Markdown → HTML)。履歴の鍵は「ログイン ID + 会話 ID」(認証の無いアプリでは会話 ID だけ) で、保持期限つき。トークンの膨張は 3 段で抑える: 直近 `KeepToolResultsForTurns` ターンより古いターンからはツール呼び出しと結果を落として文章だけ残す / `MaxHistoryTurns` を超えた古いターンを捨てる / `MaxHistoryCharacters` を超えたら古いターンから捨てる。モデルの選択と認証はアプリが `Func<IChatClient>` で渡す。FAQ のような「知識だけで答える」用途 |
 | `RawDataAccessAgent` (+ `RawDataAccessOptions`) | DB を直接読んで集計・グラフで答える Agent (`ChatClientAgent` を中に持って委譲)。内部に `get_schema` (表と列。モジュール定義があれば業務名を添える)、`execute_sql` (読み取り専用の SELECT を 1 文実行。行数・文字数・時間の上限、監査ログ)、`render_chart` (棒 / 折れ線 / 円。数値からサーバーで SVG を作るので数字が狂わない) のツールを持つ。依存 (IChatClient と IDbAccessor の作り方、モジュール定義) はコンストラクタ、設定 (`RawDataAccessOptions`: データソース名と上限) は別 |
 | (内部) HTML 化 | 返事は `AIChatJobStore` の中で HTML に揃えられる。Markdown は [Markdig](https://github.com/xoofx/markdig) (表・タスクリスト・自動リンク、単独改行は `<br>`)、テキストはエスケープ、HTML は素通し (リンクに `target="_blank"` を付けるだけ)。Agent 側で HTML 化のコードを書く必要はない |
 

@@ -24,6 +24,15 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat.ChatClient
         /// <summary>会話履歴として保持するユーザー発言の数 (古いターンから捨てる。ツール呼び出しと結果は同じターンとして一緒に扱う)。</summary>
         public int MaxHistoryTurns { get; set; } = 20;
 
+        /// <summary>
+        /// ツール呼び出しと結果 (SQL の結果 JSON 等、履歴の中で最も大きい) を残す直近ターン数。それより古いターンはモデルの文章だけ残す。
+        /// 直前の結果を指した追問 (「その中で一番多いのは」) に答えられる範囲を保ちつつ、トークンの膨張を抑える。
+        /// </summary>
+        public int KeepToolResultsForTurns { get; set; } = 2;
+
+        /// <summary>会話履歴の文字数の上限 (トークン量の近似)。超えたら古いターンから捨てる (直近 1 ターンは残す)。0 で無制限。</summary>
+        public int MaxHistoryCharacters { get; set; } = 40000;
+
         /// <summary>最後のアクセスからこの時間を過ぎた会話履歴は捨てる。</summary>
         public TimeSpan HistoryRetention { get; set; } = TimeSpan.FromHours(2);
 

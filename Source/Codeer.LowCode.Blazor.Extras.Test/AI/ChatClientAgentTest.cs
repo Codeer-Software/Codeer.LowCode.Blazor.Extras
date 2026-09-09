@@ -143,5 +143,66 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
             Assert.That(reply.Content, Does.Contain("売上"));
             Assert.That(reply.Content, Does.Contain("<rect"));
         }
+        [Test]
+        public async Task 同じ会話IDでもユーザーが違えば別の会話になる()
+        {
+            var client = new FakeChatClient().Text("A").Text("B").Text("C");
+            var agent = new ChatClientAgent(() => client, new ChatClientAgentOptions { StreamPartialReplies = false });
+            var progress = new Progress();
+
+            await agent.ReplyAsync(Request("alice の 1 回目", user: "alice"), progress, CancellationToken.None);
+            await agent.ReplyAsync(Request("bob の 1 回目", user: "bob"), progress, CancellationToken.None);   //同じ conversation "c1"
+            await agent.ReplyAsync(Request("alice の 2 回目", user: "alice"), progress, CancellationToken.None);
+
+            Assert.That(client.Calls[1].Count, Is.EqualTo(2), "bob には alice の履歴が渡らない (system + user)");
+            Assert.That(client.Calls[2].Select(m => m.Text), Is.EqualTo(new[] { client.Calls[2][0].Text, "alice の 1 回目", "A", "alice の 2 回目" }));
+            Assert.That(agent.ConversationCount, Is.EqualTo(2));
+        }
+
+        [Test]
+        public async Task 所有者が空のときは会話IDだけで履歴を引く()
+        {
+            var client = new FakeChatClient().Text("A").Text("B");
+            var agent = new ChatClientAgent(() => client, new ChatClientAgentOptions { StreamPartialReplies = false });
+            await agent.ReplyAsync(Request("1", user: ""), new Progress(), CancellationToken.None);
+            await agent.ReplyAsync(Request("2", user: ""), new Progress(), CancellationToken.None);
+            Assert.That(client.Calls[1].Count, Is.EqualTo(4), "system + 1 + A + 2");
+        }
+
+        [Test]
+        public async Task 古いターンからはツール呼び出しと結果が落ちて文章だけ残る()
+        {
+            var client = new FakeChatClient();
+            //3 ターンともツールを 1 回呼ぶ
+            for (var i = 0; i < 3; i++) client.Call("echo", new Dictionary<string, object?> { ["text"] = "t" + i }, "call" + i).Text("r" + i);
+            client.Text("final");
+            var options = new ChatClientAgentOptions { StreamPartialReplies = false, KeepToolResultsForTurns = 1 };
+            options.ToolSets.Add(new EchoToolSet());
+            var agent = new ChatClientAgent(() => client, options);
+            for (var i = 0; i < 3; i++) await agent.ReplyAsync(Request("q" + i), new Progress(), CancellationToken.None);
+            await agent.ReplyAsync(Request("q3"), new Progress(), CancellationToken.None);
+
+            //4 回目の送信に含まれる履歴: q0 r0 / q1 r1 (ツールなし) / q2 + 呼び出し + 結果 + r2 (直近 1 ターンはツール込み) / q3
+            var sent = client.Calls.Last();
+            var toolTurns = sent.Where(m => m.Contents.Any(c => c is FunctionCallContent or FunctionResultContent)).ToList();
+            Assert.That(toolTurns.All(m => m.Contents.OfType<FunctionCallContent>().Any(c => c.CallId == "call2") || m.Contents.OfType<FunctionResultContent>().Any(c => c.CallId == "call2")), Is.True,
+                "残っているツール呼び出し・結果は直近ターン (call2) のものだけ");
+            Assert.That(sent.Select(m => m.Text).Where(t => t.StartsWith("r")), Is.EqualTo(new[] { "r0", "r1", "r2" }), "文章はすべて残る");
+            Assert.That(sent.Count(m => m.Role == ChatRole.Tool), Is.EqualTo(1));
+        }
+
+        [Test]
+        public async Task 文字数の上限を超えると古いターンから捨てる()
+        {
+            var client = new FakeChatClient();
+            for (var i = 0; i < 4; i++) client.Text(new string((char)('a' + i), 1000));
+            var agent = new ChatClientAgent(() => client, new ChatClientAgentOptions { StreamPartialReplies = false, MaxHistoryCharacters = 2500 });
+            for (var i = 0; i < 4; i++) await agent.ReplyAsync(Request("q" + i), new Progress(), CancellationToken.None);
+
+            //4 回目の送信: 直近の 2 ターン (bbbb… / cccc…) だけが残り、合計 2500 文字以内に収まる
+            var sent = client.Calls[3];
+            var assistantTexts = sent.Where(m => m.Role == ChatRole.Assistant).Select(m => m.Text[0]).ToList();
+            Assert.That(assistantTexts, Is.EqualTo(new[] { 'b', 'c' }));
+        }
     }
 }
