@@ -3,13 +3,13 @@ using Codeer.LowCode.Blazor.Extras.Server.Mail;
 
 namespace Codeer.LowCode.Blazor.Extras.Test.Mail
 {
-    /// <summary>0.5.0 のメール API (MailService / MailMessage / SmtpMailService / MailSettings) が互換のまま残っていることの固定。</summary>
+    /// <summary>0.5.0 のメール API (MailMessage / SmtpMailService / MailSettings) が互換のまま残っていることの固定 (MailService スクリプトオブジェクトは 0.12.0 で削除)。</summary>
     public class LegacyMailApiTest
     {
         [Test]
         public void MailMessageの組み立てと新APIへの変換()
         {
-            var message = new MailService().CreateMessage()
+            var message = new MailMessage()
                 .AddTo("a@example.com; b@example.com")
                 .AddCc("c@example.com")
                 .AddBcc("d@example.com")
@@ -57,25 +57,6 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Mail
             SmtpSettings smtp = settings;
             Assert.That(smtp.Host, Is.EqualTo("smtp.example.com"));
             Assert.That(smtp.UserName, Is.Empty, "旧設定に無い項目は既定値 (空 = SenderMailAddress で認証)");
-        }
-
-        [Test]
-        public async Task MailServiceはフックが設定されていればそれで送る()
-        {
-            var original = MailService.SendMailAsyncCore;
-            try
-            {
-                MailMessage? sent = null;
-                MailService.SendMailAsyncCore = m => { sent = m; return Task.FromResult(true); };
-                var ok = await new MailService().SendEmailAsync("a@example.com", "s", "b");
-                Assert.That(ok, Is.True);
-                Assert.That(sent!.To, Is.EqualTo(new[] { "a@example.com" }));
-                Assert.That(sent.Subject, Is.EqualTo("s"));
-            }
-            finally
-            {
-                MailService.SendMailAsyncCore = original;
-            }
         }
     }
 }

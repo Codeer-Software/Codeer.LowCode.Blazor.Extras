@@ -14,7 +14,7 @@ namespace Codeer.LowCode.Blazor.Extras.ScriptObjects
 
     /// <summary>
     /// 旧 (0.5.0) のメール API: スクリプトで組み立ててサーバー (/api/mail) に POST するメッセージ。
-    /// アドレスは ';' 区切りで複数指定できる。<see cref="MailService"/> / Extras.Server の SmtpMailService と組で、
+    /// アドレスは ';' 区切りで複数指定できる。Extras.Server の SmtpMailService と組で、
     /// 0.5.0 のテンプレートを変更なしで動かすために残している。新規は MailField / BulkMailField を使う。
     /// </summary>
     public class MailMessage

@@ -255,8 +255,9 @@ UI もデータも持たない「宣言用」のフィールドです。役割 �
 
 ### 0.5.0 のメール API から移行する
 
-0.5.0 のテンプレートにあった `MailService` (スクリプトオブジェクト) / `MailMessage` / サーバーの `SmtpMailService` / `MailSettings` (appsettings の `MailSettings` セクション) は互換のために残してあり、
-そのままビルド・動作します (`SmtpMailService` の中身は `SmtpMailSender` になりました)。新しく作る画面では MailField / BulkMailField を使ってください。
+0.5.0 のテンプレートにあった `MailMessage` / サーバーの `SmtpMailService` / `MailSettings` (appsettings の `MailSettings` セクション) は互換のために残してあり、
+そのままビルド・動作します (`SmtpMailService` の中身は `SmtpMailSender` になりました)。スクリプトオブジェクトの `MailService` は 0.12.0 で削除しました
+(スクリプトからは権限を通らずに送れてしまうため)。スクリプトから送るときは画面に置いた MailField / BulkMailField の `Send()` を使ってください。
 
 ### サーバー側の結線 (アプリテンプレートに含まれるもの)
 
