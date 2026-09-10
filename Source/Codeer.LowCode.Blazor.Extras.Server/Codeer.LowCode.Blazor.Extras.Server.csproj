@@ -5,7 +5,7 @@
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>enable</Nullable>
 		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
-		<Version>0.11.0</Version>
+		<Version>0.12.0</Version>
 		<Authors>Codeer</Authors>
 		<Company>Codeer</Company>
 		<Description>Server-side services for Codeer.LowCode.Blazor apps. Includes AI document analysis (Azure Document Intelligence + Azure OpenAI), mail sending (SMTP / Microsoft Graph / SendGrid / Gmail), file storage (file system / Azure Blob / S3), external logins (Entra ID / Google / AWS Cognito / OIDC), TOTP two-factor authentication, and ASP.NET Core helpers (hot reload, ETag file responses).</Description>
@@ -16,7 +16,7 @@
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>
 		<PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
-		<PackageReleaseNotes>AIChatJobStore.Start accepts the client transcript (AIChatSendRequest.Transcript) and passes it to the agent as AIChatAgentRequest.Transcript. RawDataAccessAgent seeds its conversation history from it only when no history exists for the conversation (expired, restarted or another instance), so a chat restored in the browser keeps its context; tool results are not part of the transcript. Requires Codeer.LowCode.Blazor.Extras 0.11.0.</PackageReleaseNotes>
+		<PackageReleaseNotes>Breaking: the 0.5.0 mail API is removed together with Codeer.LowCode.Blazor.Extras 0.12.0. SmtpMailService and MailSettings are gone; an app that still binds the MailSettings section or calls SmtpMailService must switch to MailDispatcher with a mail sender table (see the app templates). Requires Codeer.LowCode.Blazor.Extras 0.12.0.</PackageReleaseNotes>
 		<PackageId>Codeer.LowCode.Blazor.Extras.Server</PackageId>
 	</PropertyGroup>
 

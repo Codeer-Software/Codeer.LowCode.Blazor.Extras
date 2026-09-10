@@ -6,7 +6,7 @@
 		<Nullable>enable</Nullable>
 		<AddRazorSupportForMvc>true</AddRazorSupportForMvc>
 		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
-		<Version>0.11.0</Version>
+		<Version>0.12.0</Version>
 		<Authors>Codeer</Authors>
 		<Company>Codeer</Company>
 		<Description>Extra field components and client-side services for Codeer.LowCode.Blazor. Includes Calendar, Gantt Chart, Task Board (Kanban), Rich Text Editor, Markdown Editor, Color Picker, Marker List, QR Code, Progress Bar, Password Hash, and AI Text Analyzer fields, plus built-in script objects (Excel, WebApi, Toaster, Mail) and client infrastructure services (HTTP, UI, logging, localization).</Description>
@@ -17,7 +17,7 @@
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>
 		<PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
-		<PackageReleaseNotes>AIChatField: the conversation (messages, conversation id and a reply still being produced) now lives in an in-memory store for the lifetime of the app (the browser tab in WebAssembly), so following a link in a reply and coming back restores the chat, and a reply that was still running when you left arrives while you are away and is shown on return; a reload starts fresh. KeepConversation (default true) turns this off per field. Each message sends a short text-only transcript of the visible conversation, and the server uses it only when its own history for the conversation is gone (retention, restart or another instance). MinInputRows (default 3) replaces MaxInputRows: the input box starts at that many rows and grows up to 12. Height was removed (the field follows its row: a FillAvailable last row, a fixed row Height, or a 16rem conversation area). All designer property names are localized. Focus() from a script (for example Chat.Focus() in the detail layout's OnAfterInitialization) focuses the input box. Requires Codeer.LowCode.Blazor.Extras.Server 0.11.0 for the transcript.</PackageReleaseNotes>
+		<PackageReleaseNotes>Breaking: the 0.5.0 mail API is removed. The MailService script object and the ScriptObjects.MailMessage / MailAttachment types are gone, because a script could send mail through them without any permission check. Use MailField / BulkMailField instead; from a script call Send() on a field placed on the page. Requires Codeer.LowCode.Blazor.Extras.Server 0.12.0.</PackageReleaseNotes>
 		<PackageId>Codeer.LowCode.Blazor.Extras</PackageId>
 	</PropertyGroup>
 
