@@ -4,6 +4,8 @@ using Azure.AI.OpenAI;
 using Codeer.LowCode.Blazor;
 using Codeer.LowCode.Blazor.DataIO;
 using Codeer.LowCode.Blazor.DesignLogic;
+using Codeer.LowCode.Blazor.Extras.Designs;
+using Codeer.LowCode.Blazor.Extras.Server.Properties;
 using Codeer.LowCode.Blazor.Repository.Data;
 using Codeer.LowCode.Blazor.Repository.Design;
 using OpenAI.Chat;
@@ -18,6 +20,9 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI
     /// <summary>
     /// Analyzes documents / free text with Azure Document Intelligence + Azure OpenAI
     /// and converts the result into a <see cref="ModuleData"/> that matches the module design.
+    /// The entry points take the module name and the AITextAnalyzerField name: the request is refused unless that field is visible
+    /// to the current user by user permissions alone (application access conditions, the module UserReadCondition and the PermissionField read conditions
+    /// that are false for the user regardless of the row; via ModuleDataIO.CheckUserReadAuthorization), and the extraction hints (Remarks) come from the field design.
     /// To customize (prompts, models, etc.), copy this class into your app and modify it (the source is MIT licensed).
     /// </summary>
     public class AITextAnalyzeService
@@ -26,16 +31,32 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI
 
         public AITextAnalyzeService(AISettings settings) => _settings = settings;
 
-        public async Task<ModuleData> FileToDataAsync(ModuleDataIO moduleDataIO, IModuleDesigns modules, string moduleName, string remarks, string? fileName, MemoryStream memoryStream)
+        /// <summary>
+        /// 入口検査: moduleName / fieldName の AITextAnalyzerField があり、今のユーザーがそのフィールドを読めること。通らなければ LowCodeException。
+        /// </summary>
+        internal static async Task<AITextAnalyzerFieldDesign> CheckAsync(ModuleDataIO moduleDataIO, string? moduleName, string? fieldName)
+            => await FieldApiAuthorization.CheckAsync<AITextAnalyzerFieldDesign>(moduleDataIO, moduleName, fieldName, Resources.AITextAnalyzerField_NotFound);
+
+        /// <summary>
+        /// Analyzes an uploaded file (POST {FileToModuleDataEndPoint}). The field is checked before the file is read.
+        /// </summary>
+        public async Task<ModuleData> AnalyzeFileAsync(ModuleDataIO moduleDataIO, IModuleDesigns modules, string? moduleName, string? fieldName, string? fileName, MemoryStream memoryStream)
         {
+            var design = await CheckAsync(moduleDataIO, moduleName, fieldName);
             var text = await ExtractTextFromFile(memoryStream);
-            return await TextToDataAsync(moduleDataIO, modules, moduleName, remarks, text, CreateFileSourcePrompt(fileName));
+            return await AnalyzeCoreAsync(moduleDataIO, modules, moduleName!, design.Remarks, text, CreateFileSourcePrompt(fileName));
         }
 
-        public async Task<ModuleData> TextToDataAsync(ModuleDataIO moduleDataIO, IModuleDesigns modules, string moduleName, string remarks, string text)
-            => await TextToDataAsync(moduleDataIO, modules, moduleName, remarks, text, string.Empty);
+        /// <summary>
+        /// Analyzes free text (POST {TextToModuleDataEndPoint}). The field is checked before the AI is called.
+        /// </summary>
+        public async Task<ModuleData> AnalyzeTextAsync(ModuleDataIO moduleDataIO, IModuleDesigns modules, string? moduleName, string? fieldName, string? text)
+        {
+            var design = await CheckAsync(moduleDataIO, moduleName, fieldName);
+            return await AnalyzeCoreAsync(moduleDataIO, modules, moduleName!, design.Remarks, text ?? string.Empty, string.Empty);
+        }
 
-        public async Task<ModuleData> TextToDataAsync(ModuleDataIO moduleDataIO, IModuleDesigns modules, string moduleName, string remarks, string text, string source)
+        protected async Task<ModuleData> AnalyzeCoreAsync(ModuleDataIO moduleDataIO, IModuleDesigns modules, string moduleName, string remarks, string text, string source)
         {
             var json = await DocumentAnalysisByText(modules, moduleName, remarks, text, source);
             return await CreateModule(modules, moduleName,

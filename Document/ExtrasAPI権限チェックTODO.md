@@ -60,7 +60,8 @@ AIChatField を置いたモジュールに UserReadCondition (管理者のみ等
   - 承認だけはユーザー決定 (2026-09-11) で**申請書の行も読む**: 既存フローへの操作 (Approve/Reject/Return/Withdraw/Confirm/Resubmit) で `CanReadTargetAsync` (申請書モジュールに Id 条件で GetListAsync = DataReadCondition が効く)。読めなければ `ApprovalError_TargetNotReadable` の失敗結果。メールは従来どおり行を読まない。
   - テスト増強時に見つけて塞いだ改ざん要求 (2026-09-11): ①フロー行を Id だけで引いていたため、開ける別の申請書モジュール名を添えると (同じ承認モジュール群を共有する構成で) 入口検査をすり抜けて他モジュールのフローを操作できた → `LoadFlowAsync` で TargetModuleName も一致条件に。②申請・再申請の TargetSubmitData のモジュール名を検査していなかった (別モジュールに書けるユーザーがその Id を申請書に結び付けられる) → `ValidateTargetSubmitData`。③再申請で保存したレコードがフローの申請書か検査していなかった → `targetId == flow.TargetId`。
 - AIChat も同 0.12.0 で揃えた: `AIChatJobStore.StartAsync(owner, request, moduleDataIO)` (旧 `Start(...)` は internal 化) が `FieldApiAuthorization.CheckAsync<AIChatFieldDesign>` を通し、Agent 名と DocumentFolder をデザインから取る (クライアント値は参考)。`AIChatSendRequest.ModuleName / FieldName` 追加。テンプレ (Starter Cookie / Example) の AIChatController は DataService を注入して `StartAsync` に。共通ヘルパー `Extras.Server/FieldApiAuthorization` (メール系もこれに委譲)。
-- 残り: AITextAnalyze。同じ方式で。
+- AITextAnalyze も同 0.12.0 で揃えた: `AITextAnalyzeService.AnalyzeFileAsync / AnalyzeTextAsync(io, modules, moduleName, fieldName, …)` が入口で `FieldApiAuthorization.CheckAsync<AITextAnalyzerFieldDesign>` を通し Remarks をデザインから取る (旧 `FileToDataAsync / TextToDataAsync(…, remarks, …)` は削除・中身は protected `AnalyzeCoreAsync`)。テンプレ (Starter Cookie / MultiTenant / Example) の AITextAnalyzeController は GetRemarks を撤去して新メソッドへ。権限拒否 (LowCodeException) は「AI analysis failed」に化けないよう catch を分けた。クライアントは元から moduleName / fieldName を送っているので変更なし。
+- **これで棚卸しの入口は全部同じ方式になった** (メール単発/一斉・承認・AIChat・AITextAnalyze)。残るのは Excel→PDF (データを触らない・コスト面のみ) と「決めること」節の未決 (スクリプト送信・DesignKnowledge の UserRead・RawDataAccessDataSources 空の扱い)。
 
 ## 実装順 (効果順)
 

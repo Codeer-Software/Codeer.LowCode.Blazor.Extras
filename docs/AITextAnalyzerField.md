@@ -52,7 +52,9 @@
 - `DocumentAnalysisEndPoint` / `DocumentAnalysisKey` — Azure Document Intelligence (ファイルのテキスト・表の抽出。テキスト入力のみ使う場合は不要)
 - `FileField` を併用する場合は FileField のサーバー要件 (一時ファイルテーブル・ファイルストレージ設定) も必要です
 
-サーバー側の解析ロジックは `Codeer.LowCode.Blazor.Extras.Server` パッケージの `AITextAnalyzeService` が提供します。
+サーバー側の解析ロジックは `Codeer.LowCode.Blazor.Extras.Server` パッケージの `AITextAnalyzeService` が提供します
+(`AnalyzeFileAsync` / `AnalyzeTextAsync` に ModuleDataIO とモジュール名・フィールド名を渡す。テンプレートの `AITextAnalyzeController` が結線済み)。
+サーバーは解析のたびに、その AITextAnalyzerField が今のユーザーに見えること (アプリのアクセス条件・モジュールの UserReadCondition・PermissionField の読取権限) を確かめてから AI を呼び、補足指示 (Remarks) はフィールドのデザインから取ります。
 プロンプトや解析処理を変えたい場合は、ソース (MIT) をコピーして改変してください。
 
 ## スクリプト

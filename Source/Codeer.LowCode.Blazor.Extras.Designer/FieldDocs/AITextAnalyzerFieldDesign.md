@@ -33,7 +33,7 @@
 
 ### サーバー側設定が必須
 
-このフィールドはサーバーの AI 解析エンドポイント (`/api/ai_text_analyze`、テンプレートに設定済み) を呼び出します。動作には `appsettings.json` の `AISettings` セクションが必要です。
+このフィールドはサーバーの AI 解析エンドポイント (`/api/ai_text_analyze`、テンプレートに設定済み) を呼び出します。動作には `appsettings.json` の `AISettings` セクションが必要です。サーバーは解析のたびに、このフィールドが今のユーザーに見えること (アプリのアクセス条件・モジュールの UserReadCondition・PermissionField の読取権限) を確かめてから AI を呼びます (補足指示もデザインから取る)。
 
 ```json
 "AISettings": {

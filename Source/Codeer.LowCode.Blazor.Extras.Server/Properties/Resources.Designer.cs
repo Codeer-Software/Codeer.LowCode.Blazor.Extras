@@ -166,6 +166,15 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Properties {
                 return ResourceManager.GetString("AIChatField_NotFound", resourceCulture);
             }
         }
+
+        /// <summary>
+        ///   Module &apos;{0}&apos; has no AITextAnalyzerField named &apos;{1}&apos;. に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string AITextAnalyzerField_NotFound {
+            get {
+                return ResourceManager.GetString("AITextAnalyzerField_NotFound", resourceCulture);
+            }
+        }
         
     }
 }

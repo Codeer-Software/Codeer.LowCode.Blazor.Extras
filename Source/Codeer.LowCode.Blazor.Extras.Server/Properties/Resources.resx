@@ -48,4 +48,7 @@
   <data name="AIChatField_NotFound" xml:space="preserve">
     <value>Module '{0}' has no AIChatField named '{1}'.</value>
   </data>
+  <data name="AITextAnalyzerField_NotFound" xml:space="preserve">
+    <value>Module '{0}' has no AITextAnalyzerField named '{1}'.</value>
+  </data>
 </root>
