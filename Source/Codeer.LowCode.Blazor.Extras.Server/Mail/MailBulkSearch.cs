@@ -1,6 +1,7 @@
 ﻿using Codeer.LowCode.Blazor.DataIO;
 using Codeer.LowCode.Blazor.DesignLogic;
 using Codeer.LowCode.Blazor.Repository.Design;
+using Codeer.LowCode.Blazor.Extras.Designs;
 using Codeer.LowCode.Blazor.Extras.Mail;
 using Codeer.LowCode.Blazor.Json;
 using Codeer.LowCode.Blazor.Repository;
@@ -13,6 +14,9 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
     /// 一斉送信の宛先をサーバー側で解決する: 検索条件を ModuleDataIO に通し
     /// (ユーザーの読み取り権限・行条件が効く)、宛先ごとの変数を表示文字列として組み立てて
     /// ディスパッチする。この経路ではアドレスがクライアントに渡らないため、大量送信もこちらを使う。
+    /// 入口で SourceModule / FieldName の BulkMailField がデザインにあり、そのフィールドを今のユーザーが読めること
+    /// (ユーザー権限だけ: アプリアクセス条件・モジュールの UserReadCondition・ユーザーで偽と確定する PermissionField 条件。行は読まない) を確かめ、
+    /// 送信インフラの呼び名はそのデザインの MailInfraName を使う。通らなければ LowCodeException。
     /// </summary>
     public class MailBulkSearch
     {
@@ -42,6 +46,9 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
 
         internal class RecipientSet
         {
+            /// <summary>送信元の BulkMailField のデザイン (入口検査を通ったもの。呼び名はここから)。</summary>
+            public BulkMailFieldDesign FieldDesign { get; init; } = null!;
+            /// <summary>宛先 (行) モジュールのデザイン。</summary>
             public ModuleDesign Design { get; init; } = null!;
             public List<string> VariableNames { get; init; } = new();
             public List<RecipientEntry> Entries { get; init; } = new();
@@ -61,17 +68,20 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
                 ReplyTo = request.ReplyTo,
                 Attachments = request.Attachments,
             };
-            //差出人はクライアントの値を信用せず、常に送信インフラ設定のシステム送信者
-            return await _dispatcher.SendBulkAsync(request.MailInfraName, template, recipients,
+            //差出人はクライアントの値を信用せず、常に送信インフラ設定のシステム送信者。呼び名もデザインから
+            return await _dispatcher.SendBulkAsync(set.FieldDesign.MailInfraName, template, recipients,
                 MailDispatcher.CreateSource(request.SourceModule, request.SourceId));
         }
 
         /// <summary>
         /// 宛先リストの検索条件から宛先を解決する (送信とプレビューで共有)。
-        /// 読み取り権限・行条件が効く。除外行 (配信停止 / アドレス空) も理由付きで返す。
+        /// 先に送信元の BulkMailField の入口検査 (フィールドが存在し、今のユーザーに見えること) を通す。
+        /// 宛先の読み取り権限・行条件が効く。除外行 (配信停止 / アドレス空) も理由付きで返す。
         /// </summary>
         internal async Task<RecipientSet> ResolveRecipientsAsync(MailBulkSearchRequest request)
         {
+            var fieldDesign = await MailFieldAuthorization.CheckBulkAsync(_moduleDataIO, request.SourceModule, request.FieldName);
+
             var design = _designData.Modules.Find(request.Condition.ModuleName)
                 ?? throw new InvalidOperationException($"Module '{request.Condition.ModuleName}' does not exist.");
 
@@ -121,7 +131,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
                     DisplayName = string.IsNullOrEmpty(contract.DisplayName) ? string.Empty : MailVariableResolver.GetValueText(row, contract.DisplayName),
                 };
             }).ToList();
-            return new RecipientSet { Design = design, VariableNames = names, Entries = entries };
+            return new RecipientSet { FieldDesign = fieldDesign, Design = design, VariableNames = names, Entries = entries };
         }
     }
 }

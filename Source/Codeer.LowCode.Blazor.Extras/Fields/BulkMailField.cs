@@ -143,6 +143,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
                 Condition = condition,
                 SourceModule = Module!.Design.Name,
                 SourceId = Module.GetIdText(),
+                FieldName = Design.Name,
             };
         }
 

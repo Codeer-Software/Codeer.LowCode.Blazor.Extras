@@ -7,6 +7,8 @@ namespace Codeer.LowCode.Blazor.Extras.Mail
     /// アドレスはクライアントに渡らない)。
     /// どの値がアドレス・配信停止かは**宛先行モジュールの BulkMailRecipientContractField** をサーバーが読む
     /// (クライアントからは指定できない)。
+    /// サーバーは SourceModule / FieldName の BulkMailField があり、そのフィールドを今のユーザーが読めること (モジュールの UserRead・フィールド読取権限) を確かめてから宛先を解決する。
+    /// 送信インフラの呼び名はデザインの MailInfraName を使う (MailInfraName はクライアントの参考値)。
     /// </summary>
     public class MailBulkSearchRequest
     {
@@ -20,7 +22,11 @@ namespace Codeer.LowCode.Blazor.Extras.Mail
         /// <summary>全宛先共通の添付ファイル。</summary>
         public List<MailAttachment> Attachments { get; set; } = new();
         public SearchCondition Condition { get; set; } = new();
+        /// <summary>BulkMailField を置いたモジュール名 (= 送信履歴の SourceModule)。</summary>
         public string SourceModule { get; set; } = string.Empty;
+        /// <summary>送信元レコードの Id (= 送信履歴の SourceId)。</summary>
         public string SourceId { get; set; } = string.Empty;
+        /// <summary>BulkMailField のフィールド名。</summary>
+        public string FieldName { get; set; } = string.Empty;
     }
 }

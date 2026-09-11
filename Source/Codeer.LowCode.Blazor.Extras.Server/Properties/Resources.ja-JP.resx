@@ -42,4 +42,7 @@
   <data name="MailField_NotFound" xml:space="preserve">
     <value>モジュール '{0}' に MailField '{1}' がありません。</value>
   </data>
+  <data name="BulkMailField_NotFound" xml:space="preserve">
+    <value>モジュール '{0}' に BulkMailField '{1}' がありません。</value>
+  </data>
 </root>

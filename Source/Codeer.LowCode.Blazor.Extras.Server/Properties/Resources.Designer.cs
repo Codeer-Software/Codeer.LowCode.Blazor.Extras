@@ -149,5 +149,14 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Properties {
             }
         }
         
+        /// <summary>
+        ///   Module &apos;{0}&apos; has no BulkMailField named &apos;{1}&apos;. に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string BulkMailField_NotFound {
+            get {
+                return ResourceManager.GetString("BulkMailField_NotFound", resourceCulture);
+            }
+        }
+        
     }
 }

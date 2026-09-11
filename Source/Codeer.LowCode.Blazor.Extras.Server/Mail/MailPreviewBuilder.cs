@@ -94,8 +94,9 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
 
         internal async Task<MailPreviewDocument> BuildBulkAsync(MailBulkSearchRequest request)
         {
+            //送信と同じ検査 (BulkMailField が存在し、今のユーザーに見えること)。呼び名もデザインから
             var set = await new MailBulkSearch(_dispatcher, _moduleDataIO, _designData).ResolveRecipientsAsync(request);
-            var infraName = _dispatcher.ResolveBulkInfraName(request.MailInfraName);
+            var infraName = _dispatcher.ResolveBulkInfraName(set.FieldDesign.MailInfraName);
             var doc = new MailPreviewDocument
             {
                 Kind = "bulk",

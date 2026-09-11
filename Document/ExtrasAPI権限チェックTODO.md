@@ -54,7 +54,9 @@ AIChatField を置いたモジュールに UserReadCondition (管理者のみ等
   モジュール単位ではなくフィールド単位にしたのは「フィールドの API はそのフィールドが見える人が使える」という意味論にするため (PermissionField で MailField を隠せばその人は送れない)。
 - そのために本体 (Codeer.LowCode.Blazor 1.3.33) に `ModuleDataIO.CheckUserReadAuthorization(moduleName, fieldName)` を追加した (名前の User は「ユーザー権限だけ・Data 条件は見ない」の意) (GetListAsync と同じユーザー判定で、DB を触らない。フィールドのデザインを返す)。
 - MailField (単発送信・プレビュー) は Extras.Server 0.12.0 で実装済 (`Mail/MailFieldAuthorization`)。履歴の書き込みは従来どおりシステム経路。
-- 残り: BulkMailField → AIChat → AITextAnalyze → 承認。同じ方式で順に。
+- BulkMailField (一斉送信・プレビュー) も同 0.12.0 で実装済 (`MailFieldAuthorization.CheckBulkAsync` を `MailBulkSearch.ResolveRecipientsAsync` の入口で。リクエストに `FieldName` 追加・呼び名はデザインから)。宛先の解決は従来どおり GetListAsync (宛先側の UserRead / DataRead / フィールド読取が効く)。テンプレートの MailController / MailTransportHandler は変更なし (`MailBulkSearch.SendAsync(request)` のまま)。
+  - 検討して見送ったもの: リクエストの `Condition.ModuleName` がデザインの宛先リスト (RecipientListFieldName の先のモジュール) と一致することの強制。宛先側の読み取り権限で守られている行しか取れないため、今回の方式 (フィールドが見えるか) の範囲では不要と判断。締めるなら 1 行で足せる。
+- 残り: AIChat → AITextAnalyze → 承認。同じ方式で順に。
 
 ## 実装順 (効果順)
 
