@@ -54,6 +54,8 @@
 
 サーバー側の解析ロジックは `Codeer.LowCode.Blazor.Extras.Server` パッケージの `AITextAnalyzeService` が提供します
 (`AnalyzeFileAsync` / `AnalyzeTextAsync` に ModuleDataIO とモジュール名・フィールド名を渡す。テンプレートの `AITextAnalyzeController` が結線済み)。
+チャットモデルは Microsoft.Extensions.AI の `IChatClient` 経由で呼びます。既定のコンストラクタ (`AISettings` だけ) は Azure OpenAI の IChatClient を組み立て、
+`AITextAnalyzeService(AISettings, Func<IChatClient>)` なら AIChat の Agent と同じくホストが好きなプロバイダを渡せます (AISettings は文書解析の接続に使う)。
 サーバーは解析のたびに、その AITextAnalyzerField が今のユーザーに見えること (アプリのアクセス条件・モジュールの UserReadCondition・PermissionField の読取権限) を確かめてから AI を呼び、補足指示 (Remarks) はフィールドのデザインから取ります。
 プロンプトや解析処理を変えたい場合は、ソース (MIT) をコピーして改変してください。
 

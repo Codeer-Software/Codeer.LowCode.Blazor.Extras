@@ -8,7 +8,7 @@ using Codeer.LowCode.Blazor.Extras.Designs;
 using Codeer.LowCode.Blazor.Extras.Server.Properties;
 using Codeer.LowCode.Blazor.Repository.Data;
 using Codeer.LowCode.Blazor.Repository.Design;
-using OpenAI.Chat;
+using Microsoft.Extensions.AI;
 using System.ClientModel;
 using System.Globalization;
 using System.Text.Encodings.Web;
@@ -18,8 +18,12 @@ using System.Text.RegularExpressions;
 namespace Codeer.LowCode.Blazor.Extras.Server.AI
 {
     /// <summary>
-    /// Analyzes documents / free text with Azure Document Intelligence + Azure OpenAI
+    /// Analyzes documents / free text with Azure Document Intelligence + a chat model
     /// and converts the result into a <see cref="ModuleData"/> that matches the module design.
+    /// The chat model is used through <see cref="IChatClient"/> (Microsoft.Extensions.AI): the default constructor builds an Azure OpenAI client
+    /// from <see cref="AISettings"/>, and the other constructor takes a factory so the host can use any provider (same as the AIChat agents).
+    /// The Azure OpenAI ChatClient is not called directly, because Azure.AI.OpenAI 2.1.0 is not binary compatible with the OpenAI 2.11 package
+    /// that Microsoft.Extensions.AI.OpenAI 10.7 brings in (MissingMethodException on ChatCompletionOptions); the IChatClient adapter is.
     /// The entry points take the module name and the AITextAnalyzerField name: the request is refused unless that field is visible
     /// to the current user by user permissions alone (application access conditions, the module UserReadCondition and the PermissionField read conditions
     /// that are false for the user regardless of the row; via ModuleDataIO.CheckUserReadAuthorization), and the extraction hints (Remarks) come from the field design.
@@ -28,8 +32,24 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI
     public class AITextAnalyzeService
     {
         readonly AISettings _settings;
+        readonly Func<IChatClient> _chatClientFactory;
 
-        public AITextAnalyzeService(AISettings settings) => _settings = settings;
+        /// <summary>Azure OpenAI (AISettings の OpenAIEndPoint / OpenAIKey / ChatModel) を IChatClient として使う。</summary>
+        public AITextAnalyzeService(AISettings settings) : this(settings, () => CreateAzureOpenAIChatClient(settings)) { }
+
+        /// <summary>
+        /// 抽出に使う IChatClient をホストが決める (Azure OpenAI / OpenAI / Ollama …)。AISettings は文書解析 (Document Intelligence) の接続に使う。
+        /// </summary>
+        public AITextAnalyzeService(AISettings settings, Func<IChatClient> chatClientFactory)
+        {
+            _settings = settings;
+            _chatClientFactory = chatClientFactory;
+        }
+
+        static IChatClient CreateAzureOpenAIChatClient(AISettings settings)
+            => new AzureOpenAIClient(new Uri(settings.OpenAIEndPoint), new ApiKeyCredential(settings.OpenAIKey))
+                .GetChatClient(settings.ChatModel)
+                .AsIChatClient();
 
         /// <summary>
         /// 入口検査: moduleName / fieldName の AITextAnalyzerField があり、今のユーザーがそのフィールドを読めること。通らなければ LowCodeException。
@@ -98,38 +118,28 @@ JSON 出力では、その項目名をキーとして使用してください。
 
         async Task<string?> FindCandidatesByAI(Dictionary<string, string> candidates, string text)
         {
-            var azureClient = new AzureOpenAIClient(
-                new Uri(_settings.OpenAIEndPoint),
-                new ApiKeyCredential(_settings.OpenAIKey));
-            var chatClient = azureClient.GetChatClient(_settings.ChatModel);
-
-            var completion = await chatClient.CompleteChatAsync(
+            var response = await _chatClientFactory().GetResponseAsync(
                 [
-                    new SystemChatMessage(CreateCandidateMatchSystemPrompt()),
-                    new UserChatMessage(string.Join(Environment.NewLine, candidates.Keys)),
-                    new UserChatMessage(text),
+                    new ChatMessage(ChatRole.System, CreateCandidateMatchSystemPrompt()),
+                    new ChatMessage(ChatRole.User, string.Join(Environment.NewLine, candidates.Keys)),
+                    new ChatMessage(ChatRole.User, text),
                 ]);
-            return completion.Value.Content.FirstOrDefault()?.Text ?? string.Empty;
+            return response.Text ?? string.Empty;
         }
 
         async Task<string> DocumentAnalysisByText(IModuleDesigns moduleDesigns, string moduleName, string remarks, string text, string source)
         {
-            var azureClient = new AzureOpenAIClient(
-                new Uri(_settings.OpenAIEndPoint),
-                new ApiKeyCredential(_settings.OpenAIKey));
-            var chatClient = azureClient.GetChatClient(_settings.ChatModel);
-
-            var completion = await chatClient.CompleteChatAsync(
+            var response = await _chatClientFactory().GetResponseAsync(
                 [
-                    new SystemChatMessage(CreateExtractionSystemPrompt(source, remarks)),
-                    new UserChatMessage(CreateJsonExplanation(moduleDesigns, moduleName)),
-                    new UserChatMessage(text),
-                ], new()
+                    new ChatMessage(ChatRole.System, CreateExtractionSystemPrompt(source, remarks)),
+                    new ChatMessage(ChatRole.User, CreateJsonExplanation(moduleDesigns, moduleName)),
+                    new ChatMessage(ChatRole.User, text),
+                ], new ChatOptions
                 {
-                    ResponseFormat = ChatResponseFormat.CreateJsonObjectFormat(),
+                    ResponseFormat = ChatResponseFormat.Json,
                     Temperature = 0,
                 });
-            return completion.Value.Content.FirstOrDefault()?.Text ?? string.Empty;
+            return response.Text ?? string.Empty;
         }
 
         async Task<string> ExtractTextFromFile(MemoryStream stream)

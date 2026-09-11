@@ -38,10 +38,7 @@ AIChatField を置いたモジュールに UserReadCondition (管理者のみ等
 
 ## 決めること
 
-- **スクリプトからの送信** (Mail スクリプトオブジェクト、BulkFileTransferService) はフィールドが無い。
-  - 案 A: 呼び出し元モジュール名をスクリプト実行文脈から取って ModuleName にする (既存デザインが動き続ける)
-  - 案 B: 「送るならそのモジュールに MailField を置く」を要件にする (デザインに能力を宣言させる。筋は良いが既存デザインが止まる)
-  - 穏当なのは A で始めて B を designcheck の警告にする
+- ~~スクリプトからの送信 (Mail スクリプトオブジェクト、BulkFileTransferService) はフィールドが無い~~ → 解消 (2026-09-11)。Mail スクリプトオブジェクトは 0.5.0 互換層ごと削除済み (スクリプトから送るなら画面に置いた MailField / BulkMailField の `Send()` = 案 B をそのまま採った形)。BulkFileTransferService は ModuleDataIO 経由 (list_file_by_data / bulk_submit) でモジュール権限が効くのでフィールド検査は不要。
 - チェックする条件は UserRead で足りるか (MailField は「操作」なので UserWrite にすべき場面があるか)。まずは Read で統一し、必要になったら MailFieldDesign にプロパティを足す
 - DesignKnowledge の list_modules/describe_module を利用者の UserRead で絞る (別項目。RawDataAccess の DB 側権限とは独立)
 - `RawDataAccessDataSources` 空 = 全部、をやめて「読み取り専用 DB ユーザーのデータソースを明示しないと動かない」に倒すか (docs に太字で前提を書く)

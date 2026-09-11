@@ -7,9 +7,11 @@ using Codeer.LowCode.Blazor.Extras.Designs;
 using Codeer.LowCode.Blazor.Extras.Server.AI;
 using Codeer.LowCode.Blazor.Extras.Server.FileManagement;
 using Codeer.LowCode.Blazor.Repository;
+using Codeer.LowCode.Blazor.Repository.Data;
 using Codeer.LowCode.Blazor.Repository.Design;
 using Codeer.LowCode.Blazor.Repository.Match;
 using Codeer.LowCode.Blazor.SystemSettings;
+using Microsoft.Extensions.AI;
 
 namespace Codeer.LowCode.Blazor.Extras.Test.AI
 {
@@ -116,8 +118,29 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
             return d;
         }
 
-        //AI サービスには繋がない (検査で止まることを確かめる。通ってしまえば接続エラーになる = LowCodeException ではない)
-        static AITextAnalyzeService CreateService() => new(new AISettings());
+        //AI サービスには繋がない。検査で止まる経路は「呼ばれないこと」を、通る経路は偽の IChatClient の返事が取り込まれることを確かめる
+        class FakeChatClient(string reply) : IChatClient
+        {
+            public List<IEnumerable<ChatMessage>> Calls { get; } = new();
+
+            public Task<ChatResponse> GetResponseAsync(IEnumerable<ChatMessage> messages, ChatOptions? options = null, CancellationToken cancellationToken = default)
+            {
+                Calls.Add(messages.ToList());
+                return Task.FromResult(new ChatResponse(new ChatMessage(ChatRole.Assistant, reply)));
+            }
+
+            public IAsyncEnumerable<ChatResponseUpdate> GetStreamingResponseAsync(IEnumerable<ChatMessage> messages, ChatOptions? options = null, CancellationToken cancellationToken = default)
+                => throw new NotSupportedException();
+
+            public object? GetService(Type serviceType, object? serviceKey = null) => null;
+            public void Dispose() { }
+        }
+
+        static (AITextAnalyzeService Service, FakeChatClient Chat) CreateService(string reply = "{}")
+        {
+            var chat = new FakeChatClient(reply);
+            return (new AITextAnalyzeService(new AISettings(), () => chat), chat);
+        }
 
         #endregion
 
@@ -133,9 +156,24 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
         }
 
         [Test]
+        public async Task 見えるユーザーの解析はIChatClient経由でモデルを呼びデザインのRemarksが指示に入る()
+        {
+            var (service, chat) = CreateService("{\"Title\":\"請求書A\"}");
+            var data = await service.AnalyzeTextAsync(CreateIO("2"), _designData.Modules, "Item", "Analyze", "請求書A 合計 1000 円");
+
+            Assert.That(data.Name, Is.EqualTo("Item"));
+            Assert.That((data.Fields["Title"] as TextFieldData)?.Value, Is.EqualTo("請求書A"));
+            //システム指示にデザインの補足指示 (Remarks) が入り、ユーザー入力が最後に渡る
+            var messages = chat.Calls.Single().ToList();
+            Assert.That(messages[0].Role, Is.EqualTo(ChatRole.System));
+            Assert.That(messages[0].Text, Does.Contain("請求書として読む"));
+            Assert.That(messages.Last().Text, Is.EqualTo("請求書A 合計 1000 円"));
+        }
+
+        [Test]
         public void モジュールを開けないユーザー_フィールド読取権限のないユーザー_停止ユーザー_フィールド違い_存在しないモジュールはAIに届く前に拒否()
         {
-            var service = CreateService();
+            var (service, chat) = CreateService();
             var modules = _designData.Modules;
             //UserReadCondition 不成立
             Assert.ThrowsAsync<LowCodeException>(async () => await service.AnalyzeTextAsync(CreateIO("1"), modules, "Item", "Analyze", "text"));
@@ -154,6 +192,8 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
             using var stream = new MemoryStream(new byte[] { 1, 2, 3 });
             Assert.ThrowsAsync<LowCodeException>(async () => await service.AnalyzeFileAsync(CreateIO("1"), modules, "Item", "Analyze", "a.pdf", stream));
             Assert.ThrowsAsync<LowCodeException>(async () => await service.AnalyzeFileAsync(CreateIO("2"), modules, "Item", "SecretAnalyze", "a.pdf", stream));
+
+            Assert.That(chat.Calls, Is.Empty, "拒否された解析はモデルを呼ばない");
         }
     }
 }
