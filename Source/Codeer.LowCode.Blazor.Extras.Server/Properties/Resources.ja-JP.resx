@@ -45,4 +45,7 @@
   <data name="BulkMailField_NotFound" xml:space="preserve">
     <value>モジュール '{0}' に BulkMailField '{1}' がありません。</value>
   </data>
+  <data name="AIChatField_NotFound" xml:space="preserve">
+    <value>モジュール '{0}' に AIChatField '{1}' がありません。</value>
+  </data>
 </root>

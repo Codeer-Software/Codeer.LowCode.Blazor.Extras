@@ -58,7 +58,7 @@ void Chat_OnReplyReceived(string replyHtml)
 クライアントは HTML を表示するだけで内容を解釈しません。Markdown やテキストを HTML にするのはサーバーの仕事です。返事に時間がかかる Agent を想定し、HTTP を張ったまま待たず、受付番号でポーリングします。
 
 ```
-POST   {EndPoint}               { "conversationId": "…", "message": "…", "agent": "", "documentFolder": "" }   // agent = デザインの Agent 名 (空 = 既定)、documentFolder = 補足文書のフォルダ (空 = なし)
+POST   {EndPoint}               { "conversationId": "…", "message": "…", "moduleName": "…", "fieldName": "…", "agent": "", "documentFolder": "" }   // moduleName / fieldName = AIChatField の場所 (サーバーはこのデザインから Agent 名と文書フォルダを取る。agent / documentFolder は参考値)
        → 202 { "requestId": "…" }
 GET    {EndPoint}/{requestId}
        → { "status": "running" | "done" | "error" | "canceled",
@@ -79,7 +79,7 @@ DELETE {EndPoint}/{requestId}   // 中断
 | 型 | 役割 |
 |---|---|
 | `IAIChatAgent` | 返事を作る側のインターフェース。`ReplyAsync(request, progress, cancellationToken)` で `AIChatReply` (テキスト / Markdown / HTML / Auto) を返す。途中経過は `IAIChatProgress` に報告。`request.AgentName` にデザインの Agent 名が入る |
-| `AIChatJobStore` | プロセス内のジョブ置き場。コンストラクタで対応表 (`Func<string, IAIChatAgent?>`。Agent が 1 つなら `IAIChatAgent` を直接) を受け、送信で Agent をバックグラウンド実行し、状態をポーリングに返す。`Start(owner, conversationId, message, agentName, documentFolder)` で Agent 名と文書フォルダを渡す。対応表に無い名前は error になる。プロセスに 1 つ (アプリの静的プロパティ) |
+| `AIChatJobStore` | プロセス内のジョブ置き場。コンストラクタで対応表 (`Func<string, IAIChatAgent?>`。Agent が 1 つなら `IAIChatAgent` を直接) を受け、送信で Agent をバックグラウンド実行し、状態をポーリングに返す。`StartAsync(owner, request, moduleDataIO)` で送信リクエストと ModuleDataIO を渡す (リクエストの ModuleName / FieldName の AIChatField が今のユーザーに見えるときだけ受け付け、Agent 名と文書フォルダはそのデザインから取る。見えなければ LowCodeException)。対応表に無い名前は error になる。プロセスに 1 つ (アプリの静的プロパティ) |
 | `RawDataAccessAgent` (+ `RawDataAccessOptions`) | アプリの設計を読み、DB を直接読んで集計・グラフで答える Agent (会話の基盤は内部の会話エンジン: モデル呼び出し、会話履歴、逐次表示、Markdown → HTML。履歴の鍵は「ログイン ID + 会話 ID」(認証の無いアプリでは会話 ID だけ) で保持期限つき。トークンの膨張は `RawDataAccessOptions` の `KeepToolResultsForTurns` / `MaxHistoryTurns` / `MaxHistoryCharacters` の 3 段で抑える)。内部のツール: `list_modules` / `describe_module` (モジュール定義: フィールドの表示名・型・DB 列、候補値 (コード=名称)、リンク (結合相手とキー)、論理削除、スクリプト)、`read_document` (補足文書)、画面 URL (一覧 `/{フレーム}/{セグメント}`・詳細 `/{フレーム}/{セグメント}/{Id}` をページフレームのリンクから組み、行を挙げる返事に「開く」リンクを付ける)、`get_schema` (引数なしなら表名の目次だけ、`tables` を指定した表の列だけを 1 表 1 行で。方言はシステムプロンプトに常時入っていて、設計で表と列が分かるときは呼ばない指示にしている = トークン節約)、`execute_sql` (指定データソースで読み取り専用 SELECT を 1 文。行数・文字数・時間の上限、監査ログ)、`render_chart` (棒 / 折れ線 / 円。サーバーで SVG を作るので数字が狂わない)。依存 (IChatClient と IDbAccessor の作り方、デザイン定義、文書) はコンストラクタ、設定 (`RawDataAccessOptions`: データソース名の一覧と上限) は別 |
 | `AIChatDocument` | Agent に渡す補足文書 (名前と本文)。出所はホストが決める。標準はデザインプロジェクトの `Resources/{DocumentFolder}/*.md` (フォルダはフィールドの `DocumentFolder`) |
 | (内部) HTML 化 | 返事は `AIChatJobStore` の中で HTML に揃えられる。Markdown は [Markdig](https://github.com/xoofx/markdig) (表・タスクリスト・自動リンク、単独改行は `<br>`)、テキストはエスケープ、HTML は素通し (リンクに `target="_blank"` を付けるだけ)。Agent 側で HTML 化のコードを書く必要はない |
@@ -119,15 +119,20 @@ public static class AIChatAgentTable
 ```csharp
 [ApiController]
 [Route("api/ai_chat")]
-public class AIChatController : ControllerBase
+public class AIChatController : ControllerBase, IAsyncDisposable
 {
     static AIChatJobStore jobs => AIChatAgentTable.Jobs;
 
+    readonly DataService _dataService;                        // ModuleDataIO を持つ (テンプレートの Services/DataService)
+    public AIChatController(DataService dataService) => _dataService = dataService;
+    public async ValueTask DisposeAsync() => await _dataService.DisposeAsync();
+
     string Owner => User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.Identity?.Name ?? string.Empty;
 
+    //送信は ModuleDataIO を渡す = リクエストの AIChatField が今のユーザーに見えるときだけ受け付ける (アプリアクセス条件・モジュールの UserRead・フィールド読取権限)
     [HttpPost]
-    public ActionResult<AIChatSendResponse> Send([FromBody] AIChatSendRequest request)
-        => Accepted(new AIChatSendResponse { RequestId = jobs.Start(Owner, request.ConversationId, request.Message, request.Agent, request.DocumentFolder) });
+    public async Task<ActionResult<AIChatSendResponse>> Send([FromBody] AIChatSendRequest request)
+        => Accepted(new AIChatSendResponse { RequestId = await jobs.StartAsync(Owner, request, _dataService.ModuleDataIO) });
 
     [HttpGet("{requestId}")]
     public ActionResult<AIChatStatusResponse> Status(string requestId)

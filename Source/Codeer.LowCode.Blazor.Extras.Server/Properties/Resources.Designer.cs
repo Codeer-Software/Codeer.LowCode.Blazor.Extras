@@ -157,6 +157,15 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Properties {
                 return ResourceManager.GetString("BulkMailField_NotFound", resourceCulture);
             }
         }
+
+        /// <summary>
+        ///   Module &apos;{0}&apos; has no AIChatField named &apos;{1}&apos;. に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string AIChatField_NotFound {
+            get {
+                return ResourceManager.GetString("AIChatField_NotFound", resourceCulture);
+            }
+        }
         
     }
 }

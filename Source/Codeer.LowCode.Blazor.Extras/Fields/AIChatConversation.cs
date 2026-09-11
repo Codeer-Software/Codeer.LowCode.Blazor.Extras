@@ -122,6 +122,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             var request = new AIChatSendRequest
             {
                 ConversationId = ConversationId, Message = text, Agent = context.Agent, DocumentFolder = context.DocumentFolder, Transcript = transcript,
+                ModuleName = context.Field.Module?.Design.Name ?? string.Empty, FieldName = context.Field.Design.Name,
             };
             if (AIChatField.SendCoreAsync != null)
             {

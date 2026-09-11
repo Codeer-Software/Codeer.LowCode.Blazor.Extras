@@ -45,4 +45,7 @@
   <data name="BulkMailField_NotFound" xml:space="preserve">
     <value>Module '{0}' has no BulkMailField named '{1}'.</value>
   </data>
+  <data name="AIChatField_NotFound" xml:space="preserve">
+    <value>Module '{0}' has no AIChatField named '{1}'.</value>
+  </data>
 </root>

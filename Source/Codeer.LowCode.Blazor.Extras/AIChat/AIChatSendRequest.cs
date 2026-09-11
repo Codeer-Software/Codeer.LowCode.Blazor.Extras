@@ -5,6 +5,8 @@ namespace Codeer.LowCode.Blazor.Extras.AIChat
     /// サーバーは即時に requestId (<see cref="AIChatSendResponse"/>) を返し、以降はクライアントが
     /// <see cref="AIChatStatusResponse"/> をポーリングする。会話の履歴は conversationId でサーバー (Agent) が保持し、
     /// クライアントは全履歴を送らない。確定した返事は常に HTML (Markdown / テキストはサーバー側で HTML に変換する)。
+    /// サーバーは ModuleName / FieldName の AIChatField があり、そのフィールドを今のユーザーが読めること (モジュールの UserRead・フィールド読取権限) を確かめてから受け付ける。
+    /// Agent と文書フォルダはそのデザインの値を使う (Agent / DocumentFolder はクライアントの参考値)。
     /// </summary>
     public class AIChatSendRequest
     {
@@ -12,10 +14,14 @@ namespace Codeer.LowCode.Blazor.Extras.AIChat
         public string ConversationId { get; set; } = string.Empty;
         /// <summary>ユーザーの発言 (プレーンテキスト)。</summary>
         public string Message { get; set; } = string.Empty;
-        /// <summary>デザインで指定した Agent 名 (空なら既定)。サーバーはこの名前で返事を作る Agent を選ぶ。</summary>
+        /// <summary>デザインで指定した Agent 名 (空なら既定)。参考値。サーバーはデザインの値で返事を作る Agent を選ぶ。</summary>
         public string Agent { get; set; } = string.Empty;
-        /// <summary>デザインで指定した補足文書のフォルダ (Resources からの相対パス。空なら文書なし)。</summary>
+        /// <summary>デザインで指定した補足文書のフォルダ (Resources からの相対パス。空なら文書なし)。参考値。サーバーはデザインの値を使う。</summary>
         public string DocumentFolder { get; set; } = string.Empty;
+        /// <summary>AIChatField を置いたモジュール名。</summary>
+        public string ModuleName { get; set; } = string.Empty;
+        /// <summary>AIChatField のフィールド名。</summary>
+        public string FieldName { get; set; } = string.Empty;
         /// <summary>
         /// クライアントが表示しているこれまでの会話の写し (テキストのみ・直近数往復・文字数上限あり)。
         /// サーバー側の会話履歴が保持期限や再起動で消えていたときに文脈を取り戻すための保険で、履歴が残っていればサーバーは無視する。

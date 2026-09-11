@@ -1,3 +1,5 @@
+using Codeer.LowCode.Blazor.DataIO;
+using Codeer.LowCode.Blazor.Extras.Designs;
 using Codeer.LowCode.Blazor.Extras.Server.Properties;
 using System.Globalization;
 using Codeer.LowCode.Blazor.Extras.AIChat;
@@ -42,10 +44,24 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat
         }
 
         /// <summary>
-        /// Agent を起動し requestId を返す。ownerKey は取得・中断時の照合に使う (ログイン名等。匿名なら空)。
+        /// 送信のワイヤリクエスト (POST {EndPoint}) を受けて Agent を起動し requestId を返す。Controller を薄く保つための入口。
+        /// ModuleName / FieldName の AIChatField がデザインにあり、そのフィールドを今のユーザーが読めるときだけ受け付ける
+        /// (ユーザー権限だけ: アプリアクセス条件・モジュールの UserReadCondition・ユーザーで偽と確定する PermissionField 条件が本体の判定で効く。
+        /// 行は読まない。通らなければ LowCodeException で、ジョブは作られない)。
+        /// Agent 名と文書フォルダはそのデザインの値を使う (リクエストの Agent / DocumentFolder は使わない)。
+        /// ownerKey は取得・中断時の照合に使う (ログイン ID 等。匿名なら空)。
+        /// </summary>
+        public async Task<string> StartAsync(string ownerKey, AIChatSendRequest request, ModuleDataIO moduleDataIO)
+        {
+            var design = await FieldApiAuthorization.CheckAsync<AIChatFieldDesign>(moduleDataIO, request.ModuleName, request.FieldName, Resources.AIChatField_NotFound);
+            return Start(ownerKey, request.ConversationId, request.Message, design.Agent, design.DocumentFolder, request.Transcript);
+        }
+
+        /// <summary>
+        /// Agent を起動し requestId を返す (検査なし。<see cref="StartAsync"/> の後段)。
         /// agentName は AIChatField のデザインの Agent 名 (空なら既定)。未登録の名前でも requestId は返し、ジョブが error になる。
         /// </summary>
-        public string Start(string ownerKey, string conversationId, string message, string agentName = "", string documentFolder = "",
+        internal string Start(string ownerKey, string conversationId, string message, string agentName = "", string documentFolder = "",
             IReadOnlyList<Codeer.LowCode.Blazor.Extras.AIChat.AIChatTranscriptMessage>? transcript = null)
         {
             Cleanup();
