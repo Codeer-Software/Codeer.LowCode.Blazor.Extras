@@ -1837,6 +1837,12 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
             }
         }
 
+        internal static string ApprovalError_TargetNotReadable {
+            get {
+                return ResourceManager.GetString("ApprovalError_TargetNotReadable", resourceCulture);
+            }
+        }
+
         internal static string ApprovalError_InvalidState {
             get {
                 return ResourceManager.GetString("ApprovalError_InvalidState", resourceCulture);

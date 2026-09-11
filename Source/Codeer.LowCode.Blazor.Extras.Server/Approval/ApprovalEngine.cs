@@ -18,6 +18,8 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Approval
     /// すべての遷移をサーバーで検証し、承認モジュールへの書き込みは操作ユーザーの
     /// 権限に依存しない内部経路 (add/update デリゲート) で行う。
     /// 1リクエスト = 1トランザクション (親保存・フロー・メンバー・履歴・FK を同時に確定)。
+    /// 入口では申請書モジュールの ApprovalFlowField が今のユーザーに見えること (アプリアクセス条件・UserReadCondition・フィールド読取権限) を
+    /// 本体の判定で確かめ、既存フローへの操作では申請書の行を読めること (DataReadCondition) も確かめたうえで、各操作の本人性 (承認者・申請者) を検証する。
     /// </summary>
     public class ApprovalEngine
     {
@@ -64,7 +66,8 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Approval
         {
             var (ctx, error) = await ResolveContextAsync(request.TargetModuleName, request.FieldName);
             if (ctx == null) return ApprovalActionResult.Failure(error);
-            if (request.TargetSubmitData == null) return ApprovalActionResult.Failure(Resources.ApprovalError_TargetSaveFailedFormat.Replace("{0}", "no data"));
+            var dataError = ValidateTargetSubmitData(ctx, request.TargetSubmitData);
+            if (dataError != null) return ApprovalActionResult.Failure(dataError);
 
             var routeError = ValidateRoute(ctx, request.Route);
             if (routeError != null) return ApprovalActionResult.Failure(routeError);
@@ -74,7 +77,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Approval
             try
             {
                 //親 (申請書) の保存。権限チェック込みの正規経路 (未申請状態なので編集ロックは掛かっていない)
-                var (targetId, saveError) = await SaveTargetAsync(request.TargetSubmitData);
+                var (targetId, saveError) = await SaveTargetAsync(request.TargetSubmitData!);
                 if (targetId == null)
                 {
                     await _db.RollbackAsync();
@@ -114,7 +117,8 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Approval
         {
             var (ctx, error) = await ResolveContextAsync(request.TargetModuleName, request.FieldName);
             if (ctx == null) return ApprovalActionResult.Failure(error);
-            if (request.TargetSubmitData == null) return ApprovalActionResult.Failure(Resources.ApprovalError_TargetSaveFailedFormat.Replace("{0}", "no data"));
+            var dataError = ValidateTargetSubmitData(ctx, request.TargetSubmitData);
+            if (dataError != null) return ApprovalActionResult.Failure(dataError);
 
             var routeError = ValidateRoute(ctx, request.Route);
             if (routeError != null) return ApprovalActionResult.Failure(routeError);
@@ -127,6 +131,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Approval
                 if (flow == null) { await _db.RollbackAsync(); return ApprovalActionResult.Failure(Resources.ApprovalError_FlowNotFound); }
                 if (flow.Version != request.ExpectedVersion) { await _db.RollbackAsync(); return ApprovalActionResult.Failure(Resources.ApprovalError_VersionMismatch); }
                 if (!ApprovalFlowStatusLogic.CanResubmit(flow.Status)) { await _db.RollbackAsync(); return ApprovalActionResult.Failure(Resources.ApprovalError_InvalidState); }
+                if (!await CanReadTargetAsync(ctx, flow.TargetId)) { await _db.RollbackAsync(); return ApprovalActionResult.Failure(Resources.ApprovalError_TargetNotReadable); }
 
                 if (string.IsNullOrEmpty(ctx.ActorId) || ctx.ActorId != flow.Applicant)
                 {
@@ -135,11 +140,18 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Approval
                 }
 
                 //編集内容の保存 (差し戻し・取り戻し状態は DataWriteCondition が申請者本人の編集を許す想定)
-                var (targetId, saveError) = await SaveTargetAsync(request.TargetSubmitData);
+                var (targetId, saveError) = await SaveTargetAsync(request.TargetSubmitData!);
                 if (targetId == null)
                 {
                     await _db.RollbackAsync();
                     return ApprovalActionResult.Failure(string.Format(Resources.ApprovalError_TargetSaveFailedFormat, saveError));
+                }
+                //保存したレコードがこのフローの申請書であること (別レコードの保存でフローの世代を進めさせない)
+                if (targetId != flow.TargetId)
+                {
+                    await _db.RollbackAsync();
+                    return ApprovalActionResult.Failure(string.Format(Resources.ApprovalError_TargetSaveFailedFormat,
+                        $"record '{targetId}' is not the target of the flow"));
                 }
 
                 var newAttempt = flow.AttemptNo + 1;
@@ -176,6 +188,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Approval
                 var flow = await LoadFlowAsync(ctx, request.FlowId);
                 if (flow == null) { await _db.RollbackAsync(); return ApprovalActionResult.Failure(Resources.ApprovalError_FlowNotFound); }
                 if (flow.Version != request.ExpectedVersion) { await _db.RollbackAsync(); return ApprovalActionResult.Failure(Resources.ApprovalError_VersionMismatch); }
+                if (!await CanReadTargetAsync(ctx, flow.TargetId)) { await _db.RollbackAsync(); return ApprovalActionResult.Failure(Resources.ApprovalError_TargetNotReadable); }
 
                 var members = await LoadMembersAsync(ctx, flow.Id, flow.AttemptNo);
                 var waitingBefore = members
@@ -379,12 +392,16 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Approval
 
         async Task<(Context?, string)> ResolveContextAsync(string targetModuleName, string fieldName)
         {
-            await _io.CheckAppAuthorization();
-
             var targetModule = _designData.Modules.Find(targetModuleName);
             var fieldDesign = targetModule?.Fields.OfType<ApprovalFlowFieldDesign>().FirstOrDefault(e => e.Name == fieldName);
             if (targetModule == null || fieldDesign == null || string.IsNullOrEmpty(fieldDesign.DbColumn))
                 return (null, Resources.ApprovalError_DesignNotFound);
+
+            //申請書モジュールの ApprovalFlowField を今のユーザーがユーザー権限だけで読めること
+            //(アプリアクセス条件・モジュールの UserReadCondition・ユーザーで偽と確定する PermissionField の読取条件。本体の判定)。
+            //通らなければ LowCodeException (メール系の入口と同じ)。申請書の行 (DataReadCondition) は既存フローへの操作で別途読む (CanReadTargetAsync)。
+            //誰が操作できるか (承認者・申請者) の判定は各アクションが別に行う
+            await _io.CheckUserReadAuthorization(targetModule.Name, fieldDesign.Name);
 
             //承認モジュール群 (フロー / メンバー / 履歴) と契約は、クライアントと同じ解決を使う
             var modules = ApprovalModules.Resolve(_designData, fieldDesign.FlowModuleName);
@@ -400,6 +417,18 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Approval
                 Modules = modules,
                 ActorId = actorId,
             }, string.Empty);
+        }
+
+        /// <summary>
+        /// 申請書の保存データは、入口検査した申請書モジュールのものに限る
+        /// (別モジュールのレコードを保存してその Id を申請書に結び付けさせない)。
+        /// </summary>
+        static string? ValidateTargetSubmitData(Context ctx, ModuleSubmitData? data)
+        {
+            if (data == null) return Resources.ApprovalError_TargetSaveFailedFormat.Replace("{0}", "no data");
+            if (data.ModuleName != ctx.TargetModule.Name)
+                return string.Format(Resources.ApprovalError_TargetSaveFailedFormat, $"module '{data.ModuleName}' is not '{ctx.TargetModule.Name}'");
+            return null;
         }
 
         static string? ValidateRoute(Context ctx, ApprovalRouteData? route)
@@ -465,7 +494,16 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Approval
             var condition = new SearchCondition
             {
                 ModuleName = ctx.FieldDesign.FlowModuleName,
-                Condition = EqualsCondition($"{SystemFieldNames.Id}.Value", flowId),
+                Condition = new MultiMatchCondition
+                {
+                    Children =
+                    [
+                        EqualsCondition($"{SystemFieldNames.Id}.Value", flowId),
+                        //フローは申請書モジュールと組で識別する。入口検査したモジュールと対象の食い違う要求
+                        //(開ける別モジュール名を添えて他モジュールのフローを操作する) は「フローなし」にする
+                        EqualsCondition($"{ctx.Flow.TargetModuleName}.Value", ctx.TargetModule.Name),
+                    ],
+                },
                 SelectFields =
                 [
                     SystemFieldNames.Id, SystemFieldNames.OptimisticLocking,
@@ -475,6 +513,22 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Approval
             };
             var row = (await _io.GetListAsync(condition, 0)).Items.FirstOrDefault();
             return row == null ? null : CreateFlowRow(ctx, row);
+        }
+
+        /// <summary>
+        /// 申請書レコードを今のユーザーが読めること (申請書モジュールの DataReadCondition。UserRead とフィールド読取は入口で済んでいる)。
+        /// 承認者・申請者であっても、申請書の行を読めない人は操作できない。
+        /// </summary>
+        async Task<bool> CanReadTargetAsync(Context ctx, string targetId)
+        {
+            if (string.IsNullOrEmpty(targetId)) return false;
+            var condition = new SearchCondition
+            {
+                ModuleName = ctx.TargetModule.Name,
+                Condition = EqualsCondition($"{SystemFieldNames.Id}.Value", targetId),
+                SelectFields = [SystemFieldNames.Id],
+            };
+            return (await _io.GetListAsync(condition, 0)).Items.Count > 0;
         }
 
         async Task<FlowRow?> LoadFlowByTargetAsync(Context ctx, string targetId)

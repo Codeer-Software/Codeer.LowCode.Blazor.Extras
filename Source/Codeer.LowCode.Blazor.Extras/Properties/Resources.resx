@@ -848,6 +848,9 @@ Recipients: {1}</value>
   <data name="ApprovalError_FlowNotFound" xml:space="preserve">
     <value>The approval flow was not found.</value>
   </data>
+  <data name="ApprovalError_TargetNotReadable" xml:space="preserve">
+    <value>The request record is not readable by the current user.</value>
+  </data>
   <data name="ApprovalError_InvalidState" xml:space="preserve">
     <value>This action is not allowed in the current state.</value>
   </data>

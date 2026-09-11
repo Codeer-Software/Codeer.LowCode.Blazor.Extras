@@ -50,9 +50,11 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Approval
             };
             _db = new DbAccessor(dataSources);
 
-            await _db.ExecuteAsync(Ds, "CREATE TABLE AppUsers (Id TEXT PRIMARY KEY, Name TEXT, Email TEXT)", new());
-            await _db.ExecuteAsync(Ds, "INSERT INTO AppUsers VALUES ('1','申請者','user1@example.com'),('2','課長','user2@example.com'),('3','部長','user3@example.com'),('4','部外者','')", new());
+            await _db.ExecuteAsync(Ds, "CREATE TABLE AppUsers (Id TEXT PRIMARY KEY, Name TEXT, Email TEXT, IsActive INTEGER)", new());
+            await _db.ExecuteAsync(Ds, "INSERT INTO AppUsers VALUES ('1','申請者','user1@example.com',1),('2','課長','user2@example.com',1),('3','部長','user3@example.com',1),('4','部外者','',1)", new());
             await _db.ExecuteAsync(Ds, "CREATE TABLE Requests (Id INTEGER PRIMARY KEY AUTOINCREMENT, Title TEXT, ApprovalId INTEGER)", new());
+            //同じ承認モジュール群を使う 2 つ目の申請書モジュール (権限テスト: 別モジュール名を添えた要求)
+            await _db.ExecuteAsync(Ds, "CREATE TABLE Requests2 (Id INTEGER PRIMARY KEY AUTOINCREMENT, Title TEXT, ApprovalId INTEGER)", new());
             await _db.ExecuteAsync(Ds,
                 "CREATE TABLE ApprovalFlows (Id INTEGER PRIMARY KEY AUTOINCREMENT, Status TEXT, TargetModuleName TEXT, TargetId TEXT, RouteName TEXT, Applicant TEXT, AttemptNo INTEGER, CurrentStepNo INTEGER, Version INTEGER)", new());
             await _db.ExecuteAsync(Ds,
@@ -136,6 +138,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Approval
             user.Fields.Add(new IdFieldDesign { Name = "Id", DbColumn = "Id" });
             user.Fields.Add(new TextFieldDesign { Name = "Name", DbColumn = "Name" });
             user.Fields.Add(new TextFieldDesign { Name = "Email", DbColumn = "Email" });
+            user.Fields.Add(new BooleanFieldDesign { Name = "IsActive", DbColumn = "IsActive" });
             d.AddModule(user);
 
             var request = new ModuleDesign
@@ -173,6 +176,14 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Approval
             //dotted リンク列 (編集ロック条件が JOIN で承認状態を参照する)
             request.Fields.Add(new TextFieldDesign { Name = "Approval.Status", DbColumn = "Status" });
             d.AddModule(request);
+
+            //同じ承認モジュール群を使う 2 つ目の申請書モジュール (誰でも開ける・書ける)
+            var request2 = new ModuleDesign { Name = "Request2", DataSourceName = Ds, DbTable = "Requests2", CanCreate = true, CanUpdate = true };
+            request2.Fields.Add(new IdFieldDesign { Name = "Id", DbColumn = "Id" });
+            request2.Fields.Add(new TextFieldDesign { Name = "Title", DbColumn = "Title" });
+            request2.Fields.Add(new ApprovalFlowFieldDesign { Name = "Approval", DbColumn = "ApprovalId" });
+            request2.Fields.Add(new TextFieldDesign { Name = "Approval.Status", DbColumn = "Status" });
+            d.AddModule(request2);
 
             //承認モジュールは「誰も書けない」保護条件 (エンジンのシステム経路だけが書ける)
             var nobody = new ModuleMatchCondition
@@ -443,6 +454,472 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Approval
             var r3 = await ExecuteAsync("4", ApprovalAction.Approve.ToDesignValue(), submit.FlowId);
             Assert.That(r3.IsSuccess, Is.False);
         }
+
+        [Test]
+        public async Task 承認_申請書モジュールを開けない承認者は経路上でもサーバーが拒否()
+        {
+            var submit = await SubmitAsync();
+
+            //申請後に課長 (Id=2) が申請書モジュールの UserReadCondition から外れた
+            var request = _designData.Modules.Find("Request")!;
+            request.UserReadCondition = new ModuleMatchCondition
+            {
+                ModuleName = "AppUser",
+                Condition = new FieldValueMatchCondition
+                {
+                    SearchTargetVariable = "Id.Value",
+                    Comparison = MatchComparison.NotEqual,
+                    Value = MultiTypeValue.Create("2"),
+                },
+            };
+            Assert.ThrowsAsync<LowCodeException>(async () => await ExecuteAsync("2", ApprovalAction.Approve.ToDesignValue(), submit.FlowId));
+            Assert.That(S((await GetMembersAsync(submit.FlowId, 1))[0], "Status"), Is.EqualTo(ApprovalMemberStatus.Waiting.ToDesignValue()));
+
+            //条件を戻せば承認できる (拒否の原因が権限だったことの確認)
+            request.UserReadCondition = new ModuleMatchCondition();
+            var ok = await ExecuteAsync("2", ApprovalAction.Approve.ToDesignValue(), submit.FlowId);
+            Assert.That(ok.IsSuccess, Is.True, ok.ErrorMessage);
+        }
+
+        [Test]
+        public async Task 承認_PermissionFieldで隠された承認フィールドは経路上でもサーバーが拒否()
+        {
+            var submit = await SubmitAsync();
+
+            //承認フィールドは部長 (Id=3) にしか見せない
+            var request = _designData.Modules.Find("Request")!;
+            var permission = new PermissionFieldDesign { Name = "P", TargetFields = { "Approval" } };
+            permission.ReadCondition.Condition = Eq("CurrentUser.Id.Value", "3");
+            request.Fields.Add(permission);
+            Assert.ThrowsAsync<LowCodeException>(async () => await ExecuteAsync("2", ApprovalAction.Approve.ToDesignValue(), submit.FlowId));
+
+            request.Fields.Remove(permission);
+            var ok = await ExecuteAsync("2", ApprovalAction.Approve.ToDesignValue(), submit.FlowId);
+            Assert.That(ok.IsSuccess, Is.True, ok.ErrorMessage);
+        }
+
+        #region 権限 (入口検査・本人性・改ざん要求)
+
+        //申請書モジュールを excludedUserId には見せない (UserReadCondition)
+        void RestrictRead(string moduleName, string excludedUserId)
+            => _designData.Modules.Find(moduleName)!.UserReadCondition = new ModuleMatchCondition
+            {
+                ModuleName = "AppUser",
+                Condition = new FieldValueMatchCondition
+                {
+                    SearchTargetVariable = "Id.Value",
+                    Comparison = MatchComparison.NotEqual,
+                    Value = MultiTypeValue.Create(excludedUserId),
+                },
+            };
+
+        void ClearRead(string moduleName)
+            => _designData.Modules.Find(moduleName)!.UserReadCondition = new ModuleMatchCondition();
+
+        //承認フィールドを excludedUserId には見せない (PermissionField)
+        PermissionFieldDesign HideApprovalField(string excludedUserId)
+        {
+            var permission = new PermissionFieldDesign { Name = "P", TargetFields = { "Approval" } };
+            permission.ReadCondition.Condition = new FieldValueMatchCondition
+            {
+                SearchTargetVariable = "CurrentUser.Id.Value",
+                Comparison = MatchComparison.NotEqual,
+                Value = MultiTypeValue.Create(excludedUserId),
+            };
+            _designData.Modules.Find("Request")!.Fields.Add(permission);
+            return permission;
+        }
+
+        //課長承認 → 部長承認 → 部外者 (4) へ回覧
+        static ApprovalRouteData CreateRouteWithConfirmation()
+        {
+            var route = CreateRoute();
+            var confirmation = route.AddStep("回覧");
+            confirmation.StepType = ApprovalStepType.Confirmation.ToDesignValue();
+            confirmation.AddMember("4");
+            return route;
+        }
+
+        static ApprovalCommand SubmitCommand(string moduleName = "Request", ModuleSubmitData? data = null, ApprovalRouteData? route = null) => new()
+        {
+            Action = ApprovalAction.Submit,
+            TargetModuleName = moduleName,
+            FieldName = "Approval",
+            TargetSubmitData = data ?? CreateNewRequestSubmit("経費申請"),
+            Route = route ?? CreateRoute(),
+        };
+
+        async Task<ApprovalCommand> ResubmitCommandAsync(string flowId, string targetId, string moduleName = "Request", ModuleSubmitData? data = null, ApprovalRouteData? route = null) => new()
+        {
+            Action = ApprovalAction.Resubmit,
+            TargetModuleName = moduleName,
+            FieldName = "Approval",
+            TargetSubmitData = data ?? CreateUpdateRequestSubmit(targetId, "修正版"),
+            Route = route ?? CreateRoute(),
+            FlowId = flowId,
+            ExpectedVersion = await GetVersionAsync(flowId),
+        };
+
+        async Task<long> CountAsync(string table)
+        {
+            var rows = await _db.QueryAsync(Ds, $"SELECT COUNT(*) FROM {table}", new());
+            return Convert.ToInt64(rows.Single().Values.First());
+        }
+
+        async Task<string> GetMemberStatusAsync(string flowId, int index)
+            => S((await GetMembersAsync(flowId, 1))[index], "Status");
+
+        /// <summary>
+        /// 「承認フィールドが見えない人は、経路上の承認者・申請者・回覧者であっても何も操作できない」を
+        /// 全アクションで確かめる共通シナリオ。restrict(userId) でそのユーザーから見えなくし、clear() で戻す。
+        /// 拒否は LowCodeException (本体の権限判定) で、状態は何も進まない。
+        /// </summary>
+        async Task AssertAllActionsRefusedWhenFieldInvisibleAsync(Action<string> restrict, Action clear)
+        {
+            //申請: 申請者に見えない
+            restrict("1");
+            Assert.ThrowsAsync<LowCodeException>(async () => await CreateEngine("1").ExecuteAsync(SubmitCommand()));
+            Assert.That(await CountAsync("ApprovalFlows"), Is.EqualTo(0));
+            Assert.That(await CountAsync("Requests"), Is.EqualTo(0), "申請書も保存されない (入口で止まる)");
+            clear();
+
+            var submit = await SubmitAsync(route: CreateRouteWithConfirmation());
+
+            //承認・却下・差し戻し: 承認者に見えない
+            restrict("2");
+            foreach (var action in new[] { ApprovalAction.Approve, ApprovalAction.Reject, ApprovalAction.Return })
+            {
+                Assert.ThrowsAsync<LowCodeException>(async () => await ExecuteAsync("2", action.ToDesignValue(), submit.FlowId, comment: "x"), action.ToString());
+            }
+            Assert.That(await GetMemberStatusAsync(submit.FlowId, 0), Is.EqualTo(ApprovalMemberStatus.Waiting.ToDesignValue()));
+            Assert.That(await GetFlowValueAsync(submit.FlowId, "Status"), Is.EqualTo(ApprovalFlowStatus.InProgress.ToDesignValue()));
+            clear();
+
+            //取り下げ: 申請者に見えない
+            restrict("1");
+            Assert.ThrowsAsync<LowCodeException>(async () => await ExecuteAsync("1", ApprovalAction.Withdraw.ToDesignValue(), submit.FlowId));
+            Assert.That(await GetFlowValueAsync(submit.FlowId, "Status"), Is.EqualTo(ApprovalFlowStatus.InProgress.ToDesignValue()));
+            clear();
+
+            //差し戻し → 再申請: 申請者に見えない
+            var returned = await ExecuteAsync("2", ApprovalAction.Return.ToDesignValue(), submit.FlowId, comment: "修正して");
+            Assert.That(returned.IsSuccess, Is.True, returned.ErrorMessage);
+            restrict("1");
+            Assert.ThrowsAsync<LowCodeException>(async () => await CreateEngine("1").ExecuteAsync(await ResubmitCommandAsync(submit.FlowId, submit.TargetId, route: CreateRouteWithConfirmation())));
+            Assert.That(await GetFlowValueAsync(submit.FlowId, "AttemptNo"), Is.EqualTo("1"));
+            clear();
+            var resubmit = await CreateEngine("1").ExecuteAsync(await ResubmitCommandAsync(submit.FlowId, submit.TargetId, route: CreateRouteWithConfirmation()));
+            Assert.That(resubmit.IsSuccess, Is.True, resubmit.ErrorMessage);
+
+            //回覧確認: 回覧者に見えない (承認は完了している)
+            Assert.That((await ExecuteAsync("2", ApprovalAction.Approve.ToDesignValue(), submit.FlowId)).IsSuccess, Is.True);
+            Assert.That((await ExecuteAsync("3", ApprovalAction.Approve.ToDesignValue(), submit.FlowId)).IsSuccess, Is.True);
+            Assert.That(await GetFlowValueAsync(submit.FlowId, "Status"), Is.EqualTo(ApprovalFlowStatus.Completed.ToDesignValue()));
+            restrict("4");
+            Assert.ThrowsAsync<LowCodeException>(async () => await ExecuteAsync("4", ApprovalAction.Confirm.ToDesignValue(), submit.FlowId));
+            clear();
+            var confirm = await ExecuteAsync("4", ApprovalAction.Confirm.ToDesignValue(), submit.FlowId);
+            Assert.That(confirm.IsSuccess, Is.True, confirm.ErrorMessage);
+        }
+
+        [Test]
+        public async Task 権限_申請書モジュールを開けない人は申請者_承認者_回覧者でも全操作を拒否()
+            => await AssertAllActionsRefusedWhenFieldInvisibleAsync(
+                userId => RestrictRead("Request", userId),
+                () => ClearRead("Request"));
+
+        [Test]
+        public async Task 権限_PermissionFieldで承認フィールドを隠された人は申請者_承認者_回覧者でも全操作を拒否()
+        {
+            PermissionFieldDesign? permission = null;
+            await AssertAllActionsRefusedWhenFieldInvisibleAsync(
+                userId => permission = HideApprovalField(userId),
+                () => _designData.Modules.Find("Request")!.Fields.Remove(permission!));
+        }
+
+        [Test]
+        public async Task 権限_アプリアクセス条件を満たさない停止ユーザーは全操作を拒否()
+        {
+            var submit = await SubmitAsync(route: CreateRouteWithConfirmation());
+
+            _designData.AppSettings.AppAccessConditions.ModuleName = "AppUser";
+            _designData.AppSettings.AppAccessConditions.Condition = new FieldValueMatchCondition
+            {
+                SearchTargetVariable = "IsActive.Value",
+                Comparison = MatchComparison.Equal,
+                Value = MultiTypeValue.Create(true),
+            };
+            //承認者 2 を停止
+            await _db.ExecuteAsync(Ds, "UPDATE AppUsers SET IsActive = 0 WHERE Id = '2'", new());
+            foreach (var action in new[] { ApprovalAction.Approve, ApprovalAction.Reject, ApprovalAction.Return })
+            {
+                Assert.ThrowsAsync<LowCodeException>(async () => await ExecuteAsync("2", action.ToDesignValue(), submit.FlowId, comment: "x"), action.ToString());
+            }
+            Assert.That(await GetMemberStatusAsync(submit.FlowId, 0), Is.EqualTo(ApprovalMemberStatus.Waiting.ToDesignValue()));
+
+            //申請者 1 を停止: 取り下げも新規申請もできない
+            await _db.ExecuteAsync(Ds, "UPDATE AppUsers SET IsActive = 0 WHERE Id = '1'", new());
+            Assert.ThrowsAsync<LowCodeException>(async () => await ExecuteAsync("1", ApprovalAction.Withdraw.ToDesignValue(), submit.FlowId));
+            Assert.ThrowsAsync<LowCodeException>(async () => await CreateEngine("1").ExecuteAsync(SubmitCommand()));
+            Assert.That(await CountAsync("ApprovalFlows"), Is.EqualTo(1));
+
+            //有効なユーザーは従来どおり (承認者 3 はまだ順番ではないので失敗結果、例外ではない)
+            var notYet = await ExecuteAsync("3", ApprovalAction.Approve.ToDesignValue(), submit.FlowId);
+            Assert.That(notYet.IsSuccess, Is.False);
+        }
+
+        [Test]
+        public async Task 権限_行に依存するPermissionField条件は行を読まないので素通し()
+        {
+            var submit = await SubmitAsync();
+
+            //「件名が '別件' のときだけ見せる」= ユーザーだけでは偽と確定しない条件。申請書の行は読まないので通る (新規行と同じ規則)
+            var permission = new PermissionFieldDesign { Name = "P", TargetFields = { "Approval" } };
+            permission.ReadCondition.Condition = Eq("Title.Value", "別件");
+            _designData.Modules.Find("Request")!.Fields.Add(permission);
+
+            var ok = await ExecuteAsync("2", ApprovalAction.Approve.ToDesignValue(), submit.FlowId);
+            Assert.That(ok.IsSuccess, Is.True, ok.ErrorMessage);
+        }
+
+        [Test]
+        public async Task 権限_申請書の行を読めない人は承認者_申請者でも操作できない()
+        {
+            var submit = await SubmitAsync(route: CreateRouteWithConfirmation());
+            var request = _designData.Modules.Find("Request")!;
+            //申請書の行を誰も読めない条件 (DataReadCondition)。モジュール自体は開ける
+            var unreadable = new ModuleMatchCondition { ModuleName = "Request", Condition = Eq("Title.Value", "別件") };
+            var readable = new ModuleMatchCondition();
+
+            request.DataReadCondition = unreadable;
+            foreach (var (userId, action) in new[] { ("2", ApprovalAction.Approve), ("2", ApprovalAction.Reject), ("2", ApprovalAction.Return), ("1", ApprovalAction.Withdraw) })
+            {
+                var r = await ExecuteAsync(userId, action.ToDesignValue(), submit.FlowId, comment: "x");
+                Assert.That(r.IsSuccess, Is.False, $"{action} by {userId}");
+                Assert.That(r.ErrorMessage, Is.EqualTo(Codeer.LowCode.Blazor.Extras.Properties.Resources.ApprovalError_TargetNotReadable));
+            }
+            Assert.That(await GetMemberStatusAsync(submit.FlowId, 0), Is.EqualTo(ApprovalMemberStatus.Waiting.ToDesignValue()));
+            Assert.That(await GetFlowValueAsync(submit.FlowId, "Status"), Is.EqualTo(ApprovalFlowStatus.InProgress.ToDesignValue()));
+
+            //読めれば通る。差し戻し → 再申請も同じ
+            request.DataReadCondition = readable;
+            var returned = await ExecuteAsync("2", ApprovalAction.Return.ToDesignValue(), submit.FlowId, comment: "修正して");
+            Assert.That(returned.IsSuccess, Is.True, returned.ErrorMessage);
+            request.DataReadCondition = unreadable;
+            var deny = await CreateEngine("1").ExecuteAsync(await ResubmitCommandAsync(submit.FlowId, submit.TargetId, route: CreateRouteWithConfirmation()));
+            Assert.That(deny.IsSuccess, Is.False);
+            Assert.That(deny.ErrorMessage, Is.EqualTo(Codeer.LowCode.Blazor.Extras.Properties.Resources.ApprovalError_TargetNotReadable));
+            Assert.That(await GetFlowValueAsync(submit.FlowId, "AttemptNo"), Is.EqualTo("1"));
+            request.DataReadCondition = readable;
+            var resubmit = await CreateEngine("1").ExecuteAsync(await ResubmitCommandAsync(submit.FlowId, submit.TargetId, route: CreateRouteWithConfirmation()));
+            Assert.That(resubmit.IsSuccess, Is.True, resubmit.ErrorMessage);
+
+            //回覧確認も同じ
+            Assert.That((await ExecuteAsync("2", ApprovalAction.Approve.ToDesignValue(), submit.FlowId)).IsSuccess, Is.True);
+            Assert.That((await ExecuteAsync("3", ApprovalAction.Approve.ToDesignValue(), submit.FlowId)).IsSuccess, Is.True);
+            request.DataReadCondition = unreadable;
+            Assert.That((await ExecuteAsync("4", ApprovalAction.Confirm.ToDesignValue(), submit.FlowId)).IsSuccess, Is.False);
+            request.DataReadCondition = readable;
+            Assert.That((await ExecuteAsync("4", ApprovalAction.Confirm.ToDesignValue(), submit.FlowId)).IsSuccess, Is.True);
+        }
+
+        [Test]
+        public async Task 権限_開ける別モジュール名を添えても他モジュールのフローは操作できない()
+        {
+            //Request と Request2 は同じ承認モジュール群を使う。Request のフローを Request2 の名前で操作する
+            var submit = await SubmitAsync();
+
+            //Request2 は開けるが、フローの対象は Request なので「フローなし」
+            var wrongModule = await CreateEngine("2").ExecuteAsync(new ApprovalCommand
+            {
+                Action = ApprovalAction.Approve,
+                TargetModuleName = "Request2",
+                FieldName = "Approval",
+                FlowId = submit.FlowId,
+                ExpectedVersion = await GetVersionAsync(submit.FlowId),
+            });
+            Assert.That(wrongModule.IsSuccess, Is.False);
+            Assert.That(await GetMemberStatusAsync(submit.FlowId, 0), Is.EqualTo(ApprovalMemberStatus.Waiting.ToDesignValue()));
+
+            //Request を開けない承認者が Request2 の名前で入口検査をすり抜けようとしても同じ
+            RestrictRead("Request", "2");
+            var bypass = await CreateEngine("2").ExecuteAsync(new ApprovalCommand
+            {
+                Action = ApprovalAction.Approve,
+                TargetModuleName = "Request2",
+                FieldName = "Approval",
+                FlowId = submit.FlowId,
+                ExpectedVersion = await GetVersionAsync(submit.FlowId),
+            });
+            Assert.That(bypass.IsSuccess, Is.False);
+            Assert.That(await GetMemberStatusAsync(submit.FlowId, 0), Is.EqualTo(ApprovalMemberStatus.Waiting.ToDesignValue()));
+            ClearRead("Request");
+
+            //取り下げ・再申請も同様
+            var withdraw = await CreateEngine("1").ExecuteAsync(new ApprovalCommand
+            {
+                Action = ApprovalAction.Withdraw,
+                TargetModuleName = "Request2",
+                FieldName = "Approval",
+                FlowId = submit.FlowId,
+                ExpectedVersion = await GetVersionAsync(submit.FlowId),
+            });
+            Assert.That(withdraw.IsSuccess, Is.False);
+            Assert.That(await GetFlowValueAsync(submit.FlowId, "Status"), Is.EqualTo(ApprovalFlowStatus.InProgress.ToDesignValue()));
+        }
+
+        [Test]
+        public async Task 権限_申請の保存データが別モジュールなら拒否し何も保存しない()
+        {
+            var other = new ModuleData { Name = "Request2" };
+            other.Fields["Id"] = IdFieldData.NewId();
+            other.Fields["Title"] = new TextFieldData { Value = "別モジュールの行" };
+            var data = new ModuleSubmitData { ModuleName = "Request2", Id = ((IdFieldData)other.Fields["Id"]).Value!, Add = [other] };
+
+            var result = await CreateEngine("1").ExecuteAsync(SubmitCommand(data: data));
+            Assert.That(result.IsSuccess, Is.False);
+            Assert.That(await CountAsync("ApprovalFlows"), Is.EqualTo(0));
+            Assert.That(await CountAsync("Requests2"), Is.EqualTo(0));
+            Assert.That(await CountAsync("Requests"), Is.EqualTo(0));
+        }
+
+        [Test]
+        public async Task 権限_再申請の保存データがこのフローの申請書でなければ拒否()
+        {
+            var a = await SubmitAsync();
+            var b = await SubmitAsync();
+            var returned = await ExecuteAsync("2", ApprovalAction.Return.ToDesignValue(), a.FlowId, comment: "修正して");
+            Assert.That(returned.IsSuccess, Is.True, returned.ErrorMessage);
+
+            //フロー A の再申請に申請書 B の保存データを載せる → 拒否。A の世代は進まず B も変わらない
+            var deny = await CreateEngine("1").ExecuteAsync(await ResubmitCommandAsync(a.FlowId, a.TargetId, data: CreateUpdateRequestSubmit(b.TargetId, "Bを書き換え")));
+            Assert.That(deny.IsSuccess, Is.False);
+            Assert.That(await GetFlowValueAsync(a.FlowId, "AttemptNo"), Is.EqualTo("1"));
+            Assert.That(await GetFlowValueAsync(a.FlowId, "Status"), Is.EqualTo(ApprovalFlowStatus.Returned.ToDesignValue()));
+            var titles = await _db.QueryAsync(Ds, $"SELECT Title FROM Requests WHERE Id = {b.TargetId}", new());
+            Assert.That(S(titles.Single(), "Title"), Is.EqualTo("経費申請"));
+
+            //別モジュールの保存データも拒否
+            var otherModule = await CreateEngine("1").ExecuteAsync(await ResubmitCommandAsync(a.FlowId, a.TargetId,
+                data: new ModuleSubmitData { ModuleName = "Request2", Id = a.TargetId, Update = [new ModuleData { Name = "Request2" }] }));
+            Assert.That(otherModule.IsSuccess, Is.False);
+            Assert.That(await GetFlowValueAsync(a.FlowId, "AttemptNo"), Is.EqualTo("1"));
+        }
+
+        [Test]
+        public async Task 権限_申請書に書けないユーザーは申請できずフローも作られない()
+        {
+            //申請書モジュールを誰も書けなくする (UserWriteCondition)。申請は通常の保存経路なので本体が拒否する
+            _designData.Modules.Find("Request")!.UserWriteCondition = new ModuleMatchCondition
+            {
+                ModuleName = "AppUser",
+                Condition = Eq("Id.Value", "no_such_user"),
+            };
+            var result = await CreateEngine("1").ExecuteAsync(SubmitCommand());
+            Assert.That(result.IsSuccess, Is.False);
+            Assert.That(await CountAsync("ApprovalFlows"), Is.EqualTo(0));
+            Assert.That(await CountAsync("Requests"), Is.EqualTo(0));
+        }
+
+        [Test]
+        public async Task 却下と差し戻し_承認者以外はサーバーが拒否()
+        {
+            var submit = await SubmitAsync();
+            foreach (var action in new[] { ApprovalAction.Reject, ApprovalAction.Return })
+            {
+                //申請者 / まだ順番の来ていない承認者 / 部外者
+                foreach (var userId in new[] { "1", "3", "4" })
+                {
+                    var r = await ExecuteAsync(userId, action.ToDesignValue(), submit.FlowId, comment: "x");
+                    Assert.That(r.IsSuccess, Is.False, $"{action} by {userId}");
+                }
+            }
+            Assert.That(await GetMemberStatusAsync(submit.FlowId, 0), Is.EqualTo(ApprovalMemberStatus.Waiting.ToDesignValue()));
+            Assert.That(await GetFlowValueAsync(submit.FlowId, "Status"), Is.EqualTo(ApprovalFlowStatus.InProgress.ToDesignValue()));
+        }
+
+        [Test]
+        public async Task 回覧確認_回覧メンバー以外は拒否_承認者や部外者は確認できない()
+        {
+            var submit = await SubmitAsync(route: CreateRouteWithConfirmation());
+            Assert.That((await ExecuteAsync("2", ApprovalAction.Approve.ToDesignValue(), submit.FlowId)).IsSuccess, Is.True);
+            Assert.That((await ExecuteAsync("3", ApprovalAction.Approve.ToDesignValue(), submit.FlowId)).IsSuccess, Is.True);
+
+            foreach (var userId in new[] { "1", "2", "3" })
+            {
+                var r = await ExecuteAsync(userId, ApprovalAction.Confirm.ToDesignValue(), submit.FlowId);
+                Assert.That(r.IsSuccess, Is.False, $"Confirm by {userId}");
+            }
+            Assert.That(await GetMemberStatusAsync(submit.FlowId, 2), Is.EqualTo(ApprovalMemberStatus.Waiting.ToDesignValue()));
+
+            var ok = await ExecuteAsync("4", ApprovalAction.Confirm.ToDesignValue(), submit.FlowId);
+            Assert.That(ok.IsSuccess, Is.True, ok.ErrorMessage);
+            Assert.That(await GetMemberStatusAsync(submit.FlowId, 2), Is.EqualTo(ApprovalMemberStatus.Confirmed.ToDesignValue()));
+        }
+
+        [Test]
+        public async Task 取り下げ_承認者や部外者は拒否()
+        {
+            var submit = await SubmitAsync();
+            foreach (var userId in new[] { "2", "3", "4" })
+            {
+                var r = await ExecuteAsync(userId, ApprovalAction.Withdraw.ToDesignValue(), submit.FlowId);
+                Assert.That(r.IsSuccess, Is.False, $"Withdraw by {userId}");
+            }
+            Assert.That(await GetFlowValueAsync(submit.FlowId, "Status"), Is.EqualTo(ApprovalFlowStatus.InProgress.ToDesignValue()));
+        }
+
+        [Test]
+        public async Task 終了したフローへの承認_却下_差し戻し_取り下げは拒否()
+        {
+            //完了後
+            var done = await SubmitAsync();
+            Assert.That((await ExecuteAsync("2", ApprovalAction.Approve.ToDesignValue(), done.FlowId)).IsSuccess, Is.True);
+            Assert.That((await ExecuteAsync("3", ApprovalAction.Approve.ToDesignValue(), done.FlowId)).IsSuccess, Is.True);
+            foreach (var (userId, action) in new[] { ("3", ApprovalAction.Approve), ("3", ApprovalAction.Reject), ("3", ApprovalAction.Return), ("1", ApprovalAction.Withdraw) })
+            {
+                var r = await ExecuteAsync(userId, action.ToDesignValue(), done.FlowId, comment: "x");
+                Assert.That(r.IsSuccess, Is.False, $"{action} after completion");
+            }
+            Assert.That(await GetFlowValueAsync(done.FlowId, "Status"), Is.EqualTo(ApprovalFlowStatus.Completed.ToDesignValue()));
+
+            //却下後
+            var rejected = await SubmitAsync();
+            Assert.That((await ExecuteAsync("2", ApprovalAction.Reject.ToDesignValue(), rejected.FlowId, comment: "却下")).IsSuccess, Is.True);
+            foreach (var (userId, action) in new[] { ("2", ApprovalAction.Approve), ("3", ApprovalAction.Approve), ("1", ApprovalAction.Withdraw) })
+            {
+                var r = await ExecuteAsync(userId, action.ToDesignValue(), rejected.FlowId);
+                Assert.That(r.IsSuccess, Is.False, $"{action} after rejection");
+            }
+            Assert.That(await GetFlowValueAsync(rejected.FlowId, "Status"), Is.EqualTo(ApprovalFlowStatus.Rejected.ToDesignValue()));
+
+            //同じ承認者の二度目の承認 (順番は次へ移っている)
+            var twice = await SubmitAsync();
+            Assert.That((await ExecuteAsync("2", ApprovalAction.Approve.ToDesignValue(), twice.FlowId)).IsSuccess, Is.True);
+            Assert.That((await ExecuteAsync("2", ApprovalAction.Approve.ToDesignValue(), twice.FlowId)).IsSuccess, Is.False);
+            Assert.That(await GetFlowValueAsync(twice.FlowId, "CurrentStepNo"), Is.EqualTo("2"));
+        }
+
+        [Test]
+        public async Task 権限_デザインに無いモジュールやフィールドは失敗結果()
+        {
+            var submit = await SubmitAsync();
+            foreach (var (moduleName, fieldName) in new[] { ("Nope", "Approval"), ("Request", "Nope"), ("Request", "Title"), ("AppUser", "Approval") })
+            {
+                var r = await CreateEngine("2").ExecuteAsync(new ApprovalCommand
+                {
+                    Action = ApprovalAction.Approve,
+                    TargetModuleName = moduleName,
+                    FieldName = fieldName,
+                    FlowId = submit.FlowId,
+                    ExpectedVersion = await GetVersionAsync(submit.FlowId),
+                });
+                Assert.That(r.IsSuccess, Is.False, $"{moduleName}.{fieldName}");
+            }
+            Assert.That(await GetMemberStatusAsync(submit.FlowId, 0), Is.EqualTo(ApprovalMemberStatus.Waiting.ToDesignValue()));
+        }
+
+        #endregion
 
         [Test]
         public async Task 承認_版不一致は拒否()
@@ -1079,7 +1556,8 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Approval
                 Action = ApprovalAction.Resubmit,
                 TargetModuleName = "Request",
                 FieldName = "Approval",
-                TargetSubmitData = CreateNewRequestSubmit("経費申請(再)"),
+                //再申請はこのフローの申請書 (同じレコード) の更新に限る
+                TargetSubmitData = CreateUpdateRequestSubmit(submit.TargetId, "経費申請(再)"),
                 Route = CreateRoute(),
                 FlowId = submit.FlowId,
                 ExpectedVersion = await GetVersionAsync(submit.FlowId),

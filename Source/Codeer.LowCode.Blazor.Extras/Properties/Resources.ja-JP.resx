@@ -848,6 +848,9 @@
   <data name="ApprovalError_FlowNotFound" xml:space="preserve">
     <value>承認フローが見つかりません</value>
   </data>
+  <data name="ApprovalError_TargetNotReadable" xml:space="preserve">
+    <value>申請書を読む権限がないため操作できません</value>
+  </data>
   <data name="ApprovalError_InvalidState" xml:space="preserve">
     <value>現在の状態ではこの操作はできません</value>
   </data>

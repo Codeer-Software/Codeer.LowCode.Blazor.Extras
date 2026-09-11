@@ -56,7 +56,10 @@ AIChatField を置いたモジュールに UserReadCondition (管理者のみ等
 - MailField (単発送信・プレビュー) は Extras.Server 0.12.0 で実装済 (`Mail/MailFieldAuthorization`)。履歴の書き込みは従来どおりシステム経路。
 - BulkMailField (一斉送信・プレビュー) も同 0.12.0 で実装済 (`MailFieldAuthorization.CheckBulkAsync` を `MailBulkSearch.ResolveRecipientsAsync` の入口で。リクエストに `FieldName` 追加・呼び名はデザインから)。宛先の解決は従来どおり GetListAsync (宛先側の UserRead / DataRead / フィールド読取が効く)。テンプレートの MailController / MailTransportHandler は変更なし (`MailBulkSearch.SendAsync(request)` のまま)。
   - 検討して見送ったもの: リクエストの `Condition.ModuleName` がデザインの宛先リスト (RecipientListFieldName の先のモジュール) と一致することの強制。宛先側の読み取り権限で守られている行しか取れないため、今回の方式 (フィールドが見えるか) の範囲では不要と判断。締めるなら 1 行で足せる。
-- 残り: AIChat → AITextAnalyze → 承認。同じ方式で順に。
+- 承認 (ApprovalEngine) も同 0.12.0 で揃えた: `ResolveContextAsync` の `CheckAppAuthorization` を `CheckUserReadAuthorization(申請書モジュール, ApprovalFlowField)` に差し替え (アプリアクセス条件+申請書モジュールの UserRead+フィールド読取権限)。本人性 (承認者・申請者) の判定は従来どおり各アクションで。却下/差し戻し/確認は承認と同型であることを読んで確認済 (上の手順 5 は完了)。DTO・Controller の変更なし。
+  - 承認だけはユーザー決定 (2026-09-11) で**申請書の行も読む**: 既存フローへの操作 (Approve/Reject/Return/Withdraw/Confirm/Resubmit) で `CanReadTargetAsync` (申請書モジュールに Id 条件で GetListAsync = DataReadCondition が効く)。読めなければ `ApprovalError_TargetNotReadable` の失敗結果。メールは従来どおり行を読まない。
+  - テスト増強時に見つけて塞いだ改ざん要求 (2026-09-11): ①フロー行を Id だけで引いていたため、開ける別の申請書モジュール名を添えると (同じ承認モジュール群を共有する構成で) 入口検査をすり抜けて他モジュールのフローを操作できた → `LoadFlowAsync` で TargetModuleName も一致条件に。②申請・再申請の TargetSubmitData のモジュール名を検査していなかった (別モジュールに書けるユーザーがその Id を申請書に結び付けられる) → `ValidateTargetSubmitData`。③再申請で保存したレコードがフローの申請書か検査していなかった → `targetId == flow.TargetId`。
+- 残り: AIChat → AITextAnalyze。同じ方式で順に。
 
 ## 実装順 (効果順)
 
@@ -64,7 +67,7 @@ AIChatField を置いたモジュールに UserReadCondition (管理者のみ等
 2. メール単発: SourceModule/SourceId を必須化 + 共通チェック + 行の DataRead + MailInfraName をデザインから
 3. AITextAnalyze: 既に名前は来ているので共通チェックを足すだけ
 4. Excel→PDF・その他: `CheckAppAuthorization` だけ
-5. 承認の却下/差し戻し/確認の本人チェックを読んで確認 (足りなければ Approve と同型に)
+5. 承認の却下/差し戻し/確認の本人チェックを読んで確認 (足りなければ Approve と同型に) → 2026-09-11 確認済・同型
 
 ## 互換性
 
