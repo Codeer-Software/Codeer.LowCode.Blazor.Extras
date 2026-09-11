@@ -162,7 +162,7 @@ AIChatField.EndPoint = "/api/ai_chat";
 - AI 用に読み取り専用の DB ユーザーを作り、見せてよい表・列だけに SELECT を GRANT する。ログイン情報 (パスワードハッシュ・TOTP シークレット等)、変更履歴、一時ファイルの表は GRANT しない
 - そのユーザーで接続するデータソースを appsettings の `DataSources` / `ConnectionStrings` に追加し、`RawDataAccessOptions.DataSourceNames` に指定する (複数可。1 つの SQL は 1 つのデータソースにしか届かず、またがる質問は AI がデータソースごとに問い合わせて突き合わせる)。Options は文字列と数値だけなので appsettings のセクションからそのまま束縛できる。アプリ本体と同じ接続を渡すと DB 全体が読める
 - SQLite はユーザーが無いので接続文字列の `Mode=ReadOnly` で読み取り専用にする (表・列の限定はできない)
-- ログインユーザーごとの行制限 (モジュールの UserRead / DataRead 条件) は効かない。「誰がこのチャットを使えるか」は、フィールドを置くページやモジュールの UserReadCondition で絞る
+- ログインユーザーごとの行制限 (モジュールの UserRead / DataRead 条件) は効かない。「誰がこのチャットを使えるか」は、フィールドを置くページやモジュールの UserReadCondition (と PermissionField) で絞る。サーバーは送信のたびに、リクエストの `ModuleName` / `FieldName` の AIChatField が今のユーザーに見えることを確かめてから受け付け、Agent 名と文書フォルダもそのデザインから取る ([サーバー API の権限チェック](ServerApiAuthorization.md))
 
 `execute_sql` 側の SELECT 判定 (1 文だけ・INSERT/UPDATE/DELETE 等の語を含まない) は補助で、書き込み拒否の本体は DB ユーザーの権限です。行数 (`MaxRows` 既定 200)、文字数 (`MaxResultChars` 既定 20000)、タイムアウト (`CommandTimeoutSeconds` 既定 30) の上限と、実行した SQL のログ (`RawDataAccessAgent` のコンストラクタの `ILoggerFactory` を設定したとき) はツール側が担います。
 
@@ -222,3 +222,4 @@ public class MyAgent : IAIChatAgent
 - 返事の HTML はそのまま描画されます (サーバーは信頼する前提)。利用者の入力をそのまま HTML にして返さないよう Agent 側で注意してください
 - ページを離れると問い合わせは止まりますが、サーバー側の処理は続きます (結果は既定で 30 分保持)
 - Agent が未設定の環境 (デザイナのプレビュー等) では入力欄が無効になり、その旨を表示します
+- パッケージの組み合わせ: ホストが `Microsoft.Extensions.AI.OpenAI` 10.7 を参照すると OpenAI パッケージは 2.11 になります。`Azure.AI.OpenAI` 2.1.0 (OpenAI 2.1 向け) の `ChatClient` を**直接** `CompleteChatAsync` 等で呼ぶコードはこの組み合わせで `MissingMethodException` になるので、Azure OpenAI は対応表の例のように `AzureOpenAIClient…GetChatClient(model).AsIChatClient()` で IChatClient に包んで使ってください (Extras.Server の Agent と AITextAnalyzeService はそうしています)

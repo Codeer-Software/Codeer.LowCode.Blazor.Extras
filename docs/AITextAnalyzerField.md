@@ -56,8 +56,18 @@
 (`AnalyzeFileAsync` / `AnalyzeTextAsync` に ModuleDataIO とモジュール名・フィールド名を渡す。テンプレートの `AITextAnalyzeController` が結線済み)。
 チャットモデルは Microsoft.Extensions.AI の `IChatClient` 経由で呼びます。既定のコンストラクタ (`AISettings` だけ) は Azure OpenAI の IChatClient を組み立て、
 `AITextAnalyzeService(AISettings, Func<IChatClient>)` なら AIChat の Agent と同じくホストが好きなプロバイダを渡せます (AISettings は文書解析の接続に使う)。
-サーバーは解析のたびに、その AITextAnalyzerField が今のユーザーに見えること (アプリのアクセス条件・モジュールの UserReadCondition・PermissionField の読取権限) を確かめてから AI を呼び、補足指示 (Remarks) はフィールドのデザインから取ります。
+サーバーは解析のたびに、その AITextAnalyzerField が今のユーザーに見えること (アプリのアクセス条件・モジュールの UserReadCondition・PermissionField の読取権限) を確かめてから AI を呼び、補足指示 (Remarks) はフィールドのデザインから取ります
+([サーバー API の権限チェック](ServerApiAuthorization.md))。
 プロンプトや解析処理を変えたい場合は、ソース (MIT) をコピーして改変してください。
+
+### パッケージの組み合わせに関する注意 (Extras.Server 0.12.0 以降)
+
+- Extras.Server 0.12.0 は `Microsoft.Extensions.AI.OpenAI` 10.7.0 に依存します (これに伴い OpenAI パッケージは 2.11、Microsoft.Extensions.* の抽象パッケージは 10.x になります)。
+  0.11.0 までは `Azure.AI.OpenAI` 2.1.0 の `ChatClient` を直接呼んでいたため、ホストが AIChat 用に `Microsoft.Extensions.AI.OpenAI` 10.7 を参照すると
+  `ChatCompletionOptions.get_SerializedAdditionalRawData` が見つからない `MissingMethodException` で解析が必ず失敗していました。0.12.0 で IChatClient 経由に直しています
+- net8.0 のホストで `Microsoft.Extensions.AI.OpenAI` を直接参照していない場合、`Microsoft.Extensions.Hosting.Abstractions` の 8.0 と 10.0 が衝突して
+  CS1705 でビルドできないことがあります (NuGet が近いほうの 8.0 を選ぶため)。ホストの csproj に `<PackageReference Include="Microsoft.Extensions.AI.OpenAI" Version="10.7.0" />` を足してください (アプリテンプレートには入っています)。.NET 8 のまま使えます
+- ホスト側で Azure OpenAI を使うコードを書くときも、`Azure.AI.OpenAI` の `ChatClient` を直接呼ばず、`GetChatClient(model).AsIChatClient()` で IChatClient に包んでください (上と同じ理由)
 
 ## スクリプト
 

@@ -266,6 +266,7 @@ UI もデータも持たない「宣言用」のフィールドです。役割 �
 - 送信・プレビューのサーバー側ブロック (単発・一斉とも) — リクエストの `SourceModule` / `FieldName` の MailField (一斉なら BulkMailField) がデザインにあり、そのフィールドが今のユーザーに見える (アプリのアクセス条件・モジュールの UserReadCondition・ユーザーだけで偽と確定する PermissionField の読取条件) ときだけ応じる。送信インフラの呼び名はデザインの `MailInfraName` を使う。行は読まないので DataReadCondition や行に依存する PermissionField 条件は見ず、DB に繋がっていないモジュールや未保存のレコードからも送れる (一斉送信の宛先は別途 GetListAsync で読むので、宛先側の読み取り権限・行条件は従来どおり効く)
 - `MailSenderTable` — 呼び名 → `IMailSender` の対応表
 - クライアント起動時: `MailTransport.SendMailEndPoint` / `BulkSearchMailEndPoint` / `PreviewMailEndPoint` / `BulkPreviewMailEndPoint` に URL を設定
+- 権限のルール (何を見て何を見ないか、一斉送信で読むデータの範囲) の一覧は [サーバー API の権限チェック](ServerApiAuthorization.md)
 
 ### デザインチェックで検出されるもの
 

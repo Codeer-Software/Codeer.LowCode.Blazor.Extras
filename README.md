@@ -50,6 +50,7 @@ Codeer.LowCode.Blazor 本体が持つのは認可だけで、認証 (ログイ�
 | [外部ログイン](docs/ExternalLogin.md) | Entra ID / Google / AWS Cognito / 汎用 OpenID Connect。appsettings だけで有効化。MAUI 対応 |
 | [二要素認証](docs/TwoFactorLogin.md) | 認証アプリ (TOTP) とメールのワンタイムコード。解除ボタン |
 | [LoginAccountContractField](Source/Codeer.LowCode.Blazor.Extras.Designer/FieldDocs/LoginAccountContractFieldDesign.md) | ユーザーモジュールに置く契約フィールドの仕様 |
+| [サーバー API の権限チェック](docs/ServerApiAuthorization.md) | メール送信・一斉送信・承認・AI チャット・AI 帳票解析の API は、呼び出し元のフィールドが今のユーザーに見えるときだけ応じる。フィールドごとに何を見て何を見ないかの一覧 |
 
 ## 業務機能
 
@@ -203,6 +204,7 @@ ExtrasDesignerInitializer.Setup(DesignerEnvironment);
 - [認証の全体像 (ログインアカウント契約 / パスワード / 外部 IdP / 二要素認証)](docs/Authentication.md)
 - [外部ログイン (Entra ID / Google / AWS Cognito / OpenID Connect)](docs/ExternalLogin.md)
 - [二要素認証 (認証アプリ TOTP / メールのワンタイムコード)](docs/TwoFactorLogin.md)
+- [サーバー API の権限チェック (メール / 承認 / AI のフィールド起点 API)](docs/ServerApiAuthorization.md)
 - [PasswordHashField - パスワードハッシュ](docs/PasswordHashField.md)
 - [OrientationLockField - 画面の向き制御](docs/OrientationLockField.md)
 - [AITextAnalyzerField - AI 帳票解析](docs/AITextAnalyzerField.md)
