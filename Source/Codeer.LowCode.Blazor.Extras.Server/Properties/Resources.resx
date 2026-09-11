@@ -39,4 +39,7 @@
   <data name="AIChat_ReadingDocument" xml:space="preserve">
     <value>Reading a document…</value>
   </data>
+  <data name="MailField_NotFound" xml:space="preserve">
+    <value>Module '{0}' has no MailField named '{1}'.</value>
+  </data>
 </root>

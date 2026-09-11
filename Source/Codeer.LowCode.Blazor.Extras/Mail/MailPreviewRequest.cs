@@ -19,6 +19,13 @@ namespace Codeer.LowCode.Blazor.Extras.Mail
         public string MailInfraName { get; set; } = string.Empty;
         public MailMessage Message { get; set; } = new();
 
+        /// <summary>MailField を置いたモジュール名。サーバーは送信と同じ検査 (フィールドが存在し今のユーザーに見えること) をする。</summary>
+        public string SourceModule { get; set; } = string.Empty;
+        /// <summary>プレビュー元レコードの Id。未保存なら空。</summary>
+        public string SourceId { get; set; } = string.Empty;
+        /// <summary>MailField のフィールド名。</summary>
+        public string FieldName { get; set; } = string.Empty;
+
         /// <summary>解決前のテンプレート (プレビューのヘッダに出す)。</summary>
         public string SubjectTemplate { get; set; } = string.Empty;
         public string BodyTemplate { get; set; } = string.Empty;

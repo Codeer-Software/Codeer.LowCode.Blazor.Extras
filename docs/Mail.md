@@ -262,7 +262,8 @@ UI もデータも持たない「宣言用」のフィールドです。役割 �
 
 新しいアプリテンプレートには最初から入っています。既存アプリに足す場合の要点:
 
-- `MailController` — `MailTransport.SendMailEndPoint` (`/api/mail`) / `BulkSearchMailEndPoint` (`/api/mail/bulk_search`) / `PreviewMailEndPoint` (`/api/mail/preview`) / `BulkPreviewMailEndPoint` (`/api/mail/bulk_preview`) の受け口 (プレビューは `MailPreviewBuilder` が HTML を作る)
+- `MailController` — `MailTransport.SendMailEndPoint` (`/api/mail`) / `BulkSearchMailEndPoint` (`/api/mail/bulk_search`) / `PreviewMailEndPoint` (`/api/mail/preview`) / `BulkPreviewMailEndPoint` (`/api/mail/bulk_preview`) の受け口 (プレビューは `MailPreviewBuilder` が HTML を作る)。単発送信は `MailDispatcher.SendAsync(request, moduleDataIO)` に ModuleDataIO を渡す
+- 単発送信・プレビューのサーバー側ブロック — リクエストの `SourceModule` / `FieldName` の MailField がデザインにあり、そのフィールドが今のユーザーに見える (アプリのアクセス条件・モジュールの UserReadCondition・ユーザーだけで偽と確定する PermissionField の読取条件) ときだけ応じる。送信インフラの呼び名はデザインの `MailInfraName` を使う。行は読まないので DataReadCondition や行に依存する PermissionField 条件は見ず、DB に繋がっていないモジュールや未保存のレコードからも送れる
 - `MailSenderTable` — 呼び名 → `IMailSender` の対応表
 - クライアント起動時: `MailTransport.SendMailEndPoint` / `BulkSearchMailEndPoint` / `PreviewMailEndPoint` / `BulkPreviewMailEndPoint` に URL を設定
 

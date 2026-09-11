@@ -5,6 +5,7 @@ using Codeer.LowCode.Blazor.Extras.Fields;
 using Codeer.LowCode.Blazor.Extras.Mail;
 using Codeer.LowCode.Blazor.Extras.Test.Harness;
 using Codeer.LowCode.Blazor.OperatingModel;
+using Codeer.LowCode.Blazor.Repository.Data;
 using Codeer.LowCode.Blazor.Repository.Design;
 
 namespace Codeer.LowCode.Blazor.Extras.Test.Mail
@@ -47,10 +48,13 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Mail
             return d;
         }
 
+        //保存済みのレコード (Id あり)
         static async Task<(Module Module, MailField Field)> CreateAsync(DesignData designData)
         {
             var services = new TestServices(designData);
-            var module = await services.CreateModuleAsync("Request");
+            var data = new ModuleData { Name = "Request" };
+            data.Fields["Id"] = new IdFieldData { Value = "1" };
+            var module = await ModuleCreationService.CreateModuleAsync(services.Core, data);
             return (module, (MailField)module.GetField("Notify")!);
         }
 
@@ -76,6 +80,8 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Mail
             var sent = handler.Sent!;
             Assert.That(sent.MailInfraName, Is.EqualTo("notify"));
             Assert.That(sent.SourceModule, Is.EqualTo("Request"));
+            Assert.That(sent.SourceId, Is.EqualTo("1"));
+            Assert.That(sent.FieldName, Is.EqualTo("Notify"));
             Assert.That(sent.Message.To, Is.EqualTo(new[] { "a@example.com", "b@example.com" }));
             Assert.That(sent.Message.Subject, Is.EqualTo("申請 経費精算"));
             Assert.That(sent.Message.Body, Is.EqualTo("経費精算 を受け付けました"));

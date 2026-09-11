@@ -147,6 +147,9 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             {
                 MailInfraName = request.MailInfraName,
                 Message = request.Message,
+                SourceModule = request.SourceModule,
+                SourceId = request.SourceId,
+                FieldName = request.FieldName,
                 SubjectTemplate = _lastSubjectTemplate,
                 BodyTemplate = _lastBodyTemplate,
                 SubjectSpans = _lastSubjectSpans,
@@ -203,6 +206,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
                 MailInfraName = Design.MailInfraName,
                 SourceModule = Module.Design.Name,
                 SourceId = MailVariableResolver.GetValueText(data, Codeer.LowCode.Blazor.DesignLogic.SystemFieldNames.Id),
+                FieldName = Design.Name,
                 Message = new MailMessage
                 {
                     To = to,

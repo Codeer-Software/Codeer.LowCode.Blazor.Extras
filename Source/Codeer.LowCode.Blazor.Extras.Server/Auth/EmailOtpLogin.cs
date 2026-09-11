@@ -54,7 +54,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Auth
     /// コードはサーバー側のキャッシュ (IDistributedCache) に有効期限付きで置くので DB 列は要らない。送信先はユーザー行 (LoginAccountStore が読む)。
     /// TOTP (TotpLogin) と違いユーザー側の登録が要らないので導入が軽い。メールを受け取れる = 本人、という前提の強度。
     /// <code>
-    /// var email = new EmailOtpLogin(SystemConfig.Instance.EmailOtpLogin, message => dispatcher.SendAsync(...), cache);
+    /// var email = new EmailOtpLogin(SystemConfig.Instance.EmailOtpLogin, message => dispatcher.SendAsync(SystemConfig.Instance.EmailOtpLogin.MailInfraName, message), cache);
     /// var result = await email.VerifyAsync(account.UserId, account.TwoFactorEmail, loginInfo.TwoFactorCode);
     /// if (result.Status != EmailOtpLoginStatus.Ok) return Ok(result);   // email / invalid_code / send_failed: サインインしない
     /// </code>

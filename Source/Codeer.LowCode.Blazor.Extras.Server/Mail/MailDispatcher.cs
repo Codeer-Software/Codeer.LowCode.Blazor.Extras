@@ -1,4 +1,5 @@
-﻿using Codeer.LowCode.Blazor.Extras.Mail;
+﻿using Codeer.LowCode.Blazor.DataIO;
+using Codeer.LowCode.Blazor.Extras.Mail;
 using System.Net;
 
 namespace Codeer.LowCode.Blazor.Extras.Server.Mail
@@ -133,21 +134,32 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
         }
 
         /// <summary>
-        /// 単発送信のワイヤリクエスト (POST /api/mail) をそのまま送る。Controller を薄く保つための入口。
+        /// 単発送信のワイヤリクエスト (POST /api/mail) を送る。Controller を薄く保つための入口。
+        /// SourceModule / FieldName の MailField がデザインにあり、そのフィールドを今のユーザーが読めるときだけ送る
+        /// (ユーザー権限だけ: アプリアクセス条件・モジュールの UserReadCondition・ユーザーで偽と確定する PermissionField 条件が本体の判定で効く。行は読まないので未保存レコードや DB 無しモジュールからも送れる。通らなければ LowCodeException)。
+        /// 送信インフラの呼び名はそのデザインの MailInfraName。
         /// 差出人はクライアントの値を信用せず、常に送信インフラ設定のシステム送信者にする (なりすましの構造的排除)。
         /// </summary>
-        public async Task<MailSendResult> SendAsync(MailSendRequest request)
+        public async Task<MailSendResult> SendAsync(MailSendRequest request, ModuleDataIO moduleDataIO)
         {
+            var design = await MailFieldAuthorization.CheckAsync(moduleDataIO, request.SourceModule, request.FieldName);
             var message = request.Message;
             message.From = string.Empty;
             message.FromDisplayName = string.Empty;
-            return await SendAsync(request.MailInfraName, message, CreateSource(request.SourceModule, request.SourceId));
+            return await SendAsync(design.MailInfraName, message, CreateSource(request.SourceModule, request.SourceId));
         }
 
         internal static MailHistorySource? CreateSource(string sourceModule, string sourceId)
             => string.IsNullOrEmpty(sourceModule)
                 ? null
                 : new MailHistorySource { SourceModule = sourceModule, SourceId = sourceId };
+
+        /// <summary>
+        /// システムメール (二要素認証のコードなど、画面のフィールドを介さずサーバーが送るもの) を送る。
+        /// フィールドの検査は無い。呼び名は明示 (空なら appsettings の既定)。履歴の Source は付かない。
+        /// </summary>
+        public async Task<MailSendResult> SendAsync(string? mailInfraName, MailMessage message)
+            => await SendAsync(mailInfraName, message, source: null);
 
         internal async Task<MailSendResult> SendAsync(string? mailInfraName, MailMessage message, MailHistorySource? source = null)
         {

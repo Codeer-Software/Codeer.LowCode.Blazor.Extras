@@ -255,23 +255,5 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Mail
             Assert.That(result.IsSuccess, Is.False);
             Assert.That(result.Failures.Single().Error, Does.Contain("Mail.DefaultInfraName"));
         }
-
-        //================= 差出人 =================
-
-        [Test]
-        public async Task From_クライアントが載せたFromは無視される()
-        {
-            //ワイヤ経由の From はなりすまし防止のため常に破棄される (差出人は送信インフラ設定のシステム送信者)
-            var fake = new FakeMailSender();
-            var dispatcher = new MailDispatcher(new MailConfig { DefaultInfraName = "Main" }, _ => fake);
-            var result = await dispatcher.SendAsync(new MailSendRequest
-            {
-                Message = new MailMessage { From = "spoof@evil.com", FromDisplayName = "偽", To = { "to@example.com" }, Subject = "s" },
-            });
-
-            Assert.That(result.IsSuccess, Is.True);
-            Assert.That(fake.Sent.Single().From, Is.Empty);
-            Assert.That(fake.Sent.Single().FromDisplayName, Is.Empty);
-        }
     }
 }

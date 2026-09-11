@@ -46,6 +46,16 @@ AIChatField を置いたモジュールに UserReadCondition (管理者のみ等
 - DesignKnowledge の list_modules/describe_module を利用者の UserRead で絞る (別項目。RawDataAccess の DB 側権限とは独立)
 - `RawDataAccessDataSources` 空 = 全部、をやめて「読み取り専用 DB ユーザーのデータソースを明示しないと動かない」に倒すか (docs に太字で前提を書く)
 
+## 決定と進捗 (2026-09-11)
+
+- 検査の単位は**「そのフィールドが今のユーザーにユーザー権限だけで見えるか」** (アプリアクセス条件 + モジュールの UserReadCondition + PermissionField のうちユーザーだけで偽と確定する読取条件)。行 (SourceId) は読まない。
+  行依存の PermissionField 条件は素通し (新規行の判定と同じ規則。保守側に倒すと行依存の条件を付けた MailField が誰にも使えなくなる)。
+  行の DataRead まで要求すると未保存レコードや DB に繋がっていないモジュールから送れなくなるため、上の手順 4 は採らない。
+  モジュール単位ではなくフィールド単位にしたのは「フィールドの API はそのフィールドが見える人が使える」という意味論にするため (PermissionField で MailField を隠せばその人は送れない)。
+- そのために本体 (Codeer.LowCode.Blazor 1.3.33) に `ModuleDataIO.CheckUserReadAuthorization(moduleName, fieldName)` を追加した (名前の User は「ユーザー権限だけ・Data 条件は見ない」の意) (GetListAsync と同じユーザー判定で、DB を触らない。フィールドのデザインを返す)。
+- MailField (単発送信・プレビュー) は Extras.Server 0.12.0 で実装済 (`Mail/MailFieldAuthorization`)。履歴の書き込みは従来どおりシステム経路。
+- 残り: BulkMailField → AIChat → AITextAnalyze → 承認。同じ方式で順に。
+
 ## 実装順 (効果順)
 
 1. AIChat: リクエストに ModuleName/FieldName → 共通チェック → DocumentFolder/Agent をデザインから

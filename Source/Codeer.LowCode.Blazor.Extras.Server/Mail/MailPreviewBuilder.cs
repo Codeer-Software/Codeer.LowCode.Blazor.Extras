@@ -144,16 +144,17 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
             return doc;
         }
 
-        //Bulk 側と呼び出し形を揃えるため Task を返す (中身は同期)
-        internal Task<MailPreviewDocument> BuildSingleAsync(MailPreviewRequest request)
+        internal async Task<MailPreviewDocument> BuildSingleAsync(MailPreviewRequest request)
         {
+            //送信と同じ検査 (MailField が存在し、今のユーザーに見えること)。呼び名もデザインから
+            var design = await MailFieldAuthorization.CheckAsync(_moduleDataIO, request.SourceModule, request.FieldName);
             var message = request.Message;
             var doc = new MailPreviewDocument
             {
                 Kind = "single",
                 Title = request.Title,
                 GeneratedAt = DateTime.Now.ToString("yyyy-MM-dd HH:mm"),
-                MailInfraName = _dispatcher.ResolveInfraName(request.MailInfraName),
+                MailInfraName = _dispatcher.ResolveInfraName(design.MailInfraName),
                 ReplyTo = message.ReplyTo,
                 IsBodyHtml = message.IsBodyHtml,
                 SubjectTemplate = request.SubjectTemplate,
@@ -173,7 +174,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
                 SubjectSpans = request.SubjectSpans,
                 BodySpans = request.BodySpans,
             });
-            return Task.FromResult(doc);
+            return doc;
         }
 
     }

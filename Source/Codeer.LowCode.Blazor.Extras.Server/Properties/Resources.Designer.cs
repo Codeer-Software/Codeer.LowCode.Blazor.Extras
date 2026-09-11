@@ -139,6 +139,15 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Properties {
                 return ResourceManager.GetString("AIChat_ReadingDocument", resourceCulture);
             }
         }
+
+        /// <summary>
+        ///   Module &apos;{0}&apos; has no MailField named &apos;{1}&apos;. に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string MailField_NotFound {
+            get {
+                return ResourceManager.GetString("MailField_NotFound", resourceCulture);
+            }
+        }
         
     }
 }
