@@ -49,7 +49,9 @@ namespace Extras.Server.AI
                 () => new DbAccessor(config.DataSources),
                 () => DesignerService.GetDesignData(),
                 folder => DesignDataFileManager.GetResourceTexts(config.DesignFileDirectory, folder, ".md", ".txt").Select(e => new AIChatDocument(e.Name, e.Text)).ToList(),
-                new RawDataAccessOptions { DataSourceNames = config.AIChat.RawDataAccessDataSources });
+                new RawDataAccessOptions { DataSourceNames = config.AIChat.RawDataAccessDataSources },
+                //SemanticSearchField を置いたモジュールを search_records (意味検索) で探せるようにする。EmbeddingModel 未設定なら null = ツールは付かない
+                embeddingGeneratorFactory: SemanticSearchIndex.EmbeddingGeneratorFactory);
         }
 
         //Agent に渡す IChatClient。ライブラリは IChatClient 抽象しか知らないので、どのプロバイダ (Azure OpenAI / OpenAI / Ollama …) を使うかはここで決める。

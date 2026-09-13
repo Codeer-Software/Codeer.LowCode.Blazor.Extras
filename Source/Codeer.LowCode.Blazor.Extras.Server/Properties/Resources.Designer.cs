@@ -176,5 +176,14 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Properties {
             }
         }
         
+        
+        /// <summary>
+        ///   Searching for similar records… に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string AIChat_SearchingRecords {
+            get {
+                return ResourceManager.GetString("AIChat_SearchingRecords", resourceCulture);
+            }
+        }
     }
 }

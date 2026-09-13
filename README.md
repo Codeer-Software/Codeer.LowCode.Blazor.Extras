@@ -38,6 +38,7 @@
 | [OrientationLockField](docs/OrientationLockField.md) | タッチ端末で画面の向き(横/縦)が指定と異なるとき、全画面オーバーレイで回転を促すフィールド |
 | [AITextAnalyzerField](docs/AITextAnalyzerField.md) | 帳票ファイルや自由テキストを AI で解析し、モジュールのフィールドへ自動入力する入力補助フィールド (Azure OpenAI + Document Intelligence を使用) |
 | [AIChatField](docs/AIChatField.md) | AI (サーバー側の Agent) とのチャット UI。送信→ポーリングで返事を受け取り HTML で表示する。Agent は名前で選び (`Agent` プロパティ)、標準で `RawDataAccessAgent` (Microsoft.Extensions.AI の IChatClient で会話し、DB を SQL で読んで集計・SVG グラフで答える) を用意 |
+| [SemanticSearchField](docs/SemanticSearchField.md) | 行を「内容の意味で探せる」ようにする補助フィールド (UI なし)。Submit 時に対象フィールドを「表示名: 値」の文章にして送り、サーバーが埋め込みベクトルを付けて書き込み専用の 2 列に保存する。AIChatField の `RawDataAccessAgent` が `search_records` で「似た事例」を探す (サーバサイド実装が必要) |
 
 ## 認証 (ログイン)
 
@@ -208,6 +209,7 @@ ExtrasDesignerInitializer.Setup(DesignerEnvironment);
 - [PasswordHashField - パスワードハッシュ](docs/PasswordHashField.md)
 - [OrientationLockField - 画面の向き制御](docs/OrientationLockField.md)
 - [AITextAnalyzerField - AI 帳票解析](docs/AITextAnalyzerField.md)
+- [SemanticSearchField - 意味検索 (AI)](docs/SemanticSearchField.md)
 
 ## CSS カスタマイズ
 

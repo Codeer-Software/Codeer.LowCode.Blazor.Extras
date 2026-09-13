@@ -51,4 +51,7 @@
   <data name="AITextAnalyzerField_NotFound" xml:space="preserve">
     <value>モジュール '{0}' に AITextAnalyzerField '{1}' がありません。</value>
   </data>
+  <data name="AIChat_SearchingRecords" xml:space="preserve">
+    <value>似た記録を探しています…</value>
+  </data>
 </root>

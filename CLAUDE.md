@@ -137,6 +137,20 @@ dotnet build Source/Codeer.LowCode.Blazor.Extras/Codeer.LowCode.Blazor.Extras.cs
 - **テスト**: `Test/AI/` (JobStore + 対応表の振り分け / ChatClientAgent は台本つき `FakeChatClient` / RawDataAccessToolSet は SQLite 実 DB / SvgChart)
 - **インターフェース**: `IFillHeightFieldDesign` (Height=0 で親の高さに合わせる)
 - **ファイル**: `Designs/AIChatFieldDesign.cs`, `Fields/AIChatField.cs`, `Components/AIChatFieldComponent.razor(.css)`, `wwwroot/aichat-interop.js`, `AIChat/*.cs`
+- **意味検索 (0.13.0)**: コンストラクタ末尾の `Func<IEmbeddingGenerator<string, Embedding<float>>>? embeddingGeneratorFactory` を渡し、design に SemanticSearchField (両列あり) のモジュールがあれば `SemanticSearch/SemanticSearchToolSet` (internal) が付き `search_records(moduleName, query, top)` が使える (下の SemanticSearchField 参照)
+
+#### SemanticSearchField - 意味検索 (AI / RAG)
+- **状態**: 実装済み (docs/SemanticSearchField.md, Extras.Designer FieldDocs/SemanticSearchFieldDesign.md)。Example は `Inquiry` (問い合わせ) モジュールの `Search` + `SampleData/inquiry_sample.sql` + `AI/SemanticSearchIndex.cs` (Indexer と EmbeddingGeneratorFactory の静的な持ち物) + `Controllers/SemanticSearchController.cs` (再索引 API)
+- **形**: 書き込み専用列 2 本 (`DbColumnText` 文章 / `DbColumnVector` = float32 の base64) を同じテーブルに。UI なし (PasswordHashField と同型。`FieldDesignBase` 直下)。本体 (core) は触らない
+- **文章**: `SemanticSearch/SemanticSearchText.Build` (Extras、クライアント / サーバー共用) が「表示名: 値」を LF 区切りで 1 行ずつ。`SourceFields` 空 = `DefaultSourceFields` (DB 列ある入力フィールド全部。Id / 論理削除 / 楽観ロック / Password / 作成更新記録 / 自身は除く)。候補値は表示名、リンクは DisplayText、日付 ISO、RichText はタグ除去。`MaxTextLength` 既定 8000
+- **クライアントが組み立てて送る**: `Fields/SemanticSearchField.GetSubmitData` が新規なら常に、更新は対象フィールドのどれかが `IsModified` のときだけ `SemanticSearchFieldData { Text }` を送る。理由: 更新の Submit は変更フィールドしか来ないのでサーバーでは全行文章を作れない
+- **サーバー** (Extras.Server `AI/SemanticSearch/`): `SemanticSearchIndexer.ApplyAsync(designData, data, isNewData)` = CustomizedModuleDataIO の Add/Update から呼び埋め込みを付ける (新規で文章が無ければサーバーで組み立て = 一括取込。埋め込み失敗 / 未設定は Vector null + 警告ログ)。`ReindexAsync(moduleDataIO, design, moduleName, pageSize)` = GetListAsync で読み通常 Submit (Id + 文章) で書く (権限は通常どおり。論理削除行は出ない)。`SemanticSearchIndexReader` = 書き込み専用列を IDbAccessor の生 SELECT で読む (LoginAccountStore と同じ割り切り)。`SemanticSearchVector` = Encode/Decode/Cosine。`SemanticSearchToolSet` (internal, IAIChatToolSet) = `search_records`: 質問を埋め込み → cos 類似 → Id/score/詳細 URL (DesignDescriber.PageUrls)/文章の JSON。`RawDataAccessOptions.DataSourceNames` で絞る。行権限は効かない (RawDataAccess と同じ)
+- **埋め込みモデルの作り方はアプリの責務** (IChatClient と同じ)。`AISettings.EmbeddingModel` (Azure OpenAI 埋め込みデプロイ名) を Example の `SemanticSearchIndex.CreateAzureOpenAI` が `GetEmbeddingClient(...).AsIEmbeddingGenerator()` に。空なら null = 文章だけ保存・ツール無し
+- **IsModified**: 対象フィールドのどれかが IsModified なら true (自前状態なし。GetSubmitData は `IsNewData || IsModified` で送る)
+- **対象フィールドの読み込み**: 詳細の SELECT は「レイアウト + DataOnlyFields (+ IDataDependentField の依存先)」だけ (本体 SelectSqlCreator.GetSelectFields)。デザインは `IDataDependentField.GetDependencyFields() = SourceFields` を実装 (ProgressField / QrCode / MarkerList と同じ)。SourceFields 空は列挙できず何も足さない
+- **デザインチェック**: `SemanticSearchFieldDesign:1` = 列両方必須。`:2` = 対象の一部だけ読み込む詳細レイアウト (LayoutDesignCheckInfo・DataOnlyFields を指す。対象を 1 つも読み込まないレイアウトは対象外)。列存在 / SourceFields 存在もチェック
+- **テスト**: `Test/AI/` (FakeEmbeddingGenerator = 2-gram ハッシュ 128 次元 / SemanticSearchTextTest / SemanticSearchIndexerDbTest (SQLite) / SemanticSearchToolSetTest / SemanticSearchRealAITest は [Explicit]・環境変数 AZURE_OPENAI_EMBEDDING_MODEL)
+- **ファイル**: `Designs/SemanticSearchFieldDesign.cs`, `Data/SemanticSearchFieldData.cs`, `Fields/SemanticSearchField.cs`, `Components/SemanticSearchFieldComponent.razor` (空), `SemanticSearch/SemanticSearchText.cs`
 
 #### EnterFocusMoveField - Enterキーでフォーカス移動
 - **状態**: 実装済み (docs/EnterFocusMoveField.md)

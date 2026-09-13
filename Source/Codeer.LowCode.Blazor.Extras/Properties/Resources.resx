@@ -1268,4 +1268,31 @@ Recipients: {1}</value>
   <data name="AIChat_DesignSampleAssistant" xml:space="preserve">
     <value>The reply from the AI is shown here.</value>
   </data>
+  <data name="SemanticSearchField" xml:space="preserve">
+    <value>Semantic Search (AI)</value>
+  </data>
+  <data name="SemanticSearchFieldSourceFields" xml:space="preserve">
+    <value>Source Fields (empty = all input fields)</value>
+  </data>
+  <data name="SemanticSearchFieldDbColumnText" xml:space="preserve">
+    <value>DB Column (Text)</value>
+  </data>
+  <data name="SemanticSearchFieldDbColumnVector" xml:space="preserve">
+    <value>DB Column (Vector)</value>
+  </data>
+  <data name="SemanticSearchFieldMaxTextLength" xml:space="preserve">
+    <value>Max Text Length</value>
+  </data>
+  <data name="SemanticSearchCheck_ColumnsRequired" xml:space="preserve">
+    <value>Set both the text column and the vector column.</value>
+  </data>
+  <data name="SemanticSearchText_True" xml:space="preserve">
+    <value>Yes</value>
+  </data>
+  <data name="SemanticSearchText_False" xml:space="preserve">
+    <value>No</value>
+  </data>
+  <data name="SemanticSearchCheck_FieldsNotLoadedFormat" xml:space="preserve">
+    <value>The detail layout '{0}' does not load the fields {1} used for the semantic search text, so a record saved from this layout gets an incomplete text. Place those fields, or this field (with SourceFields set), in the layout or in DataOnlyFields.</value>
+  </data>
 </root>

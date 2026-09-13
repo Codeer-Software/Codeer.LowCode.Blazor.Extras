@@ -1268,4 +1268,31 @@
   <data name="AIChat_DesignSampleAssistant" xml:space="preserve">
     <value>ここに AI の返事が表示されます。</value>
   </data>
+  <data name="SemanticSearchField" xml:space="preserve">
+    <value>意味検索 (AI)</value>
+  </data>
+  <data name="SemanticSearchFieldSourceFields" xml:space="preserve">
+    <value>文章にするフィールド (空 = 入力フィールド全部)</value>
+  </data>
+  <data name="SemanticSearchFieldDbColumnText" xml:space="preserve">
+    <value>DBカラム (文章)</value>
+  </data>
+  <data name="SemanticSearchFieldDbColumnVector" xml:space="preserve">
+    <value>DBカラム (ベクトル)</value>
+  </data>
+  <data name="SemanticSearchFieldMaxTextLength" xml:space="preserve">
+    <value>文章の最大文字数</value>
+  </data>
+  <data name="SemanticSearchCheck_ColumnsRequired" xml:space="preserve">
+    <value>文章の列とベクトルの列を両方設定してください。</value>
+  </data>
+  <data name="SemanticSearchText_True" xml:space="preserve">
+    <value>はい</value>
+  </data>
+  <data name="SemanticSearchText_False" xml:space="preserve">
+    <value>いいえ</value>
+  </data>
+  <data name="SemanticSearchCheck_FieldsNotLoadedFormat" xml:space="preserve">
+    <value>詳細レイアウト '{0}' は意味検索の文章に使うフィールド {1} を読み込まないため、このレイアウトから保存した行の文章が欠けます。そのフィールドか、このフィールド (SourceFields を設定して) をレイアウトか DataOnlyFields に含めてください。</value>
+  </data>
 </root>

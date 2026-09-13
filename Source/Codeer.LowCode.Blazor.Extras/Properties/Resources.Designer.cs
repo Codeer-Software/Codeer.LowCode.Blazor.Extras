@@ -2712,5 +2712,86 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
                 return ResourceManager.GetString("AIChat_DesignSampleAssistant", resourceCulture);
             }
         }
+        
+        /// <summary>
+        ///   Semantic Search (AI) に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string SemanticSearchField {
+            get {
+                return ResourceManager.GetString("SemanticSearchField", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Source Fields (empty = all input fields) に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string SemanticSearchFieldSourceFields {
+            get {
+                return ResourceManager.GetString("SemanticSearchFieldSourceFields", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   DB Column (Text) に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string SemanticSearchFieldDbColumnText {
+            get {
+                return ResourceManager.GetString("SemanticSearchFieldDbColumnText", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   DB Column (Vector) に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string SemanticSearchFieldDbColumnVector {
+            get {
+                return ResourceManager.GetString("SemanticSearchFieldDbColumnVector", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Max Text Length に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string SemanticSearchFieldMaxTextLength {
+            get {
+                return ResourceManager.GetString("SemanticSearchFieldMaxTextLength", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Set both the text column and the vector column. に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string SemanticSearchCheck_ColumnsRequired {
+            get {
+                return ResourceManager.GetString("SemanticSearchCheck_ColumnsRequired", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Yes に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string SemanticSearchText_True {
+            get {
+                return ResourceManager.GetString("SemanticSearchText_True", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   No に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string SemanticSearchText_False {
+            get {
+                return ResourceManager.GetString("SemanticSearchText_False", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   The detail layout '{0}' does not load the fields {1} used for the semantic search text, so a record saved from this layout gets an incomplete text. Place those fields, or this field (with SourceFields set), in the layout or in DataOnlyFields. に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string SemanticSearchCheck_FieldsNotLoadedFormat {
+            get {
+                return ResourceManager.GetString("SemanticSearchCheck_FieldsNotLoadedFormat", resourceCulture);
+            }
+        }
     }
 }
