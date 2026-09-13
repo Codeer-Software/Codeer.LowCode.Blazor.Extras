@@ -2793,5 +2793,14 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
                 return ResourceManager.GetString("SemanticSearchCheck_FieldsNotLoadedFormat", resourceCulture);
             }
         }
+        
+        /// <summary>
+        ///   DB Column (DB vector search) に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string SemanticSearchFieldDbColumnVectorSearch {
+            get {
+                return ResourceManager.GetString("SemanticSearchFieldDbColumnVectorSearch", resourceCulture);
+            }
+        }
     }
 }

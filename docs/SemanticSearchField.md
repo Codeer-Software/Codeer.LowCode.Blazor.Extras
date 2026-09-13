@@ -33,14 +33,15 @@ SQL の集計 (件数・合計) は従来どおり `execute_sql`、内容で探�
 | Name | string | ○ | フィールド名 (例: `Search`) |
 | SourceFields | string[] | | 文章にするフィールド名 (同じモジュール)。空 = 入力フィールド全部 |
 | DbColumnText | string | ○ | 文章を保存する DB カラム名 (書き込み専用) |
-| DbColumnVector | string | ○ | ベクトルを保存する DB カラム名 (書き込み専用。float32 の並びの base64 文字列) |
+| DbColumnVector | string | ○ | ベクトルを保存する DB カラム名 (書き込み専用。`[0.1,-0.2,…]` の JSON 配列テキスト) |
+| DbColumnVectorSearch | string | | DB 側のベクトル検索で距離計算に使うベクトル型の列 (後述)。空なら DB 側検索を使わずサーバーのメモリで比較する |
 | MaxTextLength | int | | 文章の最大文字数 (既定 8000。超えた分は切り捨て。埋め込みモデルの入力上限の歯止め) |
 
 `DbColumnText` / `DbColumnVector` は両方必要です (片方だけだとデザインチェックが指摘します)。実テーブルに存在するかもチェックされます。
 
 ## 必要な DB 構成
 
-文章とベクトルはいずれも文字列です。ベクトルは次元数 × 4 バイトの base64 (1536 次元なら約 8KB) になるので、長さ制限の無い文字列型を使ってください。
+文章とベクトルはいずれも文字列です。ベクトルは `[0.1,-0.2,…]` の JSON 配列テキストで、1536 次元なら 15KB 前後になるので、長さ制限の無い文字列型を使ってください (この形式は pgvector や SQL Server の VECTOR 型がそのままキャストできます)。
 
 ```sql
 CREATE TABLE inquiries (
@@ -180,6 +181,41 @@ public class SemanticSearchController : ControllerBase
 POST /api/semantic_search/reindex/Inquiry   → 書き直した行数
 ```
 
+## DB のベクトル検索を使う (PostgreSQL / SQL Server 2025)
+
+既定では、検索のたびにサーバーが索引を全行読んでメモリでコサイン類似度を計算します (どの DB でも動きますが、数千行が目安)。DB がベクトル型と距離関数を持つなら、距離計算を DB に任せられます。
+
+- **PostgreSQL** (pgvector 拡張): 本体はベクトルをテキストとして書くので、`vector` 型の列には直接入りません。テキスト列をキャストする **生成列** を作り、その名前を `DbColumnVectorSearch` に設定します。
+
+  ```sql
+  CREATE EXTENSION IF NOT EXISTS vector;
+  ALTER TABLE inquiries
+    ADD COLUMN search_vector_v vector(1536)
+    GENERATED ALWAYS AS (search_vector::vector) STORED;
+  CREATE INDEX ON inquiries USING hnsw (search_vector_v vector_cosine_ops);
+  ```
+
+  ```json
+  { "DbColumnVector": "search_vector", "DbColumnVectorSearch": "search_vector_v", ... }
+  ```
+
+- **SQL Server 2025**: `VECTOR` 型の列にはテキスト (JSON 配列) から暗黙変換で書けるので、`DbColumnVector` の列自体を `VECTOR(1536)` にして、`DbColumnVectorSearch` にも同じ列名を設定します (テキスト列のままにして永続化計算列 `CAST(search_vector AS VECTOR(1536))` を別に作る形でも構いません)。
+
+`DbColumnVectorSearch` が設定されていて、接続先が対応 DB (PostgreSQL / SQL Server) のときだけ DB 側検索を使います。SQLite など対応しない DB で同じデザインを動かすと自動でメモリ比較に落ちるので、開発環境と本番でデザインを分ける必要はありません。DB 側の実行に失敗したとき (拡張が入っていない、版が古い) も警告ログを出してメモリ比較に落ちます。
+
+DB 側検索が使えるモジュールでは、AI チャットの `execute_sql` の中でも距離計算ができます。AI は SQL に `{embed:探したい内容}` と書き、サーバーが実行前にその内容の埋め込みベクトルのリテラルに置き換えます (数値はサーバーが並べるので AI は書きません)。これで「この得意先の、今年の、未完了のクレームで似たもの」のような WHERE や JOIN・集計との組み合わせが 1 本の SQL になります。
+
+```sql
+-- AI が書く SQL の例 (PostgreSQL)
+select id, subject, 1 - (search_vector_v <=> {embed:納期遅れで揉めたクレーム}) as score
+from inquiries
+where customer_id = 3 and status <> '9'
+order by search_vector_v <=> {embed:納期遅れで揉めたクレーム}
+limit 5
+```
+
+次元は埋め込みモデルで決まり列定義に固定されるので、モデルを変えたら列を作り直して再索引してください。
+
 ## Example での確認
 
 Example の `Inquiry` (問い合わせ) モジュールが `Search` フィールドを持ちます。`SampleData/inquiry_sample.sql` を `sqlite_sample_extras.db` に適用し、`appsettings.AIChatTest.json` の `AISettings.EmbeddingModel` に埋め込みのデプロイ名を入れて、`POST api/semantic_search/reindex/Inquiry` で索引を作ってから、AI チャットに「納期遅れのクレームに似た問い合わせは?」のように聞きます。
@@ -187,6 +223,6 @@ Example の `Inquiry` (問い合わせ) モジュールが `Search` フィール
 ## 注意事項
 
 - 埋め込みモデルを変えたら (次元が変わるので) 全行の再索引が必要です。混在した行はコサイン類似度が計算できず検索結果から外れます
-- 検索はサーバーが索引を全件読んでメモリで比較します (ベクトル DB 不要)。数千〜数万行までが目安で、それ以上はデータソース側のベクトル検索を検討してください
+- 既定の検索はサーバーが索引を全件読んでメモリで比較します (ベクトル DB 不要)。数千行までが目安で、それ以上は上記の DB 側ベクトル検索 (PostgreSQL / SQL Server 2025) を使ってください
 - 文章は AI (プロバイダ) に送られます。個人情報などを索引に入れたくない場合は `SourceFields` で対象を絞ってください ([AI に送られるデータ](AIChatField.md#ai-に送られるデータ))
 - 文章の列は AI 向けの索引で、人が読む前提の列ではありません。画面に出すなら元のフィールドを使ってください

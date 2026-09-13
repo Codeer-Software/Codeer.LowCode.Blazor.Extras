@@ -38,8 +38,17 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         [Designer(Index = 4, CandidateType = CandidateType.DbColumn, DisplayName = "$SemanticSearchFieldDbColumnVector"), DbColumn(nameof(SemanticSearchFieldData.Vector), IsWriteOnly = true)]
         public string DbColumnVector { get; set; } = string.Empty;
 
+        /// <summary>
+        /// DB 側のベクトル検索 (pgvector / SQL Server 2025 の VECTOR 型) で距離計算に使うベクトル型の列。空なら DB 側検索を使わずサーバーのメモリで比較する。
+        /// アプリは <see cref="DbColumnVector"/> にテキスト (JSON 配列) で書くので、PostgreSQL ではそれをキャストする生成列の名前、
+        /// SQL Server のようにテキストから VECTOR 型列へ直接書ける DB では <see cref="DbColumnVector"/> と同じ列名を設定する。
+        /// 接続先がベクトル検索に対応しない DB (SQLite 等) のときは設定があっても自動でメモリ比較に落ちる (開発環境で同じデザインを使える)。
+        /// </summary>
+        [Designer(Index = 5, CandidateType = CandidateType.DbColumn, DisplayName = "$SemanticSearchFieldDbColumnVectorSearch")]
+        public string DbColumnVectorSearch { get; set; } = string.Empty;
+
         /// <summary>文章の最大文字数 (超えた分は切り捨て。埋め込みモデルの入力上限の歯止め)。</summary>
-        [Designer(Index = 5, DisplayName = "$SemanticSearchFieldMaxTextLength")]
+        [Designer(Index = 6, DisplayName = "$SemanticSearchFieldMaxTextLength")]
         public int MaxTextLength { get; set; } = 8000;
 
         /// <summary>両方の列が設定されているか (検索と索引の対象になる条件)。</summary>
@@ -65,6 +74,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
             }
             context.CheckFieldDbColumnExistence(Name, nameof(DbColumnText), DbColumnText).AddTo(result);
             context.CheckFieldDbColumnExistence(Name, nameof(DbColumnVector), DbColumnVector).AddTo(result);
+            context.CheckFieldDbColumnExistence(Name, nameof(DbColumnVectorSearch), DbColumnVectorSearch).AddTo(result);
             foreach (var field in SourceFields)
                 context.CheckFieldFieldExistence(Name, nameof(SourceFields), field).AddTo(result);
             result.AddRange(CheckSourceFieldsLoaded(context));

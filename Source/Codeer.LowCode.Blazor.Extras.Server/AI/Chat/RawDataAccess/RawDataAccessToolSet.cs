@@ -37,6 +37,12 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat.RawDataAccess
         readonly List<string> _dataSourceNames;
         readonly object _schemaLock = new();
         Dictionary<string, List<DbSchemaReader.Column>>? _schemaCache;   //データソース名 → 列 (表・列・型)
+
+        /// <summary>
+        /// execute_sql の SQL を実行前に書き換えるフック (データソース名, SQL) → SQL。SELECT 判定より前に呼ぶ。
+        /// 意味検索 (SemanticSearchToolSet) が <c>{embed:…}</c> を質問の埋め込みベクトルのリテラルに置き換えるのに使う。例外はエラーとして AI に返す
+        /// </summary>
+        public Func<string, string, CancellationToken, Task<string>>? SqlPreprocessor { get; set; }
         DateTime _schemaLoaded;
         string? _dialects;                                              //プロンプト用: データソースごとの方言 (接続はしない)
 
@@ -230,15 +236,26 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat.RawDataAccess
             if (dataSourceName == null) return JsonSerializer.Serialize(new { error = dataSourceError });
 
             sql = (sql ?? string.Empty).Trim().TrimEnd(';').Trim();
+            var sqlForLog = sql;    //ログには AI が書いた形を残す (前処理で埋め込みベクトルに展開されると数万文字になる)
+            if (SqlPreprocessor != null)
+            {
+                try { sql = await SqlPreprocessor(dataSourceName, sql, context.CancellationToken); }
+                catch (OperationCanceledException) { throw; }
+                catch (Exception e)
+                {
+                    context.Logger?.LogWarning("AIChat RawDataAccess SQL preprocessing failed: {Message}", e.Message);
+                    return JsonSerializer.Serialize(new { error = e.Message });
+                }
+            }
             var rejection = Validate(sql);
             if (rejection != null)
             {
-                context.Logger?.LogWarning("AIChat RawDataAccess rejected SQL by {User}: {Reason} / {Sql}", context.Request.UserName, rejection, sql);
+                context.Logger?.LogWarning("AIChat RawDataAccess rejected SQL by {User}: {Reason} / {Sql}", context.Request.UserName, rejection, sqlForLog);
                 return JsonSerializer.Serialize(new { error = rejection });
             }
 
             context.Progress.Report(string.IsNullOrWhiteSpace(purpose) ? Resources.AIChat_RunningQuery : purpose.Trim());
-            context.Logger?.LogInformation("AIChat RawDataAccess SQL by {User} (conversation {Conversation}) on {DataSource}: {Sql}", context.Request.UserName, context.Request.ConversationId, dataSourceName, sql);
+            context.Logger?.LogInformation("AIChat RawDataAccess SQL by {User} (conversation {Conversation}) on {DataSource}: {Sql}", context.Request.UserName, context.Request.ConversationId, dataSourceName, sqlForLog);
 
             try
             {

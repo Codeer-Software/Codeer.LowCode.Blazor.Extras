@@ -48,19 +48,30 @@ AI チャット ([AIChatField](AIChatFieldDesign.md) の `RawDataAccessAgent`) �
 |---|---|---|---|
 | `SourceFields` | string[] | `[]` | 文章にする**同じモジュール内**のフィールド名。空なら DB カラムを持つ入力フィールド全部 (Id・論理削除・楽観ロック・パスワード・作成 / 更新の記録・このフィールド自身は除く)。 |
 | `DbColumnText` | string | `""` | 文章を保存する DB カラム名。**書き込み専用**。 |
-| `DbColumnVector` | string | `""` | 埋め込みベクトル (float32 の並びの base64 文字列) を保存する DB カラム名。**書き込み専用**。 |
+| `DbColumnVector` | string | `""` | 埋め込みベクトル (`[0.1,-0.2,…]` の JSON 配列テキスト) を保存する DB カラム名。**書き込み専用**。 |
+| `DbColumnVectorSearch` | string | `""` | DB 側のベクトル検索 (pgvector / SQL Server 2025) で距離計算に使うベクトル型の列。空ならサーバーのメモリで比較。PostgreSQL は `DbColumnVector` をキャストする生成列の名前、SQL Server は `DbColumnVector` と同じ列名 (VECTOR 型にする)。対応しない DB (SQLite 等) では設定があっても自動でメモリ比較に落ちる。 |
 | `MaxTextLength` | int | `8000` | 文章の最大文字数 (埋め込みモデルの入力上限の歯止め)。 |
 
 `DbColumnText` / `DbColumnVector` は**両方必須** (片方だけだとデザインチェック `SemanticSearchFieldDesign:1`)。実テーブルに存在するかも検証される。`SourceFields` の各名前が同じモジュールに存在するかも検証される。
 
 ### 必要な DB 構成
 
-いずれも文字列。ベクトルは次元数 × 4 バイトの base64 (1536 次元なら約 8KB) なので長さ制限の無い文字列型にする。
+いずれも文字列。ベクトルは `[0.1,-0.2,…]` の JSON 配列テキスト (1536 次元なら 15KB 前後) なので長さ制限の無い文字列型にする。
 
 ```sql
 search_text   TEXT NULL,
 search_vector TEXT NULL
 ```
+
+DB 側のベクトル検索を使うとき (PostgreSQL + pgvector): テキスト列をキャストする生成列を作り `DbColumnVectorSearch` に設定する。SQL Server 2025 は `search_vector` 自体を `VECTOR(1536)` にして同じ名前を設定する (テキストから暗黙変換で書ける)。
+
+```sql
+-- PostgreSQL
+ALTER TABLE inquiries ADD COLUMN search_vector_v vector(1536) GENERATED ALWAYS AS (search_vector::vector) STORED;
+CREATE INDEX ON inquiries USING hnsw (search_vector_v vector_cosine_ops);
+```
+
+DB 側検索が使えるモジュールでは、AI チャットの `execute_sql` の SQL に `{embed:探したい内容}` と書くと質問の埋め込みリテラルに置き換わり、WHERE・JOIN・集計と距離順を 1 本の SQL で書ける (数値は AI が書かずサーバーが差し込む)。単に似た記録を挙げるだけなら `search_records`。
 
 ### JSON例
 

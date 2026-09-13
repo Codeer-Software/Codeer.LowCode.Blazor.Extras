@@ -1295,4 +1295,7 @@
   <data name="SemanticSearchCheck_FieldsNotLoadedFormat" xml:space="preserve">
     <value>詳細レイアウト '{0}' は意味検索の文章に使うフィールド {1} を読み込まないため、このレイアウトから保存した行の文章が欠けます。そのフィールドか、このフィールド (SourceFields を設定して) をレイアウトか DataOnlyFields に含めてください。</value>
   </data>
+  <data name="SemanticSearchFieldDbColumnVectorSearch" xml:space="preserve">
+    <value>DBカラム (DBベクトル検索用)</value>
+  </data>
 </root>

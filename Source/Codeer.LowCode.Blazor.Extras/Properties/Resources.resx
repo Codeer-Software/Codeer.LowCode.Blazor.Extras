@@ -1295,4 +1295,7 @@ Recipients: {1}</value>
   <data name="SemanticSearchCheck_FieldsNotLoadedFormat" xml:space="preserve">
     <value>The detail layout '{0}' does not load the fields {1} used for the semantic search text, so a record saved from this layout gets an incomplete text. Place those fields, or this field (with SourceFields set), in the layout or in DataOnlyFields.</value>
   </data>
+  <data name="SemanticSearchFieldDbColumnVectorSearch" xml:space="preserve">
+    <value>DB Column (DB vector search)</value>
+  </data>
 </root>

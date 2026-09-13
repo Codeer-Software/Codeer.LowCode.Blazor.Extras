@@ -109,7 +109,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
             AssertNoError(await CreateIO(Indexer()).SubmitWithTransactionAsync([UpdateSubmit("1", "件名: 納期遅れの相談\n本文: 本文を変更")]));
             var (text, vector) = await RowAsync("1");
             Assert.That(text, Is.EqualTo("件名: 納期遅れの相談\n本文: 本文を変更"));
-            Assert.That(vector, Is.EqualTo(Convert.ToBase64String(System.Runtime.InteropServices.MemoryMarshal.AsBytes<float>(FakeEmbeddingGenerator.Embed(text!)))));
+            Assert.That(vector, Is.EqualTo(SemanticSearchVector.Encode(FakeEmbeddingGenerator.Embed(text!))));
             Assert.That(_embedding.Inputs, Is.EqualTo(new[] { text }));
             //他の行は触らない
             Assert.That(await RowAsync("2"), Is.EqualTo(((string?)null, (string?)null)));
@@ -181,10 +181,19 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
         public void ベクトルの保存形式と類似度()
         {
             var v = new float[] { 1, 0, 0.5f };
-            var decoded = SemanticSearchVector.Decode(SemanticSearchVector.Encode(v));
+            var encoded = SemanticSearchVector.Encode(v);
+            Assert.That(encoded, Does.StartWith("[").And.EndWith("]").And.Not.Contain(" "), "JSON 配列風テキスト (pgvector / SQL Server の VECTOR がそのままキャストできる形)");
+            Assert.That(SemanticSearchVector.Encode(new float[] { 1, -0.5f, 0.25f }), Is.EqualTo("[1,-0.5,0.25]"));
+            var decoded = SemanticSearchVector.Decode(encoded);
             Assert.That(decoded, Is.EqualTo(v));
-            Assert.That(SemanticSearchVector.Decode("not base64!"), Is.Null);
+            Assert.That(SemanticSearchVector.Decode(" [1, 2, 3] "), Is.EqualTo(new float[] { 1, 2, 3 }), "空白入りも許す");
+            Assert.That(SemanticSearchVector.Decode("[1, x]"), Is.Null);
+            Assert.That(SemanticSearchVector.Decode("[]"), Is.Null);
+            Assert.That(SemanticSearchVector.Decode("not a vector!"), Is.Null);
             Assert.That(SemanticSearchVector.Decode(""), Is.Null);
+            //旧形式 (base64 の float32 列) も読める
+            var legacy = Convert.ToBase64String(System.Runtime.InteropServices.MemoryMarshal.AsBytes<float>(v));
+            Assert.That(SemanticSearchVector.Decode(legacy), Is.EqualTo(v));
             Assert.That(SemanticSearchVector.Cosine(v, v), Is.EqualTo(1).Within(1e-6));
             Assert.That(SemanticSearchVector.Cosine(new float[] { 1, 0 }, new float[] { 0, 1 }), Is.EqualTo(0).Within(1e-6));
             Assert.That(SemanticSearchVector.Cosine(new float[] { 1, 0 }, new float[] { 1, 0, 0 }), Is.EqualTo(0), "次元が違えば 0");

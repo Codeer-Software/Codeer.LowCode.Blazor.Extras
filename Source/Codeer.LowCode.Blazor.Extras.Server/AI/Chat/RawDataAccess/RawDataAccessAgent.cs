@@ -57,8 +57,15 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat.RawDataAccess
                 LoggerFactory = loggerFactory,
             };
             if (design != null || documents != null) conversation.ToolSets.Add(new DesignKnowledgeToolSet(design, documents));
-            conversation.ToolSets.Add(new RawDataAccessToolSet(dbAccessorFactory, design, options));
-            if (design != null && embeddingGeneratorFactory != null) conversation.ToolSets.Add(new SemanticSearchToolSet(design, dbAccessorFactory, embeddingGeneratorFactory, options.DataSourceNames));
+            var rawDataAccess = new RawDataAccessToolSet(dbAccessorFactory, design, options);
+            conversation.ToolSets.Add(rawDataAccess);
+            if (design != null && embeddingGeneratorFactory != null)
+            {
+                var semanticSearch = new SemanticSearchToolSet(design, dbAccessorFactory, embeddingGeneratorFactory, options.DataSourceNames);
+                conversation.ToolSets.Add(semanticSearch);
+                //execute_sql の {embed:…} を質問の埋め込みに置き換える (DB 側のベクトル検索を SQL の中から使う)
+                rawDataAccess.SqlPreprocessor = semanticSearch.ExpandEmbeddingsAsync;
+            }
             conversation.ToolSets.Add(new ChartToolSet());
             _agent = new ChatClientAgent(clientFactory, conversation);
         }
