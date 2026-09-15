@@ -222,4 +222,4 @@ public class MyAgent : IAIChatAgent
 - 返事の HTML はそのまま描画されます (サーバーは信頼する前提)。利用者の入力をそのまま HTML にして返さないよう Agent 側で注意してください
 - ページを離れると問い合わせは止まりますが、サーバー側の処理は続きます (結果は既定で 30 分保持)
 - Agent が未設定の環境 (デザイナのプレビュー等) では入力欄が無効になり、その旨を表示します
-- パッケージの組み合わせ: ホストが `Microsoft.Extensions.AI.OpenAI` 10.7 を参照すると OpenAI パッケージは 2.11 になります。`Azure.AI.OpenAI` 2.1.0 (OpenAI 2.1 向け) の `ChatClient` を**直接** `CompleteChatAsync` 等で呼ぶコードはこの組み合わせで `MissingMethodException` になるので、Azure OpenAI は対応表の例のように `AzureOpenAIClient…GetChatClient(model).AsIChatClient()` で IChatClient に包んで使ってください (Extras.Server の Agent と AITextAnalyzeService はそうしています)
+- パッケージの組み合わせ: Extras.Server 0.12.1 以降は `Azure.AI.OpenAI` 2.9.0-beta.1 (OpenAI 2.9 以降向け) に依存し、`Microsoft.Extensions.AI.OpenAI` 10.7 が持ち込む OpenAI 2.11 と揃っています。0.12.0 以前 (`Azure.AI.OpenAI` 2.1.0) では `ChatClient` を**直接** `CompleteChatAsync` 等で呼ぶコードがこの組み合わせで `MissingMethodException` になりました。Azure OpenAI は対応表の例のように `AzureOpenAIClient…GetChatClient(model).AsIChatClient()` で IChatClient に包んで使う形を推奨します (Extras.Server の Agent と AITextAnalyzeService はそうしています)

@@ -22,8 +22,10 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI
     /// and converts the result into a <see cref="ModuleData"/> that matches the module design.
     /// The chat model is used through <see cref="IChatClient"/> (Microsoft.Extensions.AI): the default constructor builds an Azure OpenAI client
     /// from <see cref="AISettings"/>, and the other constructor takes a factory so the host can use any provider (same as the AIChat agents).
-    /// The Azure OpenAI ChatClient is not called directly, because Azure.AI.OpenAI 2.1.0 is not binary compatible with the OpenAI 2.11 package
-    /// that Microsoft.Extensions.AI.OpenAI 10.7 brings in (MissingMethodException on ChatCompletionOptions); the IChatClient adapter is.
+    /// The Azure OpenAI ChatClient is not called directly: with Azure.AI.OpenAI 2.1.0 (Extras.Server 0.12.0) a direct call was not binary compatible
+    /// with the OpenAI 2.11 package that Microsoft.Extensions.AI.OpenAI 10.7 brings in (MissingMethodException on ChatCompletionOptions), while the
+    /// IChatClient adapter was. Extras.Server 0.12.1 references Azure.AI.OpenAI 2.9.0-beta.1, which is built for that OpenAI line; the IChatClient
+    /// route is kept so the host can swap the provider.
     /// The entry points take the module name and the AITextAnalyzerField name: the request is refused unless that field is visible
     /// to the current user by user permissions alone (application access conditions, the module UserReadCondition and the PermissionField read conditions
     /// that are false for the user regardless of the row; via ModuleDataIO.CheckUserReadAuthorization), and the extraction hints (Remarks) come from the field design.
