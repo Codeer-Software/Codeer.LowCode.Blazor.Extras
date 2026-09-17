@@ -96,6 +96,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.BulkFile
         /// <summary>
         /// 取込: 外部列 → ModuleData (セル単位の構造化エラー。変換表の取得手段を差し替え可能)。
         /// 解釈できないセルは値未設定のままエラーに載せ、行自体は捨てない。
+        /// 空セル (空白だけも含む) はコード変換の有無や型によらず null (未設定) として取り込む。
         /// </summary>
         public static async Task<(List<ModuleData> Items, List<BulkFileCellError> Errors)> ToInternalWithCellErrorsAsync(
             List<List<string>> externalTexts, FileColumnMappingFieldDesign design, ModuleDesign moduleDesign,
@@ -130,10 +131,17 @@ namespace Codeer.LowCode.Blazor.Extras.Server.BulkFile
                     });
 
                     object? value;
-                    if (!string.IsNullOrEmpty(e.Column.ConversionModule))
+                    if (string.IsNullOrWhiteSpace(text))
+                    {
+                        //空セル (空白だけも含む) は列の種類によらず null (未設定)。
+                        //コード変換の引き当てや型変換に空文字を渡さない (Link 等の参照は string メンバでも DB 列は数値のことがあり、
+                        //空文字のまま書き込むと取込本体で FormatException になる)。Id 付き更新では参照を外す (null で上書き)
+                        value = null;
+                    }
+                    else if (!string.IsNullOrEmpty(e.Column.ConversionModule))
                     {
                         //コード変換 (外部→内部)。引き当てられない外部コードはエラー
-                        if (!converter.TryToInternal(e.Column, text, out var internalText) && !string.IsNullOrEmpty(text))
+                        if (!converter.TryToInternal(e.Column, text, out var internalText))
                         {
                             AddError($"code '{text}' was not found in '{e.Column.ConversionModule}'.");
                             continue;
@@ -149,8 +157,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.BulkFile
                         //フィールドの書式変換 (外部→値)。書式どおりに解釈できない値はエラー
                         if (!f.TryParseExternalText(text, out value))
                         {
-                            if (!string.IsNullOrEmpty(text))
-                                AddError($"cannot parse '{text}'.");
+                            AddError($"cannot parse '{text}'.");
                             continue;
                         }
                     }

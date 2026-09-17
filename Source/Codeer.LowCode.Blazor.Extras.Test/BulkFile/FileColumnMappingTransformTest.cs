@@ -44,6 +44,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.BulkFile
             module.Fields.Add(new TextFieldDesign { Name = "Customer" });
             module.Fields.Add(new BooleanFieldDesign { Name = "Done" });
             module.Fields.Add(new ExoticFieldDesign { Name = "Exotic" });
+            module.Fields.Add(new LinkFieldDesign { Name = "Owner" }); //参照 (データメンバは string、DB 列は数値のこともある)
             return module;
         }
 
@@ -274,6 +275,79 @@ namespace Codeer.LowCode.Blazor.Extras.Test.BulkFile
                 Assert.That(errors, Is.Empty);
                 Assert.That(((DateFieldData)items[0].Fields["OrderDate"]).Value, Is.Null);
             });
+        }
+
+        [Test]
+        public async Task ToInternalEmptyConversionCellBecomesNullWithoutError()
+        {
+            //変換列の空セル (空白だけも含む) は引き当てず null。他の行はそのまま取り込む (参照未設定の行が混ざる Excel)
+            var design = new FileColumnMappingFieldDesign
+            {
+                Name = "Mapping1",
+                Columns = Columns(new MappingColumn
+                {
+                    ExternalName = "得意先",
+                    Field = "Customer.Value",
+                    ConversionModule = "EdiMap",
+                    ConversionExternalField = "EdiCode",
+                    ConversionInternalField = "CustomerCode",
+                })
+            };
+            List<List<string>> externalTexts = [["得意先"], ["A001"], [""], ["  "], []];
+            var (items, errors) = await FileColumnMappingTransform.ToInternalAsync(externalTexts, design, CreateModule(), GetConversionTableTexts);
+            Assert.Multiple(() =>
+            {
+                Assert.That(errors, Is.Empty);
+                Assert.That(items, Has.Count.EqualTo(4));
+                Assert.That(((TextFieldData)items[0].Fields["Customer"]).Value, Is.EqualTo("C-0001"));
+                Assert.That(((TextFieldData)items[1].Fields["Customer"]).Value, Is.Null);
+                Assert.That(((TextFieldData)items[2].Fields["Customer"]).Value, Is.Null);
+                Assert.That(((TextFieldData)items[3].Fields["Customer"]).Value, Is.Null); //セル自体が無い行
+            });
+        }
+
+        [Test]
+        public async Task ToInternalEmptyCellOfStringMemberBecomesNull()
+        {
+            //変換なしの参照列 (Link) やテキスト列の空セルも空文字ではなく null (Id 付き更新で参照を外せる)
+            var design = new FileColumnMappingFieldDesign
+            {
+                Name = "Mapping1",
+                Columns = Columns(
+                    new MappingColumn { ExternalName = "オーナー", Field = "Owner.Value" },
+                    new MappingColumn { ExternalName = "得意先", Field = "Customer.Value" })
+            };
+            List<List<string>> externalTexts = [["オーナー", "得意先"], ["", " "], ["12", "C-0001"]];
+            var (items, errors) = await FileColumnMappingTransform.ToInternalAsync(externalTexts, design, CreateModule(), NoTableTexts);
+            Assert.Multiple(() =>
+            {
+                Assert.That(errors, Is.Empty);
+                Assert.That(((LinkFieldData)items[0].Fields["Owner"]).Value, Is.Null);
+                Assert.That(((TextFieldData)items[0].Fields["Customer"]).Value, Is.Null);
+                Assert.That(((LinkFieldData)items[1].Fields["Owner"]).Value, Is.EqualTo("12"));
+                Assert.That(((TextFieldData)items[1].Fields["Customer"]).Value, Is.EqualTo("C-0001"));
+            });
+        }
+
+        [Test]
+        public async Task ToExternalOutputsEmptyForNullConversionValue()
+        {
+            //ダウンロード側: 参照が null の行の変換列は空セル
+            var design = new FileColumnMappingFieldDesign
+            {
+                Name = "Mapping1",
+                Columns = Columns(new MappingColumn
+                {
+                    ExternalName = "得意先",
+                    Field = "Customer.Value",
+                    ConversionModule = "EdiMap",
+                    ConversionExternalField = "EdiCode",
+                    ConversionInternalField = "CustomerCode",
+                })
+            };
+            List<ModuleData> items = [CreateItem(("Customer", new TextFieldData { Value = null })), CreateItem()];
+            var result = await FileColumnMappingTransform.ToExternalAsync(items, design, CreateModule(), GetConversionTableTexts);
+            Assert.That(result.Skip(1), Is.EqualTo(new[] { new[] { "" }, new[] { "" } }));
         }
     }
 }
