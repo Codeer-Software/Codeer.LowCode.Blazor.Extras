@@ -48,6 +48,21 @@ namespace Codeer.LowCode.Blazor.Extras.Test.BulkFile
             return module;
         }
 
+        //Customer を変換表 EdiMap (EdiCode ⇔ CustomerCode) で引き当てる (値の引き当ては列ではなく FileValueConversionField の設定)
+        static ModuleDesign CreateModuleWithConversion()
+        {
+            var module = CreateModule();
+            module.Fields.Add(new FileValueConversionFieldDesign
+            {
+                Name = "Customer_Conversion",
+                TargetField = "Customer",
+                ConversionModule = "EdiMap",
+                ExternalField = "EdiCode",
+                InternalField = "CustomerCode",
+            });
+            return module;
+        }
+
         static ModuleData CreateItem(params (string Field, FieldDataBase Data)[] fields)
         {
             var item = new ModuleData { Name = "mod" };
@@ -140,21 +155,14 @@ namespace Codeer.LowCode.Blazor.Extras.Test.BulkFile
             var design = new FileColumnMappingFieldDesign
             {
                 Name = "Mapping1",
-                Columns = Columns(new MappingColumn
-                {
-                    ExternalName = "得意先",
-                    Field = "Customer.Value",
-                    ConversionModule = "EdiMap",
-                    ConversionExternalField = "EdiCode",
-                    ConversionInternalField = "CustomerCode",
-                })
+                Columns = Columns(new MappingColumn { ExternalName = "得意先", Field = "Customer.Value" })
             };
             List<ModuleData> items =
             [
                 CreateItem(("Customer", new TextFieldData { Value = "C-0001" })),
                 CreateItem(("Customer", new TextFieldData { Value = "C-0002" })),
             ];
-            var result = await FileColumnMappingTransform.ToExternalAsync(items, design, CreateModule(), GetConversionTableTexts);
+            var result = await FileColumnMappingTransform.ToExternalAsync(items, design, CreateModuleWithConversion(), GetConversionTableTexts);
             Assert.That(result.Skip(1), Is.EqualTo(new[] { new[] { "A001" }, new[] { "A002" } }));
         }
 
@@ -195,17 +203,10 @@ namespace Codeer.LowCode.Blazor.Extras.Test.BulkFile
             var design = new FileColumnMappingFieldDesign
             {
                 Name = "Mapping1",
-                Columns = Columns(new MappingColumn
-                {
-                    ExternalName = "得意先",
-                    Field = "Customer.Value",
-                    ConversionModule = "EdiMap",
-                    ConversionExternalField = "EdiCode",
-                    ConversionInternalField = "CustomerCode",
-                })
+                Columns = Columns(new MappingColumn { ExternalName = "得意先", Field = "Customer.Value" })
             };
             List<List<string>> externalTexts = [["得意先"], ["A001"], ["ZZZ"]];
-            var (items, errors) = await FileColumnMappingTransform.ToInternalAsync(externalTexts, design, CreateModule(), GetConversionTableTexts);
+            var (items, errors) = await FileColumnMappingTransform.ToInternalAsync(externalTexts, design, CreateModuleWithConversion(), GetConversionTableTexts);
             Assert.Multiple(() =>
             {
                 Assert.That(((TextFieldData)items[0].Fields["Customer"]).Value, Is.EqualTo("C-0001"));
@@ -284,17 +285,10 @@ namespace Codeer.LowCode.Blazor.Extras.Test.BulkFile
             var design = new FileColumnMappingFieldDesign
             {
                 Name = "Mapping1",
-                Columns = Columns(new MappingColumn
-                {
-                    ExternalName = "得意先",
-                    Field = "Customer.Value",
-                    ConversionModule = "EdiMap",
-                    ConversionExternalField = "EdiCode",
-                    ConversionInternalField = "CustomerCode",
-                })
+                Columns = Columns(new MappingColumn { ExternalName = "得意先", Field = "Customer.Value" })
             };
             List<List<string>> externalTexts = [["得意先"], ["A001"], [""], ["  "], []];
-            var (items, errors) = await FileColumnMappingTransform.ToInternalAsync(externalTexts, design, CreateModule(), GetConversionTableTexts);
+            var (items, errors) = await FileColumnMappingTransform.ToInternalAsync(externalTexts, design, CreateModuleWithConversion(), GetConversionTableTexts);
             Assert.Multiple(() =>
             {
                 Assert.That(errors, Is.Empty);
@@ -336,17 +330,10 @@ namespace Codeer.LowCode.Blazor.Extras.Test.BulkFile
             var design = new FileColumnMappingFieldDesign
             {
                 Name = "Mapping1",
-                Columns = Columns(new MappingColumn
-                {
-                    ExternalName = "得意先",
-                    Field = "Customer.Value",
-                    ConversionModule = "EdiMap",
-                    ConversionExternalField = "EdiCode",
-                    ConversionInternalField = "CustomerCode",
-                })
+                Columns = Columns(new MappingColumn { ExternalName = "得意先", Field = "Customer.Value" })
             };
             List<ModuleData> items = [CreateItem(("Customer", new TextFieldData { Value = null })), CreateItem()];
-            var result = await FileColumnMappingTransform.ToExternalAsync(items, design, CreateModule(), GetConversionTableTexts);
+            var result = await FileColumnMappingTransform.ToExternalAsync(items, design, CreateModuleWithConversion(), GetConversionTableTexts);
             Assert.That(result.Skip(1), Is.EqualTo(new[] { new[] { "" }, new[] { "" } }));
         }
     }

@@ -5,7 +5,7 @@
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>enable</Nullable>
 		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
-		<Version>0.12.2</Version>
+		<Version>0.13.0</Version>
 		<Authors>Codeer</Authors>
 		<Company>Codeer</Company>
 		<Description>Server-side services for Codeer.LowCode.Blazor apps. Includes AI document analysis (Azure Document Intelligence + Azure OpenAI), mail sending (SMTP / Microsoft Graph / SendGrid / Gmail), file storage (file system / Azure Blob / S3), external logins (Entra ID / Google / AWS Cognito / OIDC), TOTP two-factor authentication, and ASP.NET Core helpers (hot reload, ETag file responses).</Description>
@@ -16,7 +16,7 @@
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>
 		<PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
-		<PackageReleaseNotes>Fix: BulkFile import (FileColumnMappingField) now treats an empty cell, including a whitespace-only cell, as null (unset) regardless of the column type or code conversion. Previously an empty cell in a code-conversion column or in a reference (Link) column was passed through as an empty string, which failed with FormatException in the import when the DB column is numeric, and an empty cell could not clear a reference on an Id-based update. Empty cells never produce a 'code not found' / 'cannot parse' error. No other changes; Codeer.LowCode.Blazor.Extras and Codeer.LowCode.Blazor.Extras.Designer stay at 0.12.0.</PackageReleaseNotes>
+		<PackageReleaseNotes>BulkFile: value conversion (FileValueConversionField of Codeer.LowCode.Blazor.Extras 0.13.0) is applied in every path (list_file / submit_by_file / list_file_by_data / parse_file), with or without FileColumnMappingField. In the standard format the header stays 'Field.Value' and only the cell values are converted (FileValueConversionTransform); an external value not found in the conversion table is reported as 'Row N, Field.Value: code 'X' was not found in 'Module'.' together with the other row errors and the file is rejected as a whole; an empty (or whitespace-only) cell imports as null. Breaking: the code conversion of MappingColumn (ConversionModule etc.) is no longer applied. Requires Codeer.LowCode.Blazor.Extras 0.13.0.</PackageReleaseNotes>
 		<PackageId>Codeer.LowCode.Blazor.Extras.Server</PackageId>
 		<!-- NU5104: Azure.AI.OpenAI has no stable release built for the OpenAI 2.9+ line yet, so the prerelease dependency is intentional -->
 		<NoWarn>$(NoWarn);NU5104</NoWarn>

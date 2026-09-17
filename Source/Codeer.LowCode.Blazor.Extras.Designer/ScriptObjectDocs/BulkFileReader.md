@@ -12,10 +12,10 @@
   スクリプトで見るのは基本ここだけ (セル単位の細かいハンドリングは書かない)
 - `ErrorText` … エラー詳細 (行番号・列・内容の一覧テキスト)。コンソールに出すなら `Logger.Error(reader.ErrorText)`
 - `DownloadErrorText()` … エラー詳細を `{モジュール名}_errors.txt` としてダウンロードしてユーザーに渡す
-- 解析はモジュールの `CsvFileFormatField` / `FileColumnMappingField` の定義に従う
-  (CSV/固定長/xlsx 自動判定、外部列名の対応付け、コード変換、日付・数値の書式)。どちらも未定義なら内部名ヘッダの xlsx/CSV
-- ファイル形式・列対応の定義はスクリプト変換と常に併用する。排他なのは「同じ列」への二重のコード変換だけ
-  (宣言的な `ConversionModule` とスクリプト変換は列ごとにどちらか一方)
+- 解析はモジュールの `CsvFileFormatField` / `FileColumnMappingField` / `FileValueConversionField` の定義に従う
+  (CSV/固定長/xlsx 自動判定、外部列名の対応付け、値の引き当て、日付・数値の書式)。形式も列対応も未定義なら内部名ヘッダの xlsx/CSV
+- ファイル形式・列対応の定義はスクリプト変換と常に併用する。排他なのは「同じフィールド」への二重の値変換だけ
+  (宣言的な `FileValueConversionField` とスクリプト変換はフィールドごとにどちらか一方)
 - 解釈できなかったセルは値未設定になる (詳細は `ErrorText`)。
   行自体は捨てられないので、不要行はスクリプト側で除外する
 

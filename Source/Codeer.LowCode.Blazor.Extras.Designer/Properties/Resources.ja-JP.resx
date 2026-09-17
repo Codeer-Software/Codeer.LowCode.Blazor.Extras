@@ -51,21 +51,6 @@
   <data name="MappingFixedValueDescription" xml:space="preserve">
     <value>出力時にそのまま出力する値 (取引先コードなど)。フィールドを指定しない列で使います。</value>
   </data>
-  <data name="MappingCodeConversion" xml:space="preserve">
-    <value>コード変換 (任意)</value>
-  </data>
-  <data name="MappingCodeConversionDescription" xml:space="preserve">
-    <value>変換表モジュールで外部コードと内部値を相互に引き当てます (出力時は内部→外部、取込時は外部→内部)。変換表はただの業務モジュールとして作成します。取込時に引き当てられない外部コードは行番号付きエラーになります。</value>
-  </data>
-  <data name="MappingConversionModule" xml:space="preserve">
-    <value>変換表モジュール</value>
-  </data>
-  <data name="MappingConversionExternalField" xml:space="preserve">
-    <value>外部コード側フィールド</value>
-  </data>
-  <data name="MappingConversionInternalField" xml:space="preserve">
-    <value>内部値側フィールド</value>
-  </data>
   <data name="MappingFixedLength" xml:space="preserve">
     <value>固定長形式</value>
   </data>

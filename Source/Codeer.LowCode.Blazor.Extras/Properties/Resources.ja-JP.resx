@@ -480,6 +480,52 @@
   <data name="FileColumnMappingFixedLengthZeroPaddingRequiresRight" xml:space="preserve">
     <value>ゼロ埋めは右寄せの列でのみ使用できます (左寄せのゼロ埋めは値の末尾の 0 と区別できません)。</value>
   </data>
+  <data name="FileValueConversionField" xml:space="preserve">
+    <value>ファイル値変換</value>
+  </data>
+  <data name="FileValueConversionTargetField" xml:space="preserve">
+    <value>変換対象フィールド</value>
+  </data>
+  <data name="FileValueConversionConversionModule" xml:space="preserve">
+    <value>変換表モジュール</value>
+  </data>
+  <data name="FileValueConversionExternalField" xml:space="preserve">
+    <value>外部値フィールド</value>
+  </data>
+  <data name="FileValueConversionInternalField" xml:space="preserve">
+    <value>内部値フィールド</value>
+  </data>
+  <data name="FileValueConversionTargetFieldRequired" xml:space="preserve">
+    <value>変換対象フィールドを設定してください。</value>
+  </data>
+  <data name="FileValueConversionTargetFieldNotConvertible" xml:space="preserve">
+    <value>フィールド '{0}' は変換対象にできません (値を持たないか、一括更新の対象外の型です)。</value>
+  </data>
+  <data name="FileValueConversionModuleRequired" xml:space="preserve">
+    <value>変換表モジュールを設定してください (省略できるのは変換対象が LinkField のときだけです)。</value>
+  </data>
+  <data name="FileValueConversionExternalFieldRequired" xml:space="preserve">
+    <value>外部値フィールドを設定してください。</value>
+  </data>
+  <data name="FileValueConversionInternalFieldRequired" xml:space="preserve">
+    <value>内部値フィールドを設定してください (省略できるのは変換対象が LinkField のときだけです)。</value>
+  </data>
+  <data name="FileValueConversionModuleDiffersFromLinkTarget" xml:space="preserve">
+    <value>変換表モジュール '{0}' が変換対象フィールドのリンク先モジュール '{1}' と異なります。</value>
+  </data>
+  <data name="FileValueConversionTargetFieldDuplicated" xml:space="preserve">
+    <value>フィールド '{0}' を変換対象とするファイル値変換フィールドが他にもあります。変換対象 1 つにつき 1 つにしてください。</value>
+  </data>
+  <data name="FileColumnMappingConversionObsolete" xml:space="preserve">
+    <value>列マッピングのコード変換 (ConversionModule / ConversionExternalField / ConversionInternalField) は廃止されました。ファイル値変換フィールドへ移してください (デザイナのマイグレーション「ファイル列マッピングのコード変換をファイル値変換フィールドへ移行」で移せます)。</value>
+  </data>
+  <data name="FileColumnMappingConversionMigrationTitle" xml:space="preserve">
+    <value>ファイル列マッピングのコード変換をファイル値変換フィールドへ移行</value>
+  </data>
+  <data name="FileColumnMappingConversionMigrationDescription" xml:space="preserve">
+    <value>Codeer.LowCode.Blazor.Extras 0.13.0 で、ファイル列マッピングの列ごとのコード変換 (ConversionModule / ConversionExternalField / ConversionInternalField) は廃止されました。値の引き当ては「ファイル値変換」フィールド (変換対象 1 フィールドにつき 1 つ) で行い、標準形式でも列マッピング併用時でも同じように効きます。
+このマイグレーションは、コード変換が残っているマッピング列ごとに、その列のフィールドを対象とするファイル値変換フィールド「&lt;フィールド名&gt;_Conversion」を追加し (変換対象 / 変換表モジュール / 外部値フィールド / 内部値フィールド)、列側の設定を消します。同じ対象のファイル値変換フィールドが既にあり設定が同じなら列側の設定だけを消します。設定が違う列はそのまま残し、デザインチェックが指摘します。</value>
+  </data>
   <data name="BulkMailField" xml:space="preserve">
     <value>一斉メール送信</value>
   </data>

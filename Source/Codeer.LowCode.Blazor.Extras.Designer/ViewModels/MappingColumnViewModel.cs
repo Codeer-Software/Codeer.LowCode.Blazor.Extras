@@ -6,13 +6,11 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.ViewModels
 {
     public class MappingColumnViewModel : INotifyPropertyChanged
     {
-        private readonly Func<string, List<string>> _conversionFieldCandidates;
         private int _number;
 
-        public MappingColumnViewModel(MappingColumn model, Func<string, List<string>> conversionFieldCandidates)
+        public MappingColumnViewModel(MappingColumn model)
         {
             Model = model;
-            _conversionFieldCandidates = conversionFieldCandidates;
         }
 
         public MappingColumn Model { get; }
@@ -64,33 +62,6 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.ViewModels
         {
             get => Model.FixedValue;
             set { if (value == Model.FixedValue) return; Model.FixedValue = value; OnPropertyChanged(); }
-        }
-
-        public string ConversionModule
-        {
-            get => Model.ConversionModule;
-            set
-            {
-                if (value == Model.ConversionModule) return;
-                Model.ConversionModule = value;
-                OnPropertyChanged();
-                OnPropertyChanged(nameof(ConversionFieldCandidates));
-            }
-        }
-
-        //変換表モジュールのフィールド候補 (モジュール変更で更新)
-        public List<string> ConversionFieldCandidates => _conversionFieldCandidates(Model.ConversionModule);
-
-        public string ConversionExternalField
-        {
-            get => Model.ConversionExternalField;
-            set { if (value == Model.ConversionExternalField) return; Model.ConversionExternalField = value; OnPropertyChanged(); }
-        }
-
-        public string ConversionInternalField
-        {
-            get => Model.ConversionInternalField;
-            set { if (value == Model.ConversionInternalField) return; Model.ConversionInternalField = value; OnPropertyChanged(); }
         }
 
         //固定長形式 (CsvFileFormatField の FixedLengthWidthUnit が None 以外) 用の設定

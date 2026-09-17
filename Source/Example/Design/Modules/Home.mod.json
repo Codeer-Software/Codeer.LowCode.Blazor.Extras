@@ -35,6 +35,9 @@
       "Name": "Calendar",
       "IgnoreModification": false,
       "OnValidateInput": "",
+      "IsFocusSkip": false,
+      "NextFocusField": "",
+      "OnFocusMoving": "",
       "TypeFullName": "Codeer.LowCode.Blazor.Extras.Designs.CalendarFieldDesign"
     },
     {
@@ -91,6 +94,9 @@
       "Name": "Gantt",
       "IgnoreModification": false,
       "OnValidateInput": "",
+      "IsFocusSkip": false,
+      "NextFocusField": "",
+      "OnFocusMoving": "",
       "TypeFullName": "Codeer.LowCode.Blazor.Extras.Designs.GanttFieldDesign"
     },
     {
@@ -101,6 +107,9 @@
       "Name": "RichText",
       "IgnoreModification": false,
       "OnValidateInput": "",
+      "IsFocusSkip": false,
+      "NextFocusField": "",
+      "OnFocusMoving": "",
       "TypeFullName": "Codeer.LowCode.Blazor.Extras.Designs.RichTextFieldDesign"
     },
     {
@@ -121,6 +130,9 @@
       "Name": "カレンダーテストボタン",
       "IgnoreModification": false,
       "OnValidateInput": "",
+      "IsFocusSkip": false,
+      "NextFocusField": "",
+      "OnFocusMoving": "",
       "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.ButtonFieldDesign"
     },
     {
@@ -141,6 +153,9 @@
       "Name": "ガントテストボタン",
       "IgnoreModification": false,
       "OnValidateInput": "",
+      "IsFocusSkip": false,
+      "NextFocusField": "",
+      "OnFocusMoving": "",
       "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.ButtonFieldDesign"
     },
     {
@@ -161,6 +176,9 @@
       "Name": "リッチテキストテスト",
       "IgnoreModification": false,
       "OnValidateInput": "",
+      "IsFocusSkip": false,
+      "NextFocusField": "",
+      "OnFocusMoving": "",
       "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.ButtonFieldDesign"
     },
     {
@@ -170,6 +188,7 @@
       "Placeholder": "",
       "TextEditEmptyType": "StringEmpty",
       "ShouldTrimAfterEdit": false,
+      "AutoTab": false,
       "IsUpdateProtected": false,
       "IsSimpleSearchParameter": false,
       "AllowEmptySearch": false,
@@ -180,6 +199,9 @@
       "Name": "テキスト",
       "IgnoreModification": false,
       "OnValidateInput": "",
+      "IsFocusSkip": false,
+      "NextFocusField": "",
+      "OnFocusMoving": "",
       "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.TextFieldDesign"
     },
     {
@@ -199,6 +221,9 @@
       "Name": "サブミットボタン",
       "IgnoreModification": false,
       "OnValidateInput": "",
+      "IsFocusSkip": false,
+      "NextFocusField": "",
+      "OnFocusMoving": "",
       "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.SubmitButtonFieldDesign"
     },
     {
@@ -207,6 +232,9 @@
       "Name": "OrientationLock",
       "IgnoreModification": false,
       "OnValidateInput": "",
+      "IsFocusSkip": false,
+      "NextFocusField": "",
+      "OnFocusMoving": "",
       "TypeFullName": "Codeer.LowCode.Blazor.Extras.Designs.OrientationLockFieldDesign"
     },
     {
@@ -218,6 +246,9 @@
       "Name": "QrCode",
       "IgnoreModification": false,
       "OnValidateInput": "",
+      "IsFocusSkip": false,
+      "NextFocusField": "",
+      "OnFocusMoving": "",
       "TypeFullName": "Codeer.LowCode.Blazor.Extras.Designs.QrCodeFieldDesign"
     },
     {
@@ -239,6 +270,9 @@
       "Name": "ProgressValue",
       "IgnoreModification": false,
       "OnValidateInput": "",
+      "IsFocusSkip": false,
+      "NextFocusField": "",
+      "OnFocusMoving": "",
       "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.NumberFieldDesign"
     },
     {
@@ -251,13 +285,32 @@
       "Name": "ProgressBar",
       "IgnoreModification": false,
       "OnValidateInput": "",
+      "IsFocusSkip": false,
+      "NextFocusField": "",
+      "OnFocusMoving": "",
       "TypeFullName": "Codeer.LowCode.Blazor.Extras.Designs.ProgressFieldDesign"
     },
     {
-      "Name": "SwitchUserLink",
-      "TitleText": "ログイン切替(デモ)",
-      "Url": "/login.html",
+      "Style": "Text",
+      "Target": "Url",
+      "ShouldOpenInNewTab": false,
       "Icon": "bi bi-person-circle",
+      "TitleText": "ログイン切替(デモ)",
+      "TitleVariable": "",
+      "ImageResourcePath": "",
+      "PageFrame": "",
+      "Module": "",
+      "ModuleVariable": "",
+      "IdVariable": "",
+      "Url": "/login.html",
+      "OnClick": "",
+      "IsHtml": false,
+      "Name": "SwitchUserLink",
+      "IgnoreModification": false,
+      "OnValidateInput": "",
+      "IsFocusSkip": false,
+      "NextFocusField": "",
+      "OnFocusMoving": "",
       "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.AnchorTagFieldDesign"
     }
   ],
@@ -279,6 +332,9 @@
       "OnAfterInitialization": "DetailLayoutDesign_OnAfterInitialization",
       "OnLocationChanging": "",
       "OnFieldDataChanged": "",
+      "FocusControlMode": "Inherit",
+      "IsFocusWrap": false,
+      "InitialFocusField": "",
       "DataOnlyFields": [],
       "ClassName": "",
       "Color": "",
@@ -299,12 +355,39 @@
         "OnKeyDown": "",
         "Rows": [
           {
+            "IsWrap": false,
+            "IsAutoFillWrap": false,
+            "Margin": {},
+            "GridRowType": "Normal",
+            "CanResize": false,
+            "BackgroundColor": "",
+            "KeepInFillAvailableGrid": false,
+            "IsProportionalScale": false,
+            "IsRowMarginRemoved": false,
             "Columns": [
               {
                 "Layout": {
                   "FieldName": "SwitchUserLink",
+                  "ContextMenu": "",
+                  "ClassName": "",
+                  "FontFamily": "",
+                  "Color": "",
+                  "Name": "",
+                  "BackgroundColor": "",
                   "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.FieldLayoutDesign"
-                }
+                },
+                "IgnoreContentWidth": false,
+                "Padding": {},
+                "BackgroundColor": "",
+                "BorderStyle": {
+                  "LeftColor": "",
+                  "TopColor": "",
+                  "RightColor": "",
+                  "BottomColor": ""
+                },
+                "CanResize": false,
+                "AllowOverflow": false,
+                "Border": "None"
               }
             ]
           },
@@ -330,6 +413,7 @@
                   "BackgroundColor": "",
                   "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.FieldLayoutDesign"
                 },
+                "IgnoreContentWidth": false,
                 "Padding": {},
                 "BackgroundColor": "",
                 "BorderStyle": {
@@ -366,6 +450,7 @@
                   "BackgroundColor": "",
                   "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.FieldLayoutDesign"
                 },
+                "IgnoreContentWidth": false,
                 "Padding": {},
                 "BackgroundColor": "",
                 "BorderStyle": {
@@ -403,6 +488,7 @@
                   "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.FieldLayoutDesign"
                 },
                 "Width": 129,
+                "IgnoreContentWidth": false,
                 "Padding": {},
                 "BackgroundColor": "",
                 "BorderStyle": {
@@ -439,6 +525,7 @@
                   "BackgroundColor": "",
                   "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.FieldLayoutDesign"
                 },
+                "IgnoreContentWidth": false,
                 "Padding": {},
                 "BackgroundColor": "",
                 "BorderStyle": {
@@ -462,6 +549,7 @@
                   "BackgroundColor": "",
                   "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.FieldLayoutDesign"
                 },
+                "IgnoreContentWidth": false,
                 "Padding": {},
                 "BackgroundColor": "",
                 "BorderStyle": {
@@ -499,6 +587,7 @@
                   "BackgroundColor": "",
                   "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.FieldLayoutDesign"
                 },
+                "IgnoreContentWidth": false,
                 "Padding": {},
                 "BackgroundColor": "",
                 "BorderStyle": {
@@ -522,6 +611,7 @@
                   "BackgroundColor": "",
                   "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.FieldLayoutDesign"
                 },
+                "IgnoreContentWidth": false,
                 "Padding": {},
                 "BackgroundColor": "",
                 "BorderStyle": {
@@ -559,6 +649,7 @@
                   "BackgroundColor": "",
                   "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.FieldLayoutDesign"
                 },
+                "IgnoreContentWidth": false,
                 "Padding": {},
                 "BackgroundColor": "",
                 "BorderStyle": {
@@ -595,6 +686,7 @@
                   "BackgroundColor": "",
                   "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.FieldLayoutDesign"
                 },
+                "IgnoreContentWidth": false,
                 "Padding": {},
                 "BackgroundColor": "",
                 "BorderStyle": {
@@ -632,6 +724,7 @@
                   "BackgroundColor": "",
                   "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.FieldLayoutDesign"
                 },
+                "IgnoreContentWidth": false,
                 "Padding": {},
                 "BackgroundColor": "",
                 "BorderStyle": {
@@ -668,6 +761,7 @@
                   "BackgroundColor": "",
                   "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.FieldLayoutDesign"
                 },
+                "IgnoreContentWidth": false,
                 "Padding": {},
                 "BackgroundColor": "",
                 "BorderStyle": {
@@ -705,6 +799,7 @@
                   "BackgroundColor": "",
                   "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.FieldLayoutDesign"
                 },
+                "IgnoreContentWidth": false,
                 "Padding": {},
                 "BackgroundColor": "",
                 "BorderStyle": {
@@ -729,6 +824,8 @@
     "": {
       "HeaderTitle": "",
       "DataOnlyFields": [],
+      "FocusControlMode": "Inherit",
+      "IsFocusWrap": false,
       "OnBeforeInitialization": "",
       "OnAfterInitialization": "",
       "OnFieldDataChanged": "",
@@ -739,6 +836,8 @@
     "": {
       "OnSearchInitialization": "",
       "ShowDefaultSearchButtons": true,
+      "FocusControlMode": "Inherit",
+      "IsFocusWrap": false,
       "Layout": {
         "Operator": "And",
         "Name": "",
@@ -766,6 +865,7 @@
             "IsRowMarginRemoved": false,
             "Columns": [
               {
+                "IgnoreContentWidth": false,
                 "Padding": {},
                 "BackgroundColor": "",
                 "BorderStyle": {
@@ -779,6 +879,7 @@
                 "Border": "None"
               },
               {
+                "IgnoreContentWidth": false,
                 "Padding": {},
                 "BackgroundColor": "",
                 "BorderStyle": {
@@ -792,6 +893,7 @@
                 "Border": "None"
               },
               {
+                "IgnoreContentWidth": false,
                 "Padding": {},
                 "BackgroundColor": "",
                 "BorderStyle": {
@@ -805,6 +907,7 @@
                 "Border": "None"
               },
               {
+                "IgnoreContentWidth": false,
                 "Padding": {},
                 "BackgroundColor": "",
                 "BorderStyle": {
@@ -832,6 +935,7 @@
     "CanNavigateToDetail": false,
     "NavigateModuleUrlSegment": "",
     "CanCustomizeColumns": false,
+    "FixedColumnCount": 0,
     "ApplyBackgroundToBoxInput": false,
     "DisplayName": "",
     "SearchCondition": {
@@ -842,6 +946,7 @@
       "SortDescending": false,
       "ModuleName": ""
     },
+    "IsInMemoryPaging": false,
     "PagerPosition": "Bottom",
     "ReplaceMode": "None",
     "DeleteTogether": false,
@@ -859,6 +964,9 @@
     "Name": "",
     "IgnoreModification": false,
     "OnValidateInput": "",
+    "IsFocusSkip": false,
+    "NextFocusField": "",
+    "OnFocusMoving": "",
     "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.ListFieldDesign"
   },
   "CanBulkDataUpdate": false,

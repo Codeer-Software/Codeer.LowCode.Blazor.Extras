@@ -36,14 +36,25 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         /// <summary>出力時の固定値 (Field が空の列で使う。取引先コードなど)。</summary>
         public string FixedValue { get; set; } = string.Empty;
 
-        /// <summary>コード変換表のモジュール名 (変換表はただの業務モジュール。空なら変換なし)。</summary>
-        public string ConversionModule { get; set; } = string.Empty;
+        /// <summary>廃止 (0.13.0)。値の引き当ては <see cref="FileValueConversionFieldDesign"/> で行う。残っている設定はデザインチェックが指摘し、マイグレーションで移せる。</summary>
+        [Obsolete("Use FileValueConversionFieldDesign instead.")]
+        public string? ConversionModule { get; set; }
 
-        /// <summary>変換表の外部コード側フィールド名 (例 "EdiCode")。</summary>
-        public string ConversionExternalField { get; set; } = string.Empty;
+        /// <summary>廃止 (0.13.0)。<see cref="FileValueConversionFieldDesign.ExternalField"/> へ。</summary>
+        [Obsolete("Use FileValueConversionFieldDesign instead.")]
+        public string? ConversionExternalField { get; set; }
 
-        /// <summary>変換表の内部値側フィールド名 (例 "CustomerCode")。</summary>
-        public string ConversionInternalField { get; set; } = string.Empty;
+        /// <summary>廃止 (0.13.0)。<see cref="FileValueConversionFieldDesign.InternalField"/> へ。</summary>
+        [Obsolete("Use FileValueConversionFieldDesign instead.")]
+        public string? ConversionInternalField { get; set; }
+
+        /// <summary>廃止されたコード変換の設定が残っているか (デザインチェックとマイグレーションの判定)。</summary>
+        public bool HasObsoleteConversion()
+        {
+#pragma warning disable CS0618 // 型またはメンバーは旧形式です
+            return !string.IsNullOrEmpty(ConversionModule) || !string.IsNullOrEmpty(ConversionExternalField) || !string.IsNullOrEmpty(ConversionInternalField);
+#pragma warning restore CS0618 // 型またはメンバーは旧形式です
+        }
 
         /// <summary>固定長形式での列幅 (単位は CsvFileFormatField の FixedLengthWidthUnit)。固定長形式では全列必須 (1 以上)。</summary>
         public int FixedLengthWidth { get; set; }
@@ -66,8 +77,10 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
 
     /// <summary>
     /// 一覧ページの一括ダウンロード/一括更新の列構成を「相手仕様固定の列」(WebEDI・他システム連携等) に切り替えるフィールド。
-    /// 列の並び・外部列名・固定値・コード変換 (変換表 = ただの業務モジュール) を宣言し、
+    /// 列の並び・外部列名・固定値 (・固定長の幅と寄せ・ヘッダ有無) を宣言し、
     /// サーバー側 (BulkFileTransfer) が内部形式との相互変換を行う。
+    /// 値の表し方 (コード変換・リンクの名前解決) はこのフィールドの関心事ではなく、
+    /// <see cref="FileValueConversionFieldDesign"/> が列構成と独立に担う (併用時はマッピング列の Field が変換対象なら値が変換される)。
     /// 書式はフィールド側の設定 (Format プロパティ / IExternalTextFormatFieldDesign 実装) に従う。
     /// ファイル形式とは独立した機能で、単独なら Excel (xlsx) のまま列だけ差し替わり、
     /// <see cref="CsvFileFormatFieldDesign"/> と併用すると CSV になる (WebEDI 向け)。
@@ -82,6 +95,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         /// <summary>デザインチェック指摘の番号。DesignCheckCode.Create で発行クラス名と結合して "クラス名:番号" になる。番号は固定(追加は末尾・欠番は再利用しない)。</summary>
         private const int CodeFixedLengthWidthRequired = 1;
         private const int CodeFixedLengthZeroPaddingRequiresRight = 2;
+        private const int CodeConversionObsolete = 3;
 
         /// <summary>ファイルにヘッダ行があるか。出力時は ExternalName を1行目に出し、取込時は1行目を読み飛ばす。</summary>
         [Designer(DisplayName = "$FileColumnMappingHasHeader")]
@@ -106,18 +120,21 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
             var result = new List<DesignCheckInfo>();
             context.CheckFieldName(Name).AddTo(result);
 
-            //マッピングの参照先 (自モジュールのフィールド・コード変換モジュールとそのフィールド) が存在するか
+            //マッピングの参照先 (自モジュールのフィールド) が存在するか。廃止されたコード変換が残っていないか
             var index = 0;
             foreach (var col in Columns.Items)
             {
                 var member = $"{nameof(Columns)}[{index++}]";
                 if (!string.IsNullOrEmpty(col.Field))
                     context.CheckFieldRelativeFieldExistence(Name, member, context.OwnerModule, col.Field.Split('.')[0]).AddTo(result);
-                if (!string.IsNullOrEmpty(col.ConversionModule))
+                if (col.HasObsoleteConversion())
                 {
-                    context.CheckFieldModuleExistence(Name, member, col.ConversionModule).AddTo(result);
-                    context.CheckFieldRelativeFieldExistence(Name, member, col.ConversionModule, col.ConversionExternalField).AddTo(result);
-                    context.CheckFieldRelativeFieldExistence(Name, member, col.ConversionModule, col.ConversionInternalField).AddTo(result);
+                    result.Add(new FieldDesignCheckInfo
+                    {
+                        Code = DesignCheckCode.Create(typeof(FileColumnMappingFieldDesign), CodeConversionObsolete),
+                        Location = new() { Module = context.OwnerModule, Field = Name, Member = member },
+                        Message = Properties.Resources.FileColumnMappingConversionObsolete
+                    });
                 }
             }
 
@@ -158,11 +175,8 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
             var builder = context.Builder(base.ChangeName(context));
             foreach (var col in Columns.Items)
             {
-                //Field は自モジュールの "フィールド名.データメンバ名"、Conversion 系は変換表モジュールとそのフィールド
-                builder.AddVariable(col.Field, x => col.Field = x)
-                    .AddModule(col.ConversionModule, x => col.ConversionModule = x)
-                    .AddField(col.ConversionModule, col.ConversionExternalField, x => col.ConversionExternalField = x)
-                    .AddField(col.ConversionModule, col.ConversionInternalField, x => col.ConversionInternalField = x);
+                //Field は自モジュールの "フィールド名.データメンバ名"
+                builder.AddVariable(col.Field, x => col.Field = x);
             }
             return builder.Build();
         }

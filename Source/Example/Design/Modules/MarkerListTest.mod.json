@@ -35,6 +35,9 @@
       "Name": "MarkerList",
       "IgnoreModification": false,
       "OnValidateInput": "",
+      "IsFocusSkip": false,
+      "NextFocusField": "",
+      "OnFocusMoving": "",
       "TypeFullName": "Codeer.LowCode.Blazor.Extras.Designs.MarkerListFieldDesign"
     }
   ],
@@ -56,6 +59,9 @@
       "OnAfterInitialization": "",
       "OnLocationChanging": "",
       "OnFieldDataChanged": "",
+      "FocusControlMode": "Inherit",
+      "IsFocusWrap": false,
+      "InitialFocusField": "",
       "DataOnlyFields": [],
       "ClassName": "",
       "Color": "",
@@ -82,6 +88,8 @@
             "GridRowType": "Normal",
             "CanResize": true,
             "BackgroundColor": "",
+            "KeepInFillAvailableGrid": false,
+            "IsProportionalScale": false,
             "IsRowMarginRemoved": false,
             "Columns": [
               {
@@ -95,6 +103,7 @@
                   "BackgroundColor": "",
                   "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.FieldLayoutDesign"
                 },
+                "IgnoreContentWidth": false,
                 "Padding": {},
                 "BackgroundColor": "",
                 "BorderStyle": {
@@ -104,6 +113,7 @@
                   "BottomColor": ""
                 },
                 "CanResize": true,
+                "AllowOverflow": false,
                 "Border": "None"
               }
             ]
@@ -118,6 +128,8 @@
     "": {
       "HeaderTitle": "",
       "DataOnlyFields": [],
+      "FocusControlMode": "Inherit",
+      "IsFocusWrap": false,
       "OnBeforeInitialization": "",
       "OnAfterInitialization": "",
       "OnFieldDataChanged": "",
@@ -127,6 +139,7 @@
             "FieldName": "",
             "ContextMenu": "",
             "Label": "",
+            "IsMaxWidthFixed": false,
             "ColumnSpan": 1,
             "RowSpan": 1,
             "TextWrap": "Unset",
@@ -147,6 +160,8 @@
     "": {
       "OnSearchInitialization": "",
       "ShowDefaultSearchButtons": true,
+      "FocusControlMode": "Inherit",
+      "IsFocusWrap": false,
       "Layout": {
         "Operator": "And",
         "Name": "SearchGridLayout",
@@ -169,9 +184,12 @@
             "GridRowType": "Normal",
             "CanResize": false,
             "BackgroundColor": "",
+            "KeepInFillAvailableGrid": false,
+            "IsProportionalScale": false,
             "IsRowMarginRemoved": false,
             "Columns": [
               {
+                "IgnoreContentWidth": false,
                 "Padding": {},
                 "BackgroundColor": "",
                 "BorderStyle": {
@@ -181,9 +199,11 @@
                   "BottomColor": ""
                 },
                 "CanResize": false,
+                "AllowOverflow": false,
                 "Border": "None"
               },
               {
+                "IgnoreContentWidth": false,
                 "Padding": {},
                 "BackgroundColor": "",
                 "BorderStyle": {
@@ -193,9 +213,11 @@
                   "BottomColor": ""
                 },
                 "CanResize": false,
+                "AllowOverflow": false,
                 "Border": "None"
               },
               {
+                "IgnoreContentWidth": false,
                 "Padding": {},
                 "BackgroundColor": "",
                 "BorderStyle": {
@@ -205,9 +227,11 @@
                   "BottomColor": ""
                 },
                 "CanResize": false,
+                "AllowOverflow": false,
                 "Border": "None"
               },
               {
+                "IgnoreContentWidth": false,
                 "Padding": {},
                 "BackgroundColor": "",
                 "BorderStyle": {
@@ -217,6 +241,7 @@
                   "BottomColor": ""
                 },
                 "CanResize": false,
+                "AllowOverflow": false,
                 "Border": "None"
               }
             ]
@@ -234,6 +259,7 @@
     "CanNavigateToDetail": true,
     "NavigateModuleUrlSegment": "",
     "CanCustomizeColumns": false,
+    "FixedColumnCount": 0,
     "ApplyBackgroundToBoxInput": false,
     "DisplayName": "",
     "SearchCondition": {
@@ -244,14 +270,16 @@
       "SortDescending": false,
       "ModuleName": ""
     },
+    "IsInMemoryPaging": false,
     "PagerPosition": "Top",
-    "UseIndexSort": false,
+    "ReplaceMode": "None",
     "DeleteTogether": false,
     "CanCreate": false,
     "CanUpdate": false,
     "CanDelete": true,
     "CanUserSort": true,
     "CanSelect": false,
+    "UseIndexSort": false,
     "OnDataChanged": "",
     "OnSearchDataChanged": "",
     "OnSelectedIndexChanged": "",
@@ -260,6 +288,9 @@
     "Name": "",
     "IgnoreModification": false,
     "OnValidateInput": "",
+    "IsFocusSkip": false,
+    "NextFocusField": "",
+    "OnFocusMoving": "",
     "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.ListFieldDesign"
   },
   "CanBulkDataUpdate": false,

@@ -9,29 +9,36 @@
     {
       "Text": "MarkdownField 確認 (タブ / 左右 / プレビューなし / 閲覧のみ)",
       "Icon": "",
+      "IsHtml": false,
       "Style": "H5",
       "RelativeField": "",
       "OnClick": "",
       "Name": "Header",
       "IgnoreModification": false,
       "OnValidateInput": "",
+      "IsFocusSkip": false,
+      "NextFocusField": "",
+      "OnFocusMoving": "",
       "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.LabelFieldDesign"
     },
     {
       "Text": "PreviewMode = Tab (既定)。ツールバーで記法を挿入、[プレビュー] タブで確認",
       "Icon": "",
+      "IsHtml": false,
       "Style": "Default",
       "RelativeField": "",
       "OnClick": "",
       "Name": "L1",
       "IgnoreModification": false,
       "OnValidateInput": "",
+      "IsFocusSkip": false,
+      "NextFocusField": "",
+      "OnFocusMoving": "",
       "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.LabelFieldDesign"
     },
     {
       "DbColumn": "",
       "Placeholder": "Markdown で入力 (Enter は改行)",
-      "MaxLength": null,
       "PreviewMode": "Tab",
       "ShowToolbar": true,
       "DisplayName": "",
@@ -40,17 +47,24 @@
       "Name": "MdTab",
       "IgnoreModification": false,
       "OnValidateInput": "",
+      "IsFocusSkip": false,
+      "NextFocusField": "",
+      "OnFocusMoving": "",
       "TypeFullName": "Codeer.LowCode.Blazor.Extras.Designs.MarkdownFieldDesign"
     },
     {
       "Text": "PreviewMode = Split。右に即時プレビュー。必須 + 最大 200 文字",
       "Icon": "",
+      "IsHtml": false,
       "Style": "Default",
       "RelativeField": "",
       "OnClick": "",
       "Name": "L2",
       "IgnoreModification": false,
       "OnValidateInput": "",
+      "IsFocusSkip": false,
+      "NextFocusField": "",
+      "OnFocusMoving": "",
       "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.LabelFieldDesign"
     },
     {
@@ -65,23 +79,29 @@
       "Name": "MdSplit",
       "IgnoreModification": false,
       "OnValidateInput": "",
+      "IsFocusSkip": false,
+      "NextFocusField": "",
+      "OnFocusMoving": "",
       "TypeFullName": "Codeer.LowCode.Blazor.Extras.Designs.MarkdownFieldDesign"
     },
     {
       "Text": "PreviewMode = None + ツールバーなし",
       "Icon": "",
+      "IsHtml": false,
       "Style": "Default",
       "RelativeField": "",
       "OnClick": "",
       "Name": "L3",
       "IgnoreModification": false,
       "OnValidateInput": "",
+      "IsFocusSkip": false,
+      "NextFocusField": "",
+      "OnFocusMoving": "",
       "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.LabelFieldDesign"
     },
     {
       "DbColumn": "",
       "Placeholder": "",
-      "MaxLength": null,
       "PreviewMode": "None",
       "ShowToolbar": false,
       "DisplayName": "",
@@ -90,23 +110,29 @@
       "Name": "MdPlain",
       "IgnoreModification": false,
       "OnValidateInput": "",
+      "IsFocusSkip": false,
+      "NextFocusField": "",
+      "OnFocusMoving": "",
       "TypeFullName": "Codeer.LowCode.Blazor.Extras.Designs.MarkdownFieldDesign"
     },
     {
       "Text": "閲覧のみ (スクリプトで MdTab の値を転写)",
       "Icon": "",
+      "IsHtml": false,
       "Style": "Default",
       "RelativeField": "",
       "OnClick": "",
       "Name": "L4",
       "IgnoreModification": false,
       "OnValidateInput": "",
+      "IsFocusSkip": false,
+      "NextFocusField": "",
+      "OnFocusMoving": "",
       "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.LabelFieldDesign"
     },
     {
       "DbColumn": "",
       "Placeholder": "",
-      "MaxLength": null,
       "PreviewMode": "Tab",
       "ShowToolbar": true,
       "DisplayName": "",
@@ -115,17 +141,32 @@
       "Name": "MdView",
       "IgnoreModification": false,
       "OnValidateInput": "",
+      "IsFocusSkip": false,
+      "NextFocusField": "",
+      "OnFocusMoving": "",
       "TypeFullName": "Codeer.LowCode.Blazor.Extras.Designs.MarkdownFieldDesign"
     },
     {
       "Text": "MdTab を閲覧側に転写",
+      "ImageResourcePath": "",
+      "ImageResourceSet": {
+        "Default": "",
+        "Focus": "",
+        "Active": "",
+        "Hover": "",
+        "Disabled": ""
+      },
       "Icon": "",
-      "Style": "Default",
-      "RelativeField": "",
+      "Variant": "Primary",
       "OnClick": "Copy_OnClick",
+      "ShowTextInToolTip": false,
+      "IsHtml": false,
       "Name": "Copy",
       "IgnoreModification": false,
       "OnValidateInput": "",
+      "IsFocusSkip": false,
+      "NextFocusField": "",
+      "OnFocusMoving": "",
       "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.ButtonFieldDesign"
     }
   ],
@@ -147,6 +188,9 @@
       "OnAfterInitialization": "DetailLayoutDesign_OnAfterInitialization",
       "OnLocationChanging": "",
       "OnFieldDataChanged": "",
+      "FocusControlMode": "Inherit",
+      "IsFocusWrap": false,
+      "InitialFocusField": "",
       "DataOnlyFields": [],
       "ClassName": "",
       "Color": "",
@@ -173,6 +217,8 @@
             "GridRowType": "Normal",
             "CanResize": false,
             "BackgroundColor": "",
+            "KeepInFillAvailableGrid": false,
+            "IsProportionalScale": false,
             "IsRowMarginRemoved": false,
             "Columns": [
               {
@@ -186,6 +232,7 @@
                   "BackgroundColor": "",
                   "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.FieldLayoutDesign"
                 },
+                "IgnoreContentWidth": false,
                 "Padding": {},
                 "BackgroundColor": "",
                 "BorderStyle": {
@@ -195,6 +242,7 @@
                   "BottomColor": ""
                 },
                 "CanResize": false,
+                "AllowOverflow": false,
                 "Border": "None"
               }
             ]
@@ -206,6 +254,8 @@
             "GridRowType": "Normal",
             "CanResize": false,
             "BackgroundColor": "",
+            "KeepInFillAvailableGrid": false,
+            "IsProportionalScale": false,
             "IsRowMarginRemoved": false,
             "Columns": [
               {
@@ -219,6 +269,7 @@
                   "BackgroundColor": "",
                   "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.FieldLayoutDesign"
                 },
+                "IgnoreContentWidth": false,
                 "Padding": {},
                 "BackgroundColor": "",
                 "BorderStyle": {
@@ -228,6 +279,7 @@
                   "BottomColor": ""
                 },
                 "CanResize": false,
+                "AllowOverflow": false,
                 "Border": "None"
               }
             ]
@@ -239,6 +291,8 @@
             "GridRowType": "Normal",
             "CanResize": false,
             "BackgroundColor": "",
+            "KeepInFillAvailableGrid": false,
+            "IsProportionalScale": false,
             "IsRowMarginRemoved": false,
             "Columns": [
               {
@@ -252,6 +306,7 @@
                   "BackgroundColor": "",
                   "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.FieldLayoutDesign"
                 },
+                "IgnoreContentWidth": false,
                 "Padding": {},
                 "BackgroundColor": "",
                 "BorderStyle": {
@@ -261,6 +316,7 @@
                   "BottomColor": ""
                 },
                 "CanResize": false,
+                "AllowOverflow": false,
                 "Border": "None"
               }
             ]
@@ -272,6 +328,8 @@
             "GridRowType": "Normal",
             "CanResize": false,
             "BackgroundColor": "",
+            "KeepInFillAvailableGrid": false,
+            "IsProportionalScale": false,
             "IsRowMarginRemoved": false,
             "Columns": [
               {
@@ -285,6 +343,7 @@
                   "BackgroundColor": "",
                   "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.FieldLayoutDesign"
                 },
+                "IgnoreContentWidth": false,
                 "Padding": {},
                 "BackgroundColor": "",
                 "BorderStyle": {
@@ -294,6 +353,7 @@
                   "BottomColor": ""
                 },
                 "CanResize": false,
+                "AllowOverflow": false,
                 "Border": "None"
               }
             ]
@@ -305,6 +365,8 @@
             "GridRowType": "Normal",
             "CanResize": false,
             "BackgroundColor": "",
+            "KeepInFillAvailableGrid": false,
+            "IsProportionalScale": false,
             "IsRowMarginRemoved": false,
             "Columns": [
               {
@@ -318,6 +380,7 @@
                   "BackgroundColor": "",
                   "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.FieldLayoutDesign"
                 },
+                "IgnoreContentWidth": false,
                 "Padding": {},
                 "BackgroundColor": "",
                 "BorderStyle": {
@@ -327,6 +390,7 @@
                   "BottomColor": ""
                 },
                 "CanResize": false,
+                "AllowOverflow": false,
                 "Border": "None"
               }
             ]
@@ -338,6 +402,8 @@
             "GridRowType": "Normal",
             "CanResize": false,
             "BackgroundColor": "",
+            "KeepInFillAvailableGrid": false,
+            "IsProportionalScale": false,
             "IsRowMarginRemoved": false,
             "Columns": [
               {
@@ -351,6 +417,7 @@
                   "BackgroundColor": "",
                   "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.FieldLayoutDesign"
                 },
+                "IgnoreContentWidth": false,
                 "Padding": {},
                 "BackgroundColor": "",
                 "BorderStyle": {
@@ -360,6 +427,7 @@
                   "BottomColor": ""
                 },
                 "CanResize": false,
+                "AllowOverflow": false,
                 "Border": "None"
               }
             ]
@@ -371,6 +439,8 @@
             "GridRowType": "Normal",
             "CanResize": false,
             "BackgroundColor": "",
+            "KeepInFillAvailableGrid": false,
+            "IsProportionalScale": false,
             "IsRowMarginRemoved": false,
             "Columns": [
               {
@@ -384,6 +454,7 @@
                   "BackgroundColor": "",
                   "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.FieldLayoutDesign"
                 },
+                "IgnoreContentWidth": false,
                 "Padding": {},
                 "BackgroundColor": "",
                 "BorderStyle": {
@@ -393,6 +464,7 @@
                   "BottomColor": ""
                 },
                 "CanResize": false,
+                "AllowOverflow": false,
                 "Border": "None"
               }
             ]
@@ -404,6 +476,8 @@
             "GridRowType": "Normal",
             "CanResize": false,
             "BackgroundColor": "",
+            "KeepInFillAvailableGrid": false,
+            "IsProportionalScale": false,
             "IsRowMarginRemoved": false,
             "Columns": [
               {
@@ -417,6 +491,7 @@
                   "BackgroundColor": "",
                   "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.FieldLayoutDesign"
                 },
+                "IgnoreContentWidth": false,
                 "Padding": {},
                 "BackgroundColor": "",
                 "BorderStyle": {
@@ -426,6 +501,7 @@
                   "BottomColor": ""
                 },
                 "CanResize": false,
+                "AllowOverflow": false,
                 "Border": "None"
               }
             ]
@@ -437,6 +513,8 @@
             "GridRowType": "Normal",
             "CanResize": false,
             "BackgroundColor": "",
+            "KeepInFillAvailableGrid": false,
+            "IsProportionalScale": false,
             "IsRowMarginRemoved": false,
             "Columns": [
               {
@@ -450,6 +528,7 @@
                   "BackgroundColor": "",
                   "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.FieldLayoutDesign"
                 },
+                "IgnoreContentWidth": false,
                 "Padding": {},
                 "BackgroundColor": "",
                 "BorderStyle": {
@@ -459,6 +538,7 @@
                   "BottomColor": ""
                 },
                 "CanResize": false,
+                "AllowOverflow": false,
                 "Border": "None"
               },
               {
@@ -472,6 +552,7 @@
                   "BackgroundColor": "",
                   "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.FieldLayoutDesign"
                 },
+                "IgnoreContentWidth": false,
                 "Padding": {},
                 "BackgroundColor": "",
                 "BorderStyle": {
@@ -481,6 +562,7 @@
                   "BottomColor": ""
                 },
                 "CanResize": false,
+                "AllowOverflow": false,
                 "Border": "None"
               }
             ]
@@ -495,6 +577,8 @@
     "": {
       "HeaderTitle": "",
       "DataOnlyFields": [],
+      "FocusControlMode": "Inherit",
+      "IsFocusWrap": false,
       "OnBeforeInitialization": "",
       "OnAfterInitialization": "",
       "OnFieldDataChanged": "",
@@ -505,6 +589,8 @@
     "": {
       "OnSearchInitialization": "",
       "ShowDefaultSearchButtons": true,
+      "FocusControlMode": "Inherit",
+      "IsFocusWrap": false,
       "Layout": {
         "Operator": "And",
         "Name": "",
@@ -532,6 +618,7 @@
     "CanNavigateToDetail": false,
     "NavigateModuleUrlSegment": "",
     "CanCustomizeColumns": false,
+    "FixedColumnCount": 0,
     "ApplyBackgroundToBoxInput": false,
     "DisplayName": "",
     "SearchCondition": {
@@ -542,14 +629,16 @@
       "SortDescending": false,
       "ModuleName": ""
     },
+    "IsInMemoryPaging": false,
     "PagerPosition": "Bottom",
-    "UseIndexSort": false,
+    "ReplaceMode": "None",
     "DeleteTogether": false,
     "CanCreate": false,
     "CanUpdate": false,
     "CanDelete": false,
     "CanUserSort": true,
     "CanSelect": false,
+    "UseIndexSort": false,
     "OnDataChanged": "",
     "OnSearchDataChanged": "",
     "OnSelectedIndexChanged": "",
@@ -558,6 +647,9 @@
     "Name": "",
     "IgnoreModification": false,
     "OnValidateInput": "",
+    "IsFocusSkip": false,
+    "NextFocusField": "",
+    "OnFocusMoving": "",
     "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.ListFieldDesign"
   },
   "CanBulkDataUpdate": false,

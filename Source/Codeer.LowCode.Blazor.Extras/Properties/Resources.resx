@@ -480,6 +480,52 @@
   <data name="FileColumnMappingFixedLengthZeroPaddingRequiresRight" xml:space="preserve">
     <value>Zero padding requires right alignment (left-aligned zero padding cannot be distinguished from trailing zeros of the value).</value>
   </data>
+  <data name="FileValueConversionField" xml:space="preserve">
+    <value>File Value Conversion</value>
+  </data>
+  <data name="FileValueConversionTargetField" xml:space="preserve">
+    <value>Target Field</value>
+  </data>
+  <data name="FileValueConversionConversionModule" xml:space="preserve">
+    <value>Conversion Table Module</value>
+  </data>
+  <data name="FileValueConversionExternalField" xml:space="preserve">
+    <value>External Value Field</value>
+  </data>
+  <data name="FileValueConversionInternalField" xml:space="preserve">
+    <value>Internal Value Field</value>
+  </data>
+  <data name="FileValueConversionTargetFieldRequired" xml:space="preserve">
+    <value>Set the target field.</value>
+  </data>
+  <data name="FileValueConversionTargetFieldNotConvertible" xml:space="preserve">
+    <value>The field '{0}' cannot be a conversion target (it has no value or is excluded from bulk update).</value>
+  </data>
+  <data name="FileValueConversionModuleRequired" xml:space="preserve">
+    <value>Set the conversion table module (it can be omitted only when the target field is a LinkField).</value>
+  </data>
+  <data name="FileValueConversionExternalFieldRequired" xml:space="preserve">
+    <value>Set the external value field.</value>
+  </data>
+  <data name="FileValueConversionInternalFieldRequired" xml:space="preserve">
+    <value>Set the internal value field (it can be omitted only when the target field is a LinkField).</value>
+  </data>
+  <data name="FileValueConversionModuleDiffersFromLinkTarget" xml:space="preserve">
+    <value>The conversion table module '{0}' differs from the link target module '{1}' of the target field.</value>
+  </data>
+  <data name="FileValueConversionTargetFieldDuplicated" xml:space="preserve">
+    <value>Another File Value Conversion field targets '{0}' too. Define one conversion field per target field.</value>
+  </data>
+  <data name="FileColumnMappingConversionObsolete" xml:space="preserve">
+    <value>The code conversion of a mapping column (ConversionModule / ConversionExternalField / ConversionInternalField) is no longer supported. Move it to a File Value Conversion field (the designer migration 'File column mapping: move code conversion to File Value Conversion fields' does this).</value>
+  </data>
+  <data name="FileColumnMappingConversionMigrationTitle" xml:space="preserve">
+    <value>File column mapping: move code conversion to File Value Conversion fields</value>
+  </data>
+  <data name="FileColumnMappingConversionMigrationDescription" xml:space="preserve">
+    <value>Codeer.LowCode.Blazor.Extras 0.13.0 removed the code conversion of FileColumnMappingField columns (ConversionModule / ConversionExternalField / ConversionInternalField). Value conversion is now a File Value Conversion field (one per target field), which works in the standard format as well as with the column mapping.
+For every mapping column that still has a code conversion, this migration adds a File Value Conversion field named '&lt;field&gt;_Conversion' for the column's field (TargetField / ConversionModule / ExternalField / InternalField) and clears the column settings. If a File Value Conversion field for the same target already exists with the same settings, only the column settings are cleared. A column whose conversion differs from the existing field is left as it is and reported by the design check.</value>
+  </data>
   <data name="BulkMailField" xml:space="preserve">
     <value>Bulk Mail</value>
   </data>
