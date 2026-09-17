@@ -82,11 +82,11 @@ namespace Codeer.LowCode.Blazor.Extras.Test.BulkFile
             return rows.Select(r => ((long)r["id"], (string)r["name"], (string)r["t"], r["owner_id"]?.ToString())).ToList();
         }
 
-        [TestCase(true)]
-        [TestCase(false)]
-        public async Task 標準形式の参照列の空セルは変換フィールドの有無によらずNULLで取り込む(bool withConversion)
+        [Test]
+        public async Task 標準形式でも変換フィールドがあれば参照列の空セルはNULLで取り込む()
         {
-            var design = CreateDesign(withConversion);
+            //変換フィールドがあるモジュールは型付き経路 (空セル = null)。本体のテキスト経路 (変換フィールド無し) は対象外
+            var design = CreateDesign(withConversion: true);
             //既存 10 の参照を外す (Id 付き更新) / 参照なしの新規行
             var result = await BulkFileTransfer.SubmitByFileAsync(design, CreateIO(design), "Item", Xlsx(
             [

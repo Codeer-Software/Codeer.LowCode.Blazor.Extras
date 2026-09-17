@@ -77,10 +77,11 @@ namespace Codeer.LowCode.Blazor.Extras.Server.BulkFile
 
             //内部名ヘッダのテーブルテキスト取込。値の引き当て (外部値→内部値。引き当て失敗は行番号付きエラー) →
             //取込前検証 (対応しない列・型変換できないセルを行番号付きで報告)
+            var hasConversion = module?.Fields.OfType<FileValueConversionFieldDesign>().Any() == true;
             var errors = new List<string>();
-            if (module != null)
+            if (hasConversion)
             {
-                var (converted, conversionErrors) = await FileValueConversionTransform.ToInternalAsync(texts, module, moduleDataIO);
+                var (converted, conversionErrors) = await FileValueConversionTransform.ToInternalAsync(texts, module!, moduleDataIO);
                 texts = converted;
                 errors.AddRange(conversionErrors);
             }
@@ -89,7 +90,15 @@ namespace Codeer.LowCode.Blazor.Extras.Server.BulkFile
 
             if (dryRun) return [new ModuleSubmitResult()]; //検証のみ (エラーなし)
 
-            return await moduleDataIO.SubmitWithTransactionByTableTextsAsync(moduleName, texts);
+            if (!hasConversion) return await moduleDataIO.SubmitWithTransactionByTableTextsAsync(moduleName, texts);
+
+            //値の引き当てがあるモジュールは列マッピングと同じ型付き経路で取り込む (空セル (空白だけも含む) は null)。
+            //本体のテキスト経路は空セルを string メンバに空文字で入れるため、参照 (Link) 列の空セルが DB の数値列で失敗し、
+            //Id 付き更新で参照を外せない。型付き経路は本体の保護フィールド差分チェック (テキスト経路だけの機能) を通らない点は列マッピング経路と同じ
+            var parsed = InternalNameTableTextsToModuleData(texts, module!);
+            if (parsed.Errors.Any())
+                return Error(string.Join(Environment.NewLine, Cap(parsed.Errors.Select(e => $"Row {e.FileRow}, {e.ColumnLabel}: {e.Message}").ToList())));
+            return await moduleDataIO.SubmitWithTransactionByModuleDataAsync(moduleName, parsed.Items);
         }
 
         //固定長は形式 (Delimiter = None) と列幅 (列マッピング) の両方が揃って成立する
@@ -240,7 +249,10 @@ namespace Codeer.LowCode.Blazor.Extras.Server.BulkFile
                 foreach (var t in targets)
                 {
                     var text = t.Index < row.Count ? row[t.Index] : string.Empty;
-                    if (!BulkDataTextConverter.TryConvert(text, t.Property.PropertyType, out var value))
+                    //空セル (空白だけも含む) は列の種類によらず null (未設定)。列マッピング経路と同じ
+                    //(参照 (Link) 列は string メンバでも DB 列は数値のことがあり、空文字のまま書き込むと取込本体で失敗する)
+                    object? value = null;
+                    if (!string.IsNullOrWhiteSpace(text) && !BulkDataTextConverter.TryConvert(text, t.Property.PropertyType, out value))
                     {
                         result.Errors.Add(new BulkFileCellError
                         {
