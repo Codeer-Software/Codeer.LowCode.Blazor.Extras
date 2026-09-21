@@ -5,6 +5,8 @@ using Codeer.LowCode.Blazor.OperatingModel;
 using Codeer.LowCode.Blazor.Repository.Data;
 using Codeer.LowCode.Blazor.Repository.Match;
 using Codeer.LowCode.Blazor.Script;
+using Codeer.LowCode.Blazor.DesignLogic;
+using Codeer.LowCode.Blazor.Utils;
 
 namespace Codeer.LowCode.Blazor.Extras.Fields
 {
@@ -52,14 +54,31 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             }
         }
 
+        /// <summary>一括更新で受け付けるファイル (input の accept 属性)。形式は対象モジュールの定義から決まる (CSV 設定があればその拡張子、無ければ xlsx / xlsm)。</summary>
+        internal string? BulkUploadAccept => GetTargetModuleDesign()?.GetBulkUploadAccept();
+
+        Repository.Design.ModuleDesign? GetTargetModuleDesign()
+        {
+            var moduleName = GetTargetModuleName();
+            return string.IsNullOrEmpty(moduleName) ? null : Services.AppInfoService.GetDesignData().Modules.Find(moduleName);
+        }
+
         /// <summary>アップロードされたファイルで一括更新する (コンポーネントのファイル選択から呼ばれる)。</summary>
-        internal async Task UploadAsync(Stream stream)
+        internal async Task UploadAsync(string fileName, Stream stream)
         {
             if (Services.AppInfoService.IsDesignMode) return;
             if (_isTransferring) return;
 
             var moduleName = GetTargetModuleName();
             if (string.IsNullOrEmpty(moduleName)) return;
+
+            //拡張子の制限 (accept は補助なのでここでも判定する)。xls / xlsb は Excel ライブラリが読めないので受け付けない
+            var targetDesign = GetTargetModuleDesign();
+            if (targetDesign != null && !targetDesign.IsAllowedBulkUploadFile(fileName))
+            {
+                await Services.Logger.Error(string.Format(Properties.Resources.FileExtensionNotAllowed, FileExtensionFilter.ToDisplayText(targetDesign.GetBulkUploadExtensions())));
+                return;
+            }
 
             _isTransferring = true;
             NotifyStateChanged();

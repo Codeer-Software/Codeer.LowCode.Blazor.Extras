@@ -1314,4 +1314,7 @@
   <data name="AIChat_DesignSampleAssistant" xml:space="preserve">
     <value>ここに AI の返事が表示されます。</value>
   </data>
+  <data name="FileExtensionNotAllowed" xml:space="preserve">
+    <value>許可されていないファイル形式です。許可: {0}</value>
+  </data>
 </root>

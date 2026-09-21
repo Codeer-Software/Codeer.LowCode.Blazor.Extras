@@ -15,6 +15,7 @@
       <InputFile class="form-control d-none"
                  disabled="@IsDisabled"
                  id="@WebElementId"
+                 accept="@Field.AcceptAttribute"
                  OnChange="@LoadFiles"/>
     </label>
     <button class="btn btn-outline-secondary" disabled="@IsDisabled" @onclick="() => OpenTextModal()">
@@ -47,7 +48,13 @@
   private async Task LoadFiles(InputFileChangeEventArgs e) {
     var maxAllowedSize = FileFieldDesign.DefaultMaxAllowedSize;
     var file = e.File;
-    await Field.SetDataByFileAsync(e.File.Name, new StreamContent(file.OpenReadStream(maxAllowedSize)));
+    try {
+      await Field.SetDataByFileAsync(e.File.Name, new StreamContent(file.OpenReadStream(maxAllowedSize)));
+    }
+    catch (LowCodeException ex) {
+      //拡張子の制限違反はフィールドのエラー表示にする
+      Field.SetError(ex.Message);
+    }
   }
 
   private async Task LoadText() {

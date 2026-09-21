@@ -1314,4 +1314,7 @@ Recipients: {1}</value>
   <data name="AIChat_DesignSampleAssistant" xml:space="preserve">
     <value>The reply from the AI is shown here.</value>
   </data>
+  <data name="FileExtensionNotAllowed" xml:space="preserve">
+    <value>The file type is not allowed. Allowed: {0}</value>
+  </data>
 </root>

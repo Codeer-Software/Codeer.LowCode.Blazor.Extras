@@ -2802,5 +2802,14 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
                 return ResourceManager.GetString("AIChat_DesignSampleAssistant", resourceCulture);
             }
         }
+
+        /// <summary>
+        ///   Looks up a localized string similar to The file type is not allowed. Allowed: {0}.
+        /// </summary>
+        internal static string FileExtensionNotAllowed {
+            get {
+                return ResourceManager.GetString("FileExtensionNotAllowed", resourceCulture);
+            }
+        }
     }
 }
