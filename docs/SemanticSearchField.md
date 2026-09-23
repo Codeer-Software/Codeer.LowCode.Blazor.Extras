@@ -118,7 +118,7 @@ SQL の集計 (件数・合計) は従来どおり `execute_sql`、内容で探�
 
 ### 1. 埋め込みモデル (IEmbeddingGenerator)
 
-[AIChatField](AIChatField.md) の `IChatClient` と同じく、どのプロバイダを使うかはアプリが決めます。Example は `AISettings` の Azure OpenAI (`EmbeddingModel` = 埋め込みのデプロイ名。`text-embedding-3-small` など) から Microsoft.Extensions.AI の `IEmbeddingGenerator<string, Embedding<float>>` を作ります (`Extras.Server/AI/SemanticSearchIndex.cs`)。
+Azure OpenAI なら Extras.Server の `AzureOpenAIClients.EmbeddingGeneratorFactory(AISettings)` が作ります。`AISettings.EmbeddingModel` に埋め込みのデプロイ名 (`text-embedding-3-small` など) を入れてください。[AIChatField](AIChatField.md) の `IChatClient` と同じく型は Microsoft.Extensions.AI の抽象 (`IEmbeddingGenerator<string, Embedding<float>>`) なので、別のプロバイダを使うときはアプリで同じ型を作って渡します。
 
 ```json
 "AISettings": {
@@ -132,18 +132,11 @@ SQL の集計 (件数・合計) は従来どおり `execute_sql`、内容で探�
 ```csharp
 internal static class SemanticSearchIndex
 {
-    public static Func<IEmbeddingGenerator<string, Embedding<float>>>? EmbeddingGeneratorFactory { get; } = Create(SystemConfig.Instance.AISettings);
+    //埋め込みモデルの取り方 (Azure OpenAI。EmbeddingModel が空なら null)
+    public static Func<IEmbeddingGenerator<string, Embedding<float>>>? EmbeddingGeneratorFactory { get; } = AzureOpenAIClients.EmbeddingGeneratorFactory(SystemConfig.Instance.AISettings);
 
     //プロセスに 1 つ
     public static SemanticSearchIndexer Indexer { get; } = new(() => EmbeddingGeneratorFactory?.Invoke());
-
-    static Func<IEmbeddingGenerator<string, Embedding<float>>>? Create(AISettings settings)
-    {
-        if (string.IsNullOrWhiteSpace(settings.EmbeddingModel)) return null;
-        var client = new AzureOpenAIClient(new Uri(settings.OpenAIEndPoint), new AzureKeyCredential(settings.OpenAIKey));
-        var generator = client.GetEmbeddingClient(settings.EmbeddingModel).AsIEmbeddingGenerator();
-        return () => generator;
-    }
 }
 ```
 
@@ -196,26 +189,69 @@ order by search_vector_v <=> {embed:納期遅れで揉めたクレーム}
 limit 5
 ```
 
-### 4. 再索引 API (任意)
+### 4. 再索引 (溜まっている行全部の文章とベクトルを作り直す)
 
-既存の行に索引を付けるには、モジュールの全行を読んで通常の Submit で書き直します。行は実行ユーザーの `ModuleDataIO` で読み (読み取り権限の範囲)、書き込みも通常の権限で通ります。埋め込みは 2. の `ApplyAsync` が付けます。
+フィールドを後から置いたとき・埋め込みモデルを変えたとき・埋め込みに失敗した行を埋めるときは、**フィールドのスクリプト**から再索引を起こします。ButtonField を管理用のページに置き、OnClick に書くだけです。
 
 ```csharp
-[ApiController]
-[Route("api/semantic_search")]
-public class SemanticSearchController : ControllerBase
+// ButtonField の OnClick
+void ReindexButton_OnClick()
 {
-    [HttpPost("reindex/{moduleName}")]
-    public async Task<ActionResult<int>> Reindex(string moduleName, CancellationToken cancellationToken)
-        => await SemanticSearchIndexer.ReindexAsync(_dataService.ModuleDataIO, DesignerService.GetDesignData(), moduleName, cancellationToken: cancellationToken);
+    Search.Reindex();          // 全行を作り直す (モデルを変えたとき等)
+    // Search.ReindexMissing(); // ベクトルがまだ無い行だけ (失敗した行の穴埋め)
+}
+
+// SemanticSearchField の OnReindexCompleted (終わったとき。成功・失敗・中断のどれでも呼ばれる)
+void Search_OnReindexCompleted()
+{
+    if (Search.ReindexError != "") MessageBox.Show(Search.ReindexError);
+    else MessageBox.Show($"{Search.ReindexProcessed} 件を索引しました");
 }
 ```
 
-```
-POST /api/semantic_search/reindex/Inquiry   → 書き直した行数
+| メンバー | 説明 |
+|---|---|
+| `Reindex()` | 読める全行の文章とベクトルを作り直す。走っている間は無視 |
+| `ReindexMissing()` | ベクトルがまだ無い行だけ |
+| `CancelReindex()` | 走っている再索引を中断する |
+| `IsReindexing` | 走っている間 true |
+| `ReindexProcessed` / `ReindexTotal` | 書き直した行数 / 対象行数 (走っている間は途中経過) |
+| `ReindexError` | 最後の再索引のエラー (成功なら空。中断も文言が入る) |
+
+- スクリプトから `Search` を参照するには、SemanticSearchField がそのレイアウトの `DataOnlyFields` (またはレイアウト) に入っている必要があります (UI が無いので DataOnlyFields が自然です)
+- 誰が起こせるかは権限で決まります。API はその SemanticSearchField を今のユーザーがユーザー権限だけで読めるとき (アプリアクセス条件・モジュールの UserReadCondition・PermissionField) だけ受け付け、行の読み書きは実行ユーザーの ModuleDataIO で行います (読める行だけ・書ける行だけ)。ボタンを置くページの UserReadCondition でも絞れます
+- サーバーではジョブとして走り、ページ (既定 100 行) ごとに文章をまとめて 1 回で埋め込みます。同じモジュールの再索引が走っている間に起こすと、その進捗に合流します
+- 埋め込みモデルが無いときは文章だけ書き直します。埋め込みの失敗はエラーとして返ります (保存時と違い黙って NULL にはしません)
+
+サーバー側は Extras.Server の `SemanticSearchReindexJobStore` をアプリの静的な持ち物として 1 つ作り、AIChat と同じ形の薄い Controller から使います (Example の `Controllers/SemanticSearchController.cs` / `AI/SemanticSearchIndex.cs`)。バックグラウンドではリクエストの HttpContext が無いので、ユーザー Id を固定した DataService を開いて渡します。
+
+```csharp
+//AI/SemanticSearchIndex.cs
+public static SemanticSearchReindexJobStore Jobs { get; } = new(Indexer, () => DesignerService.GetDesignData());
+
+//Controllers/SemanticSearchController.cs ([Route("api/semantic_search/reindex")])
+[HttpPost]
+public async Task<ActionResult<SemanticSearchReindexResponse>> Start([FromBody] SemanticSearchReindexRequest request)
+{
+    var userId = await _dataService.GetCurrentUserIdAsync();
+    var requestId = await SemanticSearchIndex.Jobs.StartAsync(Owner, request, _dataService.ModuleDataIO, () =>
+    {
+        var dataService = new DataService(userId);
+        return new SemanticSearchReindexScope(dataService.ModuleDataIO, dataService.DbAccess, dataService);
+    });
+    return Accepted(new SemanticSearchReindexResponse { RequestId = requestId });
+}
+
+[HttpGet("{requestId}")]    // → SemanticSearchReindexStatusResponse (Status / Processed / Total / Error)
+[HttpDelete("{requestId}")] // 中断
 ```
 
-Example (`Source/Example/Extras`) には索引付け (`Services/CustomizedModuleDataIO.cs`)・埋め込みモデル (`AI/SemanticSearchIndex.cs`)・再索引 API (`Controllers/SemanticSearchController.cs`)・エージェントへの結線 (`AI/AIChatAgentTable.cs`) が入っています。Example のデータは SQLite なので意味検索できるモジュールは置いていません。動かすには PostgreSQL (pgvector) のデータソースに上記の構成でモジュールを作ってください。
+```csharp
+// クライアント (ServiceInitializer)。URL はアプリの持ち物なので起動時に一度設定する
+SemanticSearchField.EndPoint = "/api/semantic_search/reindex";
+```
+
+Example (`Source/Example/Extras`) には索引付け (`Services/CustomizedModuleDataIO.cs`)・埋め込みモデルとジョブ置き場 (`AI/SemanticSearchIndex.cs`)・再索引 API (`Controllers/SemanticSearchController.cs`)・エージェントへの結線 (`AI/AIChatAgentTable.cs`) が入っています。Example のデータは SQLite なので意味検索できるモジュールは置いていません。動かすには PostgreSQL (pgvector) のデータソースに上記の構成でモジュールを作ってください。
 
 ## 注意事項
 

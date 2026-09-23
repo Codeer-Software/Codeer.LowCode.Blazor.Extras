@@ -152,8 +152,9 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
         public async Task 再索引は読める全行の文章を組み立てて保存する()
         {
             await _db.ExecuteAsync(Ds, "UPDATE inquiries SET is_deleted = 1 WHERE id = 3", new());
-            var io = CreateIO(Indexer());
-            var count = await SemanticSearchIndexer.ReindexAsync(io, _design, "Inquiry", pageSize: 1);
+            var indexer = Indexer();
+            var io = CreateIO(indexer);
+            var count = await indexer.ReindexAsync(io, _db, _design, "Inquiry", pageSize: 1);
             Assert.That(count, Is.EqualTo(2), "論理削除の行は読み込みに出ないので索引しない");
             Assert.That((await RowAsync("2")).Text, Is.EqualTo("件名: 請求書の再発行\n本文: 宛名を変更して再発行してほしい"));
             Assert.That((await RowAsync("1")).Vector, Is.Not.Null);

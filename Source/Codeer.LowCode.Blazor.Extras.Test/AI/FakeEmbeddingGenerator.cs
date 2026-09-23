@@ -10,7 +10,11 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
     {
         public const int Dimensions = 128;
         public List<string> Inputs { get; } = new();
+        /// <summary>GenerateAsync の呼び出し回数 (まとめて埋め込んでいるかの確認用)。</summary>
+        public int Calls { get; private set; }
         public bool Fail { get; set; }
+        /// <summary>1 回の呼び出しにかかる時間 (中断のテスト用)。</summary>
+        public TimeSpan Delay { get; set; }
 
         public static float[] Embed(string text)
         {
@@ -27,12 +31,14 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
             return v;
         }
 
-        public Task<GeneratedEmbeddings<Embedding<float>>> GenerateAsync(IEnumerable<string> values, EmbeddingGenerationOptions? options = null, CancellationToken cancellationToken = default)
+        public async Task<GeneratedEmbeddings<Embedding<float>>> GenerateAsync(IEnumerable<string> values, EmbeddingGenerationOptions? options = null, CancellationToken cancellationToken = default)
         {
             if (Fail) throw new InvalidOperationException("embedding failed (fake)");
+            Calls++;
+            if (Delay > TimeSpan.Zero) await Task.Delay(Delay, cancellationToken);
             var list = values.ToList();
             Inputs.AddRange(list);
-            return Task.FromResult(new GeneratedEmbeddings<Embedding<float>>(list.Select(t => new Embedding<float>(Embed(t)))));
+            return new GeneratedEmbeddings<Embedding<float>>(list.Select(t => new Embedding<float>(Embed(t))));
         }
 
         public object? GetService(Type serviceType, object? serviceKey = null) => null;

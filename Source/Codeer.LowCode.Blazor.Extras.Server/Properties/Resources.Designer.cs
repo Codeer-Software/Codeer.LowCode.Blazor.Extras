@@ -185,5 +185,14 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Properties {
                 return ResourceManager.GetString("AIChat_SearchingRecords", resourceCulture);
             }
         }
+
+        /// <summary>
+        ///   Module '{0}' has no SemanticSearchField named '{1}'. に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string SemanticSearchField_NotFound {
+            get {
+                return ResourceManager.GetString("SemanticSearchField_NotFound", resourceCulture);
+            }
+        }
     }
 }

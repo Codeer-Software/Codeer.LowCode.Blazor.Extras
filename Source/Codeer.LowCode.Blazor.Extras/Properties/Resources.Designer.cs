@@ -2901,5 +2901,50 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
                 return ResourceManager.GetString("FileExtensionNotAllowed", resourceCulture);
             }
         }
+
+        /// <summary>
+        ///   On Reindex Completed に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string SemanticSearchFieldOnReindexCompleted {
+            get {
+                return ResourceManager.GetString("SemanticSearchFieldOnReindexCompleted", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   The reindex could not be started. に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string SemanticSearchReindex_Failed {
+            get {
+                return ResourceManager.GetString("SemanticSearchReindex_Failed", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   The reindex job was lost. Check the server log. に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string SemanticSearchReindex_Lost {
+            get {
+                return ResourceManager.GetString("SemanticSearchReindex_Lost", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   The reindex did not finish in time. に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string SemanticSearchReindex_Timeout {
+            get {
+                return ResourceManager.GetString("SemanticSearchReindex_Timeout", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   The reindex was canceled. に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string SemanticSearchReindex_Canceled {
+            get {
+                return ResourceManager.GetString("SemanticSearchReindex_Canceled", resourceCulture);
+            }
+        }
     }
 }

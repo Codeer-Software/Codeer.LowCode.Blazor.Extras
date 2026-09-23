@@ -51,6 +51,10 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         [Designer(Index = 6, DisplayName = "$SemanticSearchFieldMaxTextLength")]
         public int MaxTextLength { get; set; } = 8000;
 
+        /// <summary>スクリプトの Reindex / ReindexMissing で起こした再索引が終わった (成功・失敗・中断) ときに呼ぶスクリプト。結果は ReindexProcessed / ReindexError で見る。</summary>
+        [Designer(Index = 7, DisplayName = "$SemanticSearchFieldOnReindexCompleted", CandidateType = CandidateType.ScriptEvent), ScriptMethod]
+        public string OnReindexCompleted { get; set; } = string.Empty;
+
         /// <summary>3 つの列 (文章 / ベクトル / ベクトル検索用) がすべて設定されているか (索引と検索の対象になる条件)。</summary>
         public bool HasColumns => !string.IsNullOrWhiteSpace(DbColumnText) && !string.IsNullOrWhiteSpace(DbColumnVector) && !string.IsNullOrWhiteSpace(DbColumnVectorSearch);
 
@@ -77,6 +81,8 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
             context.CheckFieldDbColumnExistence(Name, nameof(DbColumnVectorSearch), DbColumnVectorSearch).AddTo(result);
             foreach (var field in SourceFields)
                 context.CheckFieldFieldExistence(Name, nameof(SourceFields), field).AddTo(result);
+            context.CheckFieldFunctionExistence(Name, nameof(OnReindexCompleted), OnReindexCompleted,
+                context.GetScriptMethodAttribute(GetType(), nameof(OnReindexCompleted))).AddTo(result);
             result.AddRange(CheckSourceFieldsLoaded(context));
             return result;
         }

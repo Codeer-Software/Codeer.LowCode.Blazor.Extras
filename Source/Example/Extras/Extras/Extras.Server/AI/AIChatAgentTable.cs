@@ -1,12 +1,9 @@
-using Azure;
-using Azure.AI.OpenAI;
 using Codeer.LowCode.Blazor.DbAccess;
 using Codeer.LowCode.Blazor.DesignLogic;
 using Codeer.LowCode.Blazor.Extras.Server.AI;
 using Codeer.LowCode.Blazor.Extras.Server.AI.Chat;
 using Codeer.LowCode.Blazor.Extras.Server.AI.Chat.RawDataAccess;
 using Extras.Server.Services;
-using Microsoft.Extensions.AI;
 using System.Collections.Concurrent;
 
 namespace Extras.Server.AI
@@ -42,7 +39,8 @@ namespace Extras.Server.AI
         static IAIChatAgent? CreateRawDataAccess()
         {
             var config = SystemConfig.Instance;
-            var chatClientFactory = CreateAzureOpenAI(config.AISettings);
+            //IChatClient は Extras.Server の AzureOpenAIClients が AISettings (Azure OpenAI) から作る。別プロバイダ (OpenAI / Ollama …) ならここで自分で作って渡す。設定が欠けていれば null = AI Agent は使えない
+            var chatClientFactory = AzureOpenAIClients.ChatClientFactory(config.AISettings);
             if (chatClientFactory == null) return null;
             return new RawDataAccessAgent(
                 chatClientFactory,
@@ -52,16 +50,6 @@ namespace Extras.Server.AI
                 new RawDataAccessOptions { DataSourceNames = config.AIChat.RawDataAccessDataSources },
                 //SemanticSearchField を置いたモジュールを search_records (意味検索) で探せるようにする。EmbeddingModel 未設定なら null = ツールは付かない
                 embeddingGeneratorFactory: SemanticSearchIndex.EmbeddingGeneratorFactory);
-        }
-
-        //Agent に渡す IChatClient。ライブラリは IChatClient 抽象しか知らないので、どのプロバイダ (Azure OpenAI / OpenAI / Ollama …) を使うかはここで決める。
-        //AISettings の OpenAIEndPoint / OpenAIKey / ChatModel が揃っているときだけ返す (欠けていれば null = AI Agent は使えない)
-        static Func<IChatClient>? CreateAzureOpenAI(AISettings settings)
-        {
-            if (string.IsNullOrWhiteSpace(settings.OpenAIEndPoint) || string.IsNullOrWhiteSpace(settings.OpenAIKey) || string.IsNullOrWhiteSpace(settings.ChatModel))
-                return null;
-            var client = new AzureOpenAIClient(new Uri(settings.OpenAIEndPoint), new AzureKeyCredential(settings.OpenAIKey));
-            return () => client.GetChatClient(settings.ChatModel).AsIChatClient();
         }
     }
 }

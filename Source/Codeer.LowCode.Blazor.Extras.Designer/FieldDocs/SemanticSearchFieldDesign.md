@@ -16,8 +16,8 @@ AI チャット ([AIChatField](AIChatFieldDesign.md) の `RawDataAccessAgent`) �
 
 - 保存時: `ModuleDataIO` の派生 (通常 `CustomizedModuleDataIO.AddAsync` / `UpdateAsync`) で `await indexer.ApplyAsync(designData, data, isNewData)` を呼ぶ。送られてきた文章に埋め込みを付ける (新規で文章が無ければサーバーで組み立てる = 一括取込)。埋め込みモデル未設定・失敗のときは文章だけ保存 (ベクトル NULL・警告ログ)
 - AI チャット: `RawDataAccessAgent` のコンストラクタ `embeddingGeneratorFactory` に埋め込みモデルを渡す。渡したときだけ `search_records` が付く (対象は 3 列が設定済みで、データソースが PostgreSQL / SQL Server のモジュール)
-- 再索引: `SemanticSearchIndexer.ReindexAsync(moduleDataIO, designData, moduleName)` で全行を通常 Submit で書き直す (フィールドを後から置いたとき・モデルを変えたとき)
-- 埋め込みモデルは Microsoft.Extensions.AI の `IEmbeddingGenerator<string, Embedding<float>>`。テンプレートは `AISettings.EmbeddingModel` (Azure OpenAI の埋め込みデプロイ名) から作る。空なら意味検索は無効 (文章だけ保存)
+- 再索引: ホストは `SemanticSearchReindexJobStore` を静的に 1 つ持ち、AIChat と同じ形の Controller (POST / GET / DELETE `api/semantic_search/reindex`) から使う。クライアントは `SemanticSearchField.EndPoint` にその URL を設定する。デザイン側はフィールドのスクリプト `Reindex()` を ButtonField から呼ぶだけ
+- 埋め込みモデルは Microsoft.Extensions.AI の `IEmbeddingGenerator<string, Embedding<float>>`。Azure OpenAI なら Extras.Server の `AzureOpenAIClients.EmbeddingGeneratorFactory(AISettings)` が `AISettings.EmbeddingModel` (埋め込みデプロイ名) から作る。空なら意味検索は無効 (文章だけ保存)
 
 ### ⚠ 文章にするフィールドはフロントに読み込まれていること
 
@@ -51,6 +51,7 @@ AI チャット ([AIChatField](AIChatFieldDesign.md) の `RawDataAccessAgent`) �
 | `DbColumnVector` | string | `""` | 埋め込みベクトル (`[0.1,-0.2,…]` の JSON 配列テキスト) を保存する DB カラム名。**書き込み専用・必須**。 |
 | `DbColumnVectorSearch` | string | `""` | DB のベクトル検索で距離計算に使うベクトル型の列。**必須**。PostgreSQL は `DbColumnVector` をキャストする生成列の名前、SQL Server は `DbColumnVector` と同じ列名 (VECTOR 型にする)。 |
 | `MaxTextLength` | int | `8000` | 文章の最大文字数 (埋め込みモデルの入力上限の歯止め)。 |
+| `OnReindexCompleted` | string | `""` | スクリプトの `Reindex()` / `ReindexMissing()` で起こした再索引が終わった (成功・失敗・中断) ときに呼ぶスクリプト関数名。結果は `ReindexProcessed` / `ReindexError` で見る。 |
 
 3 つのカラムは**すべて必須** (欠けるとデザインチェック `SemanticSearchFieldDesign:1`)。実テーブルに存在するかも検証される。`SourceFields` の各名前が同じモジュールに存在するかも検証される。
 
@@ -116,5 +117,29 @@ AI チャットの `execute_sql` の SQL に `{embed:探したい内容}` と書
 | メンバー | 型 | 説明 |
 |---|---|---|
 | `Text` | string | 今の行を索引用の文章にしたもの (確認用。Submit で送られるのと同じ規則。列未設定なら空)。 |
+| `Reindex()` | void | 読める全行の文章とベクトルを作り直す (埋め込みモデルを変えたとき・フィールドを後から置いたとき)。サーバーのジョブとして走る。走っている間は無視。 |
+| `ReindexMissing()` | void | ベクトルがまだ無い行だけ索引を付ける (埋め込みに失敗した行の穴埋め)。 |
+| `CancelReindex()` | void | 走っている再索引を中断する。 |
+| `IsReindexing` | bool | 再索引が走っている間 true。 |
+| `ReindexProcessed` | int | 書き直した行数 (走っている間は途中経過)。 |
+| `ReindexTotal` | int | 対象の行数 (分かるまでは 0)。 |
+| `ReindexError` | string | 最後の再索引のエラー (成功なら空。中断も文言が入る)。 |
+
+再索引を ButtonField から起こす例 (このフィールドはボタンを置くレイアウトの `DataOnlyFields` に入れる):
+
+```csharp
+void ReindexButton_OnClick()
+{
+    Search.Reindex();
+}
+
+void Search_OnReindexCompleted()
+{
+    if (Search.ReindexError != "") MessageBox.Show(Search.ReindexError);
+    else MessageBox.Show($"{Search.ReindexProcessed} 件を索引しました");
+}
+```
+
+誰が起こせるかは権限で決まる: API はこのフィールドを今のユーザーがユーザー権限だけで読めるとき (アプリアクセス条件・モジュールの UserReadCondition・PermissionField) だけ受け付け、行の読み書きは実行ユーザーの権限で通る。ボタンを置くページの UserReadCondition でも絞れる。
 
 値・データ系メソッドは公開しない (`IsModified` は対象フィールドのどれかが変更されているときだけ `true`)。

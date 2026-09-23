@@ -54,4 +54,7 @@
   <data name="AIChat_SearchingRecords" xml:space="preserve">
     <value>Searching for similar records…</value>
   </data>
+  <data name="SemanticSearchField_NotFound" xml:space="preserve">
+    <value>Module '{0}' has no SemanticSearchField named '{1}'.</value>
+  </data>
 </root>

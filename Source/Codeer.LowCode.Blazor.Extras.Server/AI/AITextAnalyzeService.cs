@@ -1,6 +1,5 @@
 using Azure;
 using Azure.AI.FormRecognizer.DocumentAnalysis;
-using Azure.AI.OpenAI;
 using Codeer.LowCode.Blazor;
 using Codeer.LowCode.Blazor.DataIO;
 using Codeer.LowCode.Blazor.DesignLogic;
@@ -9,7 +8,6 @@ using Codeer.LowCode.Blazor.Extras.Server.Properties;
 using Codeer.LowCode.Blazor.Repository.Data;
 using Codeer.LowCode.Blazor.Repository.Design;
 using Microsoft.Extensions.AI;
-using System.ClientModel;
 using System.Globalization;
 using System.Text.Encodings.Web;
 using System.Text.Json;
@@ -21,7 +19,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI
     /// Analyzes documents / free text with Azure Document Intelligence + a chat model
     /// and converts the result into a <see cref="ModuleData"/> that matches the module design.
     /// The chat model is used through <see cref="IChatClient"/> (Microsoft.Extensions.AI): the default constructor builds an Azure OpenAI client
-    /// from <see cref="AISettings"/>, and the other constructor takes a factory so the host can use any provider (same as the AIChat agents).
+    /// from <see cref="AISettings"/> through <see cref="AzureOpenAIClients"/>, and the other constructor takes a factory so the host can use any provider (same as the AIChat agents).
     /// The Azure OpenAI ChatClient is not called directly: with Azure.AI.OpenAI 2.1.0 (Extras.Server 0.12.0) a direct call was not binary compatible
     /// with the OpenAI 2.11 package that Microsoft.Extensions.AI.OpenAI 10.7 brings in (MissingMethodException on ChatCompletionOptions), while the
     /// IChatClient adapter was. Extras.Server 0.12.1 references Azure.AI.OpenAI 2.9.0-beta.1, which is built for that OpenAI line; the IChatClient
@@ -36,8 +34,9 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI
         readonly AISettings _settings;
         readonly Func<IChatClient> _chatClientFactory;
 
-        /// <summary>Azure OpenAI (AISettings の OpenAIEndPoint / OpenAIKey / ChatModel) を IChatClient として使う。</summary>
-        public AITextAnalyzeService(AISettings settings) : this(settings, () => CreateAzureOpenAIChatClient(settings)) { }
+        /// <summary>Azure OpenAI (AISettings の OpenAIEndPoint / OpenAIKey / ChatModel) を <see cref="AzureOpenAIClients"/> で IChatClient にして使う。設定が欠けていれば解析の呼び出し時に失敗する。</summary>
+        public AITextAnalyzeService(AISettings settings)
+            : this(settings, AzureOpenAIClients.ChatClientFactory(settings) ?? (() => throw new InvalidOperationException("AISettings.OpenAIEndPoint / OpenAIKey / ChatModel are required for AITextAnalyzeService."))) { }
 
         /// <summary>
         /// 抽出に使う IChatClient をホストが決める (Azure OpenAI / OpenAI / Ollama …)。AISettings は文書解析 (Document Intelligence) の接続に使う。
@@ -47,11 +46,6 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI
             _settings = settings;
             _chatClientFactory = chatClientFactory;
         }
-
-        static IChatClient CreateAzureOpenAIChatClient(AISettings settings)
-            => new AzureOpenAIClient(new Uri(settings.OpenAIEndPoint), new ApiKeyCredential(settings.OpenAIKey))
-                .GetChatClient(settings.ChatModel)
-                .AsIChatClient();
 
         /// <summary>
         /// 入口検査: moduleName / fieldName の AITextAnalyzerField があり、今のユーザーがそのフィールドを読めること。通らなければ LowCodeException。

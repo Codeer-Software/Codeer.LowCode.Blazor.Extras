@@ -1,4 +1,5 @@
 using Codeer.LowCode.Blazor.DataIO;
+using Codeer.LowCode.Blazor.DataIO.Db;
 using Codeer.LowCode.Blazor.DesignLogic;
 using Codeer.LowCode.Blazor.Extras.Data;
 using Codeer.LowCode.Blazor.Extras.Designs;
@@ -15,7 +16,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
     /// SemanticSearchField の索引を保存時に付けるサーバー側ヘルパー (PasswordHashHelper と同じ位置づけ)。
     /// <see cref="ApplyAsync"/> を <c>ModuleDataIO</c> の派生 (テンプレートの <c>CustomizedModuleDataIO.AddAsync / UpdateAsync</c>) から呼ぶと、
     /// 送られてきた文章 (クライアントのフィールドが Submit 時に組み立てたもの) に埋め込みベクトルを付けて、書き込み専用列に保存される形にする。
-    /// 埋め込みモデルの作り方 (IEmbeddingGenerator) はアプリの責務 (IChatClient と同じ)。未設定なら文章だけ保存し、ベクトルは null のまま (検索対象にならない)。
+    /// 埋め込みモデルの作り方 (IEmbeddingGenerator) はアプリの責務 (Azure OpenAI なら <see cref="AzureOpenAIClients"/>)。未設定なら文章だけ保存し、ベクトルは null のまま (検索対象にならない)。
     /// 埋め込みの呼び出しに失敗したときも保存は止めず、ベクトル null で保存して警告ログを出す (<see cref="ReindexAsync"/> で後から埋められる)。
     /// <code>
     /// //アプリの静的な持ち物として 1 つ作る
@@ -45,6 +46,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
         /// 保存前に、モジュールの各 SemanticSearchField の文章に埋め込みベクトルを付ける。
         /// 文章はデータに含まれていればそれを使い (クライアントが組み立てたもの・再索引)、無ければ新規行のときだけデータから組み立てる (一括取込など)。
         /// 更新で文章が送られていないとき (対象フィールドが変わっていない) は何もしない。
+        /// 文章と一緒にベクトルも送られていれば (再索引がまとめて埋め込んだもの) そのまま使い、埋め込みは呼ばない。
         /// </summary>
         public async Task ApplyAsync(DesignData designData, ModuleData data, bool isNewData, CancellationToken cancellationToken = default)
         {
@@ -55,7 +57,10 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
                 if (!field.HasColumns) continue;
                 string? text = null;
                 if (data.Fields.TryGetValue(field.Name, out var fieldData) && fieldData is SemanticSearchFieldData sent && sent.Text != null)
+                {
+                    if (sent.Vector != null) continue;
                     text = sent.Text;
+                }
                 else if (isNewData)
                     text = SemanticSearchText.Build(designData, module, data, field);
                 else
@@ -68,39 +73,73 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
 
         /// <summary>
         /// モジュールの全行の索引を作り直す (フィールドを後から置いたとき・埋め込みモデルを変えたとき・埋め込みに失敗した行を埋めるとき)。
-        /// 行は moduleDataIO で読み (実行ユーザーの読み取り権限の範囲)、行ごとに文章を組み立てて通常の Submit で書く
-        /// (そこで <see cref="ApplyAsync"/> が埋め込みを付ける = 書き込み権限も通常どおり効く)。戻り値は書いた行数。
+        /// 行は moduleDataIO で読み (実行ユーザーの読み取り権限の範囲)、ページ単位で文章を組み立て、ページ分をまとめて 1 回で埋め込み、
+        /// 文章とベクトルを付けて通常の Submit で書く (書き込み権限も通常どおり効く。<see cref="ApplyAsync"/> はベクトル付きなので埋め込みを呼ばない)。
+        /// 埋め込みモデルが無いときは文章だけ書き直す。埋め込みの失敗はそのまま例外にする (保存時と違い黙って null にはしない)。
+        /// missingOnly はベクトルがまだ無い行だけ (書き込み専用列を db で直接読んで判定する)。progress には (書いた行数, 対象行数) を報告する。戻り値は書いた行数。
         /// </summary>
-        public static async Task<int> ReindexAsync(ModuleDataIO moduleDataIO, DesignData designData, string moduleName, int pageSize = 100, CancellationToken cancellationToken = default)
+        public async Task<int> ReindexAsync(ModuleDataIO moduleDataIO, IDbAccessor db, DesignData designData, string moduleName, bool missingOnly = false,
+            IProgress<(int Processed, int Total)>? progress = null, int pageSize = 100, CancellationToken cancellationToken = default)
         {
             var module = designData.Modules.Find(moduleName) ?? throw new ArgumentException($"Module '{moduleName}' does not exist.", nameof(moduleName));
             var fields = module.Fields.OfType<SemanticSearchFieldDesign>().Where(f => f.HasColumns).ToList();
             if (fields.Count == 0) throw new ArgumentException($"Module '{moduleName}' has no SemanticSearchField with the text, vector and vector-search columns set.", nameof(moduleName));
             var idField = module.Fields.OfType<IdFieldDesign>().FirstOrDefault() ?? throw new ArgumentException($"Module '{moduleName}' has no IdField.", nameof(moduleName));
 
+            //missingOnly: どのフィールドかでベクトルが無い行 = 対象。索引済み (全フィールドにベクトルあり) の Id を先に集めて飛ばす
+            HashSet<string>? indexed = null;
+            if (missingOnly)
+            {
+                foreach (var field in fields)
+                {
+                    var ids = await SemanticSearchIndexReader.ReadIndexedIdsAsync(db, module, field, cancellationToken);
+                    indexed = indexed == null ? ids : indexed.Intersect(ids).ToHashSet();
+                }
+            }
+
+            var generator = _embeddingGeneratorFactory?.Invoke();
             var count = 0;
+            var total = 0;
             for (var pageIndex = 0; ; pageIndex++)
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 var condition = new SearchCondition(moduleName) { LimitCount = pageSize };
                 condition.SortConditions.Add(new SortCondition { Variable = $"{idField.Name}.Value" });
                 var page = await moduleDataIO.GetListAsync(condition, pageIndex);
-                var submits = new List<ModuleSubmitData>();
-                foreach (var row in page.Items)
+                if (pageIndex == 0)
                 {
-                    if (!row.Fields.TryGetValue(idField.Name, out var id) || id == null) continue;
-                    var update = new ModuleData { Name = moduleName };
-                    update.Fields[idField.Name] = id;
-                    foreach (var field in fields)
-                        update.Fields[field.Name] = new SemanticSearchFieldData { Text = SemanticSearchText.Build(designData, module, row, field) };
-                    submits.Add(new ModuleSubmitData { ModuleName = moduleName, Id = (id as IdFieldData)?.Value ?? string.Empty, Update = { update } });
+                    total = indexed == null ? page.TotalCount : Math.Max(0, page.TotalCount - indexed.Count);
+                    progress?.Report((0, total));
                 }
-                if (submits.Count > 0)
+
+                var rows = page.Items.Where(row => row.Fields.TryGetValue(idField.Name, out var id) && id is IdFieldData idData && !string.IsNullOrEmpty(idData.Value)
+                    && (indexed == null || !indexed.Contains(idData.Value!))).ToList();
+                if (rows.Count > 0)
                 {
-                    var results = await moduleDataIO.SubmitWithTransactionAsync(submits);
+                    //フィールドごとに、ページ分の文章をまとめて 1 回で埋め込む
+                    var submits = rows.ToDictionary(row => row, row =>
+                    {
+                        var update = new ModuleData { Name = moduleName };
+                        update.Fields[idField.Name] = row.Fields[idField.Name];
+                        return update;
+                    });
+                    foreach (var field in fields)
+                    {
+                        var texts = rows.Select(row => SemanticSearchText.Build(designData, module, row, field)).ToList();
+                        var vectors = await EmbedAllAsync(generator, texts, cancellationToken);
+                        for (var i = 0; i < rows.Count; i++)
+                            submits[rows[i]].Fields[field.Name] = new SemanticSearchFieldData { Text = texts[i], Vector = vectors[i] == null ? null : SemanticSearchVector.Encode(vectors[i]!) };
+                    }
+                    var results = await moduleDataIO.SubmitWithTransactionAsync(rows.Select(row => new ModuleSubmitData
+                    {
+                        ModuleName = moduleName,
+                        Id = ((IdFieldData)row.Fields[idField.Name]!).Value ?? string.Empty,
+                        Update = { submits[row] },
+                    }).ToList());
                     var error = results.FirstOrDefault(r => !string.IsNullOrEmpty(r.ExceptionMessage))?.ExceptionMessage;
                     if (error != null) throw new InvalidOperationException(error);
-                    count += submits.Count;
+                    count += rows.Count;
+                    progress?.Report((count, total));
                 }
                 if (pageIndex + 1 >= page.PageCount || page.Items.Count == 0) break;
             }
@@ -130,6 +169,19 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
                 _logger?.LogWarning(e, "SemanticSearch: embedding failed. The text is saved without a vector (run a reindex later).");
                 return null;
             }
+        }
+
+        //まとめて埋め込む (再索引用。失敗は例外)。空文は埋め込まず null
+        static async Task<float[]?[]> EmbedAllAsync(IEmbeddingGenerator<string, Embedding<float>>? generator, List<string> texts, CancellationToken cancellationToken)
+        {
+            var result = new float[]?[texts.Count];
+            if (generator == null) return result;
+            var targets = Enumerable.Range(0, texts.Count).Where(i => !string.IsNullOrWhiteSpace(texts[i])).ToList();
+            if (targets.Count == 0) return result;
+            var embeddings = await generator.GenerateAsync(targets.Select(i => texts[i]).ToList(), cancellationToken: cancellationToken);
+            if (embeddings.Count != targets.Count) throw new InvalidOperationException($"SemanticSearch: the embedding model returned {embeddings.Count} vectors for {targets.Count} texts.");
+            for (var i = 0; i < targets.Count; i++) result[targets[i]] = embeddings[i].Vector.ToArray();
+            return result;
         }
     }
 }

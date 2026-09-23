@@ -1,19 +1,25 @@
+using Codeer.LowCode.Blazor.Extras.SemanticSearch;
 using Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch;
+using Extras.Server.AI;
 using Extras.Server.Services;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace Extras.Server.Controllers
 {
     /// <summary>
-    /// SemanticSearchField (意味検索) の再索引 API。
-    /// フィールドを後から置いたとき・埋め込みモデルを変えたとき・埋め込みに失敗した行を埋めるときに、モジュールの全行の文章とベクトルを作り直す。
-    /// 行は実行ユーザーの ModuleDataIO で読み、通常の Submit で書く (読み書きの権限は通常どおり効く。埋め込みは CustomizedModuleDataIO が付ける)。
-    /// 例: POST api/semantic_search/reindex/Inquiry
+    /// SemanticSearchField (意味検索) の再索引 API。フィールドのスクリプト Reindex / ReindexMissing の窓口。
+    /// 開始は即 requestId を返し (202)、クライアントは GET で進捗をポーリングする (AIChatController と同じ形)。
+    /// 開始はリクエストの ModuleDataIO で入口を検査する = その SemanticSearchField を今のユーザーが読めるときだけ受け付ける (アプリアクセス条件・モジュールの UserRead・フィールド読取権限)。
+    /// 行の読み書きはバックグラウンドで、今のユーザーの権限を持つ別の DataService で行う (読める行だけ・書ける行だけ)。
     /// </summary>
     [ApiController]
-    [Route("api/semantic_search")]
+    [Route("api/semantic_search/reindex")]
     public class SemanticSearchController : ControllerBase, IAsyncDisposable
     {
+        //ジョブ置き場はアプリの静的な持ち物 (AI/SemanticSearchIndex.cs)
+        static SemanticSearchReindexJobStore _jobs => SemanticSearchIndex.Jobs;
+
         readonly DataService _dataService;
 
         public SemanticSearchController(DataService dataService)
@@ -22,18 +28,31 @@ namespace Extras.Server.Controllers
         public async ValueTask DisposeAsync()
             => await _dataService.DisposeAsync();
 
-        //戻り値は書き直した行数
-        [HttpPost("reindex/{moduleName}")]
-        public async Task<ActionResult<int>> Reindex(string moduleName, CancellationToken cancellationToken)
+        //ジョブの所有者。他人のジョブは見えない (同じモジュールの走行中ジョブに合流した人は見える)
+        string Owner => User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.Identity?.Name ?? string.Empty;
+
+        [HttpPost]
+        public async Task<ActionResult<SemanticSearchReindexResponse>> Start([FromBody] SemanticSearchReindexRequest request)
         {
-            try
+            //バックグラウンドではリクエストの HttpContext が無いので、ユーザー Id を固定した DataService を開いて渡す
+            var userId = await _dataService.GetCurrentUserIdAsync();
+            var requestId = await _jobs.StartAsync(Owner, request, _dataService.ModuleDataIO, () =>
             {
-                return await SemanticSearchIndexer.ReindexAsync(_dataService.ModuleDataIO, DesignerService.GetDesignData(), moduleName, cancellationToken: cancellationToken);
-            }
-            catch (ArgumentException e)
-            {
-                return BadRequest(e.Message);
-            }
+                var dataService = new DataService(userId);
+                return new SemanticSearchReindexScope(dataService.ModuleDataIO, dataService.DbAccess, dataService);
+            });
+            return Accepted(new SemanticSearchReindexResponse { RequestId = requestId });
         }
+
+        [HttpGet("{requestId}")]
+        public ActionResult<SemanticSearchReindexStatusResponse> Status(string requestId)
+        {
+            var status = _jobs.GetStatus(Owner, requestId);
+            return status == null ? NotFound() : status;
+        }
+
+        [HttpDelete("{requestId}")]
+        public IActionResult Cancel(string requestId)
+            => _jobs.Cancel(Owner, requestId) ? NoContent() : NotFound();
     }
 }

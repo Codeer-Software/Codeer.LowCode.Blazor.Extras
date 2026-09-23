@@ -145,9 +145,10 @@ public class AIChatController : ControllerBase, IAsyncDisposable
 ```
 
 ```csharp
-// IChatClient の作り方はアプリの責務 (Example の AIChatAgentTable.CreateAzureOpenAI。Azure OpenAI の例)
-var client = new AzureOpenAIClient(new Uri(endpoint), new AzureKeyCredential(key));
-Func<IChatClient> chatClientFactory = () => client.GetChatClient(model).AsIChatClient();   // Microsoft.Extensions.AI.OpenAI
+// IChatClient は Extras.Server の AzureOpenAIClients が AISettings (Azure OpenAI の OpenAIEndPoint / OpenAIKey / ChatModel) から作る。設定が欠けていれば null
+Func<IChatClient>? chatClientFactory = AzureOpenAIClients.ChatClientFactory(SystemConfig.Instance.AISettings);
+// 別のプロバイダ (OpenAI / Ollama …) を使うなら、Microsoft.Extensions.AI の IChatClient をアプリで作って同じ形で渡す
+// Func<IChatClient> chatClientFactory = () => new OllamaChatClient(...);
 ```
 
 ```csharp

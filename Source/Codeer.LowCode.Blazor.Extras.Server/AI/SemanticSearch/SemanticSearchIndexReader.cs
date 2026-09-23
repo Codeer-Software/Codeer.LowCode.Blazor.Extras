@@ -22,6 +22,23 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
         public static bool SupportsDbSearch(DataSourceType type)
             => type is DataSourceType.PostgreSQL or DataSourceType.SQLServer;
 
+        /// <summary>ベクトルが入っている行の Id (再索引の missingOnly が「まだ無い行」を決めるのに使う)。どの DB でも読める (テキスト列を見るだけ)。</summary>
+        public static async Task<HashSet<string>> ReadIndexedIdsAsync(IDbAccessor db, ModuleDesign module, SemanticSearchFieldDesign field, CancellationToken cancellationToken)
+        {
+            var idColumn = module.Fields.OfType<IdFieldDesign>().FirstOrDefault()?.DbColumn;
+            var result = new HashSet<string>();
+            if (string.IsNullOrWhiteSpace(module.DbTable) || string.IsNullOrWhiteSpace(idColumn) || string.IsNullOrWhiteSpace(field.DbColumnVector)) return result;
+            var q = Quote(DataSourceTypeOf(db, module.DataSourceName));
+            cancellationToken.ThrowIfCancellationRequested();
+            var rows = await db.QueryAsync(module.DataSourceName, $"select {q(idColumn)} from {q(module.DbTable)} where {q(field.DbColumnVector)} is not null", new());
+            foreach (var row in rows)
+            {
+                var id = Convert.ToString(Value(row, idColumn), CultureInfo.InvariantCulture);
+                if (!string.IsNullOrEmpty(id)) result.Add(id);
+            }
+            return result;
+        }
+
         /// <summary>DB のベクトル検索で、質問ベクトルに近い順に上位 top 件を読む。</summary>
         public static async Task<List<ScoredEntry>> SearchAsync(IDbAccessor db, ModuleDesign module, SemanticSearchFieldDesign field, float[] queryVector, int top, CancellationToken cancellationToken)
         {

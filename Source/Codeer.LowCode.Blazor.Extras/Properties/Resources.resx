@@ -1347,4 +1347,19 @@ Recipients: {1}</value>
   <data name="FileExtensionNotAllowed" xml:space="preserve">
     <value>The file type is not allowed. Allowed: {0}</value>
   </data>
+  <data name="SemanticSearchFieldOnReindexCompleted" xml:space="preserve">
+    <value>On Reindex Completed</value>
+  </data>
+  <data name="SemanticSearchReindex_Failed" xml:space="preserve">
+    <value>The reindex could not be started.</value>
+  </data>
+  <data name="SemanticSearchReindex_Lost" xml:space="preserve">
+    <value>The reindex job was lost. Check the server log.</value>
+  </data>
+  <data name="SemanticSearchReindex_Timeout" xml:space="preserve">
+    <value>The reindex did not finish in time.</value>
+  </data>
+  <data name="SemanticSearchReindex_Canceled" xml:space="preserve">
+    <value>The reindex was canceled.</value>
+  </data>
 </root>

@@ -18,7 +18,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
 {
     /// <summary>
     /// 実際の Azure OpenAI と pgvector 入りの PostgreSQL で意味検索を通す (課金あり・ネットワーク要のため Explicit)。
-    /// 環境変数 AZURE_OPENAI_ENDPOINT / AZURE_OPENAI_KEY / AZURE_OPENAI_MODEL / AZURE_OPENAI_EMBEDDING_MODEL (埋め込みのデプロイ名) /
+    /// 環境変数 AZURE_OPENAI_ENDPOINT / AZURE_OPENAI_KEY / AZURE_OPENAI_MODEL / AZURE_OPENAI_EMBEDDING_MODEL (埋め込みのデプロイ名。省略時 text-embedding-3-small) /
     /// AZURE_OPENAI_EMBEDDING_DIMENSIONS (省略時 1536) / SEMANTIC_SEARCH_PG_CONNECTION (CREATE EXTENSION vector が済んだ PostgreSQL の接続文字列)。
     /// 実行: dotnet test --filter "FullyQualifiedName~SemanticSearchRealAITest"
     /// </summary>
@@ -63,10 +63,10 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
             var endpoint = Environment.GetEnvironmentVariable("AZURE_OPENAI_ENDPOINT");
             var key = Environment.GetEnvironmentVariable("AZURE_OPENAI_KEY");
             var model = Environment.GetEnvironmentVariable("AZURE_OPENAI_MODEL");
-            var embeddingModel = Environment.GetEnvironmentVariable("AZURE_OPENAI_EMBEDDING_MODEL");
+            var embeddingModel = Environment.GetEnvironmentVariable("AZURE_OPENAI_EMBEDDING_MODEL") ?? AzureOpenAIClientsRealTest.DefaultEmbeddingModel;
             var connection = Environment.GetEnvironmentVariable("SEMANTIC_SEARCH_PG_CONNECTION");
-            if (string.IsNullOrEmpty(endpoint) || string.IsNullOrEmpty(key) || string.IsNullOrEmpty(model) || string.IsNullOrEmpty(embeddingModel) || string.IsNullOrEmpty(connection))
-                Assert.Ignore("AZURE_OPENAI_ENDPOINT / AZURE_OPENAI_KEY / AZURE_OPENAI_MODEL / AZURE_OPENAI_EMBEDDING_MODEL / SEMANTIC_SEARCH_PG_CONNECTION が未設定");
+            if (string.IsNullOrEmpty(endpoint) || string.IsNullOrEmpty(key) || string.IsNullOrEmpty(model) || string.IsNullOrEmpty(connection))
+                Assert.Ignore("AZURE_OPENAI_ENDPOINT / AZURE_OPENAI_KEY / AZURE_OPENAI_MODEL / SEMANTIC_SEARCH_PG_CONNECTION が未設定");
             var dimensions = int.TryParse(Environment.GetEnvironmentVariable("AZURE_OPENAI_EMBEDDING_DIMENSIONS"), out var d) ? d : 1536;
             var client = new AzureOpenAIClient(new Uri(endpoint!), new AzureKeyCredential(key!));
             _chat = () => client.GetChatClient(model).AsIChatClient();
@@ -116,7 +116,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
             var indexer = new SemanticSearchIndexer(_embedding);
             await using var db = new DbAccessor(_dataSources);
             var io = new IndexingModuleDataIO(_design, this, db, new TemporaryFileManager(db, [], new List<IFileStorage>()), indexer);
-            Assert.That(await SemanticSearchIndexer.ReindexAsync(io, _design, "Inquiry"), Is.EqualTo(5));
+            Assert.That(await indexer.ReindexAsync(io, db, _design, "Inquiry"), Is.EqualTo(5));
             await db.CommitAsync();
 
             var indexed = await db.QueryAsync(Ds, $"select count(*) as c from {_table} where search_vector_v is not null", new());

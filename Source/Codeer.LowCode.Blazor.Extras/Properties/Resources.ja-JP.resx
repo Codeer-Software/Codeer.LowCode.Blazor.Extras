@@ -1347,4 +1347,19 @@
   <data name="FileExtensionNotAllowed" xml:space="preserve">
     <value>許可されていないファイル形式です。許可: {0}</value>
   </data>
+  <data name="SemanticSearchFieldOnReindexCompleted" xml:space="preserve">
+    <value>再索引が終わったとき</value>
+  </data>
+  <data name="SemanticSearchReindex_Failed" xml:space="preserve">
+    <value>再索引を開始できませんでした。</value>
+  </data>
+  <data name="SemanticSearchReindex_Lost" xml:space="preserve">
+    <value>再索引のジョブが見つかりません。サーバーのログを確認してください。</value>
+  </data>
+  <data name="SemanticSearchReindex_Timeout" xml:space="preserve">
+    <value>再索引が時間内に終わりませんでした。</value>
+  </data>
+  <data name="SemanticSearchReindex_Canceled" xml:space="preserve">
+    <value>再索引を中断しました。</value>
+  </data>
 </root>

@@ -11,6 +11,7 @@ namespace Extras.Server.Services
         public CustomizedModuleDataIO ModuleDataIO { get; }
 
         readonly IHttpContextAccessor? _httpContextAccessor;
+        readonly string? _fixedUserId;
 
         public DataService(IHttpContextAccessor? httpContextAccessor = null)
         {
@@ -20,10 +21,15 @@ namespace Extras.Server.Services
             ModuleDataIO = new CustomizedModuleDataIO(DesignerService.GetDesignData(), this, DbAccess, TemporaryFileManager);
         }
 
+        /// <summary>リクエストの外 (バックグラウンドのジョブ) で、そのユーザーの権限のまま使うための DataService。</summary>
+        public DataService(string userId) : this(httpContextAccessor: null)
+            => _fixedUserId = userId;
+
         //デモログイン (AccountController) が設定した Cookie 認証のユーザー Id
         public async Task<string> GetCurrentUserIdAsync()
         {
             await Task.CompletedTask;
+            if (_fixedUserId != null) return _fixedUserId;
             return _httpContextAccessor?.HttpContext?.User
                 .FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? string.Empty;
         }
