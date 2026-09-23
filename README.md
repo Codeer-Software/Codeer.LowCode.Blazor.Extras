@@ -38,7 +38,7 @@
 | [OrientationLockField](docs/OrientationLockField.md) | タッチ端末で画面の向き(横/縦)が指定と異なるとき、全画面オーバーレイで回転を促すフィールド |
 | [AITextAnalyzerField](docs/AITextAnalyzerField.md) | 帳票ファイルや自由テキストを AI で解析し、モジュールのフィールドへ自動入力する入力補助フィールド (Azure OpenAI + Document Intelligence を使用) |
 | [AIChatField](docs/AIChatField.md) | AI (サーバー側の Agent) とのチャット UI。送信→ポーリングで返事を受け取り HTML で表示する。Agent は名前で選び (`Agent` プロパティ)、標準で `RawDataAccessAgent` (Microsoft.Extensions.AI の IChatClient で会話し、DB を SQL で読んで集計・SVG グラフで答える) を用意 |
-| [SemanticSearchField](docs/SemanticSearchField.md) | 行を「内容の意味で探せる」ようにする補助フィールド (UI なし)。Submit 時に対象フィールドを「表示名: 値」の文章にして送り、サーバーが埋め込みベクトルを付けて書き込み専用の 2 列に保存する。AIChatField の `RawDataAccessAgent` が `search_records` で「似た事例」を探す。ベクトル DB 不要。PostgreSQL (pgvector) / SQL Server 2025 なら距離計算を DB に任せ、AI の SQL の中でも `{embed:…}` で意味の近さを使える (サーバサイド実装が必要) |
+| [SemanticSearchField](docs/SemanticSearchField.md) | 行を「内容の意味で探せる」ようにする補助フィールド (UI なし)。Submit 時に対象フィールドを「表示名: 値」の文章にして送り、サーバーが埋め込みベクトルを付けて書き込み専用の列に保存する。AIChatField の `RawDataAccessAgent` が `search_records` で「似た事例」を探し、AI の SQL の中でも `{embed:…}` で意味の近さを使える。距離計算は DB のベクトル検索 (PostgreSQL pgvector / SQL Server 2025) が行う = 対応 DB 限定 (サーバサイド実装が必要) |
 
 ## 認証 (ログイン)
 

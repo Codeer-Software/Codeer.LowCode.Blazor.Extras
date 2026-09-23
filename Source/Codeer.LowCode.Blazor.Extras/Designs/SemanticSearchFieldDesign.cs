@@ -15,7 +15,8 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
     /// 行を「意味で探せる」ようにする書き込み専用フィールド (UI なし)。
     /// Submit のたびに <see cref="SourceFields"/> の値を「表示名: 値」の行に並べた文章を作り (クライアント側)、
     /// サーバーの SemanticSearchIndexer がその文章の埋め込みベクトルを付けて、2 つの書き込み専用列に保存する。
-    /// AI チャット (RawDataAccessAgent) はこの列を使って「似た記録」を探す (search_records)。
+    /// AI チャット (RawDataAccessAgent) は DB のベクトル検索 (pgvector / SQL Server 2025) でこの索引から「似た記録」を探す (search_records)。
+    /// 距離計算は DB が行うので、ベクトル検索に対応しない DB (SQLite 等) のモジュールは意味検索の対象にならない。
     /// </summary>
     [ToolboxIcon(PackIconMaterialKind = "TextSearch")]
     [Designer(DisplayName = "$SemanticSearchField")]
@@ -34,15 +35,14 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         [Designer(Index = 3, CandidateType = CandidateType.DbColumn, DisplayName = "$SemanticSearchFieldDbColumnText"), DbColumn(nameof(SemanticSearchFieldData.Text), IsWriteOnly = true)]
         public string DbColumnText { get; set; } = string.Empty;
 
-        /// <summary>埋め込みベクトルを保存する列 (書き込み専用。float32 の並びの base64 文字列)。</summary>
+        /// <summary>埋め込みベクトルを保存する列 (書き込み専用。<c>[0.1,-0.2,…]</c> の JSON 配列テキスト)。</summary>
         [Designer(Index = 4, CandidateType = CandidateType.DbColumn, DisplayName = "$SemanticSearchFieldDbColumnVector"), DbColumn(nameof(SemanticSearchFieldData.Vector), IsWriteOnly = true)]
         public string DbColumnVector { get; set; } = string.Empty;
 
         /// <summary>
-        /// DB 側のベクトル検索 (pgvector / SQL Server 2025 の VECTOR 型) で距離計算に使うベクトル型の列。空なら DB 側検索を使わずサーバーのメモリで比較する。
+        /// DB のベクトル検索 (pgvector / SQL Server 2025 の VECTOR 型) で距離計算に使うベクトル型の列 (必須)。
         /// アプリは <see cref="DbColumnVector"/> にテキスト (JSON 配列) で書くので、PostgreSQL ではそれをキャストする生成列の名前、
         /// SQL Server のようにテキストから VECTOR 型列へ直接書ける DB では <see cref="DbColumnVector"/> と同じ列名を設定する。
-        /// 接続先がベクトル検索に対応しない DB (SQLite 等) のときは設定があっても自動でメモリ比較に落ちる (開発環境で同じデザインを使える)。
         /// </summary>
         [Designer(Index = 5, CandidateType = CandidateType.DbColumn, DisplayName = "$SemanticSearchFieldDbColumnVectorSearch")]
         public string DbColumnVectorSearch { get; set; } = string.Empty;
@@ -51,8 +51,8 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         [Designer(Index = 6, DisplayName = "$SemanticSearchFieldMaxTextLength")]
         public int MaxTextLength { get; set; } = 8000;
 
-        /// <summary>両方の列が設定されているか (検索と索引の対象になる条件)。</summary>
-        public bool HasColumns => !string.IsNullOrWhiteSpace(DbColumnText) && !string.IsNullOrWhiteSpace(DbColumnVector);
+        /// <summary>3 つの列 (文章 / ベクトル / ベクトル検索用) がすべて設定されているか (索引と検索の対象になる条件)。</summary>
+        public bool HasColumns => !string.IsNullOrWhiteSpace(DbColumnText) && !string.IsNullOrWhiteSpace(DbColumnVector) && !string.IsNullOrWhiteSpace(DbColumnVectorSearch);
 
         public override string GetWebComponentTypeFullName() => typeof(SemanticSearchFieldComponent).FullName!;
         public override string GetSearchWebComponentTypeFullName() => string.Empty;
@@ -68,7 +68,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
                 result.Add(new FieldDesignCheckInfo
                 {
                     Code = DesignCheckCode.Create(typeof(SemanticSearchFieldDesign), CodeColumnsRequired),
-                    Location = new FieldDesignDataLocation { Module = context.OwnerModule, Field = Name, Member = string.IsNullOrWhiteSpace(DbColumnText) ? nameof(DbColumnText) : nameof(DbColumnVector) },
+                    Location = new FieldDesignDataLocation { Module = context.OwnerModule, Field = Name, Member = string.IsNullOrWhiteSpace(DbColumnText) ? nameof(DbColumnText) : string.IsNullOrWhiteSpace(DbColumnVector) ? nameof(DbColumnVector) : nameof(DbColumnVectorSearch) },
                     Message = Properties.Resources.SemanticSearchCheck_ColumnsRequired,
                 });
             }

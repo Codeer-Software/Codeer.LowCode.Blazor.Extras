@@ -707,6 +707,7 @@
         "TypeFullName": "Codeer.LowCode.Blazor.Repository.Match.MultiMatchCondition"
       }
     },
+    "IsInMemoryPaging": false,
     "PagerPosition": "Top",
     "ReplaceMode": "None",
     "DeleteTogether": false,

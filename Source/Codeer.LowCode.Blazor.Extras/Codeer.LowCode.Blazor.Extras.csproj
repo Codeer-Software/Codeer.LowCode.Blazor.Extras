@@ -6,7 +6,7 @@
 		<Nullable>enable</Nullable>
 		<AddRazorSupportForMvc>true</AddRazorSupportForMvc>
 		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
-		<Version>0.13.0</Version>
+		<Version>0.15.0</Version>
 		<Authors>Codeer</Authors>
 		<Company>Codeer</Company>
 		<Description>Extra field components and client-side services for Codeer.LowCode.Blazor. Includes Calendar, Gantt Chart, Task Board (Kanban), Rich Text Editor, Markdown Editor, Color Picker, Marker List, QR Code, Progress Bar, Password Hash, and AI Text Analyzer fields, plus built-in script objects (Excel, WebApi, Toaster, Mail) and client infrastructure services (HTTP, UI, logging, localization).</Description>
@@ -17,7 +17,7 @@
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>
 		<PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
-		<PackageReleaseNotes>New: SemanticSearchField, a write-only field without UI that makes the rows of a module searchable by meaning (RAG). On Submit it turns the source fields of the row into a text (one line per field, display name: value; candidates by display text, links by display text, dates in ISO form, LF line breaks) and sends it; the server (Codeer.LowCode.Blazor.Extras.Server 0.13.0 SemanticSearchIndexer) adds an embedding vector and both are stored in two write-only columns (DbColumnText / DbColumnVector, the vector as a JSON array text such as [0.1,-0.2,...] so that pgvector and SQL Server VECTOR columns can cast it). The text is sent for a new record always and for an update only when one of the source fields is modified (IsModified of the field follows the source fields). SourceFields empty = every input field with a DB column except Id, logical delete, optimistic locking, password and the created / updated record fields. MaxTextLength (default 8000) truncates the text. The field implements IDataDependentField, so when it is placed in a layout or in DataOnlyFields its SourceFields are loaded with the record. DbColumnVectorSearch names a vector-typed column (pgvector generated column, or the SQL Server 2025 VECTOR column) that the server uses for database-side vector search; empty = in-memory comparison; ignored on databases without vector search (SQLite), so one design works in development and production. Design checks: SemanticSearchFieldDesign:1 requires both columns, :2 points out a detail layout that loads only part of the source fields (the text built from such a layout would be incomplete). The text builder is public as SemanticSearchText (shared by client and server). Requires Codeer.LowCode.Blazor.Extras.Server 0.13.0 for indexing and search.</PackageReleaseNotes>
+		<PackageReleaseNotes>New: SemanticSearchField, a write-only field without UI that makes the rows of a module searchable by meaning from the AI chat. On Submit it turns the source fields of the row into a text (one line per field, display name: value; candidates and links by display text, dates in ISO form, LF line breaks) and sends it; the server (Codeer.LowCode.Blazor.Extras.Server 0.14.0) adds the embedding vector and both are stored in write-only columns (DbColumnText, DbColumnVector as a JSON array text). The similarity is computed by the database: DbColumnVectorSearch names the vector-typed column (a pgvector generated column cast from DbColumnVector on PostgreSQL, or the VECTOR column itself on SQL Server 2025). All three columns are required (design check SemanticSearchFieldDesign:1) and modules on other databases are indexed but not searchable. The field implements IDataDependentField so its SourceFields are loaded with it; design check SemanticSearchFieldDesign:2 reports a detail layout that loads only part of the source fields. Requires Codeer.LowCode.Blazor 1.3.35.</PackageReleaseNotes>
 		<PackageId>Codeer.LowCode.Blazor.Extras</PackageId>
 	</PropertyGroup>
 
@@ -40,7 +40,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<PackageReference Include="Codeer.LowCode.Blazor" Version="1.3.33" />
+		<PackageReference Include="Codeer.LowCode.Blazor" Version="1.3.35" />
 		<PackageReference Include="Markdig" Version="0.37.0" />
 		<PackageReference Include="QRCoder" Version="1.7.0" />
 		<PackageReference Include="Microsoft.AspNetCore.WebUtilities" Version="8.0.8" />

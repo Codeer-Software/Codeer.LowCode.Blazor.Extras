@@ -16,15 +16,16 @@ namespace Codeer.LowCode.Blazor.Extras.Server.BulkFile
     /// <summary>
     /// 一覧の一括ダウンロード/一括更新 (list_file / submit_by_file) のサーバー処理本体。
     /// テンプレートの ModuleDataController から移譲される。
-    /// モジュールデザインの 2 つの独立した設定フィールドの組み合わせで動作が決まる:
+    /// モジュールデザインの 3 つの独立した設定フィールドの組み合わせで動作が決まる:
     ///   - <see cref="CsvFileFormatFieldDesign"/> … ファイル形式 (CSV 化・エンコーディング・区切り文字・拡張子)
-    ///   - <see cref="FileColumnMappingFieldDesign"/> … 列構成 (相手仕様の列並び・書式・コード変換)
+    ///   - <see cref="FileColumnMappingFieldDesign"/> … 列構成 (相手仕様の列並び・固定値・固定長の幅)
+    ///   - <see cref="FileValueConversionFieldDesign"/> … 値の表し方 (対象フィールドの外部値⇔内部値の引き当て。列構成と独立にどの経路でも効く)
     /// なし = 従来の xlsx / Csv のみ = 内部名ヘッダの CSV / 列マッピングのみ = 外部列の xlsx / 両方 = 外部列の CSV (WebEDI)。
     /// さらに Csv フィールドの Delimiter が None (区切り文字なし) なら両方の組み合わせが固定長形式になる
     /// (形式 = 幅の単位・エンコーディング・拡張子は CsvFileFormatFieldDesign、
     /// 列幅は列構成と不可分なため FileColumnMappingFieldDesign の各列。併用必須 = デザインチェック)。
     /// 列マッピングは ModuleData ⇔ 外部列の型付き変換 (テーブルテキストを経由しない)、
-    /// 列マッピングなしは内部名ヘッダのテーブルテキストのラウンドトリップ。
+    /// 列マッピングなしは内部名ヘッダのテーブルテキストのラウンドトリップ (値の引き当ては見出しを変えずセルの値だけ置き換える)。
     /// クライアントも同じデザインを参照してダウンロードの拡張子を切り替える。
     /// 形式の追加や外部システム連携などの拡張はここを起点に行う。
     /// </summary>
@@ -37,7 +38,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.BulkFile
 
             var texts = mapping != null
                 ? await FileColumnMappingTransform.ToExternalAsync((await moduleDataIO.GetListAsync(condition, 0)).Items, mapping, module!, moduleDataIO)
-                : await moduleDataIO.GetTableTextsAsync(condition);
+                : await ToExternalValuesAsync(await moduleDataIO.GetTableTextsAsync(condition), module, moduleDataIO);
 
             //固定長形式 (幅に収まらない値は行番号付きエラーで失敗する。黙って切り詰めない)
             if (IsFixedLength(csv, mapping))
@@ -74,13 +75,30 @@ namespace Codeer.LowCode.Blazor.Extras.Server.BulkFile
                 return await moduleDataIO.SubmitWithTransactionByModuleDataAsync(moduleName, items);
             }
 
-            //内部名ヘッダのテーブルテキスト取込。取込前検証 (対応しない列・型変換できないセルを行番号付きで報告)
-            var validationErrors = TableTextsValidator.Validate(designData, moduleName, texts);
-            if (validationErrors.Any()) return Error(string.Join(Environment.NewLine, Cap(validationErrors)));
+            //内部名ヘッダのテーブルテキスト取込。値の引き当て (外部値→内部値。引き当て失敗は行番号付きエラー) →
+            //取込前検証 (対応しない列・型変換できないセルを行番号付きで報告)
+            var hasConversion = module?.Fields.OfType<FileValueConversionFieldDesign>().Any() == true;
+            var errors = new List<string>();
+            if (hasConversion)
+            {
+                var (converted, conversionErrors) = await FileValueConversionTransform.ToInternalAsync(texts, module!, moduleDataIO);
+                texts = converted;
+                errors.AddRange(conversionErrors);
+            }
+            errors.AddRange(TableTextsValidator.Validate(designData, moduleName, texts));
+            if (errors.Any()) return Error(string.Join(Environment.NewLine, Cap(errors)));
 
             if (dryRun) return [new ModuleSubmitResult()]; //検証のみ (エラーなし)
 
-            return await moduleDataIO.SubmitWithTransactionByTableTextsAsync(moduleName, texts);
+            if (!hasConversion) return await moduleDataIO.SubmitWithTransactionByTableTextsAsync(moduleName, texts);
+
+            //値の引き当てがあるモジュールは列マッピングと同じ型付き経路で取り込む (空セル (空白だけも含む) は null)。
+            //本体のテキスト経路は空セルを string メンバに空文字で入れるため、参照 (Link) 列の空セルが DB の数値列で失敗し、
+            //Id 付き更新で参照を外せない。型付き経路は本体の保護フィールド差分チェック (テキスト経路だけの機能) を通らない点は列マッピング経路と同じ
+            var parsed = InternalNameTableTextsToModuleData(texts, module!);
+            if (parsed.Errors.Any())
+                return Error(string.Join(Environment.NewLine, Cap(parsed.Errors.Select(e => $"Row {e.FileRow}, {e.ColumnLabel}: {e.Message}").ToList())));
+            return await moduleDataIO.SubmitWithTransactionByModuleDataAsync(moduleName, parsed.Items);
         }
 
         //固定長は形式 (Delimiter = None) と列幅 (列マッピング) の両方が揃って成立する
@@ -97,7 +115,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.BulkFile
 
             var texts = mapping != null
                 ? await FileColumnMappingTransform.ToExternalAsync(items, mapping, module, moduleDataIO)
-                : ModuleDataToInternalNameTableTexts(items, module);
+                : await ToExternalValuesAsync(ModuleDataToInternalNameTableTexts(items, module), module, moduleDataIO);
 
             if (IsFixedLength(csv, mapping))
                 return FixedLengthUtils.CreateFixedLengthBinary(texts, mapping!, csv!);
@@ -132,6 +150,10 @@ namespace Codeer.LowCode.Blazor.Extras.Server.BulkFile
             using var reader = new StreamReader(body);
             return JsonConverterEx.DeserializeObject<List<ModuleData>>(await reader.ReadToEndAsync()) ?? new();
         }
+
+        //内部名ヘッダのテーブルテキストに値の引き当て (内部値→外部値) を適用する (FileValueConversionField が無ければそのまま)
+        static Task<List<List<string>>> ToExternalValuesAsync(List<List<string>> texts, ModuleDesign? module, ModuleDataIO moduleDataIO)
+            => module == null ? Task.FromResult(texts) : FileValueConversionTransform.ToExternalAsync(texts, module, moduleDataIO);
 
         //ModuleData → 内部名ヘッダ ("フィールド名.データメンバ名") のテーブルテキスト (取込側の逆方向)。
         //列 = デザインの DbColumn プロパティ (DataMember) 規約。値は ToString (書式なし)
@@ -190,7 +212,12 @@ namespace Codeer.LowCode.Blazor.Extras.Server.BulkFile
                 var (items, errors) = await FileColumnMappingTransform.ToInternalWithCellErrorsAsync(texts, mapping, module, moduleDataIO);
                 return new BulkFileParseResult { Items = items, Errors = errors };
             }
-            return InternalNameTableTextsToModuleData(texts, module);
+
+            //値の引き当て (引き当てられないセルは値未設定 + エラー) → 内部名ヘッダの解析。エラーは行順に並べる
+            var (converted, conversionErrors) = await FileValueConversionTransform.ToInternalWithCellErrorsAsync(texts, module, moduleDataIO);
+            var result = InternalNameTableTextsToModuleData(converted, module);
+            result.Errors = conversionErrors.Concat(result.Errors).OrderBy(e => e.FileRow).ToList();
+            return result;
         }
 
         //内部名ヘッダ ("フィールド名.データメンバ名") のテーブルテキスト → ModuleData。
@@ -222,7 +249,10 @@ namespace Codeer.LowCode.Blazor.Extras.Server.BulkFile
                 foreach (var t in targets)
                 {
                     var text = t.Index < row.Count ? row[t.Index] : string.Empty;
-                    if (!BulkDataTextConverter.TryConvert(text, t.Property.PropertyType, out var value))
+                    //空セル (空白だけも含む) は列の種類によらず null (未設定)。列マッピング経路と同じ
+                    //(参照 (Link) 列は string メンバでも DB 列は数値のことがあり、空文字のまま書き込むと取込本体で失敗する)
+                    object? value = null;
+                    if (!string.IsNullOrWhiteSpace(text) && !BulkDataTextConverter.TryConvert(text, t.Property.PropertyType, out value))
                     {
                         result.Errors.Add(new BulkFileCellError
                         {

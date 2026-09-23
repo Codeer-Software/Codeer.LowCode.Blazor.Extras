@@ -218,6 +218,7 @@
           "TypeFullName": "Codeer.LowCode.Blazor.Repository.Match.MultiMatchCondition"
         }
       },
+      "IsInMemoryPaging": false,
       "PagerPosition": "Top",
       "ReplaceMode": "None",
       "DeleteTogether": false,
@@ -269,6 +270,7 @@
           "TypeFullName": "Codeer.LowCode.Blazor.Repository.Match.MultiMatchCondition"
         }
       },
+      "IsInMemoryPaging": false,
       "PagerPosition": "Top",
       "ReplaceMode": "None",
       "DeleteTogether": false,
@@ -553,6 +555,7 @@
       "SortDescending": false,
       "ModuleName": ""
     },
+    "IsInMemoryPaging": false,
     "PagerPosition": "Top",
     "ReplaceMode": "None",
     "DeleteTogether": false,

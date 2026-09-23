@@ -51,21 +51,6 @@
   <data name="MappingFixedValueDescription" xml:space="preserve">
     <value>Written as-is on export (e.g. a partner code). Used for columns that have no field.</value>
   </data>
-  <data name="MappingCodeConversion" xml:space="preserve">
-    <value>Code conversion (optional)</value>
-  </data>
-  <data name="MappingCodeConversionDescription" xml:space="preserve">
-    <value>Maps external codes to internal values using a conversion table, which is a normal business module. Export converts internal to external, import converts external to internal. External codes not found in the table are reported as row errors on import.</value>
-  </data>
-  <data name="MappingConversionModule" xml:space="preserve">
-    <value>Conversion table module</value>
-  </data>
-  <data name="MappingConversionExternalField" xml:space="preserve">
-    <value>External code field</value>
-  </data>
-  <data name="MappingConversionInternalField" xml:space="preserve">
-    <value>Internal value field</value>
-  </data>
   <data name="MappingFixedLength" xml:space="preserve">
     <value>Fixed-Length Format</value>
   </data>

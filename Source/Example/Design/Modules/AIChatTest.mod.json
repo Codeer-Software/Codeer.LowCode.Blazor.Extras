@@ -9,64 +9,61 @@
     {
       "Text": "AIChatField 確認 / RawDataAccess Agent (DB を SQL で読んで表とグラフで答える。AISettings の Azure OpenAI が必要)",
       "Icon": "",
+      "IsHtml": false,
       "Style": "H5",
       "RelativeField": "",
       "OnClick": "",
       "Name": "Header",
       "IgnoreModification": false,
       "OnValidateInput": "",
+      "IsFocusSkip": false,
+      "NextFocusField": "",
+      "OnFocusMoving": "",
       "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.LabelFieldDesign"
     },
     {
+      "Agent": "RawDataAccess",
+      "DocumentFolder": "AIChat",
+      "KeepConversation": true,
+      "SendOnEnter": true,
+      "MinInputRows": 3,
       "TimeoutSeconds": 600,
       "OnReplyReceived": "Chat_OnReplyReceived",
       "Name": "RawChat",
       "IgnoreModification": false,
       "OnValidateInput": "",
-      "TypeFullName": "Codeer.LowCode.Blazor.Extras.Designs.AIChatFieldDesign",
-      "Agent": "RawDataAccess",
-      "DocumentFolder": "AIChat",
-      "MinInputRows": 3
+      "IsFocusSkip": false,
+      "NextFocusField": "",
+      "OnFocusMoving": "",
+      "TypeFullName": "Codeer.LowCode.Blazor.Extras.Designs.AIChatFieldDesign"
     },
     {
       "Text": "",
       "Icon": "",
+      "IsHtml": false,
       "Style": "Default",
       "RelativeField": "",
       "OnClick": "",
       "Name": "LastReplyLabel",
       "IgnoreModification": false,
       "OnValidateInput": "",
+      "IsFocusSkip": false,
+      "NextFocusField": "",
+      "OnFocusMoving": "",
       "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.LabelFieldDesign"
     }
   ],
   "UserWriteCondition": {
-    "IsOrMatch": false,
-    "IsNot": false,
-    "Children": [],
-    "Name": "",
-    "TypeFullName": "Codeer.LowCode.Blazor.Repository.Match.ConditionGroup"
+    "ModuleName": ""
   },
   "UserReadCondition": {
-    "IsOrMatch": false,
-    "IsNot": false,
-    "Children": [],
-    "Name": "",
-    "TypeFullName": "Codeer.LowCode.Blazor.Repository.Match.ConditionGroup"
+    "ModuleName": ""
   },
   "DataWriteCondition": {
-    "IsOrMatch": false,
-    "IsNot": false,
-    "Children": [],
-    "Name": "",
-    "TypeFullName": "Codeer.LowCode.Blazor.Repository.Match.ConditionGroup"
+    "ModuleName": ""
   },
   "DataReadCondition": {
-    "IsOrMatch": false,
-    "IsNot": false,
-    "Children": [],
-    "Name": "",
-    "TypeFullName": "Codeer.LowCode.Blazor.Repository.Match.ConditionGroup"
+    "ModuleName": ""
   },
   "DetailLayouts": {
     "": {
@@ -74,6 +71,9 @@
       "OnAfterInitialization": "",
       "OnLocationChanging": "",
       "OnFieldDataChanged": "",
+      "FocusControlMode": "Inherit",
+      "IsFocusWrap": false,
+      "InitialFocusField": "",
       "DataOnlyFields": [],
       "ClassName": "",
       "Color": "",
@@ -100,6 +100,8 @@
             "GridRowType": "Normal",
             "CanResize": false,
             "BackgroundColor": "",
+            "KeepInFillAvailableGrid": false,
+            "IsProportionalScale": false,
             "IsRowMarginRemoved": false,
             "Columns": [
               {
@@ -113,6 +115,7 @@
                   "BackgroundColor": "",
                   "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.FieldLayoutDesign"
                 },
+                "IgnoreContentWidth": false,
                 "Padding": {},
                 "BackgroundColor": "",
                 "BorderStyle": {
@@ -122,6 +125,7 @@
                   "BottomColor": ""
                 },
                 "CanResize": false,
+                "AllowOverflow": false,
                 "Border": "None"
               }
             ]
@@ -133,6 +137,8 @@
             "GridRowType": "Normal",
             "CanResize": false,
             "BackgroundColor": "",
+            "KeepInFillAvailableGrid": false,
+            "IsProportionalScale": false,
             "IsRowMarginRemoved": false,
             "Columns": [
               {
@@ -146,6 +152,7 @@
                   "BackgroundColor": "",
                   "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.FieldLayoutDesign"
                 },
+                "IgnoreContentWidth": false,
                 "Padding": {},
                 "BackgroundColor": "",
                 "BorderStyle": {
@@ -155,6 +162,7 @@
                   "BottomColor": ""
                 },
                 "CanResize": false,
+                "AllowOverflow": false,
                 "Border": "None"
               }
             ]
@@ -166,6 +174,8 @@
             "GridRowType": "Normal",
             "CanResize": false,
             "BackgroundColor": "",
+            "KeepInFillAvailableGrid": false,
+            "IsProportionalScale": false,
             "IsRowMarginRemoved": false,
             "Columns": [
               {
@@ -179,6 +189,7 @@
                   "BackgroundColor": "",
                   "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.FieldLayoutDesign"
                 },
+                "IgnoreContentWidth": false,
                 "Padding": {},
                 "BackgroundColor": "",
                 "BorderStyle": {
@@ -188,6 +199,7 @@
                   "BottomColor": ""
                 },
                 "CanResize": false,
+                "AllowOverflow": false,
                 "Border": "None"
               }
             ]
@@ -202,6 +214,8 @@
     "": {
       "HeaderTitle": "",
       "DataOnlyFields": [],
+      "FocusControlMode": "Inherit",
+      "IsFocusWrap": false,
       "OnBeforeInitialization": "",
       "OnAfterInitialization": "",
       "OnFieldDataChanged": "",
@@ -212,6 +226,8 @@
     "": {
       "OnSearchInitialization": "",
       "ShowDefaultSearchButtons": true,
+      "FocusControlMode": "Inherit",
+      "IsFocusWrap": false,
       "Layout": {
         "Operator": "And",
         "Name": "",
@@ -239,6 +255,7 @@
     "CanNavigateToDetail": false,
     "NavigateModuleUrlSegment": "",
     "CanCustomizeColumns": false,
+    "FixedColumnCount": 0,
     "ApplyBackgroundToBoxInput": false,
     "DisplayName": "",
     "SearchCondition": {
@@ -249,14 +266,16 @@
       "SortDescending": false,
       "ModuleName": ""
     },
+    "IsInMemoryPaging": false,
     "PagerPosition": "Bottom",
-    "UseIndexSort": false,
+    "ReplaceMode": "None",
     "DeleteTogether": false,
     "CanCreate": false,
     "CanUpdate": false,
     "CanDelete": false,
     "CanUserSort": true,
     "CanSelect": false,
+    "UseIndexSort": false,
     "OnDataChanged": "",
     "OnSearchDataChanged": "",
     "OnSelectedIndexChanged": "",
@@ -265,6 +284,9 @@
     "Name": "",
     "IgnoreModification": false,
     "OnValidateInput": "",
+    "IsFocusSkip": false,
+    "NextFocusField": "",
+    "OnFocusMoving": "",
     "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.ListFieldDesign"
   },
   "CanBulkDataUpdate": false,

@@ -30,7 +30,7 @@
     <label class="btn btn-outline-secondary @MarginClass" style="@Field.GetOwnStyleString()"
            role="button" aria-label="Bulk Upload" data-system="bulk-upload">
       <i class="bi bi-upload" aria-hidden="true"></i>
-      <InputFile class="form-control d-none" OnChange="OnFileChangeAsync" />
+      <InputFile class="form-control d-none" accept="@Field.BulkUploadAccept" OnChange="OnFileChangeAsync" />
     </label>
   }
 }
@@ -42,6 +42,6 @@
   async Task OnFileChangeAsync(InputFileChangeEventArgs e)
   {
     await using var stream = e.File.OpenReadStream(ModuleDesign.BulkDataUpdateMaxAllowedSize);
-    await Field.UploadAsync(stream);
+    await Field.UploadAsync(e.File.Name, stream);
   }
 }

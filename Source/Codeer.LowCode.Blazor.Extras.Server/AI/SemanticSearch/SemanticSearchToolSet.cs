@@ -18,7 +18,8 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
 {
     /// <summary>
     /// SemanticSearchField を置いたモジュールの行を「意味で探す」ツール (<c>search_records</c>)。
-    /// 質問文を埋め込みにして、索引 (行を文章にしたものとそのベクトル) とのコサイン類似度が高い行を Id・詳細 URL・文章つきで返す。
+    /// 質問文を埋め込みにして、DB のベクトル検索 (pgvector / SQL Server 2025) でコサイン類似度が高い行を Id・詳細 URL・文章つきで返す。
+    /// 距離計算は DB が行う。ベクトル検索に対応しない DB (SQLite 等) のモジュールは意味検索の対象にならない。
     /// SQL の集計 (RawDataAccessToolSet) と役割を分け、「似た事例」「〜のような問い合わせ」のように内容で探す質問に使わせる。
     /// 読める範囲は RawDataAccess と同じ (データソース名で絞る。行ごとの閲覧条件は効かない)。
     /// </summary>
@@ -52,7 +53,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
             if (targets.Count == 0) return string.Empty;
             var sb = new StringBuilder();
             sb.AppendLine("次のモジュールは意味検索 (search_records) で「内容が似た記録」を探せます (各行を文章にして埋め込みで索引済み):");
-            foreach (var (module, field) in targets)
+            foreach (var (module, field, _) in targets)
             {
                 var title = DesignDescriber.Title(design!, module);
                 sb.Append("- ").Append(module.Name);
@@ -62,14 +63,10 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
             sb.AppendLine("- 「似た事例は」「〜のような問い合わせ」「〜について書かれた記録」のように内容や意味で探す質問は、SQL の LIKE ではなく search_records を使ってください。件数や合計などの集計は SQL です。");
             sb.AppendLine("- search_records の結果には Id・詳細ページの URL・文章が付きます。行を挙げるときは URL で Markdown リンクを付け、score が低いものは「近いものは見つからなかった」と正直に伝えてください。");
 
-            //DB 側のベクトル検索が使えるモジュールは、execute_sql の中でも距離計算できる ({embed:…} を質問の埋め込みに置き換える)
-            var dbSearchable = DbSearchableModules(design!, targets);
-            if (dbSearchable.Count > 0)
-            {
-                sb.AppendLine("- 次の表はベクトル型の列を持ち、execute_sql の SQL の中でも意味の近さで絞り込み・並べ替えができます。SQL に `{embed:探したい内容}` と書くと、実行前にその内容の埋め込みベクトルに置き換わります (自分で数値を書かないこと)。WHERE や JOIN・集計と組み合わせたいときはこちら、単に似た記録を挙げるだけなら search_records を使ってください:");
-                foreach (var (module, field, type) in dbSearchable)
-                    sb.Append("  - ").Append(module.Name).Append(": 表 ").Append(module.DbTable).Append(" のベクトル列 ").Append(field.DbColumnVectorSearch).Append(" (データソース ").Append(module.DataSourceName).Append(")。").AppendLine(SemanticSearchIndexReader.DialectHint(type));
-            }
+            //同じ表は execute_sql の中でも距離計算できる ({embed:…} を質問の埋め込みに置き換える)
+            sb.AppendLine("- これらの表はベクトル型の列を持ち、execute_sql の SQL の中でも意味の近さで絞り込み・並べ替えができます。SQL に `{embed:探したい内容}` と書くと、実行前にその内容の埋め込みベクトルに置き換わります (自分で数値を書かないこと)。WHERE や JOIN・集計と組み合わせたいときはこちら、単に似た記録を挙げるだけなら search_records を使ってください:");
+            foreach (var (module, field, type) in targets)
+                sb.Append("  - ").Append(module.Name).Append(": 表 ").Append(module.DbTable).Append(" のベクトル列 ").Append(field.DbColumnVectorSearch).Append(" (データソース ").Append(module.DataSourceName).Append(")。").AppendLine(SemanticSearchIndexReader.DialectHint(type));
             return sb.ToString();
         }
 
@@ -105,37 +102,10 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
                 var embeddings = await generator.GenerateAsync(new[] { query }, cancellationToken: context.CancellationToken);
                 var queryVector = embeddings[0].Vector.ToArray();
 
-                List<(string Id, string Text, double Score)> scored;
-                int? indexedCount = null;
+                //距離計算は DB。失敗 (拡張未導入・列の型違い等) はそのままエラーとして AI に返す (別経路で拾い直すことはしない)
+                List<SemanticSearchIndexReader.ScoredEntry> scored;
                 await using (var db = _dbAccessorFactory())
-                {
-                    //DB 側のベクトル検索 (pgvector / SQL Server 2025) が使える構成ならそれで上位だけ読む。失敗 (拡張未導入等) はメモリ比較に落とす
-                    List<(string, string, double)>? fromDb = null;
-                    if (SemanticSearchIndexReader.UsesDbSearch(db, target.Module, target.Field))
-                    {
-                        try
-                        {
-                            fromDb = (await SemanticSearchIndexReader.SearchAsync(db, target.Module, target.Field, queryVector, top, context.CancellationToken))
-                                .Select(e => (e.Id, e.Text, e.Score)).ToList();
-                        }
-                        catch (OperationCanceledException) { throw; }
-                        catch (Exception e)
-                        {
-                            context.Logger?.LogWarning(e, "AIChat search_records: database vector search failed for {Module}; falling back to in-memory comparison", target.Module.Name);
-                        }
-                    }
-                    if (fromDb != null) scored = fromDb;
-                    else
-                    {
-                        var entries = await SemanticSearchIndexReader.ReadAsync(db, target.Module, target.Field, context.CancellationToken);
-                        indexedCount = entries.Count;
-                        scored = entries
-                            .Select(e => (e.Id, e.Text, Score: SemanticSearchVector.Cosine(queryVector, e.Vector)))
-                            .OrderByDescending(x => x.Score)
-                            .Take(top)
-                            .ToList();
-                    }
-                }
+                    scored = await SemanticSearchIndexReader.SearchAsync(db, target.Module, target.Field, queryVector, top, context.CancellationToken);
 
                 var urls = DesignDescriber.PageUrls(design, target.Module);
                 var results = scored
@@ -147,7 +117,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
                         text = x.Text.Length > _maxTextChars ? x.Text[.._maxTextChars] + "…" : x.Text,
                     })
                     .ToList();
-                return Json(new { module = target.Module.Name, indexedCount, results });
+                return Json(new { module = target.Module.Name, results });
             }
             catch (OperationCanceledException) { throw; }
             catch (Exception e)
@@ -157,38 +127,27 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
             }
         }
 
-        //意味検索できるモジュール = SemanticSearchField (両列あり) を持ち、表があり、許されたデータソースのもの
-        List<(ModuleDesign Module, SemanticSearchFieldDesign Field)> SearchableModules(DesignData design)
+        //意味検索できるモジュール = SemanticSearchField (3 列あり) を持ち、表があり、許されたデータソースにあり、そのデータソースがベクトル検索に対応する DB のもの。
+        //データソース種別は DataSource 定義から見る (接続はしない)
+        List<(ModuleDesign Module, SemanticSearchFieldDesign Field, DataSourceType Type)> SearchableModules(DesignData design)
         {
-            var result = new List<(ModuleDesign, SemanticSearchFieldDesign)>();
+            var result = new List<(ModuleDesign, SemanticSearchFieldDesign, DataSourceType)>();
+            var candidates = new List<(ModuleDesign Module, SemanticSearchFieldDesign Field)>();
             foreach (var name in design.Modules.GetModuleNames())
             {
                 var module = design.Modules.Find(name);
                 if (module == null || string.IsNullOrEmpty(module.DbTable)) continue;
                 if (_dataSourceNames.Count > 0 && !_dataSourceNames.Contains(module.DataSourceName, StringComparer.OrdinalIgnoreCase)) continue;
                 var field = module.Fields.OfType<SemanticSearchFieldDesign>().FirstOrDefault(f => f.HasColumns);
-                if (field != null) result.Add((module, field));
+                if (field != null) candidates.Add((module, field));
             }
-            return result;
-        }
+            if (candidates.Count == 0) return result;
 
-        static string FieldLabel(ModuleDesign module, string name)
-        {
-            var display = (module.Fields.FirstOrDefault(f => f.Name == name) as ValueFieldDesignBase)?.DisplayName;
-            return string.IsNullOrEmpty(display) ? name : display;
-        }
-
-        //DB 側のベクトル検索が使えるモジュール (検索用列があり、データソースが対応 DB)。データソース種別は DataSource 定義から見る (接続はしない)
-        List<(ModuleDesign Module, SemanticSearchFieldDesign Field, DataSourceType Type)> DbSearchableModules(DesignData design, List<(ModuleDesign Module, SemanticSearchFieldDesign Field)> targets)
-        {
-            var result = new List<(ModuleDesign, SemanticSearchFieldDesign, DataSourceType)>();
-            if (targets.All(t => string.IsNullOrWhiteSpace(t.Field.DbColumnVectorSearch))) return result;
             var db = _dbAccessorFactory();
             try
             {
-                foreach (var (module, field) in targets)
+                foreach (var (module, field) in candidates)
                 {
-                    if (string.IsNullOrWhiteSpace(field.DbColumnVectorSearch)) continue;
                     var type = db.GetDataSource(module.DataSourceName)?.DataSourceType;
                     if (type != null && SemanticSearchIndexReader.SupportsDbSearch(type.Value)) result.Add((module, field, type.Value));
                 }
@@ -198,6 +157,12 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
                 db.DisposeAsync().AsTask().GetAwaiter().GetResult();
             }
             return result;
+        }
+
+        static string FieldLabel(ModuleDesign module, string name)
+        {
+            var display = (module.Fields.FirstOrDefault(f => f.Name == name) as ValueFieldDesignBase)?.DisplayName;
+            return string.IsNullOrEmpty(display) ? name : display;
         }
 
         static readonly Regex _embedPlaceholder = new(@"\{embed:(.*?)\}", RegexOptions.Compiled | RegexOptions.Singleline);
@@ -216,7 +181,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
             await using (var db = _dbAccessorFactory())
                 type = SemanticSearchIndexReader.DataSourceTypeOf(db, dataSourceName);
             if (!SemanticSearchIndexReader.SupportsDbSearch(type))
-                throw new InvalidOperationException($"データソース '{dataSourceName}' ({type}) はベクトル検索に対応していないので {{embed:…}} は使えません。search_records を使ってください。");
+                throw new InvalidOperationException($"データソース '{dataSourceName}' ({type}) はベクトル検索に対応していないので {{embed:…}} は使えません。");
 
             var texts = matches.Select(m => m.Groups[1].Value.Trim()).ToList();
             if (texts.Any(string.IsNullOrEmpty)) throw new InvalidOperationException("{embed:…} の中身が空です。探したい内容を書いてください。");

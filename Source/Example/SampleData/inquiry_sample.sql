@@ -1,8 +1,6 @@
--- Extras Example の問い合わせサンプル (SemanticSearchField = 意味検索の確認用)。sqlite_sample_extras.db に対して実行する。作り直し可 (DROP → CREATE → INSERT)。
--- search_text / search_vector は SemanticSearchField の書き込み専用列。行を保存すると本文が入り、埋め込みモデル (AISettings.EmbeddingModel) があればベクトルも入る。
--- 既存の行は POST api/semantic_search/reindex/Inquiry で索引を作る。
+-- Extras Example の問い合わせサンプル (AI チャットの確認用)。sqlite_sample_extras.db に対して実行する。作り直し可 (DROP → CREATE → INSERT)。
 DROP TABLE IF EXISTS inquiries;
-CREATE TABLE inquiries (id INTEGER PRIMARY KEY AUTOINCREMENT, subject TEXT, customer_id INTEGER, kind TEXT, status TEXT, received_on TEXT, body TEXT, response TEXT, is_deleted INTEGER DEFAULT 0, search_text TEXT, search_vector TEXT);
+CREATE TABLE inquiries (id INTEGER PRIMARY KEY AUTOINCREMENT, subject TEXT, customer_id INTEGER, kind TEXT, status TEXT, received_on TEXT, body TEXT, response TEXT, is_deleted INTEGER DEFAULT 0);
 INSERT INTO inquiries (subject, customer_id, kind, status, received_on, body, response) VALUES ('納期の確認', 1, 'Q', '9', '2026-08-03', '先週注文したノートPC 14型がまだ届きません。いつ頃届くか教えてください。', '物流の遅延で 2 日遅れていました。8/5 に配達完了。');
 INSERT INTO inquiries (subject, customer_id, kind, status, received_on, body, response) VALUES ('請求書の宛名変更', 3, 'Q', '9', '2026-08-05', '7 月分の請求書の宛名を部署名入りにして再発行してほしい。', '宛名を「大阪フーズ 購買部」に変更して再発行しました。');
 INSERT INTO inquiries (subject, customer_id, kind, status, received_on, body, response) VALUES ('モニターに縦線が出る', 4, 'C', '9', '2026-08-10', '納品された 27型モニターの 1 台に、電源投入後しばらくすると縦線が出ます。初期不良ではないでしょうか。', '初期不良として交換対応。8/14 に代替品を発送。');

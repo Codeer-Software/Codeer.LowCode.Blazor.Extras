@@ -6,19 +6,19 @@ using Codeer.LowCode.Blazor.Extras.Server.AI.Chat.ChatClient;
 using Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch;
 using Codeer.LowCode.Blazor.Repository.Design;
 using Codeer.LowCode.Blazor.SystemSettings;
-using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.AI;
 using System.Text.Json;
 
 namespace Codeer.LowCode.Blazor.Extras.Test.AI
 {
-    /// <summary>SemanticSearchToolSet (search_records): 索引済みの行を意味で探して似ている順に Id・URL・文章を返す。</summary>
+    /// <summary>
+    /// SemanticSearchToolSet (search_records): 意味検索できるモジュールの判定と AI への説明、エラー応答。
+    /// 距離計算は DB (pgvector / SQL Server 2025) が行うので、ここでは接続せずデータソース定義だけで判定を見る
+    /// (距離順 SELECT の文字列は SemanticSearchDbSearchTest、実 DB は SemanticSearchRealAITest)。
+    /// </summary>
     public class SemanticSearchToolSetTest
     {
         const string Ds = "Main";
-        string _dbFile = string.Empty;
-        DataSource[] _dataSources = Array.Empty<DataSource>();
-        DesignData _design = null!;
 
         sealed class Progress : IAIChatProgress
         {
@@ -30,14 +30,14 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
         static AIChatToolContext Context(Progress? progress = null)
             => new(new AIChatAgentRequest { ConversationId = "c", Message = "m", UserName = "u" }, progress ?? new Progress(), CancellationToken.None, null);
 
-        static DesignData CreateDesign()
+        static DesignData CreateDesign(string vectorSearchColumn = "search_vector_v")
         {
             var d = new DesignData();
             var m = new ModuleDesign { Name = "Inquiry", DataSourceName = Ds, DbTable = "inquiries" };
             m.Fields.Add(new IdFieldDesign { Name = "Id", DbColumn = "id" });
             m.Fields.Add(new TextFieldDesign { Name = "Subject", DisplayName = "件名", DbColumn = "subject" });
             m.Fields.Add(new TextFieldDesign { Name = "Body", DisplayName = "本文", DbColumn = "body" });
-            m.Fields.Add(new SemanticSearchFieldDesign { Name = "Search", DbColumnText = "search_text", DbColumnVector = "search_vector" });
+            m.Fields.Add(new SemanticSearchFieldDesign { Name = "Search", DbColumnText = "search_text", DbColumnVector = "search_vector", DbColumnVectorSearch = vectorSearchColumn });
             d.AddModule(m);
             var other = new ModuleDesign { Name = "Plain", DataSourceName = Ds, DbTable = "plain" };
             other.Fields.Add(new IdFieldDesign { Name = "Id", DbColumn = "id" });
@@ -49,38 +49,11 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
             return d;
         }
 
-        [SetUp]
-        public async Task SetUp()
-        {
-            _dbFile = Path.Combine(Path.GetTempPath(), $"semantic_tool_test_{Guid.NewGuid():N}.db");
-            _dataSources = new[] { new DataSource { Name = Ds, DataSourceType = DataSourceType.SQLite, ConnectionString = $"Data Source={_dbFile}" } };
-            await using var db = new DbAccessor(_dataSources);
-            await db.ExecuteAsync(Ds, "CREATE TABLE inquiries (id INTEGER PRIMARY KEY, subject TEXT, body TEXT, search_text TEXT, search_vector TEXT)", new());
-            await db.ExecuteAsync(Ds, "CREATE TABLE plain (id INTEGER PRIMARY KEY)", new());
-            var texts = new Dictionary<int, string>
-            {
-                [1] = "件名: 納期遅れの相談\n本文: 注文した商品がまだ届かない。納期を確認したい",
-                [2] = "件名: 請求書の再発行\n本文: 宛名を変更して請求書を再発行してほしい",
-                [3] = "件名: 納品が遅れている\n本文: 出荷が遅れて納期に間に合わない",
-                [4] = "件名: パスワードを忘れた\n本文: ログインできない",
-            };
-            foreach (var (id, text) in texts)
-                await db.ExecuteAsync(Ds, "INSERT INTO inquiries (id, subject, body, search_text, search_vector) VALUES (@p1, 's', 'b', @p2, @p3)",
-                    new() { ["@p1"] = id, ["@p2"] = text, ["@p3"] = SemanticSearchVector.Encode(FakeEmbeddingGenerator.Embed(text)) });
-            //索引がまだ無い行は検索に出ない
-            await db.ExecuteAsync(Ds, "INSERT INTO inquiries (id, subject, body) VALUES (5, '納期', '未索引')", new());
-            _design = CreateDesign();
-        }
+        //接続はしない (DataSource の定義だけ使う) ので接続文字列はダミー
+        static DbAccessor Db(DataSourceType type) => new([new DataSource { Name = Ds, DataSourceType = type, ConnectionString = "Host=none" }]);
 
-        [TearDown]
-        public void TearDown()
-        {
-            SqliteConnection.ClearAllPools();
-            if (File.Exists(_dbFile)) File.Delete(_dbFile);
-        }
-
-        SemanticSearchToolSet ToolSet(IList<string>? dataSourceNames = null)
-            => new(() => _design, () => new DbAccessor(_dataSources), () => new FakeEmbeddingGenerator(), dataSourceNames ?? new List<string> { Ds });
+        static SemanticSearchToolSet ToolSet(DesignData design, DataSourceType type = DataSourceType.PostgreSQL, IList<string>? dataSourceNames = null)
+            => new(() => design, () => Db(type), () => new FakeEmbeddingGenerator(), dataSourceNames ?? new List<string> { Ds });
 
         static async Task<JsonDocument> InvokeAsync(IEnumerable<AITool> tools, Dictionary<string, object?> args)
         {
@@ -91,37 +64,47 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
         }
 
         [Test]
-        public void 説明には意味検索できるモジュールと文章にしたフィールドが出る()
+        public void 説明には意味検索できるモジュールと文章にしたフィールドとDBのベクトル列が出る()
         {
-            var text = ToolSet().GetInstructions(Context());
+            var text = ToolSet(CreateDesign()).GetInstructions(Context());
             Assert.That(text, Does.Contain("Inquiry [問い合わせ]").And.Contain("件名, 本文").And.Contain("search_records"));
+            Assert.That(text, Does.Contain("inquiries").And.Contain("search_vector_v").And.Contain("{embed:").And.Contain("<=>"), "execute_sql で使うベクトル列と pgvector の書き方");
             Assert.That(text, Does.Not.Contain("Plain"));
+
+            var sqlServer = ToolSet(CreateDesign(), DataSourceType.SQLServer).GetInstructions(Context());
+            Assert.That(sqlServer, Does.Contain("VECTOR_DISTANCE"));
         }
 
         [Test]
-        public async Task 似ている順にIdとURLと文章を返す()
+        public void ツールはsearch_recordsだけ()
         {
-            var progress = new Progress();
-            var tools = ToolSet().CreateTools(Context(progress)).ToList();
+            var tools = ToolSet(CreateDesign()).CreateTools(Context()).ToList();
             Assert.That(tools.Select(t => t.Name), Is.EqualTo(new[] { "search_records" }));
+        }
 
-            using var doc = await InvokeAsync(tools, new() { ["moduleName"] = "inquiry", ["query"] = "納期が遅れている注文", ["top"] = 2 });
-            var root = doc.RootElement;
-            Assert.That(root.GetProperty("module").GetString(), Is.EqualTo("Inquiry"));
-            Assert.That(root.GetProperty("indexedCount").GetInt32(), Is.EqualTo(4));
-            var results = root.GetProperty("results").EnumerateArray().ToList();
-            Assert.That(results.Count, Is.EqualTo(2));
-            Assert.That(results.Select(r => r.GetProperty("id").GetString()), Is.EquivalentTo(new[] { "1", "3" }), "納期の 2 件が上位");
-            Assert.That(results[0].GetProperty("score").GetDouble(), Is.GreaterThanOrEqualTo(results[1].GetProperty("score").GetDouble()));
-            Assert.That(results[0].GetProperty("url").GetString(), Is.EqualTo("/Main/inquiries/" + results[0].GetProperty("id").GetString()));
-            Assert.That(results[0].GetProperty("text").GetString(), Does.StartWith("件名: "));
-            Assert.That(progress.Texts, Is.Not.Empty);
+        [Test]
+        public void ベクトル検索に対応しないDBのモジュールは意味検索の対象にならない()
+        {
+            foreach (var type in new[] { DataSourceType.SQLite, DataSourceType.MySQL, DataSourceType.Oracle })
+            {
+                var toolSet = ToolSet(CreateDesign(), type);
+                Assert.That(toolSet.GetInstructions(Context()), Is.Empty, type.ToString());
+                Assert.That(toolSet.CreateTools(Context()), Is.Empty, type.ToString());
+            }
+        }
+
+        [Test]
+        public void ベクトル検索用の列が無いモジュールは意味検索の対象にならない()
+        {
+            var toolSet = ToolSet(CreateDesign(vectorSearchColumn: ""));
+            Assert.That(toolSet.GetInstructions(Context()), Is.Empty);
+            Assert.That(toolSet.CreateTools(Context()), Is.Empty);
         }
 
         [Test]
         public async Task 意味検索できないモジュールと空の問い合わせはエラーを返す()
         {
-            var tools = ToolSet().CreateTools(Context()).ToList();
+            var tools = ToolSet(CreateDesign()).CreateTools(Context()).ToList();
             using var doc = await InvokeAsync(tools, new() { ["moduleName"] = "Plain", ["query"] = "x" });
             Assert.That(doc.RootElement.GetProperty("error").GetString(), Does.Contain("Plain").And.Contain("Inquiry"));
             using var doc2 = await InvokeAsync(tools, new() { ["moduleName"] = "Inquiry", ["query"] = " " });
@@ -131,7 +114,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
         [Test]
         public void 許されたデータソースに無いモジュールはツールに出ない()
         {
-            var toolSet = ToolSet(new List<string> { "Other" });
+            var toolSet = ToolSet(CreateDesign(), dataSourceNames: new List<string> { "Other" });
             Assert.That(toolSet.GetInstructions(Context()), Is.Empty);
             Assert.That(toolSet.CreateTools(Context()), Is.Empty);
         }

@@ -14,7 +14,8 @@ namespace Codeer.LowCode.Blazor.Extras.Server.BulkFile
     /// テーブルテキストを経由せず型付きの値で変換する。列位置 = マッピング定義の並び順。
     /// 書式変換はフィールドデザインに委譲する (IExternalTextFormatFieldDesign。標準では日付/日時/数値
     /// フィールドが実装し、書式は各フィールドの Format プロパティ。実装しない型は ToString / 型変換のみ)。
-    /// コード変換表はただの業務モジュールで、LimitCount = null (全件) で読み込んで辞書にする。
+    /// 値の引き当て (コード変換・リンクの名前解決) はモジュールの <see cref="FileValueConversionFieldDesign"/> に従う
+    /// (列の Field が変換対象フィールドなら、その列の値を変換する。変換列に書式は適用しない)。
     /// 通常は BulkFileTransfer 経由で使われるが、特殊実装 (独自の入出力経路) からは
     /// getTableTexts を差し替えるオーバーロードも利用できる。
     /// </summary>
@@ -30,7 +31,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.BulkFile
             FileColumnMappingFieldDesign design, ModuleDesign moduleDesign,
             Func<SearchCondition, Task<List<List<string>>>> getTableTexts)
         {
-            var converter = await CodeConverter.LoadAsync(design, getTableTexts);
+            var converter = await FileValueConverter.LoadAsync(moduleDesign, getTableTexts);
             var cols = design.Columns.Items;
             var targets = cols.Select(c => MappingTarget.Create(moduleDesign, c)).ToList();
 
@@ -48,11 +49,11 @@ namespace Codeer.LowCode.Blazor.Extras.Server.BulkFile
                     {
                         v = c.FixedValue;
                     }
-                    else if (!string.IsNullOrEmpty(c.ConversionModule))
+                    else if (converter.Converts(target.FieldDesign.Name))
                     {
-                        //コード変換 (内部→外部)。変換列に書式は適用しない
+                        //値の引き当て (内部→外部)。変換列に書式は適用しない。null は空セル
                         v = target.GetValue(item)?.ToString() ?? string.Empty;
-                        converter.TryToExternal(c, v, out v);
+                        if (!string.IsNullOrEmpty(v)) converter.TryToExternal(target.FieldDesign.Name, v, out v);
                     }
                     else if (target.FieldDesign is IExternalTextFormatFieldDesign f)
                     {
@@ -77,7 +78,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.BulkFile
 
         /// <summary>
         /// 取込: 外部列 → ModuleData (変換表の取得手段を差し替え可能)。
-        /// コード変換で引き当てられなかった値・書式や型として解釈できなかった値は errors に行番号付きで報告する。
+        /// 引き当てられなかった外部値・書式や型として解釈できなかった値は errors に行番号付きで報告する。
         /// </summary>
         public static async Task<(List<ModuleData> Items, List<string> Errors)> ToInternalAsync(
             List<List<string>> externalTexts, FileColumnMappingFieldDesign design, ModuleDesign moduleDesign,
@@ -96,12 +97,13 @@ namespace Codeer.LowCode.Blazor.Extras.Server.BulkFile
         /// <summary>
         /// 取込: 外部列 → ModuleData (セル単位の構造化エラー。変換表の取得手段を差し替え可能)。
         /// 解釈できないセルは値未設定のままエラーに載せ、行自体は捨てない。
+        /// 空セル (空白だけも含む) は値の引き当ての有無や型によらず null (未設定) として取り込む。
         /// </summary>
         public static async Task<(List<ModuleData> Items, List<BulkFileCellError> Errors)> ToInternalWithCellErrorsAsync(
             List<List<string>> externalTexts, FileColumnMappingFieldDesign design, ModuleDesign moduleDesign,
             Func<SearchCondition, Task<List<List<string>>>> getTableTexts)
         {
-            var converter = await CodeConverter.LoadAsync(design, getTableTexts);
+            var converter = await FileValueConverter.LoadAsync(moduleDesign, getTableTexts);
             //取込対象 = Field 指定があり、一括入出力可能なフィールドに解決できた列
             var mapped = design.Columns.Items
                 .Select((c, i) => (Column: c, FileIndex: i, Target: MappingTarget.Create(moduleDesign, c)))
@@ -130,12 +132,19 @@ namespace Codeer.LowCode.Blazor.Extras.Server.BulkFile
                     });
 
                     object? value;
-                    if (!string.IsNullOrEmpty(e.Column.ConversionModule))
+                    if (string.IsNullOrWhiteSpace(text))
                     {
-                        //コード変換 (外部→内部)。引き当てられない外部コードはエラー
-                        if (!converter.TryToInternal(e.Column, text, out var internalText) && !string.IsNullOrEmpty(text))
+                        //空セル (空白だけも含む) は列の種類によらず null (未設定)。
+                        //値の引き当てや型変換に空文字を渡さない (Link 等の参照は string メンバでも DB 列は数値のことがあり、
+                        //空文字のまま書き込むと取込本体で FormatException になる)。Id 付き更新では参照を外す (null で上書き)
+                        value = null;
+                    }
+                    else if (converter.Converts(target.FieldDesign.Name))
+                    {
+                        //値の引き当て (外部→内部)。引き当てられない外部値はエラー
+                        if (!converter.TryToInternal(target.FieldDesign.Name, text, out var internalText))
                         {
-                            AddError($"code '{text}' was not found in '{e.Column.ConversionModule}'.");
+                            AddError($"code '{text}' was not found in '{converter.ModuleNameOf(target.FieldDesign.Name)}'.");
                             continue;
                         }
                         if (!target.TryConvert(internalText, out value))
@@ -149,8 +158,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.BulkFile
                         //フィールドの書式変換 (外部→値)。書式どおりに解釈できない値はエラー
                         if (!f.TryParseExternalText(text, out value))
                         {
-                            if (!string.IsNullOrEmpty(text))
-                                AddError($"cannot parse '{text}'.");
+                            AddError($"cannot parse '{text}'.");
                             continue;
                         }
                     }
@@ -218,72 +226,6 @@ namespace Codeer.LowCode.Blazor.Extras.Server.BulkFile
             //テキスト → データメンバの型 (テキスト経路 (Excel/CSV) と同じ変換規約)
             internal bool TryConvert(string text, out object? value)
                 => BulkDataTextConverter.TryConvert(text, _property.PropertyType, out value);
-        }
-
-        /// <summary>コード変換表 (業務モジュール) を読み込んだ双方向辞書。</summary>
-        class CodeConverter
-        {
-            readonly Dictionary<string, (Dictionary<string, string> ToExternal, Dictionary<string, string> ToInternal)> _tables = new();
-
-            internal static async Task<CodeConverter> LoadAsync(FileColumnMappingFieldDesign design,
-                Func<SearchCondition, Task<List<List<string>>>> getTableTexts)
-            {
-                var converter = new CodeConverter();
-                foreach (var c in design.Columns.Items)
-                {
-                    if (string.IsNullOrEmpty(c.ConversionModule)) continue;
-                    var key = TableKey(c);
-                    if (converter._tables.ContainsKey(key)) continue;
-
-                    //LimitCount = null で全件。変換表は小さい前提
-                    var texts = await getTableTexts(new SearchCondition { ModuleName = c.ConversionModule });
-                    var header = texts.Count == 0 ? new() : texts[0];
-                    var extIndex = FindColumn(header, c.ConversionExternalField);
-                    var intIndex = FindColumn(header, c.ConversionInternalField);
-
-                    var toExternal = new Dictionary<string, string>();
-                    var toInternal = new Dictionary<string, string>();
-                    if (0 <= extIndex && 0 <= intIndex)
-                    {
-                        foreach (var row in texts.Skip(1))
-                        {
-                            if (row.Count <= extIndex || row.Count <= intIndex) continue;
-                            toExternal[row[intIndex]] = row[extIndex];
-                            toInternal[row[extIndex]] = row[intIndex];
-                        }
-                    }
-                    converter._tables[key] = (toExternal, toInternal);
-                }
-                return converter;
-            }
-
-            //フィールド名だけ ("EdiCode") でも内部名ヘッダ ("EdiCode.Value") でも受け付ける
-            static int FindColumn(List<string> header, string fieldName)
-            {
-                if (string.IsNullOrEmpty(fieldName)) return -1;
-                var exact = header.IndexOf(fieldName);
-                if (0 <= exact) return exact;
-                return header.FindIndex(h => h.StartsWith(fieldName + ".", StringComparison.Ordinal));
-            }
-
-            static string TableKey(MappingColumn c) => $"{c.ConversionModule}|{c.ConversionExternalField}|{c.ConversionInternalField}";
-
-            internal bool TryToExternal(MappingColumn c, string value, out string converted)
-                => TryConvert(c, value, e => e.ToExternal, out converted);
-
-            internal bool TryToInternal(MappingColumn c, string value, out string converted)
-                => TryConvert(c, value, e => e.ToInternal, out converted);
-
-            bool TryConvert(MappingColumn c, string value,
-                Func<(Dictionary<string, string> ToExternal, Dictionary<string, string> ToInternal), Dictionary<string, string>> selector,
-                out string converted)
-            {
-                converted = value;
-                if (!_tables.TryGetValue(TableKey(c), out var table)) return false;
-                if (!selector(table).TryGetValue(value, out var v)) return false;
-                converted = v;
-                return true;
-            }
         }
     }
 }

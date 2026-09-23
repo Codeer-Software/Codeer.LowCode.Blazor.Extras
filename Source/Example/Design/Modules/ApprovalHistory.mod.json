@@ -449,6 +449,7 @@
       "SortDescending": false,
       "ModuleName": ""
     },
+    "IsInMemoryPaging": false,
     "PagerPosition": "Top",
     "ReplaceMode": "None",
     "DeleteTogether": false,

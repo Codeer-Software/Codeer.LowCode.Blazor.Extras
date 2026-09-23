@@ -9,7 +9,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
 {
     /// <summary>
     /// DB 側のベクトル検索 (pgvector / SQL Server 2025): 距離順 SELECT の組み立て、ベクトルリテラル、
-    /// execute_sql の {embed:…} 置換、使う条件の判定。実 DB には接続しない (文字列の検証)。
+    /// execute_sql の {embed:…} 置換。実 DB には接続しない (文字列の検証)。
     /// </summary>
     public class SemanticSearchDbSearchTest
     {
@@ -66,18 +66,6 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
         }
 
         [Test]
-        public async Task DB側検索を使う条件は検索用列と対応DB()
-        {
-            await using var pg = Db(DataSourceType.PostgreSQL);
-            await using var lite = Db(DataSourceType.SQLite);
-            var with = CreateDesign("Main", "search_vector_v").Modules.Find("Inquiry")!;
-            var without = CreateDesign("Main", "").Modules.Find("Inquiry")!;
-            Assert.That(SemanticSearchIndexReader.UsesDbSearch(pg, with, with.Fields.OfType<SemanticSearchFieldDesign>().Single()), Is.True);
-            Assert.That(SemanticSearchIndexReader.UsesDbSearch(lite, with, with.Fields.OfType<SemanticSearchFieldDesign>().Single()), Is.False, "SQLite で同じデザインを使ってもメモリ比較に落ちる");
-            Assert.That(SemanticSearchIndexReader.UsesDbSearch(pg, without, without.Fields.OfType<SemanticSearchFieldDesign>().Single()), Is.False, "列が無ければ使わない");
-        }
-
-        [Test]
         public async Task execute_sqlのembedプレースホルダーを埋め込みリテラルに置き換える()
         {
             using var embedding = new FakeEmbeddingGenerator();
@@ -109,7 +97,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
             var design = CreateDesign("Main", "search_vector_v");
             var toolSet = new SemanticSearchToolSet(() => design, () => Db(DataSourceType.SQLite), () => embedding, ["Main"]);
             Assert.That(async () => await toolSet.ExpandEmbeddingsAsync("Main", "select * from t order by v <=> {embed:x}", CancellationToken.None),
-                Throws.TypeOf<InvalidOperationException>().With.Message.Contain("search_records"));
+                Throws.TypeOf<InvalidOperationException>().With.Message.Contain("対応していない"));
         }
     }
 }

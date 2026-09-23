@@ -17,7 +17,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
 {
     /// <summary>
     /// SemanticSearchIndexer: 実 DB (SQLite) で、保存時に文章とベクトルが書き込み専用列に入ること、
-    /// 埋め込み失敗時は文章だけ入ること、再索引、索引の読み取り (削除行を除く)、デザインチェック。
+    /// 埋め込み失敗時は文章だけ入ること、再索引、デザインチェック。索引付けは DB を選ばない (検索だけが pgvector / SQL Server 2025 前提)。
     /// </summary>
     public class SemanticSearchIndexerDbTest : IAuthenticationContext
     {
@@ -54,7 +54,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
             m.Fields.Add(new TextFieldDesign { Name = "Subject", DisplayName = "件名", DbColumn = "subject" });
             m.Fields.Add(new TextFieldDesign { Name = "Body", DisplayName = "本文", DbColumn = "body" });
             m.Fields.Add(new BooleanFieldDesign { Name = "LogicalDelete", DbColumn = "is_deleted" });
-            m.Fields.Add(new SemanticSearchFieldDesign { Name = "Search", DbColumnText = "search_text", DbColumnVector = "search_vector" });
+            m.Fields.Add(new SemanticSearchFieldDesign { Name = "Search", DbColumnText = "search_text", DbColumnVector = "search_vector", DbColumnVectorSearch = "search_vector" });
             m.ListLayouts[""] = new ListLayoutDesign();
             d.AddModule(m);
             return d;
@@ -149,7 +149,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
         }
 
         [Test]
-        public async Task 再索引は読める全行の文章を組み立てて保存し削除行は検索から除かれる()
+        public async Task 再索引は読める全行の文章を組み立てて保存する()
         {
             await _db.ExecuteAsync(Ds, "UPDATE inquiries SET is_deleted = 1 WHERE id = 3", new());
             var io = CreateIO(Indexer());
@@ -158,13 +158,6 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
             Assert.That((await RowAsync("2")).Text, Is.EqualTo("件名: 請求書の再発行\n本文: 宛名を変更して再発行してほしい"));
             Assert.That((await RowAsync("1")).Vector, Is.Not.Null);
             Assert.That((await RowAsync("3")).Vector, Is.Null);
-
-            //削除フラグが後から立った行 (索引は残っている) も検索からは除く
-            var deleted = SemanticSearchVector.Encode(FakeEmbeddingGenerator.Embed("件名: 納品書の再発行"));
-            await _db.ExecuteAsync(Ds, "UPDATE inquiries SET search_text = '件名: 納品書の再発行', search_vector = @p1 WHERE id = 3", new() { ["@p1"] = deleted });
-            var entries = await SemanticSearchIndexReader.ReadAsync(_db, _design.Modules.Find("Inquiry")!, _design.Modules.Find("Inquiry")!.Fields.OfType<SemanticSearchFieldDesign>().Single(), CancellationToken.None);
-            Assert.That(entries.Select(e => e.Id), Is.EquivalentTo(new[] { "1", "2" }), "論理削除の行は読まない");
-            Assert.That(entries.Single(e => e.Id == "1").Vector.Length, Is.EqualTo(FakeEmbeddingGenerator.Dimensions));
         }
 
         [Test]
@@ -178,25 +171,11 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
         }
 
         [Test]
-        public void ベクトルの保存形式と類似度()
+        public void ベクトルの保存形式()
         {
-            var v = new float[] { 1, 0, 0.5f };
-            var encoded = SemanticSearchVector.Encode(v);
+            var encoded = SemanticSearchVector.Encode(new float[] { 1, 0, 0.5f });
             Assert.That(encoded, Does.StartWith("[").And.EndWith("]").And.Not.Contain(" "), "JSON 配列風テキスト (pgvector / SQL Server の VECTOR がそのままキャストできる形)");
             Assert.That(SemanticSearchVector.Encode(new float[] { 1, -0.5f, 0.25f }), Is.EqualTo("[1,-0.5,0.25]"));
-            var decoded = SemanticSearchVector.Decode(encoded);
-            Assert.That(decoded, Is.EqualTo(v));
-            Assert.That(SemanticSearchVector.Decode(" [1, 2, 3] "), Is.EqualTo(new float[] { 1, 2, 3 }), "空白入りも許す");
-            Assert.That(SemanticSearchVector.Decode("[1, x]"), Is.Null);
-            Assert.That(SemanticSearchVector.Decode("[]"), Is.Null);
-            Assert.That(SemanticSearchVector.Decode("not a vector!"), Is.Null);
-            Assert.That(SemanticSearchVector.Decode(""), Is.Null);
-            //旧形式 (base64 の float32 列) も読める
-            var legacy = Convert.ToBase64String(System.Runtime.InteropServices.MemoryMarshal.AsBytes<float>(v));
-            Assert.That(SemanticSearchVector.Decode(legacy), Is.EqualTo(v));
-            Assert.That(SemanticSearchVector.Cosine(v, v), Is.EqualTo(1).Within(1e-6));
-            Assert.That(SemanticSearchVector.Cosine(new float[] { 1, 0 }, new float[] { 0, 1 }), Is.EqualTo(0).Within(1e-6));
-            Assert.That(SemanticSearchVector.Cosine(new float[] { 1, 0 }, new float[] { 1, 0, 0 }), Is.EqualTo(0), "次元が違えば 0");
         }
 
         [Test]
@@ -207,8 +186,11 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
 
             field.DbColumnVector = "";
             Assert.That(CheckCodes(), Does.Contain(DesignCheckCode.Create(typeof(SemanticSearchFieldDesign), 1 /* ColumnsRequired */)));
-
             field.DbColumnVector = "search_vector";
+
+            field.DbColumnVectorSearch = "";
+            Assert.That(CheckCodes(), Does.Contain(DesignCheckCode.Create(typeof(SemanticSearchFieldDesign), 1)), "ベクトル検索用の列も必須");
+            field.DbColumnVectorSearch = "search_vector";
             field.SourceFields.Add("NoSuchField");
             var codes = CheckCodes();
             Assert.That(codes, Does.Not.Contain(DesignCheckCode.Create(typeof(SemanticSearchFieldDesign), 1)));

@@ -1271,6 +1271,96 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
             }
         }
 
+        internal static string FileValueConversionField {
+            get {
+                return ResourceManager.GetString("FileValueConversionField", resourceCulture);
+            }
+        }
+
+        internal static string FileValueConversionTargetField {
+            get {
+                return ResourceManager.GetString("FileValueConversionTargetField", resourceCulture);
+            }
+        }
+
+        internal static string FileValueConversionConversionModule {
+            get {
+                return ResourceManager.GetString("FileValueConversionConversionModule", resourceCulture);
+            }
+        }
+
+        internal static string FileValueConversionExternalField {
+            get {
+                return ResourceManager.GetString("FileValueConversionExternalField", resourceCulture);
+            }
+        }
+
+        internal static string FileValueConversionInternalField {
+            get {
+                return ResourceManager.GetString("FileValueConversionInternalField", resourceCulture);
+            }
+        }
+
+        internal static string FileValueConversionTargetFieldRequired {
+            get {
+                return ResourceManager.GetString("FileValueConversionTargetFieldRequired", resourceCulture);
+            }
+        }
+
+        internal static string FileValueConversionTargetFieldNotConvertible {
+            get {
+                return ResourceManager.GetString("FileValueConversionTargetFieldNotConvertible", resourceCulture);
+            }
+        }
+
+        internal static string FileValueConversionModuleRequired {
+            get {
+                return ResourceManager.GetString("FileValueConversionModuleRequired", resourceCulture);
+            }
+        }
+
+        internal static string FileValueConversionExternalFieldRequired {
+            get {
+                return ResourceManager.GetString("FileValueConversionExternalFieldRequired", resourceCulture);
+            }
+        }
+
+        internal static string FileValueConversionInternalFieldRequired {
+            get {
+                return ResourceManager.GetString("FileValueConversionInternalFieldRequired", resourceCulture);
+            }
+        }
+
+        internal static string FileValueConversionModuleDiffersFromLinkTarget {
+            get {
+                return ResourceManager.GetString("FileValueConversionModuleDiffersFromLinkTarget", resourceCulture);
+            }
+        }
+
+        internal static string FileValueConversionTargetFieldDuplicated {
+            get {
+                return ResourceManager.GetString("FileValueConversionTargetFieldDuplicated", resourceCulture);
+            }
+        }
+
+        internal static string FileColumnMappingConversionObsolete {
+            get {
+                return ResourceManager.GetString("FileColumnMappingConversionObsolete", resourceCulture);
+            }
+        }
+
+        internal static string FileColumnMappingConversionMigrationTitle {
+            get {
+                return ResourceManager.GetString("FileColumnMappingConversionMigrationTitle", resourceCulture);
+            }
+        }
+
+        internal static string FileColumnMappingConversionMigrationDescription {
+            get {
+                return ResourceManager.GetString("FileColumnMappingConversionMigrationDescription", resourceCulture);
+            }
+        }
+
         internal static string BulkMailField {
             get {
                 return ResourceManager.GetString("BulkMailField", resourceCulture);
@@ -2759,7 +2849,7 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
         }
         
         /// <summary>
-        ///   Set both the text column and the vector column. に類似しているローカライズされた文字列を検索します。
+        ///   Set the text column, the vector column and the vector search column. に類似しているローカライズされた文字列を検索します。
         /// </summary>
         internal static string SemanticSearchCheck_ColumnsRequired {
             get {
@@ -2800,6 +2890,15 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
         internal static string SemanticSearchFieldDbColumnVectorSearch {
             get {
                 return ResourceManager.GetString("SemanticSearchFieldDbColumnVectorSearch", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to The file type is not allowed. Allowed: {0}.
+        /// </summary>
+        internal static string FileExtensionNotAllowed {
+            get {
+                return ResourceManager.GetString("FileExtensionNotAllowed", resourceCulture);
             }
         }
     }

@@ -231,16 +231,6 @@
       "DisplayName": "",
       "Name": "LogicalDelete",
       "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.BooleanFieldDesign"
-    },
-    {
-      "SourceFields": [],
-      "DbColumnText": "search_text",
-      "DbColumnVector": "search_vector",
-      "MaxTextLength": 8000,
-      "Name": "Search",
-      "IgnoreModification": false,
-      "OnValidateInput": "",
-      "TypeFullName": "Codeer.LowCode.Blazor.Extras.Designs.SemanticSearchFieldDesign"
     }
   ],
   "UserWriteCondition": {

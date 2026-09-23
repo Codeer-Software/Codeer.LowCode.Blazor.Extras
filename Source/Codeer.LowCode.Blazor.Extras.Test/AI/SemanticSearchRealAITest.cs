@@ -17,15 +17,16 @@ using Microsoft.Extensions.AI;
 namespace Codeer.LowCode.Blazor.Extras.Test.AI
 {
     /// <summary>
-    /// 実際の Azure OpenAI で意味検索を通す (課金あり・ネットワーク要のため Explicit)。
-    /// 環境変数 AZURE_OPENAI_ENDPOINT / AZURE_OPENAI_KEY / AZURE_OPENAI_MODEL に加えて AZURE_OPENAI_EMBEDDING_MODEL (埋め込みのデプロイ名)。
+    /// 実際の Azure OpenAI と pgvector 入りの PostgreSQL で意味検索を通す (課金あり・ネットワーク要のため Explicit)。
+    /// 環境変数 AZURE_OPENAI_ENDPOINT / AZURE_OPENAI_KEY / AZURE_OPENAI_MODEL / AZURE_OPENAI_EMBEDDING_MODEL (埋め込みのデプロイ名) /
+    /// AZURE_OPENAI_EMBEDDING_DIMENSIONS (省略時 1536) / SEMANTIC_SEARCH_PG_CONNECTION (CREATE EXTENSION vector が済んだ PostgreSQL の接続文字列)。
     /// 実行: dotnet test --filter "FullyQualifiedName~SemanticSearchRealAITest"
     /// </summary>
-    [Explicit("実 Azure OpenAI を呼ぶ。AZURE_OPENAI_ENDPOINT / KEY / MODEL / EMBEDDING_MODEL を設定して明示的に実行する")]
+    [Explicit("実 Azure OpenAI と PostgreSQL (pgvector) を使う。AZURE_OPENAI_* と SEMANTIC_SEARCH_PG_CONNECTION を設定して明示的に実行する")]
     public class SemanticSearchRealAITest : IAuthenticationContext
     {
         const string Ds = "AiDb";
-        string _dbFile = string.Empty;
+        string _table = string.Empty;
         DataSource[] _dataSources = Array.Empty<DataSource>();
         DesignData _design = null!;
         Func<IEmbeddingGenerator<string, Embedding<float>>> _embedding = null!;
@@ -63,17 +64,21 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
             var key = Environment.GetEnvironmentVariable("AZURE_OPENAI_KEY");
             var model = Environment.GetEnvironmentVariable("AZURE_OPENAI_MODEL");
             var embeddingModel = Environment.GetEnvironmentVariable("AZURE_OPENAI_EMBEDDING_MODEL");
-            if (string.IsNullOrEmpty(endpoint) || string.IsNullOrEmpty(key) || string.IsNullOrEmpty(model) || string.IsNullOrEmpty(embeddingModel))
-                Assert.Ignore("AZURE_OPENAI_ENDPOINT / AZURE_OPENAI_KEY / AZURE_OPENAI_MODEL / AZURE_OPENAI_EMBEDDING_MODEL が未設定");
+            var connection = Environment.GetEnvironmentVariable("SEMANTIC_SEARCH_PG_CONNECTION");
+            if (string.IsNullOrEmpty(endpoint) || string.IsNullOrEmpty(key) || string.IsNullOrEmpty(model) || string.IsNullOrEmpty(embeddingModel) || string.IsNullOrEmpty(connection))
+                Assert.Ignore("AZURE_OPENAI_ENDPOINT / AZURE_OPENAI_KEY / AZURE_OPENAI_MODEL / AZURE_OPENAI_EMBEDDING_MODEL / SEMANTIC_SEARCH_PG_CONNECTION が未設定");
+            var dimensions = int.TryParse(Environment.GetEnvironmentVariable("AZURE_OPENAI_EMBEDDING_DIMENSIONS"), out var d) ? d : 1536;
             var client = new AzureOpenAIClient(new Uri(endpoint!), new AzureKeyCredential(key!));
             _chat = () => client.GetChatClient(model).AsIChatClient();
             _embedding = () => client.GetEmbeddingClient(embeddingModel).AsIEmbeddingGenerator();
 
             DbAccessor.ClearTableDefinitionCache();
-            _dbFile = Path.Combine(Path.GetTempPath(), $"semantic_real_{Guid.NewGuid():N}.db");
-            _dataSources = new[] { new DataSource { Name = Ds, DataSourceType = DataSourceType.SQLite, ConnectionString = $"Data Source={_dbFile}" } };
+            _table = $"semantic_real_{Guid.NewGuid():N}"[..24];
+            _dataSources = new[] { new DataSource { Name = Ds, DataSourceType = DataSourceType.PostgreSQL, ConnectionString = connection! } };
             await using var db = new DbAccessor(_dataSources);
-            await db.ExecuteAsync(Ds, "CREATE TABLE inquiries (id INTEGER PRIMARY KEY AUTOINCREMENT, subject TEXT, body TEXT, search_text TEXT, search_vector TEXT)", new());
+            //本体はベクトルをテキストで書くので、pgvector の列は生成列でキャストする (docs/SemanticSearchField.md の構成そのまま)
+            await db.ExecuteAsync(Ds, $"CREATE TABLE {_table} (id SERIAL PRIMARY KEY, subject TEXT, body TEXT, search_text TEXT, search_vector TEXT, " +
+                $"search_vector_v vector({dimensions}) GENERATED ALWAYS AS (search_vector::vector) STORED)", new());
             var rows = new[]
             {
                 ("納期の確認", "先週注文した商品がまだ届きません。いつ届くか教えてください。"),
@@ -83,27 +88,30 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
                 ("見積の再送", "先日の見積書をもう一度メールで送ってほしい。"),
             };
             foreach (var (subject, body) in rows)
-                await db.ExecuteAsync(Ds, "INSERT INTO inquiries (subject, body) VALUES (@p1, @p2)", new() { ["@p1"] = subject, ["@p2"] = body });
+                await db.ExecuteAsync(Ds, $"INSERT INTO {_table} (subject, body) VALUES (@p1, @p2)", new() { ["@p1"] = subject, ["@p2"] = body });
+            await db.CommitAsync();
 
             _design = new DesignData();
-            var m = new ModuleDesign { Name = "Inquiry", DataSourceName = Ds, DbTable = "inquiries" };
+            var m = new ModuleDesign { Name = "Inquiry", DataSourceName = Ds, DbTable = _table };
             m.Fields.Add(new IdFieldDesign { Name = "Id", DbColumn = "id" });
             m.Fields.Add(new TextFieldDesign { Name = "Subject", DisplayName = "件名", DbColumn = "subject" });
             m.Fields.Add(new TextFieldDesign { Name = "Body", DisplayName = "本文", DbColumn = "body" });
-            m.Fields.Add(new SemanticSearchFieldDesign { Name = "Search", DbColumnText = "search_text", DbColumnVector = "search_vector" });
+            m.Fields.Add(new SemanticSearchFieldDesign { Name = "Search", DbColumnText = "search_text", DbColumnVector = "search_vector", DbColumnVectorSearch = "search_vector_v" });
             m.ListLayouts[""] = new ListLayoutDesign();
             _design.AddModule(m);
         }
 
         [TearDown]
-        public void TearDown()
+        public async Task TearDown()
         {
-            Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
-            if (File.Exists(_dbFile)) File.Delete(_dbFile);
+            if (_dataSources.Length == 0 || string.IsNullOrEmpty(_table)) return;
+            await using var db = new DbAccessor(_dataSources);
+            await db.ExecuteAsync(Ds, $"DROP TABLE IF EXISTS {_table}", new());
+            await db.CommitAsync();
         }
 
         [Test]
-        public async Task 再索引して納期に関する似た問い合わせをAgentが探す()
+        public async Task 再索引して納期に関する似た問い合わせをAgentがDBのベクトル検索で探す()
         {
             var indexer = new SemanticSearchIndexer(_embedding);
             await using var db = new DbAccessor(_dataSources);
@@ -111,8 +119,8 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
             Assert.That(await SemanticSearchIndexer.ReindexAsync(io, _design, "Inquiry"), Is.EqualTo(5));
             await db.CommitAsync();
 
-            var entries = await SemanticSearchIndexReader.ReadAsync(db, _design.Modules.Find("Inquiry")!, _design.Modules.Find("Inquiry")!.Fields.OfType<SemanticSearchFieldDesign>().Single(), CancellationToken.None);
-            Assert.That(entries.Count, Is.EqualTo(5));
+            var indexed = await db.QueryAsync(Ds, $"select count(*) as c from {_table} where search_vector_v is not null", new());
+            Assert.That(Convert.ToInt32(indexed.Single()["c"]), Is.EqualTo(5), "テキスト列から生成列にベクトルが入る");
 
             var agent = new RawDataAccessAgent(_chat, () => new DbAccessor(_dataSources), () => _design, null,
                 new RawDataAccessOptions { DataSourceNames = { Ds } }, embeddingGeneratorFactory: _embedding);

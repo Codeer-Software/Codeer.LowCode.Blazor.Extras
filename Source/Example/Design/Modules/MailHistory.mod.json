@@ -1,4 +1,4 @@
-﻿{
+{
   "Name": "MailHistory",
   "DataSourceName": "SampleSQLite",
   "DbTable": "mail_histories",
@@ -332,6 +332,7 @@
       "FailureDetails": "FailureDetails",
       "SourceModule": "SourceModule",
       "SourceId": "SourceId",
+      "Details": "",
       "Name": "Contract",
       "IgnoreModification": false,
       "OnValidateInput": "",
@@ -1123,6 +1124,7 @@
       "SortDescending": false,
       "ModuleName": ""
     },
+    "IsInMemoryPaging": false,
     "PagerPosition": "Top",
     "ReplaceMode": "None",
     "DeleteTogether": false,

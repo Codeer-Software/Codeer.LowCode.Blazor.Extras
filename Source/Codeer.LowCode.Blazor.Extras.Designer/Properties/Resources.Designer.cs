@@ -83,16 +83,6 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Properties
 
         public static string MappingFixedValueDescription => GetString("MappingFixedValueDescription");
 
-        public static string MappingCodeConversion => GetString("MappingCodeConversion");
-
-        public static string MappingCodeConversionDescription => GetString("MappingCodeConversionDescription");
-
-        public static string MappingConversionModule => GetString("MappingConversionModule");
-
-        public static string MappingConversionExternalField => GetString("MappingConversionExternalField");
-
-        public static string MappingConversionInternalField => GetString("MappingConversionInternalField");
-
         public static string MappingFixedLength => GetString("MappingFixedLength");
 
         public static string MappingFixedLengthDescription => GetString("MappingFixedLengthDescription");
@@ -116,7 +106,6 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Properties
         public static string SetupRouteMaster => GetString("SetupRouteMaster");
 
         public static string SetupRouteStandard => GetString("SetupRouteStandard");
-
 
         public static string SetupRouteNone => GetString("SetupRouteNone");
 

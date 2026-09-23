@@ -5,6 +5,7 @@ using Codeer.LowCode.Blazor.OperatingModel;
 using Codeer.LowCode.Blazor.Repository.Data;
 using Codeer.LowCode.Blazor.Extras.Designs;
 using Codeer.LowCode.Blazor.Script;
+using Codeer.LowCode.Blazor.Utils;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Codeer.LowCode.Blazor.Extras.Fields
@@ -57,9 +58,15 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         [ScriptHide]
         public override async Task SetDataAsync(FieldDataBase? fieldDataBase) => await Task.CompletedTask;
 
+        //受け付ける拡張子 (input の accept 属性)。accept は補助で、判定は SetDataByFileAsync で行う
+        internal string? AcceptAttribute => FileExtensionFilter.ToAccept(Design.GetAllowedExtensions(Module?.Design));
+
         [ScriptHide]
         public async Task SetDataByFileAsync(string fileName, StreamContent content)
         {
+            if (!Design.IsAllowedFileName(Module?.Design, fileName))
+                throw LowCodeException.Create(Properties.Resources.FileExtensionNotAllowed, FileExtensionFilter.ToDisplayText(Design.GetAllowedExtensions(Module?.Design)));
+
             var file = Module.GetField<FileField>(Design.FileField);
             if (file != null)
             {

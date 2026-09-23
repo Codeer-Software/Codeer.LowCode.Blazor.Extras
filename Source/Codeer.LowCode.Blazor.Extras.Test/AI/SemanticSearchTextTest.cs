@@ -40,7 +40,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
             m.Fields.Add(new NumberFieldDesign { Name = "Amount", DisplayName = "金額", DbColumn = "amount" });
             m.Fields.Add(new PasswordFieldDesign { Name = "Secret" });
             m.Fields.Add(new BooleanFieldDesign { Name = "LogicalDelete", DbColumn = "is_deleted" });
-            var search = new SemanticSearchFieldDesign { Name = "Search", DbColumnText = "search_text", DbColumnVector = "search_vector" };
+            var search = new SemanticSearchFieldDesign { Name = "Search", DbColumnText = "search_text", DbColumnVector = "search_vector", DbColumnVectorSearch = "search_vector" };
             search.SourceFields.AddRange(sourceFields);
             m.Fields.Add(search);
             m.ListLayouts[""] = new ListLayoutDesign();

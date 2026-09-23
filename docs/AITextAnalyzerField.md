@@ -65,9 +65,11 @@
 - Extras.Server 0.12.0 は `Microsoft.Extensions.AI.OpenAI` 10.7.0 に依存します (これに伴い OpenAI パッケージは 2.11、Microsoft.Extensions.* の抽象パッケージは 10.x になります)。
   0.11.0 までは `Azure.AI.OpenAI` 2.1.0 の `ChatClient` を直接呼んでいたため、ホストが AIChat 用に `Microsoft.Extensions.AI.OpenAI` 10.7 を参照すると
   `ChatCompletionOptions.get_SerializedAdditionalRawData` が見つからない `MissingMethodException` で解析が必ず失敗していました。0.12.0 で IChatClient 経由に直しています
+- 0.12.1 からは Extras.Server の `Azure.AI.OpenAI` 参照を 2.9.0-beta.1 (OpenAI 2.9 以降向け) に上げ、OpenAI 2.11 と揃えています。`ChatClient` を直接呼んでもこの例外は出ません。
+  ホスト側で `Azure.AI.OpenAI` を明示参照して版を揃える必要はありません (Azure.AI.OpenAI の安定版は 2.1.0 で止まっているため、これはプレビュー版です)
 - net8.0 のホストで `Microsoft.Extensions.AI.OpenAI` を直接参照していない場合、`Microsoft.Extensions.Hosting.Abstractions` の 8.0 と 10.0 が衝突して
   CS1705 でビルドできないことがあります (NuGet が近いほうの 8.0 を選ぶため)。ホストの csproj に `<PackageReference Include="Microsoft.Extensions.AI.OpenAI" Version="10.7.0" />` を足してください (アプリテンプレートには入っています)。.NET 8 のまま使えます
-- ホスト側で Azure OpenAI を使うコードを書くときも、`Azure.AI.OpenAI` の `ChatClient` を直接呼ばず、`GetChatClient(model).AsIChatClient()` で IChatClient に包んでください (上と同じ理由)
+- ホスト側で Azure OpenAI を使うコードも、`GetChatClient(model).AsIChatClient()` で IChatClient に包む形を推奨します (0.12.0 以前ではこれが必須でした。プロバイダを差し替えられる利点もあります)
 
 ## スクリプト
 

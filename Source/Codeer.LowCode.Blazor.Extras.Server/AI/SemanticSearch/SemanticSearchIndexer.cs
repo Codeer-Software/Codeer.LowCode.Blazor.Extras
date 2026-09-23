@@ -75,7 +75,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
         {
             var module = designData.Modules.Find(moduleName) ?? throw new ArgumentException($"Module '{moduleName}' does not exist.", nameof(moduleName));
             var fields = module.Fields.OfType<SemanticSearchFieldDesign>().Where(f => f.HasColumns).ToList();
-            if (fields.Count == 0) throw new ArgumentException($"Module '{moduleName}' has no SemanticSearchField with both columns set.", nameof(moduleName));
+            if (fields.Count == 0) throw new ArgumentException($"Module '{moduleName}' has no SemanticSearchField with the text, vector and vector-search columns set.", nameof(moduleName));
             var idField = module.Fields.OfType<IdFieldDesign>().FirstOrDefault() ?? throw new ArgumentException($"Module '{moduleName}' has no IdField.", nameof(moduleName));
 
             var count = 0;

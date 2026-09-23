@@ -20,8 +20,8 @@ Module 実体化を通らないため大量行でも軽い (参照・軽い加�
 条件系 3 つは「サーバーで検索した結果をそのまま出力」、`List<モジュール>` 版だけが「クライアントのデータを出力」。
 スクリプトで行に手を加える必要が無ければ条件系を使う方が速くて簡単。
 
-ファイル形式・列対応の定義はスクリプト変換と常に併用する。排他なのは「同じ列」への二重のコード変換だけ
-(宣言的な `ConversionModule` とスクリプト変換は列ごとにどちらか一方。スクリプトで変換済みの値に
+ファイル形式・列対応の定義はスクリプト変換と常に併用する。排他なのは「同じフィールド」への二重の値変換だけ
+(宣言的な `FileValueConversionField` とスクリプト変換はフィールドごとにどちらか一方。スクリプトで変換済みの値に
 さらに宣言的変換はかけない)。
 
 このサービスを使うアプリはサーバー側の対応実装が必要。`Download(List<モジュール>)` / `Submit(List<モジュール>)` のエンドポイント URL はアプリの初期化 (ServiceInitializer の `BulkFileTransferService.ListFileByDataEndPoint` / `BulkSubmitEndPoint`) で設定する (テンプレートは設定済み)。
@@ -60,7 +60,7 @@ void ExportConverted_OnClick()
     var searcher = new ModuleSearcher<注文>();
     var list = searcher.Execute();
 
-    // コード変換 (内部 → 相手仕様)。表引きで済むなら列マッピングの ConversionModule に任せてもよい
+    // コード変換 (内部 → 相手仕様)。表引きで済むなら FileValueConversionField に任せてもよい
     var mapSearcher = new ModuleSearcher<コード変換表>();
     var maps = mapSearcher.Execute();
     var dic = new Dictionary<string, string>();
