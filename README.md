@@ -91,6 +91,8 @@ Codeer.LowCode.Blazor 本体が持つのは認可だけで、認証 (ログイ�
 ## サーバーサービス (Codeer.LowCode.Blazor.Extras.Server)
 
 - AITextAnalyzeService — Azure Document Intelligence + Azure OpenAI による帳票・テキスト解析 (AITextAnalyzerField のサーバー側)
+- AI チャット — AIChatService (AIChatField の受け口。送信をバックグラウンドの Agent に渡し、ポーリングに状態を返す) と標準 Agent の RawDataAccessAgent (アプリの設計を読み、DB を SQL で読んで集計・グラフで答える)。独自の Agent は IAIChatAgent で追加。[AIChatField](docs/AIChatField.md)
+- 意味検索 — SemanticSearchService (SemanticSearchField のサーバー側。保存時に行の文章へ埋め込みベクトルを付け、再索引をジョブで実行し、AI チャットに search_records ツールを提供)。埋め込みモデルは IEmbeddingProvider (Azure OpenAI 実装を同梱。独自実装で差し替え可)。類似度の計算は DB 側 (PostgreSQL pgvector / SQL Server 2025)。[SemanticSearchField](docs/SemanticSearchField.md)
 - 認証 — LoginAccountStore (ID/パスワード照合・ユーザー行の解決) / 外部 IdP (OidcLoginProvider と Entra / Google / Cognito 実装) / TotpLogin・EmailOtpLogin (二要素認証)。[認証の全体像](docs/Authentication.md)
 - メール送信 — MailDispatcher (テンプレート解決・一斉送信・送信履歴) と SMTP / Microsoft Graph / SendGrid / Gmail API 送信。独自の送信手段は IMailSender で追加
 - 承認フロー — ApprovalEngine (状態遷移の検証と実行)
@@ -127,7 +129,7 @@ ExtrasClientInitializer.Initialize(this);
 ExtrasClientInitializer.Initialize(this, http, logger, toaster);
 ```
 
-メール送信・承認フロー・Excel PDF 変換・AI 解析を使う場合は、エンドポイント URL を起動時に設定します
+メール送信・承認フロー・Excel PDF 変換・AI 解析・AI チャット・意味検索を使う場合は、エンドポイント URL を起動時に設定します
 (URL はアプリのコントローラに合わせて変更してください)。
 
 ```csharp
@@ -143,6 +145,8 @@ ApprovalTransport.EndPointBase = "/api/approval";
 Codeer.LowCode.Blazor.Extras.ScriptObjects.Excel.ConvertPdfEndPoint = "api/excel/pdf";
 AITextAnalyzerField.FileToModuleDataEndPoint = "/api/ai_text_analyze/file";
 AITextAnalyzerField.TextToModuleDataEndPoint = "/api/ai_text_analyze/text";
+AIChatField.EndPoint = "/api/ai_chat";
+SemanticSearchField.EndPoint = "/api/semantic_search/reindex";
 ```
 
 #### LowCodeApp.Server
@@ -158,6 +162,11 @@ ExtrasServerInitializer.Initialize();
 メール送信・承認フローを使う場合は、受け口となるコントローラ (`MailController` / `ApprovalController`) と
 送信インフラの対応表 (`MailSenderTable`) が必要です。新しいアプリテンプレートには含まれています。
 詳細は [メール送信](docs/Mail.md) / [承認フロー](docs/ApprovalFlow.md) を参照してください。
+
+AI チャット・意味検索を使う場合も同じ形で、受け口のコントローラ (`AIChatController` / `SemanticSearchController`) と対応表
+(Agent 名 → Agent の `AIChatAgentTable`、埋め込みプロバイダの呼び名 → 実装の `EmbeddingProviderTable`) をアプリが持ちます。
+新しいアプリテンプレート (Cookie) には含まれています。モデルの接続先は appsettings の `AISettings` (チャット) と `SemanticSearch` / `AzureOpenAIEmbedding` (埋め込み) で、
+未設定なら AI チャットの Agent と意味検索は使えないだけでアプリは動きます。詳細は [AIChatField](docs/AIChatField.md) / [SemanticSearchField](docs/SemanticSearchField.md) を参照してください。
 
 #### LowCodeApp.Designer
 
