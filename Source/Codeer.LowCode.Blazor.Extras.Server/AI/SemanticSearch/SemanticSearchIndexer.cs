@@ -7,7 +7,7 @@ using Codeer.LowCode.Blazor.Extras.SemanticSearch;
 using Codeer.LowCode.Blazor.Repository.Data;
 using Codeer.LowCode.Blazor.Repository.Design;
 using Codeer.LowCode.Blazor.Repository.Match;
-using Microsoft.Extensions.AI;
+using Codeer.LowCode.Blazor.Extras.Server.AI.Embedding;
 using Microsoft.Extensions.Logging;
 
 namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
@@ -16,11 +16,11 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
     /// SemanticSearchField の索引を保存時に付けるサーバー側ヘルパー (PasswordHashHelper と同じ位置づけ)。
     /// <see cref="ApplyAsync"/> を <c>ModuleDataIO</c> の派生 (テンプレートの <c>CustomizedModuleDataIO.AddAsync / UpdateAsync</c>) から呼ぶと、
     /// 送られてきた文章 (クライアントのフィールドが Submit 時に組み立てたもの) に埋め込みベクトルを付けて、書き込み専用列に保存される形にする。
-    /// 埋め込みモデルの作り方 (IEmbeddingGenerator) はアプリの責務 (Azure OpenAI なら <see cref="AzureOpenAIClients"/>)。未設定なら文章だけ保存し、ベクトルは null のまま (検索対象にならない)。
+    /// 埋め込みは <see cref="IEmbeddingProvider"/> (Azure OpenAI / OpenAI / Ollama / 独自。アプリの対応表で選ぶ)。未設定なら文章だけ保存し、ベクトルは null のまま (検索対象にならない)。
     /// 埋め込みの呼び出しに失敗したときも保存は止めず、ベクトル null で保存して警告ログを出す (<see cref="ReindexAsync"/> で後から埋められる)。
     /// <code>
     /// //アプリの静的な持ち物として 1 つ作る
-    /// static readonly SemanticSearchIndexer _indexer = new(() => embeddingGenerator, logger);
+    /// static readonly SemanticSearchIndexer _indexer = new(() => embeddingProvider, logger);
     /// //CustomizedModuleDataIO
     /// protected override async Task&lt;string&gt; AddAsync(Guid transactionId, Guid moduleSubmitId, ModuleData data)
     /// {
@@ -31,14 +31,14 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
     /// </summary>
     public sealed class SemanticSearchIndexer
     {
-        readonly Func<IEmbeddingGenerator<string, Embedding<float>>?>? _embeddingGeneratorFactory;
+        readonly Func<IEmbeddingProvider?>? _providerFactory;
         readonly ILogger? _logger;
 
-        /// <param name="embeddingGeneratorFactory">埋め込みモデルの取り方 (null か null を返すなら埋め込みなし = 文章だけ保存)</param>
+        /// <param name="providerFactory">埋め込みプロバイダの取り方 (null か null を返すなら埋め込みなし = 文章だけ保存)。都度呼ぶので、設定の読み込み失敗を起動時に確定させずに済む</param>
         /// <param name="logger">埋め込みの失敗を記録する先 (null ならログなし)</param>
-        public SemanticSearchIndexer(Func<IEmbeddingGenerator<string, Embedding<float>>?>? embeddingGeneratorFactory, ILogger? logger = null)
+        public SemanticSearchIndexer(Func<IEmbeddingProvider?>? providerFactory, ILogger? logger = null)
         {
-            _embeddingGeneratorFactory = embeddingGeneratorFactory;
+            _providerFactory = providerFactory;
             _logger = logger;
         }
 
@@ -97,7 +97,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
                 }
             }
 
-            var generator = _embeddingGeneratorFactory?.Invoke();
+            var provider = _providerFactory?.Invoke();
             var count = 0;
             var total = 0;
             for (var pageIndex = 0; ; pageIndex++)
@@ -126,7 +126,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
                     foreach (var field in fields)
                     {
                         var texts = rows.Select(row => SemanticSearchText.Build(designData, module, row, field)).ToList();
-                        var vectors = await EmbedAllAsync(generator, texts, cancellationToken);
+                        var vectors = await EmbedAllAsync(provider, texts, cancellationToken);
                         for (var i = 0; i < rows.Count; i++)
                             submits[rows[i]].Fields[field.Name] = new SemanticSearchFieldData { Text = texts[i], Vector = vectors[i] == null ? null : SemanticSearchVector.Encode(vectors[i]!) };
                     }
@@ -146,22 +146,24 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
             return count;
         }
 
-        /// <summary>文章の埋め込み。モデル未設定・空文・失敗は null。</summary>
+        /// <summary>文章の埋め込み。プロバイダ未設定・空文・失敗は null。</summary>
         internal async Task<float[]?> EmbedAsync(string text, CancellationToken cancellationToken)
         {
             if (string.IsNullOrWhiteSpace(text)) return null;
-            IEmbeddingGenerator<string, Embedding<float>>? generator;
-            try { generator = _embeddingGeneratorFactory?.Invoke(); }
+            IEmbeddingProvider? provider;
+            try { provider = _providerFactory?.Invoke(); }
             catch (Exception e)
             {
-                _logger?.LogWarning(e, "SemanticSearch: the embedding generator could not be created. The text is saved without a vector.");
+                _logger?.LogWarning(e, "SemanticSearch: the embedding provider could not be created. The text is saved without a vector.");
                 return null;
             }
-            if (generator == null) return null;
+            if (provider == null) return null;
             try
             {
-                var embeddings = await generator.GenerateAsync(new[] { text }, cancellationToken: cancellationToken);
-                return embeddings.Count == 0 ? null : embeddings[0].Vector.ToArray();
+                var vectors = await provider.EmbedAsync(new[] { text }, cancellationToken);
+                var vector = vectors.Count == 0 ? null : vectors[0];
+                CheckDimensions(provider, vector);
+                return vector;
             }
             catch (OperationCanceledException) { throw; }
             catch (Exception e)
@@ -172,16 +174,27 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
         }
 
         //まとめて埋め込む (再索引用。失敗は例外)。空文は埋め込まず null
-        static async Task<float[]?[]> EmbedAllAsync(IEmbeddingGenerator<string, Embedding<float>>? generator, List<string> texts, CancellationToken cancellationToken)
+        static async Task<float[]?[]> EmbedAllAsync(IEmbeddingProvider? provider, List<string> texts, CancellationToken cancellationToken)
         {
             var result = new float[]?[texts.Count];
-            if (generator == null) return result;
+            if (provider == null) return result;
             var targets = Enumerable.Range(0, texts.Count).Where(i => !string.IsNullOrWhiteSpace(texts[i])).ToList();
             if (targets.Count == 0) return result;
-            var embeddings = await generator.GenerateAsync(targets.Select(i => texts[i]).ToList(), cancellationToken: cancellationToken);
-            if (embeddings.Count != targets.Count) throw new InvalidOperationException($"SemanticSearch: the embedding model returned {embeddings.Count} vectors for {targets.Count} texts.");
-            for (var i = 0; i < targets.Count; i++) result[targets[i]] = embeddings[i].Vector.ToArray();
+            var vectors = await provider.EmbedAsync(targets.Select(i => texts[i]).ToList(), cancellationToken);
+            if (vectors.Count != targets.Count) throw new InvalidOperationException($"SemanticSearch: the embedding provider returned {vectors.Count} vectors for {targets.Count} texts.");
+            for (var i = 0; i < targets.Count; i++)
+            {
+                CheckDimensions(provider, vectors[i]);
+                result[targets[i]] = vectors[i];
+            }
             return result;
+        }
+
+        //プロバイダが次元数を申告していれば、返ったベクトルと合っていることを確かめる (DB の列定義との食い違いを早く見つける)
+        static void CheckDimensions(IEmbeddingProvider provider, float[]? vector)
+        {
+            if (vector != null && provider.Dimensions > 0 && vector.Length != provider.Dimensions)
+                throw new InvalidOperationException($"SemanticSearch: the embedding provider '{provider.ModelId}' returned {vector.Length} dimensions but declares {provider.Dimensions}.");
         }
     }
 }

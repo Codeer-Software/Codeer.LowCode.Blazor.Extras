@@ -24,7 +24,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
         string _dbFile = string.Empty;
         DataSource[] _dataSources = Array.Empty<DataSource>();
         DesignData _design = null!;
-        FakeEmbeddingGenerator _embedding = null!;
+        FakeEmbeddingProvider _embedding = null!;
 
         public Task<string> GetCurrentUserIdAsync() => Task.FromResult("U1");
 
@@ -70,13 +70,12 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
             foreach (var id in new[] { 3, 5 })
                 await db.ExecuteAsync(Ds, "UPDATE inquiries SET search_text = 'old', search_vector = @p1 WHERE id = @p2", new() { ["@p1"] = "[0.1,0.2]", ["@p2"] = id });
             _design = CreateDesign();
-            _embedding = new FakeEmbeddingGenerator();
+            _embedding = new FakeEmbeddingProvider();
         }
 
         [TearDown]
         public void TearDown()
         {
-            _embedding?.Dispose();
             SqliteConnection.ClearAllPools();
             if (File.Exists(_dbFile)) File.Delete(_dbFile);
         }
@@ -121,7 +120,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
             Assert.That(_embedding.Calls, Is.EqualTo(3), "7 行を 3 ページ = 埋め込み呼び出し 3 回 (行ごとではない)");
             var rows = await RowsAsync();
             Assert.That(rows.Select(r => r.Text), Is.EqualTo(Enumerable.Range(1, 7).Select(i => $"件名: 件名 {i}")));
-            Assert.That(rows.All(r => r.Vector == SemanticSearchVector.Encode(FakeEmbeddingGenerator.Embed(r.Text!))), Is.True, "ApplyAsync は付いてきたベクトルをそのまま使う");
+            Assert.That(rows.All(r => r.Vector == SemanticSearchVector.Encode(FakeEmbeddingProvider.Embed(r.Text!))), Is.True, "ApplyAsync は付いてきたベクトルをそのまま使う");
             Assert.That(progress.First(), Is.EqualTo((0, 7)));
             Assert.That(progress.Last(), Is.EqualTo((7, 7)));
         }

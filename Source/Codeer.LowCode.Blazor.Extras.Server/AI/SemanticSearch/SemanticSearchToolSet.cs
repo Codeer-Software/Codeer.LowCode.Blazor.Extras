@@ -7,6 +7,7 @@ using Codeer.LowCode.Blazor.Extras.Server.AI.Chat.DesignKnowledge;
 using Codeer.LowCode.Blazor.Extras.Server.Properties;
 using Codeer.LowCode.Blazor.Repository.Design;
 using Codeer.LowCode.Blazor.SystemSettings;
+using Codeer.LowCode.Blazor.Extras.Server.AI.Embedding;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Logging;
 using System.ComponentModel;
@@ -27,7 +28,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
     {
         readonly Func<DesignData?> _design;
         readonly Func<IDbAccessor> _dbAccessorFactory;
-        readonly Func<IEmbeddingGenerator<string, Embedding<float>>> _embeddingGeneratorFactory;
+        readonly Func<IEmbeddingProvider> _embeddingProvider;
         readonly IList<string> _dataSourceNames;
         readonly int _maxTextChars;
         readonly int _maxTop;
@@ -35,12 +36,12 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
         /// <param name="dataSourceNames">検索を許すデータソース名 (RawDataAccessOptions.DataSourceNames)。空なら全モジュール</param>
         /// <param name="maxTextChars">1 件の文章を AI に返す最大文字数</param>
         /// <param name="maxTop">1 回に返す件数の上限</param>
-        public SemanticSearchToolSet(Func<DesignData?> design, Func<IDbAccessor> dbAccessorFactory, Func<IEmbeddingGenerator<string, Embedding<float>>> embeddingGeneratorFactory,
+        public SemanticSearchToolSet(Func<DesignData?> design, Func<IDbAccessor> dbAccessorFactory, Func<IEmbeddingProvider> embeddingProvider,
             IList<string> dataSourceNames, int maxTextChars = 1500, int maxTop = 20)
         {
             _design = design;
             _dbAccessorFactory = dbAccessorFactory;
-            _embeddingGeneratorFactory = embeddingGeneratorFactory;
+            _embeddingProvider = embeddingProvider;
             _dataSourceNames = dataSourceNames;
             _maxTextChars = maxTextChars;
             _maxTop = maxTop;
@@ -98,9 +99,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
             context.Logger?.LogInformation("AIChat search_records {Module} by {User}: {Query}", target.Module.Name, context.Request.UserName, query);
             try
             {
-                var generator = _embeddingGeneratorFactory();
-                var embeddings = await generator.GenerateAsync(new[] { query }, cancellationToken: context.CancellationToken);
-                var queryVector = embeddings[0].Vector.ToArray();
+                var queryVector = (await _embeddingProvider().EmbedAsync(new[] { query }, context.CancellationToken))[0];
 
                 //距離計算は DB。失敗 (拡張未導入・列の型違い等) はそのままエラーとして AI に返す (別経路で拾い直すことはしない)
                 List<SemanticSearchIndexReader.ScoredEntry> scored;
@@ -185,9 +184,8 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
 
             var texts = matches.Select(m => m.Groups[1].Value.Trim()).ToList();
             if (texts.Any(string.IsNullOrEmpty)) throw new InvalidOperationException("{embed:…} の中身が空です。探したい内容を書いてください。");
-            var generator = _embeddingGeneratorFactory();
-            var embeddings = await generator.GenerateAsync(texts, cancellationToken: cancellationToken);
-            var literals = embeddings.Select(e => SemanticSearchIndexReader.VectorLiteral(type, e.Vector.ToArray())).ToList();
+            var vectors = await _embeddingProvider().EmbedAsync(texts, cancellationToken);
+            var literals = vectors.Select(v => SemanticSearchIndexReader.VectorLiteral(type, v)).ToList();
 
             var index = 0;
             return _embedPlaceholder.Replace(sql, _ => literals[index++]);

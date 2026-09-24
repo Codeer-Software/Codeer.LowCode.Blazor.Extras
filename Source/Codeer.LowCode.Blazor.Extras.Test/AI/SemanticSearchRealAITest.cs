@@ -1,5 +1,6 @@
 using Azure;
 using Azure.AI.OpenAI;
+using Codeer.LowCode.Blazor.Extras.Server.AI.Embedding;
 using Codeer.LowCode.Blazor.DataIO;
 using Codeer.LowCode.Blazor.DataIO.Db;
 using Codeer.LowCode.Blazor.DbAccess;
@@ -29,7 +30,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
         string _table = string.Empty;
         DataSource[] _dataSources = Array.Empty<DataSource>();
         DesignData _design = null!;
-        Func<IEmbeddingGenerator<string, Embedding<float>>> _embedding = null!;
+        IEmbeddingProvider _embedding = null!;
         Func<IChatClient> _chat = null!;
 
         public Task<string> GetCurrentUserIdAsync() => Task.FromResult("U1");
@@ -63,14 +64,13 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
             var endpoint = Environment.GetEnvironmentVariable("AZURE_OPENAI_ENDPOINT");
             var key = Environment.GetEnvironmentVariable("AZURE_OPENAI_KEY");
             var model = Environment.GetEnvironmentVariable("AZURE_OPENAI_MODEL");
-            var embeddingModel = Environment.GetEnvironmentVariable("AZURE_OPENAI_EMBEDDING_MODEL") ?? AzureOpenAIClientsRealTest.DefaultEmbeddingModel;
             var connection = Environment.GetEnvironmentVariable("SEMANTIC_SEARCH_PG_CONNECTION");
             if (string.IsNullOrEmpty(endpoint) || string.IsNullOrEmpty(key) || string.IsNullOrEmpty(model) || string.IsNullOrEmpty(connection))
                 Assert.Ignore("AZURE_OPENAI_ENDPOINT / AZURE_OPENAI_KEY / AZURE_OPENAI_MODEL / SEMANTIC_SEARCH_PG_CONNECTION が未設定");
             var dimensions = int.TryParse(Environment.GetEnvironmentVariable("AZURE_OPENAI_EMBEDDING_DIMENSIONS"), out var d) ? d : 1536;
             var client = new AzureOpenAIClient(new Uri(endpoint!), new AzureKeyCredential(key!));
             _chat = () => client.GetChatClient(model).AsIChatClient();
-            _embedding = () => client.GetEmbeddingClient(embeddingModel).AsIEmbeddingGenerator();
+            _embedding = new AzureOpenAIEmbeddingProvider(AzureOpenAIEmbeddingProviderRealTest.SettingsFromEnvironment(dimensions));
 
             DbAccessor.ClearTableDefinitionCache();
             _table = $"semantic_real_{Guid.NewGuid():N}"[..24];
@@ -113,7 +113,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
         [Test]
         public async Task 再索引して納期に関する似た問い合わせをAgentがDBのベクトル検索で探す()
         {
-            var indexer = new SemanticSearchIndexer(_embedding);
+            var indexer = new SemanticSearchIndexer(() => _embedding);
             await using var db = new DbAccessor(_dataSources);
             var io = new IndexingModuleDataIO(_design, this, db, new TemporaryFileManager(db, [], new List<IFileStorage>()), indexer);
             Assert.That(await indexer.ReindexAsync(io, db, _design, "Inquiry"), Is.EqualTo(5));
@@ -123,7 +123,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
             Assert.That(Convert.ToInt32(indexed.Single()["c"]), Is.EqualTo(5), "テキスト列から生成列にベクトルが入る");
 
             var agent = new RawDataAccessAgent(_chat, () => new DbAccessor(_dataSources), () => _design, null,
-                new RawDataAccessOptions { DataSourceNames = { Ds } }, embeddingGeneratorFactory: _embedding);
+                new RawDataAccessOptions { DataSourceNames = { Ds } }, embeddingProvider: () => _embedding);
             var progress = new Progress();
             using var cts = new CancellationTokenSource(TimeSpan.FromMinutes(3));
             var reply = await agent.ReplyAsync(new AIChatAgentRequest { ConversationId = "c1", Message = "商品の到着が遅れているという問い合わせに似た過去の事例を 2 件挙げて", UserName = "tester" }, progress, cts.Token);

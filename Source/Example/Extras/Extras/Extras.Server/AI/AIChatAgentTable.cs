@@ -48,8 +48,8 @@ namespace Extras.Server.AI
                 () => DesignerService.GetDesignData(),
                 folder => DesignDataFileManager.GetResourceTexts(config.DesignFileDirectory, folder, ".md", ".txt").Select(e => new AIChatDocument(e.Name, e.Text)).ToList(),
                 new RawDataAccessOptions { DataSourceNames = config.AIChat.RawDataAccessDataSources },
-                //SemanticSearchField を置いたモジュールを search_records (意味検索) で探せるようにする。EmbeddingModel 未設定なら null = ツールは付かない
-                embeddingGeneratorFactory: SemanticSearchIndex.EmbeddingGeneratorFactory);
+                //SemanticSearchField を置いたモジュールを search_records (意味検索) で探せるようにする。埋め込みプロバイダ未設定なら null = ツールは付かない
+                embeddingProvider: SemanticSearchIndex.Provider == null ? null : () => SemanticSearchIndex.Provider!);
         }
     }
 }

@@ -53,7 +53,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
         static DbAccessor Db(DataSourceType type) => new([new DataSource { Name = Ds, DataSourceType = type, ConnectionString = "Host=none" }]);
 
         static SemanticSearchToolSet ToolSet(DesignData design, DataSourceType type = DataSourceType.PostgreSQL, IList<string>? dataSourceNames = null)
-            => new(() => design, () => Db(type), () => new FakeEmbeddingGenerator(), dataSourceNames ?? new List<string> { Ds });
+            => new(() => design, () => Db(type), () => new FakeEmbeddingProvider(), dataSourceNames ?? new List<string> { Ds });
 
         static async Task<JsonDocument> InvokeAsync(IEnumerable<AITool> tools, Dictionary<string, object?> args)
         {

@@ -25,7 +25,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
         string _dbFile = string.Empty;
         DbAccessor _db = null!;
         DesignData _design = null!;
-        FakeEmbeddingGenerator _embedding = null!;
+        FakeEmbeddingProvider _embedding = null!;
 
         public Task<string> GetCurrentUserIdAsync() => Task.FromResult("U1");
 
@@ -69,14 +69,13 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
             await _db.ExecuteAsync(Ds, "CREATE TABLE inquiries (id INTEGER PRIMARY KEY AUTOINCREMENT, subject TEXT, body TEXT, is_deleted INTEGER DEFAULT 0, search_text TEXT, search_vector TEXT)", new());
             await _db.ExecuteAsync(Ds, "INSERT INTO inquiries (subject, body) VALUES ('納期遅れの相談', '注文がまだ届かない'), ('請求書の再発行', '宛名を変更して再発行してほしい'), ('納品書の再発行', '納品書を紛失した')", new());
             _design = CreateDesign();
-            _embedding = new FakeEmbeddingGenerator();
+            _embedding = new FakeEmbeddingProvider();
         }
 
         [TearDown]
         public async Task TearDown()
         {
             await _db.DisposeAsync();
-            _embedding.Dispose();
             SqliteConnection.ClearAllPools();
             if (File.Exists(_dbFile)) File.Delete(_dbFile);
         }
@@ -109,7 +108,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
             AssertNoError(await CreateIO(Indexer()).SubmitWithTransactionAsync([UpdateSubmit("1", "件名: 納期遅れの相談\n本文: 本文を変更")]));
             var (text, vector) = await RowAsync("1");
             Assert.That(text, Is.EqualTo("件名: 納期遅れの相談\n本文: 本文を変更"));
-            Assert.That(vector, Is.EqualTo(SemanticSearchVector.Encode(FakeEmbeddingGenerator.Embed(text!))));
+            Assert.That(vector, Is.EqualTo(SemanticSearchVector.Encode(FakeEmbeddingProvider.Embed(text!))));
             Assert.That(_embedding.Inputs, Is.EqualTo(new[] { text }));
             //他の行は触らない
             Assert.That(await RowAsync("2"), Is.EqualTo(((string?)null, (string?)null)));

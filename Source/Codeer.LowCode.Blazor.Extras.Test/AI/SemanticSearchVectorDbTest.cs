@@ -16,7 +16,7 @@ using System.Text.Json;
 namespace Codeer.LowCode.Blazor.Extras.Test.AI
 {
     /// <summary>
-    /// DB 側のベクトル検索を実 DB で通す (AI は使わない = FakeEmbeddingGenerator)。
+    /// DB 側のベクトル検索を実 DB で通す (AI は使わない = FakeEmbeddingProvider)。
     /// PostgreSQL は pgvector の生成列 (テキスト列を ::vector でキャスト)、SQL Server 2025 は VECTOR 型列にテキストから暗黙変換で書く構成
     /// (docs/SemanticSearchField.md の「必要な DB 構成」そのまま) で、保存 → 再索引 → search_records → execute_sql の {embed:…} を確認する。
     /// 環境変数 SEMANTIC_SEARCH_PG_CONNECTION (CREATE EXTENSION vector 済みの PostgreSQL) / SEMANTIC_SEARCH_MSSQL_CONNECTION (SQL Server 2025) が
@@ -93,7 +93,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
         {
             DbAccessor.ClearTableDefinitionCache();
             var design = CreateDesign(table, vectorSearchColumn);
-            using var embedding = new FakeEmbeddingGenerator();
+            var embedding = new FakeEmbeddingProvider();
             var indexer = new SemanticSearchIndexer(() => embedding);
             await using (var db = new DbAccessor(dataSources))
             {
@@ -188,7 +188,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
                 [new DataSource { Name = Ds, DataSourceType = DataSourceType.PostgreSQL, ConnectionString = connection! }],
                 table, "search_vector_v",
                 $"CREATE TABLE {table} (id SERIAL PRIMARY KEY, subject TEXT, body TEXT, is_deleted BOOLEAN DEFAULT FALSE, search_text TEXT, search_vector TEXT, " +
-                $"search_vector_v vector({FakeEmbeddingGenerator.Dimensions}) GENERATED ALWAYS AS (search_vector::vector) STORED)",
+                $"search_vector_v vector({FakeEmbeddingProvider.Dimensions}) GENERATED ALWAYS AS (search_vector::vector) STORED)",
                 $"DROP TABLE IF EXISTS {table}",
                 "select id, subject, 1 - ({col} <=> {embed:納期が遅れている注文}) as score from {table} where is_deleted = false order by {col} <=> {embed:納期が遅れている注文} limit 2");
         }
@@ -203,7 +203,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
                 [new DataSource { Name = Ds, DataSourceType = DataSourceType.SQLServer, ConnectionString = connection! }],
                 table, "search_vector",
                 $"CREATE TABLE {table} (id INT IDENTITY PRIMARY KEY, subject NVARCHAR(200), body NVARCHAR(MAX), is_deleted BIT DEFAULT 0, search_text NVARCHAR(MAX), " +
-                $"search_vector VECTOR({FakeEmbeddingGenerator.Dimensions}))",
+                $"search_vector VECTOR({FakeEmbeddingProvider.Dimensions}))",
                 $"DROP TABLE IF EXISTS {table}",
                 "select top (2) id, subject, 1 - VECTOR_DISTANCE('cosine', {col}, {embed:納期が遅れている注文}) as score from {table} where is_deleted = 0 order by VECTOR_DISTANCE('cosine', {col}, {embed:納期が遅れている注文})");
         }

@@ -5,6 +5,8 @@ using Codeer.LowCode.Blazor.Extras.Server.Mail;
 using Extras.Server.Services.DataChangeHistory;
 using Codeer.LowCode.Blazor.Extras.Server.FileManagement;
 
+using Codeer.LowCode.Blazor.Extras.Server.AI.Embedding;
+
 namespace Extras.Server.Services
 {
     public class SystemConfig
@@ -27,6 +29,10 @@ namespace Extras.Server.Services
         public SendGridSettings SendGrid { get; set; } = new();
         public GmailSettings Gmail { get; set; } = new();
         public AISettings AISettings { get; set; } = new();
+        public SemanticSearchSettings SemanticSearch { get; set; } = new();
+        public AzureOpenAIEmbeddingSettings AzureOpenAIEmbedding { get; set; } = new();
+        public OpenAIEmbeddingSettings OpenAIEmbedding { get; set; } = new();
+        public OllamaEmbeddingSettings OllamaEmbedding { get; set; } = new();
         public Extras.Server.AI.AIChatSettings AIChat { get; set; } = new();
         public SystemConfigForFront ForFront() => new SystemConfigForFront { CanScriptDebug = CanScriptDebug, UseHotReload = UseHotReload };
     }

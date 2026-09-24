@@ -116,31 +116,47 @@ SQL の集計 (件数・合計) は従来どおり `execute_sql`、内容で探�
 
 フィールドを置くだけでは**ベクトルは付きません**。埋め込みモデルの用意と、保存時の索引付けはアプリ (ホスト) の責務です。Extras.Server の `Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch.SemanticSearchIndexer` を使います。
 
-### 1. 埋め込みモデル (IEmbeddingGenerator)
+### 1. 埋め込みプロバイダ (IEmbeddingProvider)
 
-Azure OpenAI なら Extras.Server の `AzureOpenAIClients.EmbeddingGeneratorFactory(AISettings)` が作ります。`AISettings.EmbeddingModel` に埋め込みのデプロイ名 (`text-embedding-3-small` など) を入れてください。[AIChatField](AIChatField.md) の `IChatClient` と同じく型は Microsoft.Extensions.AI の抽象 (`IEmbeddingGenerator<string, Embedding<float>>`) なので、別のプロバイダを使うときはアプリで同じ型を作って渡します。
+文章をベクトルにする実装は Extras.Server の `IEmbeddingProvider` で差し替えます (メール送信の `IMailSender` と同じ作り)。Extras.Server が提供する実装と、その設定クラスは次のとおりです。設定は appsettings の独立したセクションに置き、どれを使うかは `SemanticSearch.EmbeddingProvider` の呼び名で選びます (索引と検索は同じモデルでないと成立しないので、アプリ単位の設定です)。
+
+| 呼び名 (テンプレート) | 実装 | 設定クラス | 主な項目 |
+|---|---|---|---|
+| `AzureOpenAI` | `AzureOpenAIEmbeddingProvider` | `AzureOpenAIEmbeddingSettings` | EndPoint / Key / Deployment / Dimensions |
+| `OpenAI` | `OpenAIEmbeddingProvider` | `OpenAIEmbeddingSettings` | Key / Model / Dimensions |
+| `Ollama` | `OllamaEmbeddingProvider` | `OllamaEmbeddingSettings` | BaseUrl / Model / Dimensions / BatchSize。ローカル / 社内サーバーのモデル。文章が外に出ない |
+| (任意) | `EmbeddingGeneratorProvider` | なし | Microsoft.Extensions.AI の `IEmbeddingGenerator` (OllamaSharp・ONNX 等) を包むアダプタ |
 
 ```json
-"AISettings": {
-  "OpenAIEndPoint": "https://xxx.openai.azure.com/",
-  "OpenAIKey": "...",
-  "ChatModel": "gpt-4o",
-  "EmbeddingModel": "text-embedding-3-small"
-}
+"SemanticSearch": { "EmbeddingProvider": "AzureOpenAI" },
+"AzureOpenAIEmbedding": {
+  "EndPoint": "https://xxx.openai.azure.com/",
+  "Key": "...",
+  "Deployment": "text-embedding-3-small",
+  "Dimensions": 1536
+},
+"OllamaEmbedding": { "BaseUrl": "http://localhost:11434", "Model": "bge-m3", "Dimensions": 1024 }
 ```
+
+テンプレートの対応表 (`AI/EmbeddingProviderTable.cs`) が呼び名から実装を作ります。独自の埋め込み (ONNX のローカルモデル、社内 API 等) は `IEmbeddingProvider` を実装して表に 1 行足すだけです。
 
 ```csharp
-internal static class SemanticSearchIndex
+public static IEmbeddingProvider? Create(string name) => name switch
 {
-    //埋め込みモデルの取り方 (Azure OpenAI。EmbeddingModel が空なら null)
-    public static Func<IEmbeddingGenerator<string, Embedding<float>>>? EmbeddingGeneratorFactory { get; } = AzureOpenAIClients.EmbeddingGeneratorFactory(SystemConfig.Instance.AISettings);
+    "AzureOpenAI" => new AzureOpenAIEmbeddingProvider(config.AzureOpenAIEmbedding),
+    "OpenAI" => new OpenAIEmbeddingProvider(config.OpenAIEmbedding),
+    "Ollama" => new OllamaEmbeddingProvider(config.OllamaEmbedding),
+    _ => null,   // 呼び名が無い = 意味検索なし (文章だけ保存)
+};
 
-    //プロセスに 1 つ
-    public static SemanticSearchIndexer Indexer { get; } = new(() => EmbeddingGeneratorFactory?.Invoke());
-}
+//AI/SemanticSearchIndex.cs (プロセスに 1 つ)
+public static IEmbeddingProvider? Provider { get; } = EmbeddingProviderTable.Create(SystemConfig.Instance.SemanticSearch.EmbeddingProvider);
+public static SemanticSearchIndexer Indexer { get; } = new(() => Provider);
 ```
 
-`EmbeddingModel` が空なら埋め込み無し = 文章だけ保存され、AI チャットに意味検索ツールは付きません。
+`IEmbeddingProvider` は `ModelId` / `Dimensions` と `EmbedAsync(texts)` だけの小さなインターフェースです。`Dimensions` を申告しておくと、返ったベクトルの長さが違うときに保存や再索引がエラーで止まり、DB の列定義との食い違いに早く気づけます。
+
+呼び名が空なら埋め込み無し = 文章だけ保存され、AI チャットに意味検索ツールは付きません。
 
 ### 2. 保存時に索引を付ける
 
@@ -166,12 +182,12 @@ protected override async Task UpdateAsync(Guid transactionId, Guid moduleSubmitI
 
 ### 3. AI チャットに意味検索ツールを付ける
 
-`RawDataAccessAgent` のコンストラクタの `embeddingGeneratorFactory` に同じ埋め込みモデルを渡します。デザインに (3 つの列が設定された) SemanticSearchField を持ち、データソースが PostgreSQL か SQL Server のモジュールがあれば、AI に `search_records(moduleName, query, top)` ツールと「内容で探す質問はこれを使う」という指示が付きます。
+`RawDataAccessAgent` のコンストラクタの `embeddingProvider` に同じ埋め込みプロバイダを渡します。デザインに (3 つの列が設定された) SemanticSearchField を持ち、データソースが PostgreSQL か SQL Server のモジュールがあれば、AI に `search_records(moduleName, query, top)` ツールと「内容で探す質問はこれを使う」という指示が付きます。
 
 ```csharp
 new RawDataAccessAgent(chatClientFactory, () => new DbAccessor(config.DataSources), () => DesignerService.GetDesignData(), documents,
     new RawDataAccessOptions { DataSourceNames = config.AIChat.RawDataAccessDataSources },
-    embeddingGeneratorFactory: SemanticSearchIndex.EmbeddingGeneratorFactory);
+    embeddingProvider: () => SemanticSearchIndex.Provider!);
 ```
 
 `search_records` は質問文を埋め込みにし、DB のベクトル検索 (PostgreSQL は pgvector の `<=>`、SQL Server は `VECTOR_DISTANCE('cosine', …)`) で似ている順に上位 N 件だけを読み、Id・score (0〜1)・詳細ページの URL・文章を返します。AI は行を挙げるときに詳細リンクを付け、score が低ければ「近いものは見つからなかった」と伝えます。DB 側の検索が失敗したとき (拡張未導入・列の型違いなど) はそのエラーが AI に返ります (サーバーで代わりに計算することはしません)。
@@ -251,7 +267,7 @@ public async Task<ActionResult<SemanticSearchReindexResponse>> Start([FromBody] 
 SemanticSearchField.EndPoint = "/api/semantic_search/reindex";
 ```
 
-Example (`Source/Example/Extras`) には索引付け (`Services/CustomizedModuleDataIO.cs`)・埋め込みモデルとジョブ置き場 (`AI/SemanticSearchIndex.cs`)・再索引 API (`Controllers/SemanticSearchController.cs`)・エージェントへの結線 (`AI/AIChatAgentTable.cs`) が入っています。Example のデータは SQLite なので意味検索できるモジュールは置いていません。動かすには PostgreSQL (pgvector) のデータソースに上記の構成でモジュールを作ってください。
+Example (`Source/Example/Extras`) には索引付け (`Services/CustomizedModuleDataIO.cs`)・埋め込みプロバイダの対応表とジョブ置き場 (`AI/EmbeddingProviderTable.cs` / `AI/SemanticSearchIndex.cs`)・再索引 API (`Controllers/SemanticSearchController.cs`)・エージェントへの結線 (`AI/AIChatAgentTable.cs`) が入っています。Example のデータは SQLite なので意味検索できるモジュールは置いていません。動かすには PostgreSQL (pgvector) のデータソースに上記の構成でモジュールを作ってください。
 
 ## 注意事項
 

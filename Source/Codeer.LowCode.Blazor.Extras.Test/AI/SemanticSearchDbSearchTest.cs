@@ -68,7 +68,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
         [Test]
         public async Task execute_sqlのembedプレースホルダーを埋め込みリテラルに置き換える()
         {
-            using var embedding = new FakeEmbeddingGenerator();
+            var embedding = new FakeEmbeddingProvider();
             var design = CreateDesign("Main", "search_vector_v");
             var toolSet = new SemanticSearchToolSet(() => design, () => Db(DataSourceType.PostgreSQL), () => embedding, ["Main"]);
 
@@ -77,14 +77,14 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
 
             var sql = "select id, subject from inquiries where customer_id = 3 order by search_vector_v <=> {embed:納期遅れのクレーム} limit 5";
             var expanded = await toolSet.ExpandEmbeddingsAsync("Main", sql, CancellationToken.None);
-            var expected = SemanticSearchIndexReader.VectorLiteral(DataSourceType.PostgreSQL, FakeEmbeddingGenerator.Embed("納期遅れのクレーム"));
+            var expected = SemanticSearchIndexReader.VectorLiteral(DataSourceType.PostgreSQL, FakeEmbeddingProvider.Embed("納期遅れのクレーム"));
             Assert.That(expanded, Is.EqualTo($"select id, subject from inquiries where customer_id = 3 order by search_vector_v <=> {expected} limit 5"));
             Assert.That(expanded, Does.Not.Contain("{embed"));
 
             //複数はそれぞれの内容で置き換わる
             var two = await toolSet.ExpandEmbeddingsAsync("Main", "select 1 - (v <=> {embed:A}) as a, 1 - (v <=> {embed: B }) as b from t", CancellationToken.None);
-            Assert.That(two, Does.Contain(SemanticSearchIndexReader.VectorLiteral(DataSourceType.PostgreSQL, FakeEmbeddingGenerator.Embed("A"))));
-            Assert.That(two, Does.Contain(SemanticSearchIndexReader.VectorLiteral(DataSourceType.PostgreSQL, FakeEmbeddingGenerator.Embed("B"))));
+            Assert.That(two, Does.Contain(SemanticSearchIndexReader.VectorLiteral(DataSourceType.PostgreSQL, FakeEmbeddingProvider.Embed("A"))));
+            Assert.That(two, Does.Contain(SemanticSearchIndexReader.VectorLiteral(DataSourceType.PostgreSQL, FakeEmbeddingProvider.Embed("B"))));
 
             //空の内容は拒否
             Assert.That(async () => await toolSet.ExpandEmbeddingsAsync("Main", "select {embed: } from t", CancellationToken.None), Throws.TypeOf<InvalidOperationException>());
@@ -93,7 +93,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
         [Test]
         public async Task 対応しないデータソースではembedを拒否する()
         {
-            using var embedding = new FakeEmbeddingGenerator();
+            var embedding = new FakeEmbeddingProvider();
             var design = CreateDesign("Main", "search_vector_v");
             var toolSet = new SemanticSearchToolSet(() => design, () => Db(DataSourceType.SQLite), () => embedding, ["Main"]);
             Assert.That(async () => await toolSet.ExpandEmbeddingsAsync("Main", "select * from t order by v <=> {embed:x}", CancellationToken.None),
