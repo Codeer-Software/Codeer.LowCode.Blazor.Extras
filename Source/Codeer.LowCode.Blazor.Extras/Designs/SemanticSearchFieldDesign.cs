@@ -56,7 +56,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         public string OnReindexCompleted { get; set; } = string.Empty;
 
         /// <summary>3 つの列 (文章 / ベクトル / ベクトル検索用) がすべて設定されているか (索引と検索の対象になる条件)。</summary>
-        public bool HasColumns => !string.IsNullOrWhiteSpace(DbColumnText) && !string.IsNullOrWhiteSpace(DbColumnVector) && !string.IsNullOrWhiteSpace(DbColumnVectorSearch);
+        internal bool HasColumns => !string.IsNullOrWhiteSpace(DbColumnText) && !string.IsNullOrWhiteSpace(DbColumnVector) && !string.IsNullOrWhiteSpace(DbColumnVectorSearch);
 
         public override string GetWebComponentTypeFullName() => typeof(SemanticSearchFieldComponent).FullName!;
         public override string GetSearchWebComponentTypeFullName() => string.Empty;

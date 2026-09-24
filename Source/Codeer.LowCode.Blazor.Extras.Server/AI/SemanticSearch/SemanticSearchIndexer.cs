@@ -77,8 +77,9 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
         /// 文章とベクトルを付けて通常の Submit で書く (書き込み権限も通常どおり効く。<see cref="ApplyAsync"/> はベクトル付きなので埋め込みを呼ばない)。
         /// 埋め込みモデルが無いときは文章だけ書き直す。埋め込みの失敗はそのまま例外にする (保存時と違い黙って null にはしない)。
         /// missingOnly はベクトルがまだ無い行だけ (書き込み専用列を db で直接読んで判定する)。progress には (書いた行数, 対象行数) を報告する。戻り値は書いた行数。
+        /// ホストからの入口は <see cref="SemanticSearchReindexJobStore"/> (権限検査つきのジョブ)。
         /// </summary>
-        public async Task<int> ReindexAsync(ModuleDataIO moduleDataIO, IDbAccessor db, DesignData designData, string moduleName, bool missingOnly = false,
+        internal async Task<int> ReindexAsync(ModuleDataIO moduleDataIO, IDbAccessor db, DesignData designData, string moduleName, bool missingOnly = false,
             IProgress<(int Processed, int Total)>? progress = null, int pageSize = 100, CancellationToken cancellationToken = default)
         {
             var module = designData.Modules.Find(moduleName) ?? throw new ArgumentException($"Module '{moduleName}' does not exist.", nameof(moduleName));

@@ -85,8 +85,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         public string ReindexError { get; private set; } = string.Empty;
 
         /// <summary>再索引を起動できる設定か (エンドポイントかホストフックのどちらかがある)。</summary>
-        [ScriptHide]
-        public bool IsReindexConfigured => ReindexCoreAsync != null || (Http != null && !string.IsNullOrEmpty(EndPoint));
+        internal bool IsReindexConfigured => ReindexCoreAsync != null || (Http != null && !string.IsNullOrEmpty(EndPoint));
 
         //ホスト (デザイナ等) には登録されていないことがあるため任意解決
         IHttpService? Http => Services.Provider?.GetService<IHttpService>();

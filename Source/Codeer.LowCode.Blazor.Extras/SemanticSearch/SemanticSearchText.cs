@@ -14,7 +14,7 @@ namespace Codeer.LowCode.Blazor.Extras.SemanticSearch
     /// 形は「表示名: 値」を 1 行ずつ (値が空のフィールドは出さない)。候補値は表示名、リンクは表示文字列、日付は ISO 形式。
     /// クライアント (Submit 時) とサーバー (再索引・一括取込) の両方が同じ規則で作るためにここに置く。
     /// </summary>
-    public static class SemanticSearchText
+    internal static class SemanticSearchText
     {
         static readonly Regex _tags = new("<[^>]+>", RegexOptions.Compiled);
 
