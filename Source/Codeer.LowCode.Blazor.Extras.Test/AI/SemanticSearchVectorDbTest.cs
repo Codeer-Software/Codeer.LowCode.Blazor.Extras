@@ -36,18 +36,18 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
             public void ReportPartial(AIChatReply partialReply) { }
         }
 
-        sealed class IndexingModuleDataIO(DesignData design, IAuthenticationContext auth, IDbAccessor db, ITemporaryFileManager files, SemanticSearchIndexer indexer)
+        sealed class IndexingModuleDataIO(DesignData design, IAuthenticationContext auth, IDbAccessor db, ITemporaryFileManager files, SemanticSearchService semanticSearch)
             : ModuleDataIO(design, auth, db, files)
         {
             protected override async Task<string> AddAsync(Guid transactionId, Guid moduleSubmitId, ModuleData data)
             {
-                await indexer.ApplyAsync(design, data, isNewData: true);
+                await semanticSearch.ApplyAsync(data, isNewData: true);
                 return await base.AddAsync(transactionId, moduleSubmitId, data);
             }
 
             protected override async Task UpdateAsync(Guid transactionId, Guid moduleSubmitId, ModuleData data)
             {
-                await indexer.ApplyAsync(design, data, isNewData: false);
+                await semanticSearch.ApplyAsync(data, isNewData: false);
                 await base.UpdateAsync(transactionId, moduleSubmitId, data);
             }
         }
@@ -94,7 +94,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
             DbAccessor.ClearTableDefinitionCache();
             var design = CreateDesign(table, vectorSearchColumn);
             var embedding = new FakeEmbeddingProvider();
-            var indexer = new SemanticSearchIndexer(() => embedding);
+            var indexer = new SemanticSearchService(() => embedding, () => design);
             await using (var db = new DbAccessor(dataSources))
             {
                 await db.ExecuteAsync(Ds, dropTable, new());
@@ -123,7 +123,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
                     Assert.That(Convert.ToInt32(indexed.Single().Values.First()), Is.EqualTo(Rows.Length), "ベクトル列が埋まる");
 
                     //再索引も通る (Update 経路)
-                    Assert.That(await indexer.ReindexAsync(io, db, design, "Inquiry", pageSize: 2), Is.EqualTo(Rows.Length));
+                    Assert.That(await indexer.ReindexAsync(io, db, "Inquiry", pageSize: 2), Is.EqualTo(Rows.Length));
                     await db.CommitAsync();
                 }
 

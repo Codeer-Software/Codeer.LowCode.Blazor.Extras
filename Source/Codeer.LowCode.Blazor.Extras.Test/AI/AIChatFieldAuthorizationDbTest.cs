@@ -15,7 +15,7 @@ using Codeer.LowCode.Blazor.SystemSettings;
 namespace Codeer.LowCode.Blazor.Extras.Test.AI
 {
     /// <summary>
-    /// AIChatField の送信 (AIChatJobStore.StartAsync) のサーバー側ブロックを実 DB (SQLite) で検証する。
+    /// AIChatField の送信 (AIChatService.StartAsync) のサーバー側ブロックを実 DB (SQLite) で検証する。
     /// クライアントを信用しない前提で「/api/ai_chat に直接リクエストが来た」状況を再現する。
     /// ユーザー: "1"=一般 (Rank 1) / "2"=管理者 (Rank 10) / "3"=停止 (IsActive=false)
     /// モジュール Item: UserReadCondition = Rank &gt;= 5。AIChatField "Chat" (Agent=Main / DocumentFolder=AIChat/Sales) のほかに、
@@ -116,10 +116,10 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
         }
 
         //対応表は "Main" と既定 (空) だけ知っている (クライアントが別の名前を送っても使われないことの確認用)
-        static (AIChatJobStore Store, FakeAIChatAgent Fake) CreateStore()
+        static (AIChatService Store, FakeAIChatAgent Fake) CreateStore()
         {
             var fake = new FakeAIChatAgent();
-            return (new AIChatJobStore(name => name is "Main" or "" ? fake : null), fake);
+            return (new AIChatService(name => name is "Main" or "" ? fake : null), fake);
         }
 
         static AIChatSendRequest CreateRequest(string moduleName = "Item", string fieldName = "Chat") => new()
@@ -133,7 +133,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
             FieldName = fieldName,
         };
 
-        static async Task<AIChatStatusResponse> WaitDoneAsync(AIChatJobStore store, string owner, string id, int timeoutMs = 10000)
+        static async Task<AIChatStatusResponse> WaitDoneAsync(AIChatService store, string owner, string id, int timeoutMs = 10000)
         {
             var end = DateTime.Now.AddMilliseconds(timeoutMs);
             while (DateTime.Now < end)

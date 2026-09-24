@@ -109,7 +109,7 @@ builder.Services.Configure<RequestLocalizationOptions>(options =>
 
 builder.Services.AddScoped<DataService>();
 
-//AIChatField の Agent は AI/AIChatAgentTable.cs の対応表 (Agent 名 → Agent) で決める。DI 登録は不要 (AIChatController が AIChatAgentTable.Jobs を使う)
+//AIChatField の Agent は AI/AIChatAgentTable.cs の対応表 (Agent 名 → Agent) で決める。DI 登録は不要 (AIChatController が AIChatAgentTable.Service を使う)
 
 //デモ用の簡易ログイン (パスワードなしのユーザー切替。AccountController / login.html)。
 //承認フローなど操作ユーザーが必要な機能をサンプルで確認するためのもので、実運用の認証ではない

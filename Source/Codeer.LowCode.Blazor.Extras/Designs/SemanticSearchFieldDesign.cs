@@ -14,7 +14,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
     /// <summary>
     /// 行を「意味で探せる」ようにする書き込み専用フィールド (UI なし)。
     /// Submit のたびに <see cref="SourceFields"/> の値を「表示名: 値」の行に並べた文章を作り (クライアント側)、
-    /// サーバーの SemanticSearchIndexer がその文章の埋め込みベクトルを付けて、2 つの書き込み専用列に保存する。
+    /// サーバーの SemanticSearchService がその文章の埋め込みベクトルを付けて、2 つの書き込み専用列に保存する。
     /// AI チャット (RawDataAccessAgent) は DB のベクトル検索 (pgvector / SQL Server 2025) でこの索引から「似た記録」を探す (search_records)。
     /// 距離計算は DB が行うので、ベクトル検索に対応しない DB (SQLite 等) のモジュールは意味検索の対象にならない。
     /// </summary>

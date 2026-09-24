@@ -16,10 +16,10 @@ using Microsoft.Data.Sqlite;
 namespace Codeer.LowCode.Blazor.Extras.Test.AI
 {
     /// <summary>
-    /// SemanticSearchIndexer: 実 DB (SQLite) で、保存時に文章とベクトルが書き込み専用列に入ること、
+    /// SemanticSearchService (保存時の索引付け): 実 DB (SQLite) で、保存時に文章とベクトルが書き込み専用列に入ること、
     /// 埋め込み失敗時は文章だけ入ること、再索引、デザインチェック。索引付けは DB を選ばない (検索だけが pgvector / SQL Server 2025 前提)。
     /// </summary>
-    public class SemanticSearchIndexerDbTest : IAuthenticationContext
+    public class SemanticSearchIndexingDbTest : IAuthenticationContext
     {
         const string Ds = "Main";
         string _dbFile = string.Empty;
@@ -30,18 +30,18 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
         public Task<string> GetCurrentUserIdAsync() => Task.FromResult("U1");
 
         /// <summary>テンプレートの CustomizedModuleDataIO と同じ結線 (Add / Update の前に ApplyAsync)。</summary>
-        sealed class IndexingModuleDataIO(DesignData design, IAuthenticationContext auth, IDbAccessor db, ITemporaryFileManager files, SemanticSearchIndexer indexer)
+        sealed class IndexingModuleDataIO(DesignData design, IAuthenticationContext auth, IDbAccessor db, ITemporaryFileManager files, SemanticSearchService semanticSearch)
             : ModuleDataIO(design, auth, db, files)
         {
             protected override async Task<string> AddAsync(Guid transactionId, Guid moduleSubmitId, ModuleData data)
             {
-                await indexer.ApplyAsync(design, data, isNewData: true);
+                await semanticSearch.ApplyAsync(data, isNewData: true);
                 return await base.AddAsync(transactionId, moduleSubmitId, data);
             }
 
             protected override async Task UpdateAsync(Guid transactionId, Guid moduleSubmitId, ModuleData data)
             {
-                await indexer.ApplyAsync(design, data, isNewData: false);
+                await semanticSearch.ApplyAsync(data, isNewData: false);
                 await base.UpdateAsync(transactionId, moduleSubmitId, data);
             }
         }
@@ -80,8 +80,8 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
             if (File.Exists(_dbFile)) File.Delete(_dbFile);
         }
 
-        SemanticSearchIndexer Indexer(bool withEmbedding = true) => new(withEmbedding ? () => _embedding : null);
-        ModuleDataIO CreateIO(SemanticSearchIndexer indexer) => new IndexingModuleDataIO(_design, this, _db, new TemporaryFileManager(_db, [], new List<IFileStorage>()), indexer);
+        SemanticSearchService Indexer(bool withEmbedding = true) => new(withEmbedding ? () => _embedding : () => null, () => _design);
+        ModuleDataIO CreateIO(SemanticSearchService indexer) => new IndexingModuleDataIO(_design, this, _db, new TemporaryFileManager(_db, [], new List<IFileStorage>()), indexer);
 
         async Task<(string? Text, string? Vector)> RowAsync(string id)
         {
@@ -153,7 +153,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
             await _db.ExecuteAsync(Ds, "UPDATE inquiries SET is_deleted = 1 WHERE id = 3", new());
             var indexer = Indexer();
             var io = CreateIO(indexer);
-            var count = await indexer.ReindexAsync(io, _db, _design, "Inquiry", pageSize: 1);
+            var count = await indexer.ReindexAsync(io, _db, "Inquiry", pageSize: 1);
             Assert.That(count, Is.EqualTo(2), "論理削除の行は読み込みに出ないので索引しない");
             Assert.That((await RowAsync("2")).Text, Is.EqualTo("件名: 請求書の再発行\n本文: 宛名を変更して再発行してほしい"));
             Assert.That((await RowAsync("1")).Vector, Is.Not.Null);

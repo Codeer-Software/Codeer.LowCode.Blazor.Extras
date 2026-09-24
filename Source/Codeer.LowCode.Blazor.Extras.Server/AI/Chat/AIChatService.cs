@@ -7,41 +7,30 @@ using System.Collections.Concurrent;
 
 namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat
 {
-    public class AIChatJobStoreOptions
-    {
-        /// <summary>終了したジョブを結果を取りに来るまで残す時間。</summary>
-        public TimeSpan FinishedRetention { get; set; } = TimeSpan.FromMinutes(30);
-        /// <summary>これを超えて走り続けるジョブは中断する (Agent の暴走止め)。</summary>
-        public TimeSpan MaxRunning { get; set; } = TimeSpan.FromHours(1);
-    }
-
     /// <summary>
-    /// AIChatField のジョブ置き場 (プロセス内メモリ)。送信で Agent をバックグラウンド実行し、
-    /// クライアントは requestId で状態をポーリングする。返事は <see cref="ChatReplyHtml"/> で HTML に揃える。
+    /// AIChatField のサーバー側の入口 (プロセス内のジョブ置き場)。ホストはこれを 1 つ作って (アプリの静的な持ち物か DI のシングルトン)、
+    /// 薄い Controller (POST / GET / DELETE) から <see cref="StartAsync"/> / <see cref="GetStatus"/> / <see cref="Cancel"/> を呼ぶ。
+    /// 送信で Agent をバックグラウンド実行し、クライアントは requestId で状態をポーリングする。返事は <see cref="ChatReplyHtml"/> で HTML に揃える。
     /// 単一インスタンス前提。スケールアウトするなら ARR アフィニティか共有ストアに置き換える。
-    /// 1 つだけ作って使い回す (アプリ側の静的プロパティか DI のシングルトン)。
     /// どの Agent に渡すかは、コンストラクタで受け取る対応表 (Agent 名 → IAIChatAgent。メールの MailSenderTable と同じ位置づけで、
     /// アプリが静的な表として持つ) が AIChatField のデザインの Agent 名で決める。Agent が 1 つだけなら <see cref="IAIChatAgent"/> を直接渡してよい (名前は無視される)。
     /// 対応表は同じ名前に同じインスタンスを返すこと (ChatClientAgent は会話履歴を持つ)。
     /// </summary>
-    public class AIChatJobStore : IDisposable
+    public class AIChatService : IDisposable
     {
-        readonly Func<string, IAIChatAgent?> _createAgent;
-        readonly AIChatJobStoreOptions _options;
+        readonly Func<string, IAIChatAgent?> _agents;
         readonly ConcurrentDictionary<string, Job> _jobs = new();
 
-        public AIChatJobStore(IAIChatAgent agent) : this(_ => agent, new AIChatJobStoreOptions()) { }
+        public AIChatService(IAIChatAgent agent) : this(_ => agent) { }
 
-        public AIChatJobStore(IAIChatAgent agent, AIChatJobStoreOptions options) : this(_ => agent, options) { }
+        /// <param name="agents">Agent 名 → Agent の対応表。空文字は既定の Agent。知らない名前には null を返す (ジョブが error になる)。</param>
+        public AIChatService(Func<string, IAIChatAgent?> agents)
+            => _agents = agents;
 
-        /// <param name="createAgent">Agent 名 → Agent の対応表。空文字は既定の Agent。知らない名前には null を返す (ジョブが error になる)。</param>
-        public AIChatJobStore(Func<string, IAIChatAgent?> createAgent) : this(createAgent, new AIChatJobStoreOptions()) { }
-
-        public AIChatJobStore(Func<string, IAIChatAgent?> createAgent, AIChatJobStoreOptions options)
-        {
-            _createAgent = createAgent;
-            _options = options;
-        }
+        /// <summary>終了したジョブを結果を取りに来るまで残す時間。</summary>
+        public TimeSpan FinishedRetention { get; init; } = TimeSpan.FromMinutes(30);
+        /// <summary>これを超えて走り続けるジョブは中断する (Agent の暴走止め)。</summary>
+        public TimeSpan MaxRunning { get; init; } = TimeSpan.FromHours(1);
 
         /// <summary>
         /// 送信のワイヤリクエスト (POST {EndPoint}) を受けて Agent を起動し requestId を返す。Controller を薄く保つための入口。
@@ -118,7 +107,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat
         {
             try
             {
-                var agent = _createAgent(request.AgentName ?? string.Empty)
+                var agent = _agents(request.AgentName ?? string.Empty)
                     ?? throw new InvalidOperationException(string.IsNullOrEmpty(request.AgentName)
                         ? Resources.AIChat_DefaultAgentNotRegistered
                         : string.Format(Resources.AIChat_AgentNotRegistered, request.AgentName));
@@ -142,9 +131,9 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat
             {
                 if (job.IsFinished)
                 {
-                    if (now - job.LastAccess > _options.FinishedRetention) _jobs.TryRemove(job.Id, out _);
+                    if (now - job.LastAccess > FinishedRetention) _jobs.TryRemove(job.Id, out _);
                 }
-                else if (now - job.Created > _options.MaxRunning)
+                else if (now - job.Created > MaxRunning)
                 {
                     job.Cancel();
                 }

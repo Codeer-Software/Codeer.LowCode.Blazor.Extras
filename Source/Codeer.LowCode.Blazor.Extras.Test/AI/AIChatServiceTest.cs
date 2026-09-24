@@ -4,12 +4,12 @@ using Codeer.LowCode.Blazor.Extras.Server.AI.Chat;
 namespace Codeer.LowCode.Blazor.Extras.Test.AI
 {
     /// <summary>送信→ポーリング→確定 / 中断 / 所有者違い / 失敗 / Agent 名での振り分け (対応表は Func)。Agent はテスト用 (FakeAIChatAgent)。</summary>
-    public class AIChatJobStoreTest
+    public class AIChatServiceTest
     {
-        static AIChatJobStore CreateStore(TimeSpan? step = null)
+        static AIChatService CreateStore(TimeSpan? step = null)
             => new(new FakeAIChatAgent { StepDelay = step ?? TimeSpan.FromMilliseconds(20) });
 
-        static async Task<AIChatStatusResponse> WaitDoneAsync(AIChatJobStore store, string owner, string id, int timeoutMs = 10000)
+        static async Task<AIChatStatusResponse> WaitDoneAsync(AIChatService store, string owner, string id, int timeoutMs = 10000)
         {
             var end = DateTime.Now.AddMilliseconds(timeoutMs);
             while (DateTime.Now < end)
@@ -108,7 +108,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
         public async Task 終了したジョブは保持期間を過ぎると次の送信で片付く()
         {
             var agent = new FakeAIChatAgent { StepDelay = TimeSpan.FromMilliseconds(10) };
-            using var store = new AIChatJobStore(agent, new AIChatJobStoreOptions { FinishedRetention = TimeSpan.Zero });
+            using var store = new AIChatService(agent) { FinishedRetention = TimeSpan.Zero };
             var id = store.Start("u", "c", "a");
             await WaitDoneAsync(store, "u", id);
             Assert.That(store.Count, Is.EqualTo(1));
@@ -135,7 +135,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
             var a = new FakeAIChatAgent();
             var b = new FakeAIChatAgent();
             IAIChatAgent? Table(string name) => name switch { "" => a, "Raw" => b, _ => null };
-            using var store = new AIChatJobStore(Table);
+            using var store = new AIChatService(Table);
 
             await WaitDoneAsync(store, "u", store.Start("u", "c", "x"));
             await WaitDoneAsync(store, "u", store.Start("u", "c", "y", "Raw"));
@@ -147,7 +147,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
         [Test]
         public async Task 対応表に無いAgent名はerrorになる()
         {
-            using var store = new AIChatJobStore(name => name == "" ? new FakeAIChatAgent() : null);
+            using var store = new AIChatService(name => name == "" ? new FakeAIChatAgent() : null);
             var done = await WaitDoneAsync(store, "u", store.Start("u", "c", "x", "NoSuchAgent"));
             Assert.That(done.Status, Is.EqualTo(AIChatJobStatus.Error));
             Assert.That(done.Error, Does.Contain("NoSuchAgent"));
@@ -157,7 +157,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
         public async Task Agentを1つだけ渡したときは名前に関係なくそのAgentが使われる()
         {
             var agent = new FakeAIChatAgent();
-            using var store = new AIChatJobStore(agent);
+            using var store = new AIChatService(agent);
             await WaitDoneAsync(store, "u", store.Start("u", "c", "x", "anything"));
             Assert.That(agent.Requests.Single().AgentName, Is.EqualTo("anything"));
         }

@@ -42,18 +42,18 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
             public void ReportPartial(AIChatReply partialReply) { }
         }
 
-        sealed class IndexingModuleDataIO(DesignData design, IAuthenticationContext auth, IDbAccessor db, ITemporaryFileManager files, SemanticSearchIndexer indexer)
+        sealed class IndexingModuleDataIO(DesignData design, IAuthenticationContext auth, IDbAccessor db, ITemporaryFileManager files, SemanticSearchService semanticSearch)
             : ModuleDataIO(design, auth, db, files)
         {
             protected override async Task<string> AddAsync(Guid transactionId, Guid moduleSubmitId, ModuleData data)
             {
-                await indexer.ApplyAsync(design, data, isNewData: true);
+                await semanticSearch.ApplyAsync(data, isNewData: true);
                 return await base.AddAsync(transactionId, moduleSubmitId, data);
             }
 
             protected override async Task UpdateAsync(Guid transactionId, Guid moduleSubmitId, ModuleData data)
             {
-                await indexer.ApplyAsync(design, data, isNewData: false);
+                await semanticSearch.ApplyAsync(data, isNewData: false);
                 await base.UpdateAsync(transactionId, moduleSubmitId, data);
             }
         }
@@ -113,17 +113,17 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
         [Test]
         public async Task 再索引して納期に関する似た問い合わせをAgentがDBのベクトル検索で探す()
         {
-            var indexer = new SemanticSearchIndexer(() => _embedding);
+            var indexer = new SemanticSearchService(() => _embedding, () => _design);
             await using var db = new DbAccessor(_dataSources);
             var io = new IndexingModuleDataIO(_design, this, db, new TemporaryFileManager(db, [], new List<IFileStorage>()), indexer);
-            Assert.That(await indexer.ReindexAsync(io, db, _design, "Inquiry"), Is.EqualTo(5));
+            Assert.That(await indexer.ReindexAsync(io, db, "Inquiry"), Is.EqualTo(5));
             await db.CommitAsync();
 
             var indexed = await db.QueryAsync(Ds, $"select count(*) as c from {_table} where search_vector_v is not null", new());
             Assert.That(Convert.ToInt32(indexed.Single()["c"]), Is.EqualTo(5), "テキスト列から生成列にベクトルが入る");
 
             var agent = new RawDataAccessAgent(_chat, () => new DbAccessor(_dataSources), () => _design, null,
-                new RawDataAccessOptions { DataSourceNames = { Ds } }, embeddingProvider: () => _embedding);
+                new RawDataAccessOptions { DataSourceNames = { Ds } }, semanticSearch: indexer);
             var progress = new Progress();
             using var cts = new CancellationTokenSource(TimeSpan.FromMinutes(3));
             var reply = await agent.ReplyAsync(new AIChatAgentRequest { ConversationId = "c1", Message = "商品の到着が遅れているという問い合わせに似た過去の事例を 2 件挙げて", UserName = "tester" }, progress, cts.Token);

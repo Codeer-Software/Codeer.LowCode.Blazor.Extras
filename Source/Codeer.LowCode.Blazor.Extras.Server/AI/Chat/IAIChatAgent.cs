@@ -2,7 +2,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat
 {
     /// <summary>
     /// AIChatField の返事を作る側 (AI Agent) のインターフェース。実装はアプリの持ち物で、
-    /// <see cref="AIChatJobStore"/> がバックグラウンドで呼び出し、結果を HTML に正規化してクライアントへ返す。
+    /// <see cref="AIChatService"/> がバックグラウンドで呼び出し、結果を HTML に正規化してクライアントへ返す。
     /// 会話の履歴は conversationId を鍵に実装側で保持する (クライアントは全履歴を送らない)。
     /// </summary>
     public interface IAIChatAgent

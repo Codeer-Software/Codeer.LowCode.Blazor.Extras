@@ -74,15 +74,15 @@ DELETE {EndPoint}/{requestId}   // 中断
 
 ## サーバー側の実装
 
-`Codeer.LowCode.Blazor.Extras.Server` に部品があります。フォルダと名前空間は役割で分かれています: `AI/Chat/` (共有: 契約 `IAIChatAgent` と窓口 `AIChatJobStore`)、`AI/Chat/ChatClient/` (内部: 会話エンジン `ChatClientAgent`。公開しない)、`AI/Chat/RawDataAccess/` (専用: `RawDataAccessAgent` とその設定)。アプリに見える入口は、契約 `IAIChatAgent`、窓口 `AIChatJobStore`、標準 Agent 2 つ (`ChatClientAgent` / `RawDataAccessAgent`) だけです。アプリは「Agent 名 → Agent」の対応表 (メールの `MailSenderTable` と同じ位置づけの静的クラス) で Agent を持ち、AIChatField はデザインの `Agent` でその名前を指定します。DI は要りません。
+`Codeer.LowCode.Blazor.Extras.Server` に部品があります。フォルダと名前空間は役割で分かれています: `AI/Chat/` (共有: 契約 `IAIChatAgent` と窓口 `AIChatService`)、`AI/Chat/ChatClient/` (内部: 会話エンジン `ChatClientAgent`。公開しない)、`AI/Chat/RawDataAccess/` (専用: `RawDataAccessAgent` とその設定)。アプリに見える入口は、契約 `IAIChatAgent`、窓口 `AIChatService`、標準 Agent 2 つ (`ChatClientAgent` / `RawDataAccessAgent`) だけです。アプリは「Agent 名 → Agent」の対応表 (メールの `MailSenderTable` と同じ位置づけの静的クラス) で Agent を持ち、AIChatField はデザインの `Agent` でその名前を指定します。DI は要りません。
 
 | 型 | 役割 |
 |---|---|
 | `IAIChatAgent` | 返事を作る側のインターフェース。`ReplyAsync(request, progress, cancellationToken)` で `AIChatReply` (テキスト / Markdown / HTML / Auto) を返す。途中経過は `IAIChatProgress` に報告。`request.AgentName` にデザインの Agent 名が入る |
-| `AIChatJobStore` | プロセス内のジョブ置き場。コンストラクタで対応表 (`Func<string, IAIChatAgent?>`。Agent が 1 つなら `IAIChatAgent` を直接) を受け、送信で Agent をバックグラウンド実行し、状態をポーリングに返す。`StartAsync(owner, request, moduleDataIO)` で送信リクエストと ModuleDataIO を渡す (リクエストの ModuleName / FieldName の AIChatField が今のユーザーに見えるときだけ受け付け、Agent 名と文書フォルダはそのデザインから取る。見えなければ LowCodeException)。対応表に無い名前は error になる。プロセスに 1 つ (アプリの静的プロパティ) |
+| `AIChatService` | AIChat のサーバー側入口 (プロセス内のジョブ置き場)。コンストラクタで対応表 (`Func<string, IAIChatAgent?>`。Agent が 1 つなら `IAIChatAgent` を直接) を受け、送信で Agent をバックグラウンド実行し、状態をポーリングに返す。ジョブの保持時間・最長実行時間は `FinishedRetention` / `MaxRunning` プロパティ。`StartAsync(owner, request, moduleDataIO)` で送信リクエストと ModuleDataIO を渡す (リクエストの ModuleName / FieldName の AIChatField が今のユーザーに見えるときだけ受け付け、Agent 名と文書フォルダはそのデザインから取る。見えなければ LowCodeException)。対応表に無い名前は error になる。プロセスに 1 つ (アプリの静的プロパティ) |
 | `RawDataAccessAgent` (+ `RawDataAccessOptions`) | アプリの設計を読み、DB を直接読んで集計・グラフで答える Agent (会話の基盤は内部の会話エンジン: モデル呼び出し、会話履歴、逐次表示、Markdown → HTML。履歴の鍵は「ログイン ID + 会話 ID」(認証の無いアプリでは会話 ID だけ) で保持期限つき。トークンの膨張は `RawDataAccessOptions` の `KeepToolResultsForTurns` / `MaxHistoryTurns` / `MaxHistoryCharacters` の 3 段で抑える)。内部のツール: `list_modules` / `describe_module` (モジュール定義: フィールドの表示名・型・DB 列、候補値 (コード=名称)、リンク (結合相手とキー)、論理削除、スクリプト)、`read_document` (補足文書)、画面 URL (一覧 `/{フレーム}/{セグメント}`・詳細 `/{フレーム}/{セグメント}/{Id}` をページフレームのリンクから組み、行を挙げる返事に「開く」リンクを付ける)、`get_schema` (引数なしなら表名の目次だけ、`tables` を指定した表の列だけを 1 表 1 行で。方言はシステムプロンプトに常時入っていて、設計で表と列が分かるときは呼ばない指示にしている = トークン節約)、`execute_sql` (指定データソースで読み取り専用 SELECT を 1 文。行数・文字数・時間の上限、監査ログ)、`render_chart` (棒 / 折れ線 / 円。サーバーで SVG を作るので数字が狂わない)、`search_records` ([SemanticSearchField](SemanticSearchField.md) を置いたモジュールの行を内容の意味で探す。コンストラクタの `embeddingProvider` に埋め込みプロバイダ (IEmbeddingProvider) を渡したときだけ付く)。依存 (IChatClient と IDbAccessor の作り方、デザイン定義、文書) はコンストラクタ、設定 (`RawDataAccessOptions`: データソース名の一覧と上限) は別 |
 | `AIChatDocument` | Agent に渡す補足文書 (名前と本文)。出所はホストが決める。標準はデザインプロジェクトの `Resources/{DocumentFolder}/*.md` (フォルダはフィールドの `DocumentFolder`) |
-| (内部) HTML 化 | 返事は `AIChatJobStore` の中で HTML に揃えられる。Markdown は [Markdig](https://github.com/xoofx/markdig) (表・タスクリスト・自動リンク、単独改行は `<br>`)、テキストはエスケープ、HTML は素通し (リンクに `target="_blank"` を付けるだけ)。Agent 側で HTML 化のコードを書く必要はない |
+| (内部) HTML 化 | 返事は `AIChatService` の中で HTML に揃えられる。Markdown は [Markdig](https://github.com/xoofx/markdig) (表・タスクリスト・自動リンク、単独改行は `<br>`)、テキストはエスケープ、HTML は素通し (リンクに `target="_blank"` を付けるだけ)。Agent 側で HTML 化のコードを書く必要はない |
 
 Example の `DummyAIChatAgent` (`Example/Extras/Extras/Extras.Server/AI/`) は AI を呼ばないダミーで、UI の確認と、自分で `IAIChatAgent` を書くときの雛形です。発言に `html` / `text` / `error` / `slow` を含めると振る舞いが変わります。
 
@@ -96,7 +96,7 @@ public static class AIChatAgentTable
 {
     static readonly ConcurrentDictionary<string, Lazy<IAIChatAgent?>> _agents = new(StringComparer.OrdinalIgnoreCase);
 
-    public static AIChatJobStore Jobs { get; } = new(Create);   // プロセスに 1 つ
+    public static AIChatService Service { get; } = new(Create);  // プロセスに 1 つ
 
     public static IAIChatAgent? Create(string name)              // 会話履歴を持つので名前ごとに 1 つを使い回す
         => _agents.GetOrAdd(name ?? "", n => new Lazy<IAIChatAgent?>(() => CreateCore(n))).Value;
@@ -121,7 +121,7 @@ public static class AIChatAgentTable
 [Route("api/ai_chat")]
 public class AIChatController : ControllerBase, IAsyncDisposable
 {
-    static AIChatJobStore jobs => AIChatAgentTable.Jobs;
+    static AIChatService aiChat => AIChatAgentTable.Service;
 
     readonly DataService _dataService;                        // ModuleDataIO を持つ (テンプレートの Services/DataService)
     public AIChatController(DataService dataService) => _dataService = dataService;
@@ -132,15 +132,15 @@ public class AIChatController : ControllerBase, IAsyncDisposable
     //送信は ModuleDataIO を渡す = リクエストの AIChatField が今のユーザーに見えるときだけ受け付ける (アプリアクセス条件・モジュールの UserRead・フィールド読取権限)
     [HttpPost]
     public async Task<ActionResult<AIChatSendResponse>> Send([FromBody] AIChatSendRequest request)
-        => Accepted(new AIChatSendResponse { RequestId = await jobs.StartAsync(Owner, request, _dataService.ModuleDataIO) });
+        => Accepted(new AIChatSendResponse { RequestId = await aiChat.StartAsync(Owner, request, _dataService.ModuleDataIO) });
 
     [HttpGet("{requestId}")]
     public ActionResult<AIChatStatusResponse> Status(string requestId)
-        => jobs.GetStatus(Owner, requestId) is { } s ? s : NotFound();
+        => aiChat.GetStatus(Owner, requestId) is { } s ? s : NotFound();
 
     [HttpDelete("{requestId}")]
     public IActionResult Cancel(string requestId)
-        => jobs.Cancel(Owner, requestId) ? NoContent() : NotFound();
+        => aiChat.Cancel(Owner, requestId) ? NoContent() : NotFound();
 }
 ```
 
@@ -214,7 +214,7 @@ public class MyAgent : IAIChatAgent
 
 - 逐次表示したいときは、LLM のストリームを受けながら `progress.ReportPartial(AIChatReply.Markdown(ここまでの全文))` を呼ぶ (差分ではなく全体を渡す)
 - サーバー側の会話履歴 (既定 2 時間) やジョブ (完了後 30 分) が消えたあとに続きを送ると、クライアントは表示中の会話の写し (テキストのみ・直近 6 往復・4000 文字まで、`AIChatSendRequest.Transcript`) を一緒に送り、`RawDataAccessAgent` は履歴が無いときだけそれで文脈を復元する。SQL の結果などツールの結果は写しに無いので、「その中で」のような直前の結果を指す追問は履歴が消えた後は精度が落ちる
-- `AIChatJobStore` のジョブと Agent の会話履歴は単一インスタンス前提のメモリ保持です。サーバーを複数インスタンスにするときはセッション固定 (Azure App Service の ARR アフィニティは既定でオン) が前提で、それが使えない構成では共有ストア (DB テーブル) への置き換えが必要です
+- `AIChatService` のジョブと Agent の会話履歴は単一インスタンス前提のメモリ保持です。サーバーを複数インスタンスにするときはセッション固定 (Azure App Service の ARR アフィニティは既定でオン) が前提で、それが使えない構成では共有ストア (DB テーブル) への置き換えが必要です
 - 所有者 (ログイン ID) が一致しないジョブは見えません。匿名同士は共有になるので、認証のあるアプリで使ってください
 
 ## 注意事項

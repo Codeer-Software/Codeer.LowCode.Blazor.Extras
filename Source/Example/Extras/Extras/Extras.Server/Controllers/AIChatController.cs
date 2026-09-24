@@ -16,8 +16,8 @@ namespace Extras.Server.Controllers
     [Route("api/ai_chat")]
     public class AIChatController : ControllerBase, IAsyncDisposable
     {
-        //ジョブ置き場と Agent の対応表はアプリの静的な持ち物 (AI/AIChatAgentTable.cs)。メールの MailSenderTable と同じ位置づけ
-        static AIChatJobStore _jobs => AIChatAgentTable.Jobs;
+        //AIChat のサーバー側入口と Agent の対応表はアプリの静的な持ち物 (AI/AIChatAgentTable.cs)。メールの MailSenderTable と同じ位置づけ
+        static AIChatService _aiChat => AIChatAgentTable.Service;
 
         readonly DataService _dataService;
 
@@ -33,17 +33,17 @@ namespace Extras.Server.Controllers
 
         [HttpPost]
         public async Task<ActionResult<AIChatSendResponse>> Send([FromBody] AIChatSendRequest request)
-            => Accepted(new AIChatSendResponse { RequestId = await _jobs.StartAsync(Owner, request, _dataService.ModuleDataIO) });
+            => Accepted(new AIChatSendResponse { RequestId = await _aiChat.StartAsync(Owner, request, _dataService.ModuleDataIO) });
 
         [HttpGet("{requestId}")]
         public ActionResult<AIChatStatusResponse> Status(string requestId)
         {
-            var status = _jobs.GetStatus(Owner, requestId);
+            var status = _aiChat.GetStatus(Owner, requestId);
             return status == null ? NotFound() : status;
         }
 
         [HttpDelete("{requestId}")]
         public IActionResult Cancel(string requestId)
-            => _jobs.Cancel(Owner, requestId) ? NoContent() : NotFound();
+            => _aiChat.Cancel(Owner, requestId) ? NoContent() : NotFound();
     }
 }

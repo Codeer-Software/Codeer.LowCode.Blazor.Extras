@@ -13,7 +13,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
 {
     /// <summary>
     /// SemanticSearchField のランタイム。UI も読み込みデータも持たない。
-    /// Submit のとき、対象フィールドのどれかが変更されていれば (新規なら常に) 行を文章にして送る。ベクトルはサーバー (SemanticSearchIndexer) が付ける。
+    /// Submit のとき、対象フィールドのどれかが変更されていれば (新規なら常に) 行を文章にして送る。ベクトルはサーバー (SemanticSearchService) が付ける。
     /// <para>
     /// スクリプトからは再索引 (溜まっている行全部の文章とベクトルを作り直す) を起動できる: <c>Search.Reindex()</c> / <c>Search.ReindexMissing()</c>。
     /// サーバーのジョブとして走り、進捗は <see cref="ReindexProcessed"/> / <see cref="ReindexTotal"/> に届き、終わると <see cref="SemanticSearchFieldDesign.OnReindexCompleted"/> が呼ばれる。

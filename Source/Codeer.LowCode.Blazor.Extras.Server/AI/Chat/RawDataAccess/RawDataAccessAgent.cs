@@ -2,7 +2,6 @@ using Codeer.LowCode.Blazor.DataIO.Db;
 using Codeer.LowCode.Blazor.DesignLogic;
 using Codeer.LowCode.Blazor.Extras.Server.AI.Chat.ChatClient;
 using Codeer.LowCode.Blazor.Extras.Server.AI.Chat.DesignKnowledge;
-using Codeer.LowCode.Blazor.Extras.Server.AI.Embedding;
 using Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Logging;
@@ -12,7 +11,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat.RawDataAccess
     /// <summary>
     /// アプリの設計を読み、DB を直接読んで答える Agent。
     /// 設計参照 (list_modules / describe_module / read_document)、DB 参照 (get_schema / execute_sql)、SVG グラフ (render_chart)、
-    /// 意味検索 (search_records。埋め込みプロバイダを渡し、設計に SemanticSearchField があるとき) のツールを持ち、
+    /// 意味検索 (search_records。<see cref="SemanticSearchService"/> を渡し、設計に SemanticSearchField があるとき) のツールを持ち、
     /// 「先月の売上を得意先別に」「在庫が少ない品目は」のような集計・横断の質問に、業務語をモジュール定義で解いてから SQL を組み、表とグラフで答える。
     /// 会話の基盤 (モデル呼び出し・履歴・逐次表示・Markdown → HTML) はライブラリ内部の会話エンジンに委譲する。
     /// <para>
@@ -40,11 +39,11 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat.RawDataAccess
         /// <param name="documents">補足文書の取り方。引数は AIChatField のデザインの DocumentFolder (Resources からの相対パス)。null なら文書を渡さない</param>
         /// <param name="options">データソース名・上限値・プロンプト・履歴の設定</param>
         /// <param name="loggerFactory">実行した SQL の監査ログとモデル呼び出しのログの出力先。null ならログなし</param>
-        /// <param name="embeddingProvider">埋め込みプロバイダ (IEmbeddingProvider) の取り方。設計に SemanticSearchField があれば意味検索ツール (search_records) を付ける。null なら意味検索なし</param>
+        /// <param name="semanticSearch">意味検索 (SemanticSearchField のサーバー側入口。保存時の索引付けに使っているものと同じ)。渡すと、設計に SemanticSearchField があり埋め込みプロバイダが設定されているとき意味検索ツール (search_records / {embed:…}) が付く。null なら意味検索なし</param>
         public RawDataAccessAgent(Func<IChatClient> clientFactory, Func<IDbAccessor> dbAccessorFactory,
             Func<DesignData?>? design, Func<string, IReadOnlyList<AIChatDocument>>? documents,
             RawDataAccessOptions options, ILoggerFactory? loggerFactory = null,
-            Func<IEmbeddingProvider>? embeddingProvider = null)
+            SemanticSearchService? semanticSearch = null)
         {
             var conversation = new ChatClientAgentOptions
             {
@@ -60,12 +59,12 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat.RawDataAccess
             if (design != null || documents != null) conversation.ToolSets.Add(new DesignKnowledgeToolSet(design, documents));
             var rawDataAccess = new RawDataAccessToolSet(dbAccessorFactory, design, options);
             conversation.ToolSets.Add(rawDataAccess);
-            if (design != null && embeddingProvider != null)
+            if (design != null && semanticSearch != null)
             {
-                var semanticSearch = new SemanticSearchToolSet(design, dbAccessorFactory, embeddingProvider, options.DataSourceNames);
-                conversation.ToolSets.Add(semanticSearch);
+                var toolSet = new SemanticSearchToolSet(design, dbAccessorFactory, semanticSearch.GetProvider, options.DataSourceNames);
+                conversation.ToolSets.Add(toolSet);
                 //execute_sql の {embed:…} を質問の埋め込みに置き換える (DB 側のベクトル検索を SQL の中から使う)
-                rawDataAccess.SqlPreprocessor = semanticSearch.ExpandEmbeddingsAsync;
+                rawDataAccess.SqlPreprocessor = toolSet.ExpandEmbeddingsAsync;
             }
             conversation.ToolSets.Add(new ChartToolSet());
             _agent = new ChatClientAgent(clientFactory, conversation);

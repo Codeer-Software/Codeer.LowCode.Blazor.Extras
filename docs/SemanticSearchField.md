@@ -17,7 +17,7 @@ SQL の集計 (件数・合計) は従来どおり `execute_sql`、内容で探�
 - **送るタイミング**: 新規行は常に。更新は対象フィールドのどれかが変更されたときだけ (変更が無ければ何も送らない = 埋め込みの呼び出しも起きない)
 - **書き込み専用**: `DbColumnText` / `DbColumnVector` は読み戻されない (`IsWriteOnly = true`)。クライアントには値が来ない
 - **埋め込みが無くても保存は止めない**: 埋め込みモデル未設定・呼び出し失敗のときは文章だけ保存し、ベクトルは NULL (警告ログ)。後から再索引で埋められる
-- **再索引**: フィールドを後から置いたとき・埋め込みモデルを変えたとき・失敗した行を埋めるときに、モジュールの全行の文章とベクトルを作り直せる (`SemanticSearchIndexer.ReindexAsync`)
+- **再索引**: フィールドを後から置いたとき・埋め込みモデルを変えたとき・失敗した行を埋めるときに、モジュールの全行の文章とベクトルを作り直せる (フィールドのスクリプト `Reindex()`)
 
 ## 対象フィールドはフロントに読み込まれている必要がある
 
@@ -114,7 +114,7 @@ SQL の集計 (件数・合計) は従来どおり `execute_sql`、内容で探�
 
 ## サーバーサイド実装が必須
 
-フィールドを置くだけでは**ベクトルは付きません**。埋め込みモデルの用意と、保存時の索引付けはアプリ (ホスト) の責務です。Extras.Server の `Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch.SemanticSearchIndexer` を使います。
+フィールドを置くだけでは**ベクトルは付きません**。埋め込みモデルの用意と、保存時の索引付けはアプリ (ホスト) の責務です。Extras.Server の `Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch.SemanticSearchService` をアプリの静的な持ち物として 1 つ作り、保存時の索引付け・再索引 API・AI チャットの 3 か所から使います。
 
 ### 1. 埋め込みプロバイダ (IEmbeddingProvider)
 
@@ -146,8 +146,8 @@ public static IEmbeddingProvider? Create(string name) => name switch
 };
 
 //AI/SemanticSearchIndex.cs (プロセスに 1 つ)
-public static IEmbeddingProvider? Provider { get; } = EmbeddingProviderTable.Create(SystemConfig.Instance.SemanticSearch.EmbeddingProvider);
-public static SemanticSearchIndexer Indexer { get; } = new(() => Provider);
+static readonly Lazy<IEmbeddingProvider?> _provider = new(() => EmbeddingProviderTable.Create(SystemConfig.Instance.SemanticSearch.EmbeddingProvider));
+public static SemanticSearchService Service { get; } = new(() => _provider.Value, () => DesignerService.GetDesignData());
 ```
 
 `IEmbeddingProvider` は `ModelId` / `Dimensions` と `EmbedAsync(texts)` だけの小さなインターフェースです。`Dimensions` を申告しておくと、返ったベクトルの長さが違うときに保存や再索引がエラーで止まり、DB の列定義との食い違いに早く気づけます。
@@ -161,13 +161,13 @@ public static SemanticSearchIndexer Indexer { get; } = new(() => Provider);
 ```csharp
 protected override async Task<string> AddAsync(Guid transactionId, Guid moduleSubmitId, ModuleData data)
 {
-    await SemanticSearchIndex.Indexer.ApplyAsync(_designData, data, isNewData: true);
+    await SemanticSearchIndex.Service.ApplyAsync(data, isNewData: true);
     return await base.AddAsync(transactionId, moduleSubmitId, data);
 }
 
 protected override async Task UpdateAsync(Guid transactionId, Guid moduleSubmitId, ModuleData data)
 {
-    await SemanticSearchIndex.Indexer.ApplyAsync(_designData, data, isNewData: false);
+    await SemanticSearchIndex.Service.ApplyAsync(data, isNewData: false);
     await base.UpdateAsync(transactionId, moduleSubmitId, data);
 }
 ```
@@ -178,12 +178,12 @@ protected override async Task UpdateAsync(Guid transactionId, Guid moduleSubmitI
 
 ### 3. AI チャットに意味検索ツールを付ける
 
-`RawDataAccessAgent` のコンストラクタの `embeddingProvider` に同じ埋め込みプロバイダを渡します。デザインに (3 つの列が設定された) SemanticSearchField を持ち、データソースが PostgreSQL か SQL Server のモジュールがあれば、AI に `search_records(moduleName, query, top)` ツールと「内容で探す質問はこれを使う」という指示が付きます。
+`RawDataAccessAgent` のコンストラクタの `semanticSearch` に同じ `SemanticSearchService` を渡します。埋め込みプロバイダが設定されていて、デザインに (3 つの列が設定された) SemanticSearchField を持ち、データソースが PostgreSQL か SQL Server のモジュールがあれば、AI に `search_records(moduleName, query, top)` ツールと「内容で探す質問はこれを使う」という指示が付きます。
 
 ```csharp
 new RawDataAccessAgent(chatClientFactory, () => new DbAccessor(config.DataSources), () => DesignerService.GetDesignData(), documents,
     new RawDataAccessOptions { DataSourceNames = config.AIChat.RawDataAccessDataSources },
-    embeddingProvider: () => SemanticSearchIndex.Provider!);
+    semanticSearch: SemanticSearchIndex.Service);
 ```
 
 `search_records` は質問文を埋め込みにし、DB のベクトル検索 (PostgreSQL は pgvector の `<=>`、SQL Server は `VECTOR_DISTANCE('cosine', …)`) で似ている順に上位 N 件だけを読み、Id・score (0〜1)・詳細ページの URL・文章を返します。AI は行を挙げるときに詳細リンクを付け、score が低ければ「近いものは見つからなかった」と伝えます。DB 側の検索が失敗したとき (拡張未導入・列の型違いなど) はそのエラーが AI に返ります (サーバーで代わりに計算することはしません)。
@@ -235,18 +235,15 @@ void Search_OnReindexCompleted()
 - サーバーではジョブとして走り、ページ (既定 100 行) ごとに文章をまとめて 1 回で埋め込みます。同じモジュールの再索引が走っている間に起こすと、その進捗に合流します
 - 埋め込みモデルが無いときは文章だけ書き直します。埋め込みの失敗はエラーとして返ります (保存時と違い黙って NULL にはしません)
 
-サーバー側は Extras.Server の `SemanticSearchReindexJobStore` をアプリの静的な持ち物として 1 つ作り、AIChat と同じ形の薄い Controller から使います (Example の `Controllers/SemanticSearchController.cs` / `AI/SemanticSearchIndex.cs`)。バックグラウンドではリクエストの HttpContext が無いので、ユーザー Id を固定した DataService を開いて渡します。
+サーバー側は同じ `SemanticSearchService` の `StartReindexAsync` / `GetReindexStatus` / `CancelReindex` を、AIChat と同じ形の薄い Controller から使います (Example の `Controllers/SemanticSearchController.cs`)。ページの行数・ジョブの保持時間は `ReindexPageSize` / `FinishedRetention` / `MaxRunning` プロパティ。バックグラウンドではリクエストの HttpContext が無いので、ユーザー Id を固定した DataService を開いて渡します。
 
 ```csharp
-//AI/SemanticSearchIndex.cs
-public static SemanticSearchReindexJobStore Jobs { get; } = new(Indexer, () => DesignerService.GetDesignData());
-
 //Controllers/SemanticSearchController.cs ([Route("api/semantic_search/reindex")])
 [HttpPost]
 public async Task<ActionResult<SemanticSearchReindexResponse>> Start([FromBody] SemanticSearchReindexRequest request)
 {
     var userId = await _dataService.GetCurrentUserIdAsync();
-    var requestId = await SemanticSearchIndex.Jobs.StartAsync(Owner, request, _dataService.ModuleDataIO, () =>
+    var requestId = await SemanticSearchIndex.Service.StartReindexAsync(Owner, request, _dataService.ModuleDataIO, () =>
     {
         var dataService = new DataService(userId);
         return new SemanticSearchReindexScope(dataService.ModuleDataIO, dataService.DbAccess, dataService);
@@ -263,7 +260,7 @@ public async Task<ActionResult<SemanticSearchReindexResponse>> Start([FromBody] 
 SemanticSearchField.EndPoint = "/api/semantic_search/reindex";
 ```
 
-Example (`Source/Example/Extras`) には索引付け (`Services/CustomizedModuleDataIO.cs`)・埋め込みプロバイダの対応表とジョブ置き場 (`AI/EmbeddingProviderTable.cs` / `AI/SemanticSearchIndex.cs`)・再索引 API (`Controllers/SemanticSearchController.cs`)・エージェントへの結線 (`AI/AIChatAgentTable.cs`) が入っています。Example のデータは SQLite なので意味検索できるモジュールは置いていません。動かすには PostgreSQL (pgvector) のデータソースに上記の構成でモジュールを作ってください。
+Example (`Source/Example/Extras`) には索引付け (`Services/CustomizedModuleDataIO.cs`)・埋め込みプロバイダの対応表と `SemanticSearchService` の持ち物 (`AI/EmbeddingProviderTable.cs` / `AI/SemanticSearchIndex.cs`)・再索引 API (`Controllers/SemanticSearchController.cs`)・エージェントへの結線 (`AI/AIChatAgentTable.cs`) が入っています。Example のデータは SQLite なので意味検索できるモジュールは置いていません。動かすには PostgreSQL (pgvector) のデータソースに上記の構成でモジュールを作ってください。
 
 ## 注意事項
 

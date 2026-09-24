@@ -4,7 +4,7 @@ namespace Codeer.LowCode.Blazor.Extras.Data
 {
     /// <summary>
     /// SemanticSearchField の保存データ。<see cref="Text"/> は行を文章にしたもの (クライアントが Submit 時に組み立てる)、
-    /// <see cref="Vector"/> はその埋め込みベクトル (サーバーの SemanticSearchIndexer が付ける。float32 の並びを base64 にしたもの。未計算なら null)。
+    /// <see cref="Vector"/> はその埋め込みベクトル (サーバーの SemanticSearchService が付ける。float32 の並びを base64 にしたもの。未計算なら null)。
     /// どちらも書き込み専用列なので通常の読み込みでは来ない。
     /// </summary>
     public class SemanticSearchFieldData : FieldDataBase

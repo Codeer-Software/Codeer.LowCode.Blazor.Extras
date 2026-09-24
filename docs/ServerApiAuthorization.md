@@ -54,7 +54,7 @@ Codeer.LowCode.Blazor 1.3.33 / Codeer.LowCode.Blazor.Extras 0.12.0 / Codeer.LowC
 | メール単発 | `MailDispatcher.SendAsync(request, moduleDataIO)` |
 | メール一斉 / プレビュー | `new MailBulkSearch(dispatcher, moduleDataIO, designData).SendAsync(request)` / `new MailPreviewBuilder(dispatcher, moduleDataIO, designData)` |
 | 承認 | `new ApprovalEngine(designData, moduleDataIO, db, addInternal, updateInternal).ExecuteAsync(command)` |
-| AI チャット | `AIChatJobStore.StartAsync(owner, request, moduleDataIO)` |
+| AI チャット | `AIChatService.StartAsync(owner, request, moduleDataIO)` |
 | AI 帳票解析 | `AITextAnalyzeService.AnalyzeFileAsync / AnalyzeTextAsync(moduleDataIO, modules, moduleName, fieldName, …)` |
 
 システムが送るメール (二要素認証のコードなど、画面のフィールドを介さないもの) は `MailDispatcher.SendAsync(mailInfraName, message)` を使います。こちらはフィールドの検査を持ちません (ホストのコードだけが呼べる)。

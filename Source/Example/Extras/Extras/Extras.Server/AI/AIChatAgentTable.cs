@@ -13,14 +13,14 @@ namespace Extras.Server.AI
     /// AIChatField のデザインの Agent にここの名前を書く。自分の Agent を足すときはこの表に 1 行足す。
     ///   ""              = DummyAIChatAgent (AI を呼ばない。UI 確認用の既定)
     ///   "RawDataAccess" = RawDataAccessAgent (DB を直接読んで集計・グラフで答える)。AISettings (Azure OpenAI) が設定されているときだけ使える
-    /// Agent は会話履歴を持つので、名前ごとに 1 つ作って使い回す。<see cref="Jobs"/> がその表を使うジョブ置き場 (プロセスに 1 つ)。
+    /// Agent は会話履歴を持つので、名前ごとに 1 つ作って使い回す。<see cref="Service"/> がその表を使う AIChat のサーバー側入口 (プロセスに 1 つ)。
     /// </summary>
     internal static class AIChatAgentTable
     {
         static readonly ConcurrentDictionary<string, Lazy<IAIChatAgent?>> _agents = new(StringComparer.OrdinalIgnoreCase);
 
-        /// <summary>AIChatController が使うジョブ置き場。送信で Agent をバックグラウンド実行し、ポーリングに状態を返す。</summary>
-        public static AIChatJobStore Jobs { get; } = new(Create);
+        /// <summary>AIChatController が使う入口。送信で Agent をバックグラウンド実行し、ポーリングに状態を返す。</summary>
+        public static AIChatService Service { get; } = new(Create);
 
         /// <summary>名前に対応する Agent (無ければ null = ジョブは error)。</summary>
         public static IAIChatAgent? Create(string name)
@@ -48,8 +48,8 @@ namespace Extras.Server.AI
                 () => DesignerService.GetDesignData(),
                 folder => DesignDataFileManager.GetResourceTexts(config.DesignFileDirectory, folder, ".md", ".txt").Select(e => new AIChatDocument(e.Name, e.Text)).ToList(),
                 new RawDataAccessOptions { DataSourceNames = config.AIChat.RawDataAccessDataSources },
-                //SemanticSearchField を置いたモジュールを search_records (意味検索) で探せるようにする。埋め込みプロバイダ未設定なら null = ツールは付かない
-                embeddingProvider: SemanticSearchIndex.Provider == null ? null : () => SemanticSearchIndex.Provider!);
+                //SemanticSearchField を置いたモジュールを search_records (意味検索) で探せるようにする (埋め込みプロバイダ未設定ならツールは付かない)
+                semanticSearch: SemanticSearchIndex.Service);
         }
     }
 }

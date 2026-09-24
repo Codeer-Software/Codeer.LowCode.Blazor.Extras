@@ -12,11 +12,11 @@ AI チャット ([AIChatField](AIChatFieldDesign.md) の `RawDataAccessAgent`) �
 
 ### ⚠ サーバ側の実装が必須（重要）
 
-このフィールドを置くだけでは**ベクトルは付かない**。埋め込みモデルの用意と保存時の索引付けはホストアプリの責務で、Extras.Server の `Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch.SemanticSearchIndexer` を使う。
+このフィールドを置くだけでは**ベクトルは付かない**。埋め込みモデルの用意と保存時の索引付けはホストアプリの責務で、Extras.Server の `Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch.SemanticSearchService` を 1 つ作って使う (索引付け・再索引 API・AI チャットの意味検索が同じ入口)。
 
 - 保存時: `ModuleDataIO` の派生 (通常 `CustomizedModuleDataIO.AddAsync` / `UpdateAsync`) で `await indexer.ApplyAsync(designData, data, isNewData)` を呼ぶ。送られてきた文章に埋め込みを付ける (新規で文章が無ければサーバーで組み立てる = 一括取込)。埋め込みモデル未設定・失敗のときは文章だけ保存 (ベクトル NULL・警告ログ)
 - AI チャット: `RawDataAccessAgent` のコンストラクタ `embeddingProvider` に埋め込みプロバイダを渡す。渡したときだけ `search_records` が付く (対象は 3 列が設定済みで、データソースが PostgreSQL / SQL Server のモジュール)
-- 再索引: ホストは `SemanticSearchReindexJobStore` を静的に 1 つ持ち、AIChat と同じ形の Controller (POST / GET / DELETE `api/semantic_search/reindex`) から使う。クライアントは `SemanticSearchField.EndPoint` にその URL を設定する。デザイン側はフィールドのスクリプト `Reindex()` を ButtonField から呼ぶだけ
+- 再索引: ホストは同じ `SemanticSearchService` の `StartReindexAsync` / `GetReindexStatus` / `CancelReindex` を、AIChat と同じ形の Controller (POST / GET / DELETE `api/semantic_search/reindex`) から使う。クライアントは `SemanticSearchField.EndPoint` にその URL を設定する。デザイン側はフィールドのスクリプト `Reindex()` を ButtonField から呼ぶだけ
 - 埋め込みは Extras.Server の `IEmbeddingProvider` (メールの IMailSender と同じ作り)。実装は `AzureOpenAIEmbeddingProvider` と、Microsoft.Extensions.AI の生成器を包む `EmbeddingGeneratorProvider` (別プロバイダは IEmbeddingProvider を実装して対応表に足す)。テンプレートは appsettings の `SemanticSearch.EmbeddingProvider` の呼び名で対応表 (`EmbeddingProviderTable`) から選ぶ。空なら意味検索は無効 (文章だけ保存)。モデルを変えたら列の次元を合わせて作り直し、`Reindex()` で全行再索引
 
 ### ⚠ 文章にするフィールドはフロントに読み込まれていること

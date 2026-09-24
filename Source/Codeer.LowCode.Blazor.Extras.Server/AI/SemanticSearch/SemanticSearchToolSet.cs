@@ -28,7 +28,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
     {
         readonly Func<DesignData?> _design;
         readonly Func<IDbAccessor> _dbAccessorFactory;
-        readonly Func<IEmbeddingProvider> _embeddingProvider;
+        readonly Func<IEmbeddingProvider?> _embeddingProvider;
         readonly IList<string> _dataSourceNames;
         readonly int _maxTextChars;
         readonly int _maxTop;
@@ -36,7 +36,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
         /// <param name="dataSourceNames">検索を許すデータソース名 (RawDataAccessOptions.DataSourceNames)。空なら全モジュール</param>
         /// <param name="maxTextChars">1 件の文章を AI に返す最大文字数</param>
         /// <param name="maxTop">1 回に返す件数の上限</param>
-        public SemanticSearchToolSet(Func<DesignData?> design, Func<IDbAccessor> dbAccessorFactory, Func<IEmbeddingProvider> embeddingProvider,
+        public SemanticSearchToolSet(Func<DesignData?> design, Func<IDbAccessor> dbAccessorFactory, Func<IEmbeddingProvider?> embeddingProvider,
             IList<string> dataSourceNames, int maxTextChars = 1500, int maxTop = 20)
         {
             _design = design;
@@ -99,7 +99,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
             context.Logger?.LogInformation("AIChat search_records {Module} by {User}: {Query}", target.Module.Name, context.Request.UserName, query);
             try
             {
-                var queryVector = (await _embeddingProvider().EmbedAsync(new[] { query }, context.CancellationToken))[0];
+                var queryVector = (await RequireProvider().EmbedAsync(new[] { query }, context.CancellationToken))[0];
 
                 //距離計算は DB。失敗 (拡張未導入・列の型違い等) はそのままエラーとして AI に返す (別経路で拾い直すことはしない)
                 List<SemanticSearchIndexReader.ScoredEntry> scored;
@@ -131,6 +131,8 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
         List<(ModuleDesign Module, SemanticSearchFieldDesign Field, DataSourceType Type)> SearchableModules(DesignData design)
         {
             var result = new List<(ModuleDesign, SemanticSearchFieldDesign, DataSourceType)>();
+            //埋め込みプロバイダが無ければ (appsettings 未設定) 意味検索は使えない = ツールを出さない
+            if (_embeddingProvider() == null) return result;
             var candidates = new List<(ModuleDesign Module, SemanticSearchFieldDesign Field)>();
             foreach (var name in design.Modules.GetModuleNames())
             {
@@ -158,6 +160,9 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
             return result;
         }
 
+        IEmbeddingProvider RequireProvider()
+            => _embeddingProvider() ?? throw new InvalidOperationException("SemanticSearch: the embedding provider is not configured.");
+
         static string FieldLabel(ModuleDesign module, string name)
         {
             var display = (module.Fields.FirstOrDefault(f => f.Name == name) as ValueFieldDesignBase)?.DisplayName;
@@ -184,7 +189,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
 
             var texts = matches.Select(m => m.Groups[1].Value.Trim()).ToList();
             if (texts.Any(string.IsNullOrEmpty)) throw new InvalidOperationException("{embed:…} の中身が空です。探したい内容を書いてください。");
-            var vectors = await _embeddingProvider().EmbedAsync(texts, cancellationToken);
+            var vectors = await RequireProvider().EmbedAsync(texts, cancellationToken);
             var literals = vectors.Select(v => SemanticSearchIndexReader.VectorLiteral(type, v)).ToList();
 
             var index = 0;

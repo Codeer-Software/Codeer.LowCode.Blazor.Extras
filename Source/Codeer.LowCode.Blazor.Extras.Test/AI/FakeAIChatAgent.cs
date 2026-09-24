@@ -4,7 +4,7 @@ using System.Collections.Concurrent;
 namespace Codeer.LowCode.Blazor.Extras.Test.AI
 {
     /// <summary>
-    /// AIChatJobStore のテスト用 Agent (Example の DummyAIChatAgent と同じ振る舞いの縮小版)。
+    /// AIChatService のテスト用 Agent (Example の DummyAIChatAgent と同じ振る舞いの縮小版)。
     /// 発言に含む語で分岐: "html" → HTML / "text" → テキスト / "error" → 例外 / "slow" → 40 秒かかる。他は Markdown。
     /// 会話ごとに回数を数え "(n 回目)" を返事に入れる。途中経過と部分的な返事も流す。
     /// </summary>

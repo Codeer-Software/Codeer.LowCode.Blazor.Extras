@@ -1,4 +1,4 @@
-﻿using Codeer.LowCode.Blazor;
+using Codeer.LowCode.Blazor;
 using Codeer.LowCode.Blazor.DataIO;
 using Codeer.LowCode.Blazor.DataIO.Db;
 using Codeer.LowCode.Blazor.DesignLogic;
@@ -26,7 +26,7 @@ namespace Extras.Server.Services
 
             PasswordHashHelper.ApplyPasswordHash(moduleDesign, data);
             //SemanticSearchField の文章に埋め込みベクトルを付ける (新規で文章が無ければここで組み立てる = 一括取込)
-            await SemanticSearchIndex.Indexer.ApplyAsync(_designData, data, isNewData: true);
+            await SemanticSearchIndex.Service.ApplyAsync(data, isNewData: true);
             return await base.AddAsync(transactionId, moduleSubmitId, data);
         }
 
@@ -37,7 +37,7 @@ namespace Extras.Server.Services
 
             PasswordHashHelper.ApplyPasswordHash(moduleDesign, data);
             //文章が送られてきたとき (対象フィールドが変わったとき・再索引) だけ埋め込みを付け直す
-            await SemanticSearchIndex.Indexer.ApplyAsync(_designData, data, isNewData: false);
+            await SemanticSearchIndex.Service.ApplyAsync(data, isNewData: false);
             await base.UpdateAsync(transactionId, moduleSubmitId, data);
         }
         //メール送信履歴などシステムの記録を、操作ユーザーの書き込み権限に依存せず追加する内部経路。

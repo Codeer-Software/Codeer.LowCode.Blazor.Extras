@@ -17,8 +17,8 @@ namespace Extras.Server.Controllers
     [Route("api/semantic_search/reindex")]
     public class SemanticSearchController : ControllerBase, IAsyncDisposable
     {
-        //ジョブ置き場はアプリの静的な持ち物 (AI/SemanticSearchIndex.cs)
-        static SemanticSearchReindexJobStore _jobs => SemanticSearchIndex.Jobs;
+        //意味検索のサーバー側入口はアプリの静的な持ち物 (AI/SemanticSearchIndex.cs)
+        static SemanticSearchService _semanticSearch => SemanticSearchIndex.Service;
 
         readonly DataService _dataService;
 
@@ -36,7 +36,7 @@ namespace Extras.Server.Controllers
         {
             //バックグラウンドではリクエストの HttpContext が無いので、ユーザー Id を固定した DataService を開いて渡す
             var userId = await _dataService.GetCurrentUserIdAsync();
-            var requestId = await _jobs.StartAsync(Owner, request, _dataService.ModuleDataIO, () =>
+            var requestId = await _semanticSearch.StartReindexAsync(Owner, request, _dataService.ModuleDataIO, () =>
             {
                 var dataService = new DataService(userId);
                 return new SemanticSearchReindexScope(dataService.ModuleDataIO, dataService.DbAccess, dataService);
@@ -47,12 +47,12 @@ namespace Extras.Server.Controllers
         [HttpGet("{requestId}")]
         public ActionResult<SemanticSearchReindexStatusResponse> Status(string requestId)
         {
-            var status = _jobs.GetStatus(Owner, requestId);
+            var status = _semanticSearch.GetReindexStatus(Owner, requestId);
             return status == null ? NotFound() : status;
         }
 
         [HttpDelete("{requestId}")]
         public IActionResult Cancel(string requestId)
-            => _jobs.Cancel(Owner, requestId) ? NoContent() : NotFound();
+            => _semanticSearch.CancelReindex(Owner, requestId) ? NoContent() : NotFound();
     }
 }

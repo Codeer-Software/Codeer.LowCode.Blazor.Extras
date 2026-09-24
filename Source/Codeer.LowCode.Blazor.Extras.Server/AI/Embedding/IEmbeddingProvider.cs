@@ -1,7 +1,7 @@
 namespace Codeer.LowCode.Blazor.Extras.Server.AI.Embedding
 {
     /// <summary>
-    /// 文章をベクトルにする (埋め込み) プロバイダ。SemanticSearchField の索引付け (SemanticSearchIndexer) と意味検索 (RawDataAccessAgent の search_records / {embed:…}) が使う。
+    /// 文章をベクトルにする (埋め込み) プロバイダ。SemanticSearchField の索引付け (SemanticSearchService) と意味検索 (RawDataAccessAgent の search_records / {embed:…}) が使う。
     /// メール送信 (IMailSender) と同じ作り: プロバイダごとの実装 (今は Azure OpenAI) がそれぞれ自分の設定だけを受け取り、
     /// 差はこのインターフェースが吸収する (製品側にプロバイダ共通の設定型は無い)。独自実装 (ローカルモデル・社内 API 等) はテンプレートの対応表 (EmbeddingProviderTable) に足す。
     /// 索引と検索は同じモデルで作ったベクトルでないと比較できないので、プロバイダの選択はアプリ単位 (appsettings) で行う。モデルを変えたら列を作り直して全行再索引。

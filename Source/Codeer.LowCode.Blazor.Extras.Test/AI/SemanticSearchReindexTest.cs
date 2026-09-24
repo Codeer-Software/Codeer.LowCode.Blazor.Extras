@@ -18,7 +18,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
     /// 再索引 (SemanticSearchField のスクリプト Reindex のサーバー側): まとめて埋め込む・missingOnly・ジョブの進捗と確定・中断・入口検査・同じモジュールの合流。
     /// 実 DB は SQLite (索引付けは DB を選ばない。検索だけが pgvector / SQL Server 2025 前提)。
     /// </summary>
-    public class SemanticSearchReindexJobStoreTest : IAuthenticationContext
+    public class SemanticSearchReindexTest : IAuthenticationContext
     {
         const string Ds = "Main";
         string _dbFile = string.Empty;
@@ -28,18 +28,18 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
 
         public Task<string> GetCurrentUserIdAsync() => Task.FromResult("U1");
 
-        sealed class IndexingModuleDataIO(DesignData design, IAuthenticationContext auth, IDbAccessor db, ITemporaryFileManager files, SemanticSearchIndexer indexer)
+        sealed class IndexingModuleDataIO(DesignData design, IAuthenticationContext auth, IDbAccessor db, ITemporaryFileManager files, SemanticSearchService semanticSearch)
             : ModuleDataIO(design, auth, db, files)
         {
             protected override async Task<string> AddAsync(Guid transactionId, Guid moduleSubmitId, ModuleData data)
             {
-                await indexer.ApplyAsync(design, data, isNewData: true);
+                await semanticSearch.ApplyAsync(data, isNewData: true);
                 return await base.AddAsync(transactionId, moduleSubmitId, data);
             }
 
             protected override async Task UpdateAsync(Guid transactionId, Guid moduleSubmitId, ModuleData data)
             {
-                await indexer.ApplyAsync(design, data, isNewData: false);
+                await semanticSearch.ApplyAsync(data, isNewData: false);
                 await base.UpdateAsync(transactionId, moduleSubmitId, data);
             }
         }
@@ -80,9 +80,9 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
             if (File.Exists(_dbFile)) File.Delete(_dbFile);
         }
 
-        SemanticSearchIndexer Indexer() => new(() => _embedding);
+        SemanticSearchService Service(int? pageSize = null) => new(() => _embedding, () => _design) { ReindexPageSize = pageSize ?? 100 };
 
-        SemanticSearchReindexScope OpenScope(SemanticSearchIndexer indexer)
+        SemanticSearchReindexScope OpenScope(SemanticSearchService indexer)
         {
             var db = new DbAccessor(_dataSources);
             return new SemanticSearchReindexScope(new IndexingModuleDataIO(_design, this, db, new TemporaryFileManager(db, [], new List<IFileStorage>()), indexer), db);
@@ -95,12 +95,12 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
                 .Select(r => (Convert.ToInt32(r["id"]), r["search_text"] as string, r["search_vector"] as string)).ToList();
         }
 
-        static async Task<SemanticSearchReindexStatusResponse> WaitDoneAsync(SemanticSearchReindexJobStore store, string owner, string id, int timeoutMs = 10000)
+        static async Task<SemanticSearchReindexStatusResponse> WaitDoneAsync(SemanticSearchService store, string owner, string id, int timeoutMs = 10000)
         {
             var end = DateTime.Now.AddMilliseconds(timeoutMs);
             while (DateTime.Now < end)
             {
-                var s = store.GetStatus(owner, id);
+                var s = store.GetReindexStatus(owner, id);
                 Assert.That(s, Is.Not.Null);
                 if (!s!.IsRunning) return s;
                 await Task.Delay(20);
@@ -111,10 +111,10 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
         [Test]
         public async Task 全行をページ単位でまとめて埋め込み文章とベクトルを書き直す()
         {
-            var indexer = Indexer();
+            var indexer = Service();
             await using var scope = OpenScope(indexer);
             var progress = new List<(int, int)>();
-            var count = await indexer.ReindexAsync(scope.ModuleDataIO, scope.DbAccessor, _design, "Inquiry", progress: new SyncProgress(progress), pageSize: 3);
+            var count = await indexer.ReindexAsync(scope.ModuleDataIO, scope.DbAccessor, "Inquiry", progress: new SyncProgress(progress), pageSize: 3);
             Assert.That(count, Is.EqualTo(7));
             Assert.That(_embedding.Inputs.Count, Is.EqualTo(7));
             Assert.That(_embedding.Calls, Is.EqualTo(3), "7 行を 3 ページ = 埋め込み呼び出し 3 回 (行ごとではない)");
@@ -128,10 +128,10 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
         [Test]
         public async Task missingOnlyはベクトルの無い行だけ書き直す()
         {
-            var indexer = Indexer();
+            var indexer = Service();
             await using var scope = OpenScope(indexer);
             var progress = new List<(int, int)>();
-            var count = await indexer.ReindexAsync(scope.ModuleDataIO, scope.DbAccessor, _design, "Inquiry", missingOnly: true, progress: new SyncProgress(progress), pageSize: 100);
+            var count = await indexer.ReindexAsync(scope.ModuleDataIO, scope.DbAccessor, "Inquiry", missingOnly: true, progress: new SyncProgress(progress), pageSize: 100);
             Assert.That(count, Is.EqualTo(5));
             var rows = await RowsAsync();
             Assert.That(rows.Where(r => r.Id is 3 or 5).Select(r => (r.Text, r.Vector)), Is.All.EqualTo(("old", "[0.1,0.2]")), "索引済みの行は触らない");
@@ -142,9 +142,9 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
         [Test]
         public async Task 埋め込みモデルが無ければ文章だけ書き直す()
         {
-            var indexer = new SemanticSearchIndexer(null);
+            var indexer = new SemanticSearchService(() => null, () => _design);
             await using var scope = OpenScope(indexer);
-            Assert.That(await indexer.ReindexAsync(scope.ModuleDataIO, scope.DbAccessor, _design, "Inquiry"), Is.EqualTo(7));
+            Assert.That(await indexer.ReindexAsync(scope.ModuleDataIO, scope.DbAccessor, "Inquiry"), Is.EqualTo(7));
             var rows = await RowsAsync();
             Assert.That(rows.All(r => r.Text == $"件名: 件名 {r.Id}" && r.Vector == null), Is.True);
         }
@@ -152,49 +152,49 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
         [Test]
         public void 埋め込みの失敗は例外になる()
         {
-            var indexer = Indexer();
+            var indexer = Service();
             _embedding.Fail = true;
             Assert.ThrowsAsync<InvalidOperationException>(async () =>
             {
                 await using var scope = OpenScope(indexer);
-                await indexer.ReindexAsync(scope.ModuleDataIO, scope.DbAccessor, _design, "Inquiry");
+                await indexer.ReindexAsync(scope.ModuleDataIO, scope.DbAccessor, "Inquiry");
             });
         }
 
         [Test]
         public async Task ジョブは即requestIdを返しポーリングで進捗と確定が見える()
         {
-            var indexer = Indexer();
-            using var store = new SemanticSearchReindexJobStore(indexer, () => _design, new SemanticSearchReindexJobStoreOptions { PageSize = 2 });
-            var id = store.Start("user1", "Inquiry", missingOnly: false, () => OpenScope(indexer));
+            var indexer = Service(pageSize: 2);
+            using var store = indexer;
+            var id = store.StartReindex("user1", "Inquiry", missingOnly: false, () => OpenScope(indexer));
             Assert.That(id, Is.Not.Empty);
             var done = await WaitDoneAsync(store, "user1", id);
             Assert.That(done.Status, Is.EqualTo(AIChatJobStatus.Done));
             Assert.That(done.Processed, Is.EqualTo(7));
             Assert.That(done.Total, Is.EqualTo(7));
-            Assert.That(store.GetStatus("someone-else", id), Is.Null, "他人には見えない");
-            Assert.That(store.GetStatus("user1", "nope"), Is.Null);
+            Assert.That(store.GetReindexStatus("someone-else", id), Is.Null, "他人には見えない");
+            Assert.That(store.GetReindexStatus("user1", "nope"), Is.Null);
         }
 
         [Test]
         public async Task 同じモジュールが走っている間は合流し中断もできる()
         {
-            var indexer = Indexer();
+            var indexer = Service(pageSize: 1);
             _embedding.Delay = TimeSpan.FromMilliseconds(300);
-            using var store = new SemanticSearchReindexJobStore(indexer, () => _design, new SemanticSearchReindexJobStoreOptions { PageSize = 1 });
-            var id = store.Start("user1", "Inquiry", false, () => OpenScope(indexer));
-            var joined = store.Start("user2", "Inquiry", false, () => OpenScope(indexer));
+            using var store = indexer;
+            var id = store.StartReindex("user1", "Inquiry", false, () => OpenScope(indexer));
+            var joined = store.StartReindex("user2", "Inquiry", false, () => OpenScope(indexer));
             Assert.That(joined, Is.EqualTo(id), "走っている同じモジュールのジョブに合流する");
-            Assert.That(store.GetStatus("user2", id), Is.Not.Null, "合流した人にも見える");
+            Assert.That(store.GetReindexStatus("user2", id), Is.Not.Null, "合流した人にも見える");
 
-            Assert.That(store.Cancel("user1", id), Is.True);
+            Assert.That(store.CancelReindex("user1", id), Is.True);
             var status = await WaitDoneAsync(store, "user1", id);
             Assert.That(status.Status, Is.EqualTo(AIChatJobStatus.Canceled));
             Assert.That(status.Processed, Is.LessThan(7));
 
             //終わったので次は新しいジョブ
             _embedding.Delay = TimeSpan.Zero;
-            var next = store.Start("user1", "Inquiry", false, () => OpenScope(indexer));
+            var next = store.StartReindex("user1", "Inquiry", false, () => OpenScope(indexer));
             Assert.That(next, Is.Not.EqualTo(id));
             Assert.That((await WaitDoneAsync(store, "user1", next)).Status, Is.EqualTo(AIChatJobStatus.Done));
         }
@@ -202,15 +202,15 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
         [Test]
         public async Task 入口検査は読めるSemanticSearchFieldがあるときだけ通す()
         {
-            var indexer = Indexer();
-            using var store = new SemanticSearchReindexJobStore(indexer, () => _design);
+            var indexer = Service();
+            using var store = indexer;
             await using var scope = OpenScope(indexer);
-            var id = await store.StartAsync("u", new SemanticSearchReindexRequest { ModuleName = "Inquiry", FieldName = "Search" }, scope.ModuleDataIO, () => OpenScope(indexer));
+            var id = await store.StartReindexAsync("u", new SemanticSearchReindexRequest { ModuleName = "Inquiry", FieldName = "Search" }, scope.ModuleDataIO, () => OpenScope(indexer));
             Assert.That((await WaitDoneAsync(store, "u", id)).Status, Is.EqualTo(AIChatJobStatus.Done));
 
-            Assert.ThrowsAsync<LowCodeException>(async () => await store.StartAsync("u", new SemanticSearchReindexRequest { ModuleName = "Inquiry", FieldName = "Subject" }, scope.ModuleDataIO, () => OpenScope(indexer)), "型が違う");
-            Assert.ThrowsAsync<LowCodeException>(async () => await store.StartAsync("u", new SemanticSearchReindexRequest { ModuleName = "Nope", FieldName = "Search" }, scope.ModuleDataIO, () => OpenScope(indexer)));
-            Assert.ThrowsAsync<LowCodeException>(async () => await store.StartAsync("u", new SemanticSearchReindexRequest { ModuleName = "Inquiry", FieldName = "Nope" }, scope.ModuleDataIO, () => OpenScope(indexer)));
+            Assert.ThrowsAsync<LowCodeException>(async () => await store.StartReindexAsync("u", new SemanticSearchReindexRequest { ModuleName = "Inquiry", FieldName = "Subject" }, scope.ModuleDataIO, () => OpenScope(indexer)), "型が違う");
+            Assert.ThrowsAsync<LowCodeException>(async () => await store.StartReindexAsync("u", new SemanticSearchReindexRequest { ModuleName = "Nope", FieldName = "Search" }, scope.ModuleDataIO, () => OpenScope(indexer)));
+            Assert.ThrowsAsync<LowCodeException>(async () => await store.StartReindexAsync("u", new SemanticSearchReindexRequest { ModuleName = "Inquiry", FieldName = "Nope" }, scope.ModuleDataIO, () => OpenScope(indexer)));
         }
 
         sealed class SyncProgress(List<(int, int)> log) : IProgress<(int Processed, int Total)>
