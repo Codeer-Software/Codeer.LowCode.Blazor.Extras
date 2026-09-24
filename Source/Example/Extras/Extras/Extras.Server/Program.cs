@@ -51,8 +51,6 @@ SystemConfig.Instance.AIChat = builder.Configuration.GetSection("AIChat").Get<AI
 //意味検索の埋め込みプロバイダ: 呼び名は SemanticSearch.EmbeddingProvider、プロバイダ設定はそれぞれ独立したセクション (使うものだけ書けばよい)
 SystemConfig.Instance.SemanticSearch = builder.Configuration.GetSection("SemanticSearch").Get<SemanticSearchSettings>() ?? new();
 SystemConfig.Instance.AzureOpenAIEmbedding = builder.Configuration.GetSection("AzureOpenAIEmbedding").Get<AzureOpenAIEmbeddingSettings>() ?? new();
-SystemConfig.Instance.OpenAIEmbedding = builder.Configuration.GetSection("OpenAIEmbedding").Get<OpenAIEmbeddingSettings>() ?? new();
-SystemConfig.Instance.OllamaEmbedding = builder.Configuration.GetSection("OllamaEmbedding").Get<OllamaEmbeddingSettings>() ?? new();
 SystemConfig.Instance.DataSources.ToList().ForEach(e => e.ConnectionString = builder.Configuration.GetConnectionString(e.Name) ?? string.Empty);
 
 GlobalFontSettings.FontResolver = new CustomFontResolver(SystemConfig.Instance.FontFileDirectory);

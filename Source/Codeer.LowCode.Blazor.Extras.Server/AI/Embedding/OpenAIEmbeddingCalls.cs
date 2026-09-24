@@ -2,7 +2,7 @@ using OpenAI.Embeddings;
 
 namespace Codeer.LowCode.Blazor.Extras.Server.AI.Embedding
 {
-    /// <summary>OpenAI 系 (Azure OpenAI / OpenAI) の EmbeddingClient を IEmbeddingProvider の形で呼ぶ共通部分。</summary>
+    /// <summary>OpenAI 系の EmbeddingClient (Azure OpenAI) を IEmbeddingProvider の形で呼ぶ部分。</summary>
     internal static class OpenAIEmbeddingCalls
     {
         /// <summary>1 リクエストに載せられる入力数の上限 (API の制限は 2048)。</summary>

@@ -123,9 +123,7 @@ SQL の集計 (件数・合計) は従来どおり `execute_sql`、内容で探�
 | 呼び名 (テンプレート) | 実装 | 設定クラス | 主な項目 |
 |---|---|---|---|
 | `AzureOpenAI` | `AzureOpenAIEmbeddingProvider` | `AzureOpenAIEmbeddingSettings` | EndPoint / Key / Deployment / Dimensions |
-| `OpenAI` | `OpenAIEmbeddingProvider` | `OpenAIEmbeddingSettings` | Key / Model / Dimensions |
-| `Ollama` | `OllamaEmbeddingProvider` | `OllamaEmbeddingSettings` | BaseUrl / Model / Dimensions / BatchSize。ローカル / 社内サーバーのモデル。文章が外に出ない |
-| (任意) | `EmbeddingGeneratorProvider` | なし | Microsoft.Extensions.AI の `IEmbeddingGenerator` (OllamaSharp・ONNX 等) を包むアダプタ |
+| (任意) | `EmbeddingGeneratorProvider` | なし | Microsoft.Extensions.AI の `IEmbeddingGenerator` (OllamaSharp・ONNX 等の既存実装) を包むアダプタ |
 
 ```json
 "SemanticSearch": { "EmbeddingProvider": "AzureOpenAI" },
@@ -134,18 +132,16 @@ SQL の集計 (件数・合計) は従来どおり `execute_sql`、内容で探�
   "Key": "...",
   "Deployment": "text-embedding-3-small",
   "Dimensions": 1536
-},
-"OllamaEmbedding": { "BaseUrl": "http://localhost:11434", "Model": "bge-m3", "Dimensions": 1024 }
+}
 ```
 
-テンプレートの対応表 (`AI/EmbeddingProviderTable.cs`) が呼び名から実装を作ります。独自の埋め込み (ONNX のローカルモデル、社内 API 等) は `IEmbeddingProvider` を実装して表に 1 行足すだけです。
+テンプレートの対応表 (`AI/EmbeddingProviderTable.cs`) が呼び名から実装を作ります。別のプロバイダ (OpenAI、Ollama などのローカルモデル、社内 API 等) は `IEmbeddingProvider` を実装して表に 1 行足すだけです (文章の配列を受けてベクトルの配列を返すメソッド 1 本)。
 
 ```csharp
 public static IEmbeddingProvider? Create(string name) => name switch
 {
     "AzureOpenAI" => new AzureOpenAIEmbeddingProvider(config.AzureOpenAIEmbedding),
-    "OpenAI" => new OpenAIEmbeddingProvider(config.OpenAIEmbedding),
-    "Ollama" => new OllamaEmbeddingProvider(config.OllamaEmbedding),
+    // "MyLocal" => new MyLocalEmbeddingProvider(...),   // 独自実装はここに足す
     _ => null,   // 呼び名が無い = 意味検索なし (文章だけ保存)
 };
 

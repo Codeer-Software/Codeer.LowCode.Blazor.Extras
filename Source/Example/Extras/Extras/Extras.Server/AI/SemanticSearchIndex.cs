@@ -6,7 +6,7 @@ namespace Extras.Server.AI
 {
     /// <summary>
     /// SemanticSearchField (意味検索) のサーバー側の持ち物。
-    /// 埋め込みプロバイダは appsettings の SemanticSearch.EmbeddingProvider の呼び名で <see cref="EmbeddingProviderTable"/> から選ぶ (Azure OpenAI / OpenAI / Ollama / 独自)。
+    /// 埋め込みプロバイダは appsettings の SemanticSearch.EmbeddingProvider の呼び名で <see cref="EmbeddingProviderTable"/> から選ぶ (Azure OpenAI / 独自)。
     /// <see cref="Indexer"/> は CustomizedModuleDataIO が保存時に呼び (文章にベクトルを付ける)、
     /// <see cref="Provider"/> は AIChatAgentTable が RawDataAccessAgent に渡す (search_records で似た記録を探す)。
     /// <see cref="Jobs"/> は再索引 (全行の文章とベクトルの作り直し) のジョブ置き場で、SemanticSearchController の窓口から使う。

@@ -1,60 +1,21 @@
 using Codeer.LowCode.Blazor.Extras.Server.AI.Embedding;
-using System.Net;
-using System.Text.Json;
 
 namespace Codeer.LowCode.Blazor.Extras.Test.AI
 {
-    /// <summary>IEmbeddingProvider の実装: 設定の必須項目、Ollama の HTTP の形 (偽サーバー)、M.E.AI アダプタ。実 API には接続しない。</summary>
+    /// <summary>IEmbeddingProvider の実装: 設定の必須項目、M.E.AI アダプタ。実 API には接続しない。</summary>
     public class EmbeddingProviderTest
     {
         [Test]
         public void 設定が欠けていれば作れない()
         {
             Assert.That(() => new AzureOpenAIEmbeddingProvider(new AzureOpenAIEmbeddingSettings { EndPoint = "https://x.openai.azure.com/", Key = "k" }), Throws.InvalidOperationException, "Deployment 無し");
-            Assert.That(() => new OpenAIEmbeddingProvider(new OpenAIEmbeddingSettings { Model = "m" }), Throws.InvalidOperationException, "Key 無し");
-            Assert.That(() => new OllamaEmbeddingProvider(new OllamaEmbeddingSettings { Model = "" }), Throws.InvalidOperationException, "Model 無し");
+            Assert.That(() => new AzureOpenAIEmbeddingProvider(new AzureOpenAIEmbeddingSettings { EndPoint = "", Key = "k", Deployment = "d" }), Throws.InvalidOperationException, "EndPoint 無し");
 
             var azure = new AzureOpenAIEmbeddingProvider(new AzureOpenAIEmbeddingSettings { EndPoint = "https://x.openai.azure.com/", Key = "k", Deployment = "text-embedding-3-small", Dimensions = 1536 });
             Assert.That(azure.ModelId, Is.EqualTo("text-embedding-3-small"));
             Assert.That(azure.Dimensions, Is.EqualTo(1536));
-            var openAI = new OpenAIEmbeddingProvider(new OpenAIEmbeddingSettings { Key = "k", Model = "text-embedding-3-large" });
-            Assert.That(openAI.ModelId, Is.EqualTo("text-embedding-3-large"));
-            Assert.That(openAI.Dimensions, Is.EqualTo(0), "0 = モデル既定");
-        }
-
-        [Test]
-        public async Task Ollamaはapi_embedに文章をまとめて送りベクトルを受け取る()
-        {
-            var requests = new List<(Uri Url, JsonDocument Body)>();
-            var handler = new FakeHandler(async (request, ct) =>
-            {
-                var body = JsonDocument.Parse(await request.Content!.ReadAsStringAsync(ct));
-                requests.Add((request.RequestUri!, body));
-                var inputs = body.RootElement.GetProperty("input").EnumerateArray().Select(e => e.GetString()!).ToList();
-                //各文章に長さを埋めた 3 次元ベクトルを返す
-                var vectors = inputs.Select(t => new[] { t.Length, 0.5f, -1f });
-                return new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent(new { model = "bge-m3", embeddings = vectors }) };
-            });
-            var provider = new OllamaEmbeddingProvider(new OllamaEmbeddingSettings { BaseUrl = "http://ollama.local:11434/", Model = "bge-m3", Dimensions = 3, BatchSize = 2 }, new HttpClient(handler));
-            Assert.That(provider.ModelId, Is.EqualTo("bge-m3"));
-            Assert.That(provider.Dimensions, Is.EqualTo(3));
-
-            var vectorsOut = await provider.EmbedAsync(["ab", "cde", "f"]);
-            Assert.That(vectorsOut.Count, Is.EqualTo(3));
-            Assert.That(vectorsOut.Select(v => v[0]), Is.EqualTo(new float[] { 2, 3, 1 }), "順序どおり");
-            Assert.That(requests.Count, Is.EqualTo(2), "BatchSize 2 で 3 件 = 2 リクエスト");
-            Assert.That(requests[0].Url.ToString(), Is.EqualTo("http://ollama.local:11434/api/embed"));
-            Assert.That(requests[0].Body.RootElement.GetProperty("model").GetString(), Is.EqualTo("bge-m3"));
-            Assert.That(requests[0].Body.RootElement.GetProperty("input").GetArrayLength(), Is.EqualTo(2));
-            Assert.That(requests[1].Body.RootElement.GetProperty("input").GetArrayLength(), Is.EqualTo(1));
-        }
-
-        [Test]
-        public void Ollamaの失敗は本文つきの例外()
-        {
-            var handler = new FakeHandler((_, _) => Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotFound) { Content = new StringContent("{\"error\":\"model 'nope' not found\"}") }));
-            var provider = new OllamaEmbeddingProvider(new OllamaEmbeddingSettings { Model = "nope" }, new HttpClient(handler));
-            Assert.That(async () => await provider.EmbedAsync(["a"]), Throws.InvalidOperationException.With.Message.Contain("404").And.Message.Contain("not found"));
+            var noDimensions = new AzureOpenAIEmbeddingProvider(new AzureOpenAIEmbeddingSettings { EndPoint = "https://x.openai.azure.com/", Key = "k", Deployment = "d" });
+            Assert.That(noDimensions.Dimensions, Is.EqualTo(0), "0 = モデル既定");
         }
 
         [Test]
@@ -68,13 +29,6 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
             var vectors = await provider.EmbedAsync(["納期", "請求"]);
             Assert.That(vectors.Count, Is.EqualTo(2));
             Assert.That(vectors[0], Is.EqualTo(FakeEmbeddingProvider.Embed("納期")));
-        }
-
-        static HttpContent JsonContent(object value) => new StringContent(JsonSerializer.Serialize(value), System.Text.Encoding.UTF8, "application/json");
-
-        sealed class FakeHandler(Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> respond) : HttpMessageHandler
-        {
-            protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) => respond(request, cancellationToken);
         }
 
         //M.E.AI の IEmbeddingGenerator を FakeEmbeddingProvider で作る (アダプタの往復確認用)

@@ -31,8 +31,6 @@ namespace Extras.Server.Services
         public AISettings AISettings { get; set; } = new();
         public SemanticSearchSettings SemanticSearch { get; set; } = new();
         public AzureOpenAIEmbeddingSettings AzureOpenAIEmbedding { get; set; } = new();
-        public OpenAIEmbeddingSettings OpenAIEmbedding { get; set; } = new();
-        public OllamaEmbeddingSettings OllamaEmbedding { get; set; } = new();
         public Extras.Server.AI.AIChatSettings AIChat { get; set; } = new();
         public SystemConfigForFront ForFront() => new SystemConfigForFront { CanScriptDebug = CanScriptDebug, UseHotReload = UseHotReload };
     }

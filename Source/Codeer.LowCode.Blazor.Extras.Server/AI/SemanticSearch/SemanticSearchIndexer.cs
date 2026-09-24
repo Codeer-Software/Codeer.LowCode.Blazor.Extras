@@ -16,7 +16,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
     /// SemanticSearchField の索引を保存時に付けるサーバー側ヘルパー (PasswordHashHelper と同じ位置づけ)。
     /// <see cref="ApplyAsync"/> を <c>ModuleDataIO</c> の派生 (テンプレートの <c>CustomizedModuleDataIO.AddAsync / UpdateAsync</c>) から呼ぶと、
     /// 送られてきた文章 (クライアントのフィールドが Submit 時に組み立てたもの) に埋め込みベクトルを付けて、書き込み専用列に保存される形にする。
-    /// 埋め込みは <see cref="IEmbeddingProvider"/> (Azure OpenAI / OpenAI / Ollama / 独自。アプリの対応表で選ぶ)。未設定なら文章だけ保存し、ベクトルは null のまま (検索対象にならない)。
+    /// 埋め込みは <see cref="IEmbeddingProvider"/> (Azure OpenAI / 独自。アプリの対応表で選ぶ)。未設定なら文章だけ保存し、ベクトルは null のまま (検索対象にならない)。
     /// 埋め込みの呼び出しに失敗したときも保存は止めず、ベクトル null で保存して警告ログを出す (<see cref="ReindexAsync"/> で後から埋められる)。
     /// <code>
     /// //アプリの静的な持ち物として 1 つ作る

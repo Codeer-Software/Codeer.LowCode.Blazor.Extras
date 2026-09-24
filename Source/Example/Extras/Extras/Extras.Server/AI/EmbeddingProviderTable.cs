@@ -8,8 +8,8 @@ namespace Extras.Server.AI
     /// 呼び名は appsettings の SemanticSearch.EmbeddingProvider で指定する (索引と検索は同じモデルでないと成立しないのでアプリ単位)。
     /// </summary>
     /// <remarks>
-    /// プロバイダごとの設定は appsettings の独立したセクション ("AzureOpenAIEmbedding" / "OpenAIEmbedding" / "OllamaEmbedding") で、Program.cs が個別に読んでいる。
-    /// 独自の埋め込み (ONNX のローカルモデル・社内 API 等) を使うときは <see cref="IEmbeddingProvider"/> を実装してこの switch に 1 行足す
+    /// プロバイダごとの設定は appsettings の独立したセクション ("AzureOpenAIEmbedding") で、Program.cs が個別に読んでいる。
+    /// 別のプロバイダ (OpenAI / Ollama などのローカルモデル・社内 API 等) を使うときは <see cref="IEmbeddingProvider"/> を実装してこの switch に 1 行足す
     /// (Microsoft.Extensions.AI の IEmbeddingGenerator を持っているなら EmbeddingGeneratorProvider で包む)。
     /// null を返すと「その呼び名は対応表に無い」= 意味検索なし (文章だけ保存・ツール無し)。
     /// モデルを変えたら DB のベクトル列の次元を合わせて作り直し、SemanticSearchField のスクリプト Reindex で全行を再索引する。
@@ -22,8 +22,6 @@ namespace Extras.Server.AI
             return name switch
             {
                 "AzureOpenAI" => new AzureOpenAIEmbeddingProvider(config.AzureOpenAIEmbedding),
-                "OpenAI" => new OpenAIEmbeddingProvider(config.OpenAIEmbedding),
-                "Ollama" => new OllamaEmbeddingProvider(config.OllamaEmbedding),
                 _ => null,
             };
         }
