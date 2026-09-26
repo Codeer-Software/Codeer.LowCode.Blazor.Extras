@@ -2946,5 +2946,452 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
                 return ResourceManager.GetString("SemanticSearchReindex_Canceled", resourceCulture);
             }
         }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Edit History.
+        /// </summary>
+        internal static string EditHistoryField {
+            get {
+                return ResourceManager.GetString("EditHistoryField", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to History module.
+        /// </summary>
+        internal static string EditHistoryHistoryModuleName {
+            get {
+                return ResourceManager.GetString("EditHistoryHistoryModuleName", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Layout for showing a version.
+        /// </summary>
+        internal static string EditHistoryLayoutName {
+            get {
+                return ResourceManager.GetString("EditHistoryLayoutName", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Versions per page.
+        /// </summary>
+        internal static string EditHistoryPageSize {
+            get {
+                return ResourceManager.GetString("EditHistoryPageSize", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Edit History Contract.
+        /// </summary>
+        internal static string EditHistoryContractField {
+            get {
+                return ResourceManager.GetString("EditHistoryContractField", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to ModuleName (target module name, required).
+        /// </summary>
+        internal static string EditHistoryContractModuleName {
+            get {
+                return ResourceManager.GetString("EditHistoryContractModuleName", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to DataId (target record Id, required).
+        /// </summary>
+        internal static string EditHistoryContractDataId {
+            get {
+                return ResourceManager.GetString("EditHistoryContractDataId", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to ChangeType (Add / Update / Delete, required).
+        /// </summary>
+        internal static string EditHistoryContractChangeType {
+            get {
+                return ResourceManager.GetString("EditHistoryContractChangeType", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Snapshot (record JSON, required).
+        /// </summary>
+        internal static string EditHistoryContractSnapshot {
+            get {
+                return ResourceManager.GetString("EditHistoryContractSnapshot", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to UserId (user who changed).
+        /// </summary>
+        internal static string EditHistoryContractUserId {
+            get {
+                return ResourceManager.GetString("EditHistoryContractUserId", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to DateTime (changed at).
+        /// </summary>
+        internal static string EditHistoryContractDateTime {
+            get {
+                return ResourceManager.GetString("EditHistoryContractDateTime", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Created.
+        /// </summary>
+        internal static string EditHistoryChangeType_Add {
+            get {
+                return ResourceManager.GetString("EditHistoryChangeType_Add", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Updated.
+        /// </summary>
+        internal static string EditHistoryChangeType_Update {
+            get {
+                return ResourceManager.GetString("EditHistoryChangeType_Update", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Deleted.
+        /// </summary>
+        internal static string EditHistoryChangeType_Delete {
+            get {
+                return ResourceManager.GetString("EditHistoryChangeType_Delete", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to The field '{1}' for the role {0} must be a {2} field..
+        /// </summary>
+        internal static string EditHistoryCheck_RoleTypeFormat {
+            get {
+                return ResourceManager.GetString("EditHistoryCheck_RoleTypeFormat", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The module '{0}' records into this history module, but the enum '{1}' has no member for it. Add a member whose value is the module name..
+        /// </summary>
+        internal static string EditHistoryCheck_TargetEnumMemberMissingFormat {
+            get {
+                return ResourceManager.GetString("EditHistoryCheck_TargetEnumMemberMissingFormat", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Version {0}.
+        /// </summary>
+        internal static string EditHistoryVersionFormat {
+            get {
+                return ResourceManager.GetString("EditHistoryVersionFormat", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Show this version.
+        /// </summary>
+        internal static string EditHistoryShowVersion {
+            get {
+                return ResourceManager.GetString("EditHistoryShowVersion", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Restore this version.
+        /// </summary>
+        internal static string EditHistoryRestoreVersion {
+            get {
+                return ResourceManager.GetString("EditHistoryRestoreVersion", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Apply the content of version {0} to the form? It is confirmed when you save..
+        /// </summary>
+        internal static string EditHistoryRestoreConfirmFormat {
+            get {
+                return ResourceManager.GetString("EditHistoryRestoreConfirmFormat", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Version {0} has been applied. Save to confirm..
+        /// </summary>
+        internal static string EditHistoryRestoredFormat {
+            get {
+                return ResourceManager.GetString("EditHistoryRestoredFormat", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Restore.
+        /// </summary>
+        internal static string EditHistoryRestore {
+            get {
+                return ResourceManager.GetString("EditHistoryRestore", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Cancel.
+        /// </summary>
+        internal static string EditHistoryCancel {
+            get {
+                return ResourceManager.GetString("EditHistoryCancel", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Close.
+        /// </summary>
+        internal static string EditHistoryClose {
+            get {
+                return ResourceManager.GetString("EditHistoryClose", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Show more.
+        /// </summary>
+        internal static string EditHistoryLoadMore {
+            get {
+                return ResourceManager.GetString("EditHistoryLoadMore", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Loading....
+        /// </summary>
+        internal static string EditHistoryLoading {
+            get {
+                return ResourceManager.GetString("EditHistoryLoading", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to No history..
+        /// </summary>
+        internal static string EditHistoryNoHistory {
+            get {
+                return ResourceManager.GetString("EditHistoryNoHistory", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to History is recorded after the record is saved..
+        /// </summary>
+        internal static string EditHistoryNotSavedYet {
+            get {
+                return ResourceManager.GetString("EditHistoryNotSavedYet", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Edit history (shown at runtime).
+        /// </summary>
+        internal static string EditHistoryDesignPlaceholder {
+            get {
+                return ResourceManager.GetString("EditHistoryDesignPlaceholder", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Record created..
+        /// </summary>
+        internal static string EditHistoryRecordCreated {
+            get {
+                return ResourceManager.GetString("EditHistoryRecordCreated", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Record deleted..
+        /// </summary>
+        internal static string EditHistoryRecordDeleted {
+            get {
+                return ResourceManager.GetString("EditHistoryRecordDeleted", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to No changes in the fields you can see..
+        /// </summary>
+        internal static string EditHistoryNoVisibleChanges {
+            get {
+                return ResourceManager.GetString("EditHistoryNoVisibleChanges", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to {0} added.
+        /// </summary>
+        internal static string EditHistoryRowsAddedFormat {
+            get {
+                return ResourceManager.GetString("EditHistoryRowsAddedFormat", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to {0} removed.
+        /// </summary>
+        internal static string EditHistoryRowsRemovedFormat {
+            get {
+                return ResourceManager.GetString("EditHistoryRowsRemovedFormat", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to {0} changed.
+        /// </summary>
+        internal static string EditHistoryRowsChangedFormat {
+            get {
+                return ResourceManager.GetString("EditHistoryRowsChangedFormat", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Added.
+        /// </summary>
+        internal static string EditHistoryRowAdded {
+            get {
+                return ResourceManager.GetString("EditHistoryRowAdded", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Removed.
+        /// </summary>
+        internal static string EditHistoryRowRemoved {
+            get {
+                return ResourceManager.GetString("EditHistoryRowRemoved", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Changed.
+        /// </summary>
+        internal static string EditHistoryRowChanged {
+            get {
+                return ResourceManager.GetString("EditHistoryRowChanged", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Yes.
+        /// </summary>
+        internal static string EditHistoryTrue {
+            get {
+                return ResourceManager.GetString("EditHistoryTrue", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to No.
+        /// </summary>
+        internal static string EditHistoryFalse {
+            get {
+                return ResourceManager.GetString("EditHistoryFalse", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to (empty).
+        /// </summary>
+        internal static string EditHistoryNoValue {
+            get {
+                return ResourceManager.GetString("EditHistoryNoValue", resourceCulture);
+            }
+        }
+
+        internal static string EditHistoryNoPreviousVersion {
+            get {
+                return ResourceManager.GetString("EditHistoryNoPreviousVersion", resourceCulture);
+            }
+        }
+
+        internal static string EditHistoryChangedNoText {
+            get {
+                return ResourceManager.GetString("EditHistoryChangedNoText", resourceCulture);
+            }
+        }
+
+        internal static string EditHistoryChangeType_Restore {
+            get {
+                return ResourceManager.GetString("EditHistoryChangeType_Restore", resourceCulture);
+            }
+        }
+
+        internal static string EditHistoryRestoreButtonField {
+            get {
+                return ResourceManager.GetString("EditHistoryRestoreButtonField", resourceCulture);
+            }
+        }
+
+        internal static string EditHistoryRestoreButtonText {
+            get {
+                return ResourceManager.GetString("EditHistoryRestoreButtonText", resourceCulture);
+            }
+        }
+
+        internal static string EditHistoryRestoreButton_DefaultText {
+            get {
+                return ResourceManager.GetString("EditHistoryRestoreButton_DefaultText", resourceCulture);
+            }
+        }
+
+        internal static string EditHistoryRestoreRecordConfirmFormat {
+            get {
+                return ResourceManager.GetString("EditHistoryRestoreRecordConfirmFormat", resourceCulture);
+            }
+        }
+
+        internal static string EditHistoryRestoreRecordDone {
+            get {
+                return ResourceManager.GetString("EditHistoryRestoreRecordDone", resourceCulture);
+            }
+        }
+
+        internal static string EditHistoryRestoreRecordFailedFormat {
+            get {
+                return ResourceManager.GetString("EditHistoryRestoreRecordFailedFormat", resourceCulture);
+            }
+        }
+
+        internal static string EditHistoryCheck_DeleteArchive {
+            get {
+                return ResourceManager.GetString("EditHistoryCheck_DeleteArchive", resourceCulture);
+            }
+        }
+
+        internal static string EditHistoryRecordRestored {
+            get {
+                return ResourceManager.GetString("EditHistoryRecordRestored", resourceCulture);
+            }
+        }
+
+        internal static string EditHistoryRowNumberFormat {
+            get {
+                return ResourceManager.GetString("EditHistoryRowNumberFormat", resourceCulture);
+            }
+        }
+
+        internal static string EditHistoryChangedFieldsFormat {
+            get {
+                return ResourceManager.GetString("EditHistoryChangedFieldsFormat", resourceCulture);
+            }
+        }
     }
 }

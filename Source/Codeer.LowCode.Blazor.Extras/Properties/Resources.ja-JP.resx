@@ -1362,4 +1362,166 @@
   <data name="SemanticSearchReindex_Canceled" xml:space="preserve">
     <value>再索引を中断しました。</value>
   </data>
+  <data name="EditHistoryField" xml:space="preserve">
+    <value>編集履歴</value>
+  </data>
+  <data name="EditHistoryHistoryModuleName" xml:space="preserve">
+    <value>履歴モジュール</value>
+  </data>
+  <data name="EditHistoryLayoutName" xml:space="preserve">
+    <value>版表示のレイアウト</value>
+  </data>
+  <data name="EditHistoryPageSize" xml:space="preserve">
+    <value>1ページの版数</value>
+  </data>
+  <data name="EditHistoryContractField" xml:space="preserve">
+    <value>編集履歴契約</value>
+  </data>
+  <data name="EditHistoryContractModuleName" xml:space="preserve">
+    <value>ModuleName (対象モジュール名・必須)</value>
+  </data>
+  <data name="EditHistoryContractDataId" xml:space="preserve">
+    <value>DataId (対象レコードの Id・必須)</value>
+  </data>
+  <data name="EditHistoryContractChangeType" xml:space="preserve">
+    <value>ChangeType (変更種別・必須)</value>
+  </data>
+  <data name="EditHistoryContractSnapshot" xml:space="preserve">
+    <value>Snapshot (レコード JSON・必須)</value>
+  </data>
+  <data name="EditHistoryContractUserId" xml:space="preserve">
+    <value>UserId (変更したユーザー)</value>
+  </data>
+  <data name="EditHistoryContractDateTime" xml:space="preserve">
+    <value>DateTime (変更日時)</value>
+  </data>
+  <data name="EditHistoryChangeType_Add" xml:space="preserve">
+    <value>作成</value>
+  </data>
+  <data name="EditHistoryChangeType_Update" xml:space="preserve">
+    <value>更新</value>
+  </data>
+  <data name="EditHistoryChangeType_Delete" xml:space="preserve">
+    <value>削除</value>
+  </data>
+  <data name="EditHistoryCheck_RoleTypeFormat" xml:space="preserve">
+    <value>役割 {0} のフィールド '{1}' は {2} フィールドでなければなりません。</value>
+  </data>
+  <data name="EditHistoryCheck_TargetEnumMemberMissingFormat" xml:space="preserve">
+    <value>モジュール '{0}' はこの履歴モジュールに記録しますが、enum '{1}' にそのメンバーがありません。値がモジュール名のメンバーを追加してください。</value>
+  </data>
+  <data name="EditHistoryVersionFormat" xml:space="preserve">
+    <value>版 {0}</value>
+  </data>
+  <data name="EditHistoryShowVersion" xml:space="preserve">
+    <value>この版を表示</value>
+  </data>
+  <data name="EditHistoryRestoreVersion" xml:space="preserve">
+    <value>この版に戻す</value>
+  </data>
+  <data name="EditHistoryRestoreConfirmFormat" xml:space="preserve">
+    <value>版 {0} の内容をフォームに反映します。保存すると確定します。よろしいですか？</value>
+  </data>
+  <data name="EditHistoryRestoredFormat" xml:space="preserve">
+    <value>版 {0} の内容を反映しました。保存して確定してください。</value>
+  </data>
+  <data name="EditHistoryRestore" xml:space="preserve">
+    <value>戻す</value>
+  </data>
+  <data name="EditHistoryCancel" xml:space="preserve">
+    <value>キャンセル</value>
+  </data>
+  <data name="EditHistoryClose" xml:space="preserve">
+    <value>閉じる</value>
+  </data>
+  <data name="EditHistoryLoadMore" xml:space="preserve">
+    <value>さらに表示</value>
+  </data>
+  <data name="EditHistoryLoading" xml:space="preserve">
+    <value>読み込み中...</value>
+  </data>
+  <data name="EditHistoryNoHistory" xml:space="preserve">
+    <value>履歴はありません</value>
+  </data>
+  <data name="EditHistoryNotSavedYet" xml:space="preserve">
+    <value>保存すると履歴が記録されます</value>
+  </data>
+  <data name="EditHistoryDesignPlaceholder" xml:space="preserve">
+    <value>編集履歴 (実行時に表示)</value>
+  </data>
+  <data name="EditHistoryRecordCreated" xml:space="preserve">
+    <value>レコードが作成されました</value>
+  </data>
+  <data name="EditHistoryRecordDeleted" xml:space="preserve">
+    <value>レコードが削除されました</value>
+  </data>
+  <data name="EditHistoryNoVisibleChanges" xml:space="preserve">
+    <value>表示できる項目に変更はありません</value>
+  </data>
+  <data name="EditHistoryRowsAddedFormat" xml:space="preserve">
+    <value>追加 {0} 件</value>
+  </data>
+  <data name="EditHistoryRowsRemovedFormat" xml:space="preserve">
+    <value>削除 {0} 件</value>
+  </data>
+  <data name="EditHistoryRowsChangedFormat" xml:space="preserve">
+    <value>変更 {0} 件</value>
+  </data>
+  <data name="EditHistoryRowAdded" xml:space="preserve">
+    <value>追加</value>
+  </data>
+  <data name="EditHistoryRowRemoved" xml:space="preserve">
+    <value>削除</value>
+  </data>
+  <data name="EditHistoryRowChanged" xml:space="preserve">
+    <value>変更</value>
+  </data>
+  <data name="EditHistoryTrue" xml:space="preserve">
+    <value>はい</value>
+  </data>
+  <data name="EditHistoryFalse" xml:space="preserve">
+    <value>いいえ</value>
+  </data>
+  <data name="EditHistoryNoValue" xml:space="preserve">
+    <value>(空)</value>
+  </data>
+  <data name="EditHistoryNoPreviousVersion" xml:space="preserve">
+    <value>比較する前の版がありません (内容は「この版を表示」で確認できます)</value>
+  </data>
+  <data name="EditHistoryChangedNoText" xml:space="preserve">
+    <value>変更あり</value>
+  </data>
+  <data name="EditHistoryChangeType_Restore" xml:space="preserve">
+    <value>復活</value>
+  </data>
+  <data name="EditHistoryRestoreButtonField" xml:space="preserve">
+    <value>編集履歴 復活ボタン</value>
+  </data>
+  <data name="EditHistoryRestoreButtonText" xml:space="preserve">
+    <value>ボタンの文言</value>
+  </data>
+  <data name="EditHistoryRestoreButton_DefaultText" xml:space="preserve">
+    <value>このレコードを復活</value>
+  </data>
+  <data name="EditHistoryRestoreRecordConfirmFormat" xml:space="preserve">
+    <value>削除された {0} のレコード ({1}) を復活します。よろしいですか？</value>
+  </data>
+  <data name="EditHistoryRestoreRecordDone" xml:space="preserve">
+    <value>レコードを復活しました</value>
+  </data>
+  <data name="EditHistoryRestoreRecordFailedFormat" xml:space="preserve">
+    <value>レコードを復活できませんでした。{0}</value>
+  </data>
+  <data name="EditHistoryCheck_DeleteArchive" xml:space="preserve">
+    <value>編集履歴と退避 (削除テーブルへの移動) は併用できません。論理削除か物理削除にしてください。</value>
+  </data>
+  <data name="EditHistoryRecordRestored" xml:space="preserve">
+    <value>レコードが復活しました</value>
+  </data>
+  <data name="EditHistoryRowNumberFormat" xml:space="preserve">
+    <value>行 {0}</value>
+  </data>
+  <data name="EditHistoryChangedFieldsFormat" xml:space="preserve">
+    <value>変更 {0} 項目: {1}</value>
+  </data>
 </root>

@@ -12,9 +12,31 @@ using Codeer.LowCode.Blazor.Script.Internal.ScriptServices;
 namespace Codeer.LowCode.Blazor.Extras.Fields
 {
     public class TaskBoardField(TaskBoardFieldDesign design)
-        : FieldBase<TaskBoardFieldDesign>(design), ISearchResultsViewField
+        : FieldBase<TaskBoardFieldDesign>(design), ISearchResultsViewField, IOwnedRecordsField
     {
         private readonly ModuleCollection _modules = new();
+
+        //編集履歴の復元: 宣言した従属レコード (カード) を版の内容に差し替える (保存はユーザー)
+        public async Task ApplyOwnedRecordsAsync(string name, List<ModuleData> rows, Action<string, string>? onRevive)
+        {
+            if (name != Design.Name) return;
+            var all = await this.GetChildModulesAsync(Design.SearchCondition, ModuleLayoutType.Detail, Design.CardLayoutName, GetLayoutFieldNames(Design.PopupLayoutName));
+            _modules.ApplyLoaded(all);
+            await EditHistory.OwnedRecordsRestore.ApplyAsync(this, _modules, ModuleName, Design.CardLayoutName, Design.SearchCondition, rows, onRevive);
+            Items.Clear();
+            Items.AddRange(_modules.Items.Select(ConvertToTaskBoardItem).OrderBy(e => e.SortIndex));
+            NotifyStateChanged();
+        }
+
+        //編集履歴の版表示: 版のカードをそのまま表示する (DB は読まない・表示専用)
+        public async Task ShowOwnedRecordsAsync(string name, List<ModuleData> rows)
+        {
+            if (name != Design.Name) return;
+            _modules.ApplyLoaded(await EditHistory.OwnedRecordsDisplay.CreateAsync(this, ModuleName, Design.CardLayoutName, rows));
+            Items.Clear();
+            Items.AddRange(_modules.Items.Select(ConvertToTaskBoardItem).OrderBy(e => e.SortIndex));
+            NotifyStateChanged();
+        }
         private SearchCondition? _additionalCondition;
 
         [ScriptHide]
@@ -99,6 +121,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         public async Task ReloadAsync()
         {
             if (!AllowLoad) return;
+            if (this.IsBoundToUnsavedRecord(Design.SearchCondition)) return;
 
             var items = await this.GetChildModulesAsync(GetSearchCondition(), ModuleLayoutType.Detail, Design.CardLayoutName, GetLayoutFieldNames(Design.PopupLayoutName));
             _modules.ApplyLoaded(items);

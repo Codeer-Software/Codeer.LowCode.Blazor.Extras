@@ -1,0 +1,16 @@
+{
+  "Name": "EditHistoryTargetModule",
+  "ValueType": "String",
+  "Members": [
+    {
+      "Name": "Order",
+      "Value": "",
+      "DisplayText": "受注"
+    },
+    {
+      "Name": "Project",
+      "Value": "",
+      "DisplayText": "プロジェクト"
+    }
+  ]
+}

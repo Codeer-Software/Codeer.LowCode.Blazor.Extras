@@ -1,0 +1,15 @@
+@using Codeer.LowCode.Blazor.Components
+@using Codeer.LowCode.Blazor.Extras.Fields
+@using Microsoft.AspNetCore.Components.Web
+@inherits FieldComponentBase<EditHistoryRestoreButtonField>
+
+@* 削除の版でだけ出す。デザインモードでは形だけ出す *@
+@if (Field.Services.AppInfoService.IsDesignMode)
+{
+  <button type="button" class="btn btn-outline-primary btn-sm" disabled data-system="edit-history-restore-record">@Field.ButtonText</button>
+}
+else if (Field.CanRestore)
+{
+  <button type="button" class="btn btn-outline-primary btn-sm" style="@Field.GetOwnStyleString()" disabled="@Field.IsBusy"
+          @onclick="@(async () => await Field.RestoreAsync())" data-system="edit-history-restore-record">@Field.ButtonText</button>
+}

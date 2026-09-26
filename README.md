@@ -60,6 +60,7 @@ Codeer.LowCode.Blazor 本体が持つのは認可だけで、認証 (ログイ�
 | [メール送信](docs/Mail.md) | MailField (単発送信ボタン) / BulkMailField (名簿への一斉送信) / 送信履歴 / プレビュー。宛先・文面はレコードの値から組み立てる |
 | [MailSender](docs/MailSender.md) | 担当者本人のアカウント (Gmail / Microsoft 365 / SMTP) 名義で送る Windows アプリ (`Tools/MailSender` をビルドして使う)。Web のプレビュー HTML を開いて送信。トークンは本人の PC にだけ置く。Web アプリのシステム送信者用トークンの発行にも使う |
 | [承認フロー](docs/ApprovalFlow.md) | ApprovalFlowField を申請書に置くだけで申請・承認・却下・差し戻し・取り下げ・再申請・回覧。承認データは通常のモジュール。状態遷移はサーバーが検証 |
+| [編集履歴](docs/EditHistory.md) | EditHistoryField をモジュールに置くと保存 (作成・更新・削除) ごとにレコード全体 (明細込み) のスナップショットが履歴モジュールへ記録される。詳細画面に版の一覧 (変更フィールドの 旧 → 新)・「この版を表示」・「この版に戻す」(フォームへ反映して保存で確定)。履歴は通常のモジュール = 閲覧権限は履歴モジュールの設定 (サーバサイド実装が必要) |
 
 どちらもデザイナの **Tools > メールのセットアップ / 承認フローのセットアップ** (または CLI の `mail-setup` / `approval-setup`) で
 必要なモジュール群を生成できます。

@@ -1362,4 +1362,166 @@ Recipients: {1}</value>
   <data name="SemanticSearchReindex_Canceled" xml:space="preserve">
     <value>The reindex was canceled.</value>
   </data>
+  <data name="EditHistoryField" xml:space="preserve">
+    <value>Edit History</value>
+  </data>
+  <data name="EditHistoryHistoryModuleName" xml:space="preserve">
+    <value>History module</value>
+  </data>
+  <data name="EditHistoryLayoutName" xml:space="preserve">
+    <value>Layout for showing a version</value>
+  </data>
+  <data name="EditHistoryPageSize" xml:space="preserve">
+    <value>Versions per page</value>
+  </data>
+  <data name="EditHistoryContractField" xml:space="preserve">
+    <value>Edit History Contract</value>
+  </data>
+  <data name="EditHistoryContractModuleName" xml:space="preserve">
+    <value>ModuleName (target module name, required)</value>
+  </data>
+  <data name="EditHistoryContractDataId" xml:space="preserve">
+    <value>DataId (target record Id, required)</value>
+  </data>
+  <data name="EditHistoryContractChangeType" xml:space="preserve">
+    <value>ChangeType (Add / Update / Delete, required)</value>
+  </data>
+  <data name="EditHistoryContractSnapshot" xml:space="preserve">
+    <value>Snapshot (record JSON, required)</value>
+  </data>
+  <data name="EditHistoryContractUserId" xml:space="preserve">
+    <value>UserId (user who changed)</value>
+  </data>
+  <data name="EditHistoryContractDateTime" xml:space="preserve">
+    <value>DateTime (changed at)</value>
+  </data>
+  <data name="EditHistoryChangeType_Add" xml:space="preserve">
+    <value>Created</value>
+  </data>
+  <data name="EditHistoryChangeType_Update" xml:space="preserve">
+    <value>Updated</value>
+  </data>
+  <data name="EditHistoryChangeType_Delete" xml:space="preserve">
+    <value>Deleted</value>
+  </data>
+  <data name="EditHistoryCheck_RoleTypeFormat" xml:space="preserve">
+    <value>The field '{1}' for the role {0} must be a {2} field.</value>
+  </data>
+  <data name="EditHistoryCheck_TargetEnumMemberMissingFormat" xml:space="preserve">
+    <value>The module '{0}' records into this history module, but the enum '{1}' has no member for it. Add a member whose value is the module name.</value>
+  </data>
+  <data name="EditHistoryVersionFormat" xml:space="preserve">
+    <value>Version {0}</value>
+  </data>
+  <data name="EditHistoryShowVersion" xml:space="preserve">
+    <value>Show this version</value>
+  </data>
+  <data name="EditHistoryRestoreVersion" xml:space="preserve">
+    <value>Restore this version</value>
+  </data>
+  <data name="EditHistoryRestoreConfirmFormat" xml:space="preserve">
+    <value>Apply the content of version {0} to the form? It is confirmed when you save.</value>
+  </data>
+  <data name="EditHistoryRestoredFormat" xml:space="preserve">
+    <value>Version {0} has been applied. Save to confirm.</value>
+  </data>
+  <data name="EditHistoryRestore" xml:space="preserve">
+    <value>Restore</value>
+  </data>
+  <data name="EditHistoryCancel" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="EditHistoryClose" xml:space="preserve">
+    <value>Close</value>
+  </data>
+  <data name="EditHistoryLoadMore" xml:space="preserve">
+    <value>Show more</value>
+  </data>
+  <data name="EditHistoryLoading" xml:space="preserve">
+    <value>Loading...</value>
+  </data>
+  <data name="EditHistoryNoHistory" xml:space="preserve">
+    <value>No history.</value>
+  </data>
+  <data name="EditHistoryNotSavedYet" xml:space="preserve">
+    <value>History is recorded after the record is saved.</value>
+  </data>
+  <data name="EditHistoryDesignPlaceholder" xml:space="preserve">
+    <value>Edit history (shown at runtime)</value>
+  </data>
+  <data name="EditHistoryRecordCreated" xml:space="preserve">
+    <value>Record created.</value>
+  </data>
+  <data name="EditHistoryRecordDeleted" xml:space="preserve">
+    <value>Record deleted.</value>
+  </data>
+  <data name="EditHistoryNoVisibleChanges" xml:space="preserve">
+    <value>No changes in the fields you can see.</value>
+  </data>
+  <data name="EditHistoryRowsAddedFormat" xml:space="preserve">
+    <value>{0} added</value>
+  </data>
+  <data name="EditHistoryRowsRemovedFormat" xml:space="preserve">
+    <value>{0} removed</value>
+  </data>
+  <data name="EditHistoryRowsChangedFormat" xml:space="preserve">
+    <value>{0} changed</value>
+  </data>
+  <data name="EditHistoryRowAdded" xml:space="preserve">
+    <value>Added</value>
+  </data>
+  <data name="EditHistoryRowRemoved" xml:space="preserve">
+    <value>Removed</value>
+  </data>
+  <data name="EditHistoryRowChanged" xml:space="preserve">
+    <value>Changed</value>
+  </data>
+  <data name="EditHistoryTrue" xml:space="preserve">
+    <value>Yes</value>
+  </data>
+  <data name="EditHistoryFalse" xml:space="preserve">
+    <value>No</value>
+  </data>
+  <data name="EditHistoryNoValue" xml:space="preserve">
+    <value>(empty)</value>
+  </data>
+  <data name="EditHistoryNoPreviousVersion" xml:space="preserve">
+    <value>No earlier version to compare with. Use "Show this version" to see the content.</value>
+  </data>
+  <data name="EditHistoryChangedNoText" xml:space="preserve">
+    <value>changed</value>
+  </data>
+  <data name="EditHistoryChangeType_Restore" xml:space="preserve">
+    <value>Restored</value>
+  </data>
+  <data name="EditHistoryRestoreButtonField" xml:space="preserve">
+    <value>Edit History Restore Button</value>
+  </data>
+  <data name="EditHistoryRestoreButtonText" xml:space="preserve">
+    <value>Button text</value>
+  </data>
+  <data name="EditHistoryRestoreButton_DefaultText" xml:space="preserve">
+    <value>Restore this record</value>
+  </data>
+  <data name="EditHistoryRestoreRecordConfirmFormat" xml:space="preserve">
+    <value>Restore the deleted record {1} of {0}?</value>
+  </data>
+  <data name="EditHistoryRestoreRecordDone" xml:space="preserve">
+    <value>The record has been restored.</value>
+  </data>
+  <data name="EditHistoryRestoreRecordFailedFormat" xml:space="preserve">
+    <value>The record could not be restored. {0}</value>
+  </data>
+  <data name="EditHistoryCheck_DeleteArchive" xml:space="preserve">
+    <value>Edit history cannot be used together with the delete archive (move to a delete table). Use logical delete or physical delete.</value>
+  </data>
+  <data name="EditHistoryRecordRestored" xml:space="preserve">
+    <value>Record restored.</value>
+  </data>
+  <data name="EditHistoryRowNumberFormat" xml:space="preserve">
+    <value>Row {0}</value>
+  </data>
+  <data name="EditHistoryChangedFieldsFormat" xml:space="preserve">
+    <value>{0} changed: {1}</value>
+  </data>
 </root>

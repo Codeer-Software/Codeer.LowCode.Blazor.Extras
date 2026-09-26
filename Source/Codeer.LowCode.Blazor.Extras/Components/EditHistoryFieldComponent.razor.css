@@ -1,0 +1,165 @@
+.edit-history {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 0.9rem;
+}
+
+.edit-history-note {
+  color: var(--bs-secondary-color, #6c757d);
+}
+
+.edit-history-version {
+  border: 1px solid var(--bs-border-color, #dee2e6);
+  border-radius: 6px;
+  padding: 6px 10px;
+}
+
+.edit-history-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  list-style: revert;
+}
+
+.edit-history-summary {
+  color: var(--bs-secondary-color, #6c757d);
+}
+
+.edit-history-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 6px 0 2px 18px;
+}
+
+.edit-history-number {
+  font-weight: 600;
+}
+
+.edit-history-type {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 10px;
+  font-size: 0.8rem;
+  background-color: #e9ecef;
+  color: #333;
+}
+
+.edit-history-type-add {
+  background-color: #d1e7dd;
+  color: #0f5132;
+}
+
+.edit-history-type-update {
+  background-color: #cfe2ff;
+  color: #084298;
+}
+
+.edit-history-type-delete {
+  background-color: #f8d7da;
+  color: #842029;
+}
+
+.edit-history-user,
+.edit-history-date {
+  color: var(--bs-secondary-color, #6c757d);
+}
+
+.edit-history-changes {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.edit-history-change {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.edit-history-field {
+  font-weight: 600;
+}
+
+.edit-history-field::after {
+  content: ":";
+}
+
+.edit-history-value {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.edit-history-before {
+  color: var(--bs-secondary-color, #6c757d);
+  text-decoration: line-through;
+}
+
+.edit-history-arrow {
+  color: var(--bs-secondary-color, #6c757d);
+}
+
+.edit-history-list {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 2px;
+}
+
+.edit-history-list-summary {
+  color: var(--bs-secondary-color, #6c757d);
+}
+
+.edit-history-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-left: 12px;
+  border-left: 2px solid var(--bs-border-color, #dee2e6);
+  padding-left: 8px;
+}
+
+.edit-history-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 10px;
+}
+
+.edit-history-row-number {
+  font-weight: 600;
+}
+
+.edit-history-row-kind {
+  font-size: 0.8rem;
+  padding: 0 6px;
+  border-radius: 8px;
+  background-color: #e9ecef;
+}
+
+.edit-history-row-added .edit-history-row-kind {
+  background-color: #d1e7dd;
+  color: #0f5132;
+}
+
+.edit-history-row-removed .edit-history-row-kind {
+  background-color: #f8d7da;
+  color: #842029;
+}
+
+.edit-history-row-changed .edit-history-row-kind {
+  background-color: #cfe2ff;
+  color: #084298;
+}
+
+.edit-history-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.edit-history-more {
+  align-self: flex-start;
+}

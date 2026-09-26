@@ -26,9 +26,50 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
     internal record DependencyListItem(string FromLabel, string ToLabel, string From, string To, string Key);
 
     public class GanttField(GanttFieldDesign design)
-        : FieldBase<GanttFieldDesign>(design), ISearchResultsViewField
+        : FieldBase<GanttFieldDesign>(design), ISearchResultsViewField, IOwnedRecordsField
     {
         private readonly ModuleCollection _tasks = new();
+
+        //編集履歴の復元: 宣言した従属レコード (タスク) を版の内容に差し替える (保存はユーザー)。
+        //通常は表示範囲のタスクしか読んでいないので、突き合わせの前に全件を読み直す (範囲外の行を「無い行」と誤らない)
+        public async Task ApplyOwnedRecordsAsync(string name, List<ModuleData> rows, Action<string, string>? onRevive)
+        {
+            if (name != Design.Name) return;
+            var all = await this.GetChildModulesAsync(Design.SearchCondition, ModuleLayoutType.Detail, Design.DetailLayoutName, GetItemFieldNames());
+            _tasks.ApplyLoaded(all);
+            await EditHistory.OwnedRecordsRestore.ApplyAsync(this, _tasks, ModuleName, Design.DetailLayoutName, Design.SearchCondition, rows, onRevive);
+            RebuildItemsInView();
+            await InvokeOnDataChangedAndNotifyAsync();
+        }
+
+        //編集履歴の版表示: 版のタスクをそのまま表示する (DB は読まない・表示専用)。表示範囲にタスクが無ければ最初のタスクの日へ移動
+        public async Task ShowOwnedRecordsAsync(string name, List<ModuleData> rows)
+        {
+            if (name != Design.Name) return;
+            _tasks.ApplyLoaded(await EditHistory.OwnedRecordsDisplay.CreateAsync(this, ModuleName, Design.DetailLayoutName, rows));
+            RebuildItemsInView();
+            if (Items.Count == 0)
+            {
+                var first = _tasks.Items.Select(ConvertToGanttItem).Where(e => e.Start != default).OrderBy(e => e.Start).FirstOrDefault();
+                if (first != null)
+                {
+                    ViewStart = first.Start.Date;
+                    RebuildItemsInView();
+                }
+            }
+            NotifyStateChanged();
+        }
+
+        //保持している全タスクから表示範囲に掛かるものだけを表示項目にする (ReloadAsync の範囲条件と同じ)
+        private void RebuildItemsInView()
+        {
+            var (rangeStart, rangeEnd) = GetViewDateRange();
+            Items.Clear();
+            Items.AddRange(_tasks.Items.Select(ConvertToGanttItem)
+                .Where(e => e.Start != default)
+                .Where(e => (e.Start >= rangeStart && e.Start < rangeEnd) || (e.End >= rangeStart && e.End < rangeEnd) || (e.Start < rangeStart && e.End >= rangeEnd))
+                .OrderBy(e => e.Start));
+        }
         private readonly ModuleCollection _dependencies = new();
         private SearchCondition? _additionalCondition;
 
@@ -176,7 +217,14 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         [ScriptName("Reload")]
         public async Task ReloadAsync()
         {
-            if (!AllowLoad) return;
+            //読み込みを止めているとき (版表示) は手元のタスクを表示範囲で絞り直すだけ
+            if (!AllowLoad)
+            {
+                RebuildItemsInView();
+                NotifyStateChanged();
+                return;
+            }
+            if (this.IsBoundToUnsavedRecord(Design.SearchCondition)) return;
 
             var (rangeStart, rangeEnd) = GetViewDateRange();
 

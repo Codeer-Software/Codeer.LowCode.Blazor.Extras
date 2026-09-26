@@ -11,7 +11,7 @@ using Codeer.LowCode.Blazor.Repository.Match;
 namespace Codeer.LowCode.Blazor.Extras.Designs
 {
     [Designer(DisplayName = "$MarkerListField")]
-    public class MarkerListFieldDesign() : FieldDesignBase(typeof(MarkerListFieldDesign).FullName!),
+    public class MarkerListFieldDesign() : FieldDesignBase(typeof(MarkerListFieldDesign).FullName!), IOwnedRecordsFieldDesign,
         ISearchResultsViewFieldDesign, IDataDependentField, IFillHeightFieldDesign
     {
         [Designer(CandidateType = CandidateType.Resource)]
@@ -23,6 +23,12 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
 
         [Designer(Scope = DesignerScope.All)]
         public SearchCondition SearchCondition { get; set; } = new();
+
+        //従属レコードの宣言: このフィールドが読み書きするレコード群は親の一部 (編集履歴などが親と一緒に扱う)
+        public IEnumerable<OwnedRecordsDesign> GetOwnedRecords()
+        {
+            yield return new OwnedRecordsDesign { Name = Name, Condition = SearchCondition };
+        }
 
         [Designer(CandidateType = CandidateType.DetailLayout)]
         [Layout(ModuleNameMember = $"{nameof(SearchCondition)}.{nameof(SearchCondition.ModuleName)}")]
