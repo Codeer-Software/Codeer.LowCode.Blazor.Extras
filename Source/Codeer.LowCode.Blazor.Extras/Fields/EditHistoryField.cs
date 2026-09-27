@@ -124,6 +124,13 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         async Task LoadPageAsync()
         {
             if (!IsAvailable || IsBusy || HistoryModule == null) return;
+            //履歴モジュールを読めないユーザーには要求しない (サーバーが拒否して画面のエラーになるため)。「履歴はありません」になる
+            if (!HistoryModule.HasUserReadPermission(Services))
+            {
+                IsLoaded = true;
+                NotifyStateChanged();
+                return;
+            }
             IsBusy = true;
             try
             {

@@ -64,6 +64,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.EditHistory
             var design = EditHistoryTestDesigns.Create(logicalDelete: logicalDelete);
             ((Extras.Designs.EditHistoryFieldDesign)design.Modules.Find("Order")!.Fields.First(e => e.Name == "History")).PageSize = pageSize;
             var services = new TestServices(design);
+            services.App.CurrentUserData = new ModuleData { Name = "AppUser" };
             services.App.ListProvider = request =>
             {
                 var rows = Rows();
@@ -139,6 +140,29 @@ namespace Codeer.LowCode.Blazor.Extras.Test.EditHistory
             await field.LoadMoreAsync();
             Assert.That(field.Versions.Select(e => e.Number), Is.EqualTo(new[] { 3, 2, 1 }));
             Assert.That(field.HasMore, Is.False);
+        }
+
+        [Test]
+        public async Task 履歴モジュールを読めないユーザーには要求せず履歴なしになる()
+        {
+            var services = CreateServices();
+            services.App.GetDesignData().Modules.Find("EditHistory")!.UserReadCondition = new Codeer.LowCode.Blazor.Repository.Match.ModuleMatchCondition
+            {
+                Condition = new Codeer.LowCode.Blazor.Repository.Match.FieldValueMatchConditionNonNull
+                {
+                    SearchTargetVariable = "Check.Value", Comparison = Codeer.LowCode.Blazor.Repository.Match.MatchComparison.Equal,
+                    Value = new Codeer.LowCode.Blazor.Repository.BooleanValue { Value = true },
+                },
+            };
+            var user = new ModuleData { Name = "AppUser" };
+            user.Fields["Check"] = new BooleanFieldData { Value = false };
+            services.App.CurrentUserData = user;
+
+            var (_, field) = await CreateOrderModuleAsync(services, _v3);
+
+            Assert.That(services.App.ListRequests, Is.Empty, "サーバーに要求しない (拒否されて画面のエラーになるため)");
+            Assert.That(field.IsLoaded, Is.True);
+            Assert.That(field.Versions, Is.Empty);
         }
 
         [Test]

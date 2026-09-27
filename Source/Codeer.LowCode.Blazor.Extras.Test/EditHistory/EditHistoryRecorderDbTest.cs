@@ -1,4 +1,4 @@
-using Codeer.LowCode.Blazor.DataIO;
+﻿using Codeer.LowCode.Blazor.DataIO;
 using Codeer.LowCode.Blazor.DataIO.Db;
 using Codeer.LowCode.Blazor.DbAccess;
 using Codeer.LowCode.Blazor.DesignLogic;
@@ -204,6 +204,30 @@ namespace Codeer.LowCode.Blazor.Extras.Test.EditHistory
             Assert.That(snapshot.Fields.ContainsKey("Id"), Is.True);
             var row = Items(snapshot).Single();
             Assert.That(((NumberFieldData)row.Fields["Qty"]).Value, Is.Null, "明細の NULL 列も同じ");
+        }
+
+        [Test]
+        public async Task 一括取込のId空の新規行は作成として記録される()
+        {
+            //ファイル取込 / スクリプトの一括保存と同じ入口 (Id 無しの ModuleData → 投げ切りの Add)
+            var a = new ModuleData { Name = "Order" };
+            a.Fields["Title"] = new TextFieldData { Value = "取込A" };
+            a.Fields["Amount"] = new NumberFieldData { Value = 1 };
+            var b = new ModuleData { Name = "Order" };
+            b.Fields["Title"] = new TextFieldData { Value = "取込B" };
+            b.Fields["Amount"] = new NumberFieldData { Value = 2 };
+            AssertNoError(await CreateIO().SubmitWithTransactionByModuleDataAsync("Order", [a, b]));
+
+            var histories = await HistoriesAsync();
+            Assert.That(histories.Select(h => (h["data_id"], h["change_type"])), Is.EqualTo(new[] { ("1", "Add"), ("2", "Add") }));
+            Assert.That(histories.Select(h => ((TextFieldData)Snapshot(h).Fields["Title"]).Value), Is.EqualTo(new[] { "取込A", "取込B" }));
+            Assert.That(_errors, Is.Empty);
+
+            //Id 付きで取り込み直すと更新
+            var a2 = OrderData("1", "取込A改", 10);
+            AssertNoError(await CreateIO().SubmitWithTransactionByModuleDataAsync("Order", [a2]));
+            histories = await HistoriesAsync();
+            Assert.That(histories.Select(h => (h["data_id"], h["change_type"])), Is.EqualTo(new[] { ("1", "Add"), ("2", "Add"), ("1", "Update") }));
         }
 
         [Test]

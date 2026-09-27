@@ -1,4 +1,4 @@
-using Codeer.LowCode.Blazor.DataIO;
+﻿using Codeer.LowCode.Blazor.DataIO;
 using Codeer.LowCode.Blazor.DesignLogic;
 using Codeer.LowCode.Blazor.Extras.Designs;
 using Codeer.LowCode.Blazor.Extras.EditHistory;
@@ -19,7 +19,8 @@ namespace Codeer.LowCode.Blazor.Extras.Server.EditHistory
     /// 履歴の記録に失敗したときは結果に ExceptionMessage を立てて保存ごと失敗 (ロールバック) にする
     /// (履歴が静かに欠けるより、保存できないことがユーザーに見える方がよい)。
     /// EditHistoryField があるのに履歴モジュール・契約が無い設計 (デザインチェックが指摘する不備) も同様に失敗にする。
-    /// 一括取込の一括 INSERT 経路 (BulkAddThreshold 以上の純追加) は採番された Id が返らないため記録できない
+    /// 一括取込 (ファイル / スクリプトの一括保存) の 1 行ずつの経路は記録する (Id 空の新規行には仮 Id を付けて採番 Id を引く)。
+    /// 一括 INSERT 経路 (BulkAddThreshold 以上の純追加) は採番された Id が返らないため記録できない
     /// (エラーではなく記録をスキップし、logError に出す)。
     /// </remarks>
     public class EditHistoryRecorder
@@ -75,6 +76,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.EditHistory
                 var resolved = EditHistoryContracts.Resolve(_designData, module, out var error);
                 if (error != null) return Fail(transactionData, error);
                 if (resolved == null) continue;
+                AssignTemporaryIdToRootAdd(submitData);
 
                 var plan = new Plan
                 {
@@ -99,7 +101,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.EditHistory
                 }
                 else
                 {
-                    plan.ChangeType = submitData.Id.StartsWith(TemporaryIdPrefix) ? EditHistoryChangeType.Add : EditHistoryChangeType.Update;
+                    plan.ChangeType = IsRootAdd(submitData) ? EditHistoryChangeType.Add : EditHistoryChangeType.Update;
                 }
                 plans.Add(plan);
             }
@@ -153,6 +155,22 @@ namespace Codeer.LowCode.Blazor.Extras.Server.EditHistory
         //レコード + 従属レコードを読み、NULL だった列も null として持たせる (版に「空だった」を残す = 復元で空に戻せる)
         async Task<ModuleData?> LoadAsync(string moduleName, string id)
             => EditHistorySnapshot.FillNulls(_designData, await _io.GetWithOwnedRecordsAsync(moduleName, id));
+
+        //ルートレコード自身が追加 (Add) か。画面の保存は仮 Id、一括取込 (ファイル / スクリプトの一括保存) は Id 空か手入力の Id で来る
+        static bool IsRootAdd(ModuleSubmitData submitData)
+            => submitData.Add.Any(e => e.Name == submitData.ModuleName && ModuleDataValues.GetId(e) == submitData.Id);
+
+        //一括取込の自動採番の新規行は Id 空で来て、base は結果 (DestinationId) に採番 Id を返さない。
+        //画面の保存と同じく仮 Id を付けて送れば、base の仮 Id 解決で採番 Id が結果に載り、保存後のレコードを読み直せる
+        static void AssignTemporaryIdToRootAdd(ModuleSubmitData submitData)
+        {
+            if (!string.IsNullOrEmpty(submitData.Id)) return;
+            var root = submitData.Add.FirstOrDefault(e => e.Name == submitData.ModuleName && string.IsNullOrEmpty(ModuleDataValues.GetId(e)));
+            if (root == null) return;
+            var tempId = IdFieldData.NewId();
+            root.Fields[SystemFieldNames.Id] = tempId;
+            submitData.Id = tempId.Value!;
+        }
 
         static bool IsStandalone(ModuleDesign module, ModuleSubmitData submitData)
             => submitData.Add.Count == 0 && submitData.Update.Count == 0 && submitData.Delete.Count == 0 && submitData.SearchDelete.Count == 0 &&
