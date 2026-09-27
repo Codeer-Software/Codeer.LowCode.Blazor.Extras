@@ -19,9 +19,9 @@ namespace Codeer.LowCode.Blazor.Extras.Server.EditHistory
     /// 履歴の記録に失敗したときは結果に ExceptionMessage を立てて保存ごと失敗 (ロールバック) にする
     /// (履歴が静かに欠けるより、保存できないことがユーザーに見える方がよい)。
     /// EditHistoryField があるのに履歴モジュール・契約が無い設計 (デザインチェックが指摘する不備) も同様に失敗にする。
-    /// 一括取込 (ファイル / スクリプトの一括保存) の 1 行ずつの経路は記録する (Id 空の新規行には仮 Id を付けて採番 Id を引く)。
-    /// 一括 INSERT 経路 (BulkAddThreshold 以上の純追加) は採番された Id が返らないため記録できない
-    /// (エラーではなく記録をスキップし、logError に出す)。
+    /// 一括取込 (ファイル / スクリプトの一括保存) も記録する。Id 空の新規行には仮 Id を付けて採番 Id を引く。
+    /// 履歴対象モジュールの投入は本体の一括 INSERT 経路 (BulkAddThreshold 以上の純追加・採番 Id が返らない) を使わず、
+    /// 1 行ずつの経路に落とす (NoTemporaryIdResolution を外す)。
     /// </remarks>
     public class EditHistoryRecorder
     {
@@ -76,6 +76,8 @@ namespace Codeer.LowCode.Blazor.Extras.Server.EditHistory
                 var resolved = EditHistoryContracts.Resolve(_designData, module, out var error);
                 if (error != null) return Fail(transactionData, error);
                 if (resolved == null) continue;
+                //履歴対象の投入は結果の仮 Id 解決を使う (= 本体の一括 INSERT 経路の対象外にし、1 行ずつの経路で採番 Id を得る)
+                submitData.NoTemporaryIdResolution = false;
                 AssignTemporaryIdToRootAdd(submitData);
 
                 var plan = new Plan

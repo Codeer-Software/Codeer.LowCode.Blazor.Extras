@@ -231,6 +231,32 @@ namespace Codeer.LowCode.Blazor.Extras.Test.EditHistory
         }
 
         [Test]
+        public async Task 一括INSERT経路の閾値内でも履歴対象モジュールは1行ずつ入り記録される()
+        {
+            var threshold = ModuleDataIO.BulkAddThreshold;
+            ModuleDataIO.BulkAddThreshold = 1;
+            try
+            {
+                var rows = Enumerable.Range(1, 3).Select(i =>
+                {
+                    var d = new ModuleData { Name = "Order" };
+                    d.Fields["Title"] = new TextFieldData { Value = $"取込{i}" };
+                    d.Fields["Amount"] = new NumberFieldData { Value = i };
+                    return d;
+                }).ToList();
+                AssertNoError(await CreateIO().SubmitWithTransactionByModuleDataAsync("Order", rows));
+            }
+            finally
+            {
+                ModuleDataIO.BulkAddThreshold = threshold;
+            }
+
+            var histories = await HistoriesAsync();
+            Assert.That(histories.Select(h => (h["data_id"], h["change_type"])), Is.EqualTo(new[] { ("1", "Add"), ("2", "Add"), ("3", "Add") }));
+            Assert.That(_errors, Is.Empty, "一括 INSERT 経路に乗ると採番 Id が無く記録スキップのログが出る");
+        }
+
+        [Test]
         public async Task 履歴フィールドの無いモジュールの保存は記録しない()
         {
             await CreateOrderAsync();

@@ -16,7 +16,7 @@ UI もデータも持たない設定運搬 + 閲覧フィールド (DB 列不要
 
 ## 動作
 
-- 記録はサーバー (`Codeer.LowCode.Blazor.Extras.Server` の `EditHistoryRecorder`)。アプリテンプレートの `CustomizedModuleDataIO.SubmitAsync` が結線済み。CSV / Excel の一括取込や API からの保存も同じ経路なので記録される (一括 INSERT 経路だけは Id が返らないため記録されない)
+- 記録はサーバー (`Codeer.LowCode.Blazor.Extras.Server` の `EditHistoryRecorder`)。アプリテンプレートの `CustomizedModuleDataIO.SubmitAsync` が結線済み。CSV / Excel の一括取込や API からの保存も同じ経路なので記録される (履歴対象モジュールは本体の一括 INSERT 経路を使わず 1 行ずつ入る)
 - 作成・更新は保存後の内容、削除は削除前の内容が 1 行になる。明細だけを変えた保存も親レコードの 1 版になる
 - 版番号は保存せず、閲覧時に件数から採番する (古い方から 1, 2, ...)
 - 履歴の読み取りは通常のモジュールデータ API = **履歴モジュールの閲覧権限 (UserRead / DataRead 条件) がそのまま効く**。履歴を見せたくないユーザーには履歴モジュールを読めなくすればよい。差分表示は対象モジュール側のフィールド権限 (PermissionField) で読めない項目を出さない。ただし履歴モジュールを直接読めるユーザーには Snapshot (JSON) の生の値が見える

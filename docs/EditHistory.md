@@ -59,7 +59,7 @@
 - 読み直しは操作ユーザーの権限で行う。そのユーザーに読めない列はスナップショットに入らない (復元でもその列は変わらない)。DB で NULL だった列は null の値として入る (その版で空だったことが残り、復元で空に戻る)
 - 変更種別は `EditHistoryChangeType` (Add / Update / Delete) のメンバー名。デザイン enum として公開されるので、履歴モジュールの ChangeType を SelectField (EnumName = `EditHistoryChangeType`) にすれば表示名付きで一覧・検索できる
 - 履歴の記録に失敗すると保存も失敗 (ロールバック) になる。EditHistoryField があるのに履歴モジュール・契約が無い設計 (デザインチェックが指摘する不備) も同様
-- 一括取込の一括 INSERT 経路 (`BulkAddThreshold` 以上の純追加) は採番された Id が返らないため記録されない (ログに出る)。1 行ずつの経路 (既定) は記録される
+- 一括取込も記録される。履歴対象モジュールの投入は本体の一括 INSERT 経路 (`BulkAddThreshold` 以上の純追加) を使わず 1 行ずつ入る (採番 Id を履歴に使うため)
 - 添付ファイルはファイル名とキーだけ記録し、実体は履歴に残さない
 - **Gantt / Calendar / TaskBoard** のように別モジュールのレコードを自分で読み書きする拡張フィールドは、`IOwnedRecordsFieldDesign` で子レコードを宣言しているので、そのまま親の版に入る (一覧フィールドを別途置く必要はない)。独自の拡張フィールドで子レコードを持つものは同じインターフェースを実装する。復元 (この版に戻す) と版表示は、ランタイム側が本体の `IOwnedRecordsField` (Codeer.LowCode.Blazor 1.3.37) を実装しているフィールドが差し替え・表示できる (本体の一覧フィールドと Gantt / Calendar / TaskBoard / MarkerList は実装済み)。宣言もランタイムの口も本体側なので、独自の拡張フィールドは Extras を参照せずに履歴へ参加できる
 - **ExecuteSqlField** も記録される (SQL は同じ SubmitAsync の中で走る)。Update / Delete タイミングは通常どおり保存後・削除前の内容。Create タイミングは `NewId` で採番 Id が返る設定のときだけ記録される (返らないと読み直せない = ログに出る)。Standalone (Add / Update / Delete の無い送信で SQL だけ実行) は送信前後のレコードを比べ、レコード自体が変わったときだけ 1 版にする (他のテーブルだけを変える SQL は履歴にならない)
