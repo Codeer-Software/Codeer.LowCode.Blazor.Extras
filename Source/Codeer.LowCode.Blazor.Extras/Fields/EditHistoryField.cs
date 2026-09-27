@@ -79,6 +79,30 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         [ScriptHide]
         public override async Task SetDataAsync(FieldDataBase? fieldDataBase) => await Task.CompletedTask;
 
+        //自動保存 (AutoSubmitField = レコードを読み直さない軽量な保存) の後、本体はフィールドの AcceptChanges だけを呼ぶ。
+        //通常の保存は再初期化 (InitializeDataAsync) で履歴も読み直されるが、こちらは読み直しが無いので保存で増えた版をここで読む
+        [ScriptHide]
+        public override void AcceptChanges(SubmitAcceptInfo info)
+        {
+            if (ModuleLayoutType != ModuleLayoutType.Detail) return;
+            ReloadAfterSubmit = ReloadAfterSubmitAsync();
+        }
+
+        /// <summary>保存 (AcceptChanges) をきっかけにした読み直し (完了待ち用)。</summary>
+        internal Task? ReloadAfterSubmit { get; private set; }
+
+        async Task ReloadAfterSubmitAsync()
+        {
+            try
+            {
+                await ReloadAsync();
+            }
+            catch (Exception ex)
+            {
+                await Services.Logger.Error(ex.Message);
+            }
+        }
+
         /// <summary>読み込み済みの版 (新しい順)。</summary>
         [ScriptHide]
         public IReadOnlyList<EditHistoryVersion> Versions => _versions;

@@ -236,6 +236,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             NotifyViewStateChanged();
             try
             {
+                var isNewData = Module.IsNewData;
                 var command = new ApprovalCommand
                 {
                     Action = isResubmit ? ApprovalAction.Resubmit : ApprovalAction.Submit,
@@ -251,11 +252,18 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
                 if (result.IsSuccess)
                 {
                     Comment = string.Empty;
-                    //再申請は同一 URL のため NavigateTo が no-op になる。フィールド表示は自前で最新化する
-                    if (isResubmit) await ReloadAsync();
-                    //保存が確定したレコードへ遷移して再初期化する (FK・編集ロック状態を含めて最新化)
-                    Services.NavigationService.NavigateTo(
-                        Services.NavigationService.GetModuleDataUrl(Module.Design.Name, result.TargetId));
+                    if (isNewData)
+                    {
+                        //保存が確定したレコードへ遷移して再初期化する (FK・編集ロック状態を含めて最新化)
+                        Services.NavigationService.NavigateTo(
+                            Services.NavigationService.GetModuleDataUrl(Module.Design.Name, result.TargetId));
+                    }
+                    else
+                    {
+                        //保存済みレコードの申請・再申請は URL が変わらず NavigateTo が no-op になるので、レコードを読み直して
+                        //再初期化する (FK・編集ロック状態のほか、同じモジュールの他のフィールド (編集履歴など) も最新化される)
+                        await Module.ReloadAsync();
+                    }
                 }
                 return result;
             }

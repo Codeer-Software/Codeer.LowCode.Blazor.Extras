@@ -1,4 +1,5 @@
 using Codeer.LowCode.Blazor.DesignLogic;
+using Codeer.LowCode.Blazor.Extras.Designs;
 using Codeer.LowCode.Blazor.Json;
 using Codeer.LowCode.Blazor.Repository.Data;
 using Codeer.LowCode.Blazor.Repository.Design;
@@ -29,6 +30,9 @@ namespace Codeer.LowCode.Blazor.Extras.EditHistory
                 var name = fieldDesign.Name;
                 if (EditHistoryContracts.IsExcludedField(name) || !canRead(name)) continue;
                 if (excluded?.Contains(name) == true) continue;
+                //承認フローの FK は承認の command API (サーバー) だけが、申請書の保存とは別のタイミングで書く。
+                //申請・承認の記録は承認モジュール側の履歴にあるので、ここでは差分に出さない
+                if (fieldDesign is ApprovalFlowFieldDesign) continue;
 
                 //従属レコード (宣言したフィールド: 明細の一覧・ガントチャート等) は行の追加・削除・変更で比べる
                 if (fieldDesign is IOwnedRecordsFieldDesign owner)

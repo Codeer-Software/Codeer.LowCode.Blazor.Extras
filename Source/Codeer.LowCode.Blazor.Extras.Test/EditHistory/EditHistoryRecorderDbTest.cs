@@ -378,6 +378,18 @@ namespace Codeer.LowCode.Blazor.Extras.Test.EditHistory
         }
 
         [Test]
+        public async Task 何も保存しない送信は版にしない()
+        {
+            await CreateOrderAsync();
+            //承認の申請で申請書に変更が無いときなど: Add / Update / Delete の無い送信 (base は何も書かない)
+            var results = await CreateIO().SubmitWithTransactionAsync([new ModuleSubmitData { ModuleName = "Order", Id = "1" }]);
+            AssertNoError(results);
+            Assert.That(results.Single().DestinationId, Is.EqualTo("1"));
+            Assert.That((await HistoriesAsync()).Select(e => e["change_type"]), Is.EqualTo(new[] { "Add" }), "版は増えない");
+            Assert.That(_errors, Is.Empty);
+        }
+
+        [Test]
         public async Task 任意役割が空なら記録しない()
         {
             var contract = _design.Modules.Find("EditHistory")!.Fields.OfType<Extras.Designs.EditHistoryContractFieldDesign>().Single();

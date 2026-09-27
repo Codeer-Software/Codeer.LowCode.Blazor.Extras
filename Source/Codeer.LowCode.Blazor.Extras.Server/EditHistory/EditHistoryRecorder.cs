@@ -101,6 +101,11 @@ namespace Codeer.LowCode.Blazor.Extras.Server.EditHistory
                     plan.ChangeType = EditHistoryChangeType.Update;
                     plan.Before = await LoadAsync(module.Name, submitData.Id);
                 }
+                else if (IsEmpty(submitData))
+                {
+                    //何も保存しない送信 (承認の申請で申請書に変更が無いときなど。base は何も書かない) は版にしない
+                    continue;
+                }
                 else
                 {
                     plan.ChangeType = IsRootAdd(submitData) ? EditHistoryChangeType.Add : EditHistoryChangeType.Update;
@@ -174,9 +179,11 @@ namespace Codeer.LowCode.Blazor.Extras.Server.EditHistory
             submitData.Id = tempId.Value!;
         }
 
+        static bool IsEmpty(ModuleSubmitData submitData)
+            => submitData.Add.Count == 0 && submitData.Update.Count == 0 && submitData.Delete.Count == 0 && submitData.SearchDelete.Count == 0;
+
         static bool IsStandalone(ModuleDesign module, ModuleSubmitData submitData)
-            => submitData.Add.Count == 0 && submitData.Update.Count == 0 && submitData.Delete.Count == 0 && submitData.SearchDelete.Count == 0 &&
-               module.Fields.OfType<ExecuteSqlFieldDesign>().Any(e => e.Timing == ExecuteSqlTiming.Standalone);
+            => IsEmpty(submitData) && module.Fields.OfType<ExecuteSqlFieldDesign>().Any(e => e.Timing == ExecuteSqlTiming.Standalone);
 
         List<ModuleSubmitResult> Fail(List<ModuleSubmitData> transactionData, string message)
         {
