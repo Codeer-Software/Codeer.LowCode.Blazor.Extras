@@ -88,14 +88,14 @@ namespace Codeer.LowCode.Blazor.Extras.Server.EditHistory
                 else if (isRootDelete)
                 {
                     plan.ChangeType = EditHistoryChangeType.Delete;
-                    plan.Snapshot = await _io.GetWithOwnedRecordsAsync(module.Name, submitData.Id);
+                    plan.Snapshot = await LoadAsync(module.Name, submitData.Id);
                 }
                 else if (IsStandalone(module, submitData))
                 {
                     //ExecuteSqlField (Standalone) だけの送信: レコード自体が変わったときだけ版にする (変更前を取っておいて後で比べる)
                     if (string.IsNullOrEmpty(submitData.Id) || submitData.Id.StartsWith(TemporaryIdPrefix)) continue;
                     plan.ChangeType = EditHistoryChangeType.Update;
-                    plan.Before = await _io.GetWithOwnedRecordsAsync(module.Name, submitData.Id);
+                    plan.Before = await LoadAsync(module.Name, submitData.Id);
                 }
                 else
                 {
@@ -127,7 +127,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.EditHistory
                             _logError?.Invoke($"Edit history of '{plan.Module.Name}' was not recorded: the Id of the saved record is not available (bulk insert, or an ExecuteSqlField create without NewId).");
                             continue;
                         }
-                        plan.Snapshot = await _io.GetWithOwnedRecordsAsync(plan.Module.Name, id);
+                        plan.Snapshot = await LoadAsync(plan.Module.Name, id);
                         //Standalone の SQL でレコードが変わっていなければ版にしない
                         if (plan.Before != null && plan.Snapshot != null &&
                             EditHistorySnapshot.Serialize(plan.Before) == EditHistorySnapshot.Serialize(plan.Snapshot)) continue;
@@ -150,6 +150,10 @@ namespace Codeer.LowCode.Blazor.Extras.Server.EditHistory
         }
 
         //Add / Update / Delete が無く、モジュールに Standalone の ExecuteSqlField があるとき base は Standalone の SQL だけを実行する
+        //レコード + 従属レコードを読み、NULL だった列も null として持たせる (版に「空だった」を残す = 復元で空に戻せる)
+        async Task<ModuleData?> LoadAsync(string moduleName, string id)
+            => EditHistorySnapshot.FillNulls(_designData, await _io.GetWithOwnedRecordsAsync(moduleName, id));
+
         static bool IsStandalone(ModuleDesign module, ModuleSubmitData submitData)
             => submitData.Add.Count == 0 && submitData.Update.Count == 0 && submitData.Delete.Count == 0 && submitData.SearchDelete.Count == 0 &&
                module.Fields.OfType<ExecuteSqlFieldDesign>().Any(e => e.Timing == ExecuteSqlTiming.Standalone);

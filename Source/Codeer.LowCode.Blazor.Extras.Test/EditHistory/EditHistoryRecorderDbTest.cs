@@ -186,6 +186,27 @@ namespace Codeer.LowCode.Blazor.Extras.Test.EditHistory
         }
 
         [Test]
+        public async Task 入れなかった項目はnullとして版に残る_明細も()
+        {
+            var tempId = "@temporary:" + Guid.NewGuid();
+            var order = new ModuleData { Name = "Order" };
+            order.Fields["Id"] = new IdFieldData { Value = tempId };
+            order.Fields["Title"] = new TextFieldData { Value = "金額なし" };
+            var item = new ModuleData { Name = "OrderItem" };
+            item.Fields["Order"] = new LinkFieldData { Value = tempId };
+            item.Fields["Name"] = new TextFieldData { Value = "数量なし" };
+            AssertNoError(await CreateIO().SubmitWithTransactionAsync([new ModuleSubmitData { ModuleName = "Order", Id = tempId, Add = [order, item] }]));
+
+            var snapshot = Snapshot((await HistoriesAsync()).Single());
+            Assert.That(snapshot.Fields.ContainsKey("Amount"), Is.True, "DB で NULL の列も項目として入る (復元で空に戻せるように)");
+            Assert.That(((NumberFieldData)snapshot.Fields["Amount"]).Value, Is.Null);
+            Assert.That(((TextFieldData)snapshot.Fields["Secret"]).Value, Is.Null);
+            Assert.That(snapshot.Fields.ContainsKey("Id"), Is.True);
+            var row = Items(snapshot).Single();
+            Assert.That(((NumberFieldData)row.Fields["Qty"]).Value, Is.Null, "明細の NULL 列も同じ");
+        }
+
+        [Test]
         public async Task 履歴フィールドの無いモジュールの保存は記録しない()
         {
             await CreateOrderAsync();

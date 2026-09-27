@@ -11,6 +11,11 @@
       "Name": "Project",
       "Value": "",
       "DisplayText": "プロジェクト"
+    },
+    {
+      "Name": "Plan",
+      "Value": "",
+      "DisplayText": "プラン"
     }
   ]
 }

@@ -17,7 +17,7 @@
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
     <PackageReadmeFile>README.md</PackageReadmeFile>
-    <PackageReleaseNotes>Adds the field documents for EditHistoryField and EditHistoryContractField (Codeer.LowCode.Blazor.Extras 0.16.0): what is recorded, how the versions are shown and restored, the permission model, and an example of the history module. No code changes.</PackageReleaseNotes>
+    <PackageReleaseNotes>New: Tools &gt; Edit History Setup (headless verb edit-history-setup). Generates the history module for EditHistoryField (Codeer.LowCode.Blazor.Extras 0.16.0) from the verified example: contract field, restore button, target record link, list / detail / search layouts, the nobody-can-write protection, optionally the target module enum EditHistoryTargetModule (empty; add one member per module) and the page link, plus the CREATE TABLE DDL that can be run from the result dialog. Idempotent. The steps left to the user (place EditHistoryField, wire EditHistoryRecorder on the server, add enum members) are shown in the result. Also adds the field documents for EditHistoryField, EditHistoryContractField, EditHistoryRestoreButtonField and EditHistoryTargetLinkField.</PackageReleaseNotes>
     <PackageId>Codeer.LowCode.Blazor.Extras.Designer</PackageId>
   </PropertyGroup>
 
@@ -57,7 +57,7 @@
 	     ここからリンク埋め込みする (SetupTemplates.Load と連動)。Example の承認モジュールを変更すると
 	     生成されるテンプレートも変わる = Example がテンプレートの回帰テストを兼ねる。 -->
 	<ItemGroup>
-		<EmbeddedResource Include="..\Example\Design\Modules\ApprovalFlow.mod.json;..\Example\Design\Modules\ApprovalFlowMember.mod.json;..\Example\Design\Modules\ApprovalHistory.mod.json;..\Example\Design\Modules\MyApprovalList.mod.json;..\Example\Design\Modules\MyApprovalList.mod.cs;..\Example\Design\Modules\MyApprovalList.Query.sql;..\Example\Design\Modules\ApprovalStatusList.mod.json;..\Example\Design\Modules\ApprovalStatusList.mod.cs;..\Example\Design\Modules\ApprovalStatusList.Query.sql;..\Example\Design\Modules\ApprovalRoute.mod.json;..\Example\Design\Modules\ApprovalRoute.mod.cs;..\Example\Design\Modules\ApprovalRouteStep.mod.json;..\Example\Design\Modules\ApprovalRouteStepMember.mod.json">
+		<EmbeddedResource Include="..\Example\Design\Modules\ApprovalFlow.mod.json;..\Example\Design\Modules\ApprovalFlowMember.mod.json;..\Example\Design\Modules\ApprovalHistory.mod.json;..\Example\Design\Modules\MyApprovalList.mod.json;..\Example\Design\Modules\MyApprovalList.mod.cs;..\Example\Design\Modules\MyApprovalList.Query.sql;..\Example\Design\Modules\ApprovalStatusList.mod.json;..\Example\Design\Modules\ApprovalStatusList.mod.cs;..\Example\Design\Modules\ApprovalStatusList.Query.sql;..\Example\Design\Modules\ApprovalRoute.mod.json;..\Example\Design\Modules\ApprovalRoute.mod.cs;..\Example\Design\Modules\ApprovalRouteStep.mod.json;..\Example\Design\Modules\ApprovalRouteStepMember.mod.json;..\Example\Design\Modules\EditHistory.mod.json">
 			<LogicalName>Codeer.LowCode.Blazor.Extras.Designer.SetupTemplates.%(Filename)%(Extension)</LogicalName>
 		</EmbeddedResource>
 	</ItemGroup>

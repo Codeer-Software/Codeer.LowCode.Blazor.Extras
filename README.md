@@ -62,7 +62,7 @@ Codeer.LowCode.Blazor 本体が持つのは認可だけで、認証 (ログイ�
 | [承認フロー](docs/ApprovalFlow.md) | ApprovalFlowField を申請書に置くだけで申請・承認・却下・差し戻し・取り下げ・再申請・回覧。承認データは通常のモジュール。状態遷移はサーバーが検証 |
 | [編集履歴](docs/EditHistory.md) | EditHistoryField をモジュールに置くと保存 (作成・更新・削除) ごとにレコード全体 (明細込み) のスナップショットが履歴モジュールへ記録される。詳細画面に版の一覧 (変更フィールドの 旧 → 新)・「この版を表示」・「この版に戻す」(フォームへ反映して保存で確定)。履歴は通常のモジュール = 閲覧権限は履歴モジュールの設定 (サーバサイド実装が必要) |
 
-どちらもデザイナの **Tools > メールのセットアップ / 承認フローのセットアップ** (または CLI の `mail-setup` / `approval-setup`) で
+いずれもデザイナの **Tools > メールのセットアップ / 承認フローのセットアップ / 編集履歴のセットアップ** (または CLI の `mail-setup` / `approval-setup` / `edit-history-setup`) で
 必要なモジュール群を生成できます。
 
 ## スクリプトオブジェクト
@@ -179,13 +179,13 @@ using Codeer.LowCode.Blazor.Extras.Designer;
 // OnStartup メソッド内 (base.OnStartup(e) より前)
 ExtrasDesignerInitializer.Initialize(BlazorRuntime);
 
-// base.OnStartup(e) の後 (Tools メニュー: 承認フローのセットアップ / メール履歴モジュールの生成)
+// base.OnStartup(e) の後 (Tools メニュー: 承認フローのセットアップ / メールのセットアップ / 編集履歴のセットアップ)
 ExtrasDesignerInitializer.Setup(DesignerEnvironment);
 ```
 
-セットアップメニューは承認フロー・メール履歴に必要なモジュール群をテンプレートから生成し、
-申請書モジュールへの結線とテーブル作成 DDL の提示まで行います
-(headless CLI の `approval-setup` / `mail-history-setup` verb からも同じ生成を実行できます)。
+セットアップメニューは承認フロー・メール履歴・編集履歴に必要なモジュール群をテンプレートから生成し、
+テーブル作成 DDL の提示 (その場で実行可) と次にやることの案内まで行います
+(headless CLI の `approval-setup` / `mail-setup` / `edit-history-setup` verb からも同じ生成を実行できます)。
 
 ### 3. セットアップ完了
 

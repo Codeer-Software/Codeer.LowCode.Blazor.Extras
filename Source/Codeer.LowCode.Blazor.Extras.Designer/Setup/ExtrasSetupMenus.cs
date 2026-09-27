@@ -14,6 +14,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
         {
             AddApprovalFlowSetup(env);
             AddMailSetup(env);
+            AddEditHistorySetup(env);
         }
 
         /// <summary>Tools &gt; 承認フローのセットアップ。承認モジュール群 (フロー系 + 経路マスタ) の生成。</summary>
@@ -23,6 +24,10 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
         /// <summary>Tools &gt; メールのセットアップ。送信履歴モジュール・サーバー設定の案内。</summary>
         public static void AddMailSetup(DesignerEnvironment env)
             => env.AddMainMenu(() => RunMailSetup(env), "Tools", Properties.Resources.SetupMenuMail);
+
+        /// <summary>Tools &gt; 編集履歴のセットアップ。履歴モジュール (契約・復活ボタン・対象リンク同梱) と対象モジュール enum の生成。</summary>
+        public static void AddEditHistorySetup(DesignerEnvironment env)
+            => env.AddMainMenu(() => RunEditHistorySetup(env), "Tools", Properties.Resources.SetupMenuEditHistory);
 
         static void RunApprovalSetup(DesignerEnvironment env)
         {
@@ -37,6 +42,29 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
 
                 var dataSource = dataSources.First(e => e.Name == options.DataSourceName);
                 var result = ApprovalFlowSetupService.Run(designData, env.CurrentFileDirectory, options,
+                    dataSource.DataSourceType, env.GetDbInfo(dataSource.Name));
+
+                SetupResultWindow.ShowResult(env, dataSource, result);
+            }
+            catch (Exception ex)
+            {
+                MessageWindow.Show(ex.Message, "Error");
+            }
+        }
+
+        static void RunEditHistorySetup(DesignerEnvironment env)
+        {
+            if (string.IsNullOrEmpty(env.CurrentFileDirectory)) return;
+            try
+            {
+                var designData = env.GetDesignData();
+                var dataSources = env.GetDesignerSettings().DataSources;
+
+                var options = EditHistorySetupWindow.ShowDialog(designData, dataSources.Select(e => e.Name).ToList());
+                if (options == null) return;
+
+                var dataSource = dataSources.First(e => e.Name == options.DataSourceName);
+                var result = EditHistorySetupService.Run(designData, env.CurrentFileDirectory, options,
                     dataSource.DataSourceType, env.GetDbInfo(dataSource.Name));
 
                 SetupResultWindow.ShowResult(env, dataSource, result);

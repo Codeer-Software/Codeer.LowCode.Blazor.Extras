@@ -3393,5 +3393,28 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
                 return ResourceManager.GetString("EditHistoryChangedFieldsFormat", resourceCulture);
             }
         }
+        internal static string EditHistoryTargetLinkField {
+            get {
+                return ResourceManager.GetString("EditHistoryTargetLinkField", resourceCulture);
+            }
+        }
+
+        internal static string EditHistoryTargetLinkText {
+            get {
+                return ResourceManager.GetString("EditHistoryTargetLinkText", resourceCulture);
+            }
+        }
+
+        internal static string EditHistoryTargetLink_DefaultText {
+            get {
+                return ResourceManager.GetString("EditHistoryTargetLink_DefaultText", resourceCulture);
+            }
+        }
+
+        internal static string EditHistoryRestoreNothingApplied {
+            get {
+                return ResourceManager.GetString("EditHistoryRestoreNothingApplied", resourceCulture);
+            }
+        }
     }
 }

@@ -1,5 +1,6 @@
 using Codeer.LowCode.Blazor.DesignLogic;
 using Codeer.LowCode.Blazor.Extras.Fields;
+using Codeer.LowCode.Blazor.Json;
 using Codeer.LowCode.Blazor.OperatingModel;
 using Codeer.LowCode.Blazor.Repository.Data;
 using Codeer.LowCode.Blazor.Repository.Design;
@@ -8,14 +9,14 @@ using Codeer.LowCode.Blazor.Repository.Match;
 namespace Codeer.LowCode.Blazor.Extras.EditHistory
 {
     /// <summary>
-    /// ModuleCollection (Gantt / Calendar / TaskBoard が子レコードを保持する入れ物) を版の行に差し替える。
-    /// ListField の復元 (EditHistoryRestorer.ApplyRowsAsync) と同じ規則: 行 Id で突き合わせ、既存行は更新、
+    /// ModuleCollection (Gantt / Calendar / TaskBoard / MarkerList が子レコードを保持する入れ物) を版の行に差し替える。
+    /// 本体の ListField.ApplyOwnedRecordsAsync と同じ規則: 行 Id で突き合わせ、既存行は更新、
     /// 無い行は論理削除なら Id を保って復活 (保存時の Undelete)、それ以外は新しい行、余った行は削除。
     /// </summary>
     internal static class OwnedRecordsRestore
     {
         internal static async Task ApplyAsync(FieldBase field, ModuleCollection collection, string moduleName, string layoutName,
-            SearchCondition condition, List<ModuleData> rows, Action<string, string>? onRevive)
+            SearchCondition condition, IReadOnlyList<ModuleData> rows, Action<string, string>? onRevive)
         {
             var services = field.Services;
             var childDesign = services.AppInfoService.GetDesignData().Modules.Find(moduleName);
@@ -46,14 +47,14 @@ namespace Codeer.LowCode.Blazor.Extras.EditHistory
                     var idOnly = new ModuleData { Name = moduleName };
                     idOnly.Fields[SystemFieldNames.Id] = child.Fields[SystemFieldNames.Id];
                     mod = await ModuleCreationService.CreateModuleAsync(services, idOnly, ModuleLayoutType.Detail, layoutName);
-                    await mod.SetDataWithoutInteractionAsync(EditHistoryRestorer.StripForRevive(child));
+                    await mod.SetDataWithoutInteractionAsync(StripForRevive(child));
                     onRevive!(childDesign!.Name, id);
                 }
                 else
                 {
                     mod = await field.CreateChildModuleAsync(moduleName, ModuleLayoutType.Detail, layoutName);
                     await field.AssignConditionValuesAsync(condition, mod);
-                    await mod.SetDataWithoutInteractionAsync(EditHistoryRestorer.StripSystemFields(child));
+                    await mod.SetDataWithoutInteractionAsync(StripForNewRow(child));
                 }
                 collection.Add(mod);
                 kept.Add(mod);
@@ -65,6 +66,24 @@ namespace Codeer.LowCode.Blazor.Extras.EditHistory
             {
                 if (!kept.Contains(e)) collection.Remove(e);
             }
+        }
+
+        //新しい行として入れるため Id・楽観ロック等のシステム値を外す
+        static ModuleData StripForNewRow(ModuleData src)
+        {
+            var copy = src.JsonClone();
+            foreach (var name in copy.Fields.Keys.Where(e => EditHistoryContracts.IsExcludedField(e)).ToList())
+                copy.Fields.Remove(name);
+            return copy;
+        }
+
+        //復活する行: Id は残し、楽観ロック等のシステム値と孫の一覧は外す (孫は ApplyAsync で改めて反映する)
+        static ModuleData StripForRevive(ModuleData src)
+        {
+            var copy = src.JsonClone();
+            foreach (var name in copy.Fields.Keys.Where(e => e != SystemFieldNames.Id && (EditHistoryContracts.IsExcludedField(e) || copy.Fields[e] is ListFieldData)).ToList())
+                copy.Fields.Remove(name);
+            return copy;
         }
     }
 }

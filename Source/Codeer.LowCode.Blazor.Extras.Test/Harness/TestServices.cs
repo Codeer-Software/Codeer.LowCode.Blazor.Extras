@@ -104,7 +104,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Harness
         public bool CanLogout => throw new NotImplementedException();
         public string GetAppRootUrl() => throw new NotImplementedException();
         public string GetAppUrl() => throw new NotImplementedException();
-        public string GetModuleDataUrl(string module, string id) => throw new NotImplementedException();
+        public string GetModuleDataUrl(string module, string id) => $"/Main/{module}/{id}";
         public string GetModuleDataUrl(string pageFrame, string module, string id) => throw new NotImplementedException();
         public string GetModuleDataUrl(string app, string pageFrame, string module, string id) => throw new NotImplementedException();
         public string GetModuleDesignerUrl(string moduleName) => throw new NotImplementedException();

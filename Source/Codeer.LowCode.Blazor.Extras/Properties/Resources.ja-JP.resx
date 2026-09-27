@@ -1524,4 +1524,16 @@
   <data name="EditHistoryChangedFieldsFormat" xml:space="preserve">
     <value>変更 {0} 項目: {1}</value>
   </data>
+  <data name="EditHistoryTargetLinkField" xml:space="preserve">
+    <value>編集履歴 対象レコードリンク</value>
+  </data>
+  <data name="EditHistoryTargetLinkText" xml:space="preserve">
+    <value>リンクの文言</value>
+  </data>
+  <data name="EditHistoryTargetLink_DefaultText" xml:space="preserve">
+    <value>開く</value>
+  </data>
+  <data name="EditHistoryRestoreNothingApplied" xml:space="preserve">
+    <value>この版から反映できる項目がありませんでした。書き込み権限のない項目・添付ファイル・システム項目は対象外です。</value>
+  </data>
 </root>

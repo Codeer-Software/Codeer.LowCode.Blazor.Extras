@@ -30,6 +30,11 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
 
         /// <summary>「この版を表示」で削除された明細行 (前の版の内容を打ち消しで残す) に付ける CSS クラス。</summary>
         public const string RemovedRowClassName = "edit-history-removed-row";
+
+        /// <summary>
+        /// 「この版を表示」で変更された従属レコードの行 (Gantt のタスク・カレンダーの予定・カードなど、セル単位の強調が出ない項目) に付ける CSS クラス。
+        /// </summary>
+        public const string ChangedRowClassName = "edit-history-changed-row";
         /// <summary>版表示ダイアログの中身のモジュールに付けるクラス。ダイアログの幅を一定にする CSS の目印。</summary>
         public const string VersionDialogClassName = "edit-history-version-dialog";
 
@@ -243,14 +248,19 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
                 }
                 return Task.CompletedTask;
             });
-            await module.SetDataWithoutInteractionAsync(snapshot);
-            //従属レコードを宣言した拡張フィールドには版の行をそのまま見せる (強調は無し)
+            //★複製を渡す: ListField.SetDataAsync は渡された行データの Id を消して新しい行にするので、
+            //そのまま渡すとこの後の行 Id での差分との突き合わせ (Build) ができなくなる
+            await module.SetDataWithoutInteractionAsync(snapshot.JsonClone());
+            //従属レコード (明細の一覧・Gantt のタスク等) は版の行をそのまま見せる (本体の IOwnedRecordsField)。
+            //行の強調 (追加 = 行全体 / 変更 = 枠 + 変わったセル / 削除 = 前の版の行を打ち消しで差し込む) は
+            //行 Id で差分と対応づけて OwnedRecordRow に載せ、見せる側はそれを写すだけ
             foreach (var (fieldDesign, owned) in EditHistoryContracts.OwnedRecords(Module.Design))
             {
                 if (module.GetField(fieldDesign.Name) is IOwnedRecordsField ownedField
                     && snapshot.Fields.TryGetValue(owned.Name, out var ownedData) && ownedData is ListFieldData ownedRows)
                 {
-                    await ownedField.ShowOwnedRecordsAsync(owned.Name, ownedRows.Children);
+                    var change = version.Changes.FirstOrDefault(e => e.IsList && e.FieldName == owned.Name);
+                    await ownedField.ShowOwnedRecordsAsync(owned.Name, OwnedRecordsDisplay.Build(ownedRows.Children, change));
                 }
             }
             module.IsViewOnly = true;
@@ -261,60 +271,22 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             }
             module.DialogTitle = string.Format(R.EditHistoryVersionFormat, version.Number);
             module.ClassName = VersionDialogClassName;
-            await ApplyHighlightsAsync(module, version.Changes);
+            ApplyHighlights(module, version.Changes);
             await module.ShowDialogAsync(new SecondaryOutlineButton(R.EditHistoryClose));
         }
 
-        //変更フィールドはセル単位で強調。明細は 変更行=変わったセルだけ / 追加行=行全体 / 削除行=前の版の内容を打ち消しで差し込む。孫も同じ
-        static async Task ApplyHighlightsAsync(Module module, List<EditHistoryChange> changes)
+        //値フィールドはセル単位で強調。従属レコード (一覧・Gantt 等) の行は ShowOwnedRecordsAsync に渡した OwnedRecordRow が持つ
+        static void ApplyHighlights(Module module, List<EditHistoryChange> changes)
         {
-            foreach (var change in changes)
+            foreach (var change in changes.Where(e => !e.IsList))
             {
-                if (!change.IsList)
-                {
-                    var field = module.GetField(change.FieldName);
-                    if (field != null) field.ClassName = AddClass(field.ClassName, ChangedClassName);
-                    continue;
-                }
-
-                var list = module.GetField<ListField>(change.FieldName);
-                if (list == null) continue;
-                //ダイアログの行はスナップショットの並びで作られている (Id は振り直されるので行番号で対応づける)
-                var rows = list.Rows;
-                foreach (var rowChange in change.Rows.Where(e => e.Kind != EditHistoryRowChangeKind.Removed))
-                {
-                    if (rowChange.RowNumber - 1 >= rows.Count) continue;
-                    var row = rows[rowChange.RowNumber - 1];
-                    if (rowChange.Kind == EditHistoryRowChangeKind.Added) row.ClassName = AddClass(row.ClassName, AddedRowClassName);
-                    else await ApplyHighlightsAsync(row, rowChange.Changes);
-                }
-                //削除行: 前の版の位置に差し込む (表示専用なので保存には載らない)
-                foreach (var rowChange in change.Rows.Where(e => e.Kind == EditHistoryRowChangeKind.Removed && e.Row != null).OrderBy(e => e.RowNumber))
-                {
-                    var ghosts = await list.InsertRowsAsync(Math.Min(rowChange.RowNumber - 1, list.RowCount), [StripForGhost(rowChange.Row!)]);
-                    foreach (var ghost in ghosts) MarkRemoved(ghost);
-                }
+                var field = module.GetField(change.FieldName);
+                if (field != null) field.ClassName = AddClass(field.ClassName, ChangedClassName);
             }
-        }
-
-        static void MarkRemoved(Module row)
-        {
-            row.ClassName = AddClass(row.ClassName, RemovedRowClassName);
-            foreach (var list in row.GetFields().OfType<ListField>())
-                foreach (var child in list.Rows) MarkRemoved(child);
         }
 
         static string AddClass(string current, string className)
             => string.IsNullOrEmpty(current) ? className : $"{current} {className}";
-
-        //幽霊行は新しい行として作る (Id・楽観ロック等のシステム値を外す。孫の一覧はそのまま = 行ごと打ち消し)
-        static ModuleData StripForGhost(ModuleData src)
-        {
-            var copy = src.JsonClone();
-            foreach (var name in copy.Fields.Keys.Where(e => EditHistoryContracts.IsExcludedField(e)).ToList())
-                copy.Fields.Remove(name);
-            return copy;
-        }
 
         /// <summary>その版の内容を編集中のフォームへ反映する (保存はユーザーが行う)。</summary>
         [ScriptHide]
@@ -329,8 +301,15 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
                 [new PrimaryButton(R.EditHistoryRestore, true), new SecondaryOutlineButton(R.EditHistoryCancel)]);
             if (answer != R.EditHistoryRestore) return;
 
-            await EditHistoryRestorer.ApplyAsync(Module, snapshot,
+            var applied = await EditHistoryRestorer.ApplyAsync(Module, snapshot,
                 (moduleName, id) => _pendingUndeletes.Add(new EditHistoryUndeleteTarget { ModuleName = moduleName, Id = id }));
+            if (applied == 0)
+            {
+                //版に反映できる項目が 1 つも無い (書き込み権限のない項目・添付ファイルだけ、など)。何も起きなかったことを伝える
+                await Services.UIService.ShowMessageBox(R.EditHistoryRestoreVersion, R.EditHistoryRestoreNothingApplied,
+                    [new PrimaryButton(R.EditHistoryClose, true)]);
+                return;
+            }
             await Services.UIService.NotifySuccess(string.Format(R.EditHistoryRestoredFormat, version.Number));
             NotifyStateChanged();
         }

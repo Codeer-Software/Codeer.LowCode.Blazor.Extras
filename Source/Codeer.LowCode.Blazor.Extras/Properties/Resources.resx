@@ -1524,4 +1524,16 @@ Recipients: {1}</value>
   <data name="EditHistoryChangedFieldsFormat" xml:space="preserve">
     <value>{0} changed: {1}</value>
   </data>
+  <data name="EditHistoryTargetLinkField" xml:space="preserve">
+    <value>Edit History Target Link</value>
+  </data>
+  <data name="EditHistoryTargetLinkText" xml:space="preserve">
+    <value>Link text</value>
+  </data>
+  <data name="EditHistoryTargetLink_DefaultText" xml:space="preserve">
+    <value>Open</value>
+  </data>
+  <data name="EditHistoryRestoreNothingApplied" xml:space="preserve">
+    <value>Nothing in this version could be applied to the form. Fields without write permission, attachments and system fields are not restored.</value>
+  </data>
 </root>

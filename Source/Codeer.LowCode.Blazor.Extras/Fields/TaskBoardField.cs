@@ -17,7 +17,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         private readonly ModuleCollection _modules = new();
 
         //編集履歴の復元: 宣言した従属レコード (カード) を版の内容に差し替える (保存はユーザー)
-        public async Task ApplyOwnedRecordsAsync(string name, List<ModuleData> rows, Action<string, string>? onRevive)
+        public async Task ApplyOwnedRecordsAsync(string name, IReadOnlyList<ModuleData> rows, Action<string, string>? onRevive)
         {
             if (name != Design.Name) return;
             var all = await this.GetChildModulesAsync(Design.SearchCondition, ModuleLayoutType.Detail, Design.CardLayoutName, GetLayoutFieldNames(Design.PopupLayoutName));
@@ -29,7 +29,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         }
 
         //編集履歴の版表示: 版のカードをそのまま表示する (DB は読まない・表示専用)
-        public async Task ShowOwnedRecordsAsync(string name, List<ModuleData> rows)
+        public async Task ShowOwnedRecordsAsync(string name, IReadOnlyList<OwnedRecordRow> rows)
         {
             if (name != Design.Name) return;
             _modules.ApplyLoaded(await EditHistory.OwnedRecordsDisplay.CreateAsync(this, ModuleName, Design.CardLayoutName, rows));

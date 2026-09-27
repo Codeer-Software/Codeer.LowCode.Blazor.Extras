@@ -5,6 +5,12 @@
   font-size: 0.9rem;
 }
 
+.edit-history-versions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
 .edit-history-note {
   color: var(--bs-secondary-color, #6c757d);
 }

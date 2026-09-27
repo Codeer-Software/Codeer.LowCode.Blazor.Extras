@@ -31,7 +31,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         public bool AllowLoad { get; set; } = true;
 
         //編集履歴の復元: 宣言した従属レコード (マーカー) を版の内容に差し替える (保存はユーザー)
-        public async Task ApplyOwnedRecordsAsync(string name, List<ModuleData> rows, Action<string, string>? onRevive)
+        public async Task ApplyOwnedRecordsAsync(string name, IReadOnlyList<ModuleData> rows, Action<string, string>? onRevive)
         {
             if (name != Design.Name) return;
             var all = await this.GetChildModulesAsync(Design.SearchCondition, ModuleLayoutType.Detail, Design.DetailLayoutName, GetMarkerFieldNames());
@@ -43,7 +43,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         }
 
         //編集履歴の版表示: 版のマーカーをそのまま表示する (DB は読まない・表示専用)
-        public async Task ShowOwnedRecordsAsync(string name, List<ModuleData> rows)
+        public async Task ShowOwnedRecordsAsync(string name, IReadOnlyList<OwnedRecordRow> rows)
         {
             if (name != Design.Name) return;
             _modules.ApplyLoaded(await EditHistory.OwnedRecordsDisplay.CreateAsync(this, ModuleName, Design.DetailLayoutName, rows));

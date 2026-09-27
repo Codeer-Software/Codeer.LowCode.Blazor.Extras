@@ -32,7 +32,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
 
         //編集履歴の復元: 宣言した従属レコード (タスク) を版の内容に差し替える (保存はユーザー)。
         //通常は表示範囲のタスクしか読んでいないので、突き合わせの前に全件を読み直す (範囲外の行を「無い行」と誤らない)
-        public async Task ApplyOwnedRecordsAsync(string name, List<ModuleData> rows, Action<string, string>? onRevive)
+        public async Task ApplyOwnedRecordsAsync(string name, IReadOnlyList<ModuleData> rows, Action<string, string>? onRevive)
         {
             if (name != Design.Name) return;
             var all = await this.GetChildModulesAsync(Design.SearchCondition, ModuleLayoutType.Detail, Design.DetailLayoutName, GetItemFieldNames());
@@ -42,20 +42,23 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             await InvokeOnDataChangedAndNotifyAsync();
         }
 
-        //編集履歴の版表示: 版のタスクをそのまま表示する (DB は読まない・表示専用)。表示範囲にタスクが無ければ最初のタスクの日へ移動
-        public async Task ShowOwnedRecordsAsync(string name, List<ModuleData> rows)
+        //編集履歴の版表示: 版のタスクをそのまま表示する (DB は読まない・表示専用)。
+        //装飾された行 (差分のある行 = decorate が ClassName を付けた行) が表示範囲に無ければ最初の装飾行の日へ、
+        //装飾が無く表示範囲にタスクも無ければ最初のタスクの日へ移動する
+        public async Task ShowOwnedRecordsAsync(string name, IReadOnlyList<OwnedRecordRow> rows)
         {
             if (name != Design.Name) return;
             _tasks.ApplyLoaded(await EditHistory.OwnedRecordsDisplay.CreateAsync(this, ModuleName, Design.DetailLayoutName, rows));
             RebuildItemsInView();
-            if (Items.Count == 0)
+            static bool IsDecorated(GanttItem e) => !string.IsNullOrEmpty(e.Module?.ClassName);
+            var all = _tasks.Items.Select(ConvertToGanttItem).Where(e => e.Start != default).OrderBy(e => e.Start).ToList();
+            var focus = all.Any(IsDecorated) && !Items.Any(IsDecorated) ? all.First(IsDecorated)
+                : Items.Count == 0 ? all.FirstOrDefault()
+                : null;
+            if (focus != null)
             {
-                var first = _tasks.Items.Select(ConvertToGanttItem).Where(e => e.Start != default).OrderBy(e => e.Start).FirstOrDefault();
-                if (first != null)
-                {
-                    ViewStart = first.Start.Date;
-                    RebuildItemsInView();
-                }
+                ViewStart = focus.Start.Date;
+                RebuildItemsInView();
             }
             NotifyStateChanged();
         }

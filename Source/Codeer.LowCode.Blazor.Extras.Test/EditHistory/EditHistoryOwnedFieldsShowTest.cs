@@ -12,7 +12,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.EditHistory
 {
     /// <summary>
     /// 版表示: 従属レコードを宣言した拡張フィールド (Gantt / Calendar / TaskBoard / MarkerList) は
-    /// DB を読まずに版の行をそのまま表示専用で見せる。
+    /// DB を読まずに版の行 (OwnedRecordRow) をそのまま表示専用で見せ、行のクラスを項目の行モジュールに写す。
     /// </summary>
     public class EditHistoryOwnedFieldsShowTest
     {
@@ -60,7 +60,18 @@ namespace Codeer.LowCode.Blazor.Extras.Test.EditHistory
             return data;
         }
 
-        static async Task<(int Loads, int Shown)> ShowAsync(FieldDesignBase owner)
+        static OwnedRecordRow Row(ModuleData data, string className = "") => new() { Data = data, ClassName = className };
+
+        static List<Module?> ItemModules(IOwnedRecordsField field) => field switch
+        {
+            GanttField g => g.Items.Select(e => e.Module).ToList(),
+            CalendarField c => c.Items.Select(e => e.Module).ToList(),
+            TaskBoardField t => t.Items.Select(e => e.Module).ToList(),
+            MarkerListField m => m.MarkerList.Select(e => e.Module).ToList(),
+            _ => new List<Module?>(),
+        };
+
+        static async Task<(int Loads, int Shown, int Decorated)> ShowAsync(FieldDesignBase owner)
         {
             var services = new TestServices(CreateDesign(owner));
             var loads = 0;
@@ -69,44 +80,60 @@ namespace Codeer.LowCode.Blazor.Extras.Test.EditHistory
             data.Fields["Id"] = new IdFieldData { Value = "1" };
             var module = await ModuleCreationService.CreateModuleAsync(services.Core, data, ModuleLayoutType.None);
             var field = (IOwnedRecordsField)module.GetField("Owner")!;
-            await field.ShowOwnedRecordsAsync("Owner", [Task("1", "要件定義", 1), Task("3", "設計", 3)]);
-            var shown = field switch
-            {
-                GanttField g => g.Items.Count,
-                CalendarField c => c.Items.Count,
-                TaskBoardField t => t.Items.Count,
-                MarkerListField m => m.MarkerList.Count,
-                _ => -1,
-            };
-            return (loads, shown);
+            await field.ShowOwnedRecordsAsync("Owner", [Row(Task("1", "要件定義", 1), "deco"), Row(Task("3", "設計", 3))]);
+            //項目の描画は行モジュールの ClassName を出す (版表示の強調はここに付く)
+            var modules = ItemModules(field);
+            return (loads, modules.Count, modules.Count(e => e?.ClassName == "deco"));
         }
 
         [Test]
         public async Task ガントチャートは版のタスクをDBを読まずに表示し表示範囲も合わせる()
         {
             var r = await ShowAsync(new GanttFieldDesign { Name = "Owner", TextField = "Title", StartField = "Start", EndField = "End", IdField = "Id", SearchCondition = Bind() });
-            Assert.That(r, Is.EqualTo((0, 2)));
+            Assert.That(r, Is.EqualTo((0, 2, 1)));
+        }
+
+        [Test]
+        public async Task ガントチャートは装飾された行が表示範囲に無ければその行の日へ移動する()
+        {
+            var services = new TestServices(CreateDesign(new GanttFieldDesign { Name = "Owner", TextField = "Title", StartField = "Start", EndField = "End", IdField = "Id", SearchCondition = Bind() }));
+            services.App.ListProvider = _ => new Paging<ModuleData>();
+            var data = new ModuleData { Name = "Project" };
+            data.Fields["Id"] = new IdFieldData { Value = "1" };
+            var module = await ModuleCreationService.CreateModuleAsync(services.Core, data, ModuleLayoutType.None);
+            var gantt = module.GetField<GanttField>("Owner")!;
+            //表示範囲は今週 (装飾なしの行 1 = 今日 が見えている)。装飾された行は 2 年後
+            var near = Task("1", "要件定義", 1);
+            near.Fields["Start"] = new DateTimeFieldData { Value = DateTime.Today };
+            near.Fields["End"] = new DateTimeFieldData { Value = DateTime.Today.AddDays(1) };
+            var farStart = DateTime.Today.AddYears(2);
+            var far = Task("9", "遠いタスク", 1);
+            far.Fields["Start"] = new DateTimeFieldData { Value = farStart };
+            far.Fields["End"] = new DateTimeFieldData { Value = farStart.AddDays(5) };
+            await gantt.ShowOwnedRecordsAsync("Owner", [Row(near), Row(far, "deco")]);
+            Assert.That(gantt.ViewStart, Is.EqualTo(farStart.Date));
+            Assert.That(gantt.Items.Any(e => e.Module?.ClassName == "deco"), Is.True);
         }
 
         [Test]
         public async Task カレンダーは版の予定をDBを読まずに表示する()
         {
             var r = await ShowAsync(new CalendarFieldDesign { Name = "Owner", TextField = "Title", StartField = "Start", EndField = "End", SearchCondition = Bind() });
-            Assert.That(r, Is.EqualTo((0, 2)));
+            Assert.That(r, Is.EqualTo((0, 2, 1)));
         }
 
         [Test]
         public async Task カンバンは版のカードをDBを読まずに表示する()
         {
             var r = await ShowAsync(new TaskBoardFieldDesign { Name = "Owner", StatusField = "Status", SortIndexField = "SortIndex", SearchCondition = Bind() });
-            Assert.That(r, Is.EqualTo((0, 2)));
+            Assert.That(r, Is.EqualTo((0, 2, 1)));
         }
 
         [Test]
         public async Task マーカーリストは版のマーカーをDBを読まずに表示する()
         {
             var r = await ShowAsync(new MarkerListFieldDesign { Name = "Owner", XField = "X", YField = "Y", LabelField = "Title", SearchCondition = Bind() });
-            Assert.That(r, Is.EqualTo((0, 2)));
+            Assert.That(r, Is.EqualTo((0, 2, 1)));
         }
     }
 }
