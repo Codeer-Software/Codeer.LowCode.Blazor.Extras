@@ -1,4 +1,4 @@
-using Codeer.LowCode.Blazor.Extras.Designs;
+﻿using Codeer.LowCode.Blazor.Extras.Designs;
 using Codeer.LowCode.Blazor.Repository.Design;
 using System.Globalization;
 using System.Reflection;
@@ -99,7 +99,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.DesignCheck
             var contracts = new[]
             {
                 typeof(ApprovalFlowContractFieldDesign), typeof(ApprovalMemberContractFieldDesign),
-                typeof(ApprovalHistoryContractFieldDesign),
+                typeof(ApprovalHistoryContractFieldDesign), typeof(EditHistoryContractFieldDesign),
             };
 
             var missing = new List<string>();

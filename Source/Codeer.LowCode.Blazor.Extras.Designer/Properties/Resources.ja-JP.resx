@@ -135,4 +135,10 @@
   <data name="SetupMailHistoryDetail" xml:space="preserve">
     <value>送信明細モジュール (1 宛先 1 行・解決後の本文) も生成</value>
   </data>
+  <data name="SetupMenuEditHistory" xml:space="preserve">
+    <value>編集履歴のセットアップ</value>
+  </data>
+  <data name="SetupEditHistoryTargetEnum" xml:space="preserve">
+    <value>対象モジュールの enum (EditHistoryTargetModule) を作る (履歴一覧のモジュール列の表示名と検索候補)</value>
+  </data>
 </root>

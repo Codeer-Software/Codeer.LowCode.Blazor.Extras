@@ -11,7 +11,7 @@ using Codeer.LowCode.Blazor.Repository.Match;
 namespace Codeer.LowCode.Blazor.Extras.Designs
 {
     [Designer(DisplayName = "$GanttField")]
-    public class GanttFieldDesign() : FieldDesignBase(typeof(GanttFieldDesign).FullName!), IDisplayName,
+    public class GanttFieldDesign() : FieldDesignBase(typeof(GanttFieldDesign).FullName!), IOwnedRecordsFieldDesign, IDisplayName,
         ISearchResultsViewFieldDesign, IFillHeightFieldDesign
     {
         [Designer(DisplayName = "$DisplayName")]
@@ -19,6 +19,12 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
 
         [Designer(Scope = DesignerScope.All, DisplayName = "$SearchCondition", Category = nameof(SearchCondition))]
         public SearchCondition SearchCondition { get; set; } = new();
+
+        //従属レコードの宣言: このフィールドが読み書きするレコード群は親の一部 (編集履歴などが親と一緒に扱う)
+        public IEnumerable<OwnedRecordsDesign> GetOwnedRecords()
+        {
+            yield return new OwnedRecordsDesign { Name = Name, Condition = SearchCondition };
+        }
 
         [Designer(CandidateType = CandidateType.Field, DisplayName = "$GanttFieldTextField", Category = nameof(SearchCondition))]
         [ModuleMember(Member = $"{nameof(SearchCondition)}.{nameof(SearchCondition.ModuleName)}")]

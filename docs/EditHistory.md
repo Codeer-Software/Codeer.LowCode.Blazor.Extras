@@ -1,0 +1,155 @@
+# 編集履歴
+
+モジュールに **EditHistoryField** を 1 つ置くと、そのモジュールのレコードの保存 (作成・更新・削除) ごとに
+レコード全体 (明細を含む) のスナップショットが履歴モジュールへ記録されます。
+詳細画面には版の一覧が出て、変更されたフィールドの「旧 → 新」、その版のレコード全体の表示、
+その版の内容へのフォームの巻き戻しができます。履歴は通常のモジュールに保存されるため、
+一覧・検索・権限はいつものローコードのやり方でできます。
+
+- [概略](#概略) — 何ができるか、導入の流れ
+- [詳細](#詳細) — 記録、表示、復元、権限、契約、サーバーの結線
+
+---
+
+## 概略
+
+### できること
+
+- **保存ごとにレコード全体を記録**。従属レコード (明細やガントチャートのタスクなど) も一緒に 1 版になる (明細だけの変更も親の 1 版)
+- **削除も記録** (削除前の内容)。履歴モジュールの一覧を ChangeType = Delete で絞れば「削除済みレコード一覧」
+- **削除したレコードの復活** — 履歴モジュールの詳細に EditHistoryRestoreButtonField を置く。論理削除のモジュールなら Id を保ったまま明細ごと戻る (リンクは切れない)。物理削除なら新しいレコードとして作り直す
+- **履歴から対象レコードへ** — 履歴モジュールの一覧の列や詳細に EditHistoryTargetLinkField を置くと、その履歴行のレコードを開くリンク (「開く」) が出る (削除の版には出ない)
+- **版の一覧** — 版番号・変更種別・変更者・日時と、変更されたフィールドだけの「旧 → 新」。明細は行の追加 / 削除 / 変更
+- **この版を表示** — その版のレコード全体を表示専用のダイアログで表示。変更されたフィールドを強調 (明細の行・ガントチャートのタスク・カレンダーの予定・カード・マーカーも 追加 / 変更 / 削除 で強調)
+- **この版に戻す** — その版の内容を編集中のフォームへ反映。**保存はユーザーが行う** (保存前に確認・一部だけ直す、ができる)。保存すると新しい版として記録される (履歴は巻き戻らない)
+- CSV / Excel の一括取込や API からの保存も記録される (保存経路が同じ)
+
+### 導入の流れ
+
+1. **履歴モジュール**を作る (全モジュールで 1 つ共有してよい)。デザイナの **Tools > 編集履歴のセットアップ** (または CLI の `edit-history-setup`) が、
+   契約・復活ボタン・対象レコードリンク・検索レイアウト・対象モジュール enum・ページリンク込みの履歴モジュールとテーブル作成 DDL を生成する。
+   手で作るならフィールドは ModuleName / DataId / ChangeType / Snapshot (必須) と UserId / DateTime (任意)。
+   **EditHistoryContractField** を 1 つ置く (既定名でフィールドを作れば設定不要)。テーブル定義例:
+
+   ```sql
+   CREATE TABLE edit_histories (
+     id          BIGSERIAL PRIMARY KEY,
+     module_name TEXT NOT NULL,
+     data_id     TEXT NOT NULL,
+     change_type TEXT NOT NULL,
+     snapshot    TEXT NOT NULL,
+     user_id     TEXT,
+     date_time   TIMESTAMP
+   );
+   CREATE INDEX ix_edit_histories_target ON edit_histories (module_name, data_id);
+   ```
+
+2. 履歴を取りたいモジュールに **EditHistoryField** を置き、`HistoryModuleName` に履歴モジュールを設定。詳細レイアウトの右カラムかタブに配置
+3. サーバー側は `Codeer.LowCode.Blazor.Extras.Server` の **EditHistoryRecorder** を `CustomizedModuleDataIO.SubmitAsync` に結線 (アプリテンプレートは結線済み。[サーバーの結線](#サーバーの結線))
+
+---
+
+## 詳細
+
+### 記録
+
+- サーバーの `EditHistoryRecorder` が `ModuleDataIO.SubmitAsync` を包む。トランザクションのルートレコード 1 件につき履歴 1 行
+- 作成・更新: base の保存が成功した後、保存後のレコードを本体の `ModuleDataIO.GetWithOwnedRecordsAsync` で読み直して記録。読む範囲は「レコード本体 ＋ 従属レコードの宣言 (`IOwnedRecordsFieldDesign`) の先」。何が従属かは各フィールドが決める (一覧は「親の画面で行を追加・更新・削除できる一覧」と「親と一緒に消える一覧」、Gantt / Calendar / TaskBoard は自分の子レコード)。参照するだけの一覧 (編集できない一覧) は含めない。行のモジュール側で個別に保存した変更は親の版には入らない。子・孫も再帰
+- 埋め込みモジュール (`ModuleField`) は本体 1.3.37 で子レコードを従属として宣言する (参照 = DbColumn に持つ子の Id で束縛。DbColumn か ModuleName が無い埋め込みは宣言しない) ので、明細と同じ経路で親の版に入る: 子レコード 0 か 1 行の一覧として参照の位置に置かれ、子の従属レコード (子の明細・子の中の埋め込み) も再帰、NULL の列も埋まる。子レコードを子自身のページで保存した変更は親の版にはならない
+- 削除: base の前に削除前のレコードを読んでおき、成功後に記録
+- 読み直しは操作ユーザーの権限で行う。そのユーザーに読めない列はスナップショットに入らない (復元でもその列は変わらない)。DB で NULL だった列は null の値として入る (その版で空だったことが残り、復元で空に戻る)
+- 変更種別は `EditHistoryChangeType` (Add / Update / Delete) のメンバー名。デザイン enum として公開されるので、履歴モジュールの ChangeType を SelectField (EnumName = `EditHistoryChangeType`) にすれば表示名付きで一覧・検索できる
+- 履歴の記録に失敗すると保存も失敗 (ロールバック) になる。EditHistoryField があるのに履歴モジュール・契約が無い設計 (デザインチェックが指摘する不備) も同様
+- 一括取込も記録される。履歴対象モジュールの投入は本体の一括 INSERT 経路 (`BulkAddThreshold` 以上の純追加) を使わず 1 行ずつ入る (採番 Id を履歴に使うため)
+- 添付ファイルはファイル名とキーだけ記録し、実体は履歴に残さない
+- **Gantt / Calendar / TaskBoard** のように別モジュールのレコードを自分で読み書きする拡張フィールドは、`IOwnedRecordsFieldDesign` で子レコードを宣言しているので、そのまま親の版に入る (一覧フィールドを別途置く必要はない)。独自の拡張フィールドで子レコードを持つものは同じインターフェースを実装する。復元 (この版に戻す) と版表示は、ランタイム側が本体の `IOwnedRecordsField` (Codeer.LowCode.Blazor 1.3.37) を実装しているフィールドが差し替え・表示できる (本体の一覧フィールドと Gantt / Calendar / TaskBoard / MarkerList は実装済み)。宣言もランタイムの口も本体側なので、独自の拡張フィールドは Extras を参照せずに履歴へ参加できる
+- **ExecuteSqlField** も記録される (SQL は同じ SubmitAsync の中で走る)。Update / Delete タイミングは通常どおり保存後・削除前の内容。Create タイミングは `NewId` で採番 Id が返る設定のときだけ記録される (返らないと読み直せない = ログに出る)。Standalone (Add / Update / Delete の無い送信で SQL だけ実行) は送信前後のレコードを比べ、レコード自体が変わったときだけ 1 版にする (他のテーブルだけを変える SQL は履歴にならない)
+- 「変更なしで保存」は Submit 自体が起きないので版は増えない。何も保存しない送信 (承認の申請で申請書に変更が無いときなど) も版にならない
+- **承認フロー (ApprovalFlowField) との組み合わせ**: 申請・再申請は申請書の保存を通るので申請者の版になる (作成 / 更新)。承認・却下・差し戻し・取り下げ・確認は承認モジュールだけを書く (申請書の保存を通らない) ので版にならない = 誰がいつ承認したかは承認履歴 (ApprovalHistory) が持つ。承認フローの FK はサーバーが保存の後に書くので、版の差分には出さず「この版に戻す」でも触らない
+- **自動保存 (AutoSubmitField) との組み合わせ**: 自動保存も通常の保存と同じ経路なので保存ごとに版になる (遅延の間にまとめて保存された変更は 1 版)。自動保存はレコードを読み直さないが、履歴の版一覧は保存のたびに読み直される。「この版に戻す」で反映した内容も自動保存されて次の版になる (ユーザーの保存操作は要らない)
+
+### 表示
+
+- 版番号は保存せず、閲覧時に件数から採番する (古い方から 1, 2, ...)。並びは DateTime 役割があれば日時、無ければ Id の降順
+- 各版には前の版との差分だけを出す。値フィールドは「表示名: 旧 → 新」(候補・リンクは表示名、日付・数値はフィールドの書式)。明細は行 Id で突き合わせて「追加 n 件 / 削除 n 件 / 変更 n 件」と行ごとの内訳。作成の版は値のある項目、削除の版は「レコードが削除されました」
+- 作成の版は「レコードが作成されました」だけ (全項目を並べても読めない。内容は「この版を表示」)。明細は「追加 n 件 / 削除 n 件 / 変更 n 件」の要約だけを出し、行ごとの内訳はクリックで開く
+- 「旧 → 新」の文字列を出すのは文字列・数値・真偽・日付時刻・候補・リンク・ファイル (名前) のフィールドだけ。それ以外の型 (独自のデータクラスを持つフィールド) は変わったかどうか (JSON 比較) だけを「変更あり」として名前で出し、内容は「この版を表示」(本物のコンポーネントで描く) で見る。一覧は要約、全体は版表示、の二層構造
+- 「この版を表示」は自モジュールの詳細レイアウト (`LayoutName`、空なら既定) をそのまま使って表示専用のダイアログに出し、変更フィールドを緑の枠で強調する。従属レコード (明細の一覧・Gantt のタスク・カレンダーの予定・カード・マーカー) は本体の `IOwnedRecordsField.ShowOwnedRecordsAsync` に版の行を `OwnedRecordRow` (行の内容 + 行と セルに付ける CSS クラス + 孫の行) として渡し、DB は読まずにそのまま表示する。クラスは履歴側が行 Id で差分と対応づけて決める: 追加 = 行全体 / 変更 = 行に枠 + 変わったセル / 削除 = 前の版の行を元の位置に差し込んで打ち消し (Gantt のバーは枠線)。差分のある項目が表示範囲に無ければ Gantt / Calendar はその項目の日 (月) へ移動する。独自の拡張フィールドは `OwnedRecordRow.ApplyToAsync` を行モジュールに適用し、項目の描画に行モジュールの `ClassName` を出せば同じ強調が付く
+- 埋め込みモジュール (`ModuleField`) は明細と同じ見え方: 差分は「埋め込みのフィールド名 → 行 1 の項目ごとの 旧 → 新」(参照が付いた版は追加行、外れた版は削除行)。版表示ダイアログでは本体の `ModuleField.ShowOwnedRecordsAsync` が版の子レコードをそのまま見せ、変わった項目が強調される
+- `PageSize` (既定 20) ずつ読み、「さらに表示」で次を読む
+- 未保存のレコード・一覧の行では読まない
+
+### 復元 (この版に戻す)
+
+- 値フィールドは変更扱いで反映 (OnDataChanged スクリプトも動く)。ユーザーが保存して確定する = 権限・検証・楽観ロックは通常の保存と同じ
+- 従属レコードは本体の `IOwnedRecordsField.ApplyOwnedRecordsAsync` (一覧は ListField 自身、Gantt 等は各フィールド) が行 Id で突き合わせ、既存行は更新、余った行は削除。無い行は、明細モジュールが**論理削除**なら Id を保ったまま復活 (保存時に「削除の取り消し」が同梱され、同じトランザクションで戻る)、物理削除なら新しい行として追加 (Id は振り直し)。孫の明細も同様。値の反映は本体の `Module.ApplyRecordAsync`
+- 埋め込みモジュール (`ModuleField`) は本体の `ModuleField.ApplyOwnedRecordsAsync` が受ける: 版の子と今の子が別レコードなら (親の参照が変わっていた) 版の子に差し替えてから、子モジュールへ `Module.ApplyRecordAsync` で項目ごとに反映する (システムフィールドは触らない・子の明細も行 Id で突き合わせ)。親の保存に子の Update が乗り、同じトランザクションで戻る。版に子が無ければ触らない (参照を外す操作は無い)
+- 対象外: システムフィールド (Id / 楽観ロック / 作成・更新・削除の記録 / 論理削除)、リンク越しの派生値、従属でない一覧、添付ファイル、書き込み権限のないフィールド。反映できる項目が 1 つも無かったときはその旨のメッセージが出る (フォームは変わらない)
+- 削除したレコードの復活は履歴モジュール側の EditHistoryRestoreButtonField で行う ([FieldDocs](../Source/Codeer.LowCode.Blazor.Extras.Designer/FieldDocs/EditHistoryRestoreButtonFieldDesign.md))。論理削除なら Id を保って明細ごと (ChangeType = Restore の版になる)、物理削除なら新しいレコードとして (作成の版になる)
+- 履歴行から対象レコードへは EditHistoryTargetLinkField ([FieldDocs](../Source/Codeer.LowCode.Blazor.Extras.Designer/FieldDocs/EditHistoryTargetLinkFieldDesign.md))。一覧の列に置けば「開く」で本体へ、履歴モジュール側の詳細にも置ける。削除の版 (レコードはもう開けない) には出ない
+- 論理削除の取り消しは本体の `ModuleDataIO.UndeleteAsync` (Codeer.LowCode.Blazor 1.3.37) が行い、EditHistoryRecorder が base の Submit の前に呼ぶ。権限は削除と同じ (CanDelete と UserWrite 条件)
+- **退避 (削除テーブルへの移動) とは併用できない** (デザインチェック エラー)。履歴を入れるモジュールの削除は論理削除か物理削除にする。Id を保った復活が要るなら論理削除
+- ExecuteSqlField を使うモジュールでは、戻るのはレコード (と明細) の内容だけ。SQL が他のテーブルや他のレコードに書いたものは履歴に無いので戻らない (履歴は「このレコードがどう変わったか」の記録として使う)
+
+### 権限
+
+- 履歴の読み取りは通常のモジュールデータ API = **履歴モジュールの UserRead / DataRead 条件がそのまま効く**。履歴を見せたくないユーザーには履歴モジュールを読めなくすればよい (EditHistoryField は「履歴はありません」になる)
+- 対象モジュール側でフィールド単位の閲覧権限 (PermissionField) を使っている場合、差分表示はそのフィールドを出さない。ただし履歴モジュールを直接読めるユーザーには Snapshot (JSON) の生の値が見える。列を伏せたい相手には履歴モジュールを読ませないこと
+- 履歴の書き込みは内部経路 (操作ユーザーの書き込み権限に依存しない)。履歴モジュールの UserWrite は「誰も書けない」でよい
+- 復元は対象モジュールの編集権限 (表示専用なら「この版に戻す」は出ない)
+
+### 契約フィールド (フィールド名の対応表)
+
+履歴モジュールに `EditHistoryContractField` を置き、役割 → 自モジュールのフィールド名を宣言する。既定名で作れば設定不要。
+
+| 役割 | 型 | 内容 | 必須 |
+|---|---|---|---|
+| ModuleName | Text / Select | 対象モジュール名。Select + enum (メンバー名 = モジュール名 / 表示 = 画面上の名前) で一覧の表示と検索を読み替えられる。enum は任意 (無い・空なら素のモジュール名)。enum にメンバーがあるのに記録元モジュールが無いとデザインチェックがエラー | ○ |
+| DataId | Text | 対象レコードの Id | ○ |
+| ChangeType | Text / Select | Add / Update / Delete | ○ |
+| Snapshot | Text | レコード全体の JSON | ○ |
+| UserId | Link (ユーザー) / Text | 保存したユーザー | - |
+| DateTime | DateTime | 保存日時。フィールドの SaveAsUtc に従う (本体の CreatedAt と同じ) | - |
+
+型が合わない・フィールドが無い・必須役割が空はデザインチェックがエラーにする。監査用の項目 (IP アドレス等) を足したい場合は履歴モジュールに自由にフィールドを追加してよい (記録側は役割しか書かない)。
+
+### セットアップ (履歴モジュールの生成)
+
+デザイナの **Tools > 編集履歴のセットアップ**。履歴モジュール名 (既定 EditHistory)・データソース・変更者リンクのユーザーモジュールと表示名フィールド・
+対象モジュール enum を作るか・ページリンクを追加するか、を聞いて次を生成する (冪等。既にあるものは触らない):
+
+- 履歴モジュール (契約 EditHistoryContractField・復活ボタン・対象レコードリンク・一覧 / 詳細 / 検索レイアウト・「誰も書けない」保護条件)。
+  正本は Example の `EditHistory` モジュール (実機確認済み) で、名前・テーブル名・データソース・ユーザーモジュールを差し替える
+- 対象モジュール enum `EditHistoryTargetModule` (空)。メンバー (名前 = 対象モジュール名 / 表示 = 画面上の名前) は対象モジュールごとにユーザーが足す。
+  作らない場合は ModuleName を素の名前で運用する
+- PageFrame のページリンク「編集履歴」(新規作成なし・詳細遷移あり・Id の降順)
+- テーブル作成 DDL (結果ダイアログでその場で実行できる)
+
+対象モジュール側 (EditHistoryField の配置) とサーバーの結線は生成しない (結果ダイアログに手順が出る)。
+headless CLI: `<designer.exe> edit-history-setup "<projectDir>" [--history-name EditHistory] [--data-source <name>] [--user-module AppUser] [--user-name-field Name] [--no-enum] [--no-pageframe] [--ddl-out "<path.sql>"]`
+
+### サーバーの結線
+
+アプリテンプレートの `CustomizedModuleDataIO` に入っている形:
+
+```csharp
+public class CustomizedModuleDataIO : ModuleDataIO
+{
+    readonly EditHistoryRecorder _editHistory;
+
+    public CustomizedModuleDataIO(DesignData designData, IAuthenticationContext authenticationContext, IDbAccessor dbAccess, ITemporaryFileManager temporaryFileManager)
+        : base(designData, authenticationContext, dbAccess, temporaryFileManager)
+    {
+        //編集履歴 (EditHistoryField を置いたモジュールの保存ごとに履歴モジュールへスナップショットを書く)
+        _editHistory = new EditHistoryRecorder(designData, this, AddSystemRecordAsync);
+    }
+
+    public override Task<List<ModuleSubmitResult>> SubmitAsync(Guid transactionId, List<ModuleSubmitData> transactionData)
+        => _editHistory.SubmitAsync(transactionData, () => base.SubmitAsync(transactionId, transactionData));
+
+    internal async Task<string> AddSystemRecordAsync(ModuleData data)
+        => await AddAsync(Guid.NewGuid(), Guid.NewGuid(), data);
+}
+```
+
+`EditHistoryRecorder(designData, io, addInternalAsync, logError)` の `logError` に `ILogger` の Warning 等を渡すと、記録をスキップした理由がログに出る。

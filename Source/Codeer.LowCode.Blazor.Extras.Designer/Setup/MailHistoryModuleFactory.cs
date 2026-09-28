@@ -194,7 +194,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
             return module;
         }
 
-        static string Pluralize(string name)
+        internal static string Pluralize(string name)
         {
             if (name.EndsWith("y") && name.Length >= 2 && !"aeiou".Contains(name[^2])) return name[..^1] + "ies";
             if (name.EndsWith("s") || name.EndsWith("x") || name.EndsWith("ch") || name.EndsWith("sh")) return name + "es";

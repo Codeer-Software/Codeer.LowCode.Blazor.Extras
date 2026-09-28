@@ -4,6 +4,7 @@ using Codeer.LowCode.Blazor.DataIO.Db;
 using Codeer.LowCode.Blazor.DesignLogic;
 using Codeer.LowCode.Blazor.Repository.Data;
 using Codeer.LowCode.Blazor.Repository.Match;
+using Codeer.LowCode.Blazor.Extras.Server.EditHistory;
 using Codeer.LowCode.Blazor.Extras.Services;
 using Extras.Server.AI;
 
@@ -12,12 +13,19 @@ namespace Extras.Server.Services
     public class CustomizedModuleDataIO : ModuleDataIO
     {
         readonly DesignData _designData;
+        readonly EditHistoryRecorder _editHistory;
 
         public CustomizedModuleDataIO(DesignData designData, IAuthenticationContext authenticationContext, IDbAccessor dbAccess, ITemporaryFileManager temporaryFileManager)
             : base(designData, authenticationContext, dbAccess, temporaryFileManager)
         {
             _designData = designData;
+            //編集履歴: EditHistoryField を置いたモジュールの保存 (作成・更新・削除) ごとに履歴モジュールへスナップショットを書く
+            _editHistory = new EditHistoryRecorder(designData, this, AddSystemRecordAsync);
         }
+
+        //編集履歴の記録 (base の前に削除前、後に保存後の内容を読む)。記録に失敗すると保存も失敗になる
+        public override Task<List<ModuleSubmitResult>> SubmitAsync(Guid transactionId, List<ModuleSubmitData> transactionData)
+            => _editHistory.SubmitAsync(transactionData, () => base.SubmitAsync(transactionId, transactionData));
 
         protected override async Task<string> AddAsync(Guid transactionId, Guid moduleSubmitId, ModuleData data)
         {

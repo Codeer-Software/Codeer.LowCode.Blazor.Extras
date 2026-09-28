@@ -59,6 +59,31 @@
         public bool AddPageFrameLink { get; set; } = true;
     }
 
+    /// <summary>編集履歴のセットアップのオプション。</summary>
+    public class EditHistorySetupOptions
+    {
+        /// <summary>履歴モジュール名 (対象モジュールの EditHistoryField.HistoryModuleName に設定する名前)。</summary>
+        public string HistoryModuleName { get; set; } = "EditHistory";
+
+        /// <summary>生成するモジュールのデータソース名。</summary>
+        public string DataSourceName { get; set; } = string.Empty;
+
+        /// <summary>変更者 (UserId) のリンク先になるユーザーモジュール名。</summary>
+        public string UserModuleName { get; set; } = "AppUser";
+
+        /// <summary>ユーザーモジュールの表示名フィールド名 (変更者リンクの表示)。</summary>
+        public string UserDisplayNameField { get; set; } = "Name";
+
+        /// <summary>
+        /// 対象モジュール enum (EditHistoryTargetModule) を作り、履歴モジュールの ModuleName をそれを参照する Select にするか。
+        /// メンバー (名前 = モジュール名 / 表示 = 画面上の名前) はユーザーが対象モジュールごとに足す。false なら ModuleName は素の名前で運用。
+        /// </summary>
+        public bool CreateTargetModuleEnum { get; set; } = true;
+
+        /// <summary>履歴一覧のページリンクを PageFrame に追加するか。</summary>
+        public bool AddPageFrameLink { get; set; } = true;
+    }
+
     /// <summary>セットアップの実行結果。</summary>
     public class SetupResult
     {

@@ -135,4 +135,10 @@
   <data name="SetupMailHistoryDetail" xml:space="preserve">
     <value>Also generate the detail module (one row per recipient, resolved body)</value>
   </data>
+  <data name="SetupMenuEditHistory" xml:space="preserve">
+    <value>Edit History Setup</value>
+  </data>
+  <data name="SetupEditHistoryTargetEnum" xml:space="preserve">
+    <value>Create the target module enum (EditHistoryTargetModule) for the module column of the history list</value>
+  </data>
 </root>

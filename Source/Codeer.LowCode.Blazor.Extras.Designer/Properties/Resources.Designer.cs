@@ -138,5 +138,9 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Properties
         public static string SetupMailHistory => GetString("SetupMailHistory");
         public static string SetupMailHistoryDetail => GetString("SetupMailHistoryDetail");
 
+        public static string SetupMenuEditHistory => GetString("SetupMenuEditHistory");
+
+        public static string SetupEditHistoryTargetEnum => GetString("SetupEditHistoryTargetEnum");
+
     }
 }

@@ -4,7 +4,7 @@
     <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <Version>0.3.0</Version>
+    <Version>0.4.0</Version>
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
     <PackageId>Codeer.LowCode.Blazor.Extras.SeleniumDrivers</PackageId>
     <Description>Selenium drivers for the fields of Codeer.LowCode.Blazor.Extras. Used together with Codeer.LowCode.Blazor.SeleniumDrivers.</Description>
@@ -13,7 +13,7 @@
     <PackageTags>Codeer.LowCode.Blazor;Selenium</PackageTags>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
-    <PackageReleaseNotes>AIChatFieldDriver: driver for AIChatField (Codeer.LowCode.Blazor.Extras 0.10.0) - Input, Send, Stop and NewConversation controls, UserMessages / Replies / Errors element lists, IsThinking, and SendAndWait(text) which sends a message and waits until the reply (or an error) is final.</PackageReleaseNotes>
+    <PackageReleaseNotes>Drivers for the edit history fields (Codeer.LowCode.Blazor.Extras 0.16.0): EditHistoryFieldDriver (versions with number / change type / user / date / summary, open a version to read its changes and press Show or Restore, LoadMore), EditHistoryVersionDialogDriver (counts of highlighted cells and rows in the version dialog), EditHistoryRestoreButtonFieldDriver and EditHistoryTargetLinkFieldDriver.</PackageReleaseNotes>
   </PropertyGroup>
 
   <ItemGroup>

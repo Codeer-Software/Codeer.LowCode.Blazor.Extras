@@ -22,6 +22,12 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
     ///     [--no-history-detail] [--history-detail-name MailHistoryDetail] [--data-source &lt;name&gt;]
     ///     [--no-pageframe] [--ddl-out "&lt;path.sql&gt;"]
     ///
+    /// edit-history-setup:
+    ///   &lt;designer.exe&gt; edit-history-setup "&lt;projectDir&gt;" [--history-name EditHistory] [--data-source &lt;name&gt;]
+    ///     [--user-module AppUser] [--user-name-field Name] [--no-enum] [--no-pageframe] [--ddl-out "&lt;path.sql&gt;"]
+    ///   (履歴モジュール (契約・復活ボタン・対象リンク同梱) と対象モジュール enum を生成するだけ。
+    ///    対象モジュールへの EditHistoryField の配置はデザイナで行う。--no-enum = ModuleName を素の名前で運用)
+    ///
     /// DDL は実行しない (--ddl-out へ書き出し、適用は sql verb またはユーザーが行う)。
     /// 終了コード: 0 = 成功 / 2 = 失敗。
     /// </summary>
@@ -29,11 +35,13 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
     {
         internal const string ApprovalVerb = "approval-setup";
         internal const string MailVerb = "mail-setup";
+        internal const string EditHistoryVerb = "edit-history-setup";
 
         internal static void Register()
         {
             HeadlessCliVerbs.Register(ApprovalVerb, RunApproval);
             HeadlessCliVerbs.Register(MailVerb, RunMail);
+            HeadlessCliVerbs.Register(EditHistoryVerb, RunEditHistory);
         }
 
         static int RunApproval(string[] args)
@@ -91,6 +99,35 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
             };
 
             var result = MailSetupService.Run(designData, projectDir, options, dataSourceType);
+            return Report(result, named.GetValueOrDefault("--ddl-out"));
+        }
+
+        static int RunEditHistory(string[] args)
+        {
+            if (args.Length < 2)
+            {
+                Console.Error.WriteLine($"usage: {EditHistoryVerb} \"<projectDir>\" [--history-name EditHistory] [--data-source <name>] [--user-module AppUser] ...");
+                return 2;
+            }
+            var projectDir = Path.GetFullPath(args[1]);
+            var named = ParseNamed(args);
+
+            var designData = LoadDesignData(projectDir);
+            var (dataSourceName, dataSourceType) = ResolveDataSource(projectDir, named.GetValueOrDefault("--data-source"));
+
+            var options = new EditHistorySetupOptions
+            {
+                HistoryModuleName = named.GetValueOrDefault("--history-name", "EditHistory"),
+                DataSourceName = dataSourceName,
+                UserModuleName = named.GetValueOrDefault("--user-module",
+                    string.IsNullOrEmpty(designData.AppSettings.CurrentUserModuleDesignName)
+                        ? "AppUser" : designData.AppSettings.CurrentUserModuleDesignName),
+                UserDisplayNameField = named.GetValueOrDefault("--user-name-field", "Name"),
+                CreateTargetModuleEnum = !args.Contains("--no-enum"),
+                AddPageFrameLink = !args.Contains("--no-pageframe"),
+            };
+
+            var result = EditHistorySetupService.Run(designData, projectDir, options, dataSourceType);
             return Report(result, named.GetValueOrDefault("--ddl-out"));
         }
 
