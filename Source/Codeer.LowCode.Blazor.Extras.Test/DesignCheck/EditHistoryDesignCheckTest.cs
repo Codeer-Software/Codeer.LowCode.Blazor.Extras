@@ -45,6 +45,59 @@ namespace Codeer.LowCode.Blazor.Extras.Test.DesignCheck
             ret[0].AssertFieldLocation("Order", "History", nameof(EditHistoryFieldDesign.HistoryModuleName));
         }
 
+        //「この版に戻す」は従属レコードを全件で差し替えるので、全件を持たない宣言 (サーバーページングの一覧) は設計で弾く。
+        //Extras はページングを知らず、宣言の HoldsAllRecords だけを見る
+        [Test]
+        public void サーバーページングの明細は指摘_メモリ内ページングか件数制限なしなら通る()
+        {
+            var d = Create();
+            var items = Field<ListFieldDesign>(d, "Order", "Items");
+            items.SearchCondition.LimitCount = 10;
+            var ret = Check(d, "Order", Field<EditHistoryFieldDesign>(d, "Order", "History"));
+            Assert.That(ret.Count, Is.EqualTo(1));
+            Assert.That(ret[0].Code, Is.EqualTo(DesignCheckCode.Create(typeof(EditHistoryFieldDesign), 4)));
+            ret[0].AssertFieldLocation("Order", "Items", nameof(FieldDesignBase.Name));
+            Assert.That(ret[0].Message, Does.Contain("Items"));
+
+            items.IsInMemoryPaging = true;
+            Assert.That(Check(d, "Order", Field<EditHistoryFieldDesign>(d, "Order", "History")), Is.Empty);
+
+            items.IsInMemoryPaging = false;
+            items.SearchCondition.LimitCount = null;
+            Assert.That(Check(d, "Order", Field<EditHistoryFieldDesign>(d, "Order", "History")), Is.Empty);
+        }
+
+        [Test]
+        public void 孫の明細と埋め込みモジュールの中の明細も見る()
+        {
+            var d = EditHistoryTestDesigns.Create(withCustomer: true, withDetails: true);
+            Field<ListFieldDesign>(d, "OrderItem", "Details").SearchCondition.LimitCount = 5;
+            var ret = Check(d, "Order", Field<EditHistoryFieldDesign>(d, "Order", "History"));
+            Assert.That(ret.Count, Is.EqualTo(1));
+            ret[0].AssertFieldLocation("OrderItem", "Details", nameof(FieldDesignBase.Name));
+
+            //埋め込みモジュール (Customer) の中に従属の一覧を足してサーバーページングにすると、そこも指摘
+            Field<ListFieldDesign>(d, "OrderItem", "Details").SearchCondition.LimitCount = null;
+            Module(d, "Customer").Fields.Add(new ListFieldDesign
+            {
+                Name = "Contacts", CanUpdate = true,
+                SearchCondition = new Repository.Match.SearchCondition("OrderItem") { LimitCount = 3 },
+            });
+            ret = Check(d, "Order", Field<EditHistoryFieldDesign>(d, "Order", "History"));
+            Assert.That(ret.Count, Is.EqualTo(1));
+            ret[0].AssertFieldLocation("Customer", "Contacts", nameof(FieldDesignBase.Name));
+        }
+
+        [Test]
+        public void 拡張フィールドと埋め込みモジュールの宣言は全件を持つ()
+        {
+            Assert.That(new GanttFieldDesign { Name = "G" }.GetOwnedRecords().Single().HoldsAllRecords, Is.True);
+            Assert.That(new CalendarFieldDesign { Name = "C" }.GetOwnedRecords().Single().HoldsAllRecords, Is.True);
+            Assert.That(new TaskBoardFieldDesign { Name = "T" }.GetOwnedRecords().Single().HoldsAllRecords, Is.True);
+            Assert.That(new MarkerListFieldDesign { Name = "M" }.GetOwnedRecords().Single().HoldsAllRecords, Is.True);
+            Assert.That(new ModuleFieldDesign { Name = "E", DbColumn = "e", ModuleName = "X" }.GetOwnedRecords().Single().HoldsAllRecords, Is.True);
+        }
+
         [Test]
         public void 同じモジュールに2つ置くと指摘()
         {

@@ -3376,6 +3376,12 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
             }
         }
 
+        internal static string EditHistoryCheck_OwnedRecordsNotHeldFormat {
+            get {
+                return ResourceManager.GetString("EditHistoryCheck_OwnedRecordsNotHeldFormat", resourceCulture);
+            }
+        }
+
         internal static string EditHistoryRecordRestored {
             get {
                 return ResourceManager.GetString("EditHistoryRecordRestored", resourceCulture);

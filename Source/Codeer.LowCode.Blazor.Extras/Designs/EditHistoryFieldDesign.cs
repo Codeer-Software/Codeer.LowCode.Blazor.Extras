@@ -26,6 +26,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         private const int CodeContractFieldMissing = 1;
         private const int CodeDuplicated = 2;
         private const int CodeDeleteArchive = 3;
+        private const int CodeOwnedRecordsNotHeld = 4;
 
         public EditHistoryFieldDesign() : base(typeof(EditHistoryFieldDesign).FullName!) { }
 
@@ -93,7 +94,30 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
                     Message = Properties.Resources.EditHistoryCheck_DeleteArchive,
                 });
             }
+            //「この版に戻す」は従属レコードを版の全件で差し替える (本体の IOwnedRecordsField は持っている行に対して行う) ので、
+            //全件を持たない宣言 (サーバーページングの一覧等。宣言の HoldsAllRecords) は対象にできない。子・孫の宣言も同様
+            if (ownModule != null) CheckOwnedRecordsHeld(context, ownModule, new HashSet<string> { ownModule.Name }, result);
             return result;
+        }
+
+        //visited: 同じ子モジュールに複数の経路 (埋め込みが 2 か所から同じモジュールを指す等) で辿り着いても、宣言は同じなので 1 回だけ見る
+        void CheckOwnedRecordsHeld(DesignCheckContext context, ModuleDesign module, HashSet<string> visited, List<DesignCheckInfo> result)
+        {
+            foreach (var (field, owned) in EditHistoryContracts.OwnedRecords(module))
+            {
+                if (!owned.HoldsAllRecords)
+                {
+                    result.Add(new FieldDesignCheckInfo
+                    {
+                        Code = DesignCheckCode.Create(typeof(EditHistoryFieldDesign), CodeOwnedRecordsNotHeld),
+                        Location = new FieldDesignDataLocation { Module = module.Name, Field = field.Name, Member = nameof(Name) },
+                        Message = string.Format(Properties.Resources.EditHistoryCheck_OwnedRecordsNotHeldFormat, module.Name, field.Name, context.OwnerModule),
+                    });
+                }
+                var child = context.DesignData.Modules.Find(owned.Condition.ModuleName);
+                if (child == null || !visited.Add(child.Name)) continue;
+                CheckOwnedRecordsHeld(context, child, visited, result);
+            }
         }
 
         public override RenameResult ChangeName(RenameContext context)

@@ -1515,6 +1515,9 @@
   <data name="EditHistoryCheck_DeleteArchive" xml:space="preserve">
     <value>編集履歴と退避 (削除テーブルへの移動) は併用できません。論理削除か物理削除にしてください。</value>
   </data>
+  <data name="EditHistoryCheck_OwnedRecordsNotHeldFormat" xml:space="preserve">
+    <value>モジュール '{0}' の従属レコード '{1}' はランタイムで全件を持たない設定 (サーバーページングの一覧など) なので、'{2}' の編集履歴の「この版に戻す」で差し替えられません。全件を持つ設定 (一覧ならメモリ内ページングか件数制限なし) にしてください。</value>
+  </data>
   <data name="EditHistoryRecordRestored" xml:space="preserve">
     <value>レコードが復活しました</value>
   </data>
