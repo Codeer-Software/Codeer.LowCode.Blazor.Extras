@@ -195,7 +195,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.DesignCheck
         public void 復活ボタンは契約フィールドのあるモジュールにだけ置ける()
         {
             var d = Create();
-            var button = new EditHistoryRestoreButtonFieldDesign { Name = "Restore" };
+            var button = new EditHistoryUndeleteButtonFieldDesign { Name = "Restore" };
             Module(d, "EditHistory").Fields.Add(button);
             Assert.That(Check(d, "EditHistory", button), Is.Empty);
 
@@ -236,19 +236,5 @@ namespace Codeer.LowCode.Blazor.Extras.Test.DesignCheck
             Assert.That(contract.DataId, Is.EqualTo("DataId"));
         }
 
-        [Test]
-        public void 対象レコードリンクは契約のあるモジュールなら指摘なし_無ければ指摘()
-        {
-            var d = Create();
-            var link = new EditHistoryTargetLinkFieldDesign { Name = "Open" };
-            Module(d, "EditHistory").Fields.Add(link);
-            Assert.That(Check(d, "EditHistory", link), Is.Empty);
-
-            Module(d, "Order").Fields.Add(link);
-            var ret = Check(d, "Order", link);
-            Assert.That(ret.Count, Is.EqualTo(1));
-            Assert.That(ret[0].Code, Is.EqualTo("EditHistoryTargetLinkFieldDesign:1"));
-            ret[0].AssertFieldLocation("Order", "Open", nameof(EditHistoryTargetLinkFieldDesign.Name));
-        }
     }
 }

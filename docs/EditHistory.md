@@ -17,8 +17,8 @@
 
 - **保存ごとにレコード全体を記録**。従属レコード (明細やガントチャートのタスクなど) も一緒に 1 版になる (明細だけの変更も親の 1 版)
 - **削除も記録** (削除前の内容)。履歴モジュールの一覧を ChangeType = Delete で絞れば「削除済みレコード一覧」
-- **削除したレコードの復活** — 履歴モジュールの詳細に EditHistoryRestoreButtonField を置く。論理削除のモジュールなら Id を保ったまま明細ごと戻る (リンクは切れない)。物理削除なら新しいレコードとして作り直す
-- **履歴から対象レコードへ** — 履歴モジュールの一覧の列や詳細に EditHistoryTargetLinkField を置くと、その履歴行のレコードを開くリンク (「開く」) が出る (削除の版には出ない)
+- **削除したレコードの復活** — 履歴モジュールの詳細に EditHistoryUndeleteButtonField を置く。論理削除のモジュールなら Id を保ったまま明細ごと戻る (リンクは切れない)。物理削除なら新しいレコードとして作り直す
+- **履歴から対象レコードへ** — 履歴モジュールの一覧の列や詳細に本体の AnchorTagField を置き、ModuleVariable に `ModuleName.Value`、IdVariable に `DataId.Value` を指定すると、その履歴行のレコードを開く (専用フィールドは無い)リンク (「開く」) が出る (削除の版には出ない)
 - **版の一覧** — 版番号・変更種別・変更者・日時と、変更されたフィールドだけの「旧 → 新」。明細は行の追加 / 削除 / 変更
 - **この版を表示** — その版のレコード全体を表示専用のダイアログで表示。変更されたフィールドを強調 (明細の行・ガントチャートのタスク・カレンダーの予定・カード・マーカーも 追加 / 変更 / 削除 で強調)
 - **この版に戻す** — その版の内容を編集中のフォームへ反映。**保存はユーザーが行う** (保存前に確認・一部だけ直す、ができる)。保存すると新しい版として記録される (履歴は巻き戻らない)
@@ -86,8 +86,8 @@
 - 埋め込みモジュール (`ModuleField`) は本体の `ModuleField.ApplyOwnedRecordsAsync` が受ける: 版の子と今の子が別レコードなら (親の参照が変わっていた) 版の子に差し替えてから、子モジュールへ `Module.ApplyRecordAsync` で項目ごとに反映する (システムフィールドは触らない・子の明細も行 Id で突き合わせ)。親の保存に子の Update が乗り、同じトランザクションで戻る。版に子が無ければ触らない (参照を外す操作は無い)
 - 対象外: システムフィールド (Id / 楽観ロック / 作成・更新・削除の記録 / 論理削除)、リンク越しの派生値、従属でない一覧、添付ファイル、書き込み権限のないフィールド。反映できる項目が 1 つも無かったときはその旨のメッセージが出る (フォームは変わらない)
 - 従属レコードの差し替えはフィールドが持っている行に対して行う (本体の `IOwnedRecordsField`)。全件を持たないフィールド (サーバーページングの一覧) は版の全件と比べられないので、宣言 (`OwnedRecordsDesign.HoldsAllRecords`) が false のものは**設計チェックで指摘** (`EditHistoryFieldDesign:4`。子・孫・埋め込みの中も)。一覧はメモリ内ページングか件数制限なしにする。Gantt / Calendar / TaskBoard / MarkerList は差し替え前に全件を読み直すので対象外
-- 削除したレコードの復活は履歴モジュール側の EditHistoryRestoreButtonField で行う ([FieldDocs](../Source/Codeer.LowCode.Blazor.Extras.Designer/FieldDocs/EditHistoryRestoreButtonFieldDesign.md))。論理削除なら Id を保って明細ごと (ChangeType = Restore の版になる)、物理削除なら新しいレコードとして (作成の版になる)
-- 履歴行から対象レコードへは EditHistoryTargetLinkField ([FieldDocs](../Source/Codeer.LowCode.Blazor.Extras.Designer/FieldDocs/EditHistoryTargetLinkFieldDesign.md))。一覧の列に置けば「開く」で本体へ、履歴モジュール側の詳細にも置ける。削除の版 (レコードはもう開けない) には出ない
+- 削除したレコードの復活は履歴モジュール側の EditHistoryUndeleteButtonField で行う ([FieldDocs](../Source/Codeer.LowCode.Blazor.Extras.Designer/FieldDocs/EditHistoryUndeleteButtonFieldDesign.md))。論理削除なら Id を保って明細ごと (ChangeType = Restore の版になる)、物理削除なら新しいレコードとして (作成の版になる)
+- 履歴行から対象レコードへは本体の AnchorTagField (ModuleVariable = `ModuleName.Value` / IdVariable = `DataId.Value`)。セットアップが生成する履歴モジュールに「開く」として同梱
 - 論理削除の取り消しは本体の `ModuleDataIO.UndeleteAsync` (Codeer.LowCode.Blazor 1.3.37) が行い、EditHistoryRecorder が base の Submit の前に呼ぶ。権限は削除と同じ (CanDelete と UserWrite 条件)
 - **退避 (削除テーブルへの移動) とは併用できない** (デザインチェック エラー)。履歴を入れるモジュールの削除は論理削除か物理削除にする。Id を保った復活が要るなら論理削除
 - ExecuteSqlField を使うモジュールでは、戻るのはレコード (と明細) の内容だけ。SQL が他のテーブルや他のレコードに書いたものは履歴に無いので戻らない (履歴は「このレコードがどう変わったか」の記録として使う)

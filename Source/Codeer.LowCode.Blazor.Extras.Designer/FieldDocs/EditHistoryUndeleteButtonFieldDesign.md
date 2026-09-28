@@ -1,4 +1,4 @@
-# EditHistoryRestoreButtonField (編集履歴 復活ボタン)
+# EditHistoryUndeleteButtonField (編集履歴 復活ボタン)
 
 削除されたレコードを履歴から復活させるボタン。履歴モジュール (EditHistoryContractField を置いたモジュール) の
 詳細画面に置く。表示中の履歴行の ChangeType が Delete のときだけ押せる (それ以外では出ない)。
@@ -19,5 +19,5 @@
 - 復活後はそのレコードの詳細に遷移する
 
 ```json
-{ "Name": "RestoreButton", "TypeFullName": "Codeer.LowCode.Blazor.Extras.Designs.EditHistoryRestoreButtonFieldDesign" }
+{ "Name": "UndeleteButton", "TypeFullName": "Codeer.LowCode.Blazor.Extras.Designs.EditHistoryUndeleteButtonFieldDesign" }
 ```

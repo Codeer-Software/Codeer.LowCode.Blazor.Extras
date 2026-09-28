@@ -3334,21 +3334,21 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
             }
         }
 
-        internal static string EditHistoryRestoreButtonField {
+        internal static string EditHistoryUndeleteButtonField {
             get {
-                return ResourceManager.GetString("EditHistoryRestoreButtonField", resourceCulture);
+                return ResourceManager.GetString("EditHistoryUndeleteButtonField", resourceCulture);
             }
         }
 
-        internal static string EditHistoryRestoreButtonText {
+        internal static string EditHistoryUndeleteButtonText {
             get {
-                return ResourceManager.GetString("EditHistoryRestoreButtonText", resourceCulture);
+                return ResourceManager.GetString("EditHistoryUndeleteButtonText", resourceCulture);
             }
         }
 
-        internal static string EditHistoryRestoreButton_DefaultText {
+        internal static string EditHistoryUndeleteButton_DefaultText {
             get {
-                return ResourceManager.GetString("EditHistoryRestoreButton_DefaultText", resourceCulture);
+                return ResourceManager.GetString("EditHistoryUndeleteButton_DefaultText", resourceCulture);
             }
         }
 
@@ -3423,24 +3423,6 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
                 return ResourceManager.GetString("EditHistoryChangedFieldsFormat", resourceCulture);
             }
         }
-        internal static string EditHistoryTargetLinkField {
-            get {
-                return ResourceManager.GetString("EditHistoryTargetLinkField", resourceCulture);
-            }
-        }
-
-        internal static string EditHistoryTargetLinkText {
-            get {
-                return ResourceManager.GetString("EditHistoryTargetLinkText", resourceCulture);
-            }
-        }
-
-        internal static string EditHistoryTargetLink_DefaultText {
-            get {
-                return ResourceManager.GetString("EditHistoryTargetLink_DefaultText", resourceCulture);
-            }
-        }
-
         internal static string EditHistoryRestoreNothingApplied {
             get {
                 return ResourceManager.GetString("EditHistoryRestoreNothingApplied", resourceCulture);

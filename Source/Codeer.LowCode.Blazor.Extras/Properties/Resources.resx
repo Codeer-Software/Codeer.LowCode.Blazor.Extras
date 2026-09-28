@@ -1506,13 +1506,13 @@ Recipients: {1}</value>
   <data name="EditHistoryChangeType_Restore" xml:space="preserve">
     <value>Restored</value>
   </data>
-  <data name="EditHistoryRestoreButtonField" xml:space="preserve">
-    <value>Edit History Restore Button</value>
+  <data name="EditHistoryUndeleteButtonField" xml:space="preserve">
+    <value>Edit History Undelete Button</value>
   </data>
-  <data name="EditHistoryRestoreButtonText" xml:space="preserve">
+  <data name="EditHistoryUndeleteButtonText" xml:space="preserve">
     <value>Button text</value>
   </data>
-  <data name="EditHistoryRestoreButton_DefaultText" xml:space="preserve">
+  <data name="EditHistoryUndeleteButton_DefaultText" xml:space="preserve">
     <value>Restore this record</value>
   </data>
   <data name="EditHistoryRestoreRecordConfirmFormat" xml:space="preserve">
@@ -1538,15 +1538,6 @@ Recipients: {1}</value>
   </data>
   <data name="EditHistoryChangedFieldsFormat" xml:space="preserve">
     <value>{0} changed: {1}</value>
-  </data>
-  <data name="EditHistoryTargetLinkField" xml:space="preserve">
-    <value>Edit History Target Link</value>
-  </data>
-  <data name="EditHistoryTargetLinkText" xml:space="preserve">
-    <value>Link text</value>
-  </data>
-  <data name="EditHistoryTargetLink_DefaultText" xml:space="preserve">
-    <value>Open</value>
   </data>
   <data name="EditHistoryRestoreNothingApplied" xml:space="preserve">
     <value>Nothing in this version could be applied to the form. Fields without write permission, attachments and system fields are not restored.</value>

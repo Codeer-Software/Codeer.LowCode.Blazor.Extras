@@ -172,29 +172,5 @@ namespace Codeer.LowCode.Blazor.Extras.Test.EditHistory
             Assert.That(module.GetField<NumberField>("Amount")!.Value, Is.Null);
         }
 
-        [Test]
-        public async Task 対象レコードリンクは更新の版で対象の詳細URL_削除の版と対象モジュール無しでは空()
-        {
-            var design = EditHistoryTestDesigns.Create();
-            var history = design.Modules.Find("EditHistory")!;
-            history.Fields.Add(new EditHistoryTargetLinkFieldDesign { Name = "Open" });
-            var services = new TestServices(design);
-
-            async Task<string> UrlOf(string moduleName, string changeType)
-            {
-                var row = new ModuleData { Name = "EditHistory" };
-                row.Fields["Id"] = new IdFieldData { Value = "100" };
-                row.Fields["ModuleName"] = new TextFieldData { Value = moduleName };
-                row.Fields["DataId"] = new TextFieldData { Value = "5" };
-                row.Fields["ChangeType"] = new TextFieldData { Value = changeType };
-                var module = await ModuleCreationService.CreateModuleAsync(services.Core, row, ModuleLayoutType.None);
-                return module.GetField<EditHistoryTargetLinkField>("Open")!.TargetUrl;
-            }
-
-            Assert.That(await UrlOf("Order", "Update"), Is.EqualTo("/Main/Order/5"));
-            Assert.That(await UrlOf("Order", "Add"), Is.EqualTo("/Main/Order/5"));
-            Assert.That(await UrlOf("Order", "Delete"), Is.Empty, "削除の版のレコードはもう開けない");
-            Assert.That(await UrlOf("Nothing", "Update"), Is.Empty);
-        }
     }
 }

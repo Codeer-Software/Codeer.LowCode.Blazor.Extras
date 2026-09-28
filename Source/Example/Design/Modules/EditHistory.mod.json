@@ -220,24 +220,37 @@
       "TypeFullName": "Codeer.LowCode.Blazor.Extras.Designs.EditHistoryContractFieldDesign"
     },
     {
-      "Text": "",
+      "Style": "Text",
+      "Target": "Url",
+      "ShouldOpenInNewTab": false,
+      "Icon": "",
+      "TitleText": "開く",
+      "TitleVariable": "",
+      "ImageResourcePath": "",
+      "PageFrame": "",
+      "Module": "",
+      "ModuleVariable": "ModuleName.Value",
+      "IdVariable": "DataId.Value",
+      "Url": "",
+      "OnClick": "",
+      "IsHtml": false,
       "Name": "OpenTarget",
       "IgnoreModification": false,
       "OnValidateInput": "",
       "IsFocusSkip": false,
       "NextFocusField": "",
       "OnFocusMoving": "",
-      "TypeFullName": "Codeer.LowCode.Blazor.Extras.Designs.EditHistoryTargetLinkFieldDesign"
+      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.AnchorTagFieldDesign"
     },
     {
       "Text": "",
-      "Name": "RestoreButton",
+      "Name": "UndeleteButton",
       "IgnoreModification": false,
       "OnValidateInput": "",
       "IsFocusSkip": false,
       "NextFocusField": "",
       "OnFocusMoving": "",
-      "TypeFullName": "Codeer.LowCode.Blazor.Extras.Designs.EditHistoryRestoreButtonFieldDesign"
+      "TypeFullName": "Codeer.LowCode.Blazor.Extras.Designs.EditHistoryUndeleteButtonFieldDesign"
     }
   ],
   "UserWriteCondition": {
@@ -565,7 +578,7 @@
             "Columns": [
               {
                 "Layout": {
-                  "FieldName": "RestoreButton",
+                  "FieldName": "UndeleteButton",
                   "ContextMenu": "",
                   "ClassName": "",
                   "FontFamily": "",

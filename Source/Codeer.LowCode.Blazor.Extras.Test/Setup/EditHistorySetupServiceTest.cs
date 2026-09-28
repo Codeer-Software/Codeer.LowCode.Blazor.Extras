@@ -34,10 +34,11 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Setup
             Assert.That(module.Fields.OfType<EditHistoryContractFieldDesign>().Single()
                 .CheckDesign(new DesignCheckContext("EditHistory", d, dbDefs)), Is.Empty);
 
-            //復活ボタンと対象レコードリンクが同梱され、履歴モジュール上なので指摘なし
-            var restore = module.Fields.OfType<EditHistoryRestoreButtonFieldDesign>().Single();
+            //復活ボタンと「開く」リンク (本体の AnchorTagField: 対象モジュール名と Id を行の値から) が同梱され、履歴モジュール上なので指摘なし
+            var restore = module.Fields.OfType<EditHistoryUndeleteButtonFieldDesign>().Single();
             Assert.That(restore.CheckDesign(new DesignCheckContext("EditHistory", d, dbDefs)), Is.Empty);
-            var link = module.Fields.OfType<EditHistoryTargetLinkFieldDesign>().Single();
+            var link = module.Fields.OfType<AnchorTagFieldDesign>().Single(e => e.Name == "OpenTarget");
+            Assert.That((link.ModuleVariable, link.IdVariable), Is.EqualTo(("ModuleName.Value", "DataId.Value")));
             Assert.That(link.CheckDesign(new DesignCheckContext("EditHistory", d, dbDefs)), Is.Empty);
             Assert.That(module.ListLayouts[""].Elements[0].Select(e => e.FieldName), Does.Contain(link.Name));
 

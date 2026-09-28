@@ -95,24 +95,13 @@ namespace Codeer.LowCode.Blazor.Extras.SeleniumDrivers
             => new MappingBase(driver).ByCssSelector(EditHistoryVersionDialogDriver.Selector).Wait();
     }
 
-    /// <summary>履歴モジュール側の「このレコードを復活」ボタン (EditHistoryRestoreButtonField)。削除の版でだけ描画される。</summary>
-    public class EditHistoryRestoreButtonFieldDriver : ComponentBase
+    /// <summary>履歴モジュール側の「このレコードを復活」ボタン (EditHistoryUndeleteButtonField)。削除の版でだけ描画される。</summary>
+    public class EditHistoryUndeleteButtonFieldDriver : ComponentBase
     {
-        public bool IsVisible => Element.FindElements(By.CssSelector("[data-system='edit-history-restore-record']")).Count > 0;
-        public ButtonDriver Button => ByCssSelector("[data-system='edit-history-restore-record']").Wait();
-        public EditHistoryRestoreButtonFieldDriver(IWebElement element) : base(element) { }
-        public static implicit operator EditHistoryRestoreButtonFieldDriver(ElementFinder finder) => finder.Find<EditHistoryRestoreButtonFieldDriver>();
+        public bool IsVisible => Element.FindElements(By.CssSelector("[data-system='edit-history-undelete']")).Count > 0;
+        public ButtonDriver Button => ByCssSelector("[data-system='edit-history-undelete']").Wait();
+        public EditHistoryUndeleteButtonFieldDriver(IWebElement element) : base(element) { }
+        public static implicit operator EditHistoryUndeleteButtonFieldDriver(ElementFinder finder) => finder.Find<EditHistoryUndeleteButtonFieldDriver>();
     }
 
-    /// <summary>履歴モジュール側の対象レコードリンク (EditHistoryTargetLinkField)。開ける行 (削除の版以外) でだけ描画される。</summary>
-    public class EditHistoryTargetLinkFieldDriver : ComponentBase
-    {
-        public bool IsVisible => Element.FindElements(By.CssSelector("[data-system='edit-history-target-link']")).Count > 0;
-        public string Text => ByCssSelector("[data-system='edit-history-target-link']").Wait().Find().TextContent();
-        /// <summary>リンク先 (対象レコードの詳細 URL)。</summary>
-        public string Href => ByCssSelector("[data-system='edit-history-target-link']").Wait().Find().GetAttribute("href") ?? string.Empty;
-        public void Click() => ByCssSelector("[data-system='edit-history-target-link']").Wait().Find().Click();
-        public EditHistoryTargetLinkFieldDriver(IWebElement element) : base(element) { }
-        public static implicit operator EditHistoryTargetLinkFieldDriver(ElementFinder finder) => finder.Find<EditHistoryTargetLinkFieldDriver>();
-    }
 }

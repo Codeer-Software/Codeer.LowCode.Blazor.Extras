@@ -14,11 +14,11 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
     /// 履歴モジュールの詳細に置く「このレコードを復活」ボタンのランタイム。
     /// 自モジュール (履歴) の契約で ChangeType / ModuleName / DataId / Snapshot を読み、削除の版だけ復活できる。
     /// </summary>
-    public class EditHistoryRestoreButtonField : FieldBase<EditHistoryRestoreButtonFieldDesign>
+    public class EditHistoryUndeleteButtonField : FieldBase<EditHistoryUndeleteButtonFieldDesign>
     {
         bool _isBusy;
 
-        public EditHistoryRestoreButtonField(EditHistoryRestoreButtonFieldDesign design) : base(design) { }
+        public EditHistoryUndeleteButtonField(EditHistoryUndeleteButtonFieldDesign design) : base(design) { }
 
         [ScriptHide]
         public override bool IsModified => false;
@@ -37,7 +37,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
 
         public bool IsBusy => _isBusy;
 
-        public string ButtonText => string.IsNullOrEmpty(Design.Text) ? R.EditHistoryRestoreButton_DefaultText : Design.Text;
+        public string ButtonText => string.IsNullOrEmpty(Design.Text) ? R.EditHistoryUndeleteButton_DefaultText : Design.Text;
 
         EditHistoryContractFieldDesign Names => EditHistoryContracts.Contract(Module.Design) ?? new();
 
@@ -50,16 +50,16 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
 
         /// <summary>削除の版で、対象モジュールがあるときだけ復活できる。</summary>
         [ScriptHide]
-        public bool CanRestore
+        public bool CanUndelete
             => !Services.AppInfoService.IsDesignMode && !Module.IsNewData && IsEnabled &&
                GetText(Names.ChangeType) == EditHistoryChangeType.Delete.ToString() &&
                Services.AppInfoService.GetDesignData().Modules.Find(GetText(Names.ModuleName)) != null;
 
         /// <summary>削除されたレコードを復活させる。論理削除なら Id を保って戻し、物理削除なら新しいレコードとして作る。</summary>
-        [ScriptName("Restore")]
-        public async Task<bool> RestoreAsync()
+        [ScriptName("Undelete")]
+        public async Task<bool> UndeleteAsync()
         {
-            if (_isBusy || !CanRestore) return false;
+            if (_isBusy || !CanUndelete) return false;
             var names = Names;
             var moduleName = GetText(names.ModuleName);
             var dataId = GetText(names.DataId);
@@ -77,7 +77,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             try
             {
                 var restoredId = EditHistoryContracts.IsLogicalDeleteModule(target)
-                    ? await UndeleteAsync(target, dataId, snapshot)
+                    ? await ReviveAsync(target, dataId, snapshot)
                     : await CreateAsync(target, snapshot);
                 if (restoredId == null) return false;
 
@@ -93,7 +93,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         }
 
         //論理削除: 削除の版のスナップショットにある Id (レコード + 従属レコード・孫) を Undelete で戻す
-        async Task<string?> UndeleteAsync(ModuleDesign target, string dataId, ModuleData snapshot)
+        async Task<string?> ReviveAsync(ModuleDesign target, string dataId, ModuleData snapshot)
         {
             var undelete = new EditHistoryUndeleteData();
             Collect(target, snapshot, undelete.Targets, new HashSet<string> { target.Name });

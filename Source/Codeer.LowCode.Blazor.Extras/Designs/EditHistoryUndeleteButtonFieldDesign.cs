@@ -10,24 +10,26 @@ using Codeer.LowCode.Blazor.Repository.Design;
 namespace Codeer.LowCode.Blazor.Extras.Designs
 {
     /// <summary>
-    /// 履歴行の対象レコード (ModuleName / DataId) を開くリンク。履歴モジュール (EditHistoryContractField を置いたモジュール) の
-    /// 一覧の列や詳細に置く。対象モジュールが無い行・削除の版 (レコードはもう開けない) では出ない。
-    /// 履歴モジュールは通常「誰も書けない」= 行が表示専用になるが、遷移するだけなので表示専用でも使える。
+    /// 削除されたレコードを履歴から復活させるボタン。履歴モジュール (EditHistoryContractField を置いたモジュール) の
+    /// 詳細画面に置く。ChangeType が Delete の行でだけ押せる。
+    /// 対象モジュールが論理削除なら Id を保ったまま戻す (明細も。リンクは切れない)。
+    /// 物理削除ならスナップショットから新しいレコードを作る (Id は振り直し)。
+    /// どちらも通常の保存経路なので対象モジュールの権限がそのまま効き、復活自体も履歴に残る。
     /// </summary>
-    [ToolboxIcon(PackIconMaterialKind = "OpenInNew")]
-    [Designer(DisplayName = "$EditHistoryTargetLinkField")]
-    public class EditHistoryTargetLinkFieldDesign : FieldDesignBase
+    [ToolboxIcon(PackIconMaterialKind = "BackupRestore")]
+    [Designer(DisplayName = "$EditHistoryUndeleteButtonField")]
+    public class EditHistoryUndeleteButtonFieldDesign : FieldDesignBase
     {
         /// <summary>デザインチェック指摘の番号。DesignCheckCode.Create で発行クラス名と結合して "クラス名:番号" になる。番号は固定(追加は末尾・欠番は再利用しない)。</summary>
         private const int CodeContractFieldMissing = 1;
 
-        public EditHistoryTargetLinkFieldDesign() : base(typeof(EditHistoryTargetLinkFieldDesign).FullName!) { }
+        public EditHistoryUndeleteButtonFieldDesign() : base(typeof(EditHistoryUndeleteButtonFieldDesign).FullName!) { }
 
-        /// <summary>リンクの文言。空なら既定 (「開く」)。</summary>
-        [Designer(Index = 2, DisplayName = "$EditHistoryTargetLinkText")]
+        /// <summary>ボタンの文言。空なら既定 (「このレコードを復活」)。</summary>
+        [Designer(Index = 2, DisplayName = "$EditHistoryUndeleteButtonText")]
         public string Text { get; set; } = string.Empty;
 
-        public override string GetWebComponentTypeFullName() => typeof(EditHistoryTargetLinkFieldComponent).FullName!;
+        public override string GetWebComponentTypeFullName() => typeof(EditHistoryUndeleteButtonFieldComponent).FullName!;
 
         public override string GetSearchWebComponentTypeFullName() => string.Empty;
 
@@ -35,7 +37,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
 
         public override FieldDataBase? CreateData() => null;
 
-        public override FieldBase CreateField() => new EditHistoryTargetLinkField(this);
+        public override FieldBase CreateField() => new EditHistoryUndeleteButtonField(this);
 
         public override List<DesignCheckInfo> CheckDesign(DesignCheckContext context)
         {
@@ -45,7 +47,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
             {
                 result.Add(new FieldDesignCheckInfo
                 {
-                    Code = DesignCheckCode.Create(typeof(EditHistoryTargetLinkFieldDesign), CodeContractFieldMissing),
+                    Code = DesignCheckCode.Create(typeof(EditHistoryUndeleteButtonFieldDesign), CodeContractFieldMissing),
                     Location = new FieldDesignDataLocation
                     { Module = context.OwnerModule, Field = Name, Member = nameof(Name) },
                     Message = string.Format(Properties.Resources.ApprovalCheck_ContractFieldMissingFormat,
