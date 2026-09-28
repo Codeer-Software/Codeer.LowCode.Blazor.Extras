@@ -55,6 +55,7 @@
 
 - サーバーの `EditHistoryRecorder` が `ModuleDataIO.SubmitAsync` を包む。トランザクションのルートレコード 1 件につき履歴 1 行
 - 作成・更新: base の保存が成功した後、保存後のレコードを本体の `ModuleDataIO.GetWithOwnedRecordsAsync` で読み直して記録。読む範囲は「レコード本体 ＋ 従属レコードの宣言 (`IOwnedRecordsFieldDesign`) の先」。何が従属かは各フィールドが決める (一覧は「親の画面で行を追加・更新・削除できる一覧」と「親と一緒に消える一覧」、Gantt / Calendar / TaskBoard は自分の子レコード)。参照するだけの一覧 (編集できない一覧) は含めない。行のモジュール側で個別に保存した変更は親の版には入らない。子・孫も再帰
+- 埋め込みモジュール (`ModuleField`) は本体 1.3.37 で子レコードを従属として宣言する (参照 = DbColumn に持つ子の Id で束縛。DbColumn か ModuleName が無い埋め込みは宣言しない) ので、明細と同じ経路で親の版に入る: 子レコード 0 か 1 行の一覧として参照の位置に置かれ、子の従属レコード (子の明細・子の中の埋め込み) も再帰、NULL の列も埋まる。子レコードを子自身のページで保存した変更は親の版にはならない
 - 削除: base の前に削除前のレコードを読んでおき、成功後に記録
 - 読み直しは操作ユーザーの権限で行う。そのユーザーに読めない列はスナップショットに入らない (復元でもその列は変わらない)。DB で NULL だった列は null の値として入る (その版で空だったことが残り、復元で空に戻る)
 - 変更種別は `EditHistoryChangeType` (Add / Update / Delete) のメンバー名。デザイン enum として公開されるので、履歴モジュールの ChangeType を SelectField (EnumName = `EditHistoryChangeType`) にすれば表示名付きで一覧・検索できる
@@ -74,6 +75,7 @@
 - 作成の版は「レコードが作成されました」だけ (全項目を並べても読めない。内容は「この版を表示」)。明細は「追加 n 件 / 削除 n 件 / 変更 n 件」の要約だけを出し、行ごとの内訳はクリックで開く
 - 「旧 → 新」の文字列を出すのは文字列・数値・真偽・日付時刻・候補・リンク・ファイル (名前) のフィールドだけ。それ以外の型 (独自のデータクラスを持つフィールド) は変わったかどうか (JSON 比較) だけを「変更あり」として名前で出し、内容は「この版を表示」(本物のコンポーネントで描く) で見る。一覧は要約、全体は版表示、の二層構造
 - 「この版を表示」は自モジュールの詳細レイアウト (`LayoutName`、空なら既定) をそのまま使って表示専用のダイアログに出し、変更フィールドを緑の枠で強調する。従属レコード (明細の一覧・Gantt のタスク・カレンダーの予定・カード・マーカー) は本体の `IOwnedRecordsField.ShowOwnedRecordsAsync` に版の行を `OwnedRecordRow` (行の内容 + 行と セルに付ける CSS クラス + 孫の行) として渡し、DB は読まずにそのまま表示する。クラスは履歴側が行 Id で差分と対応づけて決める: 追加 = 行全体 / 変更 = 行に枠 + 変わったセル / 削除 = 前の版の行を元の位置に差し込んで打ち消し (Gantt のバーは枠線)。差分のある項目が表示範囲に無ければ Gantt / Calendar はその項目の日 (月) へ移動する。独自の拡張フィールドは `OwnedRecordRow.ApplyToAsync` を行モジュールに適用し、項目の描画に行モジュールの `ClassName` を出せば同じ強調が付く
+- 埋め込みモジュール (`ModuleField`) は明細と同じ見え方: 差分は「埋め込みのフィールド名 → 行 1 の項目ごとの 旧 → 新」(参照が付いた版は追加行、外れた版は削除行)。版表示ダイアログでは本体の `ModuleField.ShowOwnedRecordsAsync` が版の子レコードをそのまま見せ、変わった項目が強調される
 - `PageSize` (既定 20) ずつ読み、「さらに表示」で次を読む
 - 未保存のレコード・一覧の行では読まない
 
@@ -81,6 +83,7 @@
 
 - 値フィールドは変更扱いで反映 (OnDataChanged スクリプトも動く)。ユーザーが保存して確定する = 権限・検証・楽観ロックは通常の保存と同じ
 - 従属レコードは本体の `IOwnedRecordsField.ApplyOwnedRecordsAsync` (一覧は ListField 自身、Gantt 等は各フィールド) が行 Id で突き合わせ、既存行は更新、余った行は削除。無い行は、明細モジュールが**論理削除**なら Id を保ったまま復活 (保存時に「削除の取り消し」が同梱され、同じトランザクションで戻る)、物理削除なら新しい行として追加 (Id は振り直し)。孫の明細も同様。値の反映は本体の `Module.ApplyRecordAsync`
+- 埋め込みモジュール (`ModuleField`) は本体の `ModuleField.ApplyOwnedRecordsAsync` が受ける: 版の子と今の子が別レコードなら (親の参照が変わっていた) 版の子に差し替えてから、子モジュールへ `Module.ApplyRecordAsync` で項目ごとに反映する (システムフィールドは触らない・子の明細も行 Id で突き合わせ)。親の保存に子の Update が乗り、同じトランザクションで戻る。版に子が無ければ触らない (参照を外す操作は無い)
 - 対象外: システムフィールド (Id / 楽観ロック / 作成・更新・削除の記録 / 論理削除)、リンク越しの派生値、従属でない一覧、添付ファイル、書き込み権限のないフィールド。反映できる項目が 1 つも無かったときはその旨のメッセージが出る (フォームは変わらない)
 - 削除したレコードの復活は履歴モジュール側の EditHistoryRestoreButtonField で行う ([FieldDocs](../Source/Codeer.LowCode.Blazor.Extras.Designer/FieldDocs/EditHistoryRestoreButtonFieldDesign.md))。論理削除なら Id を保って明細ごと (ChangeType = Restore の版になる)、物理削除なら新しいレコードとして (作成の版になる)
 - 履歴行から対象レコードへは EditHistoryTargetLinkField ([FieldDocs](../Source/Codeer.LowCode.Blazor.Extras.Designer/FieldDocs/EditHistoryTargetLinkFieldDesign.md))。一覧の列に置けば「開く」で本体へ、履歴モジュール側の詳細にも置ける。削除の版 (レコードはもう開けない) には出ない

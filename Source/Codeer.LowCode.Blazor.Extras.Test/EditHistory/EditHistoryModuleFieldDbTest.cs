@@ -1,0 +1,165 @@
+using Codeer.LowCode.Blazor.DataIO;
+using Codeer.LowCode.Blazor.DataIO.Db;
+using Codeer.LowCode.Blazor.DbAccess;
+using Codeer.LowCode.Blazor.DesignLogic;
+using Codeer.LowCode.Blazor.Extras.EditHistory;
+using Codeer.LowCode.Blazor.Extras.Server.EditHistory;
+using Codeer.LowCode.Blazor.Extras.Server.FileManagement;
+using Codeer.LowCode.Blazor.Repository;
+using Codeer.LowCode.Blazor.Repository.Data;
+using Codeer.LowCode.Blazor.Repository.Match;
+using Codeer.LowCode.Blazor.SystemSettings;
+using Microsoft.Data.Sqlite;
+
+namespace Codeer.LowCode.Blazor.Extras.Test.EditHistory
+{
+    /// <summary>
+    /// EditHistoryRecorder と埋め込みモジュール (ModuleField): 本体の従属レコード宣言 (ModuleFieldDesign) により、
+    /// 子レコードが全列 (+ NULL 埋め) で版に入る。参照の位置に子レコード 1 行の一覧として入る。子モジュールを読めないユーザーの保存では入らない。
+    /// </summary>
+    public class EditHistoryModuleFieldDbTest : IAuthenticationContext
+    {
+        const string Ds = EditHistoryTestDesigns.Ds;
+        string _dbFile = string.Empty;
+        DbAccessor _db = null!;
+        DesignData _design = null!;
+        readonly List<string> _errors = new();
+
+        public Task<string> GetCurrentUserIdAsync() => Task.FromResult("7");
+
+        sealed class HistoryModuleDataIO : ModuleDataIO
+        {
+            readonly EditHistoryRecorder _recorder;
+
+            public HistoryModuleDataIO(DesignData design, IAuthenticationContext auth, IDbAccessor db, ITemporaryFileManager files, List<string> errors)
+                : base(design, auth, db, files)
+                => _recorder = new EditHistoryRecorder(design, this, AddSystemRecordAsync, errors.Add);
+
+            public override Task<List<ModuleSubmitResult>> SubmitAsync(Guid transactionId, List<ModuleSubmitData> transactionData)
+                => _recorder.SubmitAsync(transactionData, () => base.SubmitAsync(transactionId, transactionData));
+
+            Task<string> AddSystemRecordAsync(ModuleData data) => AddAsync(Guid.NewGuid(), Guid.NewGuid(), data);
+        }
+
+        [SetUp]
+        public async Task SetUp()
+        {
+            DbAccessor.ClearTableDefinitionCache();
+            _dbFile = Path.Combine(Path.GetTempPath(), $"edit_history_module_field_test_{Guid.NewGuid():N}.db");
+            _db = new DbAccessor([new DataSource { Name = Ds, DataSourceType = DataSourceType.SQLite, ConnectionString = $"Data Source={_dbFile}" }]);
+            await _db.ExecuteAsync(Ds, "CREATE TABLE orders (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT, amount REAL, secret TEXT, customer_id INTEGER, is_deleted INTEGER)", new());
+            await _db.ExecuteAsync(Ds, "CREATE TABLE order_items (id INTEGER PRIMARY KEY AUTOINCREMENT, order_id INTEGER, name TEXT, qty REAL, supplier_id INTEGER, is_deleted INTEGER)", new());
+            await _db.ExecuteAsync(Ds, "CREATE TABLE customers (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, note TEXT)", new());
+            await _db.ExecuteAsync(Ds, "CREATE TABLE edit_histories (id INTEGER PRIMARY KEY AUTOINCREMENT, module_name TEXT, data_id TEXT, change_type TEXT, snapshot TEXT, user_id TEXT, date_time TEXT)", new());
+            await _db.ExecuteAsync(Ds, "CREATE TABLE app_users (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT)", new());
+            await _db.ExecuteAsync(Ds, "INSERT INTO app_users (id, name) VALUES (7, '石川')", new());
+            await _db.ExecuteAsync(Ds, "INSERT INTO customers (id, name, note) VALUES (5, 'A社', NULL)", new());
+            _design = EditHistoryTestDesigns.Create(withCustomer: true);
+            _errors.Clear();
+        }
+
+        [TearDown]
+        public async Task TearDown()
+        {
+            await _db.DisposeAsync();
+            SqliteConnection.ClearAllPools();
+            if (File.Exists(_dbFile)) File.Delete(_dbFile);
+        }
+
+        ModuleDataIO CreateIO() => new HistoryModuleDataIO(_design, this, _db, new TemporaryFileManager(_db, [], new List<IFileStorage>()), _errors);
+
+        static void AssertNoError(List<ModuleSubmitResult> results)
+            => Assert.That(results.Any(e => !string.IsNullOrEmpty(e.ExceptionMessage)), Is.False, string.Join("\n", results.Select(e => e.ExceptionMessage)));
+
+        async Task<List<ModuleData>> SnapshotsAsync()
+            => (await _db.QueryAsync(Ds, "SELECT snapshot FROM edit_histories ORDER BY id", new()))
+                .Select(e => EditHistorySnapshot.Deserialize(e["snapshot"].ToString())!).ToList();
+
+        static ModuleData OrderData(string id, string title, string customerId)
+        {
+            var data = new ModuleData { Name = "Order" };
+            data.Fields["Id"] = new IdFieldData { Value = id };
+            data.Fields["Title"] = new TextFieldData { Value = title };
+            if (customerId.Length != 0) data.Fields["Customer"] = new ModuleFieldData { Id = customerId };
+            return data;
+        }
+
+        static ModuleData CustomerData(string id, string name)
+        {
+            var data = new ModuleData { Name = "Customer" };
+            data.Fields["Id"] = new IdFieldData { Value = id };
+            data.Fields["Name"] = new TextFieldData { Value = name };
+            return data;
+        }
+
+        async Task CreateOrderAsync(string customerId = "5")
+        {
+            var tempId = "@temporary:" + Guid.NewGuid();
+            AssertNoError(await CreateIO().SubmitWithTransactionAsync([new ModuleSubmitData
+            {
+                ModuleName = "Order", Id = tempId, Add = [OrderData(tempId, "受注A", customerId)],
+            }]));
+        }
+
+        [Test]
+        public async Task 子レコードは参照の位置に1行の一覧として全列で入り_NULLの列も空として残る()
+        {
+            await CreateOrderAsync();
+
+            var customer = ((ListFieldData)(await SnapshotsAsync()).Single().Fields["Customer"]).Children.Single();
+            Assert.That(EditHistorySnapshot.GetId(customer), Is.EqualTo("5"));
+            Assert.That(((TextFieldData)customer.Fields["Name"]).Value, Is.EqualTo("A社"));
+            Assert.That(customer.Fields.ContainsKey("Note"), Is.True, "詳細レイアウトに無い列も読む");
+            Assert.That(((TextFieldData)customer.Fields["Note"]).Value, Is.Null, "NULL の列は null 値として残す (復元で空に戻せる)");
+            Assert.That(_errors, Is.Empty);
+        }
+
+        [Test]
+        public async Task 子を参照していない親は子無しで記録される()
+        {
+            await CreateOrderAsync(customerId: string.Empty);
+            var customer = (await SnapshotsAsync()).Single().Fields["Customer"];
+            Assert.That((customer as ListFieldData)?.Children, Is.Empty);
+            Assert.That(_errors, Is.Empty);
+        }
+
+        [Test]
+        public async Task 親の保存に乗った子の変更が親の版になり_差分は行1の項目で出る()
+        {
+            await CreateOrderAsync();
+            //画面の保存と同じ形: ModuleField.GetSubmitData が子の Update を親の送信に乗せる
+            AssertNoError(await CreateIO().SubmitWithTransactionAsync([new ModuleSubmitData
+            {
+                ModuleName = "Order", Id = "1", Update = [OrderData("1", "受注A", "5"), CustomerData("5", "B社")],
+            }]));
+
+            var snapshots = await SnapshotsAsync();
+            Assert.That(snapshots.Count, Is.EqualTo(2));
+            Assert.That(((TextFieldData)((ListFieldData)snapshots[1].Fields["Customer"]).Children.Single().Fields["Name"]).Value, Is.EqualTo("B社"));
+
+            var change = EditHistoryDiff.Compute(_design, _design.Modules.Find("Order")!, snapshots[0], snapshots[1], _ => true).Single();
+            Assert.That((change.FieldName, change.IsList, change.ChangedCount), Is.EqualTo(("Customer", true, 1)));
+            Assert.That(change.Rows.Single().Changes.Select(e => (e.DisplayName, e.Before, e.After)), Is.EqualTo(new[] { ("顧客名", "A社", "B社") }));
+        }
+
+        [Test]
+        public async Task 子モジュールを読めないユーザーの保存では子の中身を入れない()
+        {
+            _design.Modules.Find("Customer")!.UserReadCondition = new ModuleMatchCondition
+            {
+                ModuleName = "AppUser",
+                Condition = new FieldValueMatchCondition
+                {
+                    SearchTargetVariable = "Id.Value", Comparison = MatchComparison.Equal, Value = MultiTypeValue.Create("__nobody__"),
+                },
+            };
+            await CreateOrderAsync();
+
+            var customer = (await SnapshotsAsync()).Single().Fields["Customer"];
+            Assert.That(customer, Is.InstanceOf<ModuleFieldData>(), "従属としては読まれず参照 (親の列) だけ残る");
+            Assert.That(((ModuleFieldData)customer).Id, Is.EqualTo("5"));
+            Assert.That(((ModuleFieldData)customer).Data.Fields, Is.Empty);
+            Assert.That(_errors, Is.Empty);
+        }
+    }
+}

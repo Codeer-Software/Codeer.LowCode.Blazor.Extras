@@ -119,12 +119,26 @@ namespace Codeer.LowCode.Blazor.Extras.EditHistory
                 var row = before[i];
                 var id = EditHistorySnapshot.GetId(row);
                 if (id.Length != 0 && afterById.ContainsKey(id)) continue;
-                //削除された行の値は Before 側に入れる (表示は打ち消し)
+                //削除された行の値は Before 側に入れる (表示は打ち消し)。行の中の従属レコード (孫の明細・埋め込みの子) の行も打ち消し
                 var values = Compute(designData, childDesign, null, row, canRead, visiting, excluded);
-                foreach (var v in values) { v.Before = v.After; v.After = string.Empty; }
+                MarkRemoved(values);
                 result.Add(new EditHistoryRowChange { Kind = EditHistoryRowChangeKind.Removed, RowNumber = i + 1, Row = row, Changes = values });
             }
             return result;
+        }
+
+        //「無かった → あった」として計算した内容を「あった → 無くなった」にする (値は Before 側へ、入れ子の行は Removed に)
+        static void MarkRemoved(List<EditHistoryChange> changes)
+        {
+            foreach (var v in changes)
+            {
+                if (v.IsList)
+                {
+                    foreach (var row in v.Rows) { row.Kind = EditHistoryRowChangeKind.Removed; MarkRemoved(row.Changes); }
+                    continue;
+                }
+                v.Before = v.After; v.After = string.Empty;
+            }
         }
 
         static Dictionary<string, ModuleData> ToDictionary(List<ModuleData> rows)

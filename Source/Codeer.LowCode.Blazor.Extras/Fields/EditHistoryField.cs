@@ -282,7 +282,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             //★複製を渡す: ListField.SetDataAsync は渡された行データの Id を消して新しい行にするので、
             //そのまま渡すとこの後の行 Id での差分との突き合わせ (Build) ができなくなる
             await module.SetDataWithoutInteractionAsync(snapshot.JsonClone());
-            //従属レコード (明細の一覧・Gantt のタスク等) は版の行をそのまま見せる (本体の IOwnedRecordsField)。
+            //従属レコード (明細の一覧・Gantt のタスク・埋め込みモジュールの子レコード等) は版の行をそのまま見せる (本体の IOwnedRecordsField)。
             //行の強調 (追加 = 行全体 / 変更 = 枠 + 変わったセル / 削除 = 前の版の行を打ち消しで差し込む) は
             //行 Id で差分と対応づけて OwnedRecordRow に載せ、見せる側はそれを写すだけ
             foreach (var (fieldDesign, owned) in EditHistoryContracts.OwnedRecords(Module.Design))
@@ -306,7 +306,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             await module.ShowDialogAsync(new SecondaryOutlineButton(R.EditHistoryClose));
         }
 
-        //値フィールドはセル単位で強調。従属レコード (一覧・Gantt 等) の行は ShowOwnedRecordsAsync に渡した OwnedRecordRow が持つ
+        //値フィールドはセル単位で強調。従属レコード (一覧・Gantt・埋め込みモジュール等) の行は ShowOwnedRecordsAsync に渡した OwnedRecordRow が持つ
         static void ApplyHighlights(Module module, List<EditHistoryChange> changes)
         {
             foreach (var change in changes.Where(e => !e.IsList))

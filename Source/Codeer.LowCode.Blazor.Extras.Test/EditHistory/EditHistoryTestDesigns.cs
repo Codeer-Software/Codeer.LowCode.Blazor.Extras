@@ -11,7 +11,10 @@ namespace Codeer.LowCode.Blazor.Extras.Test.EditHistory
         public const string Ds = "Main";
 
         /// <param name="logicalDelete">Order / OrderItem を論理削除 (LogicalDelete フィールド) にする。</param>
-        public static DesignData Create(bool withHistoryField = true, string historyModuleName = "EditHistory", bool logicalDelete = false)
+        /// <param name="withCustomer">埋め込みモジュール (ModuleField) を足す: Order.Customer と OrderItem.Supplier が Customer (顧客) を指す。
+        /// Customer の詳細レイアウトには Name だけを置く (Note は載っていない = 本体の同梱では読まれない列)。</param>
+        /// <param name="withDetails">孫の明細を足す: OrderItem.Details (OrderItemDetail・親と一緒に消える)。</param>
+        public static DesignData Create(bool withHistoryField = true, string historyModuleName = "EditHistory", bool logicalDelete = false, bool withCustomer = false, bool withDetails = false)
         {
             var d = new DesignData();
             d.AppSettings.CurrentUserModuleDesignName = "AppUser";
@@ -47,6 +50,8 @@ namespace Codeer.LowCode.Blazor.Extras.Test.EditHistory
                 DeleteTogether = false,
                 SearchCondition = new SearchCondition("OrderItem"),
             });
+            if (withCustomer)
+                order.Fields.Add(new ModuleFieldDesign { Name = "Customer", DbColumn = "customer_id", ModuleName = "Customer", LayoutName = "" });
             if (withHistoryField)
                 order.Fields.Add(new EditHistoryFieldDesign { Name = "History", HistoryModuleName = historyModuleName });
             if (logicalDelete)
@@ -59,10 +64,49 @@ namespace Codeer.LowCode.Blazor.Extras.Test.EditHistory
             item.Fields.Add(new LinkFieldDesign { Name = "Order", SearchCondition = new SearchCondition("Order"), DbColumn = "order_id" });
             item.Fields.Add(new TextFieldDesign { Name = "Name", DisplayName = "品名", DbColumn = "name" });
             item.Fields.Add(new NumberFieldDesign { Name = "Qty", DisplayName = "数量", DbColumn = "qty" });
+            if (withCustomer)
+                item.Fields.Add(new ModuleFieldDesign { Name = "Supplier", DbColumn = "supplier_id", ModuleName = "Customer", LayoutName = "" });
+            if (withDetails)
+            {
+                item.Fields.Add(new ListFieldDesign
+                {
+                    Name = "Details",
+                    DisplayName = "内訳",
+                    DeleteTogether = true,
+                    SearchCondition = new SearchCondition("OrderItemDetail")
+                    {
+                        Condition = new FieldVariableMatchCondition
+                        {
+                            SearchTargetVariable = "Item.Value", Comparison = MatchComparison.Equal, Variable = "Id.Value",
+                        },
+                    },
+                });
+                var detail = new ModuleDesign { Name = "OrderItemDetail", DataSourceName = Ds, DbTable = "order_item_details" };
+                detail.Fields.Add(new IdFieldDesign { Name = "Id", DbColumn = "id" });
+                detail.Fields.Add(new LinkFieldDesign { Name = "Item", SearchCondition = new SearchCondition("OrderItem"), DbColumn = "item_id" });
+                detail.Fields.Add(new TextFieldDesign { Name = "Memo", DisplayName = "メモ", DbColumn = "memo" });
+                detail.ListLayouts[""] = new ListLayoutDesign();
+                d.AddModule(detail);
+            }
             if (logicalDelete)
                 item.Fields.Add(new BooleanFieldDesign { Name = SystemFieldNames.LogicalDelete, DbColumn = "is_deleted" });
             item.ListLayouts[""] = new ListLayoutDesign();
             d.AddModule(item);
+
+            if (withCustomer)
+            {
+                var customer = new ModuleDesign { Name = "Customer", DataSourceName = Ds, DbTable = "customers" };
+                customer.Fields.Add(new IdFieldDesign { Name = "Id", DbColumn = "id" });
+                customer.Fields.Add(new TextFieldDesign { Name = "Name", DisplayName = "顧客名", DbColumn = "name" });
+                customer.Fields.Add(new TextFieldDesign { Name = "Note", DisplayName = "備考", DbColumn = "note" });
+                var grid = new GridLayoutDesign();
+                var row = new GridRow();
+                row.Columns.Add(new GridColumn { Layout = new FieldLayoutDesign("Name") });
+                grid.Rows.Add(row);
+                customer.DetailLayouts[""] = new DetailLayoutDesign { Layout = grid };
+                customer.ListLayouts[""] = new ListLayoutDesign();
+                d.AddModule(customer);
+            }
 
             var history = new ModuleDesign { Name = "EditHistory", DataSourceName = Ds, DbTable = "edit_histories" };
             history.Fields.Add(new IdFieldDesign { Name = "Id", DbColumn = "id" });

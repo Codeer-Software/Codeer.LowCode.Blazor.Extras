@@ -87,6 +87,33 @@ namespace Codeer.LowCode.Blazor.Extras.Test.EditHistory
             public override int GetHashCode() => 0;
         }
 
+        //削除された明細行の中の従属レコード (孫の明細) も打ち消し (Removed) で出る。
+        //以前は行の直下の値しか入れ替えておらず、孫の行が「追加」のまま出ていた (明細行は削除なのに中身が増えたように読めた)。
+        //一覧の孫を持つデザインが単体テストに無く、Selenium も要約と件数しか見ていなかったので検出されていなかった
+        [Test]
+        public void 削除された明細行の中の孫の明細も打ち消しで出る()
+        {
+            var design = EditHistoryTestDesigns.Create(withDetails: true);
+            var item = Item("10", "X", 1);
+            var detail = new ModuleData { Name = "OrderItemDetail" };
+            detail.Fields["Id"] = new IdFieldData { Value = "100" };
+            detail.Fields["Item"] = new LinkFieldData { Value = "10" };
+            detail.Fields["Memo"] = new TextFieldData { Value = "m1" };
+            item.Fields["Details"] = new ListFieldData { Children = [detail] };
+            var before = Order("1", "A", 100, item);
+            var after = Order("1", "A", 100);
+
+            var items = EditHistoryDiff.Compute(design, design.Modules.Find("Order")!, before, after, _ => true).Single(e => e.IsList);
+            var removedItem = items.Rows.Single();
+            Assert.That(removedItem.Kind, Is.EqualTo(EditHistoryRowChangeKind.Removed));
+            Assert.That(removedItem.Changes.Single(e => e.FieldName == "Name").Before, Is.EqualTo("X"));
+            var details = removedItem.Changes.Single(e => e.FieldName == "Details");
+            Assert.That(details.IsList, Is.True);
+            var removedDetail = details.Rows.Single();
+            Assert.That(removedDetail.Kind, Is.EqualTo(EditHistoryRowChangeKind.Removed), "孫の行も削除 (追加ではない)");
+            Assert.That(removedDetail.Changes.Select(e => (e.DisplayName, e.Before, e.After)), Is.EqualTo(new[] { ("メモ", "m1", "") }));
+        }
+
         [Test]
         public void 文字列化できない型は変更の有無だけ出す()
         {

@@ -160,7 +160,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.EditHistory
         }
 
         //Add / Update / Delete が無く、モジュールに Standalone の ExecuteSqlField があるとき base は Standalone の SQL だけを実行する
-        //レコード + 従属レコードを読み、NULL だった列も null として持たせる (版に「空だった」を残す = 復元で空に戻せる)
+        //レコード + 従属レコード (明細・埋め込みモジュールの子レコード等、宣言の先) を読み、NULL だった列も null として持たせる (版に「空だった」を残す = 復元で空に戻せる)
         async Task<ModuleData?> LoadAsync(string moduleName, string id)
             => EditHistorySnapshot.FillNulls(_designData, await _io.GetWithOwnedRecordsAsync(moduleName, id));
 
