@@ -7,6 +7,7 @@ using Codeer.LowCode.Blazor.Extras.Server.EditHistory;
 using Codeer.LowCode.Blazor.Extras.Server.FileManagement;
 using Codeer.LowCode.Blazor.Json;
 using Codeer.LowCode.Blazor.Repository.Data;
+using Codeer.LowCode.Blazor.Repository.Design;
 using Codeer.LowCode.Blazor.SystemSettings;
 using Microsoft.Data.Sqlite;
 
@@ -49,7 +50,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.EditHistory
             _db = new DbAccessor([new DataSource { Name = Ds, DataSourceType = DataSourceType.SQLite, ConnectionString = $"Data Source={_dbFile}" }]);
             await _db.ExecuteAsync(Ds, "CREATE TABLE orders (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT, amount REAL, secret TEXT, is_deleted INTEGER)", new());
             await _db.ExecuteAsync(Ds, "CREATE TABLE order_items (id INTEGER PRIMARY KEY AUTOINCREMENT, order_id INTEGER, name TEXT, qty REAL, is_deleted INTEGER)", new());
-            await _db.ExecuteAsync(Ds, "CREATE TABLE edit_histories (id INTEGER PRIMARY KEY AUTOINCREMENT, module_name TEXT, data_id TEXT, change_type TEXT, snapshot TEXT, user_id TEXT, date_time TEXT, command TEXT)", new());
+            await _db.ExecuteAsync(Ds, "CREATE TABLE edit_histories (id INTEGER PRIMARY KEY AUTOINCREMENT, module_name TEXT, data_id TEXT, change_type TEXT, snapshot TEXT, user_id TEXT, date_time TEXT)", new());
             await _db.ExecuteAsync(Ds, "CREATE TABLE app_users (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT)", new());
             await _db.ExecuteAsync(Ds, "INSERT INTO app_users (id, name) VALUES (7, '石川')", new());
             _design = EditHistoryTestDesigns.Create();
@@ -70,7 +71,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.EditHistory
             => Assert.That(results.Any(e => !string.IsNullOrEmpty(e.ExceptionMessage)), Is.False, string.Join("\n", results.Select(e => e.ExceptionMessage)));
 
         async Task<List<Dictionary<string, object>>> HistoriesAsync()
-            => (await _db.QueryAsync(Ds, "SELECT module_name, data_id, change_type, snapshot, user_id, date_time, command FROM edit_histories ORDER BY id", new()))
+            => (await _db.QueryAsync(Ds, "SELECT module_name, data_id, change_type, snapshot, user_id, date_time FROM edit_histories ORDER BY id", new()))
                 .Select(e => e.ToDictionary(x => x.Key, x => x.Value)).ToList();
 
         static ModuleData OrderData(string id, string title, decimal amount)
@@ -418,47 +419,6 @@ namespace Codeer.LowCode.Blazor.Extras.Test.EditHistory
         }
 
         [Test]
-        public async Task 受け取った操作がCommandに残る_作成は仮Idが実Idになり_削除はDeleteの送信がそのまま残る()
-        {
-            await CreateOrderAsync();
-            var add = JsonConverterEx.DeserializeObject<ModuleSubmitData>((await HistoriesAsync())[0]["command"].ToString()!)!;
-            Assert.That((add.ModuleName, add.Id), Is.EqualTo(("Order", "1")), "仮 Id は採番された実 Id");
-            Assert.That(add.Add.Select(e => e.Name), Is.EqualTo(new[] { "Order", "OrderItem", "OrderItem" }), "親 + 明細 2 行の Add がそのまま");
-            Assert.That(add.Add.Skip(1).Select(e => ((LinkFieldData)e.Fields["Order"]).Value), Is.All.EqualTo("1"), "明細の親リンクも実 Id");
-
-            //更新: 送られた Update と Delete (明細 1 行削除) がそのまま
-            AssertNoError(await CreateIO().SubmitWithTransactionAsync([new ModuleSubmitData
-            {
-                ModuleName = "Order", Id = "1", Update = [OrderData("1", "受注A改", 1500)],
-                Delete = [new ModuleDeleteInfo { ModuleName = "OrderItem", Id = "2" }],
-            }]));
-            var update = JsonConverterEx.DeserializeObject<ModuleSubmitData>((await HistoriesAsync())[1]["command"].ToString()!)!;
-            Assert.That(((TextFieldData)update.Update.Single().Fields["Title"]).Value, Is.EqualTo("受注A改"));
-            Assert.That(update.Delete.Single().Id, Is.EqualTo("2"));
-
-            //削除の版にも送信 (Delete) が残る
-            AssertNoError(await CreateIO().SubmitWithTransactionAsync([new ModuleSubmitData
-            {
-                ModuleName = "Order", Id = "1", Delete = [new ModuleDeleteInfo { ModuleName = "Order", Id = "1" }],
-            }]));
-            var histories = await HistoriesAsync();
-            Assert.That(histories[2]["change_type"], Is.EqualTo("Delete"));
-            var delete = JsonConverterEx.DeserializeObject<ModuleSubmitData>(histories[2]["command"].ToString()!)!;
-            Assert.That(delete.Delete.Single().ModuleName, Is.EqualTo("Order"));
-            Assert.That(_errors, Is.Empty);
-        }
-
-        [Test]
-        public async Task 契約にCommand役割が無ければ記録しない()
-        {
-            _design.Modules.Find("EditHistory")!.Fields.OfType<Extras.Designs.EditHistoryContractFieldDesign>().Single().Command = string.Empty;
-            await CreateOrderAsync();
-            var h = (await HistoriesAsync()).Single();
-            Assert.That(h["command"], Is.Null.Or.EqualTo(DBNull.Value));
-            Assert.That(h["snapshot"], Is.Not.Null);
-        }
-
-        [Test]
         public async Task 何も保存しない送信は版にしない()
         {
             await CreateOrderAsync();
@@ -481,5 +441,37 @@ namespace Codeer.LowCode.Blazor.Extras.Test.EditHistory
             Assert.That(h["user_id"], Is.Null.Or.EqualTo(DBNull.Value));
             Assert.That(h["date_time"], Is.Null.Or.EqualTo(DBNull.Value));
         }
+
+        //変更日時は本体の CreatedAt と同じ決め方 (DateTime 役割のフィールドの SaveAsUtc)。サーバーローカル固定ではない。
+        //このマシンの時差が 0 だと UTC とローカルの区別が付かないので、そのときは片方の検証だけ意味を持つ
+        [Test]
+        public async Task 変更日時はSaveAsUtcが無ければサーバーローカル()
+        {
+            var before = DateTime.Now;
+            await CreateOrderAsync();
+            var recorded = RecordedDateTime((await HistoriesAsync()).Single());
+            AssertWithin(recorded, before, DateTime.Now);
+            if (TimeZoneInfo.Local.BaseUtcOffset != TimeSpan.Zero)
+                Assert.That(Math.Abs((recorded - DateTime.UtcNow).TotalMinutes), Is.GreaterThan(1), "UTC ではない");
+        }
+
+        [Test]
+        public async Task 変更日時はSaveAsUtcならUTC()
+        {
+            _design.Modules.Find("EditHistory")!.Fields.OfType<DateTimeFieldDesign>().Single(e => e.Name == "DateTime").SaveAsUtc = true;
+            var before = DateTime.UtcNow;
+            await CreateOrderAsync();
+            var recorded = RecordedDateTime((await HistoriesAsync()).Single());
+            AssertWithin(recorded, before, DateTime.UtcNow);
+            if (TimeZoneInfo.Local.BaseUtcOffset != TimeSpan.Zero)
+                Assert.That(Math.Abs((recorded - DateTime.Now).TotalMinutes), Is.GreaterThan(1), "サーバーローカルではない");
+        }
+
+        static DateTime RecordedDateTime(Dictionary<string, object> history)
+            => DateTime.SpecifyKind(DateTime.Parse(history["date_time"].ToString()!), DateTimeKind.Unspecified);
+
+        //ミリ秒まで丸めるので before より僅かに前になり得る → 1 秒の余裕
+        static void AssertWithin(DateTime recorded, DateTime before, DateTime after)
+            => Assert.That(recorded, Is.InRange(before.AddSeconds(-1), after.AddSeconds(1)), $"recorded={recorded:O} before={before:O} after={after:O}");
     }
 }

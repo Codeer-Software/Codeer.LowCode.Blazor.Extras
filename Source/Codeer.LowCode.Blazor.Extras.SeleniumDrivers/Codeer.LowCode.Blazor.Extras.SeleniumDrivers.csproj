@@ -13,7 +13,7 @@
     <PackageTags>Codeer.LowCode.Blazor;Selenium</PackageTags>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
-    <PackageReleaseNotes>Drivers for the edit history fields (Codeer.LowCode.Blazor.Extras 0.16.0): EditHistoryFieldDriver (versions with number / change type / user / date / summary, open a version to read its changes and press Show or Restore, LoadMore), EditHistoryVersionDialogDriver (counts of highlighted cells and rows in the version dialog), EditHistoryRestoreButtonFieldDriver and EditHistoryTargetLinkFieldDriver. EditHistoryVersionDriver: HasCommand / Command / OpenCommand for the "Submitted data" of a version.</PackageReleaseNotes>
+    <PackageReleaseNotes>Drivers for the edit history fields (Codeer.LowCode.Blazor.Extras 0.16.0): EditHistoryFieldDriver (versions with number / change type / user / date / summary, open a version to read its changes and press Show or Restore, LoadMore), EditHistoryVersionDialogDriver (counts of highlighted cells and rows in the version dialog), EditHistoryRestoreButtonFieldDriver and EditHistoryTargetLinkFieldDriver.</PackageReleaseNotes>
   </PropertyGroup>
 
   <ItemGroup>

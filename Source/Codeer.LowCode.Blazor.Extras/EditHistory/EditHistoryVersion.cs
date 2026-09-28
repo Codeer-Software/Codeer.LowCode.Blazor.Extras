@@ -25,8 +25,6 @@ namespace Codeer.LowCode.Blazor.Extras.EditHistory
         [ScriptHide]
         public ModuleData? Snapshot { get; internal set; }
 
-        /// <summary>受け取った操作 (サーバーに送られた保存内容の JSON)。契約に Command 役割が無ければ空。</summary>
-        public string Command { get; internal set; } = string.Empty;
 
         /// <summary>差分の元 (前の版) があるか。履歴を取り始める前からあったレコードの最初の更新は前の版が無いので差分を出せない。</summary>
         public bool HasPreviousVersion { get; internal set; } = true;

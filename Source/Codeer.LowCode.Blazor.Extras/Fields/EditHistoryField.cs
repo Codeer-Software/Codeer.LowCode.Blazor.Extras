@@ -200,7 +200,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
                     Equal(names.DataId, Module.GetIdText())),
                 LimitCount = limitCount,
                 SortConditions = new List<SortCondition>(),
-                SelectFields = new[] { SystemFieldNames.Id, names.ChangeType, names.Snapshot, names.UserId, names.DateTime, names.Command }
+                SelectFields = new[] { SystemFieldNames.Id, names.ChangeType, names.Snapshot, names.UserId, names.DateTime }
                     .Where(e => !string.IsNullOrEmpty(e)).ToList(),
             };
             //新しい順。日時があれば日時 (Id が連番でない DB でも正しく並ぶ)、Id で同着を決める
@@ -229,7 +229,6 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
                 UserText = (user as LinkFieldData)?.DisplayText ?? (user as ValueFieldDataBase<string>)?.Value ?? string.Empty,
                 DateTime = (row.Fields.GetValueOrDefault(names.DateTime) as DateTimeFieldData)?.Value,
                 Snapshot = EditHistorySnapshot.Deserialize(GetString(row, names.Snapshot)),
-                Command = GetString(row, names.Command),
             };
         }
 

@@ -19,8 +19,7 @@ UI もデータも持たない (DB 列不要)。対象モジュールの EditHis
 | ChangeType (変更種別) | Text / Select | `EditHistoryChangeType` (Add / Update / Delete)。Select なら EnumName に `EditHistoryChangeType` を指定 | ○ |
 | Snapshot (レコード JSON) | Text | レコード全体のスナップショット。長くなるので TEXT 型の列に | ○ |
 | UserId (変更したユーザー) | Link→ユーザーモジュール / Text | 保存したユーザーの Id | - |
-| DateTime (変更日時) | DateTime | 保存日時 | - |
-| Command (送信内容 JSON) | Text | 受け取った操作 = サーバーに送られてきた保存内容 (ModuleSubmitData) の JSON。監査用にそのまま残す (差分・復元には使わない)。パスワードの平文と添付ファイルの中身は落とし、仮 Id は採番された Id に置き換える。長くなるので TEXT 型の列に。空なら記録しない | - |
+| DateTime (変更日時) | DateTime | 保存日時。フィールドの SaveAsUtc に従う (本体の CreatedAt と同じ) | - |
 
 ## 履歴モジュールの例
 
@@ -41,8 +40,7 @@ ModuleName を Select + enum にすると対象の表示と検索が画面上の
     { "Name": "Snapshot", "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.TextFieldDesign", "DisplayName": "内容", "DbColumn": "snapshot" },
     { "Name": "UserId", "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.LinkFieldDesign", "DisplayName": "変更者", "DbColumn": "user_id", "SearchCondition": { "ModuleName": "AppUser" } },
     { "Name": "DateTime", "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.DateTimeFieldDesign", "DisplayName": "変更日時", "DbColumn": "date_time" },
-    { "Name": "Command", "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.TextFieldDesign", "DisplayName": "送信内容", "DbColumn": "command" },
-    { "Name": "Contract", "TypeFullName": "Codeer.LowCode.Blazor.Extras.Designs.EditHistoryContractFieldDesign", "Command": "Command" }
+    { "Name": "Contract", "TypeFullName": "Codeer.LowCode.Blazor.Extras.Designs.EditHistoryContractFieldDesign" }
   ]
 }
 ```

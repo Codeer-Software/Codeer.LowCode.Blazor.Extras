@@ -120,7 +120,8 @@ namespace Codeer.LowCode.Blazor.Extras.Server.EditHistory
             {
                 var user = await _io.GetCurrentUser();
                 var userId = user == null ? string.Empty : ModuleDataValues.GetId(user);
-                var now = DateTime.Now;
+                var localNow = DateTime.Now;
+                var utcNow = DateTime.UtcNow;
                 foreach (var plan in plans)
                 {
                     string id;
@@ -146,10 +147,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.EditHistory
                         _logError?.Invoke($"Edit history of '{plan.Module.Name}' ({id}) was not recorded: the record could not be read.");
                         continue;
                     }
-                    //受け取った操作 (契約に Command 役割があるときだけ)。仮 Id は結果の対応表で実 Id にする
-                    var command = string.IsNullOrEmpty(plan.Names.Command) ? null
-                        : EditHistoryCommand.Serialize(transactionData[plan.Index], plan.Index < results.Count ? results[plan.Index].TemporaryIdMap : null);
-                    await WriteAsync(plan, id, userId, now, command);
+                    await WriteAsync(plan, id, userId, localNow, utcNow);
                 }
             }
             catch (Exception ex)
@@ -197,7 +195,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.EditHistory
             }).ToList();
         }
 
-        async Task WriteAsync(Plan plan, string id, string userId, DateTime now, string? command)
+        async Task WriteAsync(Plan plan, string id, string userId, DateTime localNow, DateTime utcNow)
         {
             var names = plan.Names;
             var data = new ModuleData { Name = plan.HistoryModule.Name };
@@ -208,11 +206,15 @@ namespace Codeer.LowCode.Blazor.Extras.Server.EditHistory
             set(names.Snapshot, e => ((TextFieldData)e).Value = EditHistorySnapshot.Serialize(plan.Snapshot!));
             if (!string.IsNullOrEmpty(userId))
                 set(names.UserId, e => ((ValueFieldDataBase<string>)e).Value = userId);
-            set(names.DateTime, e => ((DateTimeFieldData)e).Value = now);
-            if (command != null)
-                set(names.Command, e => ((TextFieldData)e).Value = command);
+            //変更日時は本体の CreatedAt と同じく DateTime 役割のフィールドの SaveAsUtc に従う (サーバーローカル固定にしない)
+            set(names.DateTime, e => ((DateTimeFieldData)e).Value = Truncate(
+                plan.HistoryModule.Fields.FirstOrDefault(f => f.Name == names.DateTime) is DateTimeFieldDesign { SaveAsUtc: true } ? utcNow : localNow));
             await _addInternalAsync(data);
         }
+
+        //ミリ秒まで (本体の作成・更新日時と同じ精度)
+        static DateTime Truncate(DateTime now)
+            => new(now.Year, now.Month, now.Day, now.Hour, now.Minute, now.Second, now.Millisecond);
 
         //役割のフィールド名が空・不在なら書かない (必須役割の不備はデザインチェックが指摘する)。型違いは例外 = 保存失敗
         static Action<string, Action<FieldDataBase>> CreateSetter(ModuleDesign design, ModuleData data)
