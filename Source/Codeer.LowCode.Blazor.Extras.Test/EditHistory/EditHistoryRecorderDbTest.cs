@@ -30,24 +30,6 @@ namespace Codeer.LowCode.Blazor.Extras.Test.EditHistory
 
         public Task<string> GetCurrentUserIdAsync() => Task.FromResult("7");
 
-        /// <summary>テンプレートの CustomizedModuleDataIO と同じ結線 (SubmitAsync を Recorder で包む)。</summary>
-        sealed class HistoryModuleDataIO : ModuleDataIO
-        {
-            readonly EditHistoryRecorder _recorder;
-
-            public HistoryModuleDataIO(DesignData design, IAuthenticationContext auth, IDbAccessor db, ITemporaryFileManager files, List<string> errors)
-                : base(design, auth, db, files)
-                => _recorder = new EditHistoryRecorder(design, this, AddSystemRecordAsync, errors.Add);
-
-            public override Task<List<ModuleSubmitResult>> SubmitAsync(Guid transactionId, List<ModuleSubmitData> transactionData)
-                => _recorder.SubmitAsync(transactionData, () => base.SubmitAsync(transactionId, transactionData));
-
-            public override Task<Paging<ModuleData>> GetListAsync(SearchCondition condition, int pageIndex)
-                => _recorder.GetListAsync(condition, () => base.GetListAsync(condition, pageIndex));
-
-            Task<string> AddSystemRecordAsync(ModuleData data) => AddAsync(Guid.NewGuid(), Guid.NewGuid(), data);
-        }
-
         [SetUp]
         public async Task SetUp()
         {
@@ -71,13 +53,19 @@ namespace Codeer.LowCode.Blazor.Extras.Test.EditHistory
             if (File.Exists(_dbFile)) File.Delete(_dbFile);
         }
 
-        ModuleDataIO CreateIO() => new HistoryModuleDataIO(_design, this, _db, new TemporaryFileManager(_db, [], new List<IFileStorage>()), _errors);
+        //テンプレートの CustomizedModuleDataIO と同じ結線 (インターセプタを 1 つ登録)
+        ModuleDataIO CreateIO()
+        {
+            var io = new ModuleDataIO(_design, this, _db, new TemporaryFileManager(_db, [], new List<IFileStorage>()));
+            io.AddInterceptor(new EditHistoryRecorder(_design, _errors.Add));
+            return io;
+        }
 
         static void AssertNoError(List<ModuleSubmitResult> results)
             => Assert.That(results.Any(e => !string.IsNullOrEmpty(e.ExceptionMessage)), Is.False, string.Join("\n", results.Select(e => e.ExceptionMessage)));
 
         async Task<List<Dictionary<string, object>>> HistoriesAsync()
-            => (await _db.QueryAsync(Ds, "SELECT module_name, data_id, change_type, snapshot, user_id, date_time FROM edit_histories ORDER BY id", new()))
+            => (await _db.QueryAsync(Ds, "SELECT id, module_name, data_id, change_type, snapshot, user_id, date_time FROM edit_histories ORDER BY id", new()))
                 .Select(e => e.ToDictionary(x => x.Key, x => x.Value)).ToList();
 
         static ModuleData OrderData(string id, string title, decimal amount)
@@ -441,14 +429,13 @@ namespace Codeer.LowCode.Blazor.Extras.Test.EditHistory
             Assert.That((await _db.QueryAsync(Ds, "SELECT COUNT(*) AS c FROM orders WHERE is_deleted = 1", new())).Single()["c"], Is.EqualTo(1));
             Assert.That((await _db.QueryAsync(Ds, "SELECT COUNT(*) AS c FROM order_items WHERE is_deleted = 1", new())).Single()["c"], Is.EqualTo(2), "明細も論理削除される");
 
-            //復活ボタンが送る形: Add / Update 無し、ExtendedData に親と明細の Id
-            var undelete = new EditHistoryUndeleteData();
-            undelete.Targets.Add(new EditHistoryUndeleteTarget { ModuleName = "Order", Id = "1" });
-            undelete.Targets.Add(new EditHistoryUndeleteTarget { ModuleName = "OrderItem", Id = "1" });
-            undelete.Targets.Add(new EditHistoryUndeleteTarget { ModuleName = "OrderItem", Id = "2" });
+            //復活ボタンが送る形: Add / Update 無し、ExtendedData に「削除の版の履歴行」だけ (戻す Id はサーバーがスナップショットから組む)
+            var deleteRow = (await HistoriesAsync()).Single(e => (string)e["change_type"] == "Delete");
             var submit = new ModuleSubmitData { ModuleName = "Order", Id = "1" };
-            submit.ExtendedData.Add(undelete);
-            AssertNoError(await CreateIO().SubmitWithTransactionAsync([submit]));
+            submit.ExtendedData.Add(new EditHistoryUndeleteData { HistoryModuleName = "EditHistory", HistoryRowId = deleteRow["id"]!.ToString()!, RestoreWholeRecord = true });
+            var results = await CreateIO().SubmitWithTransactionAsync([submit]);
+            AssertNoError(results);
+            Assert.That(results[0].DestinationId, Is.EqualTo("1"), "論理削除は同じ Id");
 
             Assert.That((await _db.QueryAsync(Ds, "SELECT COUNT(*) AS c FROM orders WHERE is_deleted = 1", new())).Single()["c"], Is.EqualTo(0));
             Assert.That((await _db.QueryAsync(Ds, "SELECT COUNT(*) AS c FROM order_items WHERE is_deleted = 1", new())).Single()["c"], Is.EqualTo(0));
@@ -471,11 +458,10 @@ namespace Codeer.LowCode.Blazor.Extras.Test.EditHistory
             }]));
             Assert.That(Items(Snapshot((await HistoriesAsync())[1])).Count, Is.EqualTo(1));
 
-            //「この版に戻す」→ 保存が送る形: 復活した行の Update + ExtendedData の取り消し
-            var undelete = new EditHistoryUndeleteData();
-            undelete.Targets.Add(new EditHistoryUndeleteTarget { ModuleName = "OrderItem", Id = "2" });
+            //「この版に戻す」→ 保存が送る形: 復活した行の Update + ExtendedData に「戻した版の履歴行」(その版の論理削除の行をサーバーが取り消す)
+            var addRow = (await HistoriesAsync())[0];
             var submit = new ModuleSubmitData { ModuleName = "Order", Id = "1", Update = [ItemData("2", "1", "品Y", 7)] };
-            submit.ExtendedData.Add(undelete);
+            submit.ExtendedData.Add(new EditHistoryUndeleteData { HistoryModuleName = "EditHistory", HistoryRowId = addRow["id"]!.ToString()! });
             AssertNoError(await CreateIO().SubmitWithTransactionAsync([submit]));
 
             var items = Items(Snapshot((await HistoriesAsync())[2]));
@@ -485,16 +471,44 @@ namespace Codeer.LowCode.Blazor.Extras.Test.EditHistory
         }
 
         [Test]
-        public async Task 物理削除のモジュールへの削除の取り消しは保存を失敗にする()
+        public async Task 物理削除したレコードの復活はスナップショットから作り直し_明細も新しい親のIdで作り直す()
         {
             await CreateOrderAsync();
-            var undelete = new EditHistoryUndeleteData();
-            undelete.Targets.Add(new EditHistoryUndeleteTarget { ModuleName = "Order", Id = "1" });
-            var submit = new ModuleSubmitData { ModuleName = "Order", Id = "1", Update = [OrderData("1", "X", 1)] };
-            submit.ExtendedData.Add(undelete);
+            AssertNoError(await CreateIO().SubmitWithTransactionAsync([new ModuleSubmitData
+            {
+                ModuleName = "Order", Id = "1", Delete = [new ModuleDeleteInfo { ModuleName = "Order", Id = "1" }],
+            }]));
+            Assert.That((await _db.QueryAsync(Ds, "SELECT COUNT(*) AS c FROM orders", new())).Single()["c"], Is.EqualTo(0));
+            Assert.That((await _db.QueryAsync(Ds, "SELECT COUNT(*) AS c FROM order_items", new())).Single()["c"], Is.EqualTo(0), "明細も物理削除される");
+
+            var deleteRow = (await HistoriesAsync()).Single(e => (string)e["change_type"] == "Delete");
+            var submit = new ModuleSubmitData { ModuleName = "Order", Id = "1" };
+            submit.ExtendedData.Add(new EditHistoryUndeleteData { HistoryModuleName = "EditHistory", HistoryRowId = deleteRow["id"]!.ToString()!, RestoreWholeRecord = true });
+            var results = await CreateIO().SubmitWithTransactionAsync([submit]);
+            AssertNoError(results);
+            var newId = results[0].DestinationId;
+            Assert.That(newId, Is.Not.EqualTo("1").And.Not.Empty, "Id は振り直し");
+
+            var orders = await _db.QueryAsync(Ds, "SELECT id, title, amount FROM orders", new());
+            Assert.That(orders.Select(e => (e["id"]!.ToString(), e["title"])), Is.EqualTo(new[] { (newId, (object)"受注A") }));
+            var items = await _db.QueryAsync(Ds, "SELECT order_id, name FROM order_items ORDER BY id", new());
+            Assert.That(items.Select(e => (e["order_id"]!.ToString(), e["name"])), Is.EquivalentTo(new[] { (newId, (object)"品X"), (newId, (object)"品Y") }), "明細は新しい親の Id で作り直す");
+
+            var histories = await HistoriesAsync();
+            Assert.That(histories.Select(e => (e["change_type"], e["data_id"])), Is.EqualTo(new[] { ("Add", "1"), ("Delete", "1"), ("Add", newId) }), "作り直しは作成の版");
+            Assert.That(Items(Snapshot(histories[2])).Count, Is.EqualTo(2));
+        }
+
+        [Test]
+        public async Task 別のレコードの版を指定した復活は保存を失敗にする()
+        {
+            await CreateOrderAsync();
+            var addRow = (await HistoriesAsync())[0];
+            //Id 2 の保存に Id 1 の版を指定する (改ざん)
+            var submit = new ModuleSubmitData { ModuleName = "Order", Id = "2", Update = [OrderData("2", "X", 1)] };
+            submit.ExtendedData.Add(new EditHistoryUndeleteData { HistoryModuleName = "EditHistory", HistoryRowId = addRow["id"]!.ToString()! });
             var results = await CreateIO().SubmitWithTransactionAsync([submit]);
             Assert.That(results.All(e => !string.IsNullOrEmpty(e.ExceptionMessage)), Is.True);
-            Assert.That((await _db.QueryAsync(Ds, "SELECT title FROM orders WHERE id = 1", new())).Single()["title"], Is.EqualTo("受注A"), "ロールバック");
         }
 
         [Test]

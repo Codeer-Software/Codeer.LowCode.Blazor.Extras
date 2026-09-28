@@ -311,7 +311,7 @@
   private BarPosition[] _barPositions = Array.Empty<BarPosition>();
   private readonly Dictionary<string, int> _itemIndexMap = new();
 
-  private record DepSegment(string PathD, string Key, bool IsSelected);
+  private record DepSegment(string PathD, string Key, bool IsSelected, string ClassName);
   private readonly List<DepSegment> _depSegments = new();
 
   // markup 冒頭で呼ぶ。レイアウトを確定し、全バーの座標・id→index・依存線ジオメトリを先に構築する。
@@ -343,7 +343,7 @@
       var y2 = toBar.Y + toBar.Height / 2;
       var midX = x1 + 12;
       var pathD = $"M {F(x1)},{F(y1)} L {F(midX)},{F(y1)} L {F(midX)},{F(y2)} L {F(x2)},{F(y2)}";
-      _depSegments.Add(new DepSegment(pathD, dep.Key, _selectedDepKey == dep.Key));
+      _depSegments.Add(new DepSegment(pathD, dep.Key, _selectedDepKey == dep.Key, dep.ClassName));
     }
     return lp;
   }
@@ -626,7 +626,7 @@
     foreach (var seg in _depSegments)
     {
       <path d="@seg.PathD"
-            class="@(seg.IsSelected ? "gantt-dep-line gantt-dep-selected" : "gantt-dep-line")"
+            class="@((seg.IsSelected ? "gantt-dep-line gantt-dep-selected" : "gantt-dep-line") + (string.IsNullOrEmpty(seg.ClassName) ? "" : " " + seg.ClassName))"
             marker-end="@(seg.IsSelected ? "url(#dep-arrow-selected)" : "url(#dep-arrow)")"
             pointer-events="none" />
     }

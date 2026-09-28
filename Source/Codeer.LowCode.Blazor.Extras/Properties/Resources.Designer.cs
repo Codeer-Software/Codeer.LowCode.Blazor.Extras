@@ -3412,6 +3412,18 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
             }
         }
 
+        internal static string EditHistoryCheck_OnHistoryModule {
+            get {
+                return ResourceManager.GetString("EditHistoryCheck_OnHistoryModule", resourceCulture);
+            }
+        }
+
+        internal static string EditHistoryCheck_OnQueryModule {
+            get {
+                return ResourceManager.GetString("EditHistoryCheck_OnQueryModule", resourceCulture);
+            }
+        }
+
         internal static string EditHistoryRecordRestored {
             get {
                 return ResourceManager.GetString("EditHistoryRecordRestored", resourceCulture);

@@ -67,6 +67,19 @@ rect.gantt-task-bar.edit-history-removed-row {
   fill-opacity: 0.2 !important;
 }
 
+/* Gantt の依存関係の矢印: 追加 / 変更 = 緑、削除 (前の版の矢印) = 赤の破線 */
+path.gantt-dep-line.edit-history-added-row,
+path.gantt-dep-line.edit-history-changed-row {
+  stroke: #198754;
+  stroke-width: 2px;
+}
+
+path.gantt-dep-line.edit-history-removed-row {
+  stroke: #dc3545;
+  stroke-width: 2px;
+  stroke-dasharray: 4 2;
+}
+
 /* 版表示ダイアログ: 本体のダイアログは中身の幅 (fit-content) で、表示専用の文字だけだと版ごとに幅が変わるので最小幅を持たせる */
 .modal-dialog:has(.edit-history-version-dialog) {
   min-width: min(90vw, 1000px);

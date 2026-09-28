@@ -28,20 +28,6 @@ namespace Codeer.LowCode.Blazor.Extras.Test.EditHistory
 
         public Task<string> GetCurrentUserIdAsync() => Task.FromResult("7");
 
-        sealed class HistoryModuleDataIO : ModuleDataIO
-        {
-            readonly EditHistoryRecorder _recorder;
-
-            public HistoryModuleDataIO(DesignData design, IAuthenticationContext auth, IDbAccessor db, ITemporaryFileManager files, List<string> errors)
-                : base(design, auth, db, files)
-                => _recorder = new EditHistoryRecorder(design, this, AddSystemRecordAsync, errors.Add);
-
-            public override Task<List<ModuleSubmitResult>> SubmitAsync(Guid transactionId, List<ModuleSubmitData> transactionData)
-                => _recorder.SubmitAsync(transactionData, () => base.SubmitAsync(transactionId, transactionData));
-
-            Task<string> AddSystemRecordAsync(ModuleData data) => AddAsync(Guid.NewGuid(), Guid.NewGuid(), data);
-        }
-
         [SetUp]
         public async Task SetUp()
         {
@@ -65,7 +51,13 @@ namespace Codeer.LowCode.Blazor.Extras.Test.EditHistory
             if (File.Exists(_dbFile)) File.Delete(_dbFile);
         }
 
-        ModuleDataIO CreateIO() => new HistoryModuleDataIO(_design, this, _db, new TemporaryFileManager(_db, [], new List<IFileStorage>()), _errors);
+        //テンプレートの CustomizedModuleDataIO と同じ結線 (インターセプタを 1 つ登録)
+        ModuleDataIO CreateIO()
+        {
+            var io = new ModuleDataIO(_design, this, _db, new TemporaryFileManager(_db, [], new List<IFileStorage>()));
+            io.AddInterceptor(new EditHistoryRecorder(_design, _errors.Add));
+            return io;
+        }
         EditHistoryFieldDesign History => _design.Modules.Find("Order")!.Fields.OfType<EditHistoryFieldDesign>().Single();
 
         static void AssertNoError(List<ModuleSubmitResult> results)

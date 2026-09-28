@@ -39,8 +39,11 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         public const string VersionDialogClassName = "edit-history-version-dialog";
 
         readonly List<EditHistoryVersion> _versions = new();
-        readonly List<EditHistoryUndeleteTarget> _pendingUndeletes = new();
+        //「この版に戻す」で Id を保って戻した論理削除の行がある版 (履歴行の Id)。保存に同梱し、サーバーがその版のスナップショットから行を戻す
+        readonly List<string> _pendingUndeleteVersions = new();
         int _pageIndex;
+        //版番号の基準にする件数 (最初のページを読んだときの総数。「さらに表示」の間に版が増えても番号がずれないように固定する)
+        int _numberingTotal;
 
         public EditHistoryField(EditHistoryFieldDesign design) : base(design) { }
 
@@ -50,20 +53,20 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         [ScriptHide]
         public override FieldDataBase? GetData() => null;
 
-        //復元で Id を保って戻した論理削除の行があれば、保存に「削除の取り消し」を同梱する (サーバーの EditHistoryRecorder が base の前に戻す)
+        //復元で Id を保って戻した論理削除の行があれば、保存に「その版からの削除の取り消し」を同梱する (サーバーの EditHistoryRecorder が本体の保存の前に戻す)
         [ScriptHide]
         public override FieldSubmitData GetSubmitData()
         {
             var submit = new FieldSubmitData();
-            if (_pendingUndeletes.Count > 0)
-                submit.ExtendedData.Add(new EditHistoryUndeleteData { Targets = _pendingUndeletes.ToList() });
+            foreach (var historyRowId in _pendingUndeleteVersions)
+                submit.ExtendedData.Add(new EditHistoryUndeleteData { HistoryModuleName = Design.HistoryModuleName, HistoryRowId = historyRowId });
             return submit;
         }
 
         [ScriptHide]
         public override async Task InitializeDataAsync(FieldDataBase? fieldDataBase)
         {
-            _pendingUndeletes.Clear();
+            _pendingUndeleteVersions.Clear();
             IsLoaded = false;
             _versions.Clear();
             _pageIndex = 0;
@@ -85,7 +88,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         public override void AcceptChanges(SubmitAcceptInfo info)
         {
             //同梱した削除の取り消しは保存で確定した (次の保存に持ち越さない)
-            _pendingUndeletes.Clear();
+            _pendingUndeleteVersions.Clear();
             if (ModuleLayoutType != ModuleLayoutType.Detail) return;
             ReloadAfterSubmit = ReloadAfterSubmitAsync();
         }
@@ -136,6 +139,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         {
             _versions.Clear();
             _pageIndex = 0;
+            _numberingTotal = 0;
             await LoadPageAsync();
         }
 
@@ -172,8 +176,10 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
                 var page = pages[0];
                 var older = pages[1].Items.FirstOrDefault();
                 TotalCount = page.TotalCount;
+                if (_pageIndex == 0) _numberingTotal = TotalCount;
 
-                var number = TotalCount - _pageIndex * pageSize;
+                //版番号 = 閲覧者に見える版の中での古い方からの連番 (履歴モジュールの閲覧条件で見えない版は数えない)
+                var number = _numberingTotal - _pageIndex * pageSize;
                 var items = page.Items;
                 for (var i = 0; i < items.Count; i++)
                 {
@@ -352,11 +358,11 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         static string AddClass(string current, string className)
             => string.IsNullOrEmpty(current) ? className : $"{current} {className}";
 
-        //復元で Id を保って戻した論理削除の行の取り消しを、次の保存に同梱する (同じ行を二度復元しても 1 回)
-        internal void AddPendingUndelete(string moduleName, string id)
+        //復元で Id を保って戻した論理削除の行がある版の取り消しを、次の保存に同梱する (同じ版を二度復元しても 1 回)
+        internal void AddPendingUndelete(string historyRowId)
         {
-            if (_pendingUndeletes.Any(e => e.ModuleName == moduleName && e.Id == id)) return;
-            _pendingUndeletes.Add(new EditHistoryUndeleteTarget { ModuleName = moduleName, Id = id });
+            if (_pendingUndeleteVersions.Contains(historyRowId)) return;
+            _pendingUndeleteVersions.Add(historyRowId);
         }
 
         /// <summary>その版の内容を編集中のフォームへ反映する (保存はユーザーが行う)。</summary>
@@ -372,7 +378,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
                 [new PrimaryButton(R.EditHistoryRestore, true), new SecondaryOutlineButton(R.EditHistoryCancel)]);
             if (answer != R.EditHistoryRestore) return;
 
-            var applied = await EditHistoryRestorer.ApplyAsync(Module, snapshot, AddPendingUndelete);
+            var applied = await EditHistoryRestorer.ApplyAsync(Module, snapshot, (_, _) => AddPendingUndelete(version.Id));
             if (applied == 0)
             {
                 //版に反映できる項目が 1 つも無い (書き込み権限のない項目・添付ファイルだけ、など)。何も起きなかったことを伝える

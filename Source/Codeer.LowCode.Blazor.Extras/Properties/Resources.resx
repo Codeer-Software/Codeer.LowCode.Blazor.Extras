@@ -1389,6 +1389,12 @@ Recipients: {1}</value>
   <data name="EditHistoryCheck_OwnedRecordPathInBothFormat" xml:space="preserve">
     <value>Owned records '{0}' are in both {1} and {2}. Choose one.</value>
   </data>
+  <data name="EditHistoryCheck_OnHistoryModule" xml:space="preserve">
+    <value>EditHistoryField cannot be placed on a history module (a module with EditHistoryContractField).</value>
+  </data>
+  <data name="EditHistoryCheck_OnQueryModule" xml:space="preserve">
+    <value>EditHistoryField cannot be placed on a query module (its rows are defined by SQL and cannot be recorded or restored).</value>
+  </data>
   <data name="EditHistoryContractField" xml:space="preserve">
     <value>Edit History Contract</value>
   </data>

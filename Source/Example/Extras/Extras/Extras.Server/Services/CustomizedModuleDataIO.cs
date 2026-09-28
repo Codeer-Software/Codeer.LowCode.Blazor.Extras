@@ -13,23 +13,15 @@ namespace Extras.Server.Services
     public class CustomizedModuleDataIO : ModuleDataIO
     {
         readonly DesignData _designData;
-        readonly EditHistoryRecorder _editHistory;
 
         public CustomizedModuleDataIO(DesignData designData, IAuthenticationContext authenticationContext, IDbAccessor dbAccess, ITemporaryFileManager temporaryFileManager)
             : base(designData, authenticationContext, dbAccess, temporaryFileManager)
         {
             _designData = designData;
-            //編集履歴: EditHistoryField を置いたモジュールの保存 (作成・更新・削除) ごとに履歴モジュールへスナップショットを書く
-            _editHistory = new EditHistoryRecorder(designData, this, AddSystemRecordAsync);
+            //編集履歴: EditHistoryField を置いたモジュールの保存ごとに履歴モジュールへスナップショットを書き、履歴モジュールを読むときは Snapshot を読む人の権限に落とす (結線はこの 1 行)
+            AddInterceptor(new EditHistoryRecorder(designData));
         }
 
-        //編集履歴の記録 (base の前に削除前、後に保存後の内容を読む)。記録に失敗すると保存も失敗になる
-        public override Task<List<ModuleSubmitResult>> SubmitAsync(Guid transactionId, List<ModuleSubmitData> transactionData)
-            => _editHistory.SubmitAsync(transactionData, () => base.SubmitAsync(transactionId, transactionData));
-
-        //編集履歴: 履歴モジュールの Snapshot を読む人の権限に落として返す (一覧・詳細・ダウンロードは全部ここを通る)
-        public override Task<Codeer.LowCode.Blazor.Utils.Paging<ModuleData>> GetListAsync(Codeer.LowCode.Blazor.Repository.Match.SearchCondition condition, int pageIndex)
-            => _editHistory.GetListAsync(condition, () => base.GetListAsync(condition, pageIndex));
 
         protected override async Task<string> AddAsync(Guid transactionId, Guid moduleSubmitId, ModuleData data)
         {

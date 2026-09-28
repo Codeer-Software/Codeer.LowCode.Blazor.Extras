@@ -16,7 +16,7 @@ UI もデータも持たない (DB 列不要)。対象モジュールの EditHis
 |---|---|---|---|
 | ModuleName (対象モジュール名) | Text / Select | 対象モジュールの名前。Select で enum (メンバー名 = モジュール名 / 表示 = 画面上の名前) を指せば、一覧の表示と検索を「受注」のような名前に読み替えられる。enum は任意で、無い・空なら素のモジュール名のまま (承認待ち一覧の申請種別と同じ作り) | ○ |
 | DataId (対象レコードの Id) | Text | 対象レコードの Id | ○ |
-| ChangeType (変更種別) | Text / Select | `EditHistoryChangeType` (Add / Update / Delete)。Select なら EnumName に `EditHistoryChangeType` を指定 | ○ |
+| ChangeType (変更種別) | Text / Select | `EditHistoryChangeType` (Add / Update / Delete / Restore)。Select なら EnumName に `EditHistoryChangeType` を指定 | ○ |
 | Snapshot (レコード JSON) | Text | レコード全体のスナップショット。長くなるので TEXT 型の列に | ○ |
 | UserId (変更したユーザー) | Link→ユーザーモジュール / Text | 保存したユーザーの Id | - |
 | DateTime (変更日時) | DateTime | 保存日時。フィールドの SaveAsUtc に従う (本体の CreatedAt と同じ) | - |

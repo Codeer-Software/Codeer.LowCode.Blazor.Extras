@@ -18,24 +18,7 @@ namespace Codeer.LowCode.Blazor.Extras.EditHistory
         /// <param name="onRevive">論理削除の行を Id を保って復活させるときの登録先 (モジュール名, Id)。null なら常に新しい行として追加する。</param>
         /// <returns>反映したフィールドの数 (値を入れたフィールド + 行を差し替えた従属レコード)。0 = この版から反映できるものが無かった。</returns>
         internal static async Task<int> ApplyAsync(Module module, ModuleData snapshot, Action<string, string>? onRevive)
-        {
-            var data = StripNotRestorable(snapshot);
-            var applied = await module.ApplyRecordAsync(data, onRevive);
-            //本体の ApplyRecordAsync はフィールド名と同じ名前の宣言だけを差し替える。フィールドが自分の名前以外で宣言した従属レコード
-            //(Gantt の依存関係 "Gantt:Dependencies" 等) はここで差し替える (対象と条件は本体と同じ: 書き込み権限のあるフィールドで、版にある宣言だけ)
-            foreach (var field in module.GetFields())
-            {
-                if (field is not IOwnedRecordsField owned || field.Design is not IOwnedRecordsFieldDesign design || !field.HasUserWritePermission) continue;
-                foreach (var declared in design.GetOwnedRecords())
-                {
-                    if (declared.Name == field.Design.Name) continue;
-                    if (data.Fields.GetValueOrDefault(declared.Name) is not ListFieldData rows) continue;
-                    await owned.ApplyOwnedRecordsAsync(declared.Name, rows.Children, onRevive);
-                    applied++;
-                }
-            }
-            return applied;
-        }
+            => await module.ApplyRecordAsync(StripNotRestorable(snapshot), onRevive);
 
         //添付ファイル・承認フローの FK の項目を外す (孫・埋め込みの中まで)
         static ModuleData StripNotRestorable(ModuleData src)

@@ -78,15 +78,6 @@ namespace Codeer.LowCode.Blazor.Extras.EditHistory
         /// スナップショット・差分・復元の対象外にするフィールドか。
         /// システムフィールド (Id / 楽観ロック / 作成・更新・削除の記録 / 論理削除) とリンク越し (ドット名) の派生値は対象外。
         /// </summary>
-        internal static bool IsExcludedField(string fieldName)
-            => _systemFields.Contains(fieldName) || new FieldName(fieldName).IsLink;
-
-        static readonly HashSet<string> _systemFields =
-        [
-            SystemFieldNames.Id, SystemFieldNames.OptimisticLocking, SystemFieldNames.LogicalDelete,
-            SystemFieldNames.CreatedAt, SystemFieldNames.UpdatedAt, SystemFieldNames.DeletedAt,
-            SystemFieldNames.Creator, SystemFieldNames.Updater, SystemFieldNames.Deleter,
-            SystemFieldNames.CurrentUser, SystemFieldNames.DeleteArchive,
-        ];
+        internal static bool IsExcludedField(string fieldName) => OperatingModel.OwnedRecordsExtensions.IsExcludedField(fieldName);
     }
 }

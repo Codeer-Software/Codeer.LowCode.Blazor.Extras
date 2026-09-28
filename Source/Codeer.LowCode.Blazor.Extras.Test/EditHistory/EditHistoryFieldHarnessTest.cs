@@ -247,11 +247,11 @@ namespace Codeer.LowCode.Blazor.Extras.Test.EditHistory
         {
             var services = CreateServices(logicalDelete: true);
             var (_, field) = await CreateOrderModuleAsync(services, _v2);
-            field.AddPendingUndelete("OrderItem", "12");
-            field.AddPendingUndelete("OrderItem", "12");
-            field.AddPendingUndelete("OrderItem", "13");
-            var undelete = field.GetSubmitData().ExtendedData.OfType<EditHistoryUndeleteData>().Single();
-            Assert.That(undelete.Targets.Select(e => e.Id), Is.EqualTo(new[] { "12", "13" }), "同じ行は 1 回");
+            field.AddPendingUndelete("103");
+            field.AddPendingUndelete("103");
+            field.AddPendingUndelete("102");
+            var undelete = field.GetSubmitData().ExtendedData.OfType<EditHistoryUndeleteData>().ToList();
+            Assert.That(undelete.Select(e => (e.HistoryModuleName, e.HistoryRowId, e.RestoreWholeRecord)), Is.EqualTo(new[] { ("EditHistory", "103", false), ("EditHistory", "102", false) }), "同じ版は 1 回");
 
             //自動保存 (AcceptChanges だけが呼ばれる) の後は同梱しない
             field.AcceptChanges(new SubmitAcceptInfo());
@@ -268,12 +268,11 @@ namespace Codeer.LowCode.Blazor.Extras.Test.EditHistory
             var field = module.GetField<EditHistoryField>("History")!;
             Assert.That(field.GetSubmitData().ExtendedData, Is.Empty);
 
-            //復元で復活した行があるときだけ同梱される (フィールド自身は変更扱いにならない)
-            var restorerField = typeof(EditHistoryField).GetField("_pendingUndeletes", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!;
-            ((List<EditHistoryUndeleteTarget>)restorerField.GetValue(field)!).Add(new EditHistoryUndeleteTarget { ModuleName = "OrderItem", Id = "12" });
+            //復元で復活した行があるときだけ、その版 (履歴行の Id) が同梱される (フィールド自身は変更扱いにならない)
+            field.AddPendingUndelete("103");
             var submit = field.GetSubmitData();
             var undelete = submit.ExtendedData.OfType<EditHistoryUndeleteData>().Single();
-            Assert.That(undelete.Targets.Select(e => (e.ModuleName, e.Id)), Is.EqualTo(new[] { ("OrderItem", "12") }));
+            Assert.That((undelete.HistoryModuleName, undelete.HistoryRowId, undelete.RestoreWholeRecord), Is.EqualTo(("EditHistory", "103", false)));
             Assert.That(field.IsModified, Is.False);
         }
     }

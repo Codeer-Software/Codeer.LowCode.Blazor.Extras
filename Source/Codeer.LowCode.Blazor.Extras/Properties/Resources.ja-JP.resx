@@ -1389,6 +1389,12 @@
   <data name="EditHistoryCheck_OwnedRecordPathInBothFormat" xml:space="preserve">
     <value>従属レコード '{0}' が {1} と {2} の両方にあります。どちらかにしてください。</value>
   </data>
+  <data name="EditHistoryCheck_OnHistoryModule" xml:space="preserve">
+    <value>履歴モジュール (EditHistoryContractField を置いたモジュール) には EditHistoryField を置けません。</value>
+  </data>
+  <data name="EditHistoryCheck_OnQueryModule" xml:space="preserve">
+    <value>Query モジュール (行の定義が SQL) には EditHistoryField を置けません (記録も復元もできません)。</value>
+  </data>
   <data name="EditHistoryContractField" xml:space="preserve">
     <value>編集履歴契約</value>
   </data>

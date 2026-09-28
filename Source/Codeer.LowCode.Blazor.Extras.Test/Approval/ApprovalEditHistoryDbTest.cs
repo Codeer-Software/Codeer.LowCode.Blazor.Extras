@@ -70,17 +70,12 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Approval
 
         #region ハーネス
 
-        /// <summary>テンプレートの CustomizedModuleDataIO と同じ結線: SubmitAsync を Recorder で包み、承認モジュールはシステム経路で書く。</summary>
+        /// <summary>テンプレートの CustomizedModuleDataIO と同じ結線: 編集履歴はインターセプタ 1 つ、承認モジュールはシステム経路で書く。</summary>
         sealed class AppModuleDataIO : ModuleDataIO
         {
-            readonly EditHistoryRecorder _recorder;
-
             public AppModuleDataIO(DesignData design, IAuthenticationContext auth, IDbAccessor db, ITemporaryFileManager files, List<string> errors)
                 : base(design, auth, db, files)
-                => _recorder = new EditHistoryRecorder(design, this, AddSystemRecordAsync, errors.Add);
-
-            public override Task<List<ModuleSubmitResult>> SubmitAsync(Guid transactionId, List<ModuleSubmitData> transactionData)
-                => _recorder.SubmitAsync(transactionData, () => base.SubmitAsync(transactionId, transactionData));
+                => AddInterceptor(new EditHistoryRecorder(design, errors.Add));
 
             public Task<string> AddSystemRecordAsync(ModuleData data) => AddAsync(Guid.NewGuid(), Guid.NewGuid(), data);
 

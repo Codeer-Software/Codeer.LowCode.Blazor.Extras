@@ -24,7 +24,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         public Module? Module { get; set; }
     }
 
-    internal record DependencyListItem(string FromLabel, string ToLabel, string From, string To, string Key);
+    internal record DependencyListItem(string FromLabel, string ToLabel, string From, string To, string Key, string ClassName = "");
 
     public class GanttField(GanttFieldDesign design)
         : FieldBase<GanttFieldDesign>(design), ISearchResultsViewField, IOwnedRecordsField
@@ -61,11 +61,14 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             _restoredTasks = null;
             await EditHistory.OwnedRecordsRestore.ApplyAsync(this, _dependencies, Design.DependenciesModule.ModuleName, string.Empty,
                 Design.DependenciesModule, remapped, onRevive, ModuleLayoutType.None);
-            RebuildDependencies(_ => true);
+            RebuildDependencies();
             await InvokeOnDataChangedAndNotifyAsync();
         }
 
         private Dictionary<string, Module>? _restoredTasks;
+
+        //矢印 (from->to) ごとの版表示の強調クラス (追加 / 変更 / 削除)。版表示以外は空
+        private readonly Dictionary<string, string> _dependencyClasses = new();
 
         //依存関係の行のタスク Id を付け替える。戻り値 = その Id のタスクが (差し替え後に) あるか
         private bool RemapTaskId(ModuleData row, string fieldName, HashSet<string> taskIds)
@@ -75,10 +78,17 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             return taskIds.Contains(data.Value);
         }
 
-        //保持している依存関係の行から矢印の対応表と一覧を作り直す
-        private void RebuildDependencies(Func<Module, bool> include)
+        //保持している依存関係の行から矢印の対応表と一覧を作り直す (行の ClassName = 版表示の強調を矢印に写す)
+        private void RebuildDependencies()
         {
-            DependenciesMap = _dependencies.Items.Where(include).Select(ConvertToGanttDeps).GroupBy(e => e.Key)
+            _dependencyClasses.Clear();
+            foreach (var dep in _dependencies.Items)
+            {
+                if (string.IsNullOrEmpty(dep.ClassName)) continue;
+                var pair = ConvertToGanttDeps(dep);
+                _dependencyClasses[$"{pair.Value}->{pair.Key}"] = dep.ClassName;
+            }
+            DependenciesMap = _dependencies.Items.Select(ConvertToGanttDeps).GroupBy(e => e.Key)
                 .ToDictionary(e => e.Key, e => e.Select(f => f.Value).ToArray());
             UpdateItemDependencies();
             MakeDependencyList();
@@ -92,8 +102,8 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             if (name == Design.DependenciesOwnedRecordsName && HasDependenciesModule)
             {
                 _dependencies.ApplyLoaded(await EditHistory.OwnedRecordsDisplay.CreateAsync(this, Design.DependenciesModule.ModuleName, string.Empty, rows, ModuleLayoutType.None));
-                //削除された依存関係 (前の版の行の打ち消し) は矢印として出さない
-                RebuildDependencies(m => m.ClassName != EditHistoryField.RemovedRowClassName);
+                //追加 / 変更 / 削除 (前の版の行の打ち消し) の矢印は行の ClassName で強調して出す
+                RebuildDependencies();
                 NotifyStateChanged();
                 return;
             }
@@ -285,6 +295,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             {
                 var depsItems = await this.GetChildModulesAsync(Design.DependenciesModule, ModuleLayoutType.None);
                 _dependencies.ApplyLoaded(depsItems);
+                _dependencyClasses.Clear();
                 DependenciesMap = depsItems.Select(ConvertToGanttDeps).GroupBy(e => e.Key)
                     .ToDictionary(e => e.Key, e => e.Select(f => f.Value).ToArray());
             }
@@ -635,7 +646,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             DependencyList = DependenciesMap
                 .SelectMany(pair => pair.Value.Select(from => new DependencyListItem(
                     TextOf(from), TextOf(pair.Key),
-                    from, pair.Key, $"{from}->{pair.Key}")))
+                    from, pair.Key, $"{from}->{pair.Key}", _dependencyClasses.GetValueOrDefault($"{from}->{pair.Key}", string.Empty))))
                 .OrderBy(e => e.Key)
                 .ToList();
         }

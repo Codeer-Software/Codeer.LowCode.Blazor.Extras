@@ -17,8 +17,8 @@
 
 - **保存ごとにレコード全体を記録**。従属レコード (明細やガントチャートのタスクなど) も一緒に 1 版になる (明細だけの変更も親の 1 版)
 - **削除も記録** (削除前の内容)。履歴モジュールの一覧を ChangeType = Delete で絞れば「削除済みレコード一覧」
-- **削除したレコードの復活** — 履歴モジュールの詳細に EditHistoryUndeleteButtonField を置く。論理削除のモジュールなら Id を保ったまま明細ごと戻る (リンクは切れない)。物理削除なら新しいレコードとして作り直す
-- **履歴から対象レコードへ** — 履歴モジュールの一覧の列や詳細に本体の AnchorTagField を置き、ModuleVariable に `ModuleName.Value`、IdVariable に `DataId.Value` を指定すると、その履歴行のレコードを開く (専用フィールドは無い)リンク (「開く」) が出る (削除の版には出ない)
+- **削除したレコードの復活** — 履歴モジュールの詳細に EditHistoryUndeleteButtonField を置く。削除の版のスナップショットからレコード全体を戻す。論理削除のモジュールなら Id を保ったまま明細ごと戻る (リンクは切れない)。物理削除なら新しいレコードとして作り直す (明細も新しい親の Id で作り直す)
+- **履歴から対象レコードへ** — 履歴モジュールの一覧の列や詳細に本体の AnchorTagField を置き、ModuleVariable に `ModuleName.Value`、IdVariable に `DataId.Value` を指定すると、その履歴行のレコードを開く「開く」リンクになる (専用フィールドは無い。削除の版には出ない)
 - **版の一覧** — 版番号・変更種別・変更者・日時と、変更されたフィールドだけの「旧 → 新」。明細は行の追加 / 削除 / 変更
 - **この版を表示** — その版のレコード全体を表示専用のダイアログで表示。変更されたフィールドを強調 (明細の行・ガントチャートのタスク・カレンダーの予定・カード・マーカーも 追加 / 変更 / 削除 で強調)
 - **この版に戻す** — その版の内容を編集中のフォームへ反映。**保存はユーザーが行う** (保存前に確認・一部だけ直す、ができる)。保存すると新しい版として記録される (履歴は巻き戻らない)
@@ -45,7 +45,7 @@
    ```
 
 2. 履歴を取りたいモジュールに **EditHistoryField** を置き、`HistoryModuleName` に履歴モジュールを設定。詳細レイアウトの右カラムかタブに配置
-3. サーバー側は `Codeer.LowCode.Blazor.Extras.Server` の **EditHistoryRecorder** を `CustomizedModuleDataIO` の `SubmitAsync` (記録) と `GetListAsync` (読む人の権限への落とし込み) に結線 (アプリテンプレートは結線済み。[サーバーの結線](#サーバーの結線))
+3. サーバー側は `Codeer.LowCode.Blazor.Extras.Server` の **EditHistoryRecorder** を `CustomizedModuleDataIO` に 1 行で登録 (アプリテンプレートは登録済み。[サーバーの結線](#サーバーの結線))
 
 ---
 
@@ -53,12 +53,12 @@
 
 ### 記録
 
-- サーバーの `EditHistoryRecorder` が `ModuleDataIO.SubmitAsync` を包む。トランザクションのルートレコード 1 件につき履歴 1 行
-- 作成・更新: base の保存が成功した後、保存後のレコードを本体の `ModuleDataIO.GetWithOwnedRecordsAsync` で読み直して記録。読む範囲は「レコード本体 ＋ 従属レコードの宣言 (`IOwnedRecordsFieldDesign`) の先」。何が従属かは各フィールドが決める (一覧は「親の画面で行を追加・更新・削除できる一覧」と「親と一緒に消える一覧」、Gantt / Calendar / TaskBoard は自分の子レコード)。参照するだけの一覧 (編集できない一覧) は含めない。行のモジュール側で個別に保存した変更は親の版には入らない。子・孫も再帰
+- サーバーの `EditHistoryRecorder` (本体の IO インターセプタ) が保存を包む。トランザクションのルートレコード 1 件につき履歴 1 行
+- 作成・更新: 本体の保存が成功した後、保存後のレコードを内部読みで読み直して記録。読む範囲は「レコード本体 ＋ 従属レコードの宣言 (`IOwnedRecordsFieldDesign`) の先」。何が従属かは各フィールドが決める (一覧は「親の画面で行を追加・更新・削除できる一覧」と「親と一緒に消える一覧」、Gantt / Calendar / TaskBoard は自分の子レコード)。参照するだけの一覧 (編集できない一覧) は含めない。行のモジュール側で個別に保存した変更は親の版には入らない。子・孫も再帰
 - 埋め込みモジュール (`ModuleField`) は本体 1.3.37 で子レコードを従属として宣言する (参照 = DbColumn に持つ子の Id で束縛。DbColumn か ModuleName が無い埋め込みは宣言しない) ので、明細と同じ経路で親の版に入る: 子レコード 0 か 1 行の一覧として参照の位置に置かれ、子の従属レコード (子の明細・子の中の埋め込み) も再帰、NULL の列も埋まる。子レコードを子自身のページで保存した変更は親の版にはならない
 - 削除: base の前に削除前のレコードを読んでおき、成功後に記録
-- 読み直しは本体の内部読み (`ModuleDataIO.GetWithOwnedRecordsForInternalAsync`) = 操作ユーザーの権限に関係なくレコード全体 (全列・全従属レコード) を記録する。履歴は「レコードがどう変わったか」の記録なので、書いた人の権限で欠けない。読む人の権限は返すときに落とす ([権限](#権限))。DB で NULL だった列は null の値として入る (その版で空だったことが残り、復元で空に戻る)
-- 変更種別は `EditHistoryChangeType` (Add / Update / Delete) のメンバー名。デザイン enum として公開されるので、履歴モジュールの ChangeType を SelectField (EnumName = `EditHistoryChangeType`) にすれば表示名付きで一覧・検索できる
+- 読み直しは本体の内部読み (インターセプタに渡る内部操作) = 操作ユーザーの権限に関係なくレコード全体 (全列・全従属レコード) を記録する。履歴は「レコードがどう変わったか」の記録なので、書いた人の権限で欠けない。読む人の権限は返すときに落とす ([権限](#権限))。DB で NULL だった列は null の値として入る (その版で空だったことが残り、復元で空に戻る)
+- 変更種別は `EditHistoryChangeType` (Add / Update / Delete / Restore) のメンバー名。Restore は論理削除のレコードの復活 (物理削除からの作り直しは新しいレコードの Add)。デザイン enum として公開されるので、履歴モジュールの ChangeType を SelectField (EnumName = `EditHistoryChangeType`) にすれば表示名付きで一覧・検索できる
 - 履歴の記録に失敗すると保存も失敗 (ロールバック) になる。EditHistoryField があるのに履歴モジュール・契約が無い設計 (デザインチェックが指摘する不備) も同様
 - 一括取込も記録される。履歴対象モジュールの投入は本体の一括 INSERT 経路 (`BulkAddThreshold` 以上の純追加) を使わず 1 行ずつ入る (採番 Id を履歴に使うため)
 - 添付ファイルはファイル名とキーだけ記録し、実体は履歴に残さない
@@ -70,8 +70,8 @@
 
 ### 表示
 
-- 版番号は保存せず、閲覧時に件数から採番する (古い方から 1, 2, ...)。並びは DateTime 役割があれば日時、無ければ Id の降順
-- 各版には前の版との差分だけを出す。値フィールドは「表示名: 旧 → 新」(候補・リンクは表示名、日付・数値はフィールドの書式)。明細は行 Id で突き合わせて「追加 n 件 / 削除 n 件 / 変更 n 件」と行ごとの内訳。作成の版は値のある項目、削除の版は「レコードが削除されました」
+- 版番号は保存せず、閲覧時に件数から採番する (古い方から 1, 2, ...)。「閲覧者に見える版の中での連番」なので、履歴モジュールに閲覧条件があると人によって番号が変わる。1 回の読み込みの中では固定 (「さらに表示」の間に版が増えてもずれない)。並びは DateTime 役割があれば日時、無ければ Id の降順
+- 各版には前の版との差分だけを出す。値フィールドは「表示名: 旧 → 新」(候補・リンクは表示名、日付・数値はフィールドの書式)。明細は行 Id で突き合わせて「追加 n 件 / 削除 n 件 / 変更 n 件」と行ごとの内訳。削除の版は「レコードが削除されました」
 - 作成の版は「レコードが作成されました」だけ (全項目を並べても読めない。内容は「この版を表示」)。明細は「追加 n 件 / 削除 n 件 / 変更 n 件」の要約だけを出し、行ごとの内訳はクリックで開く
 - 「旧 → 新」の文字列を出すのは文字列・数値・真偽・日付時刻・候補・リンク・ファイル (名前) のフィールドだけ。それ以外の型 (独自のデータクラスを持つフィールド) は変わったかどうか (JSON 比較) だけを「変更あり」として名前で出し、内容は「この版を表示」(本物のコンポーネントで描く) で見る。一覧は要約、全体は版表示、の二層構造
 - 「この版を表示」は自モジュールの詳細レイアウト (`LayoutName`、空なら既定) をそのまま使って表示専用のダイアログに出し、変更フィールドを緑の枠で強調する。従属レコード (明細の一覧・Gantt のタスク・カレンダーの予定・カード・マーカー) は本体の `IOwnedRecordsField.ShowOwnedRecordsAsync` に版の行を `OwnedRecordRow` (行の内容 + 行と セルに付ける CSS クラス + 孫の行) として渡し、DB は読まずにそのまま表示する。クラスは履歴側が行 Id で差分と対応づけて決める: 追加 = 行全体 / 変更 = 行に枠 + 変わったセル / 削除 = 前の版の行を元の位置に差し込んで打ち消し (Gantt のバーは枠線)。差分のある項目が表示範囲に無ければ Gantt / Calendar はその項目の日 (月) へ移動する。独自の拡張フィールドは `OwnedRecordRow.ApplyToAsync` を行モジュールに適用し、項目の描画に行モジュールの `ClassName` を出せば同じ強調が付く
@@ -82,13 +82,13 @@
 ### 復元 (この版に戻す)
 
 - 値フィールドは変更扱いで反映 (OnDataChanged スクリプトも動く)。ユーザーが保存して確定する = 権限・検証・楽観ロックは通常の保存と同じ
-- 従属レコードは本体の `IOwnedRecordsField.ApplyOwnedRecordsAsync` (一覧は ListField 自身、Gantt 等は各フィールド) が行 Id で突き合わせ、既存行は更新、余った行は削除。Gantt の依存関係も版の行で差し替える。物理削除で新しい行として作り直したタスクを指す依存関係は新しい行 (仮 Id) に付け替えて保存で解決し、版にも今にも無いタスクを指す依存関係は落とす。無い行は、明細モジュールが**論理削除**なら Id を保ったまま復活 (保存時に「削除の取り消し」が同梱され、同じトランザクションで戻る)、物理削除なら新しい行として追加 (Id は振り直し)。孫の明細も同様。値の反映は本体の `Module.ApplyRecordAsync`
+- 従属レコードは本体の `IOwnedRecordsField.ApplyOwnedRecordsAsync` (一覧は ListField 自身、Gantt 等は各フィールド) が行 Id で突き合わせ、既存行は更新、余った行は削除。Gantt の依存関係も版の行で差し替える。物理削除で新しい行として作り直したタスクを指す依存関係は新しい行 (仮 Id) に付け替えて保存で解決し、版にも今にも無いタスクを指す依存関係は落とす。無い行は、明細モジュールが**論理削除**なら Id を保ったまま復活 (保存に「その版からの削除の取り消し」が同梱され、サーバーが版のスナップショットから行を戻す。同じトランザクション)、物理削除なら新しい行として追加 (Id は振り直し)。孫の明細も同様。値の反映は本体の `Module.ApplyRecordAsync`
 - 埋め込みモジュール (`ModuleField`) は本体の `ModuleField.ApplyOwnedRecordsAsync` が受ける: 版の子と今の子が別レコードなら (親の参照が変わっていた) 版の子に差し替えてから、子モジュールへ `Module.ApplyRecordAsync` で項目ごとに反映する (システムフィールドは触らない・子の明細も行 Id で突き合わせ)。親の保存に子の Update が乗り、同じトランザクションで戻る。版に子が無ければ触らない (参照を外す操作は無い)
 - 対象外: システムフィールド (Id / 楽観ロック / 作成・更新・削除の記録 / 論理削除)、リンク越しの派生値、従属でない一覧、添付ファイル、書き込み権限のないフィールド。反映できる項目が 1 つも無かったときはその旨のメッセージが出る (フォームは変わらない)
 - 従属レコードの差し替えはフィールドが持っている行に対して行う (本体の `IOwnedRecordsField`)。全件を持たないフィールド (サーバーページングの一覧) は版の全件と比べられないので、宣言 (`OwnedRecordsDesign.HoldsAllRecords`) が false のものは**設計チェックで指摘** (`EditHistoryFieldDesign:4`。子・孫・埋め込みの中も)。一覧はメモリ内ページングか件数制限なしにする。Gantt / Calendar / TaskBoard / MarkerList は差し替え前に全件を読み直すので対象外
-- 削除したレコードの復活は履歴モジュール側の EditHistoryUndeleteButtonField で行う ([FieldDocs](../Source/Codeer.LowCode.Blazor.Extras.Designer/FieldDocs/EditHistoryUndeleteButtonFieldDesign.md))。論理削除なら Id を保って明細ごと (ChangeType = Restore の版になる)、物理削除なら新しいレコードとして (作成の版になる)
+- 削除したレコードの復活は履歴モジュール側の EditHistoryUndeleteButtonField で行う ([FieldDocs](../Source/Codeer.LowCode.Blazor.Extras.Designer/FieldDocs/EditHistoryUndeleteButtonFieldDesign.md))。クライアントは削除の版の履歴行の Id だけを送り、サーバーがその版のスナップショットからレコード全体を 1 トランザクションで戻す。論理削除なら Id を保って明細ごと (ChangeType = Restore の版)、物理削除なら新しいレコードとして作り直す (作成の版。親を作り直すと子の参照も付け替わるので、明細は論理削除のモジュールでも新しい行として作り直す)。権限は削除の逆 = 対象モジュールの CanDelete と UserWrite 条件に加えて行の条件 (DataRead / DataWrite) を削除前の内容に当てる。ボタンは削除できる人にだけ出る
 - 履歴行から対象レコードへは本体の AnchorTagField (ModuleVariable = `ModuleName.Value` / IdVariable = `DataId.Value`)。セットアップが生成する履歴モジュールに「開く」として同梱
-- 論理削除の取り消しは本体の `ModuleDataIO.UndeleteAsync` (Codeer.LowCode.Blazor 1.3.37) が行い、EditHistoryRecorder が base の Submit の前に呼ぶ。権限は削除と同じ (CanDelete と UserWrite 条件)
+- 論理削除の取り消しは本体 (インターセプタに渡る内部操作の `UndeleteAsync`) が行い、EditHistoryRecorder が本体の保存の前に呼ぶ。権限は削除と同じ (CanDelete と UserWrite 条件、行の条件)
 - **退避 (削除テーブルへの移動) とは併用できない** (デザインチェック エラー)。履歴を入れるモジュールの削除は論理削除か物理削除にする。Id を保った復活が要るなら論理削除
 - ExecuteSqlField を使うモジュールでは、戻るのはレコード (と明細) の内容だけ。SQL が他のテーブルや他のレコードに書いたものは履歴に無いので戻らない (履歴は「このレコードがどう変わったか」の記録として使う)
 
@@ -98,13 +98,13 @@
 
 - **含める** (既定): 親の版に入り、差分・版表示・復元の対象
 - **除外** (`ExcludedOwnedRecords`): 履歴に一切含めない。記録側は読みもしない (件数の多い一覧を履歴に載せないときなど)。差分・版表示 (その一覧は出さない)・復元のすべてから外れる。除外前に記録された版に入っていても、読む側で外す。除外した行だけを変えた保存は親の版にならない
-- **行ごとに記録** (`IndividuallyRecordedOwnedRecords`): 親の版には入れず、親の保存に乗った行 (作成・更新・削除) を、行のモジュール自身の履歴 (そのモジュールに置いた EditHistoryField の履歴モジュール) に 1 行 1 版で記録する。親の画面から保存しても、行のモジュールで保存したのと同じ版になる (作成は採番 Id、削除は削除前の内容)。行だけを変えた保存は親の版にならない。行の差分・版表示・復元は行のモジュールの画面 (自分のページやダイアログ) で行う
+- **行ごとに記録** (`IndividuallyRecordedOwnedRecords`): 親の版には入れず、親の保存に乗った行 (作成・更新・削除) を、行のモジュール自身の履歴 (そのモジュールに置いた EditHistoryField の履歴モジュール) に 1 行 1 版で記録する。親の画面から保存しても、行のモジュールで保存したのと同じ版になる (作成は採番 Id、削除は削除前の内容)。親を削除したときは、一緒に消える行の削除の版もサーバーが作る (経路に依らない)。行だけを変えた保存は親の版にならない。行の差分・版表示・復元は行のモジュールの画面 (自分のページやダイアログ) で行う
 - 設計チェック: パスが従属宣言に無い (`EditHistoryFieldDesign:5`)、行ごとに記録する先のモジュールに EditHistoryField が無い (`:6`)、同じパスが両方にある (`:7`)。パスと `LayoutName` はリネームに追従する。全件性のチェック (`:4`) は含めるものだけが対象なので、除外・行ごとの一覧はサーバーページングのままでよい
 
 ### 権限
 
 - 履歴の読み取りは通常のモジュールデータ API = **履歴モジュールの UserRead / DataRead 条件がそのまま効く**。履歴を見せたくないユーザーには履歴モジュールを読めなくすればよい (EditHistoryField は「履歴はありません」になる)
-- Snapshot の中身は返すときに読む人の権限に落とす: サーバーの `EditHistoryRecorder.GetListAsync` (ホストの `CustomizedModuleDataIO.GetListAsync` に結線) が履歴モジュールの行の Snapshot を、対象モジュールの読めない列 (PermissionField) と読めない子モジュールの従属レコードを外して返す。対象モジュール自体を読めない人には空になる (版は見えるが内容・差分・復元は無い)。行の閲覧条件 (DataReadCondition) は版の内容そのものに当てる = その内容のレコードなら読めた人にだけ返す (従属レコードの行も同じ)。リンク越しの値を使う行条件は版の値だけでは評価できないので空になる (保守側)。一覧・詳細・Excel / CSV ダウンロード・AI の参照は全部 `GetListAsync` を通るので、履歴モジュールを直接読んでも生の値は見えない
+- Snapshot の中身は返すときに読む人の権限に落とす: サーバーの `EditHistoryRecorder` (本体の IO インターセプタ) が履歴モジュールの行の Snapshot を、対象モジュールの読めない列 (PermissionField) と読めない子モジュールの従属レコードを外して返す。対象モジュール自体を読めない人には空になる (版は見えるが内容・差分・復元は無い)。行の閲覧条件 (DataReadCondition) は「レコード自身の列は版の内容、リンク越しの値は今のリンク先」で判定する (通常の読み出しが今のリンク先を join するのと同じ)。従属レコードの行も同じ規則。一覧・詳細・Excel / CSV ダウンロードなど本体が返すレコードは全部この後処理を通るので、履歴モジュールを直接読んでも生の値は見えない
 - 差分表示も同じ列を出さない (前の版も同じ列が無いので、権限の弱い人の版一覧に他人の列の変化は現れない)。明細行の項目は行のモジュールの権限で判定する (ユーザーで決まる条件だけで、行の値に依存する条件は見ない)。復元はその人に返された内容だけを反映するので、読めない列は触らない
 - 履歴の書き込みは内部経路 (操作ユーザーの書き込み権限に依存しない)。履歴モジュールの UserWrite は「誰も書けない」でよい
 - 復元は対象モジュールの編集権限 (表示専用なら「この版に戻す」は出ない)
@@ -124,6 +124,11 @@
 
 型が合わない・フィールドが無い・必須役割が空はデザインチェックがエラーにする。監査用の項目 (IP アドレス等) を足したい場合は履歴モジュールに自由にフィールドを追加してよい (記録側は役割しか書かない)。
 
+### 運用
+
+- 履歴モジュールは通常のモジュールなので、古い版の削除は履歴モジュールの一覧から行える (セットアップの既定は「誰も書けない」なので、消す人に UserWrite を開ける)。保持期間の自動削除は持たない
+- 履歴モジュール自身と Query モジュールには EditHistoryField を置けない (設計チェック `EditHistoryFieldDesign:8` / `:9`)
+
 ### セットアップ (履歴モジュールの生成)
 
 デザイナの **Tools > 編集履歴のセットアップ**。履歴モジュール名 (既定 EditHistory)・データソース・変更者リンクのユーザーモジュールと表示名フィールド・
@@ -141,30 +146,15 @@ headless CLI: `<designer.exe> edit-history-setup "<projectDir>" [--history-name 
 
 ### サーバーの結線
 
-アプリテンプレートの `CustomizedModuleDataIO` に入っている形:
+`EditHistoryRecorder` は本体の IO インターセプタ (`IModuleDataIOInterceptor`、Codeer.LowCode.Blazor 1.3.37)。1 つ登録すると保存 (記録・復活) と読み出し (Snapshot を読む人の権限に落とす) の両方に効くので、片方だけ結線した状態にならない。アプリテンプレートの `CustomizedModuleDataIO` に入っている形:
 
 ```csharp
-public class CustomizedModuleDataIO : ModuleDataIO
+public CustomizedModuleDataIO(DesignData designData, IAuthenticationContext authenticationContext, IDbAccessor dbAccess, ITemporaryFileManager temporaryFileManager)
+    : base(designData, authenticationContext, dbAccess, temporaryFileManager)
 {
-    readonly EditHistoryRecorder _editHistory;
-
-    public CustomizedModuleDataIO(DesignData designData, IAuthenticationContext authenticationContext, IDbAccessor dbAccess, ITemporaryFileManager temporaryFileManager)
-        : base(designData, authenticationContext, dbAccess, temporaryFileManager)
-    {
-        //編集履歴 (EditHistoryField を置いたモジュールの保存ごとに履歴モジュールへスナップショットを書く)
-        _editHistory = new EditHistoryRecorder(designData, this, AddSystemRecordAsync);
-    }
-
-    public override Task<List<ModuleSubmitResult>> SubmitAsync(Guid transactionId, List<ModuleSubmitData> transactionData)
-        => _editHistory.SubmitAsync(transactionData, () => base.SubmitAsync(transactionId, transactionData));
-
-    //履歴モジュールの Snapshot を読む人の権限に落として返す
-    public override Task<Paging<ModuleData>> GetListAsync(SearchCondition condition, int pageIndex)
-        => _editHistory.GetListAsync(condition, () => base.GetListAsync(condition, pageIndex));
-
-    internal async Task<string> AddSystemRecordAsync(ModuleData data)
-        => await AddAsync(Guid.NewGuid(), Guid.NewGuid(), data);
+    //編集履歴 (結線はこの 1 行)
+    AddInterceptor(new EditHistoryRecorder(designData));
 }
 ```
 
-`EditHistoryRecorder(designData, io, addInternalAsync, logError)` の `logError` に `ILogger` の Warning 等を渡すと、記録をスキップした理由がログに出る。
+`EditHistoryRecorder(designData, logError)` の `logError` に `ILogger` の Warning 等を渡すと、記録をスキップした理由・復活の失敗理由がログに出る。履歴の書き込みと記録の元の読み直しは、インターセプタに渡る本体の内部操作 (内部 add・内部読み) で行うので、ホスト側に追加のメソッドは要らない。

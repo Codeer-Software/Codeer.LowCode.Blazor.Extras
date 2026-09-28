@@ -30,6 +30,8 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         private const int CodeOwnedRecordPathNotFound = 5;
         private const int CodeIndividualRowModuleNoHistory = 6;
         private const int CodeOwnedRecordPathInBoth = 7;
+        private const int CodeOnHistoryModule = 8;
+        private const int CodeOnQueryModule = 9;
 
         public EditHistoryFieldDesign() : base(typeof(EditHistoryFieldDesign).FullName!) { }
 
@@ -109,6 +111,25 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
                     Location = new FieldDesignDataLocation
                     { Module = context.OwnerModule, Field = Name, Member = nameof(Name) },
                     Message = Properties.Resources.EditHistoryCheck_DeleteArchive,
+                });
+            }
+            //履歴モジュール自身の履歴は取らない (履歴の履歴)。Query モジュールは行の定義が SQL 自身で、記録・行条件の判定ができない
+            if (ownModule != null && ownModule.Fields.Any(e => e is EditHistoryContractFieldDesign))
+            {
+                result.Add(new FieldDesignCheckInfo
+                {
+                    Code = DesignCheckCode.Create(typeof(EditHistoryFieldDesign), CodeOnHistoryModule),
+                    Location = new FieldDesignDataLocation { Module = context.OwnerModule, Field = Name, Member = nameof(Name) },
+                    Message = Properties.Resources.EditHistoryCheck_OnHistoryModule,
+                });
+            }
+            if (ownModule != null && ownModule.Fields.Any(e => e is QueryFieldDesign))
+            {
+                result.Add(new FieldDesignCheckInfo
+                {
+                    Code = DesignCheckCode.Create(typeof(EditHistoryFieldDesign), CodeOnQueryModule),
+                    Location = new FieldDesignDataLocation { Module = context.OwnerModule, Field = Name, Member = nameof(Name) },
+                    Message = Properties.Resources.EditHistoryCheck_OnQueryModule,
                 });
             }
             if (ownModule != null) CheckOwnedRecords(context, ownModule, result);
