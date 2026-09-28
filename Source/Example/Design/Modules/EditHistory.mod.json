@@ -150,6 +150,29 @@
       "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.TextFieldDesign"
     },
     {
+      "DbColumn": "command",
+      "IsMultiline": true,
+      "IsAutoFitRows": false,
+      "Placeholder": "",
+      "TextEditEmptyType": "StringEmpty",
+      "ShouldTrimAfterEdit": false,
+      "AutoTab": false,
+      "IsUpdateProtected": false,
+      "IsSimpleSearchParameter": false,
+      "AllowEmptySearch": false,
+      "OnSearchDataChanged": "",
+      "DisplayName": "送信内容",
+      "IsRequired": false,
+      "OnDataChanged": "",
+      "Name": "Command",
+      "IgnoreModification": false,
+      "OnValidateInput": "",
+      "IsFocusSkip": false,
+      "NextFocusField": "",
+      "OnFocusMoving": "",
+      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.TextFieldDesign"
+    },
+    {
       "SearchCondition": {
         "SelectFields": [],
         "SortConditions": [],
@@ -217,7 +240,8 @@
       "IsFocusSkip": false,
       "NextFocusField": "",
       "OnFocusMoving": "",
-      "TypeFullName": "Codeer.LowCode.Blazor.Extras.Designs.EditHistoryContractFieldDesign"
+      "TypeFullName": "Codeer.LowCode.Blazor.Extras.Designs.EditHistoryContractFieldDesign",
+      "Command": "Command"
     },
     {
       "Text": "",
@@ -488,6 +512,43 @@
               {
                 "Layout": {
                   "FieldName": "Snapshot",
+                  "ContextMenu": "",
+                  "ClassName": "",
+                  "FontFamily": "",
+                  "Color": "",
+                  "Name": "",
+                  "BackgroundColor": "",
+                  "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.FieldLayoutDesign"
+                },
+                "IgnoreContentWidth": false,
+                "Padding": {},
+                "BackgroundColor": "",
+                "BorderStyle": {
+                  "LeftColor": "",
+                  "TopColor": "",
+                  "RightColor": "",
+                  "BottomColor": ""
+                },
+                "CanResize": false,
+                "AllowOverflow": false,
+                "Border": "None"
+              }
+            ]
+          },
+          {
+            "IsWrap": false,
+            "IsAutoFillWrap": false,
+            "Margin": {},
+            "GridRowType": "Normal",
+            "CanResize": false,
+            "BackgroundColor": "",
+            "KeepInFillAvailableGrid": false,
+            "IsProportionalScale": false,
+            "IsRowMarginRemoved": false,
+            "Columns": [
+              {
+                "Layout": {
+                  "FieldName": "Command",
                   "ContextMenu": "",
                   "ClassName": "",
                   "FontFamily": "",

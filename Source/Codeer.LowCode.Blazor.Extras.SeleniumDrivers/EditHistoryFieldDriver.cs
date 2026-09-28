@@ -21,13 +21,19 @@ namespace Codeer.LowCode.Blazor.Extras.SeleniumDrivers
         public string Summary => ByCssSelector(".edit-history-summary").Wait().Find().TextContent();
         /// <summary>開いているか (details の open)。</summary>
         public bool IsOpen => Element.GetAttribute("open") != null;
-        /// <summary>見出しをクリックして開閉する。</summary>
-        public void Toggle() => ByCssSelector("summary").Wait().Find().Click();
+        /// <summary>見出しをクリックして開閉する (版の直下の summary。中の「送信内容」の summary は別)。</summary>
+        public void Toggle() => ByCssSelector(":scope > summary").Wait().Find().Click();
         public void Open() { if (!IsOpen) Toggle(); }
         /// <summary>開いた状態の差分行 (「表示名: 旧 → 新」の 1 行ずつ。明細は行の内訳を含む)。</summary>
         public IReadOnlyList<string> Changes => Element.FindElements(By.CssSelector(".edit-history-changes > .edit-history-change")).Select(e => e.TextContent()).ToList();
         /// <summary>開いた状態の差分に出ているフィールドの表示名 (最上位だけ。明細の行の中の項目は含まない)。</summary>
         public IReadOnlyList<string> ChangedFieldNames => Element.FindElements(By.CssSelector(".edit-history-changes > .edit-history-change > .edit-history-field")).Select(e => e.TextContent()).ToList();
+        /// <summary>受け取った操作 (送信内容 JSON) の折りたたみがあるか (契約に Command 役割があるとき)。</summary>
+        public bool HasCommand => Element.FindElements(By.CssSelector("[data-system='edit-history-command']")).Count > 0;
+        /// <summary>受け取った操作 (整形された JSON)。無ければ空文字。</summary>
+        public string Command => OptionalText("[data-system='edit-history-command'] pre");
+        /// <summary>送信内容の折りたたみを開く。</summary>
+        public void OpenCommand() => ByCssSelector("[data-system='edit-history-command'] > summary").Wait().Find().Click();
         /// <summary>「この版を表示」(開いた状態で出る)。</summary>
         public ButtonDriver Show => ByCssSelector("[data-system='edit-history-show']").Wait();
         /// <summary>「この版に戻す」。表示専用・最新版・削除の版では出ない。</summary>

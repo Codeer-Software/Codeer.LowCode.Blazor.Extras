@@ -146,7 +146,10 @@ namespace Codeer.LowCode.Blazor.Extras.Server.EditHistory
                         _logError?.Invoke($"Edit history of '{plan.Module.Name}' ({id}) was not recorded: the record could not be read.");
                         continue;
                     }
-                    await WriteAsync(plan, id, userId, now);
+                    //受け取った操作 (契約に Command 役割があるときだけ)。仮 Id は結果の対応表で実 Id にする
+                    var command = string.IsNullOrEmpty(plan.Names.Command) ? null
+                        : EditHistoryCommand.Serialize(transactionData[plan.Index], plan.Index < results.Count ? results[plan.Index].TemporaryIdMap : null);
+                    await WriteAsync(plan, id, userId, now, command);
                 }
             }
             catch (Exception ex)
@@ -194,7 +197,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.EditHistory
             }).ToList();
         }
 
-        async Task WriteAsync(Plan plan, string id, string userId, DateTime now)
+        async Task WriteAsync(Plan plan, string id, string userId, DateTime now, string? command)
         {
             var names = plan.Names;
             var data = new ModuleData { Name = plan.HistoryModule.Name };
@@ -206,6 +209,8 @@ namespace Codeer.LowCode.Blazor.Extras.Server.EditHistory
             if (!string.IsNullOrEmpty(userId))
                 set(names.UserId, e => ((ValueFieldDataBase<string>)e).Value = userId);
             set(names.DateTime, e => ((DateTimeFieldData)e).Value = now);
+            if (command != null)
+                set(names.Command, e => ((TextFieldData)e).Value = command);
             await _addInternalAsync(data);
         }
 

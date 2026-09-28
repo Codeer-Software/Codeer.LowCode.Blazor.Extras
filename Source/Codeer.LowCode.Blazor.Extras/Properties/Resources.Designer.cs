@@ -3046,6 +3046,18 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
             }
         }
 
+        internal static string EditHistoryContractCommand {
+            get {
+                return ResourceManager.GetString("EditHistoryContractCommand", resourceCulture);
+            }
+        }
+
+        internal static string EditHistoryCommand {
+            get {
+                return ResourceManager.GetString("EditHistoryCommand", resourceCulture);
+            }
+        }
+
         /// <summary>
         ///   Looks up a localized string similar to Created.
         /// </summary>

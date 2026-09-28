@@ -72,7 +72,8 @@ namespace Codeer.LowCode.Blazor.Extras.Test.EditHistory
             history.Fields.Add(new TextFieldDesign { Name = "Snapshot", DbColumn = "snapshot" });
             history.Fields.Add(new TextFieldDesign { Name = "UserId", DbColumn = "user_id" });
             history.Fields.Add(new DateTimeFieldDesign { Name = "DateTime", DbColumn = "date_time" });
-            history.Fields.Add(new EditHistoryContractFieldDesign { Name = "Contract" });
+            history.Fields.Add(new TextFieldDesign { Name = "Command", DbColumn = "command" });
+            history.Fields.Add(new EditHistoryContractFieldDesign { Name = "Contract", Command = "Command" });
             history.ListLayouts[""] = new ListLayoutDesign();
             d.AddModule(history);
             return d;

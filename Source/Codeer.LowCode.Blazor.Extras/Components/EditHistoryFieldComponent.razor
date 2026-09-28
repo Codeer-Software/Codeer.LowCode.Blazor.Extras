@@ -121,6 +121,14 @@ else
                 }
               </div>
             }
+            @if (!string.IsNullOrEmpty(version.Command))
+            {
+              @* 受け取った操作 (監査用の生データ)。差分とは別に、送られてきたものをそのまま見せる *@
+              <details class="edit-history-command" data-system="edit-history-command">
+                <summary>@R.EditHistoryCommand</summary>
+                <pre class="edit-history-command-json">@PrettyJson(version.Command)</pre>
+              </details>
+            }
             @if (version.Snapshot != null)
             {
               <div class="edit-history-actions">
@@ -147,6 +155,24 @@ else
 }
 
 @code {
+  //表示用に整形する (保存は 1 行の JSON)。JSON でなければそのまま
+  static string PrettyJson(string json)
+  {
+    try
+    {
+      using var doc = System.Text.Json.JsonDocument.Parse(json);
+      return System.Text.Json.JsonSerializer.Serialize(doc.RootElement, new System.Text.Json.JsonSerializerOptions
+      {
+        WriteIndented = true,
+        Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
+      });
+    }
+    catch
+    {
+      return json;
+    }
+  }
+
   RenderFragment RenderChange(EditHistoryChange change, EditHistoryRowChangeKind? rowKind = null) => __builder =>
   {
     @if (!change.IsList && !change.HasValueText)

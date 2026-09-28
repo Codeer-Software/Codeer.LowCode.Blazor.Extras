@@ -107,6 +107,22 @@ namespace Codeer.LowCode.Blazor.Extras.Test.DesignCheck
         }
 
         [Test]
+        public void Command役割はTextでないと指摘_空なら指摘しない()
+        {
+            var d = Create();
+            var history = d.Modules.Find("EditHistory")!;
+            history.Fields.RemoveAll(e => e.Name == "Command");
+            history.Fields.Add(new NumberFieldDesign { Name = "Command", DbColumn = "command" });
+            var ret = Check(d, "EditHistory", Field<EditHistoryContractFieldDesign>(d, "EditHistory", "Contract"));
+            Assert.That(ret.Count, Is.EqualTo(1));
+            Assert.That(ret[0].Code, Is.EqualTo(DesignCheckCode.Create(typeof(EditHistoryContractFieldDesign), 1)));
+
+            //任意役割: 空 = 記録しない (既存の履歴モジュールはそのまま通る)
+            Field<EditHistoryContractFieldDesign>(d, "EditHistory", "Contract").Command = string.Empty;
+            Assert.That(Check(d, "EditHistory", Field<EditHistoryContractFieldDesign>(d, "EditHistory", "Contract")), Is.Empty);
+        }
+
+        [Test]
         public void 役割のフィールド型が違えば指摘()
         {
             var d = Create();

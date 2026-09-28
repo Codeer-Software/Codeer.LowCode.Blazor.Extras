@@ -1392,6 +1392,12 @@ Recipients: {1}</value>
   <data name="EditHistoryContractUserId" xml:space="preserve">
     <value>UserId (user who changed)</value>
   </data>
+  <data name="EditHistoryContractCommand" xml:space="preserve">
+    <value>Command (submitted data JSON)</value>
+  </data>
+  <data name="EditHistoryCommand" xml:space="preserve">
+    <value>Submitted data</value>
+  </data>
   <data name="EditHistoryContractDateTime" xml:space="preserve">
     <value>DateTime (changed at)</value>
   </data>

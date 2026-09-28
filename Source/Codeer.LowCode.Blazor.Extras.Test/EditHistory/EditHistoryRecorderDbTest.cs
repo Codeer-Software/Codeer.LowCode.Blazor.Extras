@@ -5,6 +5,7 @@ using Codeer.LowCode.Blazor.DesignLogic;
 using Codeer.LowCode.Blazor.Extras.EditHistory;
 using Codeer.LowCode.Blazor.Extras.Server.EditHistory;
 using Codeer.LowCode.Blazor.Extras.Server.FileManagement;
+using Codeer.LowCode.Blazor.Json;
 using Codeer.LowCode.Blazor.Repository.Data;
 using Codeer.LowCode.Blazor.SystemSettings;
 using Microsoft.Data.Sqlite;
@@ -48,7 +49,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.EditHistory
             _db = new DbAccessor([new DataSource { Name = Ds, DataSourceType = DataSourceType.SQLite, ConnectionString = $"Data Source={_dbFile}" }]);
             await _db.ExecuteAsync(Ds, "CREATE TABLE orders (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT, amount REAL, secret TEXT, is_deleted INTEGER)", new());
             await _db.ExecuteAsync(Ds, "CREATE TABLE order_items (id INTEGER PRIMARY KEY AUTOINCREMENT, order_id INTEGER, name TEXT, qty REAL, is_deleted INTEGER)", new());
-            await _db.ExecuteAsync(Ds, "CREATE TABLE edit_histories (id INTEGER PRIMARY KEY AUTOINCREMENT, module_name TEXT, data_id TEXT, change_type TEXT, snapshot TEXT, user_id TEXT, date_time TEXT)", new());
+            await _db.ExecuteAsync(Ds, "CREATE TABLE edit_histories (id INTEGER PRIMARY KEY AUTOINCREMENT, module_name TEXT, data_id TEXT, change_type TEXT, snapshot TEXT, user_id TEXT, date_time TEXT, command TEXT)", new());
             await _db.ExecuteAsync(Ds, "CREATE TABLE app_users (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT)", new());
             await _db.ExecuteAsync(Ds, "INSERT INTO app_users (id, name) VALUES (7, '石川')", new());
             _design = EditHistoryTestDesigns.Create();
@@ -69,7 +70,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.EditHistory
             => Assert.That(results.Any(e => !string.IsNullOrEmpty(e.ExceptionMessage)), Is.False, string.Join("\n", results.Select(e => e.ExceptionMessage)));
 
         async Task<List<Dictionary<string, object>>> HistoriesAsync()
-            => (await _db.QueryAsync(Ds, "SELECT module_name, data_id, change_type, snapshot, user_id, date_time FROM edit_histories ORDER BY id", new()))
+            => (await _db.QueryAsync(Ds, "SELECT module_name, data_id, change_type, snapshot, user_id, date_time, command FROM edit_histories ORDER BY id", new()))
                 .Select(e => e.ToDictionary(x => x.Key, x => x.Value)).ToList();
 
         static ModuleData OrderData(string id, string title, decimal amount)
@@ -282,6 +283,45 @@ namespace Codeer.LowCode.Blazor.Extras.Test.EditHistory
         }
 
         [Test]
+        public async Task ExecuteSqlのUpdateタイミングの保存は版になり_SQLが他のテーブルに書いたものは履歴に入らない()
+        {
+            //保存 (Update) のたびに別テーブルへ 1 行足す SQL
+            await _db.ExecuteAsync(Ds, "CREATE TABLE side_logs (id INTEGER PRIMARY KEY AUTOINCREMENT, order_id INTEGER, memo TEXT)", new());
+            var sql = new Repository.Design.ExecuteSqlFieldDesign
+            {
+                Name = "AfterUpdate", Timing = Repository.Design.ExecuteSqlTiming.Update, WithStandardIO = Repository.Design.ExecuteSqlWithStandardIO.After,
+            };
+            sql.ExecuteSqlSetting.SqlText = "INSERT INTO side_logs (order_id, memo) VALUES (1, 'updated')";
+            _design.Modules.Find("Order")!.Fields.Add(sql);
+            await CreateOrderAsync();
+
+            //Update タイミングの SQL は編集中データ (CurrentEditingData = 画面の保存が送る形) からパラメータを取る
+            static ModuleSubmitData Update(string title)
+            {
+                var editing = OrderData("1", title, 1000);
+                editing.Fields["Items"] = new ListFieldData();
+                editing.Fields["Related"] = new ListFieldData();
+                return new() { ModuleName = "Order", Id = "1", Update = [OrderData("1", title, 1000)], CurrentEditingData = editing };
+            }
+
+            //更新 → 版 2 (保存後の内容) + 副作用 1 行
+            AssertNoError(await CreateIO().SubmitWithTransactionAsync([Update("受注B")]));
+            var histories = await HistoriesAsync();
+            Assert.That(histories.Select(e => e["change_type"]), Is.EqualTo(new[] { "Add", "Update" }));
+            Assert.That(((TextFieldData)Snapshot(histories[1]).Fields["Title"]).Value, Is.EqualTo("受注B"));
+            Assert.That(Snapshot(histories[1]).Fields.ContainsKey("AfterUpdate"), Is.False, "ExecuteSqlField はデータを持たない = スナップショットに無い");
+            Assert.That((await _db.QueryAsync(Ds, "SELECT memo FROM side_logs ORDER BY id", new())).Count, Is.EqualTo(1));
+
+            //「この版に戻す」= 版 1 の内容で保存し直す。レコードは戻り版 3 になるが、SQL が書いた他のテーブルは戻らない (その保存でも SQL が走る = 記録だけが残る)
+            AssertNoError(await CreateIO().SubmitWithTransactionAsync([Update("受注A")]));
+            histories = await HistoriesAsync();
+            Assert.That(histories.Select(e => e["change_type"]), Is.EqualTo(new[] { "Add", "Update", "Update" }));
+            Assert.That(((TextFieldData)Snapshot(histories[2]).Fields["Title"]).Value, Is.EqualTo("受注A"));
+            Assert.That((await _db.QueryAsync(Ds, "SELECT memo FROM side_logs ORDER BY id", new())).Count, Is.EqualTo(2), "副作用は消えず、戻す保存の分が増える");
+            Assert.That(_errors, Is.Empty);
+        }
+
+        [Test]
         public async Task ExecuteSqlのStandalone送信はレコードが変わったときだけ記録する()
         {
             var sql = new Repository.Design.ExecuteSqlFieldDesign { Name = "Sql", Timing = Repository.Design.ExecuteSqlTiming.Standalone };
@@ -375,6 +415,47 @@ namespace Codeer.LowCode.Blazor.Extras.Test.EditHistory
             var results = await CreateIO().SubmitWithTransactionAsync([submit]);
             Assert.That(results.All(e => !string.IsNullOrEmpty(e.ExceptionMessage)), Is.True);
             Assert.That((await _db.QueryAsync(Ds, "SELECT title FROM orders WHERE id = 1", new())).Single()["title"], Is.EqualTo("受注A"), "ロールバック");
+        }
+
+        [Test]
+        public async Task 受け取った操作がCommandに残る_作成は仮Idが実Idになり_削除はDeleteの送信がそのまま残る()
+        {
+            await CreateOrderAsync();
+            var add = JsonConverterEx.DeserializeObject<ModuleSubmitData>((await HistoriesAsync())[0]["command"].ToString()!)!;
+            Assert.That((add.ModuleName, add.Id), Is.EqualTo(("Order", "1")), "仮 Id は採番された実 Id");
+            Assert.That(add.Add.Select(e => e.Name), Is.EqualTo(new[] { "Order", "OrderItem", "OrderItem" }), "親 + 明細 2 行の Add がそのまま");
+            Assert.That(add.Add.Skip(1).Select(e => ((LinkFieldData)e.Fields["Order"]).Value), Is.All.EqualTo("1"), "明細の親リンクも実 Id");
+
+            //更新: 送られた Update と Delete (明細 1 行削除) がそのまま
+            AssertNoError(await CreateIO().SubmitWithTransactionAsync([new ModuleSubmitData
+            {
+                ModuleName = "Order", Id = "1", Update = [OrderData("1", "受注A改", 1500)],
+                Delete = [new ModuleDeleteInfo { ModuleName = "OrderItem", Id = "2" }],
+            }]));
+            var update = JsonConverterEx.DeserializeObject<ModuleSubmitData>((await HistoriesAsync())[1]["command"].ToString()!)!;
+            Assert.That(((TextFieldData)update.Update.Single().Fields["Title"]).Value, Is.EqualTo("受注A改"));
+            Assert.That(update.Delete.Single().Id, Is.EqualTo("2"));
+
+            //削除の版にも送信 (Delete) が残る
+            AssertNoError(await CreateIO().SubmitWithTransactionAsync([new ModuleSubmitData
+            {
+                ModuleName = "Order", Id = "1", Delete = [new ModuleDeleteInfo { ModuleName = "Order", Id = "1" }],
+            }]));
+            var histories = await HistoriesAsync();
+            Assert.That(histories[2]["change_type"], Is.EqualTo("Delete"));
+            var delete = JsonConverterEx.DeserializeObject<ModuleSubmitData>(histories[2]["command"].ToString()!)!;
+            Assert.That(delete.Delete.Single().ModuleName, Is.EqualTo("Order"));
+            Assert.That(_errors, Is.Empty);
+        }
+
+        [Test]
+        public async Task 契約にCommand役割が無ければ記録しない()
+        {
+            _design.Modules.Find("EditHistory")!.Fields.OfType<Extras.Designs.EditHistoryContractFieldDesign>().Single().Command = string.Empty;
+            await CreateOrderAsync();
+            var h = (await HistoriesAsync()).Single();
+            Assert.That(h["command"], Is.Null.Or.EqualTo(DBNull.Value));
+            Assert.That(h["snapshot"], Is.Not.Null);
         }
 
         [Test]

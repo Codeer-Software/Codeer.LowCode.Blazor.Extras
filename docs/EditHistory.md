@@ -28,7 +28,7 @@
 
 1. **履歴モジュール**を作る (全モジュールで 1 つ共有してよい)。デザイナの **Tools > 編集履歴のセットアップ** (または CLI の `edit-history-setup`) が、
    契約・復活ボタン・対象レコードリンク・検索レイアウト・対象モジュール enum・ページリンク込みの履歴モジュールとテーブル作成 DDL を生成する。
-   手で作るならフィールドは ModuleName / DataId / ChangeType / Snapshot (必須) と UserId / DateTime (任意)。
+   手で作るならフィールドは ModuleName / DataId / ChangeType / Snapshot (必須) と UserId / DateTime / Command (任意)。
    **EditHistoryContractField** を 1 つ置く (既定名でフィールドを作れば設定不要)。テーブル定義例:
 
    ```sql
@@ -107,6 +107,7 @@
 | Snapshot | Text | レコード全体の JSON | ○ |
 | UserId | Link (ユーザー) / Text | 保存したユーザー | - |
 | DateTime | DateTime | 保存日時 | - |
+| Command | Text | 受け取った操作 = サーバーに送られてきた保存内容 (ModuleSubmitData: Add / Update / Delete / SearchDelete / ExtendedData / 編集中データ) の JSON。監査用にそのまま残す (差分や復元には使わない)。パスワードの平文と添付ファイルの中身は落とし、仮 Id は採番された Id に置き換える。空 = 記録しない (既存の履歴モジュールはそのまま。セットアップが生成するものは付く)。版を開くと「送信内容」で見られる | - |
 
 型が合わない・フィールドが無い・必須役割が空はデザインチェックがエラーにする。監査用の項目 (IP アドレス等) を足したい場合は履歴モジュールに自由にフィールドを追加してよい (記録側は役割しか書かない)。
 

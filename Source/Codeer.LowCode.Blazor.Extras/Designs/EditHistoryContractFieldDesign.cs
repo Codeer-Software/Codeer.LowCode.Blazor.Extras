@@ -45,6 +45,13 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         [Designer(Index = 8, CandidateType = CandidateType.Field, DisplayName = "$EditHistoryContractDateTime")]
         public string DateTime { get; set; } = nameof(DateTime);
 
+        /// <summary>
+        /// 受け取った操作 (Text)。サーバーに送られてきた保存の内容 (ModuleSubmitData) の JSON を監査用にそのまま残す。
+        /// 空 = 記録しない (既定。既存の履歴モジュールはそのまま。セットアップが生成する履歴モジュールは Command 付き)。
+        /// </summary>
+        [Designer(Index = 9, CandidateType = CandidateType.Field, DisplayName = "$EditHistoryContractCommand")]
+        public string Command { get; set; } = string.Empty;
+
         private protected override HashSet<string> RequiredRoleNames => new()
         {
             nameof(ModuleName), nameof(DataId), nameof(ChangeType), nameof(Snapshot),
@@ -63,6 +70,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
             CheckRoleType(result, context, ownModule, nameof(Snapshot), Snapshot, "Text", e => e is TextFieldDesign);
             CheckRoleType(result, context, ownModule, nameof(UserId), UserId, "Link / Text", e => e is LinkFieldDesign or TextFieldDesign);
             CheckRoleType(result, context, ownModule, nameof(DateTime), DateTime, "DateTime", e => e is DateTimeFieldDesign);
+            CheckRoleType(result, context, ownModule, nameof(Command), Command, "Text", e => e is TextFieldDesign);
             CheckTargetEnumMembers(result, context, ownModule);
             return result;
         }

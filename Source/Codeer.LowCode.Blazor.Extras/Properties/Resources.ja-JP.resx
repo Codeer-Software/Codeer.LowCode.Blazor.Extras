@@ -1392,6 +1392,12 @@
   <data name="EditHistoryContractUserId" xml:space="preserve">
     <value>UserId (変更したユーザー)</value>
   </data>
+  <data name="EditHistoryContractCommand" xml:space="preserve">
+    <value>Command (送信内容 JSON)</value>
+  </data>
+  <data name="EditHistoryCommand" xml:space="preserve">
+    <value>送信内容</value>
+  </data>
   <data name="EditHistoryContractDateTime" xml:space="preserve">
     <value>DateTime (変更日時)</value>
   </data>

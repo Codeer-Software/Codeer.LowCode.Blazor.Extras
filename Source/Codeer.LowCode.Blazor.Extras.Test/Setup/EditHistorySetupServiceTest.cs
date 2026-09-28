@@ -29,6 +29,9 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Setup
             Assert.That(module.DbTable, Is.EqualTo("edit_histories"));
             Assert.That(module.DataSourceName, Is.EqualTo("Main"));
             Assert.That(EditHistoryContracts.Contract(module), Is.Not.Null);
+            //受け取った操作 (Command) も生成される
+            Assert.That(EditHistoryContracts.Contract(module)!.Command, Is.EqualTo("Command"));
+            Assert.That(module.Fields.OfType<TextFieldDesign>().Single(e => e.Name == "Command").DbColumn, Is.EqualTo("command"));
 
             //契約チェックが通ること (既定役割のフィールドが全部あり、型が合うこと)
             var dbDefs = new Dictionary<string, List<DbTableDefinition>>();
