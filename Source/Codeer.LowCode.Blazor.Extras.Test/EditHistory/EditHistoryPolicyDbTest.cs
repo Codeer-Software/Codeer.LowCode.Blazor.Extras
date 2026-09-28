@@ -106,13 +106,29 @@ namespace Codeer.LowCode.Blazor.Extras.Test.EditHistory
         }
 
         [Test]
-        public async Task 除外した一覧は親の版に入らない()
+        public async Task 除外した一覧は親の版に入らず_その行だけの保存は親の版にならない()
         {
             History.ExcludedOwnedRecords.Add("Items");
             await CreateOrderAsync();
             var h = (await HistoriesAsync()).Single();
             Assert.That((h.Module, h.ChangeType), Is.EqualTo(("Order", "Add")));
             Assert.That(h.Snapshot.Fields.ContainsKey("Items"), Is.False);
+
+            //除外した明細だけの変更: 親には変更が無いので版は増えない (「変更なし」の版を作らない)
+            AssertNoError(await CreateIO().SubmitWithTransactionAsync([new ModuleSubmitData
+            {
+                ModuleName = "Order", Id = "1", Update = [ItemData("1", "1", "品X改")], Delete = [new ModuleDeleteInfo { ModuleName = "OrderItem", Id = "2" }],
+            }]));
+            Assert.That((await HistoriesAsync()).Count, Is.EqualTo(1));
+
+            //親も変える保存は版になる (明細は入らない)
+            AssertNoError(await CreateIO().SubmitWithTransactionAsync([new ModuleSubmitData
+            {
+                ModuleName = "Order", Id = "1", Update = [OrderData("1", "受注A改")],
+            }]));
+            var histories = await HistoriesAsync();
+            Assert.That(histories.Select(e => e.ChangeType), Is.EqualTo(new[] { "Add", "Update" }));
+            Assert.That(histories[1].Snapshot.Fields.ContainsKey("Items"), Is.False);
             Assert.That(_errors, Is.Empty);
         }
 

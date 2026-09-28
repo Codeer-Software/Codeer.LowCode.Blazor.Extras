@@ -48,13 +48,16 @@ namespace Codeer.LowCode.Blazor.Extras.EditHistory
             }
         }
 
-        /// <summary>行ごとに記録する宣言の先のモジュール (行のモジュール) と、その従属の子孫のモジュール名。行の変更として親の版から外す範囲。</summary>
-        internal static HashSet<string> IndividualModules(DesignData designData, ModuleDesign module, EditHistoryFieldDesign field)
+        /// <summary>
+        /// 親の版に含めない宣言 (除外・行ごと) の先のモジュールと、その従属の子孫のモジュール名。
+        /// その行だけの保存は親には変更が無いので親の版にしない範囲。
+        /// </summary>
+        internal static HashSet<string> NotIncludedModules(DesignData designData, ModuleDesign module, EditHistoryFieldDesign field)
         {
             var result = new HashSet<string>();
             foreach (var (path, _, _, _, child) in Walk(designData, module, field, descendIntoNotIncluded: true))
             {
-                if (child == null || !IsIndividual(field, path) || !result.Add(child.Name)) continue;
+                if (child == null || IsIncluded(field, path) || !result.Add(child.Name)) continue;
                 foreach (var e in Walk(designData, child, null, descendIntoNotIncluded: true))
                 {
                     if (e.Child != null) result.Add(e.Child.Name);

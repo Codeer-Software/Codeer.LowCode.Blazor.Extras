@@ -106,9 +106,9 @@ namespace Codeer.LowCode.Blazor.Extras.Server.EditHistory
                     //何も保存しない送信 (承認の申請で申請書に変更が無いときなど。base は何も書かない) は版にしない
                     continue;
                 }
-                else if (OnlyIndividualRows(module, submitData))
+                else if (OnlyNotIncludedRows(module, submitData))
                 {
-                    //行ごとに記録する従属レコードの行だけの送信: 親には変更が無いので親の版にしない (行の版は下で作る)
+                    //親の版に含めない従属レコード (除外・行ごと) の行だけの送信: 親には変更が無いので親の版にしない (行ごとの版は下で作る)
                     continue;
                 }
                 else
@@ -232,12 +232,12 @@ namespace Codeer.LowCode.Blazor.Extras.Server.EditHistory
             return EditHistorySnapshot.FillNulls(_designData, await _io.GetWithOwnedRecordsAsync(moduleName, id, path => EditHistoryPolicy.IsIncluded(field, path)));
         }
 
-        //送信の中身が「行ごとに記録する従属レコード」の行 (とその子孫) だけか。親自身も、親の版に含める従属レコードも変わっていない
-        bool OnlyIndividualRows(ModuleDesign module, ModuleSubmitData submitData)
+        //送信の中身が「親の版に含めない従属レコード (除外・行ごと)」の行 (とその子孫) だけか。親自身も、親の版に含める従属レコードも変わっていない
+        bool OnlyNotIncludedRows(ModuleDesign module, ModuleSubmitData submitData)
         {
             var field = EditHistoryContracts.Field(module);
-            if (field == null || field.IndividuallyRecordedOwnedRecords.Count == 0) return false;
-            var rows = EditHistoryPolicy.IndividualModules(_designData, module, field);
+            if (field == null || (field.IndividuallyRecordedOwnedRecords.Count == 0 && field.ExcludedOwnedRecords.Count == 0)) return false;
+            var rows = EditHistoryPolicy.NotIncludedModules(_designData, module, field);
             return submitData.SearchDelete.Count == 0
                 && submitData.Add.All(e => rows.Contains(e.Name))
                 && submitData.Update.All(e => rows.Contains(e.Name))

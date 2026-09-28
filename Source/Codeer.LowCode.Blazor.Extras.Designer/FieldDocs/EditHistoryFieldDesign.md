@@ -33,7 +33,7 @@ UI もデータも持たない設定運搬 + 閲覧フィールド (DB 列不要
 
 ## 従属レコードの扱い
 
-- `ExcludedOwnedRecords`: 履歴に含めない従属レコード (従属宣言の名前。子・孫・埋め込みの中は "Items.Details")。記録・差分・版表示・復元のすべてから外れる (件数の多い一覧向け)
+- `ExcludedOwnedRecords`: 履歴に含めない従属レコード (従属宣言の名前。子・孫・埋め込みの中は "Items.Details")。記録・差分・版表示・復元のすべてから外れる (件数の多い一覧向け)。除外した行だけを変えた保存は親の版にならない
 - `IndividuallyRecordedOwnedRecords`: 行ごとに記録する従属レコード (同じくパス)。親の版には入れず、親の保存に乗った行を行のモジュール自身の履歴に 1 行 1 版で記録する。行のモジュールに EditHistoryField が要る (無ければ EditHistoryFieldDesign:6)。行だけを変えた保存は親の版にならない
 - 存在しないパスは EditHistoryFieldDesign:5。除外・行ごとの一覧は全件性のチェック (EditHistoryFieldDesign:4) の対象外
 
