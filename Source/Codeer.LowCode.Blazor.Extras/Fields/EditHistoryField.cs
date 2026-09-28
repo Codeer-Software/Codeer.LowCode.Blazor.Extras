@@ -228,7 +228,8 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
                 ChangeType = GetString(row, names.ChangeType),
                 UserText = (user as LinkFieldData)?.DisplayText ?? (user as ValueFieldDataBase<string>)?.Value ?? string.Empty,
                 DateTime = (row.Fields.GetValueOrDefault(names.DateTime) as DateTimeFieldData)?.Value,
-                Snapshot = EditHistorySnapshot.Deserialize(GetString(row, names.Snapshot)),
+                //含めない従属レコード (除外・行ごと) は、指定より前に記録された版に入っていても外す (差分・版表示・復元が触らない)
+                Snapshot = EditHistoryPolicy.Strip(Services.AppInfoService.GetDesignData(), Design, EditHistorySnapshot.Deserialize(GetString(row, names.Snapshot))),
             };
         }
 
@@ -248,8 +249,9 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
                 version.HasPreviousVersion = false;
                 return new();
             }
-            var previous = EditHistorySnapshot.Deserialize(GetString(previousRow, Names.Snapshot));
-            return EditHistoryDiff.Compute(Services.AppInfoService.GetDesignData(), Module.Design, previous, version.Snapshot, CanRead);
+            var designData = Services.AppInfoService.GetDesignData();
+            var previous = EditHistoryPolicy.Strip(designData, Design, EditHistorySnapshot.Deserialize(GetString(previousRow, Names.Snapshot)));
+            return EditHistoryDiff.Compute(designData, Module.Design, previous, version.Snapshot, CanRead);
         }
 
         //閲覧権限のないフィールドは差分にも出さない (このモジュール上のフィールドの権限で判定)
@@ -279,6 +281,11 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
                 }
                 return Task.CompletedTask;
             });
+            //含めない従属レコード (除外・行ごと) は版に無いので、版表示では出さない
+            foreach (var (fieldDesign, owned) in EditHistoryContracts.OwnedRecords(Module.Design))
+            {
+                if (!EditHistoryPolicy.IsIncluded(Design, owned.Name) && module.GetField(fieldDesign.Name) is { } notIncluded) notIncluded.IsVisible = false;
+            }
             //★複製を渡す: ListField.SetDataAsync は渡された行データの Id を消して新しい行にするので、
             //そのまま渡すとこの後の行 Id での差分との突き合わせ (Build) ができなくなる
             await module.SetDataWithoutInteractionAsync(snapshot.JsonClone());

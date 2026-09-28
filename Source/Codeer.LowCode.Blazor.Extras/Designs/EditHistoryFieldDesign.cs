@@ -27,6 +27,8 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         private const int CodeDuplicated = 2;
         private const int CodeDeleteArchive = 3;
         private const int CodeOwnedRecordsNotHeld = 4;
+        private const int CodeOwnedRecordPathNotFound = 5;
+        private const int CodeIndividualRowModuleNoHistory = 6;
 
         public EditHistoryFieldDesign() : base(typeof(EditHistoryFieldDesign).FullName!) { }
 
@@ -41,6 +43,20 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         /// <summary>一度に読み込む版の数 (「さらに表示」で次を読む)。</summary>
         [Designer(Index = 5, DisplayName = "$EditHistoryPageSize")]
         public int PageSize { get; set; } = 20;
+
+        /// <summary>
+        /// 履歴に含めない従属レコード (従属宣言の名前。子・孫・埋め込みの中は "Items.Details" のようにドット区切り)。
+        /// 記録・差分・版表示・復元のすべてから外れる (件数の多い一覧を履歴に載せないときなど)。
+        /// </summary>
+        [Designer(Index = 6, DisplayName = "$EditHistoryExcludedOwnedRecords")]
+        public List<string> ExcludedOwnedRecords { get; set; } = [];
+
+        /// <summary>
+        /// 行ごとに記録する従属レコード (同じくパス)。親の版には含めず、親の保存に乗った行を、行のモジュール自身の履歴
+        /// (そのモジュールに置いた EditHistoryField) に 1 行 1 版で記録する。行の差分・版表示・復元は行のモジュールの画面で行う。
+        /// </summary>
+        [Designer(Index = 7, DisplayName = "$EditHistoryIndividuallyRecordedOwnedRecords")]
+        public List<string> IndividuallyRecordedOwnedRecords { get; set; } = [];
 
         public override string GetWebComponentTypeFullName() => typeof(EditHistoryFieldComponent).FullName!;
 
@@ -94,29 +110,52 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
                     Message = Properties.Resources.EditHistoryCheck_DeleteArchive,
                 });
             }
-            //「この版に戻す」は従属レコードを版の全件で差し替える (本体の IOwnedRecordsField は持っている行に対して行う) ので、
-            //全件を持たない宣言 (サーバーページングの一覧等。宣言の HoldsAllRecords) は対象にできない。子・孫の宣言も同様
-            if (ownModule != null) CheckOwnedRecordsHeld(context, ownModule, new HashSet<string> { ownModule.Name }, result);
+            if (ownModule != null) CheckOwnedRecords(context, ownModule, result);
             return result;
         }
 
-        //visited: 同じ子モジュールに複数の経路 (埋め込みが 2 か所から同じモジュールを指す等) で辿り着いても、宣言は同じなので 1 回だけ見る
-        void CheckOwnedRecordsHeld(DesignCheckContext context, ModuleDesign module, HashSet<string> visited, List<DesignCheckInfo> result)
+        void CheckOwnedRecords(DesignCheckContext context, ModuleDesign ownModule, List<DesignCheckInfo> result)
         {
-            foreach (var (field, owned) in EditHistoryContracts.OwnedRecords(module))
+            //除外・行ごとのパスは従属宣言に実在すること (含めない宣言の先も含めて全部辿る)
+            var declared = EditHistoryPolicy.Walk(context.DesignData, ownModule, this, descendIntoNotIncluded: true).ToList();
+            foreach (var (member, paths) in new[] { (nameof(ExcludedOwnedRecords), ExcludedOwnedRecords), (nameof(IndividuallyRecordedOwnedRecords), IndividuallyRecordedOwnedRecords) })
             {
-                if (!owned.HoldsAllRecords)
+                foreach (var path in paths.Distinct())
                 {
+                    if (declared.Any(e => e.Path == path)) continue;
                     result.Add(new FieldDesignCheckInfo
                     {
-                        Code = DesignCheckCode.Create(typeof(EditHistoryFieldDesign), CodeOwnedRecordsNotHeld),
-                        Location = new FieldDesignDataLocation { Module = module.Name, Field = field.Name, Member = nameof(Name) },
-                        Message = string.Format(Properties.Resources.EditHistoryCheck_OwnedRecordsNotHeldFormat, module.Name, field.Name, context.OwnerModule),
+                        Code = DesignCheckCode.Create(typeof(EditHistoryFieldDesign), CodeOwnedRecordPathNotFound),
+                        Location = new FieldDesignDataLocation { Module = context.OwnerModule, Field = Name, Member = member },
+                        Message = string.Format(Properties.Resources.EditHistoryCheck_OwnedRecordPathNotFoundFormat, path),
                     });
                 }
-                var child = context.DesignData.Modules.Find(owned.Condition.ModuleName);
-                if (child == null || !visited.Add(child.Name)) continue;
-                CheckOwnedRecordsHeld(context, child, visited, result);
+            }
+            //行ごとに記録する先 (行のモジュール) には EditHistoryField が要る (そこの履歴モジュールに書く)
+            foreach (var path in IndividuallyRecordedOwnedRecords.Distinct())
+            {
+                var child = declared.FirstOrDefault(e => e.Path == path).Child;
+                if (child == null || EditHistoryContracts.Field(child) != null) continue;
+                result.Add(new FieldDesignCheckInfo
+                {
+                    Code = DesignCheckCode.Create(typeof(EditHistoryFieldDesign), CodeIndividualRowModuleNoHistory),
+                    Location = new FieldDesignDataLocation { Module = context.OwnerModule, Field = Name, Member = nameof(IndividuallyRecordedOwnedRecords) },
+                    Message = string.Format(Properties.Resources.EditHistoryCheck_IndividualRowModuleNoHistoryFormat, path, child.Name, nameof(EditHistoryFieldDesign)),
+                });
+            }
+            //「この版に戻す」は従属レコードを版の全件で差し替える (本体の IOwnedRecordsField は持っている行に対して行う) ので、
+            //全件を持たない宣言 (サーバーページングの一覧等。宣言の HoldsAllRecords) は親の版に含められない。含めるものだけ見る (除外・行ごとは対象外)。
+            //同じ一覧に複数の経路で辿り着いても 1 回だけ
+            var reported = new HashSet<(string, string)>();
+            foreach (var (path, module, field, owned, _) in EditHistoryPolicy.Walk(context.DesignData, ownModule, this))
+            {
+                if (owned.HoldsAllRecords || !EditHistoryPolicy.IsIncluded(this, path) || !reported.Add((module.Name, field.Name))) continue;
+                result.Add(new FieldDesignCheckInfo
+                {
+                    Code = DesignCheckCode.Create(typeof(EditHistoryFieldDesign), CodeOwnedRecordsNotHeld),
+                    Location = new FieldDesignDataLocation { Module = module.Name, Field = field.Name, Member = nameof(Name) },
+                    Message = string.Format(Properties.Resources.EditHistoryCheck_OwnedRecordsNotHeldFormat, module.Name, field.Name, context.OwnerModule),
+                });
             }
         }
 

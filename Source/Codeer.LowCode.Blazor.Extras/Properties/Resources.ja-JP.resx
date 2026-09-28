@@ -1374,6 +1374,18 @@
   <data name="EditHistoryPageSize" xml:space="preserve">
     <value>1ページの版数</value>
   </data>
+  <data name="EditHistoryExcludedOwnedRecords" xml:space="preserve">
+    <value>履歴に含めない従属レコード</value>
+  </data>
+  <data name="EditHistoryIndividuallyRecordedOwnedRecords" xml:space="preserve">
+    <value>行ごとに記録する従属レコード</value>
+  </data>
+  <data name="EditHistoryCheck_OwnedRecordPathNotFoundFormat" xml:space="preserve">
+    <value>従属レコード '{0}' がありません (従属宣言の名前。子・孫の中は "Items.Details" のようにドット区切り)。</value>
+  </data>
+  <data name="EditHistoryCheck_IndividualRowModuleNoHistoryFormat" xml:space="preserve">
+    <value>従属レコード '{0}' を行ごとに記録しますが、行のモジュール '{1}' に {2} がありません (行はそのモジュールの履歴に記録します)。</value>
+  </data>
   <data name="EditHistoryContractField" xml:space="preserve">
     <value>編集履歴契約</value>
   </data>

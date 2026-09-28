@@ -1374,6 +1374,18 @@ Recipients: {1}</value>
   <data name="EditHistoryPageSize" xml:space="preserve">
     <value>Versions per page</value>
   </data>
+  <data name="EditHistoryExcludedOwnedRecords" xml:space="preserve">
+    <value>Owned records left out of the history</value>
+  </data>
+  <data name="EditHistoryIndividuallyRecordedOwnedRecords" xml:space="preserve">
+    <value>Owned records recorded per row</value>
+  </data>
+  <data name="EditHistoryCheck_OwnedRecordPathNotFoundFormat" xml:space="preserve">
+    <value>Owned records '{0}' do not exist (name of an owned-records declaration; nested ones as "Items.Details").</value>
+  </data>
+  <data name="EditHistoryCheck_IndividualRowModuleNoHistoryFormat" xml:space="preserve">
+    <value>The rows of owned records '{0}' are recorded per row, but their module '{1}' has no {2} (the rows are recorded in that module's history).</value>
+  </data>
   <data name="EditHistoryContractField" xml:space="preserve">
     <value>Edit History Contract</value>
   </data>

@@ -106,11 +106,58 @@ namespace Codeer.LowCode.Blazor.Extras.Server.EditHistory
                     //何も保存しない送信 (承認の申請で申請書に変更が無いときなど。base は何も書かない) は版にしない
                     continue;
                 }
+                else if (OnlyIndividualRows(module, submitData))
+                {
+                    //行ごとに記録する従属レコードの行だけの送信: 親には変更が無いので親の版にしない (行の版は下で作る)
+                    continue;
+                }
                 else
                 {
                     plan.ChangeType = IsRootAdd(submitData) ? EditHistoryChangeType.Add : EditHistoryChangeType.Update;
                 }
                 plans.Add(plan);
+            }
+
+            //行ごとに記録する従属レコード (親の EditHistoryField の IndividuallyRecordedOwnedRecords):
+            //親の送信に乗った行 (Add / Update / Delete) を、行のモジュール自身の履歴に 1 行 1 版で記録する。
+            //親の画面から保存しても、行のモジュールで保存したのと同じ版になる。削除は base の前に削除前の内容を読む
+            for (var i = 0; i < transactionData.Count; i++)
+            {
+                var submitData = transactionData[i];
+                var module = _designData.Modules.Find(submitData.ModuleName);
+                var field = EditHistoryContracts.Field(module);
+                if (module == null || field == null || field.IndividuallyRecordedOwnedRecords.Count == 0) continue;
+
+                var targets = new Dictionary<string, (ModuleDesign HistoryModule, EditHistoryContractFieldDesign Names, ModuleDesign Row)>();
+                foreach (var (path, _, _, _, child) in EditHistoryPolicy.Walk(_designData, module, field, descendIntoNotIncluded: true))
+                {
+                    if (child == null || !EditHistoryPolicy.IsIndividual(field, path) || targets.ContainsKey(child.Name)) continue;
+                    var resolved = EditHistoryContracts.Resolve(_designData, child, out var rowError);
+                    if (rowError != null) return Fail(transactionData, rowError);
+                    if (resolved == null)
+                    {
+                        _logError?.Invoke($"Edit history of the rows of '{child.Name}' (owned records '{path}' of '{module.Name}') was not recorded: '{child.Name}' has no EditHistoryField.");
+                        continue;
+                    }
+                    targets[child.Name] = (resolved.Value.HistoryModule, resolved.Value.Names, child);
+                }
+                if (targets.Count == 0) continue;
+
+                Plan RowPlan((ModuleDesign HistoryModule, EditHistoryContractFieldDesign Names, ModuleDesign Row) t, EditHistoryChangeType changeType)
+                    => new() { Index = i, Module = t.Row, HistoryModule = t.HistoryModule, Names = t.Names, ChangeType = changeType };
+                foreach (var e in submitData.Add)
+                {
+                    if (targets.TryGetValue(e.Name, out var t)) plans.Add(RowPlan(t, EditHistoryChangeType.Add) with { RowTempId = ModuleDataValues.GetId(e) });
+                }
+                foreach (var e in submitData.Update)
+                {
+                    if (targets.TryGetValue(e.Name, out var t)) plans.Add(RowPlan(t, EditHistoryChangeType.Update) with { RowId = ModuleDataValues.GetId(e) });
+                }
+                foreach (var d in submitData.Delete)
+                {
+                    if (!targets.TryGetValue(d.ModuleName, out var t)) continue;
+                    plans.Add(RowPlan(t, EditHistoryChangeType.Delete) with { RowId = d.Id, Snapshot = await LoadAsync(d.ModuleName, d.Id) });
+                }
             }
 
             var results = await submitAsync();
@@ -125,7 +172,24 @@ namespace Codeer.LowCode.Blazor.Extras.Server.EditHistory
                 foreach (var plan in plans)
                 {
                     string id;
-                    if (plan.ChangeType == EditHistoryChangeType.Delete)
+                    if (plan.RowTempId != null)
+                    {
+                        //行ごとの作成: 送信の仮 Id を結果の対応表で採番 Id にしてから保存後の行を読む
+                        var map = plan.Index < results.Count ? results[plan.Index].TemporaryIdMap : null;
+                        id = map != null && map.TryGetValue(plan.RowTempId, out var real) ? real : plan.RowTempId;
+                        if (string.IsNullOrEmpty(id) || id.StartsWith(TemporaryIdPrefix))
+                        {
+                            _logError?.Invoke($"Edit history of a row of '{plan.Module.Name}' was not recorded: the Id of the saved row is not available.");
+                            continue;
+                        }
+                        plan.Snapshot = await LoadAsync(plan.Module.Name, id);
+                    }
+                    else if (plan.RowId != null)
+                    {
+                        id = plan.RowId;
+                        if (plan.ChangeType != EditHistoryChangeType.Delete) plan.Snapshot = await LoadAsync(plan.Module.Name, id);
+                    }
+                    else if (plan.ChangeType == EditHistoryChangeType.Delete)
                     {
                         id = transactionData[plan.Index].Id;
                     }
@@ -160,9 +224,25 @@ namespace Codeer.LowCode.Blazor.Extras.Server.EditHistory
         }
 
         //Add / Update / Delete が無く、モジュールに Standalone の ExecuteSqlField があるとき base は Standalone の SQL だけを実行する
-        //レコード + 従属レコード (明細・埋め込みモジュールの子レコード等、宣言の先) を読み、NULL だった列も null として持たせる (版に「空だった」を残す = 復元で空に戻せる)
+        //レコード + 従属レコード (明細・埋め込みモジュールの子レコード等、宣言の先) を読み、NULL だった列も null として持たせる (版に「空だった」を残す = 復元で空に戻せる)。
+        //含めない従属レコード (そのモジュールの EditHistoryField の除外・行ごと指定) は読まない
         async Task<ModuleData?> LoadAsync(string moduleName, string id)
-            => EditHistorySnapshot.FillNulls(_designData, await _io.GetWithOwnedRecordsAsync(moduleName, id));
+        {
+            var field = EditHistoryContracts.Field(_designData.Modules.Find(moduleName));
+            return EditHistorySnapshot.FillNulls(_designData, await _io.GetWithOwnedRecordsAsync(moduleName, id, path => EditHistoryPolicy.IsIncluded(field, path)));
+        }
+
+        //送信の中身が「行ごとに記録する従属レコード」の行 (とその子孫) だけか。親自身も、親の版に含める従属レコードも変わっていない
+        bool OnlyIndividualRows(ModuleDesign module, ModuleSubmitData submitData)
+        {
+            var field = EditHistoryContracts.Field(module);
+            if (field == null || field.IndividuallyRecordedOwnedRecords.Count == 0) return false;
+            var rows = EditHistoryPolicy.IndividualModules(_designData, module, field);
+            return submitData.SearchDelete.Count == 0
+                && submitData.Add.All(e => rows.Contains(e.Name))
+                && submitData.Update.All(e => rows.Contains(e.Name))
+                && submitData.Delete.All(e => rows.Contains(e.ModuleName));
+        }
 
         //ルートレコード自身が追加 (Add) か。画面の保存は仮 Id、一括取込 (ファイル / スクリプトの一括保存) は Id 空か手入力の Id で来る
         static bool IsRootAdd(ModuleSubmitData submitData)
@@ -236,7 +316,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.EditHistory
                 data.Fields[fieldName] = fieldData;
             };
 
-        class Plan
+        record Plan
         {
             public int Index;
             public ModuleDesign Module = null!;
@@ -245,6 +325,10 @@ namespace Codeer.LowCode.Blazor.Extras.Server.EditHistory
             public EditHistoryChangeType ChangeType;
             public ModuleData? Snapshot;
             public ModuleData? Before;
+            /// <summary>行ごとに記録する行 (送信の Add): 送信の仮 Id。結果の対応表で採番 Id にする。</summary>
+            public string? RowTempId { get; init; }
+            /// <summary>行ごとに記録する行 (送信の Update / Delete): 行の Id。</summary>
+            public string? RowId { get; init; }
         }
     }
 }

@@ -3382,6 +3382,30 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
             }
         }
 
+        internal static string EditHistoryExcludedOwnedRecords {
+            get {
+                return ResourceManager.GetString("EditHistoryExcludedOwnedRecords", resourceCulture);
+            }
+        }
+
+        internal static string EditHistoryIndividuallyRecordedOwnedRecords {
+            get {
+                return ResourceManager.GetString("EditHistoryIndividuallyRecordedOwnedRecords", resourceCulture);
+            }
+        }
+
+        internal static string EditHistoryCheck_OwnedRecordPathNotFoundFormat {
+            get {
+                return ResourceManager.GetString("EditHistoryCheck_OwnedRecordPathNotFoundFormat", resourceCulture);
+            }
+        }
+
+        internal static string EditHistoryCheck_IndividualRowModuleNoHistoryFormat {
+            get {
+                return ResourceManager.GetString("EditHistoryCheck_IndividualRowModuleNoHistoryFormat", resourceCulture);
+            }
+        }
+
         internal static string EditHistoryRecordRestored {
             get {
                 return ResourceManager.GetString("EditHistoryRecordRestored", resourceCulture);
