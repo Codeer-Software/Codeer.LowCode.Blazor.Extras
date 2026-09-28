@@ -1,5 +1,6 @@
 using Codeer.LowCode.Blazor.DataIO.Db.Definition;
 using Codeer.LowCode.Blazor.DesignLogic;
+using Codeer.LowCode.Blazor.Extras.Designs;
 using Codeer.LowCode.Blazor.Json;
 using Codeer.LowCode.Blazor.Repository.Design;
 using Codeer.LowCode.Blazor.Repository.Match;
@@ -53,7 +54,10 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
                     ?? throw new InvalidOperationException($"Broken template: {TemplateModuleName}");
                 ApprovalFlowSetupService.SaveDesignFile(designDir, "Modules", $"{moduleName}.mod.json", JsonConverterEx.SerializeObject(module));
                 result.CreatedModules.Add(moduleName);
-                result.Ddl.AddRange(module.CreateDDL(dataSourceType, existingTables));
+                var ddl = module.CreateDDL(dataSourceType, existingTables);
+                result.Ddl.AddRange(ddl);
+                //テーブルを新しく作るときは、対象レコードの検索 (module_name, data_id) のインデックスも付ける
+                if (ddl.Any(e => e.StartsWith("CREATE TABLE"))) result.Ddl.AddRange(CreateTargetIndexDdl(module, dataSourceType));
 
                 if (options.AddPageFrameLink)
                 {
@@ -65,6 +69,40 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
             result.Notes.Add(CreateNextStepsNote(options));
             return result;
         }
+
+        //履歴の読み出しは「対象モジュール名 + レコード Id」で絞るので、その 2 列にインデックスを張る (契約の役割から列名を引く)。
+        //SQL Server (NVARCHAR(MAX)) と Oracle (VARCHAR2(4000) 2 本はキー長の上限を超える) は、インデックスを張れる長さの列に直してから張る。
+        //MySQL の TEXT は先頭 200 文字のプレフィックスインデックス
+        internal static List<string> CreateTargetIndexDdl(ModuleDesign module, DataSourceType dataSourceType)
+        {
+            var names = module.Fields.OfType<EditHistoryContractFieldDesign>().FirstOrDefault();
+            var moduleNameColumn = ColumnOf(module, names?.ModuleName);
+            var dataIdColumn = ColumnOf(module, names?.DataId);
+            if (string.IsNullOrEmpty(moduleNameColumn) || string.IsNullOrEmpty(dataIdColumn)) return new();
+
+            var table = module.DbTable;
+            var index = $"ix_{table}_target";
+            return dataSourceType switch
+            {
+                DataSourceType.SQLServer =>
+                [
+                    $"ALTER TABLE {table} ALTER COLUMN {moduleNameColumn} NVARCHAR(200);",
+                    $"ALTER TABLE {table} ALTER COLUMN {dataIdColumn} NVARCHAR(200);",
+                    $"CREATE INDEX {index} ON {table} ({moduleNameColumn}, {dataIdColumn});",
+                ],
+                DataSourceType.Oracle =>
+                [
+                    $"ALTER TABLE {table} MODIFY ({moduleNameColumn} VARCHAR2(200), {dataIdColumn} VARCHAR2(200));",
+                    $"CREATE INDEX {index} ON {table} ({moduleNameColumn}, {dataIdColumn});",
+                ],
+                DataSourceType.MySQL => [$"CREATE INDEX {index} ON {table} ({moduleNameColumn}(200), {dataIdColumn}(200));"],
+                _ => [$"CREATE INDEX {index} ON {table} ({moduleNameColumn}, {dataIdColumn});"], // SQLite / PostgreSQL
+            };
+        }
+
+        static string? ColumnOf(ModuleDesign module, string? fieldName)
+            => string.IsNullOrEmpty(fieldName) ? null
+                : (module.Fields.FirstOrDefault(e => e.Name == fieldName) as DbValueFieldDesignBase)?.DbColumn;
 
         static bool ModuleExists(DesignData designData, string designDir, string moduleName)
             => designData.Modules.Find(moduleName) != null

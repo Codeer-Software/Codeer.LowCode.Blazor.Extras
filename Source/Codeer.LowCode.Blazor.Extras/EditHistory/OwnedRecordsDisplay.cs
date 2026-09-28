@@ -13,14 +13,15 @@ namespace Codeer.LowCode.Blazor.Extras.EditHistory
     internal static class OwnedRecordsDisplay
     {
         /// <summary>拡張フィールド用: 版の行から表示専用のモジュールを作る (DB は読まない)。行ごとのクラスと孫は ApplyToAsync。</summary>
-        internal static async Task<List<Module>> CreateAsync(FieldBase field, string moduleName, string layoutName, IReadOnlyList<OwnedRecordRow> rows)
+        internal static async Task<List<Module>> CreateAsync(FieldBase field, string moduleName, string layoutName, IReadOnlyList<OwnedRecordRow> rows,
+            ModuleLayoutType layoutType = ModuleLayoutType.Detail)
         {
             var list = new List<Module>();
             foreach (var row in rows)
             {
                 //行データごと作る (Id が実 Id なので新規扱いにならず「変更あり」にもならない。仮 Id で作って後から入れると
                 //変更ありのまま残り、Gantt の週送りなどが「変更を破棄しますか」を出してしまう)
-                var mod = await ModuleCreationService.CreateModuleAsync(field.Services, row.Data, ModuleLayoutType.Detail, layoutName);
+                var mod = await ModuleCreationService.CreateModuleAsync(field.Services, row.Data, layoutType, layoutName);
                 mod.IsViewOnly = true;
                 await row.ApplyToAsync(mod);
                 list.Add(mod);

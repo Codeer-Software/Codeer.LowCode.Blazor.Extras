@@ -29,6 +29,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         private const int CodeOwnedRecordsNotHeld = 4;
         private const int CodeOwnedRecordPathNotFound = 5;
         private const int CodeIndividualRowModuleNoHistory = 6;
+        private const int CodeOwnedRecordPathInBoth = 7;
 
         public EditHistoryFieldDesign() : base(typeof(EditHistoryFieldDesign).FullName!) { }
 
@@ -131,6 +132,17 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
                     });
                 }
             }
+            //同じ宣言を除外と行ごとの両方に書いたら、どちらにするか決めてもらう (両方だと行ごとの扱いになる)
+            foreach (var path in ExcludedOwnedRecords.Intersect(IndividuallyRecordedOwnedRecords).Distinct())
+            {
+                result.Add(new FieldDesignCheckInfo
+                {
+                    Code = DesignCheckCode.Create(typeof(EditHistoryFieldDesign), CodeOwnedRecordPathInBoth),
+                    Location = new FieldDesignDataLocation { Module = context.OwnerModule, Field = Name, Member = nameof(IndividuallyRecordedOwnedRecords) },
+                    Message = string.Format(Properties.Resources.EditHistoryCheck_OwnedRecordPathInBothFormat, path,
+                        nameof(ExcludedOwnedRecords), nameof(IndividuallyRecordedOwnedRecords)),
+                });
+            }
             //行ごとに記録する先 (行のモジュール) には EditHistoryField が要る (そこの履歴モジュールに書く)
             foreach (var path in IndividuallyRecordedOwnedRecords.Distinct())
             {
@@ -160,8 +172,46 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         }
 
         public override RenameResult ChangeName(RenameContext context)
-            => context.Builder(base.ChangeName(context))
+        {
+            var builder = context.Builder(base.ChangeName(context))
                 .AddModule(HistoryModuleName, x => HistoryModuleName = x)
-                .Build();
+                .AddLayout(context.OwnerModule, ModuleLayoutType.Detail, LayoutName, x => LayoutName = x);
+            //従属レコードのパス (宣言の名前 = そのモジュールのフィールド名。ドット区切りの各段) もフィールドの改名に追従する
+            var ownModule = context.DesignData.Modules.Find(context.OwnerModule);
+            if (ownModule != null)
+            {
+                var declared = EditHistoryPolicy.Walk(context.DesignData, ownModule, this, descendIntoNotIncluded: true).ToList();
+                AddOwnedRecordPaths(builder, declared, ExcludedOwnedRecords);
+                AddOwnedRecordPaths(builder, declared, IndividuallyRecordedOwnedRecords);
+            }
+            return builder.Build();
+        }
+
+        static void AddOwnedRecordPaths(RenameContext.RenameResultBuilder builder,
+            List<(string Path, ModuleDesign Module, FieldDesignBase Field, OwnedRecordsDesign Owned, ModuleDesign? Child)> declared, List<string> paths)
+        {
+            for (var i = 0; i < paths.Count; i++)
+            {
+                var parts = paths[i].Split('.');
+                for (var j = 0; j < parts.Length; j++)
+                {
+                    var index = i;
+                    var segment = j;
+                    var prefix = string.Join(".", parts.Take(j + 1));
+                    var (_, module, field, owned, _) = declared.FirstOrDefault(e => e.Path == prefix);
+                    if (module == null) continue;
+                    //宣言の名前がフィールド名そのもの、またはフィールド名に接尾辞を付けたもの (Gantt の "Gantt:Dependencies" 等)
+                    var suffix = owned.Name == field.Name ? string.Empty
+                        : owned.Name.StartsWith(field.Name + ":") ? owned.Name[field.Name.Length..] : null;
+                    if (suffix == null) continue;
+                    builder.AddField(module.Name, field.Name, x =>
+                    {
+                        var current = paths[index].Split('.');
+                        current[segment] = x + suffix;
+                        paths[index] = string.Join(".", current);
+                    });
+                }
+            }
+        }
     }
 }

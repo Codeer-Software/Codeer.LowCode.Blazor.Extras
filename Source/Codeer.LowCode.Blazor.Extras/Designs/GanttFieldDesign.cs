@@ -20,11 +20,19 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         [Designer(Scope = DesignerScope.All, DisplayName = "$SearchCondition", Category = nameof(SearchCondition))]
         public SearchCondition SearchCondition { get; set; } = new();
 
-        //従属レコードの宣言: このフィールドが読み書きするレコード群は親の一部 (編集履歴などが親と一緒に扱う)
+        /// <summary>依存関係の従属宣言の名前の接尾辞。宣言の名前は "フィールド名:Dependencies" (パス指定や差分表示で使う)。</summary>
+        public const string DependenciesOwnedRecordsSuffix = ":Dependencies";
+
+        /// <summary>依存関係 (DependenciesModule の行) の従属宣言の名前。</summary>
+        public string DependenciesOwnedRecordsName => Name + DependenciesOwnedRecordsSuffix;
+
+        //従属レコードの宣言: このフィールドが読み書きするレコード群 (タスクと、あれば依存関係) は親の一部 (編集履歴などが親と一緒に扱う)
         public IEnumerable<OwnedRecordsDesign> GetOwnedRecords()
         {
             //差し替え (ApplyOwnedRecordsAsync) は表示範囲に関係なく全件を読み直してから行うので、全件に効く
             yield return new OwnedRecordsDesign { Name = Name, Condition = SearchCondition, HoldsAllRecords = true };
+            if (!string.IsNullOrEmpty(DependenciesModule.ModuleName))
+                yield return new OwnedRecordsDesign { Name = DependenciesOwnedRecordsName, Condition = DependenciesModule, HoldsAllRecords = true };
         }
 
         [Designer(CandidateType = CandidateType.Field, DisplayName = "$GanttFieldTextField", Category = nameof(SearchCondition))]

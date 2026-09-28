@@ -54,6 +54,8 @@ namespace Codeer.LowCode.Blazor.Extras.EditHistory
             }
             var value = GetValue(data);
             if (value == null) return string.Empty;
+            //UTC 保存の日時は本体の DateTimeFieldComponent と同じくローカル時刻で見せる
+            if (design is DateTimeFieldDesign { SaveAsUtc: true } && value is DateTime utc) value = utc.ToLocalTime();
             if (design is IExternalTextFormatFieldDesign format) return format.FormatExternalText(value);
             return value.ToString() ?? string.Empty;
         }

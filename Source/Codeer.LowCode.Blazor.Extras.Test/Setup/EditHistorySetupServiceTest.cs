@@ -119,6 +119,25 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Setup
         }
 
         [Test]
+        public void テーブルを作るときは対象レコード検索のインデックスも出す()
+        {
+            CreateFixture();
+            var result = EditHistorySetupService.Run(Load(), ProjectDir, DefaultOptions(), DataSourceType.SQLite);
+            Assert.That(result.Ddl, Does.Contain("CREATE INDEX ix_edit_histories_target ON edit_histories (module_name, data_id);"));
+        }
+
+        [Test]
+        public void SQLServerはインデックスを張れる長さに列を直してから張る()
+        {
+            CreateFixture();
+            var result = EditHistorySetupService.Run(Load(), ProjectDir, DefaultOptions(), DataSourceType.SQLServer);
+            var ddl = string.Join("\n", result.Ddl);
+            Assert.That(ddl, Does.Contain("ALTER TABLE edit_histories ALTER COLUMN module_name NVARCHAR(200);"));
+            Assert.That(ddl, Does.Contain("ALTER TABLE edit_histories ALTER COLUMN data_id NVARCHAR(200);"));
+            Assert.That(result.Ddl.Last(), Is.EqualTo("CREATE INDEX ix_edit_histories_target ON edit_histories (module_name, data_id);"));
+        }
+
+        [Test]
         public void 履歴モジュール名を変えるとテーブル名も追従する()
         {
             CreateFixture();

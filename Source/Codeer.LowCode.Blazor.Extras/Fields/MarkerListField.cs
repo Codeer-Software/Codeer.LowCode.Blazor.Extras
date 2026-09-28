@@ -39,6 +39,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             await EditHistory.OwnedRecordsRestore.ApplyAsync(this, _modules, ModuleName, Design.DetailLayoutName, Design.SearchCondition, rows, onRevive);
             MarkerList.Clear();
             MarkerList.AddRange(_modules.Items.Select(ConvertToMarker));
+            await InvokeOnDataChangedAsync();
             NotifyStateChanged();
         }
 

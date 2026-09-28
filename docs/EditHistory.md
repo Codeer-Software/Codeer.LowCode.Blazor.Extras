@@ -45,7 +45,7 @@
    ```
 
 2. 履歴を取りたいモジュールに **EditHistoryField** を置き、`HistoryModuleName` に履歴モジュールを設定。詳細レイアウトの右カラムかタブに配置
-3. サーバー側は `Codeer.LowCode.Blazor.Extras.Server` の **EditHistoryRecorder** を `CustomizedModuleDataIO.SubmitAsync` に結線 (アプリテンプレートは結線済み。[サーバーの結線](#サーバーの結線))
+3. サーバー側は `Codeer.LowCode.Blazor.Extras.Server` の **EditHistoryRecorder** を `CustomizedModuleDataIO` の `SubmitAsync` (記録) と `GetListAsync` (読む人の権限への落とし込み) に結線 (アプリテンプレートは結線済み。[サーバーの結線](#サーバーの結線))
 
 ---
 
@@ -57,12 +57,12 @@
 - 作成・更新: base の保存が成功した後、保存後のレコードを本体の `ModuleDataIO.GetWithOwnedRecordsAsync` で読み直して記録。読む範囲は「レコード本体 ＋ 従属レコードの宣言 (`IOwnedRecordsFieldDesign`) の先」。何が従属かは各フィールドが決める (一覧は「親の画面で行を追加・更新・削除できる一覧」と「親と一緒に消える一覧」、Gantt / Calendar / TaskBoard は自分の子レコード)。参照するだけの一覧 (編集できない一覧) は含めない。行のモジュール側で個別に保存した変更は親の版には入らない。子・孫も再帰
 - 埋め込みモジュール (`ModuleField`) は本体 1.3.37 で子レコードを従属として宣言する (参照 = DbColumn に持つ子の Id で束縛。DbColumn か ModuleName が無い埋め込みは宣言しない) ので、明細と同じ経路で親の版に入る: 子レコード 0 か 1 行の一覧として参照の位置に置かれ、子の従属レコード (子の明細・子の中の埋め込み) も再帰、NULL の列も埋まる。子レコードを子自身のページで保存した変更は親の版にはならない
 - 削除: base の前に削除前のレコードを読んでおき、成功後に記録
-- 読み直しは操作ユーザーの権限で行う。そのユーザーに読めない列はスナップショットに入らない (復元でもその列は変わらない)。DB で NULL だった列は null の値として入る (その版で空だったことが残り、復元で空に戻る)
+- 読み直しは本体の内部読み (`ModuleDataIO.GetWithOwnedRecordsForInternalAsync`) = 操作ユーザーの権限に関係なくレコード全体 (全列・全従属レコード) を記録する。履歴は「レコードがどう変わったか」の記録なので、書いた人の権限で欠けない。読む人の権限は返すときに落とす ([権限](#権限))。DB で NULL だった列は null の値として入る (その版で空だったことが残り、復元で空に戻る)
 - 変更種別は `EditHistoryChangeType` (Add / Update / Delete) のメンバー名。デザイン enum として公開されるので、履歴モジュールの ChangeType を SelectField (EnumName = `EditHistoryChangeType`) にすれば表示名付きで一覧・検索できる
 - 履歴の記録に失敗すると保存も失敗 (ロールバック) になる。EditHistoryField があるのに履歴モジュール・契約が無い設計 (デザインチェックが指摘する不備) も同様
 - 一括取込も記録される。履歴対象モジュールの投入は本体の一括 INSERT 経路 (`BulkAddThreshold` 以上の純追加) を使わず 1 行ずつ入る (採番 Id を履歴に使うため)
 - 添付ファイルはファイル名とキーだけ記録し、実体は履歴に残さない
-- **Gantt / Calendar / TaskBoard** のように別モジュールのレコードを自分で読み書きする拡張フィールドは、`IOwnedRecordsFieldDesign` で子レコードを宣言しているので、そのまま親の版に入る (一覧フィールドを別途置く必要はない)。独自の拡張フィールドで子レコードを持つものは同じインターフェースを実装する。復元 (この版に戻す) と版表示は、ランタイム側が本体の `IOwnedRecordsField` (Codeer.LowCode.Blazor 1.3.37) を実装しているフィールドが差し替え・表示できる (本体の一覧フィールドと Gantt / Calendar / TaskBoard / MarkerList は実装済み)。宣言もランタイムの口も本体側なので、独自の拡張フィールドは Extras を参照せずに履歴へ参加できる
+- **Gantt / Calendar / TaskBoard** のように別モジュールのレコードを自分で読み書きする拡張フィールドは、`IOwnedRecordsFieldDesign` で子レコードを宣言しているので、そのまま親の版に入る (一覧フィールドを別途置く必要はない)。Gantt はタスク (宣言の名前 = フィールド名) と依存関係 (`フィールド名:Dependencies`。DependenciesModule があるときだけ) の 2 つを宣言する。独自の拡張フィールドで子レコードを持つものは同じインターフェースを実装する。復元 (この版に戻す) と版表示は、ランタイム側が本体の `IOwnedRecordsField` (Codeer.LowCode.Blazor 1.3.37) を実装しているフィールドが差し替え・表示できる (本体の一覧フィールドと Gantt / Calendar / TaskBoard / MarkerList は実装済み)。宣言もランタイムの口も本体側なので、独自の拡張フィールドは Extras を参照せずに履歴へ参加できる
 - **ExecuteSqlField** も記録される (SQL は同じ SubmitAsync の中で走る)。Update / Delete タイミングは通常どおり保存後・削除前の内容。Create タイミングは `NewId` で採番 Id が返る設定のときだけ記録される (返らないと読み直せない = ログに出る)。Standalone (Add / Update / Delete の無い送信で SQL だけ実行) は送信前後のレコードを比べ、レコード自体が変わったときだけ 1 版にする (他のテーブルだけを変える SQL は履歴にならない)
 - 「変更なしで保存」は Submit 自体が起きないので版は増えない。何も保存しない送信 (承認の申請で申請書に変更が無いときなど) も版にならない
 - **承認フロー (ApprovalFlowField) との組み合わせ**: 申請・再申請は申請書の保存を通るので申請者の版になる (作成 / 更新)。承認・却下・差し戻し・取り下げ・確認は承認モジュールだけを書く (申請書の保存を通らない) ので版にならない = 誰がいつ承認したかは承認履歴 (ApprovalHistory) が持つ。承認フローの FK はサーバーが保存の後に書くので、版の差分には出さず「この版に戻す」でも触らない
@@ -82,7 +82,7 @@
 ### 復元 (この版に戻す)
 
 - 値フィールドは変更扱いで反映 (OnDataChanged スクリプトも動く)。ユーザーが保存して確定する = 権限・検証・楽観ロックは通常の保存と同じ
-- 従属レコードは本体の `IOwnedRecordsField.ApplyOwnedRecordsAsync` (一覧は ListField 自身、Gantt 等は各フィールド) が行 Id で突き合わせ、既存行は更新、余った行は削除。無い行は、明細モジュールが**論理削除**なら Id を保ったまま復活 (保存時に「削除の取り消し」が同梱され、同じトランザクションで戻る)、物理削除なら新しい行として追加 (Id は振り直し)。孫の明細も同様。値の反映は本体の `Module.ApplyRecordAsync`
+- 従属レコードは本体の `IOwnedRecordsField.ApplyOwnedRecordsAsync` (一覧は ListField 自身、Gantt 等は各フィールド) が行 Id で突き合わせ、既存行は更新、余った行は削除。Gantt の依存関係も版の行で差し替える。物理削除で新しい行として作り直したタスクを指す依存関係は新しい行 (仮 Id) に付け替えて保存で解決し、版にも今にも無いタスクを指す依存関係は落とす。無い行は、明細モジュールが**論理削除**なら Id を保ったまま復活 (保存時に「削除の取り消し」が同梱され、同じトランザクションで戻る)、物理削除なら新しい行として追加 (Id は振り直し)。孫の明細も同様。値の反映は本体の `Module.ApplyRecordAsync`
 - 埋め込みモジュール (`ModuleField`) は本体の `ModuleField.ApplyOwnedRecordsAsync` が受ける: 版の子と今の子が別レコードなら (親の参照が変わっていた) 版の子に差し替えてから、子モジュールへ `Module.ApplyRecordAsync` で項目ごとに反映する (システムフィールドは触らない・子の明細も行 Id で突き合わせ)。親の保存に子の Update が乗り、同じトランザクションで戻る。版に子が無ければ触らない (参照を外す操作は無い)
 - 対象外: システムフィールド (Id / 楽観ロック / 作成・更新・削除の記録 / 論理削除)、リンク越しの派生値、従属でない一覧、添付ファイル、書き込み権限のないフィールド。反映できる項目が 1 つも無かったときはその旨のメッセージが出る (フォームは変わらない)
 - 従属レコードの差し替えはフィールドが持っている行に対して行う (本体の `IOwnedRecordsField`)。全件を持たないフィールド (サーバーページングの一覧) は版の全件と比べられないので、宣言 (`OwnedRecordsDesign.HoldsAllRecords`) が false のものは**設計チェックで指摘** (`EditHistoryFieldDesign:4`。子・孫・埋め込みの中も)。一覧はメモリ内ページングか件数制限なしにする。Gantt / Calendar / TaskBoard / MarkerList は差し替え前に全件を読み直すので対象外
@@ -99,12 +99,13 @@
 - **含める** (既定): 親の版に入り、差分・版表示・復元の対象
 - **除外** (`ExcludedOwnedRecords`): 履歴に一切含めない。記録側は読みもしない (件数の多い一覧を履歴に載せないときなど)。差分・版表示 (その一覧は出さない)・復元のすべてから外れる。除外前に記録された版に入っていても、読む側で外す。除外した行だけを変えた保存は親の版にならない
 - **行ごとに記録** (`IndividuallyRecordedOwnedRecords`): 親の版には入れず、親の保存に乗った行 (作成・更新・削除) を、行のモジュール自身の履歴 (そのモジュールに置いた EditHistoryField の履歴モジュール) に 1 行 1 版で記録する。親の画面から保存しても、行のモジュールで保存したのと同じ版になる (作成は採番 Id、削除は削除前の内容)。行だけを変えた保存は親の版にならない。行の差分・版表示・復元は行のモジュールの画面 (自分のページやダイアログ) で行う
-- 設計チェック: パスが従属宣言に無い (`EditHistoryFieldDesign:5`)、行ごとに記録する先のモジュールに EditHistoryField が無い (`:6`)。全件性のチェック (`:4`) は含めるものだけが対象なので、除外・行ごとの一覧はサーバーページングのままでよい
+- 設計チェック: パスが従属宣言に無い (`EditHistoryFieldDesign:5`)、行ごとに記録する先のモジュールに EditHistoryField が無い (`:6`)、同じパスが両方にある (`:7`)。パスと `LayoutName` はリネームに追従する。全件性のチェック (`:4`) は含めるものだけが対象なので、除外・行ごとの一覧はサーバーページングのままでよい
 
 ### 権限
 
 - 履歴の読み取りは通常のモジュールデータ API = **履歴モジュールの UserRead / DataRead 条件がそのまま効く**。履歴を見せたくないユーザーには履歴モジュールを読めなくすればよい (EditHistoryField は「履歴はありません」になる)
-- 対象モジュール側でフィールド単位の閲覧権限 (PermissionField) を使っている場合、差分表示はそのフィールドを出さない。ただし履歴モジュールを直接読めるユーザーには Snapshot (JSON) の生の値が見える。列を伏せたい相手には履歴モジュールを読ませないこと
+- Snapshot の中身は返すときに読む人の権限に落とす: サーバーの `EditHistoryRecorder.GetListAsync` (ホストの `CustomizedModuleDataIO.GetListAsync` に結線) が履歴モジュールの行の Snapshot を、対象モジュールの読めない列 (PermissionField) と読めない子モジュールの従属レコードを外して返す。対象モジュール自体を読めない人には空になる (版は見えるが内容・差分・復元は無い)。行の閲覧条件 (DataReadCondition) は版の内容そのものに当てる = その内容のレコードなら読めた人にだけ返す (従属レコードの行も同じ)。リンク越しの値を使う行条件は版の値だけでは評価できないので空になる (保守側)。一覧・詳細・Excel / CSV ダウンロード・AI の参照は全部 `GetListAsync` を通るので、履歴モジュールを直接読んでも生の値は見えない
+- 差分表示も同じ列を出さない (前の版も同じ列が無いので、権限の弱い人の版一覧に他人の列の変化は現れない)。明細行の項目は行のモジュールの権限で判定する (ユーザーで決まる条件だけで、行の値に依存する条件は見ない)。復元はその人に返された内容だけを反映するので、読めない列は触らない
 - 履歴の書き込みは内部経路 (操作ユーザーの書き込み権限に依存しない)。履歴モジュールの UserWrite は「誰も書けない」でよい
 - 復元は対象モジュールの編集権限 (表示専用なら「この版に戻す」は出ない)
 
@@ -133,7 +134,7 @@
 - 対象モジュール enum `EditHistoryTargetModule` (空)。メンバー (名前 = 対象モジュール名 / 表示 = 画面上の名前) は対象モジュールごとにユーザーが足す。
   作らない場合は ModuleName を素の名前で運用する
 - PageFrame のページリンク「編集履歴」(新規作成なし・詳細遷移あり・Id の降順)
-- テーブル作成 DDL (結果ダイアログでその場で実行できる)
+- テーブル作成 DDL (結果ダイアログでその場で実行できる)。対象レコードの検索用に (module_name, data_id) のインデックスを含む (SQL Server / Oracle はインデックスを張れる長さの列に直してから張る)
 
 対象モジュール側 (EditHistoryField の配置) とサーバーの結線は生成しない (結果ダイアログに手順が出る)。
 headless CLI: `<designer.exe> edit-history-setup "<projectDir>" [--history-name EditHistory] [--data-source <name>] [--user-module AppUser] [--user-name-field Name] [--no-enum] [--no-pageframe] [--ddl-out "<path.sql>"]`
@@ -156,6 +157,10 @@ public class CustomizedModuleDataIO : ModuleDataIO
 
     public override Task<List<ModuleSubmitResult>> SubmitAsync(Guid transactionId, List<ModuleSubmitData> transactionData)
         => _editHistory.SubmitAsync(transactionData, () => base.SubmitAsync(transactionId, transactionData));
+
+    //履歴モジュールの Snapshot を読む人の権限に落として返す
+    public override Task<Paging<ModuleData>> GetListAsync(SearchCondition condition, int pageIndex)
+        => _editHistory.GetListAsync(condition, () => base.GetListAsync(condition, pageIndex));
 
     internal async Task<string> AddSystemRecordAsync(ModuleData data)
         => await AddAsync(Guid.NewGuid(), Guid.NewGuid(), data);

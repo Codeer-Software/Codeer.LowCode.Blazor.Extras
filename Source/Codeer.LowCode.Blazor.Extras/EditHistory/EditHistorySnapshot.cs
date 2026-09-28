@@ -24,7 +24,7 @@ namespace Codeer.LowCode.Blazor.Extras.EditHistory
         /// <summary>
         /// DB で NULL だった列を null 値のデータとして埋める (孫まで)。本体の読み出しは NULL の列を ModuleData に入れないため、
         /// そのままだと「その版では空だった」ことが版に残らず、復元でその項目を空に戻せない (無い項目は触らないため)。
-        /// 対象は DB 列を持つ値フィールド。システムフィールドは埋めない。
+        /// 記録は内部読み (権限で列が落ちない) なので、無い列 = NULL とみなしてよい。対象は DB 列を持つ値フィールド。システムフィールドは埋めない。
         /// </summary>
         internal static ModuleData? FillNulls(DesignData designData, ModuleData? data)
         {

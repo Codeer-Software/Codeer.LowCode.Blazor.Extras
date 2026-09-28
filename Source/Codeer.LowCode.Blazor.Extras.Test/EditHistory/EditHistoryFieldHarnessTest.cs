@@ -233,6 +233,33 @@ namespace Codeer.LowCode.Blazor.Extras.Test.EditHistory
         }
 
         [Test]
+        public async Task UTC保存の変更日時はローカル時刻で見せる()
+        {
+            var services = CreateServices();
+            var history = services.App.GetDesignData().Modules.Find("EditHistory")!;
+            ((DateTimeFieldDesign)history.Fields.First(e => e.Name == "DateTime")).SaveAsUtc = true;
+            var (_, field) = await CreateOrderModuleAsync(services, _v3);
+            Assert.That(field.Versions[0].DateTime, Is.EqualTo(new DateTime(2026, 9, 3).ToLocalTime()));
+        }
+
+        [Test]
+        public async Task 削除の取り消しは重複せず_保存で確定したら次の保存に持ち越さない()
+        {
+            var services = CreateServices(logicalDelete: true);
+            var (_, field) = await CreateOrderModuleAsync(services, _v2);
+            field.AddPendingUndelete("OrderItem", "12");
+            field.AddPendingUndelete("OrderItem", "12");
+            field.AddPendingUndelete("OrderItem", "13");
+            var undelete = field.GetSubmitData().ExtendedData.OfType<EditHistoryUndeleteData>().Single();
+            Assert.That(undelete.Targets.Select(e => e.Id), Is.EqualTo(new[] { "12", "13" }), "同じ行は 1 回");
+
+            //自動保存 (AcceptChanges だけが呼ばれる) の後は同梱しない
+            field.AcceptChanges(new SubmitAcceptInfo());
+            if (field.ReloadAfterSubmit != null) await field.ReloadAfterSubmit;
+            Assert.That(field.GetSubmitData().ExtendedData, Is.Empty);
+        }
+
+        [Test]
         public void 削除の取り消しはExtendedDataで送られる()
         {
             var design = EditHistoryTestDesigns.Create(logicalDelete: true);

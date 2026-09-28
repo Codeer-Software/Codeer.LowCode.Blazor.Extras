@@ -2,6 +2,7 @@ using Codeer.LowCode.Blazor.Components.Dialog;
 using Codeer.LowCode.Blazor.DataIO;
 using Codeer.LowCode.Blazor.DesignLogic;
 using Codeer.LowCode.Blazor.Extras.Designs;
+using Codeer.LowCode.Blazor.Json;
 using Codeer.LowCode.Blazor.OperatingModel;
 using Codeer.LowCode.Blazor.Repository.Data;
 using Codeer.LowCode.Blazor.Repository.Design;
@@ -30,23 +31,72 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
     {
         private readonly ModuleCollection _tasks = new();
 
-        //編集履歴の復元: 宣言した従属レコード (タスク) を版の内容に差し替える (保存はユーザー)。
+        //編集履歴の復元: 宣言した従属レコード (タスク・依存関係) を版の内容に差し替える (保存はユーザー)。
         //通常は表示範囲のタスクしか読んでいないので、突き合わせの前に全件を読み直す (範囲外の行を「無い行」と誤らない)
         public async Task ApplyOwnedRecordsAsync(string name, IReadOnlyList<ModuleData> rows, Action<string, string>? onRevive)
         {
-            if (name != Design.Name) return;
-            var all = await this.GetChildModulesAsync(Design.SearchCondition, ModuleLayoutType.Detail, Design.DetailLayoutName, GetItemFieldNames());
-            _tasks.ApplyLoaded(all);
-            await EditHistory.OwnedRecordsRestore.ApplyAsync(this, _tasks, ModuleName, Design.DetailLayoutName, Design.SearchCondition, rows, onRevive);
-            RebuildItemsInView();
+            if (name == Design.Name)
+            {
+                var all = await this.GetChildModulesAsync(Design.SearchCondition, ModuleLayoutType.Detail, Design.DetailLayoutName, GetItemFieldNames());
+                _tasks.ApplyLoaded(all);
+                //新しい行として作り直したタスク (版の Id → 仮 Id の行) は、続く依存関係の差し替えでタスク Id を付け替えるために覚えておく
+                _restoredTasks = await EditHistory.OwnedRecordsRestore.ApplyAsync(this, _tasks, ModuleName, Design.DetailLayoutName, Design.SearchCondition, rows, onRevive);
+                RebuildItemsInView();
+                await InvokeOnDataChangedAndNotifyAsync();
+                return;
+            }
+            if (name != Design.DependenciesOwnedRecordsName || !HasDependenciesModule) return;
+
+            //依存関係: 全件を読み直してから版の行で差し替える。版の行が指すタスクのうち、新しい行として作り直したタスクは仮 Id に付け替える
+            //(保存時に本体が仮 Id を採番 Id に解決する)。版にも今にも無いタスクを指す行は落とす (存在しないタスクへの矢印は作らない)
+            var deps = await this.GetChildModulesAsync(Design.DependenciesModule, ModuleLayoutType.None);
+            _dependencies.ApplyLoaded(deps);
+            var taskIds = _tasks.Items.Select(e => e.GetIdText()).ToHashSet();
+            var remapped = new List<ModuleData>();
+            foreach (var row in rows)
+            {
+                var copy = row.JsonClone();
+                if (RemapTaskId(copy, Design.DependencySourceIdField, taskIds) && RemapTaskId(copy, Design.DependencyDestinationIdField, taskIds)) remapped.Add(copy);
+            }
+            _restoredTasks = null;
+            await EditHistory.OwnedRecordsRestore.ApplyAsync(this, _dependencies, Design.DependenciesModule.ModuleName, string.Empty,
+                Design.DependenciesModule, remapped, onRevive, ModuleLayoutType.None);
+            RebuildDependencies(_ => true);
             await InvokeOnDataChangedAndNotifyAsync();
         }
 
-        //編集履歴の版表示: 版のタスクをそのまま表示する (DB は読まない・表示専用)。
+        private Dictionary<string, Module>? _restoredTasks;
+
+        //依存関係の行のタスク Id を付け替える。戻り値 = その Id のタスクが (差し替え後に) あるか
+        private bool RemapTaskId(ModuleData row, string fieldName, HashSet<string> taskIds)
+        {
+            if (row.Fields.GetValueOrDefault(fieldName) is not ValueFieldDataBase<string> data || string.IsNullOrEmpty(data.Value)) return false;
+            if (_restoredTasks != null && _restoredTasks.TryGetValue(data.Value, out var task)) data.Value = task.GetIdText();
+            return taskIds.Contains(data.Value);
+        }
+
+        //保持している依存関係の行から矢印の対応表と一覧を作り直す
+        private void RebuildDependencies(Func<Module, bool> include)
+        {
+            DependenciesMap = _dependencies.Items.Where(include).Select(ConvertToGanttDeps).GroupBy(e => e.Key)
+                .ToDictionary(e => e.Key, e => e.Select(f => f.Value).ToArray());
+            UpdateItemDependencies();
+            MakeDependencyList();
+        }
+
+        //編集履歴の版表示: 版のタスク・依存関係をそのまま表示する (DB は読まない・表示専用)。
         //装飾された行 (差分のある行 = decorate が ClassName を付けた行) が表示範囲に無ければ最初の装飾行の日へ、
         //装飾が無く表示範囲にタスクも無ければ最初のタスクの日へ移動する
         public async Task ShowOwnedRecordsAsync(string name, IReadOnlyList<OwnedRecordRow> rows)
         {
+            if (name == Design.DependenciesOwnedRecordsName && HasDependenciesModule)
+            {
+                _dependencies.ApplyLoaded(await EditHistory.OwnedRecordsDisplay.CreateAsync(this, Design.DependenciesModule.ModuleName, string.Empty, rows, ModuleLayoutType.None));
+                //削除された依存関係 (前の版の行の打ち消し) は矢印として出さない
+                RebuildDependencies(m => m.ClassName != EditHistoryField.RemovedRowClassName);
+                NotifyStateChanged();
+                return;
+            }
             if (name != Design.Name) return;
             _tasks.ApplyLoaded(await EditHistory.OwnedRecordsDisplay.CreateAsync(this, ModuleName, Design.DetailLayoutName, rows));
             RebuildItemsInView();

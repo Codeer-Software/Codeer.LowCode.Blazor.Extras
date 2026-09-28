@@ -15,7 +15,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.EditHistory
 {
     /// <summary>
     /// EditHistoryRecorder と埋め込みモジュール (ModuleField): 本体の従属レコード宣言 (ModuleFieldDesign) により、
-    /// 子レコードが全列 (+ NULL 埋め) で版に入る。参照の位置に子レコード 1 行の一覧として入る。子モジュールを読めないユーザーの保存では入らない。
+    /// 子レコードが全列 (+ NULL 埋め) で版に入る。参照の位置に子レコード 1 行の一覧として入る。記録は内部読みなので子モジュールを読めないユーザーの保存でも入り、返すときに落ちる。
     /// </summary>
     public class EditHistoryModuleFieldDbTest : IAuthenticationContext
     {
@@ -37,6 +37,9 @@ namespace Codeer.LowCode.Blazor.Extras.Test.EditHistory
 
             public override Task<List<ModuleSubmitResult>> SubmitAsync(Guid transactionId, List<ModuleSubmitData> transactionData)
                 => _recorder.SubmitAsync(transactionData, () => base.SubmitAsync(transactionId, transactionData));
+
+            public override Task<Codeer.LowCode.Blazor.Utils.Paging<ModuleData>> GetListAsync(SearchCondition condition, int pageIndex)
+                => _recorder.GetListAsync(condition, () => base.GetListAsync(condition, pageIndex));
 
             Task<string> AddSystemRecordAsync(ModuleData data) => AddAsync(Guid.NewGuid(), Guid.NewGuid(), data);
         }
@@ -143,7 +146,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.EditHistory
         }
 
         [Test]
-        public async Task 子モジュールを読めないユーザーの保存では子の中身を入れない()
+        public async Task 子モジュールを読めないユーザーの保存でも子の中身を記録し_返すときに参照だけに落とす()
         {
             _design.Modules.Find("Customer")!.UserReadCondition = new ModuleMatchCondition
             {
@@ -155,11 +158,19 @@ namespace Codeer.LowCode.Blazor.Extras.Test.EditHistory
             };
             await CreateOrderAsync();
 
-            var customer = (await SnapshotsAsync()).Single().Fields["Customer"];
-            Assert.That(customer, Is.InstanceOf<ModuleFieldData>(), "従属としては読まれず参照 (親の列) だけ残る");
+            //DB の記録 (生) には子の中身も入る (記録は内部読み)
+            var raw = (await SnapshotsAsync()).Single().Fields["Customer"];
+            Assert.That(raw, Is.InstanceOf<ListFieldData>(), "操作ユーザーの権限に関係なく子レコードが入る");
+            Assert.That(((TextFieldData)((ListFieldData)raw).Children.Single().Fields["Name"]).Value, Is.EqualTo("A社"));
+            Assert.That(_errors, Is.Empty);
+
+            //履歴モジュールを読むと、子モジュールを読めない人には参照 (親の列) だけ残る (通常の読み出しと同じ形)
+            var page = await CreateIO().GetListAsync(new SearchCondition { ModuleName = "EditHistory" }, 0);
+            var served = EditHistorySnapshot.Deserialize(((TextFieldData)page.Items.Single().Fields["Snapshot"]).Value)!;
+            var customer = served.Fields["Customer"];
+            Assert.That(customer, Is.InstanceOf<ModuleFieldData>());
             Assert.That(((ModuleFieldData)customer).Id, Is.EqualTo("5"));
             Assert.That(((ModuleFieldData)customer).Data.Fields, Is.Empty);
-            Assert.That(_errors, Is.Empty);
         }
     }
 }

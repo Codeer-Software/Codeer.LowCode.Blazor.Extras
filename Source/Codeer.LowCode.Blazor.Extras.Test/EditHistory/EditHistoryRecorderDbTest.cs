@@ -6,6 +6,9 @@ using Codeer.LowCode.Blazor.Extras.EditHistory;
 using Codeer.LowCode.Blazor.Extras.Server.EditHistory;
 using Codeer.LowCode.Blazor.Extras.Server.FileManagement;
 using Codeer.LowCode.Blazor.Json;
+using Codeer.LowCode.Blazor.Repository;
+using Codeer.LowCode.Blazor.Repository.Match;
+using Codeer.LowCode.Blazor.Utils;
 using Codeer.LowCode.Blazor.Repository.Data;
 using Codeer.LowCode.Blazor.Repository.Design;
 using Codeer.LowCode.Blazor.SystemSettings;
@@ -38,6 +41,9 @@ namespace Codeer.LowCode.Blazor.Extras.Test.EditHistory
 
             public override Task<List<ModuleSubmitResult>> SubmitAsync(Guid transactionId, List<ModuleSubmitData> transactionData)
                 => _recorder.SubmitAsync(transactionData, () => base.SubmitAsync(transactionId, transactionData));
+
+            public override Task<Paging<ModuleData>> GetListAsync(SearchCondition condition, int pageIndex)
+                => _recorder.GetListAsync(condition, () => base.GetListAsync(condition, pageIndex));
 
             Task<string> AddSystemRecordAsync(ModuleData data) => AddAsync(Guid.NewGuid(), Guid.NewGuid(), data);
         }
@@ -107,6 +113,79 @@ namespace Codeer.LowCode.Blazor.Extras.Test.EditHistory
                 ModuleName = "Order", Id = tempId,
                 Add = [OrderData(tempId, "受注A", 1000), ItemData(null, tempId, "品X", 1), ItemData(null, tempId, "品Y", 2)],
             }]));
+        }
+
+        //操作ユーザー (7 = 石川) には Order.Secret を読ませない
+        void DenySecretForCurrentUser()
+        {
+            var permission = new PermissionFieldDesign { Name = "Perm" };
+            permission.TargetFields.Add("Secret");
+            permission.ReadCondition.ModuleName = "AppUser";
+            permission.ReadCondition.Condition = new FieldValueMatchCondition
+            {
+                SearchTargetVariable = "CurrentUser.Name.Value", Comparison = MatchComparison.Equal, Value = MultiTypeValue.Create("admin"),
+            };
+            _design.Modules.Find("Order")!.Fields.Add(permission);
+        }
+
+        [Test]
+        public async Task スナップショットは操作ユーザーの権限に関係なく全列を記録し_返すときに読む人の権限に落とす()
+        {
+            DenySecretForCurrentUser();
+            var tempId = "@temporary:" + Guid.NewGuid();
+            //Secret は操作ユーザーには読めない列。DB に直接入れておく
+            AssertNoError(await CreateIO().SubmitWithTransactionAsync([new ModuleSubmitData { ModuleName = "Order", Id = tempId, Add = [OrderData(tempId, "受注A", 1000)] }]));
+            await _db.ExecuteAsync(Ds, "UPDATE orders SET secret = '内緒' WHERE id = 1", new());
+            AssertNoError(await CreateIO().SubmitWithTransactionAsync([new ModuleSubmitData { ModuleName = "Order", Id = "1", Update = [OrderData("1", "受注B", 1000)] }]));
+
+            //DB の記録 (生) には読めない列も入っている
+            var raw = Snapshot((await HistoriesAsync())[1]);
+            Assert.That(((TextFieldData)raw.Fields["Secret"]).Value, Is.EqualTo("内緒"), "記録は内部読み = 操作ユーザーに読めない列も残る");
+
+            //履歴モジュールを読むと、読む人 (7) に読めない列は落ちている
+            var page = await CreateIO().GetListAsync(new SearchCondition { ModuleName = "EditHistory" }, 0);
+            var updateRow = page.Items.Single(e => ((TextFieldData)e.Fields["ChangeType"]).Value == "Update");
+            var served = EditHistorySnapshot.Deserialize(((TextFieldData)updateRow.Fields["Snapshot"]).Value)!;
+            Assert.That(served.Fields.ContainsKey("Secret"), Is.False, "返すときに読む人の権限で落とす");
+            Assert.That(((TextFieldData)served.Fields["Title"]).Value, Is.EqualTo("受注B"));
+            Assert.That(Items(served).Count, Is.EqualTo(0));
+        }
+
+        [Test]
+        public async Task 行の閲覧条件に合わない版のスナップショットは空で返す()
+        {
+            //Title が '受注A' の行だけ読める
+            _design.Modules.Find("Order")!.DataReadCondition.Condition = new FieldValueMatchCondition
+            {
+                SearchTargetVariable = "Title.Value", Comparison = MatchComparison.Equal, Value = MultiTypeValue.Create("受注A"),
+            };
+            await CreateOrderAsync();
+            AssertNoError(await CreateIO().SubmitWithTransactionAsync([new ModuleSubmitData { ModuleName = "Order", Id = "1", Update = [OrderData("1", "受注B", 1000)] }]));
+            Assert.That((await HistoriesAsync()).Select(e => e["change_type"]), Is.EqualTo(new[] { "Add", "Update" }));
+
+            //版 1 (受注A) は読める内容、版 2 (受注B) はその内容なら読めない行なので空
+            var page = await CreateIO().GetListAsync(new SearchCondition { ModuleName = "EditHistory" }, 0);
+            string SnapshotOf(string changeType) => ((TextFieldData)page.Items.Single(e => ((TextFieldData)e.Fields["ChangeType"]).Value == changeType).Fields["Snapshot"]).Value ?? string.Empty;
+            Assert.That(SnapshotOf("Add"), Does.Contain("受注A"));
+            Assert.That(SnapshotOf("Update"), Is.Empty);
+        }
+
+        [Test]
+        public async Task 対象モジュールを読めない人には履歴のスナップショットを空で返す()
+        {
+            var order = _design.Modules.Find("Order")!;
+            order.UserReadCondition.ModuleName = "AppUser";
+            order.UserReadCondition.Condition = new FieldValueMatchCondition
+            {
+                SearchTargetVariable = "Name.Value", Comparison = MatchComparison.Equal, Value = MultiTypeValue.Create("admin"),
+            };
+            await _db.ExecuteAsync(Ds, "INSERT INTO orders (id, title, amount) VALUES (1, '受注A', 1000)", new());
+            await _db.ExecuteAsync(Ds, "INSERT INTO edit_histories (module_name, data_id, change_type, snapshot) VALUES ('Order', '1', 'Add', @s)",
+                new() { ["s"] = EditHistorySnapshot.Serialize(OrderData("1", "受注A", 1000)) });
+
+            var page = await CreateIO().GetListAsync(new SearchCondition { ModuleName = "EditHistory" }, 0);
+            Assert.That(((TextFieldData)page.Items[0].Fields["Snapshot"]).Value, Is.Empty);
+            Assert.That(((TextFieldData)page.Items[0].Fields["ChangeType"]).Value, Is.EqualTo("Add"), "版があることは見える");
         }
 
         [Test]

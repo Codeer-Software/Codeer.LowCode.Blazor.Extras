@@ -84,6 +84,8 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         [ScriptHide]
         public override void AcceptChanges(SubmitAcceptInfo info)
         {
+            //同梱した削除の取り消しは保存で確定した (次の保存に持ち越さない)
+            _pendingUndeletes.Clear();
             if (ModuleLayoutType != ModuleLayoutType.Detail) return;
             ReloadAfterSubmit = ReloadAfterSubmitAsync();
         }
@@ -158,6 +160,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             IsBusy = true;
             try
             {
+                await EnsureOwnedModulesAsync();
                 var pageSize = Math.Max(1, Design.PageSize);
                 //ページの次の 1 行も同時に読む (ページ末尾の版の差分の元 = 1 つ前の版)。
                 //LimitCount=1 のときの PageIndex は行オフセットになる
@@ -221,13 +224,17 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         {
             var names = Names;
             var user = row.Fields.GetValueOrDefault(names.UserId);
+            var dateTime = (row.Fields.GetValueOrDefault(names.DateTime) as DateTimeFieldData)?.Value;
+            //UTC 保存の変更日時は本体の DateTimeFieldComponent と同じくローカル時刻で見せる
+            if (dateTime != null && HistoryModule?.Fields.FirstOrDefault(e => e.Name == names.DateTime) is DateTimeFieldDesign { SaveAsUtc: true })
+                dateTime = dateTime.Value.ToLocalTime();
             return new EditHistoryVersion
             {
                 Id = EditHistorySnapshot.GetId(row),
                 Number = number,
                 ChangeType = GetString(row, names.ChangeType),
                 UserText = (user as LinkFieldData)?.DisplayText ?? (user as ValueFieldDataBase<string>)?.Value ?? string.Empty,
-                DateTime = (row.Fields.GetValueOrDefault(names.DateTime) as DateTimeFieldData)?.Value,
+                DateTime = dateTime,
                 //含めない従属レコード (除外・行ごと) は、指定より前に記録された版に入っていても外す (差分・版表示・復元が触らない)
                 Snapshot = EditHistoryPolicy.Strip(Services.AppInfoService.GetDesignData(), Design, EditHistorySnapshot.Deserialize(GetString(row, names.Snapshot))),
             };
@@ -254,8 +261,27 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             return EditHistoryDiff.Compute(designData, Module.Design, previous, version.Snapshot, CanRead);
         }
 
-        //閲覧権限のないフィールドは差分にも出さない (このモジュール上のフィールドの権限で判定)
-        bool CanRead(string fieldName) => Module.GetField(fieldName)?.HasUserReadPermission != false;
+        //閲覧権限のないフィールドは差分にも出さない。自モジュールの項目は自分のフィールド、
+        //従属レコード (明細行等) の項目はそのモジュールのフィールド (EnsureOwnedModulesAsync で作った空のモジュール) の権限で判定する
+        bool CanRead(ModuleDesign design, string fieldName)
+        {
+            var module = design.Name == Module.Design.Name ? Module : _ownedModules.GetValueOrDefault(design.Name);
+            return module?.GetField(fieldName)?.HasUserReadPermission != false;
+        }
+
+        //従属レコードのモジュール (子・孫・埋め込みの中も) ごとに、フィールド権限を引くための空のモジュールを 1 つ作っておく
+        //(本体はモジュール生成時にユーザーで確定する権限をフィールドに載せる。行の値に依存する条件は行ごとに違うので見ない)
+        readonly Dictionary<string, Module> _ownedModules = new();
+
+        async Task EnsureOwnedModulesAsync()
+        {
+            var designData = Services.AppInfoService.GetDesignData();
+            foreach (var (_, _, _, _, child) in EditHistoryPolicy.Walk(designData, Module.Design, Design))
+            {
+                if (child == null || child.Name == Module.Design.Name || _ownedModules.ContainsKey(child.Name)) continue;
+                _ownedModules[child.Name] = await ModuleCreationService.CreateModuleAsync(Services, new ModuleData { Name = child.Name }, ModuleLayoutType.None);
+            }
+        }
 
         /// <summary>その版のレコード全体を表示専用のダイアログで表示する。変更フィールドを強調する。</summary>
         [ScriptHide]
@@ -284,7 +310,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             //含めない従属レコード (除外・行ごと) は版に無いので、版表示では出さない
             foreach (var (fieldDesign, owned) in EditHistoryContracts.OwnedRecords(Module.Design))
             {
-                if (!EditHistoryPolicy.IsIncluded(Design, owned.Name) && module.GetField(fieldDesign.Name) is { } notIncluded) notIncluded.IsVisible = false;
+                if (owned.Name == fieldDesign.Name && !EditHistoryPolicy.IsIncluded(Design, owned.Name) && module.GetField(fieldDesign.Name) is { } notIncluded) notIncluded.IsVisible = false;
             }
             //★複製を渡す: ListField.SetDataAsync は渡された行データの Id を消して新しい行にするので、
             //そのまま渡すとこの後の行 Id での差分との突き合わせ (Build) ができなくなる
@@ -326,6 +352,13 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         static string AddClass(string current, string className)
             => string.IsNullOrEmpty(current) ? className : $"{current} {className}";
 
+        //復元で Id を保って戻した論理削除の行の取り消しを、次の保存に同梱する (同じ行を二度復元しても 1 回)
+        internal void AddPendingUndelete(string moduleName, string id)
+        {
+            if (_pendingUndeletes.Any(e => e.ModuleName == moduleName && e.Id == id)) return;
+            _pendingUndeletes.Add(new EditHistoryUndeleteTarget { ModuleName = moduleName, Id = id });
+        }
+
         /// <summary>その版の内容を編集中のフォームへ反映する (保存はユーザーが行う)。</summary>
         [ScriptHide]
         public async Task RestoreAsync(EditHistoryVersion version)
@@ -339,8 +372,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
                 [new PrimaryButton(R.EditHistoryRestore, true), new SecondaryOutlineButton(R.EditHistoryCancel)]);
             if (answer != R.EditHistoryRestore) return;
 
-            var applied = await EditHistoryRestorer.ApplyAsync(Module, snapshot,
-                (moduleName, id) => _pendingUndeletes.Add(new EditHistoryUndeleteTarget { ModuleName = moduleName, Id = id }));
+            var applied = await EditHistoryRestorer.ApplyAsync(Module, snapshot, AddPendingUndelete);
             if (applied == 0)
             {
                 //版に反映できる項目が 1 つも無い (書き込み権限のない項目・添付ファイルだけ、など)。何も起きなかったことを伝える

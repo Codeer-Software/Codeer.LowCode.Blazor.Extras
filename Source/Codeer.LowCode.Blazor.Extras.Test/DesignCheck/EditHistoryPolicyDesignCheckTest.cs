@@ -41,6 +41,18 @@ namespace Codeer.LowCode.Blazor.Extras.Test.DesignCheck
         }
 
         [Test]
+        public void 同じパスを除外と行ごとの両方に書くと指摘()
+        {
+            var d = EditHistoryTestDesigns.Create();
+            History(d).ExcludedOwnedRecords.Add("Items");
+            History(d).IndividuallyRecordedOwnedRecords.Add("Items");
+            var ret = Check(d, "Order", History(d));
+            var both = ret.Single(e => e.Code == DesignCheckCode.Create(typeof(EditHistoryFieldDesign), 7));
+            both.AssertFieldLocation("Order", "History", nameof(EditHistoryFieldDesign.IndividuallyRecordedOwnedRecords));
+            Assert.That(both.Message, Does.Contain("Items"));
+        }
+
+        [Test]
         public void 行ごとに記録する先のモジュールにEditHistoryFieldが無ければ指摘()
         {
             var d = EditHistoryTestDesigns.Create();

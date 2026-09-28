@@ -221,6 +221,53 @@ namespace Codeer.LowCode.Blazor.Extras.Test.DesignCheck
         }
 
         [Test]
+        public void 版表示のレイアウトのリネームに追従する()
+        {
+            var d = Create();
+            var field = Field<EditHistoryFieldDesign>(d, "Order", "History");
+            field.LayoutName = "Compact";
+            var context = new RenameContext(d)
+            {
+                Type = RenameType.Layout, ModuleName = "Order", LayoutType = ModuleLayoutType.Detail, Source = "Compact", Destination = "Small", OwnerModule = "Order",
+            };
+            var result = field.ChangeName(context);
+            Assert.That(result.RenameNeeded);
+            result.RenameAction();
+            Assert.That(field.LayoutName, Is.EqualTo("Small"));
+        }
+
+        [Test]
+        public void 従属レコードのパスは各段のフィールドのリネームに追従する()
+        {
+            var d = EditHistoryTestDesigns.Create(withDetails: true);
+            var field = Field<EditHistoryFieldDesign>(d, "Order", "History");
+            field.ExcludedOwnedRecords.Add("Items.Details");
+            field.IndividuallyRecordedOwnedRecords.Add("Items");
+
+            //孫の段 (OrderItem の Details)
+            var context = new RenameContext(d)
+            {
+                Type = RenameType.Field, ModuleName = "OrderItem", Source = "Details", Destination = "Lines", OwnerModule = "Order",
+            };
+            var result = field.ChangeName(context);
+            Assert.That(result.RenameNeeded);
+            result.RenameAction();
+            Assert.That(field.ExcludedOwnedRecords, Is.EqualTo(new[] { "Items.Lines" }));
+            Assert.That(field.IndividuallyRecordedOwnedRecords, Is.EqualTo(new[] { "Items" }));
+
+            //親の段 (Order の Items) は両方の先頭が変わる
+            context = new RenameContext(d)
+            {
+                Type = RenameType.Field, ModuleName = "Order", Source = "Items", Destination = "Rows", OwnerModule = "Order",
+            };
+            result = field.ChangeName(context);
+            Assert.That(result.RenameNeeded);
+            result.RenameAction();
+            Assert.That(field.ExcludedOwnedRecords, Is.EqualTo(new[] { "Rows.Lines" }));
+            Assert.That(field.IndividuallyRecordedOwnedRecords, Is.EqualTo(new[] { "Rows" }));
+        }
+
+        [Test]
         public void 契約の役割は履歴モジュールのフィールドリネームに追従する()
         {
             var d = Create();

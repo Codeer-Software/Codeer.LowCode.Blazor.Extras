@@ -25,6 +25,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             await EditHistory.OwnedRecordsRestore.ApplyAsync(this, _modules, ModuleName, Design.CardLayoutName, Design.SearchCondition, rows, onRevive);
             Items.Clear();
             Items.AddRange(_modules.Items.Select(ConvertToTaskBoardItem).OrderBy(e => e.SortIndex));
+            await InvokeOnDataChangedAsync();
             NotifyStateChanged();
         }
 

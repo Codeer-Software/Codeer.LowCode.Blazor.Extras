@@ -1386,6 +1386,9 @@
   <data name="EditHistoryCheck_IndividualRowModuleNoHistoryFormat" xml:space="preserve">
     <value>従属レコード '{0}' を行ごとに記録しますが、行のモジュール '{1}' に {2} がありません (行はそのモジュールの履歴に記録します)。</value>
   </data>
+  <data name="EditHistoryCheck_OwnedRecordPathInBothFormat" xml:space="preserve">
+    <value>従属レコード '{0}' が {1} と {2} の両方にあります。どちらかにしてください。</value>
+  </data>
   <data name="EditHistoryContractField" xml:space="preserve">
     <value>編集履歴契約</value>
   </data>

@@ -46,6 +46,30 @@ namespace Codeer.LowCode.Blazor.Extras.Test.EditHistory
         }
 
         [Test]
+        public void 長い文字列は全文で比べ_表示だけ切り詰める()
+        {
+            var longText = new string('a', 400);
+            var before = Order("1", longText, 100);
+            var after = Order("1", longText[..399] + "b", 100);
+            var changes = Compute(before, after);
+            Assert.That(changes.Select(e => e.FieldName), Is.EqualTo(new[] { "Title" }), "表示に出ない 300 文字より後の変更も差分になる");
+            Assert.That(changes[0].After.Length, Is.EqualTo(301), "表示は 300 文字 + …");
+            Assert.That(Compute(before, Order("1", longText, 100)), Is.Empty);
+        }
+
+        [Test]
+        public void 明細行の項目の閲覧権限は行のモジュールで問われる()
+        {
+            var order = _design.Modules.Find("Order")!;
+            var before = Order("1", "A", 100, Item("10", "X", 1));
+            var after = Order("1", "A", 100, Item("10", "X", 5));
+            var changes = EditHistoryDiff.Compute(_design, order, before, after, (design, name) => !(design.Name == "OrderItem" && name == "Qty"));
+            Assert.That(changes, Is.Empty, "行のモジュール OrderItem の Qty を読めないので行の差分に出ない");
+            changes = EditHistoryDiff.Compute(_design, order, before, after, (design, name) => !(design.Name == "Order" && name == "Qty"));
+            Assert.That(changes.Single().ChangedCount, Is.EqualTo(1), "Order 側の Qty を読めなくても行の Qty は出る");
+        }
+
+        [Test]
         public void 作成の版は値のある項目が全部出る()
         {
             var changes = Compute(null, Order("1", "A", null, Item("10", "X", 1)));

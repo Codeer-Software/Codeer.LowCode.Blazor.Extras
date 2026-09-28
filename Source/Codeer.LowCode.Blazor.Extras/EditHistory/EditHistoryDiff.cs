@@ -15,20 +15,25 @@ namespace Codeer.LowCode.Blazor.Extras.EditHistory
     {
         const int MaxTextLength = 300;
 
-        /// <param name="canRead">閲覧権限のないフィールドを差分に出さない (フィールド名 → 読めるか)。</param>
+        /// <param name="canRead">閲覧権限のないフィールドを差分に出さない (フィールド名 → 読めるか)。対象モジュールと明細行のモジュールを区別しない。</param>
         internal static List<EditHistoryChange> Compute(DesignData designData, ModuleDesign design,
             ModuleData? before, ModuleData after, Func<string, bool> canRead)
+            => Compute(designData, design, before, after, (_, name) => canRead(name));
+
+        /// <param name="canRead">閲覧権限のないフィールドを差分に出さない (フィールドのモジュール, フィールド名 → 読めるか)。明細行の項目は行のモジュールで問われる。</param>
+        internal static List<EditHistoryChange> Compute(DesignData designData, ModuleDesign design,
+            ModuleData? before, ModuleData after, Func<ModuleDesign, string, bool> canRead)
             => Compute(designData, design, before, after, canRead, new HashSet<string> { design.Name });
 
         /// <param name="excluded">出さないフィールド (明細行では親へのバインド条件のフィールド = 親のリンク)。</param>
         static List<EditHistoryChange> Compute(DesignData designData, ModuleDesign design,
-            ModuleData? before, ModuleData after, Func<string, bool> canRead, HashSet<string> visiting, HashSet<string>? excluded = null)
+            ModuleData? before, ModuleData after, Func<ModuleDesign, string, bool> canRead, HashSet<string> visiting, HashSet<string>? excluded = null)
         {
             var result = new List<EditHistoryChange>();
             foreach (var fieldDesign in design.Fields)
             {
                 var name = fieldDesign.Name;
-                if (EditHistoryContracts.IsExcludedField(name) || !canRead(name)) continue;
+                if (EditHistoryContracts.IsExcludedField(name) || !canRead(design, name)) continue;
                 if (excluded?.Contains(name) == true) continue;
                 //承認フローの FK は承認の command API (サーバー) だけが、申請書の保存とは別のタイミングで書く。
                 //申請・承認の記録は承認モジュール側の履歴にあるので、ここでは差分に出さない
@@ -54,7 +59,7 @@ namespace Codeer.LowCode.Blazor.Extras.EditHistory
                         result.Add(new EditHistoryChange
                         {
                             FieldName = owned.Name,
-                            DisplayName = owned.Name == name ? EditHistoryValues.DisplayName(fieldDesign) : owned.Name,
+                            DisplayName = OwnedDisplayName(fieldDesign, owned.Name),
                             IsList = true, Rows = rows,
                         });
                     }
@@ -76,20 +81,32 @@ namespace Codeer.LowCode.Blazor.Extras.EditHistory
                     });
                     continue;
                 }
-                var beforeText = Truncate(EditHistoryValues.Format(fieldDesign, b, designData));
-                var afterText = Truncate(EditHistoryValues.Format(fieldDesign, a, designData));
+                //比較は元の文字列で行う (表示用に切り詰めた文字列で比べると、切り詰めた先だけの変更が「変更なし」になる)
+                var beforeText = EditHistoryValues.Format(fieldDesign, b, designData);
+                var afterText = EditHistoryValues.Format(fieldDesign, a, designData);
                 if (before == null ? afterText.Length == 0 : Equals(a, b) || beforeText == afterText) continue;
                 result.Add(new EditHistoryChange
                 {
-                    FieldName = name, DisplayName = EditHistoryValues.DisplayName(fieldDesign), Before = beforeText, After = afterText,
+                    FieldName = name, DisplayName = EditHistoryValues.DisplayName(fieldDesign),
+                    Before = Truncate(beforeText), After = Truncate(afterText),
                 });
             }
             return result;
         }
 
+        //従属レコードの宣言の表示名。宣言 = フィールド自身ならフィールドの表示名、
+        //フィールドが自分の名前に接尾辞を付けた宣言 (Gantt の依存関係 "Gantt:Dependencies" 等) なら表示名 + 接尾辞
+        static string OwnedDisplayName(FieldDesignBase fieldDesign, string ownedName)
+        {
+            if (ownedName == fieldDesign.Name) return EditHistoryValues.DisplayName(fieldDesign);
+            return ownedName.StartsWith(fieldDesign.Name + ":")
+                ? EditHistoryValues.DisplayName(fieldDesign) + ownedName[fieldDesign.Name.Length..]
+                : ownedName;
+        }
+
         //明細の行差分。行は Id で突き合わせ、行の見分けは行番号 (推測で名前を決めない)
         static List<EditHistoryRowChange> CompareRows(DesignData designData, ModuleDesign childDesign,
-            List<ModuleData>? before, List<ModuleData>? after, Func<string, bool> canRead, HashSet<string> visiting, HashSet<string> excluded)
+            List<ModuleData>? before, List<ModuleData>? after, Func<ModuleDesign, string, bool> canRead, HashSet<string> visiting, HashSet<string> excluded)
         {
             var result = new List<EditHistoryRowChange>();
             before ??= new();

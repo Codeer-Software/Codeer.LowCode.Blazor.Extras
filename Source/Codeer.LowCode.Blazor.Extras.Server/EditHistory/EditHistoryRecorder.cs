@@ -4,6 +4,8 @@ using Codeer.LowCode.Blazor.Extras.Designs;
 using Codeer.LowCode.Blazor.Extras.EditHistory;
 using Codeer.LowCode.Blazor.Repository.Data;
 using Codeer.LowCode.Blazor.Repository.Design;
+using Codeer.LowCode.Blazor.Repository.Match;
+using Codeer.LowCode.Blazor.Utils;
 
 namespace Codeer.LowCode.Blazor.Extras.Server.EditHistory
 {
@@ -13,7 +15,8 @@ namespace Codeer.LowCode.Blazor.Extras.Server.EditHistory
     /// - 削除: base の前に削除前の内容を読み、base 成功後に ChangeType=Delete で書く
     /// - 作成・更新: base 成功後に保存後の内容 (明細を含む) を DB から読み直して書く
     /// 履歴の書き込みは内部 add 経路 (操作ユーザーの書き込み権限に依存しない)。
-    /// 読み直しは操作ユーザーの権限で行うため、読めない列はスナップショットに入らない。
+    /// 読み直しも内部読み (ModuleDataIO.GetWithOwnedRecordsForInternalAsync) = 操作ユーザーの権限に関係なくレコード全体を記録する
+    /// (履歴は「レコードがどう変わったか」の記録なので、書いた人の権限で欠けない)。読む人の権限は返すときに GetListAsync で落とす。
     /// </summary>
     /// <remarks>
     /// 履歴の記録に失敗したときは結果に ExceptionMessage を立てて保存ごと失敗 (ロールバック) にする
@@ -32,7 +35,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.EditHistory
         readonly Func<ModuleData, Task<string>> _addInternalAsync;
         readonly Action<string>? _logError;
 
-        /// <param name="io">操作ユーザーのモジュールデータ IO (スナップショットの読み直しと現在ユーザーの取得に使う)。</param>
+        /// <param name="io">操作ユーザーのモジュールデータ IO (内部読みでのスナップショットの読み直し・現在ユーザーの取得・読む人の権限への落とし込みに使う)。</param>
         /// <param name="addInternalAsync">内部の追加経路 (テンプレートの CustomizedModuleDataIO.AddSystemRecordAsync)。</param>
         public EditHistoryRecorder(DesignData designData, ModuleDataIO io,
             Func<ModuleData, Task<string>> addInternalAsync, Action<string>? logError = null)
@@ -41,6 +44,41 @@ namespace Codeer.LowCode.Blazor.Extras.Server.EditHistory
             _io = io;
             _addInternalAsync = addInternalAsync;
             _logError = logError;
+        }
+
+        /// <summary>
+        /// GetListAsync の override から呼ぶ。履歴モジュール (EditHistoryContractField を置いたモジュール) の行なら、Snapshot の中身を
+        /// 読む人の権限に落とす (対象モジュールの読めない列と読めない子モジュールの従属レコードを外す。対象モジュール自体を読めなければ空にする)。
+        /// スナップショットは権限に関係なくレコード全体を記録しているので、クライアントに返す前にここで落とす (一覧・詳細・ダウンロードは全部 GetListAsync を通る)。
+        /// </summary>
+        public async Task<Paging<ModuleData>> GetListAsync(SearchCondition condition, Func<Task<Paging<ModuleData>>> getListAsync)
+        {
+            var result = await getListAsync();
+            var names = EditHistoryContracts.Contract(_designData.Modules.Find(condition.ModuleName));
+            if (names == null || string.IsNullOrEmpty(names.Snapshot)) return result;
+            foreach (var row in result.Items)
+            {
+                if (row.Fields.GetValueOrDefault(names.Snapshot) is not TextFieldData snapshotData || string.IsNullOrEmpty(snapshotData.Value)) continue;
+                snapshotData.Value = await ToReadableAsync(snapshotData.Value);
+            }
+            return result;
+        }
+
+        //スナップショット JSON を読む人の権限に落とす。壊れている・対象モジュールを読めない、なら空 (版は出るが内容は見えない)
+        async Task<string> ToReadableAsync(string json)
+        {
+            ModuleData? snapshot;
+            try
+            {
+                snapshot = EditHistorySnapshot.Deserialize(json);
+            }
+            catch (Exception ex)
+            {
+                _logError?.Invoke($"Edit history snapshot could not be read: {ex.Message}");
+                return string.Empty;
+            }
+            if (snapshot == null || !await _io.RemoveUnreadableAsync(snapshot)) return string.Empty;
+            return EditHistorySnapshot.Serialize(snapshot);
         }
 
         /// <summary>
@@ -224,12 +262,13 @@ namespace Codeer.LowCode.Blazor.Extras.Server.EditHistory
         }
 
         //Add / Update / Delete が無く、モジュールに Standalone の ExecuteSqlField があるとき base は Standalone の SQL だけを実行する
-        //レコード + 従属レコード (明細・埋め込みモジュールの子レコード等、宣言の先) を読み、NULL だった列も null として持たせる (版に「空だった」を残す = 復元で空に戻せる)。
+        //レコード + 従属レコード (明細・埋め込みモジュールの子レコード等、宣言の先) を内部読み (権限に関係なく全列・全従属) で読み、
+        //NULL だった列も null として持たせる (版に「空だった」を残す = 復元で空に戻せる)。
         //含めない従属レコード (そのモジュールの EditHistoryField の除外・行ごと指定) は読まない
         async Task<ModuleData?> LoadAsync(string moduleName, string id)
         {
             var field = EditHistoryContracts.Field(_designData.Modules.Find(moduleName));
-            return EditHistorySnapshot.FillNulls(_designData, await _io.GetWithOwnedRecordsAsync(moduleName, id, path => EditHistoryPolicy.IsIncluded(field, path)));
+            return EditHistorySnapshot.FillNulls(_designData, await _io.GetWithOwnedRecordsForInternalAsync(moduleName, id, path => EditHistoryPolicy.IsIncluded(field, path)));
         }
 
         //送信の中身が「親の版に含めない従属レコード (除外・行ごと)」の行 (とその子孫) だけか。親自身も、親の版に含める従属レコードも変わっていない
@@ -318,13 +357,13 @@ namespace Codeer.LowCode.Blazor.Extras.Server.EditHistory
 
         record Plan
         {
-            public int Index;
-            public ModuleDesign Module = null!;
-            public ModuleDesign HistoryModule = null!;
-            public EditHistoryContractFieldDesign Names = null!;
-            public EditHistoryChangeType ChangeType;
-            public ModuleData? Snapshot;
-            public ModuleData? Before;
+            public int Index { get; init; }
+            public ModuleDesign Module { get; init; } = null!;
+            public ModuleDesign HistoryModule { get; init; } = null!;
+            public EditHistoryContractFieldDesign Names { get; init; } = null!;
+            public EditHistoryChangeType ChangeType { get; set; }
+            public ModuleData? Snapshot { get; set; }
+            public ModuleData? Before { get; set; }
             /// <summary>行ごとに記録する行 (送信の Add): 送信の仮 Id。結果の対応表で採番 Id にする。</summary>
             public string? RowTempId { get; init; }
             /// <summary>行ごとに記録する行 (送信の Update / Delete): 行の Id。</summary>

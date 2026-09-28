@@ -1386,6 +1386,9 @@ Recipients: {1}</value>
   <data name="EditHistoryCheck_IndividualRowModuleNoHistoryFormat" xml:space="preserve">
     <value>The rows of owned records '{0}' are recorded per row, but their module '{1}' has no {2} (the rows are recorded in that module's history).</value>
   </data>
+  <data name="EditHistoryCheck_OwnedRecordPathInBothFormat" xml:space="preserve">
+    <value>Owned records '{0}' are in both {1} and {2}. Choose one.</value>
+  </data>
   <data name="EditHistoryContractField" xml:space="preserve">
     <value>Edit History Contract</value>
   </data>

@@ -15,9 +15,12 @@ namespace Codeer.LowCode.Blazor.Extras.EditHistory
     /// </summary>
     internal static class OwnedRecordsRestore
     {
-        internal static async Task ApplyAsync(FieldBase field, ModuleCollection collection, string moduleName, string layoutName,
-            SearchCondition condition, IReadOnlyList<ModuleData> rows, Action<string, string>? onRevive)
+        /// <param name="layoutType">行のモジュールを作るレイアウト種別 (一覧・Gantt のタスク等は Detail、Gantt の依存関係のように画面を持たない行は None)。</param>
+        /// <returns>新しい行として追加した行の対応 (版の行の Id → 作った行のモジュール)。Id を保った行 (既存・復活) は含まない。</returns>
+        internal static async Task<Dictionary<string, Module>> ApplyAsync(FieldBase field, ModuleCollection collection, string moduleName, string layoutName,
+            SearchCondition condition, IReadOnlyList<ModuleData> rows, Action<string, string>? onRevive, ModuleLayoutType layoutType = ModuleLayoutType.Detail)
         {
+            var created = new Dictionary<string, Module>();
             var services = field.Services;
             var childDesign = services.AppInfoService.GetDesignData().Modules.Find(moduleName);
             var canRevive = onRevive != null && childDesign != null && EditHistoryContracts.IsLogicalDeleteModule(childDesign);
@@ -46,15 +49,16 @@ namespace Codeer.LowCode.Blazor.Extras.EditHistory
                     //論理削除の行: Id を保った行を作り (既存行扱い)、保存時の Undelete を登録する
                     var idOnly = new ModuleData { Name = moduleName };
                     idOnly.Fields[SystemFieldNames.Id] = child.Fields[SystemFieldNames.Id];
-                    mod = await ModuleCreationService.CreateModuleAsync(services, idOnly, ModuleLayoutType.Detail, layoutName);
+                    mod = await ModuleCreationService.CreateModuleAsync(services, idOnly, layoutType, layoutName);
                     await mod.SetDataWithoutInteractionAsync(StripForRevive(child));
                     onRevive!(childDesign!.Name, id);
                 }
                 else
                 {
-                    mod = await field.CreateChildModuleAsync(moduleName, ModuleLayoutType.Detail, layoutName);
+                    mod = await field.CreateChildModuleAsync(moduleName, layoutType, layoutName);
                     await field.AssignConditionValuesAsync(condition, mod);
                     await mod.SetDataWithoutInteractionAsync(StripForNewRow(child));
+                    if (id.Length != 0) created[id] = mod;
                 }
                 collection.Add(mod);
                 kept.Add(mod);
@@ -66,6 +70,7 @@ namespace Codeer.LowCode.Blazor.Extras.EditHistory
             {
                 if (!kept.Contains(e)) collection.Remove(e);
             }
+            return created;
         }
 
         //新しい行として入れるため Id・楽観ロック等のシステム値を外す

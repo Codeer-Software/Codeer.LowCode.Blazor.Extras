@@ -27,6 +27,10 @@ namespace Extras.Server.Services
         public override Task<List<ModuleSubmitResult>> SubmitAsync(Guid transactionId, List<ModuleSubmitData> transactionData)
             => _editHistory.SubmitAsync(transactionData, () => base.SubmitAsync(transactionId, transactionData));
 
+        //編集履歴: 履歴モジュールの Snapshot を読む人の権限に落として返す (一覧・詳細・ダウンロードは全部ここを通る)
+        public override Task<Codeer.LowCode.Blazor.Utils.Paging<ModuleData>> GetListAsync(Codeer.LowCode.Blazor.Repository.Match.SearchCondition condition, int pageIndex)
+            => _editHistory.GetListAsync(condition, () => base.GetListAsync(condition, pageIndex));
+
         protected override async Task<string> AddAsync(Guid transactionId, Guid moduleSubmitId, ModuleData data)
         {
             var moduleDesign = _designData.Modules.Find(data.Name);
