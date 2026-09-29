@@ -21,10 +21,10 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         public SearchCondition SearchCondition { get; set; } = new();
 
         /// <summary>依存関係の従属宣言の名前の接尾辞。宣言の名前は "フィールド名:Dependencies" (パス指定や差分表示で使う)。</summary>
-        public const string DependenciesOwnedRecordsSuffix = ":Dependencies";
+        internal const string DependenciesOwnedRecordsSuffix = ":Dependencies";
 
         /// <summary>依存関係 (DependenciesModule の行) の従属宣言の名前。</summary>
-        public string DependenciesOwnedRecordsName => Name + DependenciesOwnedRecordsSuffix;
+        internal string DependenciesOwnedRecordsName => Name + DependenciesOwnedRecordsSuffix;
 
         //従属レコードの宣言: このフィールドが読み書きするレコード群 (タスクと、あれば依存関係) は親の一部 (編集履歴などが親と一緒に扱う)
         public IEnumerable<OwnedRecordsDesign> GetOwnedRecords()

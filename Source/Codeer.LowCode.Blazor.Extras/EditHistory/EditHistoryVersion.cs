@@ -4,7 +4,7 @@ using Codeer.LowCode.Blazor.Script;
 namespace Codeer.LowCode.Blazor.Extras.EditHistory
 {
     /// <summary>履歴の 1 版 (履歴モジュールの 1 行)。</summary>
-    public class EditHistoryVersion
+    internal class EditHistoryVersion
     {
         /// <summary>履歴行の Id。</summary>
         public string Id { get; internal set; } = string.Empty;
@@ -39,7 +39,7 @@ namespace Codeer.LowCode.Blazor.Extras.EditHistory
     }
 
     /// <summary>1 フィールドの変更。一覧 (明細) は行の追加・削除・変更として持つ。</summary>
-    public class EditHistoryChange
+    internal class EditHistoryChange
     {
         public string FieldName { get; internal set; } = string.Empty;
         public string DisplayName { get; internal set; } = string.Empty;
@@ -55,10 +55,10 @@ namespace Codeer.LowCode.Blazor.Extras.EditHistory
         public int ChangedCount => Rows.Count(e => e.Kind == EditHistoryRowChangeKind.Changed);
     }
 
-    public enum EditHistoryRowChangeKind { Added, Removed, Changed }
+    internal enum EditHistoryRowChangeKind { Added, Removed, Changed }
 
     /// <summary>明細 1 行の変更。</summary>
-    public class EditHistoryRowChange
+    internal class EditHistoryRowChange
     {
         public EditHistoryRowChangeKind Kind { get; internal set; }
 

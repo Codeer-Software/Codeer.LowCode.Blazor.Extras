@@ -33,6 +33,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
 
         //IOwnedRecordsField: 宣言した従属レコード (タスク・依存関係) を与えられた行に差し替える (保存はしない)。
         //通常は表示範囲のタスクしか読んでいないので、突き合わせの前に全件を読み直す (範囲外の行を「無い行」と誤らない)
+        [ScriptHide]
         public async Task ApplyOwnedRecordsAsync(string name, IReadOnlyList<ModuleData> rows, Action<string, string>? onRevive)
         {
             if (name == Design.Name)
@@ -97,6 +98,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         //IOwnedRecordsField: 与えられたタスク・依存関係をそのまま表示する (DB は読まない・表示専用)。
         //装飾された行 (ClassName が付いた行) が表示範囲に無ければ最初の装飾行の日へ、
         //装飾が無く表示範囲にタスクも無ければ最初のタスクの日へ移動する
+        [ScriptHide]
         public async Task ShowOwnedRecordsAsync(string name, IReadOnlyList<OwnedRecordRow> rows)
         {
             if (name == Design.DependenciesOwnedRecordsName && HasDependenciesModule)

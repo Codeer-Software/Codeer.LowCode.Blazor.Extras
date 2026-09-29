@@ -17,6 +17,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         private readonly ModuleCollection _modules = new();
 
         //IOwnedRecordsField: 宣言した従属レコード (カード) を与えられた行に差し替える (保存はしない)
+        [ScriptHide]
         public async Task ApplyOwnedRecordsAsync(string name, IReadOnlyList<ModuleData> rows, Action<string, string>? onRevive)
         {
             if (name != Design.Name) return;
@@ -30,6 +31,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         }
 
         //IOwnedRecordsField: 与えられたカードをそのまま表示する (DB は読まない・表示専用)
+        [ScriptHide]
         public async Task ShowOwnedRecordsAsync(string name, IReadOnlyList<OwnedRecordRow> rows)
         {
             if (name != Design.Name) return;

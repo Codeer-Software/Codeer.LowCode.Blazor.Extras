@@ -76,8 +76,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         /// 削除の版で、それがそのレコードの最新の版で、対象モジュールがあり、このユーザーがそのモジュールで削除 (= 復活) できるときだけ出す。
         /// 行の条件はサーバーが見る。
         /// </summary>
-        [ScriptHide]
-        public bool CanUndelete
+        internal bool CanUndelete
         {
             get
             {

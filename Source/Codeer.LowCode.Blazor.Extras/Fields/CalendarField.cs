@@ -18,6 +18,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
 
         //IOwnedRecordsField: 宣言した従属レコード (予定) を与えられた行に差し替える (保存はしない)。
         //通常は表示範囲しか読んでいないので、突き合わせの前に全件を読み直す
+        [ScriptHide]
         public async Task ApplyOwnedRecordsAsync(string name, IReadOnlyList<ModuleData> rows, Action<string, string>? onRevive)
         {
             if (name != Design.Name) return;
@@ -33,6 +34,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         //IOwnedRecordsField: 与えられた予定をそのまま表示する (DB は読まない・表示専用)。
         //装飾された予定 (ClassName が付いた行) が表示中の月に無ければ最初の装飾予定の月へ、
         //装飾が無く表示中の月に予定も無ければ最初の予定の月へ移動する
+        [ScriptHide]
         public async Task ShowOwnedRecordsAsync(string name, IReadOnlyList<OwnedRecordRow> rows)
         {
             if (name != Design.Name) return;

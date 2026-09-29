@@ -23,20 +23,20 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
     public class EditHistoryField : FieldBase<EditHistoryFieldDesign>
     {
         /// <summary>「この版を表示」で変更フィールド (セル) に付ける CSS クラス。</summary>
-        public const string ChangedClassName = "edit-history-changed";
+        internal const string ChangedClassName = "edit-history-changed";
 
         /// <summary>「この版を表示」で追加された明細行に付ける CSS クラス。</summary>
-        public const string AddedRowClassName = "edit-history-added-row";
+        internal const string AddedRowClassName = "edit-history-added-row";
 
         /// <summary>「この版を表示」で削除された明細行 (前の版の内容を打ち消しで残す) に付ける CSS クラス。</summary>
-        public const string RemovedRowClassName = "edit-history-removed-row";
+        internal const string RemovedRowClassName = "edit-history-removed-row";
 
         /// <summary>
         /// 「この版を表示」で変更された従属レコードの行 (Gantt のタスク・カレンダーの予定・カードなど、セル単位の強調が出ない項目) に付ける CSS クラス。
         /// </summary>
-        public const string ChangedRowClassName = "edit-history-changed-row";
+        internal const string ChangedRowClassName = "edit-history-changed-row";
         /// <summary>版表示ダイアログの中身のモジュールに付けるクラス。ダイアログの幅を一定にする CSS の目印。</summary>
-        public const string VersionDialogClassName = "edit-history-version-dialog";
+        internal const string VersionDialogClassName = "edit-history-version-dialog";
 
         readonly List<EditHistoryVersion> _versions = new();
         //「この版に戻す」で Id を保って戻した論理削除の行がある版 (履歴行の Id)。保存に同梱し、サーバーがその版のスナップショットから行を戻す
@@ -137,8 +137,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         }
 
         /// <summary>読み込み済みの版 (新しい順)。</summary>
-        [ScriptHide]
-        public IReadOnlyList<EditHistoryVersion> Versions => _versions;
+        internal IReadOnlyList<EditHistoryVersion> Versions => _versions;
 
         public bool IsLoaded { get; private set; }
         public bool IsBusy { get; private set; }
@@ -149,12 +148,10 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         public bool HasMore => _versions.Count < TotalCount;
 
         /// <summary>履歴を読める状態か (デザインモード・未保存のレコードでは読まない)。</summary>
-        [ScriptHide]
-        public bool IsAvailable => !Services.AppInfoService.IsDesignMode && !Module.IsNewData;
+        internal bool IsAvailable => !Services.AppInfoService.IsDesignMode && !Module.IsNewData;
 
         /// <summary>復元 (フォームへの反映) ができるか。表示専用・未保存では不可。</summary>
-        [ScriptHide]
-        public bool CanRestore => !Module.IsViewOnly && !Module.IsNewData;
+        internal bool CanRestore => !Module.IsViewOnly && !Module.IsNewData;
 
         ModuleDesign? HistoryModule => Services.AppInfoService.GetDesignData().Modules.Find(Design.HistoryModuleName);
 
@@ -339,8 +336,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         }
 
         /// <summary>その版のレコード全体を表示専用のダイアログで表示する。変更フィールドを強調する。</summary>
-        [ScriptHide]
-        public async Task ShowVersionAsync(EditHistoryVersion version)
+        internal async Task ShowVersionAsync(EditHistoryVersion version)
         {
             var snapshot = version.Snapshot;
             if (snapshot == null) return;
@@ -404,8 +400,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         }
 
         /// <summary>その版の内容を編集中のフォームへ反映する (保存はユーザーが行う)。</summary>
-        [ScriptHide]
-        public async Task RestoreAsync(EditHistoryVersion version)
+        internal async Task RestoreAsync(EditHistoryVersion version)
         {
             var snapshot = version.Snapshot;
             if (snapshot == null || !CanRestore) return;
