@@ -11,10 +11,11 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
 {
     /// <summary>
     /// 削除されたレコードを履歴から復活させるボタン。履歴モジュール (EditHistoryContractField を置いたモジュール) の
-    /// 詳細画面に置く。ChangeType が Delete の行でだけ押せる。
+    /// 詳細画面に置く。そのレコードの最新の版が削除 (ChangeType が Delete) で、対象モジュールで削除できる人にだけ出る。
+    /// クライアントは履歴行の Id だけを送り、サーバー (EditHistoryRecorder) が版のスナップショットからレコード全体を戻す。
     /// 対象モジュールが論理削除なら Id を保ったまま戻す (明細も。リンクは切れない)。
-    /// 物理削除ならスナップショットから新しいレコードを作る (Id は振り直し)。
-    /// どちらも通常の保存経路なので対象モジュールの権限がそのまま効き、復活自体も履歴に残る。
+    /// 物理削除なら作り直す (手入力 Id は元の Id、自動採番は新しい Id で、旧 Id の版を新しい Id に付け替える)。
+    /// 権限は削除と同じ。復活は Restore の版として履歴に残る。
     /// </summary>
     [ToolboxIcon(PackIconMaterialKind = "BackupRestore")]
     [Designer(DisplayName = "$EditHistoryUndeleteButtonField")]

@@ -145,7 +145,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
                 編集履歴モジュールを生成しました。履歴を取るモジュール側は次の手順で仕上げてください:
                 1. 履歴を取りたいモジュールに EditHistoryField を置く (履歴モジュール = {options.HistoryModuleName})。詳細レイアウトの右カラムやタブに配置する
                 2. サーバーの CustomizedModuleDataIO に EditHistoryRecorder を結線する (アプリテンプレートは結線済み。docs/EditHistory.md「サーバーの結線」)
-                {enumStep}履歴は誰でも読める状態で生成されます (Snapshot に全項目の値が入る)。閲覧を絞るには {options.HistoryModuleName} の UserReadCondition を設定してください。
+                {enumStep}履歴モジュールは誰でも読める状態で生成されます (版の内容は読む人の権限に合わせて返されます)。履歴自体を見せたくないユーザーがいる場合は {options.HistoryModuleName} の UserReadCondition を設定してください。
                 削除したレコードは履歴の詳細の「このレコードを復活」で戻せます (Id を保って戻すには対象モジュールを論理削除にする)。
                 """;
         }
