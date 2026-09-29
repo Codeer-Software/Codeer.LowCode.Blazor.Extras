@@ -27,27 +27,27 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         private readonly ModuleCollection _modules = new();
         private SearchCondition? _additionalCondition;
 
-        /// <summary>false にすると読み込まない (履歴の版表示など、現在の DB を読ませたくないとき)。</summary>
+        /// <summary>false にすると読み込まない (与えられた行だけを見せるとき)。</summary>
         public bool AllowLoad { get; set; } = true;
 
-        //編集履歴の復元: 宣言した従属レコード (マーカー) を版の内容に差し替える (保存はユーザー)
+        //IOwnedRecordsField: 宣言した従属レコード (マーカー) を与えられた行に差し替える (保存はしない)
         public async Task ApplyOwnedRecordsAsync(string name, IReadOnlyList<ModuleData> rows, Action<string, string>? onRevive)
         {
             if (name != Design.Name) return;
             var all = await this.GetChildModulesAsync(Design.SearchCondition, ModuleLayoutType.Detail, Design.DetailLayoutName, GetMarkerFieldNames());
             _modules.ApplyLoaded(all);
-            await EditHistory.OwnedRecordsRestore.ApplyAsync(this, _modules, ModuleName, Design.DetailLayoutName, Design.SearchCondition, rows, onRevive);
+            await OwnedRecordModules.ApplyAsync(this, _modules, ModuleName, Design.DetailLayoutName, Design.SearchCondition, rows, onRevive);
             MarkerList.Clear();
             MarkerList.AddRange(_modules.Items.Select(ConvertToMarker));
             await InvokeOnDataChangedAsync();
             NotifyStateChanged();
         }
 
-        //編集履歴の版表示: 版のマーカーをそのまま表示する (DB は読まない・表示専用)
+        //IOwnedRecordsField: 与えられたマーカーをそのまま表示する (DB は読まない・表示専用)
         public async Task ShowOwnedRecordsAsync(string name, IReadOnlyList<OwnedRecordRow> rows)
         {
             if (name != Design.Name) return;
-            _modules.ApplyLoaded(await EditHistory.OwnedRecordsDisplay.CreateAsync(this, ModuleName, Design.DetailLayoutName, rows));
+            _modules.ApplyLoaded(await OwnedRecordModules.CreateForShowAsync(this, Design.DetailLayoutName, rows));
             MarkerList.Clear();
             MarkerList.AddRange(_modules.Items.Select(ConvertToMarker));
             NotifyStateChanged();

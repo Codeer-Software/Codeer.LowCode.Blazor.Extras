@@ -40,15 +40,15 @@ namespace Codeer.LowCode.Blazor.Extras.Test.EditHistory
             var order = design.Modules.Find("Order")!;
 
             //申請 (FK が付いた) の前後で件名だけ変えた版: 件名だけが出る
-            var changes = EditHistoryDiff.Compute(design, order, Order("A", null), Order("B", "5"), _ => true);
+            var changes = EditHistoryDiff.Compute(design, order, Order("A", null), Order("B", "5"), (_, _) => true);
             Assert.That(changes.Select(e => (e.FieldName, e.Before, e.After)), Is.EqualTo(new[] { ("Title", "A", "B") }));
 
             //FK だけが違う版 (承認の command API が書いた後の保存): 変更なし
-            changes = EditHistoryDiff.Compute(design, order, Order("A", null), Order("A", "5"), _ => true);
+            changes = EditHistoryDiff.Compute(design, order, Order("A", null), Order("A", "5"), (_, _) => true);
             Assert.That(changes, Is.Empty);
 
             //作成の版でも FK は出ない
-            changes = EditHistoryDiff.Compute(design, order, null, Order("A", "5"), _ => true);
+            changes = EditHistoryDiff.Compute(design, order, null, Order("A", "5"), (_, _) => true);
             Assert.That(changes.Select(e => e.FieldName), Is.EqualTo(new[] { "Title" }));
         }
 

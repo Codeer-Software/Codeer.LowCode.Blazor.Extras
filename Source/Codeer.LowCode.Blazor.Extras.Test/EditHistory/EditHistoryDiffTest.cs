@@ -33,7 +33,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.EditHistory
         }
 
         static List<EditHistoryChange> Compute(ModuleData? before, ModuleData after, Func<string, bool>? canRead = null)
-            => EditHistoryDiff.Compute(_design, _design.Modules.Find("Order")!, before, after, canRead ?? (_ => true));
+            => EditHistoryDiff.Compute(_design, _design.Modules.Find("Order")!, before, after, (_, name) => canRead?.Invoke(name) ?? true);
 
         [Test]
         public void 値の変更は表示名と旧新で出る_変わらない項目とシステム項目は出ない()
@@ -128,7 +128,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.EditHistory
             var before = Order("1", "A", 100, item);
             var after = Order("1", "A", 100);
 
-            var items = EditHistoryDiff.Compute(design, design.Modules.Find("Order")!, before, after, _ => true).Single(e => e.IsList);
+            var items = EditHistoryDiff.Compute(design, design.Modules.Find("Order")!, before, after, (_, _) => true).Single(e => e.IsList);
             var removedItem = items.Rows.Single();
             Assert.That(removedItem.Kind, Is.EqualTo(EditHistoryRowChangeKind.Removed));
             Assert.That(removedItem.Changes.Single(e => e.FieldName == "Name").Before, Is.EqualTo("X"));
@@ -149,12 +149,12 @@ namespace Codeer.LowCode.Blazor.Extras.Test.EditHistory
             var same = Order("1", "A", 1); same.Fields["Blob"] = new BlobFieldData { Bytes = [1, 2] };
             var changed = Order("1", "A", 1); changed.Fields["Blob"] = new BlobFieldData { Bytes = [3] };
 
-            Assert.That(EditHistoryDiff.Compute(design, order, before, same, _ => true), Is.Empty, "JSON が同じなら変更なし");
-            var changes = EditHistoryDiff.Compute(design, order, before, changed, _ => true);
+            Assert.That(EditHistoryDiff.Compute(design, order, before, same, (_, _) => true), Is.Empty, "JSON が同じなら変更なし");
+            var changes = EditHistoryDiff.Compute(design, order, before, changed, (_, _) => true);
             Assert.That(changes.Count, Is.EqualTo(1));
             Assert.That((changes[0].DisplayName, changes[0].HasValueText, changes[0].Before, changes[0].After), Is.EqualTo(("添付データ", false, "", "")));
             //作成の版でも名前だけ出る
-            Assert.That(EditHistoryDiff.Compute(design, order, null, changed, _ => true).Any(e => e.FieldName == "Blob" && !e.HasValueText), Is.True);
+            Assert.That(EditHistoryDiff.Compute(design, order, null, changed, (_, _) => true).Any(e => e.FieldName == "Blob" && !e.HasValueText), Is.True);
         }
 
         [Test]
@@ -172,7 +172,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.EditHistory
             var before = Order("1", "A", 1); before.Fields["Policy"] = new SelectFieldData { Value = "Any", DisplayText = "" }; before.Fields["Kind"] = new SelectFieldData { Value = "x", DisplayText = "" };
             var after = Order("1", "A", 1); after.Fields["Policy"] = new SelectFieldData { Value = "All", DisplayText = "" }; after.Fields["Kind"] = new SelectFieldData { Value = "y", DisplayText = "" };
 
-            var changes = EditHistoryDiff.Compute(design, order, before, after, _ => true);
+            var changes = EditHistoryDiff.Compute(design, order, before, after, (_, _) => true);
             Assert.That(changes.Select(e => (e.DisplayName, e.Before, e.After)),
                 Is.EqualTo(new[] { ("完了条件", "誰か 1 人", "全員"), ("種別", "x", "y") }));
         }

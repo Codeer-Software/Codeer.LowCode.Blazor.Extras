@@ -325,7 +325,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Approval
             var snapshots = await SnapshotsAsync(id);
             Assert.That(snapshots[0].Fields.ContainsKey("Approval") && snapshots[0].Fields["Approval"] is Extras.Data.ApprovalFlowFieldData { Id: not null }, Is.False, "申請の版のスナップショットは FK を書く前の内容");
             Assert.That(((Extras.Data.ApprovalFlowFieldData)snapshots[1].Fields["Approval"]).Id, Is.EqualTo(submitted.FlowId), "再申請の版のスナップショットには FK が入っている");
-            var changes = EditHistoryDiff.Compute(_designData, _designData.Modules.Find("Request")!, snapshots[0], snapshots[1], _ => true);
+            var changes = EditHistoryDiff.Compute(_designData, _designData.Modules.Find("Request")!, snapshots[0], snapshots[1], (_, _) => true);
             Assert.That(changes.Select(e => (e.DisplayName, e.Before, e.After)), Is.EqualTo(new[] { ("金額", "1000", "1200") }));
             Assert.That(await ApprovalHistoriesAsync(submitted.FlowId).ContinueWith(t => t.Result.Select(e => e.Action)),
                 Is.EqualTo(new[] { ApprovalAction.Submit.ToDesignValue(), ApprovalAction.Return.ToDesignValue(), ApprovalAction.Resubmit.ToDesignValue() }));

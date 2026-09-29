@@ -176,7 +176,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.EditHistory
             Assert.That(snapshots.Count, Is.EqualTo(2));
             Assert.That(((TextFieldData)snapshots[1].GetOwnedRows("Customer")!.Single().Fields["Name"]).Value, Is.EqualTo("B社"));
 
-            var change = EditHistoryDiff.Compute(_design, _design.Modules.Find("Order")!, snapshots[0], snapshots[1], _ => true).Single();
+            var change = EditHistoryDiff.Compute(_design, _design.Modules.Find("Order")!, snapshots[0], snapshots[1], (_, _) => true).Single();
             Assert.That((change.FieldName, change.IsList, change.ChangedCount), Is.EqualTo(("Customer", true, 1)));
             Assert.That(change.Rows.Single().Changes.Select(e => (e.DisplayName, e.Before, e.After)), Is.EqualTo(new[] { ("顧客名", "A社", "B社") }));
         }

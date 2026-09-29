@@ -50,26 +50,11 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         async Task<bool> IsLatestVersionAsync()
         {
             var names = Names;
-            var condition = new SearchCondition
-            {
-                ModuleName = Module.Design.Name,
-                Condition = MultiMatchCondition.And(Equal(names.ModuleName, GetText(names.ModuleName)), Equal(names.DataId, GetText(names.DataId))),
-                LimitCount = 1,
-                SortConditions = new List<SortCondition>(),
-                SelectFields = [SystemFieldNames.Id],
-            };
-            if (!string.IsNullOrEmpty(names.DateTime))
-                condition.SortConditions.Add(new SortCondition { Variable = $"{names.DateTime}.Value", IsDescending = true });
-            condition.SortConditions.Add(new SortCondition { Variable = $"{SystemFieldNames.Id}.Value", IsDescending = true });
+            var condition = EditHistoryContracts.VersionsCondition(Module.Design.Name, names, GetText(names.ModuleName), GetText(names.DataId), 1, SystemFieldNames.Id);
             var page = (await Services.ModuleDataService.GetListAsync([new GetListRequest { Condition = condition, PageIndex = 0 }])).FirstOrDefault();
             var latest = page?.Items.FirstOrDefault();
             return latest != null && EditHistorySnapshot.GetId(latest) == Module.GetIdText();
         }
-
-        static FieldValueMatchCondition Equal(string fieldName, string value) => new()
-        {
-            SearchTargetVariable = $"{fieldName}.Value", Comparison = MatchComparison.Equal, Value = MultiTypeValue.Create(value),
-        };
 
         [ScriptHide]
         public override async Task SetDataAsync(FieldDataBase? fieldDataBase) => await Task.CompletedTask;

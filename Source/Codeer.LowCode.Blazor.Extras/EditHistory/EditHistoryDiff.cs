@@ -15,11 +15,6 @@ namespace Codeer.LowCode.Blazor.Extras.EditHistory
     {
         const int MaxTextLength = 300;
 
-        /// <param name="canRead">閲覧権限のないフィールドを差分に出さない (フィールド名 → 読めるか)。対象モジュールと明細行のモジュールを区別しない。</param>
-        internal static List<EditHistoryChange> Compute(DesignData designData, ModuleDesign design,
-            ModuleData? before, ModuleData after, Func<string, bool> canRead)
-            => Compute(designData, design, before, after, (_, name) => canRead(name));
-
         /// <param name="canRead">閲覧権限のないフィールドを差分に出さない (フィールドのモジュール, フィールド名 → 読めるか)。明細行の項目は行のモジュールで問われる。</param>
         internal static List<EditHistoryChange> Compute(DesignData designData, ModuleDesign design,
             ModuleData? before, ModuleData after, Func<ModuleDesign, string, bool> canRead)
@@ -36,9 +31,8 @@ namespace Codeer.LowCode.Blazor.Extras.EditHistory
                 var name = fieldDesign.Name;
                 if (EditHistoryContracts.IsExcludedField(name) || !canRead(design, name)) continue;
                 if (excluded?.Contains(name) == true) continue;
-                //承認フローの FK は承認の command API (サーバー) だけが、申請書の保存とは別のタイミングで書く。
-                //申請・承認の記録は承認モジュール側の履歴にあるので、ここでは差分に出さない
-                if (fieldDesign is ApprovalFlowFieldDesign) continue;
+                //対象外を宣言したフィールド (サーバーが保存とは別のタイミングで書く値など) は差分に出さない
+                if (fieldDesign is IEditHistoryExcludedFieldDesign) continue;
 
                 //従属レコード (宣言したフィールド: 明細の一覧・ガントチャート等) は行の追加・削除・変更で比べる
                 if (fieldDesign is IOwnedRecordsFieldDesign owner)

@@ -31,7 +31,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
     {
         private readonly ModuleCollection _tasks = new();
 
-        //編集履歴の復元: 宣言した従属レコード (タスク・依存関係) を版の内容に差し替える (保存はユーザー)。
+        //IOwnedRecordsField: 宣言した従属レコード (タスク・依存関係) を与えられた行に差し替える (保存はしない)。
         //通常は表示範囲のタスクしか読んでいないので、突き合わせの前に全件を読み直す (範囲外の行を「無い行」と誤らない)
         public async Task ApplyOwnedRecordsAsync(string name, IReadOnlyList<ModuleData> rows, Action<string, string>? onRevive)
         {
@@ -39,16 +39,16 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             {
                 var all = await this.GetChildModulesAsync(Design.SearchCondition, ModuleLayoutType.Detail, Design.DetailLayoutName, GetItemFieldNames());
                 _tasks.ApplyLoaded(all);
-                //新しい行として作り直したタスク (版の Id → 仮 Id の行) は、続く依存関係の差し替えでタスク Id を付け替えるために覚えておく
-                _restoredTasks = await EditHistory.OwnedRecordsRestore.ApplyAsync(this, _tasks, ModuleName, Design.DetailLayoutName, Design.SearchCondition, rows, onRevive);
+                //新しい行として作り直したタスク (渡された行の Id → 仮 Id の行) は、続く依存関係の差し替えでタスク Id を付け替えるために覚えておく
+                _restoredTasks = await OwnedRecordModules.ApplyAsync(this, _tasks, ModuleName, Design.DetailLayoutName, Design.SearchCondition, rows, onRevive);
                 RebuildItemsInView();
                 await InvokeOnDataChangedAndNotifyAsync();
                 return;
             }
             if (name != Design.DependenciesOwnedRecordsName || !HasDependenciesModule) return;
 
-            //依存関係: 全件を読み直してから版の行で差し替える。版の行が指すタスクのうち、新しい行として作り直したタスクは仮 Id に付け替える
-            //(保存時に本体が仮 Id を採番 Id に解決する)。版にも今にも無いタスクを指す行は落とす (存在しないタスクへの矢印は作らない)
+            //依存関係: 全件を読み直してから渡された行で差し替える。行が指すタスクのうち、新しい行として作り直したタスクは仮 Id に付け替える
+            //(保存時に本体が仮 Id を採番 Id に解決する)。どこにも無いタスクを指す行は落とす (存在しないタスクへの矢印は作らない)
             var deps = await this.GetChildModulesAsync(Design.DependenciesModule, ModuleLayoutType.None);
             _dependencies.ApplyLoaded(deps);
             var taskIds = _tasks.Items.Select(e => e.GetIdText()).ToHashSet();
@@ -59,7 +59,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
                 if (RemapTaskId(copy, Design.DependencySourceIdField, taskIds) && RemapTaskId(copy, Design.DependencyDestinationIdField, taskIds)) remapped.Add(copy);
             }
             _restoredTasks = null;
-            await EditHistory.OwnedRecordsRestore.ApplyAsync(this, _dependencies, Design.DependenciesModule.ModuleName, string.Empty,
+            await OwnedRecordModules.ApplyAsync(this, _dependencies, Design.DependenciesModule.ModuleName, string.Empty,
                 Design.DependenciesModule, remapped, onRevive, ModuleLayoutType.None);
             RebuildDependencies();
             await InvokeOnDataChangedAndNotifyAsync();
@@ -67,7 +67,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
 
         private Dictionary<string, Module>? _restoredTasks;
 
-        //矢印 (from->to) ごとの版表示の強調クラス (追加 / 変更 / 削除)。版表示以外は空
+        //矢印 (from->to) ごとの強調クラス (ShowOwnedRecordsAsync で渡された行の ClassName)。通常は空
         private readonly Dictionary<string, string> _dependencyClasses = new();
 
         //依存関係の行のタスク Id を付け替える。戻り値 = その Id のタスクが (差し替え後に) あるか
@@ -78,7 +78,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             return taskIds.Contains(data.Value);
         }
 
-        //保持している依存関係の行から矢印の対応表と一覧を作り直す (行の ClassName = 版表示の強調を矢印に写す)
+        //保持している依存関係の行から矢印の対応表と一覧を作り直す (行の ClassName を矢印に写す)
         private void RebuildDependencies()
         {
             _dependencyClasses.Clear();
@@ -94,21 +94,21 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             MakeDependencyList();
         }
 
-        //編集履歴の版表示: 版のタスク・依存関係をそのまま表示する (DB は読まない・表示専用)。
-        //装飾された行 (差分のある行 = decorate が ClassName を付けた行) が表示範囲に無ければ最初の装飾行の日へ、
+        //IOwnedRecordsField: 与えられたタスク・依存関係をそのまま表示する (DB は読まない・表示専用)。
+        //装飾された行 (ClassName が付いた行) が表示範囲に無ければ最初の装飾行の日へ、
         //装飾が無く表示範囲にタスクも無ければ最初のタスクの日へ移動する
         public async Task ShowOwnedRecordsAsync(string name, IReadOnlyList<OwnedRecordRow> rows)
         {
             if (name == Design.DependenciesOwnedRecordsName && HasDependenciesModule)
             {
-                _dependencies.ApplyLoaded(await EditHistory.OwnedRecordsDisplay.CreateAsync(this, Design.DependenciesModule.ModuleName, string.Empty, rows, ModuleLayoutType.None));
-                //追加 / 変更 / 削除 (前の版の行の打ち消し) の矢印は行の ClassName で強調して出す
+                _dependencies.ApplyLoaded(await OwnedRecordModules.CreateForShowAsync(this, string.Empty, rows, ModuleLayoutType.None));
+                //矢印は行の ClassName で強調して出す
                 RebuildDependencies();
                 NotifyStateChanged();
                 return;
             }
             if (name != Design.Name) return;
-            _tasks.ApplyLoaded(await EditHistory.OwnedRecordsDisplay.CreateAsync(this, ModuleName, Design.DetailLayoutName, rows));
+            _tasks.ApplyLoaded(await OwnedRecordModules.CreateForShowAsync(this, Design.DetailLayoutName, rows));
             RebuildItemsInView();
             static bool IsDecorated(GanttItem e) => !string.IsNullOrEmpty(e.Module?.ClassName);
             var all = _tasks.Items.Select(ConvertToGanttItem).Where(e => e.Start != default).OrderBy(e => e.Start).ToList();

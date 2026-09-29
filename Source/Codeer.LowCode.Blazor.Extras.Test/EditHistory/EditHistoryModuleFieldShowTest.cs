@@ -43,7 +43,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.EditHistory
             var previous = Order("A", Customer("5", "A社", "n"));
             var current = Order("A", Customer("5", "B社", "n"));
 
-            var changes = EditHistoryDiff.Compute(design, design.Modules.Find("Order")!, previous, current, _ => true);
+            var changes = EditHistoryDiff.Compute(design, design.Modules.Find("Order")!, previous, current, (_, _) => true);
             var module = await ModuleCreationService.CreateModuleAsync(services.Core, new ModuleData { Name = "Order" }, ModuleLayoutType.None);
             await module.SetDataWithoutInteractionAsync(current.JsonClone());
             foreach (var (fieldDesign, owned) in EditHistoryContracts.OwnedRecords(design.Modules.Find("Order")!))

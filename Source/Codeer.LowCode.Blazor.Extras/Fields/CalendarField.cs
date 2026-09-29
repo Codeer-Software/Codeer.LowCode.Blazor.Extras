@@ -16,27 +16,27 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
     {
         private readonly ModuleCollection _modules = new();
 
-        //編集履歴の復元: 宣言した従属レコード (予定) を版の内容に差し替える (保存はユーザー)。
+        //IOwnedRecordsField: 宣言した従属レコード (予定) を与えられた行に差し替える (保存はしない)。
         //通常は表示範囲しか読んでいないので、突き合わせの前に全件を読み直す
         public async Task ApplyOwnedRecordsAsync(string name, IReadOnlyList<ModuleData> rows, Action<string, string>? onRevive)
         {
             if (name != Design.Name) return;
             var all = await this.GetChildModulesAsync(Design.SearchCondition, ModuleLayoutType.Detail, Design.DetailLayoutName, GetItemFieldNames());
             _modules.ApplyLoaded(all);
-            await EditHistory.OwnedRecordsRestore.ApplyAsync(this, _modules, ModuleName, Design.DetailLayoutName, Design.SearchCondition, rows, onRevive);
+            await OwnedRecordModules.ApplyAsync(this, _modules, ModuleName, Design.DetailLayoutName, Design.SearchCondition, rows, onRevive);
             Items.Clear();
             Items.AddRange(_modules.Items.Select(ConvertToCalendarItem).OrderByStart());
             await InvokeOnDataChangedAsync();
             NotifyStateChanged();
         }
 
-        //編集履歴の版表示: 版の予定をそのまま表示する (DB は読まない・表示専用)。
-        //装飾された予定 (差分のある予定 = decorate が ClassName を付けた行) が表示中の月に無ければ最初の装飾予定の月へ、
+        //IOwnedRecordsField: 与えられた予定をそのまま表示する (DB は読まない・表示専用)。
+        //装飾された予定 (ClassName が付いた行) が表示中の月に無ければ最初の装飾予定の月へ、
         //装飾が無く表示中の月に予定も無ければ最初の予定の月へ移動する
         public async Task ShowOwnedRecordsAsync(string name, IReadOnlyList<OwnedRecordRow> rows)
         {
             if (name != Design.Name) return;
-            _modules.ApplyLoaded(await EditHistory.OwnedRecordsDisplay.CreateAsync(this, ModuleName, Design.DetailLayoutName, rows));
+            _modules.ApplyLoaded(await OwnedRecordModules.CreateForShowAsync(this, Design.DetailLayoutName, rows));
             Items.Clear();
             Items.AddRange(_modules.Items.Select(ConvertToCalendarItem).OrderByStart());
             bool InView(ModuleCalendarItem e) => e.Start.Year == SelectedDate.Year && e.Start.Month == SelectedDate.Month;

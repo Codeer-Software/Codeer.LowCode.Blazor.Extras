@@ -20,12 +20,8 @@ namespace Codeer.LowCode.Blazor.Extras.Server.EditHistory
     ///   (画面・API からの追加・更新は拒否する。古い版の削除はできる)。
     /// - 読み出し: 履歴モジュールの行の Snapshot を読む人の権限に落として返す (対象モジュールの読めない列・読めない子モジュールの従属レコード・
     ///   行の閲覧条件に合わない行。対象モジュール自体を読めない・行が条件に合わないなら空)。一覧・詳細・ダウンロードは全部ここを通る。
-    /// - 復活: クライアントが送る「履歴行の Id」から版のスナップショットを読み、レコード全体を戻す。復活できるのはそのレコードの最新の版が削除のときだけ。
-    ///   論理削除は Id を保って取り消し (親と一緒に消えた従属レコードも)、物理削除は作り直す (自動採番は新しい Id・手入力 Id は元の Id)。
-    ///   権限は削除と同じ (CanDelete と UserRead / UserWrite 条件、行の条件)。
-    ///   新しい Id で作り直したときは、履歴を持つモジュールの旧 Id の版を新しい Id に付け替えて履歴を繋ぐ (履歴の行を書き換える唯一の箇所)。
-    /// - この版に戻す: フォームが送る保存に同梱された版から、「版にあり・今は削除中・その人に見えている」従属レコードの行だけを Id を保って取り消す。
-    ///   戻せない行 (削除権限が無い等) が 1 つでもあれば保存全体を失敗にする (部分反映はしない)。
+    /// - 復活 / この版に戻す: 送信に同梱された削除の取り消しの依頼を、本体の保存の前に処理する (EditHistoryUndeleter)。
+    ///   戻せないものが 1 つでもあれば保存全体を失敗にする (部分反映はしない)。
     /// </summary>
     /// <remarks>
     /// 履歴の記録に失敗したときは結果に ExceptionMessage を立てて保存ごと失敗 (ロールバック) にする
@@ -37,16 +33,16 @@ namespace Codeer.LowCode.Blazor.Extras.Server.EditHistory
     /// </remarks>
     public class EditHistoryRecorder : IModuleDataIOInterceptor
     {
-        const string TemporaryIdPrefix = "@temporary:";
-
         readonly DesignData _designData;
         readonly Action<string>? _logError;
+        readonly EditHistoryUndeleter _undeleter;
 
         /// <param name="logError">記録をスキップした理由・復活の失敗理由などを出すログ (ILogger の Warning 等)。</param>
         public EditHistoryRecorder(DesignData designData, Action<string>? logError = null)
         {
             _designData = designData;
             _logError = logError;
+            _undeleter = new EditHistoryUndeleter(designData);
         }
 
         // ===== 読み出し: Snapshot を読む人の権限に落とす =====
@@ -92,7 +88,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.EditHistory
             }
 
             //削除の取り消し (この版に戻す / 復活ボタン)。本体の前に戻しておけば、同じ Submit の Update と一緒に確定する
-            var restores = new Dictionary<int, RestoreResult>();
+            var restores = new Dictionary<int, EditHistoryUndeleteResult>();
             for (var i = 0; i < transactionData.Count; i++)
             {
                 var submitData = transactionData[i];
@@ -100,7 +96,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.EditHistory
                 {
                     try
                     {
-                        var restored = await RestoreAsync(io, submitData, request);
+                        var restored = await _undeleter.RestoreAsync(io, submitData, request);
                         if (restored.IsWholeRecord) restores[i] = restored;
                     }
                     catch (Exception ex)
@@ -167,7 +163,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.EditHistory
                 else if (IsStandalone(module, submitData))
                 {
                     //ExecuteSqlField (Standalone) だけの送信: レコード自体が変わったときだけ版にする (変更前を取っておいて後で比べる)
-                    if (string.IsNullOrEmpty(submitData.Id) || submitData.Id.StartsWith(TemporaryIdPrefix)) continue;
+                    if (string.IsNullOrEmpty(submitData.Id) || IdFieldData.IsTemporaryId(submitData.Id)) continue;
                     plan.ChangeType = EditHistoryChangeType.Update;
                     plan.Before = await LoadAsync(io, module.Name, submitData.Id);
                 }
@@ -241,7 +237,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.EditHistory
                         //行ごとの作成: 送信の仮 Id を結果の対応表で採番 Id にしてから保存後の行を読む
                         var map = plan.Index < results.Count ? results[plan.Index].TemporaryIdMap : null;
                         id = map != null && map.TryGetValue(plan.RowTempId, out var real) ? real : plan.RowTempId;
-                        if (string.IsNullOrEmpty(id) || id.StartsWith(TemporaryIdPrefix))
+                        if (string.IsNullOrEmpty(id) || IdFieldData.IsTemporaryId(id))
                         {
                             _logError?.Invoke($"Edit history of a row of '{plan.Module.Name}' was not recorded: the Id of the saved row is not available.");
                             continue;
@@ -265,7 +261,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.EditHistory
                     else
                     {
                         id = plan.Index < results.Count ? results[plan.Index].DestinationId : string.Empty;
-                        if (string.IsNullOrEmpty(id) || id.StartsWith(TemporaryIdPrefix))
+                        if (string.IsNullOrEmpty(id) || IdFieldData.IsTemporaryId(id))
                         {
                             _logError?.Invoke($"Edit history of '{plan.Module.Name}' was not recorded: the Id of the saved record is not available (bulk insert, or an ExecuteSqlField create without NewId).");
                             continue;
@@ -291,222 +287,6 @@ namespace Codeer.LowCode.Blazor.Extras.Server.EditHistory
             }
             return results;
         }
-
-        // ===== 復活 =====
-
-        sealed class RestoreResult
-        {
-            public bool IsWholeRecord { get; init; }
-            public bool IsRecreated { get; init; }
-            public string RestoredId { get; init; } = string.Empty;
-        }
-
-        //履歴行を読み、版のスナップショットから戻す
-        async Task<RestoreResult> RestoreAsync(ModuleDataIOInternalAccess io, ModuleSubmitData submitData, EditHistoryUndeleteData request)
-        {
-            var historyModule = _designData.Modules.Find(request.HistoryModuleName)
-                ?? throw new InvalidOperationException($"Edit history module '{request.HistoryModuleName}' does not exist.");
-            var names = EditHistoryContracts.Contract(historyModule)
-                ?? throw new InvalidOperationException($"Edit history module '{historyModule.Name}' has no {nameof(EditHistoryContractFieldDesign)}.");
-            var historyRow = await io.GetWithOwnedRecordsAsync(historyModule.Name, request.HistoryRowId, _ => false)
-                ?? throw new InvalidOperationException("The edit history version does not exist.");
-            var targetModuleName = Text(historyRow, names.ModuleName);
-            var dataId = Text(historyRow, names.DataId);
-            var snapshot = EditHistorySnapshot.Deserialize(Text(historyRow, names.Snapshot));
-            //版は送信の対象レコードのものに限る (別のレコードの版を指定して他人の行を戻せないように)
-            if (snapshot == null || targetModuleName != submitData.ModuleName || dataId != submitData.Id || snapshot.Name != submitData.ModuleName)
-                throw new InvalidOperationException("The edit history version does not belong to the record being saved.");
-            var module = _designData.Modules.Find(targetModuleName)
-                ?? throw new InvalidOperationException($"Module '{targetModuleName}' does not exist.");
-            var field = EditHistoryContracts.Field(module);
-
-            if (!request.RestoreWholeRecord)
-            {
-                //この版に戻す: 版の従属レコードのうち「今は削除中で、その人に見えている (差分に出ている)」論理削除の行を Id を保って取り消す
-                //(レコード自身と行の値はフォームの保存が持つ)。見えていない行は触らない。戻せない行 (削除権限が無い等) があれば例外 = 保存失敗
-                var visible = snapshot.JsonClone();
-                if (await io.RemoveUnreadableAsync(visible)) await UndeleteDeletedRowsAsync(io, module, field, visible, string.Empty, together: false);
-                return new RestoreResult { IsWholeRecord = false, RestoredId = dataId };
-            }
-
-            //復活ボタン: 削除の版からレコード全体を戻す。復活できるのはそのレコードの最新の版が削除のときだけ (復活済み・作り直し済みなら不可)
-            if (Text(historyRow, names.ChangeType) != EditHistoryChangeType.Delete.ToString())
-                throw new InvalidOperationException("Only a deleted record (a Delete version) can be restored.");
-            var latest = (await io.GetListAsync(VersionsOf(historyModule, names, targetModuleName, dataId, limitCount: 1))).Items.FirstOrDefault();
-            if (latest == null || EditHistorySnapshot.GetId(latest) != request.HistoryRowId)
-                throw new InvalidOperationException("Only the latest version can be restored. The record has been changed or restored after this version.");
-            //復活できるのは今そのレコードが無い (削除中) ときだけ。版の削除で Delete 版が最新に戻った場合や別の経路で戻っていた場合に、
-            //同じレコードをもう 1 件作ったり、削除されていないレコードに復活の版を積んだりしない (手入力 Id で同じ Id のレコードがある場合も同じ)
-            if (await io.GetWithOwnedRecordsAsync(module.Name, dataId, _ => false) != null)
-                throw new InvalidOperationException($"The record '{dataId}' of '{module.Name}' exists (it is not deleted). Only a deleted record can be restored.");
-
-            if (module.UsesLogicalDelete())
-            {
-                //論理削除: Id を保って取り消し (権限は削除と同じ)。親と一緒に消えた従属レコードも戻す (親の削除が子を消すのと同じ規則)
-                await io.UndeleteAsync(module.Name, dataId, snapshot);
-                await UndeleteDeletedRowsAsync(io, module, field, snapshot, string.Empty, together: true);
-                return new RestoreResult { IsWholeRecord = true, RestoredId = dataId };
-            }
-            //物理削除: スナップショットから作り直す。手入力 Id は元の Id、自動採番は新しい Id (旧 Id の版を付け替えて履歴を繋ぐ)
-            if (!await io.CanUndeleteAsync(module.Name, snapshot)) throw new InvalidOperationException("You are not allowed to restore this record.");
-            var newId = await RecreateAsync(io, module, field, snapshot, string.Empty, null, null);
-            return new RestoreResult { IsWholeRecord = true, IsRecreated = newId != dataId, RestoredId = newId };
-        }
-
-        //版の従属レコード (含める宣言の先。子・孫も) のうち、今は削除中 (通常の読み出しで見つからない) の行を戻す。
-        //論理削除モジュールの行は Id を保って取り消す。together = 親と一緒に消えた行の取り消し (子の CanDelete だけ見る。物理削除モジュールの行は作り直す)。
-        //together でなければ (この版に戻す) その人の権限で取り消す (物理削除モジュールの行はフォームが新しい行として送る)
-        async Task UndeleteDeletedRowsAsync(ModuleDataIOInternalAccess io, ModuleDesign design, EditHistoryFieldDesign? field, ModuleData data, string prefix, bool together)
-        {
-            foreach (var (_, owned) in EditHistoryContracts.OwnedRecords(design))
-            {
-                var path = EditHistoryPolicy.Path(prefix, owned.Name);
-                if (!EditHistoryPolicy.IsIncluded(field, path)) continue;
-                var child = _designData.Modules.Find(owned.Condition.ModuleName);
-                if (child == null || data.GetOwnedRows(owned.Name) is not { } rows) continue;
-                //親が子を参照する宣言 (埋め込みモジュール) の子は親の削除で消えない (親と一緒に戻すものではない)
-                var binding = GetBinding(owned);
-                foreach (var row in rows)
-                {
-                    var id = EditHistorySnapshot.GetId(row);
-                    var exists = id.Length == 0 || await io.GetWithOwnedRecordsAsync(child.Name, id, _ => false) != null;
-                    if (!exists && child.UsesLogicalDelete())
-                    {
-                        if (together) await io.UndeleteTogetherAsync(child.Name, id);
-                        else await io.UndeleteAsync(child.Name, id, row);
-                    }
-                    else if (!exists && together && binding is { ParentRefersChild: false })
-                    {
-                        //物理削除モジュールの明細は親の削除で消えている。作り直す (親の Id は変わらないので参照はそのまま)
-                        if (!child.CanDelete) throw new InvalidOperationException($"The rows of '{child.Name}' cannot be restored.");
-                        await RecreateAsync(io, child, field, row, path, owned, EditHistorySnapshot.GetId(data));
-                        continue;
-                    }
-                    await UndeleteDeletedRowsAsync(io, child, field, row, path, together);
-                }
-            }
-        }
-
-        //スナップショットの行を新しいレコードとして作る (自動採番は Id 振り直し・手入力 Id は元の Id)。従属レコードの行も作り直す。戻り値は新しい Id。
-        //親への参照は宣言の束縛条件から付け替える: 子が親を参照する宣言 (明細) は親を先に作って子の参照を親の新しい Id に、
-        //親が子を参照する宣言 (埋め込みモジュール) は子を先に用意して親の参照を子の Id にする (子が今もあればそれを参照し、無ければ作り直す)。
-        //履歴を持つモジュールのレコードを新しい Id で作ったときは、旧 Id の版を新しい Id に付け替える (履歴が繋がる・旧 Id の削除の版から二度復活できない)
-        async Task<string> RecreateAsync(ModuleDataIOInternalAccess io, ModuleDesign design, EditHistoryFieldDesign? field, ModuleData data, string prefix,
-            OwnedRecordsDesign? bindTo, string? parentId)
-        {
-            var oldId = EditHistorySnapshot.GetId(data);
-            var keepId = IsManualId(design);
-            var copy = data.JsonClone();
-            //従属レコードの行 (一覧・内容を持つ埋め込みの子) は外す (下で作り直して参照を付ける)。内容を持たない参照だけの項目はそのまま写す
-            foreach (var key in copy.Fields.Keys.Where(e => (EditHistoryContracts.IsExcludedField(e) && !(keepId && e == SystemFieldNames.Id)) || EditHistoryContracts.HasOwnedRows(copy.Fields[e])).ToList())
-                copy.Fields.Remove(key);
-
-            //親が子を参照する宣言 (埋め込みモジュール): 子を先に用意し、自分の参照を子の Id にする
-            foreach (var (_, owned) in EditHistoryContracts.OwnedRecords(design))
-            {
-                var path = EditHistoryPolicy.Path(prefix, owned.Name);
-                var binding = GetBinding(owned);
-                if (binding is not { ParentRefersChild: true } || !EditHistoryPolicy.IsIncluded(field, path)) continue;
-                var child = _designData.Modules.Find(owned.Condition.ModuleName);
-                if (child == null || data.GetOwnedRows(owned.Name)?.FirstOrDefault() is not { } row) continue;
-                var childId = EditHistorySnapshot.GetId(row);
-                if (childId.Length == 0 || await io.GetWithOwnedRecordsAsync(child.Name, childId, _ => false) == null)
-                {
-                    if (!child.CanDelete) throw new InvalidOperationException($"The record of '{child.Name}' cannot be restored.");
-                    childId = await RecreateAsync(io, child, field, row, path, null, null);
-                }
-                SetReference(design, copy, binding.ParentField, childId);
-            }
-            //子が親を参照する宣言 (明細) の子として作るとき: 参照を親の新しい Id にする
-            if (bindTo != null && parentId != null && GetBinding(bindTo) is { ParentRefersChild: false } toParent)
-                SetReference(design, copy, toParent.ChildField, parentId);
-
-            var newId = await io.AddAsync(copy);
-            if (oldId.Length != 0 && newId != oldId) await RelinkVersionsAsync(io, design, oldId, newId);
-
-            //子が親を参照する宣言 (明細) の子を、親の新しい Id で作り直す (親と一緒に消えた行なので子の CanDelete だけ見る)
-            foreach (var (_, owned) in EditHistoryContracts.OwnedRecords(design))
-            {
-                var path = EditHistoryPolicy.Path(prefix, owned.Name);
-                if (GetBinding(owned) is not { ParentRefersChild: false } || !EditHistoryPolicy.IsIncluded(field, path)) continue;
-                var child = _designData.Modules.Find(owned.Condition.ModuleName);
-                if (child == null || data.GetOwnedRows(owned.Name) is not { } rows) continue;
-                if (rows.Count != 0 && !child.CanDelete) throw new InvalidOperationException($"The rows of '{child.Name}' cannot be restored.");
-                foreach (var row in rows) await RecreateAsync(io, child, field, row, path, owned, newId);
-            }
-            return newId;
-        }
-
-        //新しい Id で作り直したレコードの、旧 Id の版を新しい Id に付け替える (そのモジュールが履歴を持つときだけ)
-        async Task RelinkVersionsAsync(ModuleDataIOInternalAccess io, ModuleDesign design, string oldId, string newId)
-        {
-            var resolved = EditHistoryContracts.Resolve(_designData, design, out _);
-            if (resolved == null) return;
-            var (historyModule, names) = resolved.Value;
-            var versions = await io.GetListAsync(VersionsOf(historyModule, names, design.Name, oldId, limitCount: null));
-            foreach (var version in versions.Items)
-            {
-                var update = new ModuleData { Name = historyModule.Name };
-                update.Fields[SystemFieldNames.Id] = version.Fields[SystemFieldNames.Id];
-                if (historyModule.Fields.FirstOrDefault(e => e.Name == names.DataId)?.CreateData() is not TextFieldData dataId) return;
-                dataId.Value = newId;
-                update.Fields[names.DataId] = dataId;
-                await io.UpdateAsync(update);
-            }
-        }
-
-        //レコードの版 (新しい順。閲覧側 EditHistoryField と同じ並び = 日時があれば日時、Id で同着を決める)
-        static SearchCondition VersionsOf(ModuleDesign historyModule, EditHistoryContractFieldDesign names, string moduleName, string dataId, int? limitCount)
-        {
-            var condition = new SearchCondition
-            {
-                ModuleName = historyModule.Name,
-                Condition = MultiMatchCondition.And(Equal(names.ModuleName, moduleName), Equal(names.DataId, dataId)),
-                LimitCount = limitCount,
-                SortConditions = new List<SortCondition>(),
-                SelectFields = new[] { SystemFieldNames.Id, names.ModuleName, names.DataId, names.ChangeType, names.DateTime }
-                    .Where(e => !string.IsNullOrEmpty(e)).ToList(),
-            };
-            if (!string.IsNullOrEmpty(names.DateTime))
-                condition.SortConditions.Add(new SortCondition { Variable = $"{names.DateTime}.Value", IsDescending = true });
-            condition.SortConditions.Add(new SortCondition { Variable = $"{SystemFieldNames.Id}.Value", IsDescending = true });
-            return condition;
-        }
-
-        static FieldValueMatchCondition Equal(string fieldName, string value) => new()
-        {
-            SearchTargetVariable = $"{fieldName}.Value", Comparison = MatchComparison.Equal, Value = MultiTypeValue.Create(value),
-        };
-
-        //宣言の束縛 (子側のフィールド = SearchTargetVariable、親側のフィールド = Variable)。
-        //子側が Id なら「親が子を参照する」宣言 (埋め込みモジュール)、それ以外は「子が親を参照する」宣言 (明細)
-        sealed record Binding(string ChildField, string ParentField, bool ParentRefersChild);
-
-        static Binding? GetBinding(OwnedRecordsDesign owned)
-        {
-            var bind = owned.Condition.GetFieldVariableConditions().FirstOrDefault();
-            if (bind == null) return null;
-            var childField = new VariableName(bind.SearchTargetVariable).FieldName.FullName;
-            var parentField = new VariableName(bind.Variable).FieldName.FullName;
-            return new Binding(childField, parentField, childField == SystemFieldNames.Id);
-        }
-
-        //参照のフィールド (明細の親リンク・埋め込みモジュールの参照) に Id を入れる
-        static void SetReference(ModuleDesign design, ModuleData data, string fieldName, string id)
-        {
-            var fieldData = design.Fields.FirstOrDefault(e => e.Name == fieldName)?.CreateData();
-            switch (fieldData)
-            {
-                case ValueFieldDataBase<string> value: value.Value = id; break;
-                case ModuleFieldData embedded: embedded.Id = id; break;
-                default: return;
-            }
-            data.Fields[fieldName] = fieldData;
-        }
-
-        //Id が手入力 (または複合 Id) のモジュールか。Id がデータそのものなので、作り直しでも元の Id を保つ
-        static bool IsManualId(ModuleDesign design)
-            => design.Fields.OfType<IdFieldDesign>().FirstOrDefault(e => e.Name == SystemFieldNames.Id) is { } id && (id.IsManualInput || id.CompositeIdVariables.Count != 0);
 
         // ===== 記録の元を読む =====
 
@@ -590,9 +370,6 @@ namespace Codeer.LowCode.Blazor.Extras.Server.EditHistory
 
         static Plan RowPlan(int index, (ModuleDesign HistoryModule, EditHistoryContractFieldDesign Names, ModuleDesign Row) t, EditHistoryChangeType changeType)
             => new() { Index = index, Module = t.Row, HistoryModule = t.HistoryModule, Names = t.Names, ChangeType = changeType };
-
-        static string Text(ModuleData row, string fieldName)
-            => string.IsNullOrEmpty(fieldName) ? string.Empty : (row.Fields.GetValueOrDefault(fieldName) as ValueFieldDataBase<string>)?.Value ?? string.Empty;
 
         //送信の中身が「親の版に含めない従属レコード (除外・行ごと)」の行 (とその子孫) だけか。親自身も、親の版に含める従属レコードも変わっていない
         bool OnlyNotIncludedRows(ModuleDesign module, ModuleSubmitData submitData)

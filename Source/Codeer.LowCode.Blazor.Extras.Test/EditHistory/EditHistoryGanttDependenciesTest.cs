@@ -106,7 +106,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.EditHistory
             var after = before.JsonClone();
             after.Fields["Gantt:Dependencies"] = new ListFieldData { Children = [Dependency("d1", "1", "2")] };
 
-            var changes = EditHistoryDiff.Compute(design, design.Modules.Find("Project")!, before, after, _ => true);
+            var changes = EditHistoryDiff.Compute(design, design.Modules.Find("Project")!, before, after, (_, _) => true);
             Assert.That(changes.Select(e => (e.FieldName, e.DisplayName, e.AddedCount)), Is.EqualTo(new[] { ("Gantt:Dependencies", "工程:Dependencies", 1) }));
         }
 

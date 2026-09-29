@@ -48,7 +48,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.EditHistory
         }
 
         static List<EditHistoryChange> Compute(ModuleData? before, ModuleData after)
-            => EditHistoryDiff.Compute(_design, _design.Modules.Find("Order")!, before, after, _ => true);
+            => EditHistoryDiff.Compute(_design, _design.Modules.Find("Order")!, before, after, (_, _) => true);
 
         [Test]
         public void 子レコードの項目の変更は行1の変更として出る_変わらない項目とシステム項目は出ない()

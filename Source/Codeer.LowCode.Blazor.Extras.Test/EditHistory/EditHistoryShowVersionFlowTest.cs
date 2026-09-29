@@ -41,7 +41,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.EditHistory
             var current = Order("A", Item("10", "X", 5), Item("12", "Z", 1));
 
             //ShowVersionAsync と同じ順: 差分は先に計算済み → スナップショットの複製をフォームに入れる → 差分から表示用の行 → 一覧に見せる
-            var changes = EditHistoryDiff.Compute(design, design.Modules.Find("Order")!, previous, current, _ => true);
+            var changes = EditHistoryDiff.Compute(design, design.Modules.Find("Order")!, previous, current, (_, _) => true);
             var change = changes.Single(e => e.IsList && e.FieldName == "Items");
 
             var module = await ModuleCreationService.CreateModuleAsync(services.Core, new ModuleData { Name = "Order" }, ModuleLayoutType.None);

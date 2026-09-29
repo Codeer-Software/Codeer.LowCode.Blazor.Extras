@@ -269,30 +269,9 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         SearchCondition CreateCondition(int limitCount, bool countOnly = false)
         {
             var names = Names;
-            var condition = new SearchCondition
-            {
-                ModuleName = Design.HistoryModuleName,
-                Condition = MultiMatchCondition.And(
-                    Equal(names.ModuleName, Module.Design.Name),
-                    Equal(names.DataId, Module.GetIdText())),
-                LimitCount = limitCount,
-                SortConditions = new List<SortCondition>(),
-                SelectFields = (countOnly ? new[] { SystemFieldNames.Id } : new[] { SystemFieldNames.Id, names.ChangeType, names.Snapshot, names.UserId, names.DateTime })
-                    .Where(e => !string.IsNullOrEmpty(e)).ToList(),
-            };
-            //新しい順。日時があれば日時 (Id が連番でない DB でも正しく並ぶ)、Id で同着を決める
-            if (!string.IsNullOrEmpty(names.DateTime))
-                condition.SortConditions.Add(new SortCondition { Variable = $"{names.DateTime}.Value", IsDescending = true });
-            condition.SortConditions.Add(new SortCondition { Variable = $"{SystemFieldNames.Id}.Value", IsDescending = true });
-            return condition;
+            return EditHistoryContracts.VersionsCondition(Design.HistoryModuleName, names, Module.Design.Name, Module.GetIdText(), limitCount,
+                countOnly ? [SystemFieldNames.Id] : [SystemFieldNames.Id, names.ChangeType, names.Snapshot, names.UserId, names.DateTime]);
         }
-
-        static FieldValueMatchCondition Equal(string fieldName, string value) => new()
-        {
-            SearchTargetVariable = $"{fieldName}.Value",
-            Comparison = MatchComparison.Equal,
-            Value = MultiTypeValue.Create(value),
-        };
 
         EditHistoryVersion ToVersion(ModuleData row, int number)
         {
@@ -306,17 +285,13 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             {
                 Id = EditHistorySnapshot.GetId(row),
                 Number = number,
-                ChangeType = GetString(row, names.ChangeType),
+                ChangeType = EditHistoryContracts.GetText(row, names.ChangeType),
                 UserText = (user as LinkFieldData)?.DisplayText ?? (user as ValueFieldDataBase<string>)?.Value ?? string.Empty,
                 DateTime = dateTime,
                 //含めない従属レコード (除外・行ごと) は、指定より前に記録された版に入っていても外す (差分・版表示・復元が触らない)
-                Snapshot = EditHistoryPolicy.Strip(Services.AppInfoService.GetDesignData(), Design, EditHistorySnapshot.Deserialize(GetString(row, names.Snapshot))),
+                Snapshot = EditHistoryPolicy.Strip(Services.AppInfoService.GetDesignData(), Design, EditHistorySnapshot.Deserialize(EditHistoryContracts.GetText(row, names.Snapshot))),
             };
         }
-
-        static string GetString(ModuleData row, string fieldName)
-            => string.IsNullOrEmpty(fieldName) ? string.Empty
-                : (row.Fields.GetValueOrDefault(fieldName) as ValueFieldDataBase<string>)?.Value ?? string.Empty;
 
         //削除の版は「削除前の内容」なので、その前の版 (更新後の内容) と比べれば差分は無いのが普通。
         //作成の版は前が無いので、値のあるフィールド全部が差分になる
@@ -331,7 +306,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
                 return new();
             }
             var designData = Services.AppInfoService.GetDesignData();
-            var previous = EditHistoryPolicy.Strip(designData, Design, EditHistorySnapshot.Deserialize(GetString(previousRow, Names.Snapshot)));
+            var previous = EditHistoryPolicy.Strip(designData, Design, EditHistorySnapshot.Deserialize(EditHistoryContracts.GetText(previousRow, Names.Snapshot)));
             if (previous == null)
             {
                 //前の版の内容がこの人には見えない (行の閲覧条件に合わない版 = サーバーが空にして返す)。前の版が無いのと同じ扱い (全部が「空 → 値」に見えないように)
