@@ -46,6 +46,9 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         int _numberingTotal;
         //読み込み中に読み直しを頼まれた (自動保存の直後に「さらに表示」が動いている等)。読み込みが終わってから先頭から読み直す
         bool _reloadPending;
+        //版の一覧を展開しているか。初期化 (画面を開いたとき) は件数だけを読み、ユーザーが「表示」を押してから版を読む
+        //(版はスナップショット込みで重いので、開くたびに読まない)。保存で再初期化されても展開状態は保つ
+        bool _isExpanded;
 
         public EditHistoryField(EditHistoryFieldDesign design) : base(design) { }
 
@@ -74,11 +77,34 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             _pageIndex = 0;
             TotalCount = 0;
 
-            //詳細ページでは初期化時点で読み込む (一覧の行では読まない = 行数分のリクエストになるため)
+            //詳細ページでは初期化時点で読み込む (展開前は件数だけ。一覧の行では読まない = 行数分のリクエストになるため)
             if (IsAvailable && ModuleLayoutType == ModuleLayoutType.Detail)
             {
                 await ReloadAsync();
             }
+        }
+
+        /// <summary>版の一覧を展開しているか (展開前は件数だけを持つ)。</summary>
+        public bool IsExpanded => _isExpanded;
+
+        /// <summary>版の一覧を展開する (版を読み込む)。</summary>
+        [ScriptName("Expand")]
+        public async Task ExpandAsync()
+        {
+            if (_isExpanded) return;
+            _isExpanded = true;
+            await ReloadAsync();
+        }
+
+        /// <summary>版の一覧を閉じる (件数の表示に戻す)。</summary>
+        [ScriptName("Collapse")]
+        public void Collapse()
+        {
+            if (!_isExpanded) return;
+            _isExpanded = false;
+            _versions.Clear();
+            _pageIndex = 0;
+            NotifyStateChanged();
         }
 
         [ScriptHide]
@@ -135,7 +161,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         //契約 (役割→フィールド名)。契約が無ければ既定名
         EditHistoryContractFieldDesign Names => EditHistoryContracts.Contract(HistoryModule) ?? new();
 
-        /// <summary>履歴を先頭から読み直す。読み込み中なら、その読み込みが終わってから読み直す (途中の応答が混ざらないように)。</summary>
+        /// <summary>履歴を先頭から読み直す (展開前は件数だけ)。読み込み中なら、その読み込みが終わってから読み直す (途中の応答が混ざらないように)。</summary>
         [ScriptName("Reload")]
         public async Task ReloadAsync()
         {
@@ -150,8 +176,37 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
                 _versions.Clear();
                 _pageIndex = 0;
                 _numberingTotal = 0;
-                await LoadPageAsync();
+                if (_isExpanded) await LoadPageAsync();
+                else await LoadCountAsync();
             } while (_reloadPending);
+        }
+
+        //件数だけ読む (Id だけ選ぶ = サーバー側でスナップショットの権限落としも走らない軽い要求)
+        async Task LoadCountAsync()
+        {
+            if (!IsAvailable || IsBusy || HistoryModule == null) return;
+            if (!HistoryModule.HasUserReadPermission(Services))
+            {
+                IsLoaded = true;
+                NotifyStateChanged();
+                return;
+            }
+            IsBusy = true;
+            try
+            {
+                var page = (await Services.ModuleDataService.GetListAsync(new List<GetListRequest>
+                {
+                    new() { Condition = CreateCondition(1, countOnly: true), PageIndex = 0 },
+                })).FirstOrDefault();
+                TotalCount = page?.TotalCount ?? 0;
+                _numberingTotal = TotalCount;
+                IsLoaded = true;
+            }
+            finally
+            {
+                IsBusy = false;
+                NotifyStateChanged();
+            }
         }
 
         /// <summary>次のページ (古い版) を読む。</summary>
@@ -188,6 +243,8 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
                 var older = pages[1].Items.FirstOrDefault();
                 TotalCount = page.TotalCount;
                 if (_pageIndex == 0) _numberingTotal = TotalCount;
+                //読み込みの間に閉じられたら版は入れない
+                if (!_isExpanded) return;
 
                 //版番号 = 閲覧者に見える版の中での古い方からの連番 (履歴モジュールの閲覧条件で見えない版は数えない)
                 var number = _numberingTotal - _pageIndex * pageSize;
@@ -209,7 +266,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             }
         }
 
-        SearchCondition CreateCondition(int limitCount)
+        SearchCondition CreateCondition(int limitCount, bool countOnly = false)
         {
             var names = Names;
             var condition = new SearchCondition
@@ -220,7 +277,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
                     Equal(names.DataId, Module.GetIdText())),
                 LimitCount = limitCount,
                 SortConditions = new List<SortCondition>(),
-                SelectFields = new[] { SystemFieldNames.Id, names.ChangeType, names.Snapshot, names.UserId, names.DateTime }
+                SelectFields = (countOnly ? new[] { SystemFieldNames.Id } : new[] { SystemFieldNames.Id, names.ChangeType, names.Snapshot, names.UserId, names.DateTime })
                     .Where(e => !string.IsNullOrEmpty(e)).ToList(),
             };
             //新しい順。日時があれば日時 (Id が連番でない DB でも正しく並ぶ)、Id で同着を決める

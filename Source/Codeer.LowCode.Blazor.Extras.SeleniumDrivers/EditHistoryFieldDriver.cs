@@ -44,12 +44,22 @@ namespace Codeer.LowCode.Blazor.Extras.SeleniumDrivers
         public static implicit operator EditHistoryVersionDriver(ElementFinder finder) => finder.Find<EditHistoryVersionDriver>();
     }
 
-    /// <summary>編集履歴フィールド (EditHistoryField)。版の一覧と「さらに表示」。</summary>
+    /// <summary>
+    /// 編集履歴フィールド (EditHistoryField)。画面を開いた直後は件数 (「履歴 n 件」) と「表示」だけで、版の一覧は「表示」を押してから読まれる。
+    /// Versions / FindVersion / LoadMore は必要なら自動で「表示」を押す (Open) ので、テストは開く操作を書かなくてよい。
+    /// </summary>
     public class EditHistoryFieldDriver : ComponentBase
     {
-        /// <summary>版 (新しい順)。</summary>
-        public ItemsControlDriver<EditHistoryVersionDriver> Versions => ByCssSelector("[data-system='edit-history-versions']").Wait().Find<ItemsControlDriver<EditHistoryVersionDriver>>();
-        /// <summary>読み込み中 / 履歴なし / 未保存 などの注記。版があるときは空文字。</summary>
+        /// <summary>版 (新しい順)。展開していなければ「表示」を押してから返す。</summary>
+        public ItemsControlDriver<EditHistoryVersionDriver> Versions
+        {
+            get
+            {
+                Open();
+                return ByCssSelector("[data-system='edit-history-versions']").Wait().Find<ItemsControlDriver<EditHistoryVersionDriver>>();
+            }
+        }
+        /// <summary>読み込み中 / 履歴なし / 未保存 などの注記。件数や版が出ているときは空文字。</summary>
         public string Note
         {
             get
@@ -58,10 +68,49 @@ namespace Codeer.LowCode.Blazor.Extras.SeleniumDrivers
                 return e.Count == 0 ? string.Empty : e[0].TextContent();
             }
         }
-        /// <summary>版が 1 つ以上読み込まれているか。</summary>
+        /// <summary>履歴の件数 (「履歴 n 件」の n)。件数が出ていない (読み込み前・未保存・0 件) ときは 0。</summary>
+        public int Count
+        {
+            get
+            {
+                var e = Element.FindElements(By.CssSelector("[data-system='edit-history-count']"));
+                return e.Count == 0 ? 0 : int.Parse(e[0].GetAttribute("data-count") ?? "0");
+            }
+        }
+        /// <summary>版の一覧を展開しているか。</summary>
+        public bool IsOpen => Element.FindElements(By.CssSelector("[data-system='edit-history-collapse']")).Count > 0;
+        /// <summary>「表示」(展開前で履歴が 1 件以上あるときだけ出る)。</summary>
+        public ButtonDriver OpenButton => ByCssSelector("[data-system='edit-history-open']").Wait();
+        /// <summary>「閉じる」(展開中に出る)。</summary>
+        public ButtonDriver CloseButton => ByCssSelector("[data-system='edit-history-collapse']").Wait();
+        /// <summary>
+        /// 版の一覧を展開する。既に展開していれば何もしない。件数の読み込みを待ち、0 件 (「表示」が無い) なら何もしない。
+        /// </summary>
+        public void Open()
+        {
+            var limit = DateTime.Now.AddSeconds(30);
+            while (true)
+            {
+                if (IsOpen) return;
+                var open = Element.FindElements(By.CssSelector("[data-system='edit-history-open']"));
+                if (open.Count > 0)
+                {
+                    open[0].Click();
+                    ByCssSelector("[data-system='edit-history-collapse']").Wait();
+                    return;
+                }
+                //件数が読めていて 0 件、または未保存・詳細以外の注記 = 開くものが無い
+                var note = Note;
+                if (note.Length != 0 && Element.FindElements(By.CssSelector("[data-system='edit-history-count']")).Count == 0 && !IsLoadingNote(note)) return;
+                if (DateTime.Now > limit) throw new Exception("編集履歴の件数が読み込まれません: " + note);
+                Thread.Sleep(200);
+            }
+        }
+        static bool IsLoadingNote(string note) => note.Contains("読み込み中") || note.Contains("Loading");
+        /// <summary>版が 1 つ以上読み込まれているか (展開していなければ false)。</summary>
         public bool HasVersions => Element.FindElements(By.CssSelector("[data-system='edit-history-version']")).Count > 0;
         /// <summary>「さらに表示」(次のページがあるときだけ出る)。</summary>
-        public ButtonDriver LoadMore => ByCssSelector("[data-system='edit-history-more']").Wait();
+        public ButtonDriver LoadMore { get { Open(); return ByCssSelector("[data-system='edit-history-more']").Wait(); } }
         public bool HasMore => Element.FindElements(By.CssSelector("[data-system='edit-history-more']")).Count > 0;
         /// <summary>「版 n」の見出しを持つ版を探す。</summary>
         public EditHistoryVersionDriver FindVersion(int number) => Versions.AsEnumerable().First(v => v.Number.EndsWith(" " + number) || v.Number == number.ToString());

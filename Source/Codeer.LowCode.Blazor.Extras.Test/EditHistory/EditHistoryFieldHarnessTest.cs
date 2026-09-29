@@ -78,14 +78,46 @@ namespace Codeer.LowCode.Blazor.Extras.Test.EditHistory
             return services;
         }
 
-        static async Task<(Module Module, EditHistoryField Field)> CreateOrderModuleAsync(TestServices services, ModuleData data)
+        /// <param name="expand">版の一覧を展開する (初期化では件数だけを読むので、版を見るテストは展開してから)。</param>
+        static async Task<(Module Module, EditHistoryField Field)> CreateOrderModuleAsync(TestServices services, ModuleData data, bool expand = true)
         {
             var module = await ModuleCreationService.CreateModuleAsync(services.Core, data, ModuleLayoutType.Detail);
-            return (module, module.GetField<EditHistoryField>("History")!);
+            var field = module.GetField<EditHistoryField>("History")!;
+            if (expand) await field.ExpandAsync();
+            return (module, field);
         }
 
         [Test]
-        public async Task 詳細ページの初期化で履歴を読み_版番号は件数から採番し_差分を持つ()
+        public async Task 詳細ページの初期化では件数だけを読み_展開で版を読む_閉じると件数に戻る()
+        {
+            var services = CreateServices();
+            var (_, field) = await CreateOrderModuleAsync(services, _v3, expand: false);
+
+            Assert.That(field.IsLoaded, Is.True);
+            Assert.That(field.IsExpanded, Is.False);
+            Assert.That(field.TotalCount, Is.EqualTo(3), "件数は初期化で分かる");
+            Assert.That(field.Versions, Is.Empty, "版はまだ読まない (スナップショット込みで重い)");
+            var count = services.App.ListRequests.Single();
+            Assert.That(count.Condition.SelectFields, Is.EqualTo(new[] { "Id" }), "Id だけ選ぶ = サーバーでスナップショットの権限落としも走らない");
+            Assert.That(count.Condition.LimitCount, Is.EqualTo(1));
+
+            await field.ExpandAsync();
+            Assert.That(field.IsExpanded, Is.True);
+            Assert.That(field.Versions.Select(e => e.Number), Is.EqualTo(new[] { 3, 2, 1 }));
+            Assert.That(services.App.ListRequests.Count, Is.EqualTo(3), "展開でページと次の 1 行を読む");
+
+            //閉じると件数の表示に戻る (版は捨てる)。保存後の読み直しも展開していなければ件数だけ
+            field.Collapse();
+            Assert.That(field.IsExpanded, Is.False);
+            Assert.That(field.Versions, Is.Empty);
+            field.AcceptChanges(new SubmitAcceptInfo());
+            await field.ReloadAfterSubmit!;
+            Assert.That(services.App.ListRequests.Last().Condition.SelectFields, Is.EqualTo(new[] { "Id" }));
+            Assert.That(field.TotalCount, Is.EqualTo(3));
+        }
+
+        [Test]
+        public async Task 展開で履歴を読み_版番号は件数から採番し_差分を持つ()
         {
             var services = CreateServices();
             var (_, field) = await CreateOrderModuleAsync(services, _v3);
@@ -133,7 +165,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.EditHistory
             var services = CreateServices();
             await CreateOrderModuleAsync(services, _v3);
 
-            var requests = services.App.ListRequests;
+            var requests = services.App.ListRequests.Skip(1).ToList();  //先頭は初期化の件数取り
             Assert.That(requests.Count, Is.EqualTo(2), "ページと、その次の 1 行 (末尾の版の差分の元)");
             var condition = requests[0].Condition;
             Assert.That(condition.ModuleName, Is.EqualTo("EditHistory"));

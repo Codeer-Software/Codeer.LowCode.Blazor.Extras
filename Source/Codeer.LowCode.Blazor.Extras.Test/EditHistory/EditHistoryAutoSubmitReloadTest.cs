@@ -64,6 +64,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.EditHistory
             var services = CreateServices();
             var module = await ModuleCreationService.CreateModuleAsync(services.Core, Order("1", "A"), ModuleLayoutType.Detail);
             var field = module.GetField<EditHistoryField>("History")!;
+            await field.ExpandAsync();
             Assert.That(field.Versions.Select(e => e.Number), Is.EqualTo(new[] { 1 }));
             var requestsBefore = services.App.ListRequests.Count;
 
@@ -102,6 +103,8 @@ namespace Codeer.LowCode.Blazor.Extras.Test.EditHistory
             await field.ReloadAfterSubmit!;
 
             Assert.That(field.IsLoaded, Is.True);
+            Assert.That(field.TotalCount, Is.EqualTo(1), "展開前は件数だけ");
+            await field.ExpandAsync();
             Assert.That(field.Versions.Select(e => (e.Number, e.ChangeType)), Is.EqualTo(new[] { (1, "Add") }));
         }
 

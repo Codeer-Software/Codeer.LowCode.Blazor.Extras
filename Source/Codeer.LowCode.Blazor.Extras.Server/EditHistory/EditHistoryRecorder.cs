@@ -118,7 +118,25 @@ namespace Codeer.LowCode.Blazor.Extras.Server.EditHistory
                 if (module == null) continue;
                 var resolved = EditHistoryContracts.Resolve(_designData, module, out var error);
                 if (error != null) return Fail(transactionData, error);
-                if (resolved == null) continue;
+                var isRootDelete = submitData.Delete.Any(e => e.ModuleName == submitData.ModuleName && e.Id == submitData.Id);
+                //履歴を持つモジュールのレコードに触る送信では、削除・差し替えで消える添付ファイルを残す (版から戻したときに実体がある)
+                if (resolved != null || TouchesHistoryModule(submitData)) io.KeepDeletedFiles(submitData);
+                if (resolved == null)
+                {
+                    //履歴を持たないモジュールの削除でも、一緒に消える従属レコードのうち自分の履歴を持つモジュールの行には削除の版を残す
+                    if (isRootDelete && IndividualTargets(module, null, out var targetError).Count != 0)
+                    {
+                        if (targetError != null) return Fail(transactionData, targetError);
+                        var full = await LoadFullAsync(io, module.Name, submitData.Id);
+                        if (full != null)
+                        {
+                            var (rowPlans, rowError) = await IndividuallyRecordedDeletePlansAsync(io, i, module, full);
+                            if (rowError != null) return Fail(transactionData, rowError);
+                            plans.AddRange(rowPlans);
+                        }
+                    }
+                    continue;
+                }
                 //履歴対象の投入は結果の仮 Id 解決を使う (= 本体の一括 INSERT 経路の対象外にし、1 行ずつの経路で採番 Id を得る)
                 submitData.NoTemporaryIdResolution = false;
                 AssignTemporaryIdToRootAdd(submitData);
@@ -127,7 +145,6 @@ namespace Codeer.LowCode.Blazor.Extras.Server.EditHistory
                 {
                     Index = i, Module = module, HistoryModule = resolved.Value.HistoryModule, Names = resolved.Value.Names,
                 };
-                var isRootDelete = submitData.Delete.Any(e => e.ModuleName == submitData.ModuleName && e.Id == submitData.Id);
                 if (restores.TryGetValue(i, out var restored))
                 {
                     //復活ボタン: 論理削除は同じ Id、物理削除は作り直した Id (旧 Id の版は作り直した Id に付け替え済み = 履歴は繋がる)
@@ -171,7 +188,8 @@ namespace Codeer.LowCode.Blazor.Extras.Server.EditHistory
                 plans.Add(plan);
             }
 
-            //行ごとに記録する従属レコード (親の EditHistoryField の IndividuallyRecordedOwnedRecords):
+            //行ごとに記録する従属レコード (親の EditHistoryField の IndividuallyRecordedOwnedRecords。親に EditHistoryField が無ければ、
+            //自分の EditHistoryField を持つ従属レコードのモジュール全部):
             //親の送信に乗った行 (Add / Update / Delete) を、行のモジュール自身の履歴に 1 行 1 版で記録する。
             //親の画面から保存しても、行のモジュールで保存したのと同じ版になる。削除は本体の前に削除前の内容を読む
             for (var i = 0; i < transactionData.Count; i++)
@@ -179,7 +197,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.EditHistory
                 var submitData = transactionData[i];
                 var module = _designData.Modules.Find(submitData.ModuleName);
                 var field = EditHistoryContracts.Field(module);
-                if (module == null || field == null || field.IndividuallyRecordedOwnedRecords.Count == 0) continue;
+                if (module == null || (field != null && field.IndividuallyRecordedOwnedRecords.Count == 0)) continue;
 
                 var targets = IndividualTargets(module, field, out var targetError);
                 if (targetError != null) return Fail(transactionData, targetError);
@@ -317,6 +335,10 @@ namespace Codeer.LowCode.Blazor.Extras.Server.EditHistory
             var latest = (await io.GetListAsync(VersionsOf(historyModule, names, targetModuleName, dataId, limitCount: 1))).Items.FirstOrDefault();
             if (latest == null || EditHistorySnapshot.GetId(latest) != request.HistoryRowId)
                 throw new InvalidOperationException("Only the latest version can be restored. The record has been changed or restored after this version.");
+            //復活できるのは今そのレコードが無い (削除中) ときだけ。版の削除で Delete 版が最新に戻った場合や別の経路で戻っていた場合に、
+            //同じレコードをもう 1 件作ったり、削除されていないレコードに復活の版を積んだりしない (手入力 Id で同じ Id のレコードがある場合も同じ)
+            if (await io.GetWithOwnedRecordsAsync(module.Name, dataId, _ => false) != null)
+                throw new InvalidOperationException($"The record '{dataId}' of '{module.Name}' exists (it is not deleted). Only a deleted record can be restored.");
 
             if (EditHistoryContracts.IsLogicalDeleteModule(module))
             {
@@ -325,10 +347,8 @@ namespace Codeer.LowCode.Blazor.Extras.Server.EditHistory
                 await UndeleteDeletedRowsAsync(io, module, field, snapshot, string.Empty, together: true);
                 return new RestoreResult { IsWholeRecord = true, RestoredId = dataId };
             }
-            //物理削除: スナップショットから作り直す。手入力 Id は元の Id (既にあれば復活できない)、自動採番は新しい Id (旧 Id の版を付け替えて履歴を繋ぐ)
+            //物理削除: スナップショットから作り直す。手入力 Id は元の Id、自動採番は新しい Id (旧 Id の版を付け替えて履歴を繋ぐ)
             if (!await io.CanRestoreAsync(module.Name, snapshot)) throw new InvalidOperationException("You are not allowed to restore this record.");
-            if (IsManualId(module) && await io.GetWithOwnedRecordsAsync(module.Name, dataId, _ => false) != null)
-                throw new InvalidOperationException($"A record with the Id '{dataId}' already exists in '{module.Name}'. The deleted record cannot be restored with the same Id.");
             var newId = await RecreateAsync(io, module, field, snapshot, string.Empty, null, null);
             return new RestoreResult { IsWholeRecord = true, IsRecreated = newId != dataId, RestoredId = newId };
         }
@@ -505,14 +525,17 @@ namespace Codeer.LowCode.Blazor.Extras.Server.EditHistory
             return EditHistorySnapshot.FillNulls(_designData, await io.GetWithOwnedRecordsAsync(moduleName, id, path => !EditHistoryPolicy.IsExcluded(field, path)));
         }
 
-        //行ごとに記録する宣言の先のモジュール → 記録先 (履歴モジュール・契約)
-        Dictionary<string, (ModuleDesign HistoryModule, EditHistoryContractFieldDesign Names, ModuleDesign Row)> IndividualTargets(ModuleDesign module, EditHistoryFieldDesign field, out string? error)
+        //行ごとに記録する宣言の先のモジュール → 記録先 (履歴モジュール・契約)。
+        //親に EditHistoryField があれば IndividuallyRecordedOwnedRecords の宣言の先。
+        //親に EditHistoryField が無ければ (親に版が無い)、従属レコードのうち自分の EditHistoryField を持つモジュール全部 = 子は自分の履歴に行ごとに残す
+        Dictionary<string, (ModuleDesign HistoryModule, EditHistoryContractFieldDesign Names, ModuleDesign Row)> IndividualTargets(ModuleDesign module, EditHistoryFieldDesign? field, out string? error)
         {
             error = null;
             var targets = new Dictionary<string, (ModuleDesign, EditHistoryContractFieldDesign, ModuleDesign)>();
             foreach (var (path, _, _, _, child) in EditHistoryPolicy.Walk(_designData, module, field, descendIntoNotIncluded: true))
             {
-                if (child == null || !EditHistoryPolicy.IsIndividual(field, path) || targets.ContainsKey(child.Name)) continue;
+                if (child == null || child.Name == module.Name || targets.ContainsKey(child.Name)) continue;
+                if (field != null ? !EditHistoryPolicy.IsIndividual(field, path) : EditHistoryContracts.Field(child) == null) continue;
                 var resolved = EditHistoryContracts.Resolve(_designData, child, out var rowError);
                 if (rowError != null)
                 {
@@ -534,13 +557,13 @@ namespace Codeer.LowCode.Blazor.Extras.Server.EditHistory
         async Task<(List<Plan> Plans, string? Error)> IndividuallyRecordedDeletePlansAsync(ModuleDataIOInternalAccess io, int index, ModuleDesign module, ModuleData full)
         {
             var field = EditHistoryContracts.Field(module);
-            if (field == null || field.IndividuallyRecordedOwnedRecords.Count == 0) return (new(), null);
+            if (field != null && field.IndividuallyRecordedOwnedRecords.Count == 0) return (new(), null);
             var targets = IndividualTargets(module, field, out var error);
             if (error != null) return (new(), error);
             var plans = new List<Plan>();
             foreach (var (path, rowDesign, row) in OwnedRows(module, full, string.Empty))
             {
-                if (!EditHistoryPolicy.IsIndividual(field, path) || !targets.TryGetValue(rowDesign.Name, out var t)) continue;
+                if ((field != null && !EditHistoryPolicy.IsIndividual(field, path)) || !targets.TryGetValue(rowDesign.Name, out var t)) continue;
                 var id = EditHistorySnapshot.GetId(row);
                 if (id.Length == 0) continue;
                 plans.Add(RowPlan(index, t, EditHistoryChangeType.Delete) with { RowId = id, Snapshot = await LoadAsync(io, rowDesign.Name, id) });
@@ -597,6 +620,11 @@ namespace Codeer.LowCode.Blazor.Extras.Server.EditHistory
             root.Fields[SystemFieldNames.Id] = tempId;
             submitData.Id = tempId.Value!;
         }
+
+        //送信が履歴を持つモジュールのレコードに触るか (ルートのほか、追加・更新・削除する行のモジュール)
+        bool TouchesHistoryModule(ModuleSubmitData submitData)
+            => submitData.Add.Concat(submitData.Update).Select(e => e.Name).Concat(submitData.Delete.Select(e => e.ModuleName))
+                .Any(name => EditHistoryContracts.Field(_designData.Modules.Find(name)) != null);
 
         static bool IsEmpty(ModuleSubmitData submitData)
             => submitData.Add.Count == 0 && submitData.Update.Count == 0 && submitData.Delete.Count == 0 && submitData.SearchDelete.Count == 0;

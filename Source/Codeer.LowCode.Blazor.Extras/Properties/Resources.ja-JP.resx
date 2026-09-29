@@ -1560,4 +1560,13 @@
   <data name="EditHistoryRestoreNothingApplied" xml:space="preserve">
     <value>この版から反映できる項目がありませんでした。書き込み権限のない項目・添付ファイル・システム項目は対象外です。</value>
   </data>
+  <data name="EditHistoryCheck_ChildHasOwnHistoryFormat" xml:space="preserve">
+    <value>従属レコード '{0}' のモジュール '{1}' は自分の EditHistoryField を持っていますが、このモジュール経由の編集はこのモジュールの版にだけ記録され、'{1}' の履歴には残りません。'{0}' を {2} (このモジュール経由では記録しない) か {3} ('{1}' の履歴に行ごとに記録する) に指定してください。</value>
+  </data>
+  <data name="EditHistoryCountFormat" xml:space="preserve">
+    <value>履歴 {0} 件</value>
+  </data>
+  <data name="EditHistoryOpen" xml:space="preserve">
+    <value>表示</value>
+  </data>
 </root>

@@ -15,7 +15,10 @@ namespace Codeer.LowCode.Blazor.Extras.Test.EditHistory
         /// Customer の詳細レイアウトには Name だけを置く (Note は載っていない = 本体の同梱では読まれない列)。</param>
         /// <param name="withDetails">孫の明細を足す: OrderItem.Details (OrderItemDetail・親と一緒に消える)。</param>
         /// <param name="manualId">Order の Id を手入力にする (作り直しでも元の Id を保つ)。</param>
-        public static DesignData Create(bool withHistoryField = true, string historyModuleName = "EditHistory", bool logicalDelete = false, bool withCustomer = false, bool withDetails = false, bool manualId = false)
+        /// <param name="withFile">Order に添付ファイル (FileField Attachment: file_name / file_guid 列) を足す。</param>
+        /// <param name="itemHistory">OrderItem に自分の EditHistoryField を置く (同じ履歴モジュールへ)。</param>
+        public static DesignData Create(bool withHistoryField = true, string historyModuleName = "EditHistory", bool logicalDelete = false, bool withCustomer = false, bool withDetails = false, bool manualId = false,
+            bool withFile = false, bool itemHistory = false)
         {
             var d = new DesignData();
             d.AppSettings.CurrentUserModuleDesignName = "AppUser";
@@ -53,6 +56,8 @@ namespace Codeer.LowCode.Blazor.Extras.Test.EditHistory
             });
             if (withCustomer)
                 order.Fields.Add(new ModuleFieldDesign { Name = "Customer", DbColumn = "customer_id", ModuleName = "Customer", LayoutName = "" });
+            if (withFile)
+                order.Fields.Add(new FileFieldDesign { Name = "Attachment", DisplayName = "添付", DbColumnFileName = "file_name", DbColumnFileGuid = "file_guid" });
             if (withHistoryField)
                 order.Fields.Add(new EditHistoryFieldDesign { Name = "History", HistoryModuleName = historyModuleName });
             if (logicalDelete)
@@ -91,6 +96,8 @@ namespace Codeer.LowCode.Blazor.Extras.Test.EditHistory
             }
             if (logicalDelete)
                 item.Fields.Add(new BooleanFieldDesign { Name = SystemFieldNames.LogicalDelete, DbColumn = "is_deleted" });
+            if (itemHistory)
+                item.Fields.Add(new EditHistoryFieldDesign { Name = "History", HistoryModuleName = historyModuleName });
             item.ListLayouts[""] = new ListLayoutDesign();
             d.AddModule(item);
 

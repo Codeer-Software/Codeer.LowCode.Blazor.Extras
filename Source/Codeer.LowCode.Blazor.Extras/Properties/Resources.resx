@@ -1560,4 +1560,13 @@ Recipients: {1}</value>
   <data name="EditHistoryRestoreNothingApplied" xml:space="preserve">
     <value>Nothing in this version could be applied to the form. Fields without write permission, attachments and system fields are not restored.</value>
   </data>
+  <data name="EditHistoryCheck_ChildHasOwnHistoryFormat" xml:space="preserve">
+    <value>The module '{1}' of the owned records '{0}' has its own EditHistoryField, but edits made through this module are recorded only in this module's version, not in the history of '{1}'. Put '{0}' in {2} (not recorded through this module) or in {3} (recorded per row in the history of '{1}').</value>
+  </data>
+  <data name="EditHistoryCountFormat" xml:space="preserve">
+    <value>{0} version(s)</value>
+  </data>
+  <data name="EditHistoryOpen" xml:space="preserve">
+    <value>Show</value>
+  </data>
 </root>

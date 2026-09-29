@@ -36,7 +36,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.EditHistory
             DbAccessor.ClearTableDefinitionCache();
             _dbFile = Path.Combine(Path.GetTempPath(), $"edit_history_test_{Guid.NewGuid():N}.db");
             _db = new DbAccessor([new DataSource { Name = Ds, DataSourceType = DataSourceType.SQLite, ConnectionString = $"Data Source={_dbFile}" }]);
-            await _db.ExecuteAsync(Ds, "CREATE TABLE orders (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT, amount REAL, secret TEXT, is_deleted INTEGER)", new());
+            await _db.ExecuteAsync(Ds, "CREATE TABLE orders (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT, amount REAL, secret TEXT, is_deleted INTEGER, file_name TEXT, file_guid TEXT)", new());
             await _db.ExecuteAsync(Ds, "CREATE TABLE order_items (id INTEGER PRIMARY KEY AUTOINCREMENT, order_id INTEGER, name TEXT, qty REAL, is_deleted INTEGER)", new());
             await _db.ExecuteAsync(Ds, "CREATE TABLE edit_histories (id INTEGER PRIMARY KEY AUTOINCREMENT, module_name TEXT, data_id TEXT, change_type TEXT, snapshot TEXT, user_id TEXT, date_time TEXT)", new());
             await _db.ExecuteAsync(Ds, "CREATE TABLE app_users (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT)", new());
@@ -717,5 +717,142 @@ namespace Codeer.LowCode.Blazor.Extras.Test.EditHistory
         //ミリ秒まで丸めるので before より僅かに前になり得る → 1 秒の余裕
         static void AssertWithin(DateTime recorded, DateTime before, DateTime after)
             => Assert.That(recorded, Is.InRange(before.AddSeconds(-1), after.AddSeconds(1)), $"recorded={recorded:O} before={before:O} after={after:O}");
+        [Test]
+        public async Task 復活は今そのレコードが無いときだけ_論理削除()
+        {
+            _design = EditHistoryTestDesigns.Create(logicalDelete: true);
+            await CreateOrderAsync();
+            AssertNoError(await CreateIO().SubmitWithTransactionAsync([new ModuleSubmitData
+            {
+                ModuleName = "Order", Id = "1", Delete = [new ModuleDeleteInfo { ModuleName = "Order", Id = "1" }],
+            }]));
+            //履歴を通らない経路で戻っていた (削除されていない) レコードには復活の版を積まない
+            await _db.ExecuteAsync(Ds, "UPDATE orders SET is_deleted = 0 WHERE id = 1", new());
+            var deleteRow = (await HistoriesAsync()).Single(e => (string)e["change_type"] == "Delete");
+            var submit = new ModuleSubmitData { ModuleName = "Order", Id = "1" };
+            submit.ExtendedData.Add(new EditHistoryUndeleteData { HistoryModuleName = "EditHistory", HistoryRowId = deleteRow["id"]!.ToString()!, RestoreWholeRecord = true });
+            var results = await CreateIO().SubmitWithTransactionAsync([submit]);
+            Assert.That(results.All(e => !string.IsNullOrEmpty(e.ExceptionMessage)), Is.True);
+            Assert.That(results[0].ExceptionMessage, Does.Contain("exists"));
+            Assert.That((await HistoriesAsync()).Select(e => e["change_type"]), Is.EqualTo(new[] { "Add", "Delete" }), "復活の版は積まれない");
+        }
+
+        [Test]
+        public async Task 復活は今そのレコードが無いときだけ_物理削除は復活の版を消しても二重に作らない()
+        {
+            await CreateOrderAsync();
+            AssertNoError(await CreateIO().SubmitWithTransactionAsync([new ModuleSubmitData
+            {
+                ModuleName = "Order", Id = "1", Delete = [new ModuleDeleteInfo { ModuleName = "Order", Id = "1" }],
+            }]));
+            var deleteRow = (await HistoriesAsync()).Single(e => (string)e["change_type"] == "Delete");
+            var submit = new ModuleSubmitData { ModuleName = "Order", Id = "1" };
+            submit.ExtendedData.Add(new EditHistoryUndeleteData { HistoryModuleName = "EditHistory", HistoryRowId = deleteRow["id"]!.ToString()!, RestoreWholeRecord = true });
+            var results = await CreateIO().SubmitWithTransactionAsync([submit]);
+            AssertNoError(results);
+            var newId = results[0].DestinationId;
+
+            //復活の版を消すと削除の版 (新しい Id に付け替え済み) が最新に戻る (古い版の削除は許している) が、レコードは存在するので作り直さない
+            await _db.ExecuteAsync(Ds, "DELETE FROM edit_histories WHERE change_type = 'Restore'", new());
+            deleteRow = (await HistoriesAsync()).Single(e => (string)e["change_type"] == "Delete");
+            Assert.That(deleteRow["data_id"], Is.EqualTo(newId));
+            var again = new ModuleSubmitData { ModuleName = "Order", Id = newId };
+            again.ExtendedData.Add(new EditHistoryUndeleteData { HistoryModuleName = "EditHistory", HistoryRowId = deleteRow["id"]!.ToString()!, RestoreWholeRecord = true });
+            results = await CreateIO().SubmitWithTransactionAsync([again]);
+            Assert.That(results.All(e => !string.IsNullOrEmpty(e.ExceptionMessage)), Is.True);
+            Assert.That(results[0].ExceptionMessage, Does.Contain("exists"));
+            Assert.That((await _db.QueryAsync(Ds, "SELECT COUNT(*) AS c FROM orders", new())).Single()["c"], Is.EqualTo(1), "二重に作られない");
+        }
+
+        class RecordingFiles : ITemporaryFileManager
+        {
+            public List<string> Calls { get; } = new();
+            public Task ToTemporaryFile(string dataSourceName, Guid guid) { Calls.Add("temp:" + guid); return Task.CompletedTask; }
+            public Task FixFile(string dataSourceName, Guid? guid) { Calls.Add("fix:" + guid); return Task.CompletedTask; }
+        }
+
+        [Test]
+        public async Task 履歴を持つモジュールの削除では添付ファイルを一時領域へ送らず_復活で同じ添付を参照する()
+        {
+            _design = EditHistoryTestDesigns.Create(withFile: true);
+            var files = new RecordingFiles();
+            ModuleDataIO IO()
+            {
+                var io = new ModuleDataIO(_design, this, _db, files);
+                io.AddInterceptor(new EditHistoryRecorder(_design, _errors.Add));
+                return io;
+            }
+            var guid = Guid.NewGuid();
+            var tempId = "@temporary:" + Guid.NewGuid();
+            var order = OrderData(tempId, "受注A", 1000);
+            order.Fields["Attachment"] = new FileFieldData { FileName = "a.txt", FileGuid = guid };
+            AssertNoError(await IO().SubmitWithTransactionAsync([new ModuleSubmitData { ModuleName = "Order", Id = tempId, Add = [order] }]));
+
+            //削除: 本体は添付を一時領域へ移す (期限後に消える) が、履歴を持つモジュールでは残す
+            AssertNoError(await IO().SubmitWithTransactionAsync([new ModuleSubmitData
+            {
+                ModuleName = "Order", Id = "1", Delete = [new ModuleDeleteInfo { ModuleName = "Order", Id = "1" }],
+            }]));
+            Assert.That(files.Calls, Is.Empty, "添付を一時領域へ送らない");
+
+            //復活: 作り直したレコードが同じ添付を参照する (実体が残っているので開ける)
+            var deleteRow = (await HistoriesAsync()).Single(e => (string)e["change_type"] == "Delete");
+            var submit = new ModuleSubmitData { ModuleName = "Order", Id = "1" };
+            submit.ExtendedData.Add(new EditHistoryUndeleteData { HistoryModuleName = "EditHistory", HistoryRowId = deleteRow["id"]!.ToString()!, RestoreWholeRecord = true });
+            var results = await IO().SubmitWithTransactionAsync([submit]);
+            AssertNoError(results);
+            var restored = (await _db.QueryAsync(Ds, $"SELECT file_name, file_guid FROM orders WHERE id = {results[0].DestinationId}", new())).Single();
+            Assert.That((restored["file_name"], restored["file_guid"]?.ToString()?.ToLowerInvariant()), Is.EqualTo(((object)"a.txt", guid.ToString())));
+
+            //履歴を持たないモジュールでは従来どおり一時領域へ送られる
+            _design = EditHistoryTestDesigns.Create(withHistoryField: false, withFile: true);
+            var guid2 = Guid.NewGuid();
+            await _db.ExecuteAsync(Ds, $"INSERT INTO orders (id, title, file_name, file_guid) VALUES (10, 'x', 'b.txt', '{guid2}')", new());
+            AssertNoError(await IO().SubmitWithTransactionAsync([new ModuleSubmitData
+            {
+                ModuleName = "Order", Id = "10", Delete = [new ModuleDeleteInfo { ModuleName = "Order", Id = "10" }],
+            }]));
+            Assert.That(files.Calls, Is.EqualTo(new[] { "temp:" + guid2 }));
+        }
+
+        [Test]
+        public async Task 履歴を持たない親経由で編集した子の行は子の履歴に行ごとに記録され_親の削除でも削除の版が残る()
+        {
+            _design = EditHistoryTestDesigns.Create(withHistoryField: false, itemHistory: true);
+            var tempId = "@temporary:" + Guid.NewGuid();
+            var t1 = "@temporary:" + Guid.NewGuid();
+            var t2 = "@temporary:" + Guid.NewGuid();
+            AssertNoError(await CreateIO().SubmitWithTransactionAsync([new ModuleSubmitData
+            {
+                ModuleName = "Order", Id = tempId,
+                Add = [OrderData(tempId, "受注A", 1000), ItemData(t1, tempId, "品X", 1), ItemData(t2, tempId, "品Y", 2)],
+            }]));
+            var h = await HistoriesAsync();
+            Assert.That(h.Select(e => (e["module_name"], e["change_type"], e["data_id"])),
+                Is.EqualTo(new[] { ("OrderItem", "Add", "1"), ("OrderItem", "Add", "2") }), "親には版が無く、子は自分の履歴に行ごと (採番 Id)");
+            Assert.That(((TextFieldData)Snapshot(h[0]).Fields["Name"]).Value, Is.EqualTo("品X"));
+
+            //親経由の行の更新と削除
+            AssertNoError(await CreateIO().SubmitWithTransactionAsync([new ModuleSubmitData
+            {
+                ModuleName = "Order", Id = "1",
+                Update = [ItemData("1", "1", "品X改", 3)],
+                Delete = [new ModuleDeleteInfo { ModuleName = "OrderItem", Id = "2" }],
+            }]));
+            h = await HistoriesAsync();
+            Assert.That(h.Skip(2).Select(e => (e["module_name"], e["change_type"], e["data_id"])),
+                Is.EqualTo(new[] { ("OrderItem", "Update", "1"), ("OrderItem", "Delete", "2") }));
+            Assert.That(((TextFieldData)Snapshot(h[3]).Fields["Name"]).Value, Is.EqualTo("品Y"), "削除の版は削除前の内容");
+
+            //親の削除で一緒に消える行にも削除の版
+            AssertNoError(await CreateIO().SubmitWithTransactionAsync([new ModuleSubmitData
+            {
+                ModuleName = "Order", Id = "1", Delete = [new ModuleDeleteInfo { ModuleName = "Order", Id = "1" }],
+            }]));
+            h = await HistoriesAsync();
+            Assert.That(h.Skip(4).Select(e => (e["module_name"], e["change_type"], e["data_id"])), Is.EqualTo(new[] { ("OrderItem", "Delete", "1") }));
+            Assert.That(h.Any(e => (string)e["module_name"] == "Order"), Is.False, "親の版は無い");
+        }
+
     }
 }

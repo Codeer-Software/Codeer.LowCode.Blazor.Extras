@@ -33,6 +33,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         private const int CodeOnHistoryModule = 8;
         private const int CodeOnQueryModule = 9;
         private const int CodeOnListLayout = 10;
+        private const int CodeChildHasOwnHistory = 11;
 
         public EditHistoryFieldDesign() : base(typeof(EditHistoryFieldDesign).FullName!) { }
 
@@ -192,9 +193,23 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
             //全件を持たない宣言 (サーバーページングの一覧等。宣言の HoldsAllRecords) は親の版に含められない。含めるものだけ見る (除外・行ごとは対象外)。
             //同じ一覧に複数の経路で辿り着いても 1 回だけ
             var reported = new HashSet<(string, string)>();
-            foreach (var (path, module, field, owned, _) in EditHistoryPolicy.Walk(context.DesignData, ownModule, this))
+            var childReported = new HashSet<string>();
+            foreach (var (path, module, field, owned, child) in EditHistoryPolicy.Walk(context.DesignData, ownModule, this))
             {
-                if (owned.HoldsAllRecords || !EditHistoryPolicy.IsIncluded(this, path) || !reported.Add((module.Name, field.Name))) continue;
+                if (!EditHistoryPolicy.IsIncluded(this, path)) continue;
+                //「含める」先のモジュールが自分の EditHistoryField を持つと、このモジュール経由の編集がそのモジュールの履歴に残らない (穴が空く)。
+                //わざとそうするなら除外か行ごとに指定する。自己参照 (子 = 自モジュール) は親の一部として扱う決まりなので対象外
+                if (child != null && child.Name != ownModule.Name && EditHistoryContracts.Field(child) != null && childReported.Add(path))
+                {
+                    result.Add(new FieldDesignCheckInfo
+                    {
+                        Code = DesignCheckCode.Create(typeof(EditHistoryFieldDesign), CodeChildHasOwnHistory),
+                        Location = new FieldDesignDataLocation { Module = context.OwnerModule, Field = Name, Member = nameof(IndividuallyRecordedOwnedRecords) },
+                        Message = string.Format(Properties.Resources.EditHistoryCheck_ChildHasOwnHistoryFormat, path, child.Name,
+                            nameof(ExcludedOwnedRecords), nameof(IndividuallyRecordedOwnedRecords)),
+                    });
+                }
+                if (owned.HoldsAllRecords || !reported.Add((module.Name, field.Name))) continue;
                 result.Add(new FieldDesignCheckInfo
                 {
                     Code = DesignCheckCode.Create(typeof(EditHistoryFieldDesign), CodeOwnedRecordsNotHeld),

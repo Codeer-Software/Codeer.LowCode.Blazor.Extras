@@ -25,9 +25,36 @@ else if (!Field.IsAvailable)
     <span class="edit-history-note">@R.EditHistoryNotSavedYet</span>
   </div>
 }
+else if (!Field.IsExpanded)
+{
+  @* 展開前は件数だけ (版はスナップショット込みで重いので、開くたびには読まない)。「表示」で版を読む *@
+  <div data-system="edit-history" class="edit-history">
+    @if (!Field.IsLoaded)
+    {
+      <span class="edit-history-note">@R.EditHistoryLoading</span>
+    }
+    else if (Field.TotalCount == 0)
+    {
+      <span class="edit-history-note">@R.EditHistoryNoHistory</span>
+    }
+    else
+    {
+      <div class="edit-history-bar">
+        <span class="edit-history-count" data-system="edit-history-count" data-count="@Field.TotalCount">@string.Format(R.EditHistoryCountFormat, Field.TotalCount)</span>
+        <button type="button" class="btn btn-sm btn-outline-secondary" data-system="edit-history-open"
+                disabled="@Field.IsBusy" @onclick="@(async () => await Field.ExpandAsync())">@R.EditHistoryOpen</button>
+      </div>
+    }
+  </div>
+}
 else
 {
   <div data-system="edit-history" class="edit-history">
+    <div class="edit-history-bar">
+      <span class="edit-history-count" data-system="edit-history-count" data-count="@Field.TotalCount">@string.Format(R.EditHistoryCountFormat, Field.TotalCount)</span>
+      <button type="button" class="btn btn-sm btn-link edit-history-collapse" data-system="edit-history-collapse"
+              @onclick="@(() => Field.Collapse())">@R.EditHistoryClose</button>
+    </div>
     @if (!Field.IsLoaded)
     {
       <span class="edit-history-note">@R.EditHistoryLoading</span>

@@ -72,7 +72,9 @@ namespace Codeer.LowCode.Blazor.Extras.Test.DesignCheck
             var d = EditHistoryTestDesigns.Create();
             Module(d, "OrderItem").Fields.Add(new EditHistoryFieldDesign { Name = "History", HistoryModuleName = "EditHistory" });
             Field<ListFieldDesign>(d, "Order", "Items").SearchCondition.LimitCount = 10;
-            Assert.That(Check(d, "Order", History(d)).Single().Code, Is.EqualTo(DesignCheckCode.Create(typeof(EditHistoryFieldDesign), 4)));
+            //含めている間は全件性 (:4) と、子が自分の履歴を持つ (:11) の両方
+            Assert.That(Check(d, "Order", History(d)).Select(e => e.Code),
+                Is.EquivalentTo(new[] { DesignCheckCode.Create(typeof(EditHistoryFieldDesign), 4), DesignCheckCode.Create(typeof(EditHistoryFieldDesign), 11) }));
 
             History(d).ExcludedOwnedRecords.Add("Items");
             Assert.That(Check(d, "Order", History(d)), Is.Empty);
@@ -107,5 +109,23 @@ namespace Codeer.LowCode.Blazor.Extras.Test.DesignCheck
             history.IndividuallyRecordedOwnedRecords.Add("Items");
             Assert.That(EditHistoryPolicy.Strip(d, history, order)!.Fields.ContainsKey("Items"), Is.False, "行ごとの一覧は親の版から消える");
         }
+        [Test]
+        public void 含める先のモジュールに自分のEditHistoryFieldがあれば指摘_除外か行ごとなら指摘しない()
+        {
+            //OrderItem に自分の EditHistoryField: Order 経由の編集は Order の版にだけ残り OrderItem の履歴に穴が空く
+            var d = EditHistoryTestDesigns.Create(itemHistory: true);
+            var ret = Check(d, "Order", History(d));
+            var hole = ret.Single(e => e.Code == DesignCheckCode.Create(typeof(EditHistoryFieldDesign), 11));
+            hole.AssertFieldLocation("Order", "History", nameof(EditHistoryFieldDesign.IndividuallyRecordedOwnedRecords));
+            Assert.That(hole.Message, Does.Contain("Items").And.Contain("OrderItem"));
+
+            //わざとそうするなら除外 (このモジュール経由では記録しない) か行ごと (OrderItem の履歴に記録) に指定する
+            History(d).ExcludedOwnedRecords.Add("Items");
+            Assert.That(Check(d, "Order", History(d)), Is.Empty);
+            History(d).ExcludedOwnedRecords.Clear();
+            History(d).IndividuallyRecordedOwnedRecords.Add("Items");
+            Assert.That(Check(d, "Order", History(d)), Is.Empty);
+        }
+
     }
 }

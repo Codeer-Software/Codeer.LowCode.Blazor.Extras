@@ -3382,6 +3382,33 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
             }
         }
 
+        /// <summary>
+        ///   Looks up a localized string similar to The module '{1}' of the owned records '{0}' has its own EditHistoryField....
+        /// </summary>
+        internal static string EditHistoryCheck_ChildHasOwnHistoryFormat {
+            get {
+                return ResourceManager.GetString("EditHistoryCheck_ChildHasOwnHistoryFormat", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to {0} version(s).
+        /// </summary>
+        internal static string EditHistoryCountFormat {
+            get {
+                return ResourceManager.GetString("EditHistoryCountFormat", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Show.
+        /// </summary>
+        internal static string EditHistoryOpen {
+            get {
+                return ResourceManager.GetString("EditHistoryOpen", resourceCulture);
+            }
+        }
+
         internal static string EditHistoryExcludedOwnedRecords {
             get {
                 return ResourceManager.GetString("EditHistoryExcludedOwnedRecords", resourceCulture);
