@@ -2,7 +2,6 @@ using Codeer.LowCode.Blazor.Components.Dialog;
 using Codeer.LowCode.Blazor.DataIO;
 using Codeer.LowCode.Blazor.DesignLogic;
 using Codeer.LowCode.Blazor.Extras.Designs;
-using Codeer.LowCode.Blazor.Json;
 using Codeer.LowCode.Blazor.OperatingModel;
 using Codeer.LowCode.Blazor.Repository.Data;
 using Codeer.LowCode.Blazor.Repository.Design;
@@ -31,56 +30,54 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
     {
         private readonly ModuleCollection _tasks = new();
 
-        //IOwnedRecordsField: 宣言した従属レコード (タスク・依存関係) を与えられた行に差し替える (保存はしない)。
-        //通常は表示範囲のタスクしか読んでいないので、突き合わせの前に全件を読み直す (範囲外の行を「無い行」と誤らない)
-        [ScriptHide]
-        public async Task ApplyOwnedRecordsAsync(string name, IReadOnlyList<ModuleData> rows, Action<string, string>? onRevive)
-        {
-            if (name == Design.Name)
-            {
-                var all = await this.GetChildModulesAsync(Design.SearchCondition, ModuleLayoutType.Detail, Design.DetailLayoutName, GetItemFieldNames());
-                _tasks.ApplyLoaded(all);
-                //新しい行として作り直したタスク (渡された行の Id → 仮 Id の行) は、続く依存関係の差し替えでタスク Id を付け替えるために覚えておく
-                _restoredTasks = await OwnedRecordModules.ApplyAsync(this, _tasks, ModuleName, Design.DetailLayoutName, Design.SearchCondition, rows, onRevive);
-                RebuildItemsInView();
-                await InvokeOnDataChangedAndNotifyAsync();
-                return;
-            }
-            if (name != Design.DependenciesOwnedRecordsName || !HasDependenciesModule) return;
+        //IOwnedRecordsField: 行の出し入れと、与えられた行の表示 (タスクと依存関係)。
+        //行の突き合わせ・内容の反映・依存関係が指すタスクの付け替え (宣言の References) は本体 (Module.ApplyRecordAsync) が行う
 
-            //依存関係: 全件を読み直してから渡された行で差し替える。行が指すタスクのうち、新しい行として作り直したタスクは仮 Id に付け替える
-            //(保存時に本体が仮 Id を採番 Id に解決する)。どこにも無いタスクを指す行は落とす (存在しないタスクへの矢印は作らない)
-            var deps = await this.GetChildModulesAsync(Design.DependenciesModule, ModuleLayoutType.None);
-            _dependencies.ApplyLoaded(deps);
-            var taskIds = _tasks.Items.Select(e => e.GetIdText()).ToHashSet();
-            var remapped = new List<ModuleData>();
-            foreach (var row in rows)
+        private bool IsTasks(string name) => name == Design.Name;
+
+        private bool IsDependencies(string name) => name == Design.DependenciesOwnedRecordsName && HasDependenciesModule;
+
+        //通常は表示範囲のタスクしか読んでいないので全件を読み直す (範囲外の行を「無い行」と誤らない)
+        async Task<IReadOnlyList<Module>> IOwnedRecordsField.LoadOwnedRecordsAsync(string name)
+        {
+            if (IsTasks(name))
             {
-                var copy = row.JsonClone();
-                if (RemapTaskId(copy, Design.DependencySourceIdField, taskIds) && RemapTaskId(copy, Design.DependencyDestinationIdField, taskIds)) remapped.Add(copy);
+                _tasks.ApplyLoaded(await this.GetChildModulesAsync(Design.SearchCondition, ModuleLayoutType.Detail, Design.DetailLayoutName, GetItemFieldNames()));
+                return _tasks.Items;
             }
-            _restoredTasks = null;
-            await OwnedRecordModules.ApplyAsync(this, _dependencies, Design.DependenciesModule.ModuleName, string.Empty,
-                Design.DependenciesModule, remapped, onRevive, ModuleLayoutType.None);
-            RebuildDependencies();
-            await InvokeOnDataChangedAndNotifyAsync();
+            if (IsDependencies(name))
+            {
+                _dependencies.ApplyLoaded(await this.GetChildModulesAsync(Design.DependenciesModule, ModuleLayoutType.None));
+                return _dependencies.Items;
+            }
+            return [];
         }
 
-        private Dictionary<string, Module>? _restoredTasks;
+        async Task<Module> IOwnedRecordsField.AddOwnedRecordAsync(string name, string? id)
+            => IsTasks(name)
+                ? await OwnedRecordModules.AddAsync(this, _tasks, Design.SearchCondition, Design.DetailLayoutName, id)
+                : await OwnedRecordModules.AddAsync(this, _dependencies, Design.DependenciesModule, string.Empty, id, ModuleLayoutType.None);
+
+        Task IOwnedRecordsField.RemoveOwnedRecordAsync(string name, Module record)
+        {
+            if (IsTasks(name)) _tasks.Remove(record);
+            else if (IsDependencies(name)) _dependencies.Remove(record);
+            return Task.CompletedTask;
+        }
+
+        async Task IOwnedRecordsField.RefreshOwnedRecordsAsync(string name)
+        {
+            if (IsTasks(name)) RebuildItemsInView();
+            else if (IsDependencies(name)) RebuildDependencies();
+            else return;
+            await InvokeOnDataChangedAndNotifyAsync();
+        }
 
         //与えられたタスクを表示専用で見せている (ShowOwnedRecordsAsync)。表示範囲を変えたら手元のタスクを絞り直す
         private bool _isShowingOwnedRecords;
 
         //矢印 (from->to) ごとの強調クラス (ShowOwnedRecordsAsync で渡された行の ClassName)。通常は空
         private readonly Dictionary<string, string> _dependencyClasses = new();
-
-        //依存関係の行のタスク Id を付け替える。戻り値 = その Id のタスクが (差し替え後に) あるか
-        private bool RemapTaskId(ModuleData row, string fieldName, HashSet<string> taskIds)
-        {
-            if (row.Fields.GetValueOrDefault(fieldName) is not ValueFieldDataBase<string> data || string.IsNullOrEmpty(data.Value)) return false;
-            if (_restoredTasks != null && _restoredTasks.TryGetValue(data.Value, out var task)) data.Value = task.GetIdText();
-            return taskIds.Contains(data.Value);
-        }
 
         //保持している依存関係の行から矢印の対応表と一覧を作り直す (表示専用の行に付いたクラスを矢印に写す)
         private void RebuildDependencies()
@@ -99,21 +96,20 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             MakeDependencyList();
         }
 
-        //IOwnedRecordsField: 与えられたタスク・依存関係をそのまま表示する (DB は読まない・表示専用)。
-        //装飾された行 (ClassName が付いた行) が表示範囲に無ければ最初の装飾行の日へ、
+        //与えられたタスク・依存関係をそのまま表示する (DB は読まない・表示専用)。
+        //装飾された行 (クラスが付いた行) が表示範囲に無ければ最初の装飾行の日へ、
         //装飾が無く表示範囲にタスクも無ければ最初のタスクの日へ移動する
-        [ScriptHide]
-        public async Task ShowOwnedRecordsAsync(string name, IReadOnlyList<OwnedRecordRow> rows)
+        async Task IOwnedRecordsField.ShowOwnedRecordsAsync(string name, IReadOnlyList<OwnedRecordRow> rows)
         {
-            if (name == Design.DependenciesOwnedRecordsName && HasDependenciesModule)
+            if (IsDependencies(name))
             {
                 _dependencies.ApplyLoaded(await OwnedRecordModules.CreateForShowAsync(this, string.Empty, rows, ModuleLayoutType.None));
-                //矢印は行の ClassName で強調して出す
+                //矢印は行のクラスで強調して出す
                 RebuildDependencies();
                 NotifyStateChanged();
                 return;
             }
-            if (name != Design.Name) return;
+            if (!IsTasks(name)) return;
             _tasks.ApplyLoaded(await OwnedRecordModules.CreateForShowAsync(this, Design.DetailLayoutName, rows));
             _isShowingOwnedRecords = true;
             RebuildItemsInView();

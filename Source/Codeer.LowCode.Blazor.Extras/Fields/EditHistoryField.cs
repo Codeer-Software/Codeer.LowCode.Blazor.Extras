@@ -341,33 +341,15 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             var snapshot = version.Snapshot;
             if (snapshot == null) return;
 
-            //従属レコードを持てるフィールド (一覧・埋め込みモジュール・Gantt 等の拡張フィールド) には現在の DB を読ませず、
-            //スナップショットの行を見せる (下で ShowOwnedRecordsAsync に渡す)
-            var module = await this.CreateChildModuleAsync(Module.Design.Name, ModuleLayoutType.Detail, Design.LayoutName, m =>
-            {
-                foreach (var field in m.GetFields().OfType<IOwnedRecordsField>()) field.AllowLoad = false;
-                return Task.CompletedTask;
-            });
+            //DB は読まず、版の内容をそのまま見せる (本体の CreateModuleForShowAsync)。従属レコード (明細の一覧・Gantt のタスク・埋め込みモジュールの子等) の行の強調
+            //(追加 = 行全体 / 変更 = 枠 + 変わったセル / 削除 = 前の版の行を打ち消しで差し込む) は、行 Id で差分と対応づけて OwnedRecordRow に載せる
+            var module = await this.CreateModuleForShowAsync(snapshot, Design.LayoutName,
+                (declared, rows) => OwnedRecordsDisplay.Build(rows, version.Changes.FirstOrDefault(e => e.IsList && e.FieldName == declared.Name)));
             //含めない従属レコード (除外・行ごと) は版に無いので、版表示では出さない
             foreach (var (fieldDesign, owned) in EditHistoryContracts.OwnedRecords(Module.Design))
             {
                 if (owned.Name == fieldDesign.Name && !EditHistoryPolicy.IsIncluded(Design, owned.Name) && module.GetField(fieldDesign.Name) is { } notIncluded) notIncluded.IsVisible = false;
             }
-            //★複製を渡す: ListField.SetDataAsync は渡された行データの Id を消して新しい行にするので、
-            //そのまま渡すとこの後の行 Id での差分との突き合わせ (Build) ができなくなる
-            await module.SetDataWithoutInteractionAsync(snapshot.JsonClone());
-            //従属レコード (明細の一覧・Gantt のタスク・埋め込みモジュールの子レコード等) は版の行をそのまま見せる (本体の IOwnedRecordsField)。
-            //行の強調 (追加 = 行全体 / 変更 = 枠 + 変わったセル / 削除 = 前の版の行を打ち消しで差し込む) は
-            //行 Id で差分と対応づけて OwnedRecordRow に載せ、見せる側はそれを写すだけ
-            foreach (var (fieldDesign, owned) in EditHistoryContracts.OwnedRecords(Module.Design))
-            {
-                if (module.GetField(fieldDesign.Name) is IOwnedRecordsField ownedField && snapshot.GetOwnedRows(owned.Name) is { } ownedRows)
-                {
-                    var change = version.Changes.FirstOrDefault(e => e.IsList && e.FieldName == owned.Name);
-                    await ownedField.ShowOwnedRecordsAsync(owned.Name, OwnedRecordsDisplay.Build(ownedRows, change));
-                }
-            }
-            module.IsViewOnly = true;
             //過去の内容の表示専用: 保存ボタン (押すと新しいレコードとして送られてしまう) と履歴フィールド自身は出さない
             foreach (var field in module.GetFields())
             {

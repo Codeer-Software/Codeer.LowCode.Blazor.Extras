@@ -8,7 +8,7 @@ namespace Codeer.LowCode.Blazor.Extras.EditHistory
     /// <summary>
     /// 版表示ダイアログ用。版の行と差分から表示用の行 (OwnedRecordRow) を組み立てる。
     /// 追加 = 行全体 / 変更 = 行に枠 + 変わったセル / 削除 = 前の版の行を元の位置に差し込んで打ち消し。孫の従属レコードも同じ規則で再帰。
-    /// 行を見せる側 (本体の ListField / Gantt 等) は OwnedRecordRow.ApplyToAsync でクラスを写すだけ。
+    /// 行を見せる側 (本体の ListField / Gantt 等) は OwnedRecordRow.CreateModuleAsync で行のモジュールを作るだけ。
     /// </summary>
     internal static class OwnedRecordsDisplay
     {

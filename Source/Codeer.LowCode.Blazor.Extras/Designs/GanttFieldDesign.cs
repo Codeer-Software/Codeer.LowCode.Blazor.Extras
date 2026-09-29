@@ -29,10 +29,15 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         //従属レコードの宣言: このフィールドが読み書きするレコード群 (タスクと、あれば依存関係) は親の一部 (編集履歴などが親と一緒に扱う)
         public IEnumerable<OwnedRecordsDesign> GetOwnedRecords()
         {
-            //差し替え (ApplyOwnedRecordsAsync) は表示範囲に関係なく全件を読み直してから行うので、全件に効く
+            //差し替えの前に表示範囲に関係なく全件を読み直す (LoadOwnedRecordsAsync) ので、全件を持てる
             yield return new OwnedRecordsDesign { Name = Name, Condition = SearchCondition, HoldsAllRecords = true };
-            if (!string.IsNullOrEmpty(DependenciesModule.ModuleName))
-                yield return new OwnedRecordsDesign { Name = DependenciesOwnedRecordsName, Condition = DependenciesModule, HoldsAllRecords = true };
+            if (string.IsNullOrEmpty(DependenciesModule.ModuleName)) yield break;
+
+            //依存関係の行は先行・後続のタスクを Id で指す (タスクを作り直したら、指す先を付け替える)
+            var references = new Dictionary<string, string>();
+            if (!string.IsNullOrEmpty(DependencySourceIdField)) references[DependencySourceIdField] = Name;
+            if (!string.IsNullOrEmpty(DependencyDestinationIdField)) references[DependencyDestinationIdField] = Name;
+            yield return new OwnedRecordsDesign { Name = DependenciesOwnedRecordsName, Condition = DependenciesModule, HoldsAllRecords = true, References = references };
         }
 
         [Designer(CandidateType = CandidateType.Field, DisplayName = "$GanttFieldTextField", Category = nameof(SearchCondition))]

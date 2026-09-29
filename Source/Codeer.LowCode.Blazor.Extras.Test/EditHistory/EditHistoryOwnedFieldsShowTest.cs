@@ -110,7 +110,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.EditHistory
             var far = Task("9", "遠いタスク", 1);
             far.Fields["Start"] = new DateTimeFieldData { Value = farStart };
             far.Fields["End"] = new DateTimeFieldData { Value = farStart.AddDays(5) };
-            await gantt.ShowOwnedRecordsAsync("Owner", [Row(near), Row(far, "deco")]);
+            await ((IOwnedRecordsField)gantt).ShowOwnedRecordsAsync("Owner", [Row(near), Row(far, "deco")]);
             Assert.That(gantt.ViewStart, Is.EqualTo(farStart.Date));
             Assert.That(gantt.Items.Any(e => e.Module.ShownClassName() == "deco"), Is.True);
         }
@@ -136,7 +136,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.EditHistory
             Assert.That(loaded.ShownClassName(), Is.Empty);
 
             //版表示: 強調のクラスだけを出す
-            await gantt.ShowOwnedRecordsAsync("Owner", [Row(Task("1", "要件定義", 1), "deco"), Row(Task("3", "設計", 3))]);
+            await ((IOwnedRecordsField)gantt).ShowOwnedRecordsAsync("Owner", [Row(Task("1", "要件定義", 1), "deco"), Row(Task("3", "設計", 3))]);
             Assert.That(gantt.Items.Select(e => e.Module.ShownClassName()), Is.EqualTo(new[] { "deco", "" }));
         }
 

@@ -87,7 +87,8 @@ namespace Codeer.LowCode.Blazor.Extras.Server.EditHistory
         //together でなければ (この版に戻す) その人の権限で取り消す (物理削除モジュールの行はフォームが新しい行として送る)
         async Task UndeleteDeletedRowsAsync(ModuleDataIOInternalAccess io, ModuleDesign design, EditHistoryFieldDesign? field, ModuleData data, string prefix, bool together)
         {
-            foreach (var (_, owned) in EditHistoryContracts.OwnedRecords(design))
+            var recreated = new Dictionary<string, Dictionary<string, string>>();
+            foreach (var owned in OrderByReferences(design))
             {
                 var path = EditHistoryPolicy.Path(prefix, owned.Name);
                 if (!EditHistoryPolicy.IsIncluded(field, path)) continue;
@@ -108,7 +109,8 @@ namespace Codeer.LowCode.Blazor.Extras.Server.EditHistory
                     {
                         //物理削除モジュールの明細は親の削除で消えている。作り直す (親の Id は変わらないので参照はそのまま)
                         if (!child.CanDelete) throw new InvalidOperationException($"The rows of '{child.Name}' cannot be restored.");
-                        await RecreateAsync(io, child, field, row, path, owned, EditHistorySnapshot.GetId(data));
+                        var newId = await RecreateAsync(io, child, field, ResolveReferences(owned, row, recreated), path, owned, EditHistorySnapshot.GetId(data));
+                        Remember(recreated, owned.Name, id, newId);
                         continue;
                     }
                     await UndeleteDeletedRowsAsync(io, child, field, row, path, together);
@@ -153,17 +155,62 @@ namespace Codeer.LowCode.Blazor.Extras.Server.EditHistory
             var newId = await io.AddAsync(copy);
             if (oldId.Length != 0 && newId != oldId) await RelinkVersionsAsync(io, design, oldId, newId);
 
-            //子が親を参照する宣言 (明細) の子を、親の新しい Id で作り直す (親と一緒に消えた行なので子の CanDelete だけ見る)
-            foreach (var (_, owned) in EditHistoryContracts.OwnedRecords(design))
+            //子が親を参照する宣言 (明細) の子を、親の新しい Id で作り直す (親と一緒に消えた行なので子の CanDelete だけ見る)。
+            //他の従属レコード群の行を指す項目 (宣言の References) は、指す先の行を作り直した Id に付け替える (指される側を先に作る)
+            var recreated = new Dictionary<string, Dictionary<string, string>>();
+            foreach (var owned in OrderByReferences(design))
             {
                 var path = EditHistoryPolicy.Path(prefix, owned.Name);
                 if (GetBinding(owned) is not { ParentRefersChild: false } || !EditHistoryPolicy.IsIncluded(field, path)) continue;
                 var child = designData.Modules.Find(owned.Condition.ModuleName);
                 if (child == null || data.GetOwnedRows(owned.Name) is not { } rows) continue;
                 if (rows.Count != 0 && !child.CanDelete) throw new InvalidOperationException($"The rows of '{child.Name}' cannot be restored.");
-                foreach (var row in rows) await RecreateAsync(io, child, field, row, path, owned, newId);
+                foreach (var row in rows)
+                {
+                    var rowId = await RecreateAsync(io, child, field, ResolveReferences(owned, row, recreated), path, owned, newId);
+                    Remember(recreated, owned.Name, EditHistorySnapshot.GetId(row), rowId);
+                }
             }
             return newId;
+        }
+
+        //従属レコードの宣言を、指される側 (References の値) が先に来る順に並べる
+        static List<OwnedRecordsDesign> OrderByReferences(ModuleDesign design)
+        {
+            var rest = EditHistoryContracts.OwnedRecords(design).Select(e => e.Owned).ToList();
+            var sorted = new List<OwnedRecordsDesign>();
+            while (rest.Count != 0)
+            {
+                var ready = rest.Where(e => e.References.Values.All(target =>
+                    target == e.Name || sorted.Any(s => s.Name == target) || rest.All(r => r.Name != target))).ToList();
+                if (ready.Count == 0) ready = rest.ToList();
+                sorted.AddRange(ready);
+                rest.RemoveAll(ready.Contains);
+            }
+            return sorted;
+        }
+
+        //作り直した行 (旧 Id → 新 Id) を覚える。Id が変わらなかった行 (手入力 Id) は覚えない
+        static void Remember(Dictionary<string, Dictionary<string, string>> recreated, string name, string oldId, string newId)
+        {
+            if (oldId.Length == 0 || oldId == newId) return;
+            if (!recreated.TryGetValue(name, out var map)) recreated[name] = map = new Dictionary<string, string>();
+            map[oldId] = newId;
+        }
+
+        //他の従属レコード群の行を指す項目を、指す先の行を作り直した Id に付け替えた複製を返す (付け替えが無ければそのまま)
+        static ModuleData ResolveReferences(OwnedRecordsDesign owned, ModuleData row, Dictionary<string, Dictionary<string, string>> recreated)
+        {
+            ModuleData? copy = null;
+            foreach (var (fieldName, targetName) in owned.References)
+            {
+                if (!recreated.TryGetValue(targetName, out var map)) continue;
+                if (row.Fields.GetValueOrDefault(fieldName) is not ValueFieldDataBase<string> reference || string.IsNullOrEmpty(reference.Value)) continue;
+                if (!map.TryGetValue(reference.Value, out var newId)) continue;
+                copy ??= row.JsonClone();
+                ((ValueFieldDataBase<string>)copy.Fields[fieldName]).Value = newId;
+            }
+            return copy ?? row;
         }
 
         //Id が変わったレコード (新しい Id での作り直し・Id を変えた更新) の、旧 Id の版を新しい Id に付け替える (そのモジュールが履歴を持つときだけ)
@@ -194,7 +241,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.EditHistory
             if (bind == null) return null;
             var childField = new VariableName(bind.SearchTargetVariable).FieldName.FullName;
             var parentField = new VariableName(bind.Variable).FieldName.FullName;
-            return new Binding(childField, parentField, childField == SystemFieldNames.Id);
+            return new Binding(childField, parentField, owned.IsReferencedByOwner);
         }
 
         //参照のフィールド (明細の親リンク・埋め込みモジュールの参照) に Id を入れる

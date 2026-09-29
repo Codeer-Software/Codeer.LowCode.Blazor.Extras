@@ -30,23 +30,35 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         /// <summary>false にすると読み込まない (与えられた行だけを見せるとき)。</summary>
         public bool AllowLoad { get; set; } = true;
 
-        //IOwnedRecordsField: 宣言した従属レコード (マーカー) を与えられた行に差し替える (保存はしない)
-        [ScriptHide]
-        public async Task ApplyOwnedRecordsAsync(string name, IReadOnlyList<ModuleData> rows, Action<string, string>? onRevive)
+        //IOwnedRecordsField: 行の出し入れと、与えられた行の表示。行の突き合わせ・内容の反映は本体 (Module.ApplyRecordAsync) が行う
+
+        async Task<IReadOnlyList<Module>> IOwnedRecordsField.LoadOwnedRecordsAsync(string name)
+        {
+            if (name != Design.Name) return [];
+            _modules.ApplyLoaded(await this.GetChildModulesAsync(Design.SearchCondition, ModuleLayoutType.Detail, Design.DetailLayoutName, GetMarkerFieldNames()));
+            return _modules.Items;
+        }
+
+        async Task<Module> IOwnedRecordsField.AddOwnedRecordAsync(string name, string? id)
+            => await OwnedRecordModules.AddAsync(this, _modules, Design.SearchCondition, Design.DetailLayoutName, id);
+
+        Task IOwnedRecordsField.RemoveOwnedRecordAsync(string name, Module record)
+        {
+            if (name == Design.Name) _modules.Remove(record);
+            return Task.CompletedTask;
+        }
+
+        async Task IOwnedRecordsField.RefreshOwnedRecordsAsync(string name)
         {
             if (name != Design.Name) return;
-            var all = await this.GetChildModulesAsync(Design.SearchCondition, ModuleLayoutType.Detail, Design.DetailLayoutName, GetMarkerFieldNames());
-            _modules.ApplyLoaded(all);
-            await OwnedRecordModules.ApplyAsync(this, _modules, ModuleName, Design.DetailLayoutName, Design.SearchCondition, rows, onRevive);
             MarkerList.Clear();
             MarkerList.AddRange(_modules.Items.Select(ConvertToMarker));
             await InvokeOnDataChangedAsync();
             NotifyStateChanged();
         }
 
-        //IOwnedRecordsField: 与えられたマーカーをそのまま表示する (DB は読まない・表示専用)
-        [ScriptHide]
-        public async Task ShowOwnedRecordsAsync(string name, IReadOnlyList<OwnedRecordRow> rows)
+        //与えられたマーカーをそのまま表示する (DB は読まない・表示専用)
+        async Task IOwnedRecordsField.ShowOwnedRecordsAsync(string name, IReadOnlyList<OwnedRecordRow> rows)
         {
             if (name != Design.Name) return;
             _modules.ApplyLoaded(await OwnedRecordModules.CreateForShowAsync(this, Design.DetailLayoutName, rows));

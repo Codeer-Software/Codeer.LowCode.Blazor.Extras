@@ -27,7 +27,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         //従属レコードの宣言: このフィールドが読み書きするレコード群は親の一部 (編集履歴などが親と一緒に扱う)
         public IEnumerable<OwnedRecordsDesign> GetOwnedRecords()
         {
-            //差し替え (ApplyOwnedRecordsAsync) は表示範囲に関係なく全件を読み直してから行うので、全件に効く
+            //差し替えの前に表示範囲に関係なく全件を読み直す (LoadOwnedRecordsAsync) ので、全件を持てる
             yield return new OwnedRecordsDesign { Name = Name, Condition = SearchCondition, HoldsAllRecords = true };
         }
 
