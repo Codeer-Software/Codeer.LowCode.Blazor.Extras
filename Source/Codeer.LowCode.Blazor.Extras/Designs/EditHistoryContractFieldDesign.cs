@@ -18,6 +18,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         /// <summary>デザインチェック指摘の番号。DesignCheckCode.Create で発行クラス名と結合して "クラス名:番号" になる。番号は固定(追加は末尾・欠番は再利用しない)。</summary>
         private const int CodeRoleType = 1;
         private const int CodeTargetEnumMember = 2;
+        private const int CodeHistoryModuleWritable = 3;
 
         public EditHistoryContractFieldDesign() : base(typeof(EditHistoryContractFieldDesign).FullName!) { }
 
@@ -64,6 +65,16 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
             CheckRoleType(result, context, ownModule, nameof(UserId), UserId, "Link / Text", e => e is LinkFieldDesign or TextFieldDesign);
             CheckRoleType(result, context, ownModule, nameof(DateTime), DateTime, "DateTime", e => e is DateTimeFieldDesign);
             CheckTargetEnumMembers(result, context, ownModule);
+            //版はシステムだけが書く (画面・API から版を足したり書き換えたりできると、復活がその内容を信用してしまう)。削除は古い版の整理のために許す
+            if (ownModule.CanCreate || ownModule.CanUpdate)
+            {
+                result.Add(new FieldDesignCheckInfo
+                {
+                    Code = DesignCheckCode.Create(typeof(EditHistoryContractFieldDesign), CodeHistoryModuleWritable),
+                    Location = new FieldDesignDataLocation { Module = context.OwnerModule, Field = Name, Member = nameof(Name) },
+                    Message = Properties.Resources.EditHistoryCheck_HistoryModuleWritable,
+                });
+            }
             return result;
         }
 

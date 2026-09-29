@@ -1395,6 +1395,15 @@ Recipients: {1}</value>
   <data name="EditHistoryCheck_OnQueryModule" xml:space="preserve">
     <value>EditHistoryField cannot be placed on a query module (its rows are defined by SQL and cannot be recorded or restored).</value>
   </data>
+  <data name="EditHistoryCheck_OnListLayout" xml:space="preserve">
+    <value>EditHistoryField is for detail layouts. It cannot be placed on the list layout '{0}'.</value>
+  </data>
+  <data name="EditHistoryCheck_HistoryModuleWritable" xml:space="preserve">
+    <value>Versions of the edit history module are written only by the system. Set CanCreate and CanUpdate of the module to false (CanDelete may stay true to remove old versions).</value>
+  </data>
+  <data name="EditHistoryDetailOnly" xml:space="preserve">
+    <value>The edit history is shown on the detail page.</value>
+  </data>
   <data name="EditHistoryContractField" xml:space="preserve">
     <value>Edit History Contract</value>
   </data>

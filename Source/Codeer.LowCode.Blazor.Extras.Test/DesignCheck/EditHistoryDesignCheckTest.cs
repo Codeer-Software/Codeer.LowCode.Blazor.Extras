@@ -268,6 +268,31 @@ namespace Codeer.LowCode.Blazor.Extras.Test.DesignCheck
         }
 
         [Test]
+        public void 一覧レイアウトに置くと指摘()
+        {
+            var d = Create();
+            Module(d, "Order").ListLayouts[""].Elements = [[new ListElement { FieldName = "History" }]];
+            var ret = Check(d, "Order", Field<EditHistoryFieldDesign>(d, "Order", "History"));
+            Assert.That(ret.Count, Is.EqualTo(1));
+            Assert.That(ret[0].Code, Is.EqualTo(DesignCheckCode.Create(typeof(EditHistoryFieldDesign), 10)));
+            ret[0].AssertFieldLocation("Order", "History", nameof(EditHistoryFieldDesign.Name));
+        }
+
+        [Test]
+        public void 履歴モジュールがユーザーから追加更新できると指摘()
+        {
+            var d = Create();
+            Module(d, "EditHistory").CanUpdate = true;
+            var ret = Check(d, "EditHistory", Field<EditHistoryContractFieldDesign>(d, "EditHistory", "Contract"));
+            Assert.That(ret.Count, Is.EqualTo(1));
+            Assert.That(ret[0].Code, Is.EqualTo(DesignCheckCode.Create(typeof(EditHistoryContractFieldDesign), 3)));
+            //削除だけならよい (古い版の整理)
+            Module(d, "EditHistory").CanUpdate = false;
+            Module(d, "EditHistory").CanDelete = true;
+            Assert.That(Check(d, "EditHistory", Field<EditHistoryContractFieldDesign>(d, "EditHistory", "Contract")), Is.Empty);
+        }
+
+        [Test]
         public void 契約の役割は履歴モジュールのフィールドリネームに追従する()
         {
             var d = Create();

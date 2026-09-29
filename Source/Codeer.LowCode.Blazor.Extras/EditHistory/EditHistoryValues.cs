@@ -56,7 +56,12 @@ namespace Codeer.LowCode.Blazor.Extras.EditHistory
             if (value == null) return string.Empty;
             //UTC 保存の日時は本体の DateTimeFieldComponent と同じくローカル時刻で見せる
             if (design is DateTimeFieldDesign { SaveAsUtc: true } && value is DateTime utc) value = utc.ToLocalTime();
-            if (design is IExternalTextFormatFieldDesign format) return format.FormatExternalText(value);
+            if (design is IExternalTextFormatFieldDesign format)
+            {
+                //フィールドの型を変えた後の古い版 (Text だった項目が Number になった等) は書式に合わないことがある。そのときは値をそのまま出す
+                try { return format.FormatExternalText(value); }
+                catch (Exception) { return value.ToString() ?? string.Empty; }
+            }
             return value.ToString() ?? string.Empty;
         }
 

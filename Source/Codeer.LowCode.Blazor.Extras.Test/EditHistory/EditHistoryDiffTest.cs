@@ -2,6 +2,7 @@ using Codeer.LowCode.Blazor.DesignLogic;
 using Codeer.LowCode.Blazor.Extras.EditHistory;
 using Codeer.LowCode.Blazor.Repository;
 using Codeer.LowCode.Blazor.Repository.Data;
+using Codeer.LowCode.Blazor.Repository.Design;
 
 namespace Codeer.LowCode.Blazor.Extras.Test.EditHistory
 {
@@ -184,6 +185,14 @@ namespace Codeer.LowCode.Blazor.Extras.Test.EditHistory
             after.Fields["Secret"] = new TextFieldData { Value = "changed" };
             var changes = Compute(before, after, name => name != "Secret");
             Assert.That(changes.Select(e => e.FieldName), Is.EqualTo(new[] { "Title" }));
+        }
+
+        [Test]
+        public void フィールドの型を変えた後の古い版は書式に合わなくても値をそのまま出す()
+        {
+            //Text だった項目が Number になった: 古い版の値 (文字列) は数値の書式に合わない
+            var text = EditHistoryValues.Format(new NumberFieldDesign { Name = "Amount" }, new TextFieldData { Value = "abc" });
+            Assert.That(text, Is.EqualTo("abc"));
         }
 
         [Test]

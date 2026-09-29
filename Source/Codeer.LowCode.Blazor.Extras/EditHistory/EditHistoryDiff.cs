@@ -23,11 +23,12 @@ namespace Codeer.LowCode.Blazor.Extras.EditHistory
         /// <param name="canRead">閲覧権限のないフィールドを差分に出さない (フィールドのモジュール, フィールド名 → 読めるか)。明細行の項目は行のモジュールで問われる。</param>
         internal static List<EditHistoryChange> Compute(DesignData designData, ModuleDesign design,
             ModuleData? before, ModuleData after, Func<ModuleDesign, string, bool> canRead)
-            => Compute(designData, design, before, after, canRead, new HashSet<string> { design.Name });
+            => Compute(designData, design, before, after, canRead, null);
 
         /// <param name="excluded">出さないフィールド (明細行では親へのバインド条件のフィールド = 親のリンク)。</param>
+        //スナップショットは木 (記録側が同じレコードを二度入れない) なので、構造どおりに辿る (自己参照の従属も深さのまま比べる)
         static List<EditHistoryChange> Compute(DesignData designData, ModuleDesign design,
-            ModuleData? before, ModuleData after, Func<ModuleDesign, string, bool> canRead, HashSet<string> visiting, HashSet<string>? excluded = null)
+            ModuleData? before, ModuleData after, Func<ModuleDesign, string, bool> canRead, HashSet<string>? excluded)
         {
             var result = new List<EditHistoryChange>();
             foreach (var fieldDesign in design.Fields)
@@ -45,7 +46,7 @@ namespace Codeer.LowCode.Blazor.Extras.EditHistory
                     foreach (var owned in owner.GetOwnedRecords())
                     {
                         var childDesign = designData.Modules.Find(owned.Condition.ModuleName);
-                        if (childDesign == null || visiting.Contains(childDesign.Name)) continue;
+                        if (childDesign == null) continue;
                         after.Fields.TryGetValue(owned.Name, out var oa);
                         FieldDataBase? ob = null;
                         before?.Fields.TryGetValue(owned.Name, out ob);
@@ -54,7 +55,7 @@ namespace Codeer.LowCode.Blazor.Extras.EditHistory
                         var bindFields = owned.Condition.GetFieldVariableConditions()
                             .Select(e => new VariableName(e.SearchTargetVariable).FieldName.FullName).ToHashSet();
                         var rows = CompareRows(designData, childDesign, (ob as ListFieldData)?.Children, (oa as ListFieldData)?.Children,
-                            canRead, new HashSet<string>(visiting) { childDesign.Name }, bindFields);
+                            canRead, bindFields);
                         if (rows.Count == 0) continue;
                         result.Add(new EditHistoryChange
                         {
@@ -106,7 +107,7 @@ namespace Codeer.LowCode.Blazor.Extras.EditHistory
 
         //明細の行差分。行は Id で突き合わせ、行の見分けは行番号 (推測で名前を決めない)
         static List<EditHistoryRowChange> CompareRows(DesignData designData, ModuleDesign childDesign,
-            List<ModuleData>? before, List<ModuleData>? after, Func<ModuleDesign, string, bool> canRead, HashSet<string> visiting, HashSet<string> excluded)
+            List<ModuleData>? before, List<ModuleData>? after, Func<ModuleDesign, string, bool> canRead, HashSet<string> excluded)
         {
             var result = new List<EditHistoryRowChange>();
             before ??= new();
@@ -123,11 +124,11 @@ namespace Codeer.LowCode.Blazor.Extras.EditHistory
                     result.Add(new EditHistoryRowChange
                     {
                         Kind = EditHistoryRowChangeKind.Added, RowNumber = i + 1, Row = row,
-                        Changes = Compute(designData, childDesign, null, row, canRead, visiting, excluded),
+                        Changes = Compute(designData, childDesign, null, row, canRead, excluded),
                     });
                     continue;
                 }
-                var changes = Compute(designData, childDesign, old, row, canRead, visiting, excluded);
+                var changes = Compute(designData, childDesign, old, row, canRead, excluded);
                 if (changes.Count == 0) continue;
                 result.Add(new EditHistoryRowChange { Kind = EditHistoryRowChangeKind.Changed, RowNumber = i + 1, Row = row, Changes = changes });
             }
@@ -137,7 +138,7 @@ namespace Codeer.LowCode.Blazor.Extras.EditHistory
                 var id = EditHistorySnapshot.GetId(row);
                 if (id.Length != 0 && afterById.ContainsKey(id)) continue;
                 //削除された行の値は Before 側に入れる (表示は打ち消し)。行の中の従属レコード (孫の明細・埋め込みの子) の行も打ち消し
-                var values = Compute(designData, childDesign, null, row, canRead, visiting, excluded);
+                var values = Compute(designData, childDesign, null, row, canRead, excluded);
                 MarkRemoved(values);
                 result.Add(new EditHistoryRowChange { Kind = EditHistoryRowChangeKind.Removed, RowNumber = i + 1, Row = row, Changes = values });
             }

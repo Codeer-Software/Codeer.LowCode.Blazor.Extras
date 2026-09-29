@@ -106,6 +106,52 @@ namespace Codeer.LowCode.Blazor.Extras.Test.EditHistory
             Assert.That(_errors, Is.Empty);
         }
 
+        async Task<string> DeleteOrderAndRestoreAsync(Func<Task>? betweenDeleteAndRestore = null)
+        {
+            AssertNoError(await CreateIO().SubmitWithTransactionAsync([new ModuleSubmitData
+            {
+                ModuleName = "Order", Id = "1", Delete = [new ModuleDeleteInfo { ModuleName = "Order", Id = "1" }],
+            }]));
+            Assert.That((await _db.QueryAsync(Ds, "SELECT COUNT(*) AS c FROM orders", new())).Single()["c"], Is.EqualTo(0));
+            if (betweenDeleteAndRestore != null) await betweenDeleteAndRestore();
+            var deleteRow = (await _db.QueryAsync(Ds, "SELECT id FROM edit_histories WHERE change_type = 'Delete'", new())).Single();
+            var submit = new ModuleSubmitData { ModuleName = "Order", Id = "1" };
+            submit.ExtendedData.Add(new EditHistoryUndeleteData { HistoryModuleName = "EditHistory", HistoryRowId = deleteRow["id"]!.ToString()!, RestoreWholeRecord = true });
+            var results = await CreateIO().SubmitWithTransactionAsync([submit]);
+            AssertNoError(results);
+            return results[0].DestinationId;
+        }
+
+        [Test]
+        public async Task 物理削除した親の復活で子への参照が戻り_今もある子は作り直さない()
+        {
+            await CreateOrderAsync();
+            var newId = await DeleteOrderAndRestoreAsync();
+
+            var order = (await _db.QueryAsync(Ds, "SELECT id, customer_id FROM orders", new())).Single();
+            Assert.That(order["id"]!.ToString(), Is.EqualTo(newId));
+            Assert.That(order["customer_id"]!.ToString(), Is.EqualTo("5"), "埋め込みの子 (親の削除では消えない) への参照が戻る");
+            Assert.That((await _db.QueryAsync(Ds, "SELECT COUNT(*) AS c FROM customers", new())).Single()["c"], Is.EqualTo(1), "子は作り直さない");
+            var restored = (await SnapshotsAsync()).Last();
+            Assert.That(EditHistorySnapshot.GetId(((ListFieldData)restored.Fields["Customer"]).Children.Single()), Is.EqualTo("5"));
+            Assert.That(_errors, Is.Empty);
+        }
+
+        [Test]
+        public async Task 物理削除した親の復活で子も消えていれば子を作り直して参照する()
+        {
+            await CreateOrderAsync();
+            //親の削除の後 (削除の版には子が入っている) に子も消えた
+            var newId = await DeleteOrderAndRestoreAsync(() => _db.ExecuteAsync(Ds, "DELETE FROM customers", new()));
+
+            var customer = (await _db.QueryAsync(Ds, "SELECT id, name FROM customers", new())).Single();
+            Assert.That(customer["name"], Is.EqualTo("A社"), "版の内容で作り直す");
+            var order = (await _db.QueryAsync(Ds, "SELECT customer_id FROM orders", new())).Single();
+            Assert.That(order["customer_id"]!.ToString(), Is.EqualTo(customer["id"]!.ToString()), "親の参照は作り直した子の Id");
+            Assert.That(newId, Is.Not.EqualTo("1"));
+            Assert.That(_errors, Is.Empty);
+        }
+
         [Test]
         public async Task 子を参照していない親は子無しで記録される()
         {

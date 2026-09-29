@@ -14,7 +14,8 @@ namespace Codeer.LowCode.Blazor.Extras.Test.EditHistory
         /// <param name="withCustomer">埋め込みモジュール (ModuleField) を足す: Order.Customer と OrderItem.Supplier が Customer (顧客) を指す。
         /// Customer の詳細レイアウトには Name だけを置く (Note は載っていない = 本体の同梱では読まれない列)。</param>
         /// <param name="withDetails">孫の明細を足す: OrderItem.Details (OrderItemDetail・親と一緒に消える)。</param>
-        public static DesignData Create(bool withHistoryField = true, string historyModuleName = "EditHistory", bool logicalDelete = false, bool withCustomer = false, bool withDetails = false)
+        /// <param name="manualId">Order の Id を手入力にする (作り直しでも元の Id を保つ)。</param>
+        public static DesignData Create(bool withHistoryField = true, string historyModuleName = "EditHistory", bool logicalDelete = false, bool withCustomer = false, bool withDetails = false, bool manualId = false)
         {
             var d = new DesignData();
             d.AppSettings.CurrentUserModuleDesignName = "AppUser";
@@ -26,7 +27,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.EditHistory
             d.AddModule(user);
 
             var order = new ModuleDesign { Name = "Order", DataSourceName = Ds, DbTable = "orders" };
-            order.Fields.Add(new IdFieldDesign { Name = "Id", DbColumn = "id" });
+            order.Fields.Add(new IdFieldDesign { Name = "Id", DbColumn = "id", IsManualInput = manualId });
             order.Fields.Add(new TextFieldDesign { Name = "Title", DisplayName = "件名", DbColumn = "title" });
             order.Fields.Add(new NumberFieldDesign { Name = "Amount", DisplayName = "金額", DbColumn = "amount" });
             order.Fields.Add(new TextFieldDesign { Name = "Secret", DisplayName = "機密", DbColumn = "secret" });
@@ -108,7 +109,8 @@ namespace Codeer.LowCode.Blazor.Extras.Test.EditHistory
                 d.AddModule(customer);
             }
 
-            var history = new ModuleDesign { Name = "EditHistory", DataSourceName = Ds, DbTable = "edit_histories" };
+            //版はシステムだけが書く (画面・API からの追加・更新は不可。古い版の削除は可)
+            var history = new ModuleDesign { Name = "EditHistory", DataSourceName = Ds, DbTable = "edit_histories", CanCreate = false, CanUpdate = false };
             history.Fields.Add(new IdFieldDesign { Name = "Id", DbColumn = "id" });
             history.Fields.Add(new TextFieldDesign { Name = "ModuleName", DbColumn = "module_name" });
             history.Fields.Add(new TextFieldDesign { Name = "DataId", DbColumn = "data_id" });

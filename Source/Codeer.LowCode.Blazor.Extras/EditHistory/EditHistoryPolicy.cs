@@ -75,11 +75,12 @@ namespace Codeer.LowCode.Blazor.Extras.EditHistory
             if (snapshot == null || field == null || (field.ExcludedOwnedRecords.Count == 0 && field.IndividuallyRecordedOwnedRecords.Count == 0)) return snapshot;
             var design = designData.Modules.Find(snapshot.Name);
             if (design == null) return snapshot;
-            StripCore(designData, field, design, snapshot, string.Empty, new HashSet<string> { design.Name });
+            StripCore(designData, field, design, snapshot, string.Empty);
             return snapshot;
         }
 
-        static void StripCore(DesignData designData, EditHistoryFieldDesign field, ModuleDesign design, ModuleData data, string prefix, HashSet<string> visiting)
+        //スナップショットは木 (記録側が同じレコードを二度入れない) なので構造どおりに辿る (自己参照の従属も深さのまま)
+        static void StripCore(DesignData designData, EditHistoryFieldDesign field, ModuleDesign design, ModuleData data, string prefix)
         {
             foreach (var (_, owned) in EditHistoryContracts.OwnedRecords(design))
             {
@@ -90,10 +91,10 @@ namespace Codeer.LowCode.Blazor.Extras.EditHistory
                     continue;
                 }
                 var child = designData.Modules.Find(owned.Condition.ModuleName);
-                if (child == null || visiting.Contains(child.Name)) continue;
+                if (child == null) continue;
                 if (data.Fields.GetValueOrDefault(owned.Name) is ListFieldData rows)
                 {
-                    foreach (var row in rows.Children) StripCore(designData, field, child, row, path, new HashSet<string>(visiting) { child.Name });
+                    foreach (var row in rows.Children) StripCore(designData, field, child, row, path);
                 }
             }
         }

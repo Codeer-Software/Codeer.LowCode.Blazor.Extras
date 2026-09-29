@@ -32,6 +32,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         private const int CodeOwnedRecordPathInBoth = 7;
         private const int CodeOnHistoryModule = 8;
         private const int CodeOnQueryModule = 9;
+        private const int CodeOnListLayout = 10;
 
         public EditHistoryFieldDesign() : base(typeof(EditHistoryFieldDesign).FullName!) { }
 
@@ -130,6 +131,17 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
                     Code = DesignCheckCode.Create(typeof(EditHistoryFieldDesign), CodeOnQueryModule),
                     Location = new FieldDesignDataLocation { Module = context.OwnerModule, Field = Name, Member = nameof(Name) },
                     Message = Properties.Resources.EditHistoryCheck_OnQueryModule,
+                });
+            }
+            //詳細レイアウト専用 (一覧の行では読まない = 行数分の読み込みになるため)
+            foreach (var (layoutName, layout) in ownModule?.ListLayouts ?? new())
+            {
+                if (!layout.Elements.SelectMany(e => e).Any(e => e.FieldName == Name)) continue;
+                result.Add(new FieldDesignCheckInfo
+                {
+                    Code = DesignCheckCode.Create(typeof(EditHistoryFieldDesign), CodeOnListLayout),
+                    Location = new FieldDesignDataLocation { Module = context.OwnerModule, Field = Name, Member = nameof(Name) },
+                    Message = string.Format(Properties.Resources.EditHistoryCheck_OnListLayout, layoutName),
                 });
             }
             if (ownModule != null) CheckOwnedRecords(context, ownModule, result);

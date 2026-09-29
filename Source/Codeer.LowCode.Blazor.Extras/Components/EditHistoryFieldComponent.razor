@@ -12,6 +12,13 @@
     <span class="edit-history-note">@R.EditHistoryDesignPlaceholder</span>
   </div>
 }
+else if (Field.ModuleLayoutType != Codeer.LowCode.Blazor.Repository.Design.ModuleLayoutType.Detail)
+{
+  @* 一覧の行 (行数分の読み込みになる) では読まない = 詳細レイアウト専用 *@
+  <div data-system="edit-history" class="edit-history">
+    <span class="edit-history-note">@R.EditHistoryDetailOnly</span>
+  </div>
+}
 else if (!Field.IsAvailable)
 {
   <div data-system="edit-history" class="edit-history">

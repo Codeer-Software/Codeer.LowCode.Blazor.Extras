@@ -109,6 +109,25 @@ namespace Codeer.LowCode.Blazor.Extras.Test.EditHistory
         }
 
         [Test]
+        public async Task 前の版の内容が見えなければ前の版なしと同じ扱い()
+        {
+            var services = CreateServices();
+            //v2 の Snapshot はこの人には見えない (行の閲覧条件に合わない版はサーバーが空にして返す)
+            services.App.ListProvider = request =>
+            {
+                var rows = Rows();
+                ((TextFieldData)rows[1].Fields["Snapshot"]).Value = string.Empty;
+                var limit = request.Condition.LimitCount ?? rows.Count;
+                return new Paging<ModuleData> { TotalCount = rows.Count, Items = rows.Skip(request.PageIndex * limit).Take(limit).ToList() };
+            };
+            var (_, field) = await CreateOrderModuleAsync(services, _v3);
+
+            Assert.That(field.Versions[0].HasPreviousVersion, Is.False, "全項目が「空 → 値」に見えないように、前の版なしと同じにする");
+            Assert.That(field.Versions[0].Changes, Is.Empty);
+            Assert.That(field.Versions[1].Snapshot, Is.Null);
+        }
+
+        [Test]
         public async Task 履歴の検索条件はモジュール名とレコードIdで_新しい順()
         {
             var services = CreateServices();

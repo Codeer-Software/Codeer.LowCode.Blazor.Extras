@@ -2,8 +2,13 @@ using Codeer.LowCode.Blazor.Components.Dialog.BootstrapButtons;
 using Codeer.LowCode.Blazor.DataIO;
 using Codeer.LowCode.Blazor.Extras.Designs;
 using Codeer.LowCode.Blazor.Extras.EditHistory;
+using Codeer.LowCode.Blazor.DesignLogic;
 using Codeer.LowCode.Blazor.OperatingModel;
+using Codeer.LowCode.Blazor.Repository;
 using Codeer.LowCode.Blazor.Repository.Data;
+using Codeer.LowCode.Blazor.Repository.Design;
+using Codeer.LowCode.Blazor.Repository.Match;
+using Codeer.LowCode.Blazor.RequestInterfaces;
 using Codeer.LowCode.Blazor.Script;
 using R = Codeer.LowCode.Blazor.Extras.Properties.Resources;
 
@@ -18,6 +23,8 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
     public class EditHistoryUndeleteButtonField : FieldBase<EditHistoryUndeleteButtonFieldDesign>
     {
         bool _isBusy;
+        //この版がそのレコードの最新の版か (復活済み・作り直し済みのレコードの古い削除の版からは復活できない。サーバーも同じ判定をする)
+        bool _isLatestVersion;
 
         public EditHistoryUndeleteButtonField(EditHistoryUndeleteButtonFieldDesign design) : base(design) { }
 
@@ -31,7 +38,38 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         public override FieldSubmitData GetSubmitData() => new();
 
         [ScriptHide]
-        public override async Task InitializeDataAsync(FieldDataBase? fieldDataBase) => await Task.CompletedTask;
+        public override async Task InitializeDataAsync(FieldDataBase? fieldDataBase)
+        {
+            _isLatestVersion = false;
+            if (Services.AppInfoService.IsDesignMode || Module.IsNewData || ModuleLayoutType != ModuleLayoutType.Detail) return;
+            if (GetText(Names.ChangeType) != EditHistoryChangeType.Delete.ToString()) return;
+            _isLatestVersion = await IsLatestVersionAsync();
+        }
+
+        //同じレコード (ModuleName / DataId) の最新の版 (閲覧側 EditHistoryField と同じ並び) がこの行か
+        async Task<bool> IsLatestVersionAsync()
+        {
+            var names = Names;
+            var condition = new SearchCondition
+            {
+                ModuleName = Module.Design.Name,
+                Condition = MultiMatchCondition.And(Equal(names.ModuleName, GetText(names.ModuleName)), Equal(names.DataId, GetText(names.DataId))),
+                LimitCount = 1,
+                SortConditions = new List<SortCondition>(),
+                SelectFields = [SystemFieldNames.Id],
+            };
+            if (!string.IsNullOrEmpty(names.DateTime))
+                condition.SortConditions.Add(new SortCondition { Variable = $"{names.DateTime}.Value", IsDescending = true });
+            condition.SortConditions.Add(new SortCondition { Variable = $"{SystemFieldNames.Id}.Value", IsDescending = true });
+            var page = (await Services.ModuleDataService.GetListAsync([new GetListRequest { Condition = condition, PageIndex = 0 }])).FirstOrDefault();
+            var latest = page?.Items.FirstOrDefault();
+            return latest != null && EditHistorySnapshot.GetId(latest) == Module.GetIdText();
+        }
+
+        static FieldValueMatchCondition Equal(string fieldName, string value) => new()
+        {
+            SearchTargetVariable = $"{fieldName}.Value", Comparison = MatchComparison.Equal, Value = MultiTypeValue.Create(value),
+        };
 
         [ScriptHide]
         public override async Task SetDataAsync(FieldDataBase? fieldDataBase) => await Task.CompletedTask;
@@ -49,13 +87,16 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             return (data as ValueFieldDataBase<string>)?.Value ?? string.Empty;
         }
 
-        /// <summary>削除の版で、対象モジュールがあり、このユーザーがそのモジュールで削除 (= 復活) できるときだけ出す。行の条件はサーバーが見る。</summary>
+        /// <summary>
+        /// 削除の版で、それがそのレコードの最新の版で、対象モジュールがあり、このユーザーがそのモジュールで削除 (= 復活) できるときだけ出す。
+        /// 行の条件はサーバーが見る。
+        /// </summary>
         [ScriptHide]
         public bool CanUndelete
         {
             get
             {
-                if (Services.AppInfoService.IsDesignMode || Module.IsNewData || !IsEnabled) return false;
+                if (Services.AppInfoService.IsDesignMode || Module.IsNewData || !IsEnabled || !_isLatestVersion) return false;
                 if (GetText(Names.ChangeType) != EditHistoryChangeType.Delete.ToString()) return false;
                 var target = Services.AppInfoService.GetDesignData().Modules.Find(GetText(Names.ModuleName));
                 return target != null && target.CanUndeleteByUser(Services);

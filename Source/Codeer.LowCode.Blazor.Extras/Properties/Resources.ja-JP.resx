@@ -1395,6 +1395,15 @@
   <data name="EditHistoryCheck_OnQueryModule" xml:space="preserve">
     <value>Query モジュール (行の定義が SQL) には EditHistoryField を置けません (記録も復元もできません)。</value>
   </data>
+  <data name="EditHistoryCheck_OnListLayout" xml:space="preserve">
+    <value>EditHistoryField は詳細レイアウト専用です。一覧レイアウト '{0}' には置けません。</value>
+  </data>
+  <data name="EditHistoryCheck_HistoryModuleWritable" xml:space="preserve">
+    <value>履歴モジュールの版はシステムだけが書きます。モジュールの CanCreate と CanUpdate を false にしてください (古い版を消すための CanDelete は true でかまいません)。</value>
+  </data>
+  <data name="EditHistoryDetailOnly" xml:space="preserve">
+    <value>編集履歴は詳細画面で表示されます。</value>
+  </data>
   <data name="EditHistoryContractField" xml:space="preserve">
     <value>編集履歴契約</value>
   </data>

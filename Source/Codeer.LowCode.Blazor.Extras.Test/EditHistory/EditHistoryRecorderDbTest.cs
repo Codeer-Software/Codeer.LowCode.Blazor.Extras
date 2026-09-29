@@ -495,8 +495,159 @@ namespace Codeer.LowCode.Blazor.Extras.Test.EditHistory
             Assert.That(items.Select(e => (e["order_id"]!.ToString(), e["name"])), Is.EquivalentTo(new[] { (newId, (object)"品X"), (newId, (object)"品Y") }), "明細は新しい親の Id で作り直す");
 
             var histories = await HistoriesAsync();
-            Assert.That(histories.Select(e => (e["change_type"], e["data_id"])), Is.EqualTo(new[] { ("Add", "1"), ("Delete", "1"), ("Add", newId) }), "作り直しは作成の版");
+            Assert.That(histories.Select(e => (e["change_type"], e["data_id"])), Is.EqualTo(new[] { ("Add", newId), ("Delete", newId), ("Restore", newId) }),
+                "旧 Id の版は作り直した Id に付け替わり (履歴が繋がる)、復活の版が積まれる");
             Assert.That(Items(Snapshot(histories[2])).Count, Is.EqualTo(2));
+
+            //同じ削除の版からもう一度は復活できない (最新の版が削除ではない)
+            var again = await CreateIO().SubmitWithTransactionAsync([submit]);
+            Assert.That(again.All(e => !string.IsNullOrEmpty(e.ExceptionMessage)), Is.True, "復活済みのレコードの削除の版からは復活できない");
+            Assert.That((await _db.QueryAsync(Ds, "SELECT COUNT(*) AS c FROM orders", new())).Single()["c"], Is.EqualTo(1), "二重に作られない");
+        }
+
+        [Test]
+        public async Task 論理削除の復活も最新の版が削除のときだけ()
+        {
+            _design = EditHistoryTestDesigns.Create(logicalDelete: true);
+            await CreateOrderAsync();
+            AssertNoError(await CreateIO().SubmitWithTransactionAsync([new ModuleSubmitData
+            {
+                ModuleName = "Order", Id = "1", Delete = [new ModuleDeleteInfo { ModuleName = "Order", Id = "1" }],
+            }]));
+            var deleteRow = (await HistoriesAsync()).Single(e => (string)e["change_type"] == "Delete");
+            var submit = new ModuleSubmitData { ModuleName = "Order", Id = "1" };
+            submit.ExtendedData.Add(new EditHistoryUndeleteData { HistoryModuleName = "EditHistory", HistoryRowId = deleteRow["id"]!.ToString()!, RestoreWholeRecord = true });
+            AssertNoError(await CreateIO().SubmitWithTransactionAsync([submit]));
+
+            //復活の版が後ろに積まれた = この削除の版は最新ではない
+            var again = await CreateIO().SubmitWithTransactionAsync([submit]);
+            Assert.That(again.All(e => !string.IsNullOrEmpty(e.ExceptionMessage)), Is.True);
+            Assert.That((await HistoriesAsync()).Select(e => e["change_type"]), Is.EqualTo(new[] { "Add", "Delete", "Restore" }), "余分な復活の版は積まれない");
+        }
+
+        [Test]
+        public async Task 手入力Idのレコードは元のIdで作り直し_同じIdがあれば復活できない()
+        {
+            _design = EditHistoryTestDesigns.Create(manualId: true);
+            AssertNoError(await CreateIO().SubmitWithTransactionAsync([new ModuleSubmitData
+            {
+                ModuleName = "Order", Id = "100", Add = [OrderData("100", "受注A", 1000), ItemData(null, "100", "品X", 1)],
+            }]));
+            AssertNoError(await CreateIO().SubmitWithTransactionAsync([new ModuleSubmitData
+            {
+                ModuleName = "Order", Id = "100", Delete = [new ModuleDeleteInfo { ModuleName = "Order", Id = "100" }],
+            }]));
+            Assert.That((await _db.QueryAsync(Ds, "SELECT COUNT(*) AS c FROM orders", new())).Single()["c"], Is.EqualTo(0));
+
+            var deleteRow = (await HistoriesAsync()).Single(e => (string)e["change_type"] == "Delete");
+            var submit = new ModuleSubmitData { ModuleName = "Order", Id = "100" };
+            submit.ExtendedData.Add(new EditHistoryUndeleteData { HistoryModuleName = "EditHistory", HistoryRowId = deleteRow["id"]!.ToString()!, RestoreWholeRecord = true });
+            var results = await CreateIO().SubmitWithTransactionAsync([submit]);
+            AssertNoError(results);
+            Assert.That(results[0].DestinationId, Is.EqualTo("100"), "手入力 Id は元の Id");
+            Assert.That((await _db.QueryAsync(Ds, "SELECT id FROM orders", new())).Single()["id"]!.ToString(), Is.EqualTo("100"));
+            Assert.That((await _db.QueryAsync(Ds, "SELECT order_id FROM order_items", new())).Single()["order_id"]!.ToString(), Is.EqualTo("100"), "明細の参照も元の Id");
+            Assert.That((await HistoriesAsync()).Select(e => (e["change_type"], e["data_id"])), Is.EqualTo(new[] { ("Add", "100"), ("Delete", "100"), ("Restore", "100") }));
+
+            //消した後に同じ Id で別のレコードが作られていたら復活できない
+            AssertNoError(await CreateIO().SubmitWithTransactionAsync([new ModuleSubmitData
+            {
+                ModuleName = "Order", Id = "100", Delete = [new ModuleDeleteInfo { ModuleName = "Order", Id = "100" }],
+            }]));
+            await _db.ExecuteAsync(Ds, "INSERT INTO orders (id, title) VALUES (100, '別のレコード')", new());
+            var deleteRow2 = (await HistoriesAsync()).Last(e => (string)e["change_type"] == "Delete");
+            submit.ExtendedData.Clear();
+            submit.ExtendedData.Add(new EditHistoryUndeleteData { HistoryModuleName = "EditHistory", HistoryRowId = deleteRow2["id"]!.ToString()!, RestoreWholeRecord = true });
+            var conflict = await CreateIO().SubmitWithTransactionAsync([submit]);
+            Assert.That(conflict.All(e => !string.IsNullOrEmpty(e.ExceptionMessage)), Is.True);
+            Assert.That((await _db.QueryAsync(Ds, "SELECT title FROM orders", new())).Single()["title"], Is.EqualTo("別のレコード"), "既存のレコードは触らない");
+        }
+
+        [Test]
+        public async Task 履歴モジュールへの追加と更新はユーザーからはできない()
+        {
+            await CreateOrderAsync();
+            var row = (await HistoriesAsync())[0];
+            var fake = new ModuleData { Name = "EditHistory" };
+            fake.Fields["Id"] = new IdFieldData { Value = row["id"]!.ToString() };
+            fake.Fields["Snapshot"] = new TextFieldData { Value = "{}" };
+            var update = await CreateIO().SubmitWithTransactionAsync([new ModuleSubmitData { ModuleName = "EditHistory", Id = fake.Fields["Id"].ToString()!, Update = [fake] }]);
+            Assert.That(update.All(e => !string.IsNullOrEmpty(e.ExceptionMessage)), Is.True, "版の書き換えは拒否");
+            var added = new ModuleData { Name = "EditHistory" };
+            added.Fields["ModuleName"] = new TextFieldData { Value = "Order" };
+            var add = await CreateIO().SubmitWithTransactionAsync([new ModuleSubmitData { ModuleName = "EditHistory", Id = "@temporary:x", Add = [added] }]);
+            Assert.That(add.All(e => !string.IsNullOrEmpty(e.ExceptionMessage)), Is.True, "版の追加は拒否");
+            Assert.That((await HistoriesAsync()).Count, Is.EqualTo(1));
+            //削除 (古い版の整理) はできる
+            AssertNoError(await CreateIO().SubmitWithTransactionAsync([new ModuleSubmitData
+            {
+                ModuleName = "EditHistory", Id = row["id"]!.ToString()!, Delete = [new ModuleDeleteInfo { ModuleName = "EditHistory", Id = row["id"]!.ToString()! }],
+            }]));
+            Assert.That((await HistoriesAsync()).Count, Is.EqualTo(0));
+        }
+
+        [Test]
+        public async Task この版に戻すで戻せない行があれば保存全体を失敗にする()
+        {
+            _design = EditHistoryTestDesigns.Create(logicalDelete: true);
+            await CreateOrderAsync();
+            AssertNoError(await CreateIO().SubmitWithTransactionAsync([new ModuleSubmitData
+            {
+                ModuleName = "Order", Id = "1", Delete = [new ModuleDeleteInfo { ModuleName = "OrderItem", Id = "2" }],
+            }]));
+            //明細を削除できない人 (= 復活もできない) が戻す
+            _design.Modules.Find("OrderItem")!.CanDelete = false;
+            var addRow = (await HistoriesAsync())[0];
+            var submit = new ModuleSubmitData { ModuleName = "Order", Id = "1", Update = [ItemData("2", "1", "品Y", 7)] };
+            submit.ExtendedData.Add(new EditHistoryUndeleteData { HistoryModuleName = "EditHistory", HistoryRowId = addRow["id"]!.ToString()! });
+            var results = await CreateIO().SubmitWithTransactionAsync([submit]);
+            Assert.That(results.All(e => !string.IsNullOrEmpty(e.ExceptionMessage)), Is.True);
+            Assert.That((await _db.QueryAsync(Ds, "SELECT is_deleted FROM order_items WHERE id = 2", new())).Single()["is_deleted"], Is.EqualTo(1), "部分反映しない");
+            Assert.That((await HistoriesAsync()).Count, Is.EqualTo(2), "版も増えない");
+        }
+
+        [Test]
+        public async Task この版に戻すはその人に見えない行と削除されていない行を触らない()
+        {
+            _design = EditHistoryTestDesigns.Create(logicalDelete: true);
+            await CreateOrderAsync();
+            AssertNoError(await CreateIO().SubmitWithTransactionAsync([new ModuleSubmitData
+            {
+                ModuleName = "Order", Id = "1", Delete = [new ModuleDeleteInfo { ModuleName = "OrderItem", Id = "2" }],
+            }]));
+            //品X の行しか見えない人が版 1 に戻す (見えない 品Y は差分に出ないので触らない。見えている 品X は削除されていないので触らない)
+            _design.Modules.Find("OrderItem")!.DataReadCondition.Condition = new FieldValueMatchCondition
+            {
+                SearchTargetVariable = "Name.Value", Comparison = MatchComparison.Equal, Value = MultiTypeValue.Create("品X"),
+            };
+            var before = (await _db.QueryAsync(Ds, "SELECT is_deleted FROM order_items ORDER BY id", new())).Select(e => e["is_deleted"]).ToList();
+            var addRow = (await HistoriesAsync())[0];
+            var submit = new ModuleSubmitData { ModuleName = "Order", Id = "1", Update = [OrderData("1", "受注A", 1000)] };
+            submit.ExtendedData.Add(new EditHistoryUndeleteData { HistoryModuleName = "EditHistory", HistoryRowId = addRow["id"]!.ToString()! });
+            AssertNoError(await CreateIO().SubmitWithTransactionAsync([submit]));
+            var after = (await _db.QueryAsync(Ds, "SELECT is_deleted FROM order_items ORDER BY id", new())).Select(e => e["is_deleted"]).ToList();
+            Assert.That(after, Is.EqualTo(before), "見えない行 (2) は削除のまま、見えている行 (1) は元のまま");
+        }
+
+        [Test]
+        public async Task 論理削除の親の復活は親と一緒に消えた行を子の権限に関係なく戻す()
+        {
+            _design = EditHistoryTestDesigns.Create(logicalDelete: true);
+            await CreateOrderAsync();
+            AssertNoError(await CreateIO().SubmitWithTransactionAsync([new ModuleSubmitData
+            {
+                ModuleName = "Order", Id = "1", Delete = [new ModuleDeleteInfo { ModuleName = "Order", Id = "1" }],
+            }]));
+            //明細の行の書き込み条件がどの行にも合わない状態でも (親の削除が子を消すのと同じ規則で) 親と一緒に戻る
+            _design.Modules.Find("OrderItem")!.DataWriteCondition.Condition = new FieldValueMatchCondition
+            {
+                SearchTargetVariable = "Name.Value", Comparison = MatchComparison.Equal, Value = MultiTypeValue.Create("無い名前"),
+            };
+            var deleteRow = (await HistoriesAsync()).Single(e => (string)e["change_type"] == "Delete");
+            var submit = new ModuleSubmitData { ModuleName = "Order", Id = "1" };
+            submit.ExtendedData.Add(new EditHistoryUndeleteData { HistoryModuleName = "EditHistory", HistoryRowId = deleteRow["id"]!.ToString()!, RestoreWholeRecord = true });
+            AssertNoError(await CreateIO().SubmitWithTransactionAsync([submit]));
+            Assert.That((await _db.QueryAsync(Ds, "SELECT COUNT(*) AS c FROM order_items WHERE is_deleted = 1", new())).Single()["c"], Is.EqualTo(0));
         }
 
         [Test]

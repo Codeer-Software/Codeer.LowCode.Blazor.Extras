@@ -44,6 +44,8 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         int _pageIndex;
         //版番号の基準にする件数 (最初のページを読んだときの総数。「さらに表示」の間に版が増えても番号がずれないように固定する)
         int _numberingTotal;
+        //読み込み中に読み直しを頼まれた (自動保存の直後に「さらに表示」が動いている等)。読み込みが終わってから先頭から読み直す
+        bool _reloadPending;
 
         public EditHistoryField(EditHistoryFieldDesign design) : base(design) { }
 
@@ -133,14 +135,23 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         //契約 (役割→フィールド名)。契約が無ければ既定名
         EditHistoryContractFieldDesign Names => EditHistoryContracts.Contract(HistoryModule) ?? new();
 
-        /// <summary>履歴を先頭から読み直す。</summary>
+        /// <summary>履歴を先頭から読み直す。読み込み中なら、その読み込みが終わってから読み直す (途中の応答が混ざらないように)。</summary>
         [ScriptName("Reload")]
         public async Task ReloadAsync()
         {
-            _versions.Clear();
-            _pageIndex = 0;
-            _numberingTotal = 0;
-            await LoadPageAsync();
+            if (IsBusy)
+            {
+                _reloadPending = true;
+                return;
+            }
+            do
+            {
+                _reloadPending = false;
+                _versions.Clear();
+                _pageIndex = 0;
+                _numberingTotal = 0;
+                await LoadPageAsync();
+            } while (_reloadPending);
         }
 
         /// <summary>次のページ (古い版) を読む。</summary>
@@ -264,6 +275,12 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             }
             var designData = Services.AppInfoService.GetDesignData();
             var previous = EditHistoryPolicy.Strip(designData, Design, EditHistorySnapshot.Deserialize(GetString(previousRow, Names.Snapshot)));
+            if (previous == null)
+            {
+                //前の版の内容がこの人には見えない (行の閲覧条件に合わない版 = サーバーが空にして返す)。前の版が無いのと同じ扱い (全部が「空 → 値」に見えないように)
+                version.HasPreviousVersion = false;
+                return new();
+            }
             return EditHistoryDiff.Compute(designData, Module.Design, previous, version.Snapshot, CanRead);
         }
 
