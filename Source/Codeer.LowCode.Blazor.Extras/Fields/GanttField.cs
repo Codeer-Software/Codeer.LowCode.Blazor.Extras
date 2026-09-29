@@ -68,6 +68,9 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
 
         private Dictionary<string, Module>? _restoredTasks;
 
+        //与えられたタスクを表示専用で見せている (ShowOwnedRecordsAsync)。表示範囲を変えたら手元のタスクを絞り直す
+        private bool _isShowingOwnedRecords;
+
         //矢印 (from->to) ごとの強調クラス (ShowOwnedRecordsAsync で渡された行の ClassName)。通常は空
         private readonly Dictionary<string, string> _dependencyClasses = new();
 
@@ -79,15 +82,16 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             return taskIds.Contains(data.Value);
         }
 
-        //保持している依存関係の行から矢印の対応表と一覧を作り直す (行の ClassName を矢印に写す)
+        //保持している依存関係の行から矢印の対応表と一覧を作り直す (表示専用の行に付いたクラスを矢印に写す)
         private void RebuildDependencies()
         {
             _dependencyClasses.Clear();
             foreach (var dep in _dependencies.Items)
             {
-                if (string.IsNullOrEmpty(dep.ClassName)) continue;
+                var className = dep.ShownClassName();
+                if (string.IsNullOrEmpty(className)) continue;
                 var pair = ConvertToGanttDeps(dep);
-                _dependencyClasses[$"{pair.Value}->{pair.Key}"] = dep.ClassName;
+                _dependencyClasses[$"{pair.Value}->{pair.Key}"] = className;
             }
             DependenciesMap = _dependencies.Items.Select(ConvertToGanttDeps).GroupBy(e => e.Key)
                 .ToDictionary(e => e.Key, e => e.Select(f => f.Value).ToArray());
@@ -111,8 +115,9 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             }
             if (name != Design.Name) return;
             _tasks.ApplyLoaded(await OwnedRecordModules.CreateForShowAsync(this, Design.DetailLayoutName, rows));
+            _isShowingOwnedRecords = true;
             RebuildItemsInView();
-            static bool IsDecorated(GanttItem e) => !string.IsNullOrEmpty(e.Module?.ClassName);
+            static bool IsDecorated(GanttItem e) => !string.IsNullOrEmpty(e.Module.ShownClassName());
             var all = _tasks.Items.Select(ConvertToGanttItem).Where(e => e.Start != default).OrderBy(e => e.Start).ToList();
             var focus = all.Any(IsDecorated) && !Items.Any(IsDecorated) ? all.First(IsDecorated)
                 : Items.Count == 0 ? all.FirstOrDefault()
@@ -282,11 +287,14 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         [ScriptName("Reload")]
         public async Task ReloadAsync()
         {
-            //読み込みを止めているとき (版表示) は手元のタスクを表示範囲で絞り直すだけ
             if (!AllowLoad)
             {
-                RebuildItemsInView();
-                NotifyStateChanged();
+                //与えられたタスクを見せているときは、手元のタスクを表示範囲で絞り直す (DB は読まない)
+                if (_isShowingOwnedRecords)
+                {
+                    RebuildItemsInView();
+                    NotifyStateChanged();
+                }
                 return;
             }
             if (this.IsBoundToUnsavedRecord(Design.SearchCondition)) return;

@@ -32,7 +32,7 @@
           {
             var capturedItem = item;
             var capturedIndex = index;
-            <div @key="capturedItem.Module" class="taskboard-card @(_dragItem == capturedItem ? "dragging" : "") @capturedItem.Module?.ClassName"
+            <div @key="capturedItem.Module" class="taskboard-card @(_dragItem == capturedItem ? "dragging" : "") @capturedItem.Module.ShownClassName()"
                  style="@(IsEditable ? "" : "cursor: default;")"
                  draggable="@(IsEditable ? "true" : "false")"
                  @ondragstart="() => OnDragStart(capturedItem, statusValue, capturedIndex)"

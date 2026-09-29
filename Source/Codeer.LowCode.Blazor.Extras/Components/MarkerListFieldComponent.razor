@@ -28,7 +28,7 @@ else
 
         @foreach (var m in Field.MarkerList)
         {
-          <div class="marker @m.Module?.ClassName"
+          <div class="marker @m.Module.ShownClassName()"
                style="@GetMarkerStyle(m)"
                @onclick="@(() => HandleMarkerClick(m))"
                @onclick:stopPropagation="true">

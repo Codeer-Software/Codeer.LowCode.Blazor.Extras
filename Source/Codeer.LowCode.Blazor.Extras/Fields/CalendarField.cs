@@ -42,7 +42,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             Items.Clear();
             Items.AddRange(_modules.Items.Select(ConvertToCalendarItem).OrderByStart());
             bool InView(ModuleCalendarItem e) => e.Start.Year == SelectedDate.Year && e.Start.Month == SelectedDate.Month;
-            static bool IsDecorated(ModuleCalendarItem e) => !string.IsNullOrEmpty(e.Module?.ClassName);
+            static bool IsDecorated(ModuleCalendarItem e) => !string.IsNullOrEmpty(e.Module.ShownClassName());
             var focus = Items.Any(IsDecorated) && !Items.Any(e => IsDecorated(e) && InView(e)) ? Items.First(IsDecorated)
                 : Items.Count > 0 && !Items.Any(InView) ? Items[0]
                 : null;

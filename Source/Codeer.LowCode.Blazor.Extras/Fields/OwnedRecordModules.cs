@@ -4,6 +4,7 @@ using Codeer.LowCode.Blazor.OperatingModel;
 using Codeer.LowCode.Blazor.Repository.Data;
 using Codeer.LowCode.Blazor.Repository.Design;
 using Codeer.LowCode.Blazor.Repository.Match;
+using System.Runtime.CompilerServices;
 
 namespace Codeer.LowCode.Blazor.Extras.Fields
 {
@@ -13,6 +14,14 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
     /// </summary>
     internal static class OwnedRecordModules
     {
+        //表示専用で見せている行 (CreateForShowAsync) の項目に付けるクラス。
+        //行モジュールの ClassName はレイアウトのデザインで付けたクラスを含むので、項目 (バー・予定・カード・マーカー) にはこちらだけを出す
+        static readonly ConditionalWeakTable<Module, string> _shownClassNames = new();
+
+        /// <summary>表示専用で見せている行の項目に付けるクラス (OwnedRecordRow.ClassName)。通常の行は空。</summary>
+        internal static string ShownClassName(this Module? module)
+            => module != null && _shownClassNames.TryGetValue(module, out var className) ? className : string.Empty;
+
         /// <summary>
         /// 持っている行を与えられた行に差し替える。本体の ListField.ApplyOwnedRecordsAsync と同じ規則:
         /// 行 Id で突き合わせ、既存行は内容を反映、無い行は論理削除なら Id を保って復活 (onRevive に登録)、それ以外は新しい行、余った行は削除。
@@ -87,6 +96,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
                 var mod = await ModuleCreationService.CreateModuleAsync(field.Services, row.Data, layoutType, layoutName);
                 mod.IsViewOnly = true;
                 await row.ApplyToAsync(mod);
+                if (!string.IsNullOrEmpty(row.ClassName)) _shownClassNames.AddOrUpdate(mod, row.ClassName);
                 list.Add(mod);
             }
             return list;

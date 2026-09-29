@@ -28,13 +28,19 @@ namespace Codeer.LowCode.Blazor.Extras.EditHistory
         /// <summary>
         /// 従属宣言を子・孫・埋め込みの中まで列挙する (パス付き)。循環は止める (経路上に同じモジュールが出たら先へ行かない)。
         /// 含めない宣言の先は、descendIntoNotIncluded でなければ辿らない。
+        /// 同じモジュールに複数の経路で辿り着くとき、その先に除外・行ごとの指定が無ければ、そのモジュールの中は最初の経路の 1 回だけ列挙する
+        /// (指定が無い範囲はどの経路でも扱いが同じ。全経路を列挙すると、明細で互いに繋がった設計では経路の数だけ膨らむ)。
         /// </summary>
         internal static IEnumerable<(string Path, ModuleDesign Module, FieldDesignBase Field, OwnedRecordsDesign Owned, ModuleDesign? Child)> Walk(
             DesignData designData, ModuleDesign module, EditHistoryFieldDesign? field, bool descendIntoNotIncluded = false)
-            => WalkCore(designData, module, field, descendIntoNotIncluded, string.Empty, new HashSet<string> { module.Name });
+        {
+            var declared = field == null ? [] : field.ExcludedOwnedRecords.Concat(field.IndividuallyRecordedOwnedRecords).Distinct().ToList();
+            return WalkCore(designData, module, field, descendIntoNotIncluded, string.Empty, new HashSet<string> { module.Name }, declared, new HashSet<string>());
+        }
 
         static IEnumerable<(string Path, ModuleDesign Module, FieldDesignBase Field, OwnedRecordsDesign Owned, ModuleDesign? Child)> WalkCore(
-            DesignData designData, ModuleDesign module, EditHistoryFieldDesign? field, bool descendIntoNotIncluded, string prefix, HashSet<string> visiting)
+            DesignData designData, ModuleDesign module, EditHistoryFieldDesign? field, bool descendIntoNotIncluded, string prefix, HashSet<string> visiting,
+            List<string> declared, HashSet<string> expanded)
         {
             foreach (var (f, owned) in EditHistoryContracts.OwnedRecords(module))
             {
@@ -43,7 +49,10 @@ namespace Codeer.LowCode.Blazor.Extras.EditHistory
                 yield return (path, module, f, owned, child);
                 if (child == null || visiting.Contains(child.Name)) continue;
                 if (!descendIntoNotIncluded && !IsIncluded(field, path)) continue;
-                foreach (var e in WalkCore(designData, child, field, descendIntoNotIncluded, path, new HashSet<string>(visiting) { child.Name }))
+                //この先に指定 (除外・行ごとのパス) が無いなら、子のモジュールの中は 1 回だけ列挙する
+                var hasDeclaredBelow = declared.Any(e => e.StartsWith(path + ".", StringComparison.Ordinal));
+                if (!hasDeclaredBelow && !expanded.Add(child.Name)) continue;
+                foreach (var e in WalkCore(designData, child, field, descendIntoNotIncluded, path, new HashSet<string>(visiting) { child.Name }, declared, expanded))
                     yield return e;
             }
         }

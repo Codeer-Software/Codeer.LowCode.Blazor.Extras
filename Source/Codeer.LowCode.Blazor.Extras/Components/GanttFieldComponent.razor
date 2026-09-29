@@ -100,7 +100,7 @@
       <div class="gantt-label-body">
         @foreach (var item in Field.Items)
         {
-          <div class="gantt-label-row @item.Module?.ClassName" style="height: @Px(lp.RowHeight);"
+          <div class="gantt-label-row @item.Module.ShownClassName()" style="height: @Px(lp.RowHeight);"
                @onclick="() => OnTaskClicked(item)" title="@item.Text">
             <span class="gantt-label-text">@item.Text</span>
             @if (item.Progress > 0)
@@ -550,7 +550,7 @@
       var capturedIdx = idx;
 
       <rect x="@bar.X" y="@bar.Y" width="@bar.Width" height="@bar.Height"
-            rx="4" ry="4" class="gantt-task-bar @item.Module?.ClassName"
+            rx="4" ry="4" class="gantt-task-bar @item.Module.ShownClassName()"
             style="@BuildBarStyle(item)"
             @onmousedown="e => OnBarMouseDown(e, capturedIdx, capturedItem)"
             @onmousedown:preventDefault="true"

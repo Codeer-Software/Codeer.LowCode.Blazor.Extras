@@ -252,18 +252,12 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
                 if (result.IsSuccess)
                 {
                     Comment = string.Empty;
-                    if (isNewData)
-                    {
-                        //保存が確定したレコードへ遷移して再初期化する (FK・編集ロック状態を含めて最新化)
-                        Services.NavigationService.NavigateTo(
-                            Services.NavigationService.GetModuleDataUrl(Module.Design.Name, result.TargetId));
-                    }
-                    else
-                    {
-                        //保存済みレコードの申請・再申請は URL が変わらず NavigateTo が no-op になるので、レコードを読み直して
-                        //再初期化する (FK・編集ロック状態のほか、同じモジュールの他のフィールド (編集履歴など) も最新化される)
-                        await Module.ReloadAsync();
-                    }
+                    //保存済みレコードの申請・再申請は、そのレコードのページで行うと URL が変わらず下の NavigateTo が no-op になるので、
+                    //先にレコードを読み直して再初期化する (FK・編集ロック状態のほか、同じモジュールの他のフィールドも最新化される)
+                    if (!isNewData) await Module.ReloadAsync();
+                    //保存が確定したレコードへ遷移する (新規レコード・レコードのページ以外から申請したとき)
+                    Services.NavigationService.NavigateTo(
+                        Services.NavigationService.GetModuleDataUrl(Module.Design.Name, result.TargetId));
                 }
                 return result;
             }

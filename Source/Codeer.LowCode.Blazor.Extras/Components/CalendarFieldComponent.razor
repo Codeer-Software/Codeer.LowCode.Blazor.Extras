@@ -233,7 +233,7 @@
     var isStartDay = cellDate == evt.Start.Date;
     var isEndDay = evt.End.HasValue && cellDate == evt.End.Value.Date;
     var eventClass = evt.AllDay || isMultiDay ? "month-event-allday" : "month-event-timed";
-    <div class="month-event @eventClass @evt.Module?.ClassName"
+    <div class="month-event @eventClass @evt.Module.ShownClassName()"
          style="@EventColorStyle(evt)"
          @onclick="() => OnEventClicked(evt)" @onclick:stopPropagation="true"
          title="@GetEventTooltip(evt)">
@@ -262,7 +262,7 @@
 
   private RenderFragment RenderAllDayEvent(ModuleCalendarItem evt) => __builder =>
   {
-    <div class="allday-event @evt.Module?.ClassName" style="@EventColorStyle(evt)" @onclick="() => OnEventClicked(evt)" title="@evt.Text">
+    <div class="allday-event @evt.Module.ShownClassName()" style="@EventColorStyle(evt)" @onclick="() => OnEventClicked(evt)" title="@evt.Text">
       @evt.Text
     </div>
   };
@@ -291,7 +291,7 @@
       {
         var layerOffset = pos.Layer * 14;
         var timeText = GetTimeEventTimeText(pos);
-        <div class="time-event @pos.Item.Module?.ClassName"
+        <div class="time-event @pos.Item.Module.ShownClassName()"
              style="top: @Px(pos.TopPx); left: @Px(layerOffset); width: calc(100% - @Px(layerOffset) - 2px); height: @Px(pos.HeightPx); z-index: @(pos.Layer + 1); @EventColorStyle(pos.Item)"
              @onclick="() => OnEventClicked(pos.Item)" @onclick:stopPropagation="true"
              title="@GetEventTooltip(pos.Item)">

@@ -81,9 +81,9 @@ namespace Codeer.LowCode.Blazor.Extras.Test.EditHistory
             var module = await ModuleCreationService.CreateModuleAsync(services.Core, data, ModuleLayoutType.None);
             var field = (IOwnedRecordsField)module.GetField("Owner")!;
             await field.ShowOwnedRecordsAsync("Owner", [Row(Task("1", "要件定義", 1), "deco"), Row(Task("3", "設計", 3))]);
-            //項目の描画は行モジュールの ClassName を出す (版表示の強調はここに付く)
+            //項目の描画は表示専用の行に付けたクラスを出す (版表示の強調はここに付く)
             var modules = ItemModules(field);
-            return (loads, modules.Count, modules.Count(e => e?.ClassName == "deco"));
+            return (loads, modules.Count, modules.Count(e => e.ShownClassName() == "deco"));
         }
 
         [Test]
@@ -112,7 +112,32 @@ namespace Codeer.LowCode.Blazor.Extras.Test.EditHistory
             far.Fields["End"] = new DateTimeFieldData { Value = farStart.AddDays(5) };
             await gantt.ShowOwnedRecordsAsync("Owner", [Row(near), Row(far, "deco")]);
             Assert.That(gantt.ViewStart, Is.EqualTo(farStart.Date));
-            Assert.That(gantt.Items.Any(e => e.Module?.ClassName == "deco"), Is.True);
+            Assert.That(gantt.Items.Any(e => e.Module.ShownClassName() == "deco"), Is.True);
+        }
+
+        //行のモジュールのレイアウトにデザインで付けたクラス (DetailLayoutDesign.ClassName) は行モジュールの ClassName に入るが、
+        //項目 (バー・予定・カード・マーカー) に出すのは版表示の強調のクラスだけ (通常の表示の項目にレイアウトのクラスを出さない)
+        [Test]
+        public async Task 項目に出すクラスは強調だけでレイアウトのクラスは出さない()
+        {
+            var design = CreateDesign(new GanttFieldDesign { Name = "Owner", TextField = "Title", StartField = "Start", EndField = "End", IdField = "Id", SearchCondition = Bind() });
+            design.Modules.Find("ProjectTask")!.DetailLayouts[""] = new DetailLayoutDesign { ClassName = "task-layout" };
+            var services = new TestServices(design);
+
+            //通常の読み込み: レイアウトのクラスは行モジュールにあるが、項目には何も出さない
+            services.App.ListProvider = _ => new Paging<ModuleData> { Items = [Task("1", "要件定義", 1)], TotalCount = 1 };
+            var data = new ModuleData { Name = "Project" };
+            data.Fields["Id"] = new IdFieldData { Value = "1" };
+            var module = await ModuleCreationService.CreateModuleAsync(services.Core, data, ModuleLayoutType.None);
+            var gantt = module.GetField<GanttField>("Owner")!;
+            await gantt.SetViewStartAsync(new DateTime(2026, 10, 1));
+            var loaded = gantt.Items.Single().Module!;
+            Assert.That(loaded.ClassName, Is.EqualTo("task-layout"));
+            Assert.That(loaded.ShownClassName(), Is.Empty);
+
+            //版表示: 強調のクラスだけを出す
+            await gantt.ShowOwnedRecordsAsync("Owner", [Row(Task("1", "要件定義", 1), "deco"), Row(Task("3", "設計", 3))]);
+            Assert.That(gantt.Items.Select(e => e.Module.ShownClassName()), Is.EqualTo(new[] { "deco", "" }));
         }
 
         [Test]

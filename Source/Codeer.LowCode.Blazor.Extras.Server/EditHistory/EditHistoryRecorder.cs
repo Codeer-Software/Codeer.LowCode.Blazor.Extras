@@ -36,6 +36,10 @@ namespace Codeer.LowCode.Blazor.Extras.Server.EditHistory
         readonly DesignData _designData;
         readonly Action<string>? _logError;
         readonly EditHistoryUndeleter _undeleter;
+        //設計に編集履歴 (EditHistoryField / 契約) が 1 つも無ければ、保存も読み出しも素通しにする (履歴を使わないアプリには何もしない)
+        readonly bool _usesHistory;
+        //行ごとに記録する先 (モジュール名 → 記録先)。設計から決まるので、1 回の保存の中でモジュールごとに 1 回だけ求める
+        readonly Dictionary<string, (Dictionary<string, (ModuleDesign HistoryModule, EditHistoryContractFieldDesign Names, ModuleDesign Row)> Targets, string? Error)> _individualTargets = new();
 
         /// <param name="logError">記録をスキップした理由・復活の失敗理由などを出すログ (ILogger の Warning 等)。</param>
         public EditHistoryRecorder(DesignData designData, Action<string>? logError = null)
@@ -43,12 +47,14 @@ namespace Codeer.LowCode.Blazor.Extras.Server.EditHistory
             _designData = designData;
             _logError = logError;
             _undeleter = new EditHistoryUndeleter(designData);
+            _usesHistory = designData.Modules.ToList().Any(m => m.Fields.Any(f => f is EditHistoryFieldDesign or EditHistoryContractFieldDesign));
         }
 
         // ===== 読み出し: Snapshot を読む人の権限に落とす =====
 
         public async Task GetListAsync(ModuleDataIOInternalAccess io, SearchCondition condition, Paging<ModuleData> result)
         {
+            if (!_usesHistory) return;
             var names = EditHistoryContracts.Contract(_designData.Modules.Find(condition.ModuleName));
             if (names == null || string.IsNullOrEmpty(names.Snapshot)) return;
             //検索・並びは DB の生のスナップショットに対して走るので、返る行の有無や順序から読めない列・行の値を推測できる。条件に使う読み出しは返さない
@@ -93,6 +99,8 @@ namespace Codeer.LowCode.Blazor.Extras.Server.EditHistory
 
         public async Task<List<ModuleSubmitResult>> SubmitAsync(ModuleDataIOInternalAccess io, List<ModuleSubmitData> transactionData, Func<Task<List<ModuleSubmitResult>>> next)
         {
+            if (!_usesHistory) return await next();
+
             //履歴モジュールの版はシステムだけが書く (画面・API からの追加・更新は拒否。削除は古い版の整理のために許す)
             //見るのは送信に乗った行のモジュール (別のモジュールの送信に混ぜた行も同じ)
             foreach (var name in transactionData.SelectMany(e => e.Add.Concat(e.Update)).Select(e => e.Name).Distinct())
@@ -329,6 +337,17 @@ namespace Codeer.LowCode.Blazor.Extras.Server.EditHistory
         //親に EditHistoryField があれば IndividuallyRecordedOwnedRecords の宣言の先。
         //親に EditHistoryField が無ければ (親に版が無い)、従属レコードのうち自分の EditHistoryField を持つモジュール全部 = 子は自分の履歴に行ごとに残す
         Dictionary<string, (ModuleDesign HistoryModule, EditHistoryContractFieldDesign Names, ModuleDesign Row)> IndividualTargets(ModuleDesign module, EditHistoryFieldDesign? field, out string? error)
+        {
+            if (!_individualTargets.TryGetValue(module.Name, out var cached))
+            {
+                var targets = FindIndividualTargets(module, field, out var found);
+                _individualTargets[module.Name] = cached = (targets, found);
+            }
+            error = cached.Error;
+            return cached.Targets;
+        }
+
+        Dictionary<string, (ModuleDesign HistoryModule, EditHistoryContractFieldDesign Names, ModuleDesign Row)> FindIndividualTargets(ModuleDesign module, EditHistoryFieldDesign? field, out string? error)
         {
             error = null;
             var targets = new Dictionary<string, (ModuleDesign, EditHistoryContractFieldDesign, ModuleDesign)>();
