@@ -340,7 +340,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.EditHistory
             if (await io.GetWithOwnedRecordsAsync(module.Name, dataId, _ => false) != null)
                 throw new InvalidOperationException($"The record '{dataId}' of '{module.Name}' exists (it is not deleted). Only a deleted record can be restored.");
 
-            if (EditHistoryContracts.IsLogicalDeleteModule(module))
+            if (module.UsesLogicalDelete())
             {
                 //論理削除: Id を保って取り消し (権限は削除と同じ)。親と一緒に消えた従属レコードも戻す (親の削除が子を消すのと同じ規則)
                 await io.UndeleteAsync(module.Name, dataId, snapshot);
@@ -348,7 +348,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.EditHistory
                 return new RestoreResult { IsWholeRecord = true, RestoredId = dataId };
             }
             //物理削除: スナップショットから作り直す。手入力 Id は元の Id、自動採番は新しい Id (旧 Id の版を付け替えて履歴を繋ぐ)
-            if (!await io.CanRestoreAsync(module.Name, snapshot)) throw new InvalidOperationException("You are not allowed to restore this record.");
+            if (!await io.CanUndeleteAsync(module.Name, snapshot)) throw new InvalidOperationException("You are not allowed to restore this record.");
             var newId = await RecreateAsync(io, module, field, snapshot, string.Empty, null, null);
             return new RestoreResult { IsWholeRecord = true, IsRecreated = newId != dataId, RestoredId = newId };
         }
@@ -363,14 +363,14 @@ namespace Codeer.LowCode.Blazor.Extras.Server.EditHistory
                 var path = EditHistoryPolicy.Path(prefix, owned.Name);
                 if (!EditHistoryPolicy.IsIncluded(field, path)) continue;
                 var child = _designData.Modules.Find(owned.Condition.ModuleName);
-                if (child == null || data.Fields.GetValueOrDefault(owned.Name) is not ListFieldData rows) continue;
+                if (child == null || data.GetOwnedRows(owned.Name) is not { } rows) continue;
                 //親が子を参照する宣言 (埋め込みモジュール) の子は親の削除で消えない (親と一緒に戻すものではない)
                 var binding = GetBinding(owned);
-                foreach (var row in rows.Children)
+                foreach (var row in rows)
                 {
                     var id = EditHistorySnapshot.GetId(row);
                     var exists = id.Length == 0 || await io.GetWithOwnedRecordsAsync(child.Name, id, _ => false) != null;
-                    if (!exists && EditHistoryContracts.IsLogicalDeleteModule(child))
+                    if (!exists && child.UsesLogicalDelete())
                     {
                         if (together) await io.UndeleteTogetherAsync(child.Name, id);
                         else await io.UndeleteAsync(child.Name, id, row);
@@ -397,7 +397,8 @@ namespace Codeer.LowCode.Blazor.Extras.Server.EditHistory
             var oldId = EditHistorySnapshot.GetId(data);
             var keepId = IsManualId(design);
             var copy = data.JsonClone();
-            foreach (var key in copy.Fields.Keys.Where(e => (EditHistoryContracts.IsExcludedField(e) && !(keepId && e == SystemFieldNames.Id)) || copy.Fields[e] is ListFieldData).ToList())
+            //従属レコードの行 (一覧・内容を持つ埋め込みの子) は外す (下で作り直して参照を付ける)。内容を持たない参照だけの項目はそのまま写す
+            foreach (var key in copy.Fields.Keys.Where(e => (EditHistoryContracts.IsExcludedField(e) && !(keepId && e == SystemFieldNames.Id)) || EditHistoryContracts.HasOwnedRows(copy.Fields[e])).ToList())
                 copy.Fields.Remove(key);
 
             //親が子を参照する宣言 (埋め込みモジュール): 子を先に用意し、自分の参照を子の Id にする
@@ -407,7 +408,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.EditHistory
                 var binding = GetBinding(owned);
                 if (binding is not { ParentRefersChild: true } || !EditHistoryPolicy.IsIncluded(field, path)) continue;
                 var child = _designData.Modules.Find(owned.Condition.ModuleName);
-                if (child == null || data.Fields.GetValueOrDefault(owned.Name) is not ListFieldData rows || rows.Children.FirstOrDefault() is not { } row) continue;
+                if (child == null || data.GetOwnedRows(owned.Name)?.FirstOrDefault() is not { } row) continue;
                 var childId = EditHistorySnapshot.GetId(row);
                 if (childId.Length == 0 || await io.GetWithOwnedRecordsAsync(child.Name, childId, _ => false) == null)
                 {
@@ -429,9 +430,9 @@ namespace Codeer.LowCode.Blazor.Extras.Server.EditHistory
                 var path = EditHistoryPolicy.Path(prefix, owned.Name);
                 if (GetBinding(owned) is not { ParentRefersChild: false } || !EditHistoryPolicy.IsIncluded(field, path)) continue;
                 var child = _designData.Modules.Find(owned.Condition.ModuleName);
-                if (child == null || data.Fields.GetValueOrDefault(owned.Name) is not ListFieldData rows) continue;
-                if (rows.Children.Count != 0 && !child.CanDelete) throw new InvalidOperationException($"The rows of '{child.Name}' cannot be restored.");
-                foreach (var row in rows.Children) await RecreateAsync(io, child, field, row, path, owned, newId);
+                if (child == null || data.GetOwnedRows(owned.Name) is not { } rows) continue;
+                if (rows.Count != 0 && !child.CanDelete) throw new InvalidOperationException($"The rows of '{child.Name}' cannot be restored.");
+                foreach (var row in rows) await RecreateAsync(io, child, field, row, path, owned, newId);
             }
             return newId;
         }
@@ -578,8 +579,8 @@ namespace Codeer.LowCode.Blazor.Extras.Server.EditHistory
             {
                 var path = EditHistoryPolicy.Path(prefix, owned.Name);
                 var child = _designData.Modules.Find(owned.Condition.ModuleName);
-                if (child == null || data.Fields.GetValueOrDefault(owned.Name) is not ListFieldData rows) continue;
-                foreach (var row in rows.Children)
+                if (child == null || data.GetOwnedRows(owned.Name) is not { } rows) continue;
+                foreach (var row in rows)
                 {
                     yield return (path, child, row);
                     foreach (var e in OwnedRows(child, row, path)) yield return e;

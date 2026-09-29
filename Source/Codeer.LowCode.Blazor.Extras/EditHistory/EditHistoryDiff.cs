@@ -47,15 +47,14 @@ namespace Codeer.LowCode.Blazor.Extras.EditHistory
                     {
                         var childDesign = designData.Modules.Find(owned.Condition.ModuleName);
                         if (childDesign == null) continue;
-                        after.Fields.TryGetValue(owned.Name, out var oa);
-                        FieldDataBase? ob = null;
-                        before?.Fields.TryGetValue(owned.Name, out ob);
+                        //行の内容を持たない側 (項目が無い・参照だけで内容が見えない) は行なしとして比べる
+                        var oa = after.GetOwnedRows(owned.Name);
+                        var ob = before?.GetOwnedRows(owned.Name);
                         if (oa == null && ob == null) continue;
                         //親へのバインド条件のフィールド (親のリンク) は行の値として出さない
                         var bindFields = owned.Condition.GetFieldVariableConditions()
                             .Select(e => new VariableName(e.SearchTargetVariable).FieldName.FullName).ToHashSet();
-                        var rows = CompareRows(designData, childDesign, (ob as ListFieldData)?.Children, (oa as ListFieldData)?.Children,
-                            canRead, bindFields);
+                        var rows = CompareRows(designData, childDesign, ob, oa, canRead, bindFields);
                         if (rows.Count == 0) continue;
                         result.Add(new EditHistoryChange
                         {
@@ -107,11 +106,11 @@ namespace Codeer.LowCode.Blazor.Extras.EditHistory
 
         //明細の行差分。行は Id で突き合わせ、行の見分けは行番号 (推測で名前を決めない)
         static List<EditHistoryRowChange> CompareRows(DesignData designData, ModuleDesign childDesign,
-            List<ModuleData>? before, List<ModuleData>? after, Func<ModuleDesign, string, bool> canRead, HashSet<string> excluded)
+            IReadOnlyList<ModuleData>? before, IReadOnlyList<ModuleData>? after, Func<ModuleDesign, string, bool> canRead, HashSet<string> excluded)
         {
             var result = new List<EditHistoryRowChange>();
-            before ??= new();
-            after ??= new();
+            before ??= [];
+            after ??= [];
             var beforeById = ToDictionary(before);
             var afterById = ToDictionary(after);
 
@@ -159,7 +158,7 @@ namespace Codeer.LowCode.Blazor.Extras.EditHistory
             }
         }
 
-        static Dictionary<string, ModuleData> ToDictionary(List<ModuleData> rows)
+        static Dictionary<string, ModuleData> ToDictionary(IReadOnlyList<ModuleData> rows)
         {
             var dic = new Dictionary<string, ModuleData>();
             foreach (var row in rows)

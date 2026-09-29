@@ -34,13 +34,13 @@ namespace Codeer.LowCode.Blazor.Extras.Test.EditHistory
             return data;
         }
 
-        //版 (従属レコードとして読んだ形: 子レコード 0 か 1 行の一覧)
+        //版 (記録の形も同じ: 参照 + 子の内容。子が無ければ参照なし)
         static ModuleData Snapshot(ModuleData? customer)
         {
             var data = new ModuleData { Name = "Order" };
             data.Fields["Id"] = new IdFieldData { Value = "1" };
             data.Fields["Title"] = new TextFieldData { Value = "A" };
-            data.Fields["Customer"] = new ListFieldData { Children = customer == null ? new() : [customer] };
+            data.Fields["Customer"] = customer == null ? new ModuleFieldData() : new ModuleFieldData { Id = EditHistorySnapshot.GetId(customer), Data = customer };
             return data;
         }
 

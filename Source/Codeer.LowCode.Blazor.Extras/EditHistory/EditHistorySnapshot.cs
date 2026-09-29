@@ -40,8 +40,7 @@ namespace Codeer.LowCode.Blazor.Extras.EditHistory
             }
             foreach (var (_, owned) in EditHistoryContracts.OwnedRecords(design))
             {
-                if (data.Fields.GetValueOrDefault(owned.Name) is ListFieldData rows)
-                    rows.Children.ForEach(e => FillNulls(designData, e));
+                foreach (var row in data.GetOwnedRows(owned.Name) ?? []) FillNulls(designData, row);
             }
             return data;
         }

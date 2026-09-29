@@ -67,17 +67,13 @@ namespace Codeer.LowCode.Blazor.Extras.EditHistory
             => design.Fields.OfType<IOwnedRecordsFieldDesign>().SelectMany(e => e.GetOwnedRecords().Select(o => ((FieldDesignBase)e, o)));
 
         /// <summary>
-        /// 論理削除のモジュールか (LogicalDelete / DeletedAt / Deleter のどれかがあり、退避 (DeleteArchive) でない)。
-        /// 論理削除なら削除した行を Id を保ったまま戻せる (ModuleDataIO.UndeleteAsync)。
-        /// </summary>
-        internal static bool IsLogicalDeleteModule(ModuleDesign design)
-            => !design.Fields.Any(e => e is DeleteArchiveFieldDesign) &&
-               design.Fields.Any(e => e.Name is SystemFieldNames.LogicalDelete or SystemFieldNames.DeletedAt or SystemFieldNames.Deleter);
-
-        /// <summary>
         /// スナップショット・差分・復元の対象外にするフィールドか。
         /// システムフィールド (Id / 楽観ロック / 作成・更新・削除の記録 / 論理削除) とリンク越し (ドット名) の派生値は対象外。
         /// </summary>
-        internal static bool IsExcludedField(string fieldName) => OperatingModel.OwnedRecordsExtensions.IsExcludedField(fieldName);
+        internal static bool IsExcludedField(string fieldName) => OperatingModel.OwnedRecordsExtensions.IsSystemOrLinkedField(fieldName);
+
+        /// <summary>行の内容を持つ従属レコードのデータか (一覧・内容を持つ埋め込みモジュール。参照だけのものは含まない)。</summary>
+        internal static bool HasOwnedRows(Repository.Data.FieldDataBase? data)
+            => data is Repository.Data.IOwnedRecordsData owned && owned.GetOwnedRows() != null;
     }
 }

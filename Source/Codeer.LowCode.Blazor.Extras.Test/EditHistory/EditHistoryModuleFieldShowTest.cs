@@ -30,7 +30,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.EditHistory
             var data = new ModuleData { Name = "Order" };
             data.Fields["Id"] = new IdFieldData { Value = "1" };
             data.Fields["Title"] = new TextFieldData { Value = title };
-            data.Fields["Customer"] = new ListFieldData { Children = [customer] };
+            data.Fields["Customer"] = new ModuleFieldData { Id = EditHistorySnapshot.GetId(customer), Data = customer };
             return data;
         }
 
@@ -48,10 +48,10 @@ namespace Codeer.LowCode.Blazor.Extras.Test.EditHistory
             await module.SetDataWithoutInteractionAsync(current.JsonClone());
             foreach (var (fieldDesign, owned) in EditHistoryContracts.OwnedRecords(design.Modules.Find("Order")!))
             {
-                if (module.GetField(fieldDesign.Name) is IOwnedRecordsField ownedField && current.Fields.GetValueOrDefault(owned.Name) is ListFieldData rows)
+                if (module.GetField(fieldDesign.Name) is IOwnedRecordsField ownedField && current.GetOwnedRows(owned.Name) is { } rows)
                 {
                     var change = changes.FirstOrDefault(e => e.IsList && e.FieldName == owned.Name);
-                    await ownedField.ShowOwnedRecordsAsync(owned.Name, OwnedRecordsDisplay.Build(rows.Children, change));
+                    await ownedField.ShowOwnedRecordsAsync(owned.Name, OwnedRecordsDisplay.Build(rows, change));
                 }
             }
 

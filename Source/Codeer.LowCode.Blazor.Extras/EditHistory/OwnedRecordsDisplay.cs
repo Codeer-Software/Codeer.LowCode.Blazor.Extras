@@ -30,7 +30,7 @@ namespace Codeer.LowCode.Blazor.Extras.EditHistory
         }
 
         /// <summary>版の行と差分 (その従属レコードの EditHistoryChange。無ければ null) から表示用の行を作る。</summary>
-        internal static List<OwnedRecordRow> Build(List<ModuleData> rows, EditHistoryChange? change)
+        internal static List<OwnedRecordRow> Build(IReadOnlyList<ModuleData> rows, EditHistoryChange? change)
         {
             var changesById = new Dictionary<string, EditHistoryRowChange>();
             foreach (var rowChange in change?.Rows ?? new())
@@ -83,8 +83,8 @@ namespace Codeer.LowCode.Blazor.Extras.EditHistory
                     row.FieldClassNames[change.FieldName] = EditHistoryField.ChangedClassName;
                     continue;
                 }
-                if (row.Data.Fields.GetValueOrDefault(change.FieldName) is ListFieldData nested)
-                    row.OwnedRecords[change.FieldName] = Build(nested.Children, change);
+                if (row.Data.GetOwnedRows(change.FieldName) is { } nested)
+                    row.OwnedRecords[change.FieldName] = Build(nested, change);
             }
         }
 
@@ -92,9 +92,9 @@ namespace Codeer.LowCode.Blazor.Extras.EditHistory
         static OwnedRecordRow Removed(ModuleData data)
         {
             var row = new OwnedRecordRow { Data = data, ClassName = EditHistoryField.RemovedRowClassName };
-            foreach (var (name, fieldData) in data.Fields)
+            foreach (var name in data.Fields.Keys)
             {
-                if (fieldData is ListFieldData nested) row.OwnedRecords[name] = nested.Children.Select(Removed).ToList();
+                if (data.GetOwnedRows(name) is { } nested) row.OwnedRecords[name] = nested.Select(Removed).ToList();
             }
             return row;
         }

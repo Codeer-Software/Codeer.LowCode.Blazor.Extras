@@ -23,7 +23,7 @@ namespace Codeer.LowCode.Blazor.Extras.EditHistory
             var created = new Dictionary<string, Module>();
             var services = field.Services;
             var childDesign = services.AppInfoService.GetDesignData().Modules.Find(moduleName);
-            var canRevive = onRevive != null && childDesign != null && EditHistoryContracts.IsLogicalDeleteModule(childDesign);
+            var canRevive = onRevive != null && childDesign != null && childDesign.UsesLogicalDelete();
 
             var existing = collection.Items.ToList();
             var byId = new Dictionary<string, Module>();
@@ -82,11 +82,11 @@ namespace Codeer.LowCode.Blazor.Extras.EditHistory
             return copy;
         }
 
-        //復活する行: Id は残し、楽観ロック等のシステム値と孫の一覧は外す (孫は ApplyAsync で改めて反映する)
+        //復活する行: Id は残し、楽観ロック等のシステム値と行の中の従属レコードは外す (従属レコードは ApplyAsync で改めて反映する)
         static ModuleData StripForRevive(ModuleData src)
         {
             var copy = src.JsonClone();
-            foreach (var name in copy.Fields.Keys.Where(e => e != SystemFieldNames.Id && (EditHistoryContracts.IsExcludedField(e) || copy.Fields[e] is ListFieldData)).ToList())
+            foreach (var name in copy.Fields.Keys.Where(e => e != SystemFieldNames.Id && (EditHistoryContracts.IsExcludedField(e) || EditHistoryContracts.HasOwnedRows(copy.Fields[e]))).ToList())
                 copy.Fields.Remove(name);
             return copy;
         }

@@ -94,11 +94,13 @@ namespace Codeer.LowCode.Blazor.Extras.Test.EditHistory
         }
 
         [Test]
-        public async Task 子レコードは参照の位置に1行の一覧として全列で入り_NULLの列も空として残る()
+        public async Task 子レコードは埋め込みのデータとして全列で入り_NULLの列も空として残る()
         {
             await CreateOrderAsync();
 
-            var customer = ((ListFieldData)(await SnapshotsAsync()).Single().Fields["Customer"]).Children.Single();
+            var embedded = (ModuleFieldData)(await SnapshotsAsync()).Single().Fields["Customer"];
+            Assert.That(embedded.Id, Is.EqualTo("5"), "参照 (親の列の値) もそのまま持つ");
+            var customer = embedded.Data;
             Assert.That(EditHistorySnapshot.GetId(customer), Is.EqualTo("5"));
             Assert.That(((TextFieldData)customer.Fields["Name"]).Value, Is.EqualTo("A社"));
             Assert.That(customer.Fields.ContainsKey("Note"), Is.True, "詳細レイアウトに無い列も読む");
@@ -133,7 +135,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.EditHistory
             Assert.That(order["customer_id"]!.ToString(), Is.EqualTo("5"), "埋め込みの子 (親の削除では消えない) への参照が戻る");
             Assert.That((await _db.QueryAsync(Ds, "SELECT COUNT(*) AS c FROM customers", new())).Single()["c"], Is.EqualTo(1), "子は作り直さない");
             var restored = (await SnapshotsAsync()).Last();
-            Assert.That(EditHistorySnapshot.GetId(((ListFieldData)restored.Fields["Customer"]).Children.Single()), Is.EqualTo("5"));
+            Assert.That(EditHistorySnapshot.GetId(restored.GetOwnedRows("Customer")!.Single()), Is.EqualTo("5"));
             Assert.That(_errors, Is.Empty);
         }
 
@@ -156,8 +158,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.EditHistory
         public async Task 子を参照していない親は子無しで記録される()
         {
             await CreateOrderAsync(customerId: string.Empty);
-            var customer = (await SnapshotsAsync()).Single().Fields["Customer"];
-            Assert.That((customer as ListFieldData)?.Children, Is.Empty);
+            Assert.That((await SnapshotsAsync()).Single().GetOwnedRows("Customer"), Is.Empty);
             Assert.That(_errors, Is.Empty);
         }
 
@@ -173,7 +174,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.EditHistory
 
             var snapshots = await SnapshotsAsync();
             Assert.That(snapshots.Count, Is.EqualTo(2));
-            Assert.That(((TextFieldData)((ListFieldData)snapshots[1].Fields["Customer"]).Children.Single().Fields["Name"]).Value, Is.EqualTo("B社"));
+            Assert.That(((TextFieldData)snapshots[1].GetOwnedRows("Customer")!.Single().Fields["Name"]).Value, Is.EqualTo("B社"));
 
             var change = EditHistoryDiff.Compute(_design, _design.Modules.Find("Order")!, snapshots[0], snapshots[1], _ => true).Single();
             Assert.That((change.FieldName, change.IsList, change.ChangedCount), Is.EqualTo(("Customer", true, 1)));
@@ -195,8 +196,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.EditHistory
 
             //DB の記録 (生) には子の中身も入る (記録は内部読み)
             var raw = (await SnapshotsAsync()).Single().Fields["Customer"];
-            Assert.That(raw, Is.InstanceOf<ListFieldData>(), "操作ユーザーの権限に関係なく子レコードが入る");
-            Assert.That(((TextFieldData)((ListFieldData)raw).Children.Single().Fields["Name"]).Value, Is.EqualTo("A社"));
+            Assert.That(((TextFieldData)((ModuleFieldData)raw).Data.Fields["Name"]).Value, Is.EqualTo("A社"), "操作ユーザーの権限に関係なく子レコードが入る");
             Assert.That(_errors, Is.Empty);
 
             //履歴モジュールを読むと、子モジュールを読めない人には参照 (親の列) だけ残る (通常の読み出しと同じ形)
@@ -206,6 +206,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.EditHistory
             Assert.That(customer, Is.InstanceOf<ModuleFieldData>());
             Assert.That(((ModuleFieldData)customer).Id, Is.EqualTo("5"));
             Assert.That(((ModuleFieldData)customer).Data.Fields, Is.Empty);
+            Assert.That(served.GetOwnedRows("Customer"), Is.Null, "内容を持たない参照だけ");
         }
     }
 }

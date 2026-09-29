@@ -23,12 +23,16 @@ namespace Codeer.LowCode.Blazor.Extras.Test.EditHistory
             return data;
         }
 
+        //埋め込みモジュールのデータ (参照 + 子レコードの内容)。子が無ければ参照なし
+        static ModuleFieldData Embedded(ModuleData? child)
+            => child == null ? new ModuleFieldData() : new ModuleFieldData { Id = EditHistorySnapshot.GetId(child), Data = child };
+
         static ModuleData Order(string title, ModuleData? customer, params ModuleData[] items)
         {
             var data = new ModuleData { Name = "Order" };
             data.Fields["Id"] = new IdFieldData { Value = "1" };
             data.Fields["Title"] = new TextFieldData { Value = title };
-            data.Fields["Customer"] = new ListFieldData { Children = customer == null ? new() : [customer] };
+            data.Fields["Customer"] = Embedded(customer);
             data.Fields["Items"] = new ListFieldData { Children = items.ToList() };
             return data;
         }
@@ -39,7 +43,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.EditHistory
             data.Fields["Id"] = new IdFieldData { Value = id };
             data.Fields["Order"] = new LinkFieldData { Value = "1" };
             data.Fields["Name"] = new TextFieldData { Value = name };
-            data.Fields["Supplier"] = new ListFieldData { Children = supplier == null ? new() : [supplier] };
+            data.Fields["Supplier"] = Embedded(supplier);
             return data;
         }
 
@@ -51,7 +55,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.EditHistory
         {
             var before = Order("A", Customer("5", "A社", "n1"));
             var after = Order("A", Customer("5", "B社", "n1"));
-            ((OptimisticLockingFieldData)((ListFieldData)after.Fields["Customer"]).Children[0].Fields["OptimisticLocking"]).Value = MultiTypeValue.Create("2");
+            ((OptimisticLockingFieldData)((ModuleFieldData)after.Fields["Customer"]).Data.Fields["OptimisticLocking"]).Value = MultiTypeValue.Create("2");
 
             var changes = Compute(before, after);
             Assert.That(changes.Count, Is.EqualTo(1));

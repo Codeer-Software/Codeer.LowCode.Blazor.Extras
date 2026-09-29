@@ -45,7 +45,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.EditHistory
             var change = changes.Single(e => e.IsList && e.FieldName == "Items");
 
             var module = await ModuleCreationService.CreateModuleAsync(services.Core, new ModuleData { Name = "Order" }, ModuleLayoutType.None);
-            foreach (var list in module.GetFields().OfType<ListField>()) list.AllowLoad = false;
+            foreach (var owned in module.GetFields().OfType<IOwnedRecordsField>()) owned.AllowLoad = false;
             //本体の ListField.SetDataAsync は渡した行データの Id を消す (新しい行にする) ので複製を渡す
             await module.SetDataWithoutInteractionAsync(current.JsonClone());
 

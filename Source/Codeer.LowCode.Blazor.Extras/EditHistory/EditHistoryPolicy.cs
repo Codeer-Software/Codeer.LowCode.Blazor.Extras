@@ -92,10 +92,7 @@ namespace Codeer.LowCode.Blazor.Extras.EditHistory
                 }
                 var child = designData.Modules.Find(owned.Condition.ModuleName);
                 if (child == null) continue;
-                if (data.Fields.GetValueOrDefault(owned.Name) is ListFieldData rows)
-                {
-                    foreach (var row in rows.Children) StripCore(designData, field, child, row, path);
-                }
+                foreach (var row in data.GetOwnedRows(owned.Name) ?? []) StripCore(designData, field, child, row, path);
             }
         }
     }

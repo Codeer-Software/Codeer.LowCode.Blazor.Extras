@@ -370,21 +370,11 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             var snapshot = version.Snapshot;
             if (snapshot == null) return;
 
-            //一覧も、別モジュールを自分で読む拡張フィールド (Gantt / Calendar / TaskBoard / MarkerList) も、
-            //現在の DB を読ませずにスナップショットの行を見せる (拡張フィールドは下で ShowOwnedRecordsAsync に渡す)
+            //従属レコードを持てるフィールド (一覧・埋め込みモジュール・Gantt 等の拡張フィールド) には現在の DB を読ませず、
+            //スナップショットの行を見せる (下で ShowOwnedRecordsAsync に渡す)
             var module = await this.CreateChildModuleAsync(Module.Design.Name, ModuleLayoutType.Detail, Design.LayoutName, m =>
             {
-                foreach (var field in m.GetFields())
-                {
-                    switch (field)
-                    {
-                        case ListField list: list.AllowLoad = false; break;
-                        case GanttField gantt: gantt.AllowLoad = false; break;
-                        case CalendarField calendar: calendar.AllowLoad = false; break;
-                        case TaskBoardField board: board.AllowLoad = false; break;
-                        case MarkerListField markers: markers.AllowLoad = false; break;
-                    }
-                }
+                foreach (var field in m.GetFields().OfType<IOwnedRecordsField>()) field.AllowLoad = false;
                 return Task.CompletedTask;
             });
             //含めない従属レコード (除外・行ごと) は版に無いので、版表示では出さない
@@ -400,11 +390,10 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             //行 Id で差分と対応づけて OwnedRecordRow に載せ、見せる側はそれを写すだけ
             foreach (var (fieldDesign, owned) in EditHistoryContracts.OwnedRecords(Module.Design))
             {
-                if (module.GetField(fieldDesign.Name) is IOwnedRecordsField ownedField
-                    && snapshot.Fields.TryGetValue(owned.Name, out var ownedData) && ownedData is ListFieldData ownedRows)
+                if (module.GetField(fieldDesign.Name) is IOwnedRecordsField ownedField && snapshot.GetOwnedRows(owned.Name) is { } ownedRows)
                 {
                     var change = version.Changes.FirstOrDefault(e => e.IsList && e.FieldName == owned.Name);
-                    await ownedField.ShowOwnedRecordsAsync(owned.Name, OwnedRecordsDisplay.Build(ownedRows.Children, change));
+                    await ownedField.ShowOwnedRecordsAsync(owned.Name, OwnedRecordsDisplay.Build(ownedRows, change));
                 }
             }
             module.IsViewOnly = true;
