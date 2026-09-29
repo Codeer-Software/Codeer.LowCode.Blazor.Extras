@@ -51,11 +51,26 @@ namespace Codeer.LowCode.Blazor.Extras.Server.EditHistory
         {
             var names = EditHistoryContracts.Contract(_designData.Modules.Find(condition.ModuleName));
             if (names == null || string.IsNullOrEmpty(names.Snapshot)) return;
+            //検索・並びは DB の生のスナップショットに対して走るので、返る行の有無や順序から読めない列・行の値を推測できる。条件に使う読み出しは返さない
+            if (UsesInCondition(condition, names.Snapshot))
+                throw new InvalidOperationException($"'{names.Snapshot}' of the edit history module '{condition.ModuleName}' cannot be used in search or sort conditions.");
             foreach (var row in result.Items)
             {
                 if (row.Fields.GetValueOrDefault(names.Snapshot) is not TextFieldData snapshotData || string.IsNullOrEmpty(snapshotData.Value)) continue;
                 snapshotData.Value = await ToReadableAsync(io, snapshotData.Value);
             }
+        }
+
+        //検索条件 (絞り込みの対象) か並びにそのフィールドを使っているか
+        static bool UsesInCondition(SearchCondition condition, string fieldName)
+        {
+#pragma warning disable CS0618 // 旧形式の並び指定 (SortFieldVariable) も見る
+            var variables = condition.GetFieldValueConditions().Select(e => e.SearchTargetVariable)
+                .Concat(condition.GetFieldVariableConditions().Select(e => e.SearchTargetVariable))
+                .Concat(condition.SortConditions.Select(e => e.Variable))
+                .Append(condition.SortFieldVariable);
+#pragma warning restore CS0618
+            return variables.Any(e => !string.IsNullOrEmpty(e) && new VariableName(e).FieldName.FullName == fieldName);
         }
 
         //スナップショット JSON を読む人の権限に落とす。壊れている・落とす途中で失敗・対象モジュールを読めない・行が条件に合わない、なら空 (版は出るが内容は見えない)
@@ -79,12 +94,11 @@ namespace Codeer.LowCode.Blazor.Extras.Server.EditHistory
         public async Task<List<ModuleSubmitResult>> SubmitAsync(ModuleDataIOInternalAccess io, List<ModuleSubmitData> transactionData, Func<Task<List<ModuleSubmitResult>>> next)
         {
             //履歴モジュールの版はシステムだけが書く (画面・API からの追加・更新は拒否。削除は古い版の整理のために許す)
-            foreach (var submitData in transactionData)
+            //見るのは送信に乗った行のモジュール (別のモジュールの送信に混ぜた行も同じ)
+            foreach (var name in transactionData.SelectMany(e => e.Add.Concat(e.Update)).Select(e => e.Name).Distinct())
             {
-                var historyModule = _designData.Modules.Find(submitData.ModuleName);
-                if (historyModule == null || EditHistoryContracts.Contract(historyModule) == null) continue;
-                if (submitData.Add.Count != 0 || submitData.Update.Count != 0)
-                    return Fail(transactionData, $"The edit history module '{historyModule.Name}' is written only by the system. Versions cannot be added or changed.");
+                if (EditHistoryContracts.Contract(_designData.Modules.Find(name)) == null) continue;
+                return Fail(transactionData, $"The edit history module '{name}' is written only by the system. Versions cannot be added or changed.");
             }
 
             //削除の取り消し (この版に戻す / 復活ボタン)。本体の前に戻しておけば、同じ Submit の Update と一緒に確定する
@@ -267,6 +281,11 @@ namespace Codeer.LowCode.Blazor.Extras.Server.EditHistory
                             continue;
                         }
                         plan.Snapshot = await LoadAsync(io, plan.Module.Name, id);
+                        //Id を変えた更新 (手入力 Id の書き換え・複合 Id の構成項目の変更): 旧 Id の版を新しい Id に付け替えて履歴を繋ぐ
+                        var oldId = transactionData[plan.Index].Id;
+                        if (plan.ChangeType == EditHistoryChangeType.Update && plan.Snapshot != null && oldId != id
+                            && !string.IsNullOrEmpty(oldId) && !IdFieldData.IsTemporaryId(oldId))
+                            await _undeleter.RelinkVersionsAsync(io, plan.Module, oldId, id);
                         //Standalone の SQL でレコードが変わっていなければ版にしない
                         if (plan.Before != null && plan.Snapshot != null &&
                             EditHistorySnapshot.Serialize(plan.Before) == EditHistorySnapshot.Serialize(plan.Snapshot)) continue;

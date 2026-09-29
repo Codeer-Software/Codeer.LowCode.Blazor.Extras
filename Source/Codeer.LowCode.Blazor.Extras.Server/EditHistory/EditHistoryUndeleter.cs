@@ -166,8 +166,8 @@ namespace Codeer.LowCode.Blazor.Extras.Server.EditHistory
             return newId;
         }
 
-        //新しい Id で作り直したレコードの、旧 Id の版を新しい Id に付け替える (そのモジュールが履歴を持つときだけ)
-        async Task RelinkVersionsAsync(ModuleDataIOInternalAccess io, ModuleDesign design, string oldId, string newId)
+        //Id が変わったレコード (新しい Id での作り直し・Id を変えた更新) の、旧 Id の版を新しい Id に付け替える (そのモジュールが履歴を持つときだけ)
+        internal async Task RelinkVersionsAsync(ModuleDataIOInternalAccess io, ModuleDesign design, string oldId, string newId)
         {
             var resolved = EditHistoryContracts.Resolve(designData, design, out _);
             if (resolved == null) return;

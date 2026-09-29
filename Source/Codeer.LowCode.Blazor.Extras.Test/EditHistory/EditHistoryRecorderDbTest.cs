@@ -587,6 +587,75 @@ namespace Codeer.LowCode.Blazor.Extras.Test.EditHistory
         }
 
         [Test]
+        public async Task 別のモジュールの送信に混ぜた履歴モジュールへの追加と更新も拒否する()
+        {
+            await CreateOrderAsync();
+            //デザインチェックを無視して履歴モジュールを書ける設定にしていても、版はシステムだけが書く
+            var history = _design.Modules.Find("EditHistory")!;
+            history.CanCreate = true;
+            history.CanUpdate = true;
+            var row = (await HistoriesAsync())[0];
+
+            var added = new ModuleData { Name = "EditHistory" };
+            added.Fields["ModuleName"] = new TextFieldData { Value = "Order" };
+            var add = await CreateIO().SubmitWithTransactionAsync([new ModuleSubmitData { ModuleName = "Order", Id = "1", Update = [OrderData("1", "受注B", 1000)], Add = [added] }]);
+            Assert.That(add.All(e => !string.IsNullOrEmpty(e.ExceptionMessage)), Is.True, "版の追加は拒否");
+
+            var fake = new ModuleData { Name = "EditHistory" };
+            fake.Fields["Id"] = new IdFieldData { Value = row["id"]!.ToString() };
+            fake.Fields["Snapshot"] = new TextFieldData { Value = "{}" };
+            var update = await CreateIO().SubmitWithTransactionAsync([new ModuleSubmitData { ModuleName = "Order", Id = "1", Update = [OrderData("1", "受注B", 1000), fake] }]);
+            Assert.That(update.All(e => !string.IsNullOrEmpty(e.ExceptionMessage)), Is.True, "版の書き換えは拒否");
+
+            var histories = await HistoriesAsync();
+            Assert.That(histories.Count, Is.EqualTo(1));
+            Assert.That(histories[0]["snapshot"], Is.EqualTo(row["snapshot"]));
+        }
+
+        [Test]
+        public async Task スナップショットを検索条件や並びに使う読み出しは拒否する()
+        {
+            DenySecretForCurrentUser();
+            await CreateOrderAsync();
+            await _db.ExecuteAsync(Ds, "UPDATE orders SET secret = '内緒' WHERE id = 1", new());
+            AssertNoError(await CreateIO().SubmitWithTransactionAsync([new ModuleSubmitData { ModuleName = "Order", Id = "1", Update = [OrderData("1", "受注B", 1000)] }]));
+
+            //生のスナップショットで絞ると、返る行の有無から読めない列の値を推測できる
+            var byValue = new SearchCondition
+            {
+                ModuleName = "EditHistory",
+                Condition = new FieldValueMatchCondition { SearchTargetVariable = "Snapshot.Value", Comparison = MatchComparison.Like, Value = MultiTypeValue.Create("内緒") },
+            };
+            Assert.ThrowsAsync<InvalidOperationException>(async () => await CreateIO().GetListAsync(byValue, 0));
+
+            var bySort = new SearchCondition { ModuleName = "EditHistory", SortConditions = [new SortCondition { Variable = "Snapshot.Value" }] };
+            Assert.ThrowsAsync<InvalidOperationException>(async () => await CreateIO().GetListAsync(bySort, 0));
+
+            //他の項目での検索はできる
+            var byType = new SearchCondition
+            {
+                ModuleName = "EditHistory",
+                Condition = new FieldValueMatchCondition { SearchTargetVariable = "ChangeType.Value", Comparison = MatchComparison.Equal, Value = MultiTypeValue.Create("Update") },
+            };
+            Assert.That((await CreateIO().GetListAsync(byType, 0)).Items.Count, Is.EqualTo(1));
+        }
+
+        [Test]
+        public async Task 手入力Idを変更した保存は旧Idの版を新しいIdに付け替える()
+        {
+            _design = EditHistoryTestDesigns.Create(manualId: true);
+            AssertNoError(await CreateIO().SubmitWithTransactionAsync([new ModuleSubmitData { ModuleName = "Order", Id = "100", Add = [OrderData("100", "受注A", 1000)] }]));
+            AssertNoError(await CreateIO().SubmitWithTransactionAsync([new ModuleSubmitData { ModuleName = "Order", Id = "100", Update = [OrderData("100", "受注B", 1000)] }]));
+
+            var results = await CreateIO().SubmitWithTransactionAsync([new ModuleSubmitData { ModuleName = "Order", Id = "100", Update = [OrderData("@replace:100->200", "受注C", 1000)] }]);
+            AssertNoError(results);
+            Assert.That(results[0].DestinationId, Is.EqualTo("200"));
+            Assert.That((await _db.QueryAsync(Ds, "SELECT id FROM orders", new())).Single()["id"]!.ToString(), Is.EqualTo("200"));
+            Assert.That((await HistoriesAsync()).Select(e => (e["change_type"], e["data_id"])),
+                Is.EqualTo(new[] { ("Add", "200"), ("Update", "200"), ("Update", "200") }), "履歴が新しい Id で繋がる");
+        }
+
+        [Test]
         public async Task この版に戻すで戻せない行があれば保存全体を失敗にする()
         {
             _design = EditHistoryTestDesigns.Create(logicalDelete: true);
