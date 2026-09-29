@@ -7,6 +7,17 @@
 「この版に戻す」(その版の内容を編集中のフォームへ反映。保存はユーザーが行う) が使える。
 データを持たない (DB 列不要)。
 
+## セットアップ (履歴モジュールの自動生成)
+
+動作には履歴モジュール (EditHistoryContractField を置いたモジュール) が必要。手で作らず**セットアップコマンドで生成する**:
+
+- デザイナ: メニュー Tools > 編集履歴のセットアップ
+- CLI (headless): `<designer.exe> edit-history-setup "<projectDir>" [--history-name EditHistory] [--data-source <name>]
+  [--user-module <ユーザーモジュール>] [--user-name-field Name] [--no-enum] [--no-pageframe] [--ddl-out <path.sql>]`
+
+生成内容・冪等性・対象モジュール側の手順は EditHistoryContractField の「セットアップ」を参照。
+履歴モジュールは全モジュールで 1 つ共有するので、2 つ目以降の対象モジュールでは実行不要 (このフィールドを置いて enum にメンバーを足すだけ)。
+
 ## Design
 
 - `HistoryModuleName`: 履歴を書く先のモジュール。そのモジュールには `EditHistoryContractField` を置く。複数の対象モジュールで 1 つの履歴モジュールを共有してよい
@@ -25,8 +36,7 @@
 - 1 モジュールに 1 つ
 - 履歴モジュール自身 (EditHistoryContractField を置いたモジュール) と Query モジュールには置けない
 - 退避 (DeleteArchiveField = 削除テーブルへの移動) とは併用できない。履歴を入れるモジュールの削除は論理削除か物理削除にする (Id を保った復活が要るなら論理削除)
-- 履歴モジュールの作り方は EditHistoryContractField のドキュメントを参照。デザイナの Tools > 編集履歴のセットアップ (CLI `edit-history-setup`) で
-  契約・復活ボタン・対象レコードリンク・検索レイアウト・対象モジュール enum・ページリンク込みの履歴モジュールと DDL を生成できる
+- 履歴モジュールは上の「セットアップ」で生成する (構成は EditHistoryContractField のドキュメント)
 
 ## 記録
 

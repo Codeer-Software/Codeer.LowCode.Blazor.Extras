@@ -5,7 +5,7 @@
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>enable</Nullable>
 		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
-		<Version>0.15.0</Version>
+		<Version>0.16.0</Version>
 		<Authors>Codeer</Authors>
 		<Company>Codeer</Company>
 		<Description>Server-side services for Codeer.LowCode.Blazor apps. Includes AI document analysis (Azure Document Intelligence + Azure OpenAI), mail sending (SMTP / Microsoft Graph / SendGrid / Gmail), file storage (file system / Azure Blob / S3), external logins (Entra ID / Google / AWS Cognito / OIDC), TOTP two-factor authentication, and ASP.NET Core helpers (hot reload, ETag file responses).</Description>

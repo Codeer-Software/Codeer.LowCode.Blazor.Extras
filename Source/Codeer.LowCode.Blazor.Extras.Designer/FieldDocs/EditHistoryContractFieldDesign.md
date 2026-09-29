@@ -3,6 +3,28 @@
 編集履歴モジュールに 1 つ置き、「役割 → 自モジュールのフィールド名」のマッピングを宣言するフィールド。
 UI もデータも持たない (DB 列不要)。対象モジュールの EditHistoryField はこのモジュールを `HistoryModuleName` で指す。
 
+## セットアップ (履歴モジュールの自動生成)
+
+履歴モジュールは手で作らず**セットアップコマンドで生成する**:
+
+- デザイナ: メニュー Tools > 編集履歴のセットアップ
+- CLI (headless): `<designer.exe> edit-history-setup "<projectDir>" [--history-name EditHistory] [--data-source <name>]
+  [--user-module <ユーザーモジュール>] [--user-name-field Name] [--no-enum] [--no-pageframe] [--ddl-out <path.sql>]`
+
+生成内容: 履歴モジュール (契約フィールド・復活ボタン・対象レコードを開くリンク・一覧 / 検索 / 詳細レイアウト・書き込めない保護条件) +
+対象モジュール enum `EditHistoryTargetModule` (空。`--no-enum` で作らず ModuleName を素の名前で運用) + PageFrame のページリンク +
+テーブル作成 DDL ((module_name, data_id) のインデックス込み)。**それだけ**。
+**冪等**: 既存のモジュール・enum は生成しない (履歴モジュールは全モジュールで 1 つ共有する。対象モジュールが増えても再実行不要)。
+`--user-module` の既定はアプリ設定のカレントユーザーモジュール (未設定なら AppUser)、`--data-source` の既定は先頭のデータソース。
+DDL は自動実行されない。CLI は標準出力 (または `--ddl-out` のファイル) に出すので、それを実行してテーブルを作成する。
+
+### 対象モジュール側の手順 (セットアップ後)
+
+1. 履歴を取りたいモジュールに EditHistoryField を置く (`HistoryModuleName` = 生成した履歴モジュール名。詳細レイアウトの右カラムかタブ)
+2. 対象モジュール enum `EditHistoryTargetModule` にメンバー (名前 = 対象モジュール名 / 表示 = 画面上の名前) を追加する (enum を作った場合。メンバーが 1 つでもあると、足りない対象モジュールをデザインチェックが指摘する)
+3. サーバーの `CustomizedModuleDataIO` に `EditHistoryRecorder` が登録されていることを確認する (アプリテンプレートは登録済み)
+4. Id を保った復活が要るなら対象モジュールを論理削除にする
+
 ## Design
 
 - 各プロパティ (役割) の初期値は既定フィールド名。既定名でフィールドを作れば設定不要 (置くだけ)
@@ -19,9 +41,11 @@ UI もデータも持たない (DB 列不要)。対象モジュールの EditHis
 | UserId (変更したユーザー) | Link→ユーザーモジュール / Text | 保存したユーザーの Id | - |
 | DateTime (変更日時) | DateTime | 保存日時。フィールドの SaveAsUtc に従う (本体の CreatedAt と同じ) | - |
 
-## 履歴モジュールの作り方
+## 履歴モジュールの構成 (生成物を直すときの要点)
 
-- 1 つの履歴モジュールを全モジュールで共有するのが簡単
+セットアップの生成物はこの形になっている。生成後に手で直すとき (フィールド追加・画面の調整) はこれを崩さない。
+
+- 1 つの履歴モジュールを全モジュールで共有する
 - モジュールの CanCreate / CanUpdate は false にする (版はシステムだけが書く)。古い版を消せるようにするなら CanDelete を true にし、消す人に UserWrite を開ける
 - 一覧レイアウトに ModuleName / DataId / ChangeType / UserId / DateTime を並べ、検索に ModuleName / ChangeType / UserId / DateTime を置く (ChangeType = 削除 で「削除済みレコード一覧」になる)
 - Snapshot は一覧に出さず、検索条件・並びにも使わない (使った読み出しはサーバーが拒否する)
