@@ -9,7 +9,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
 {
     /// <summary>
     /// 詳細レイアウトに配置できる Excel 帳票ダウンロードボタン。
-    /// スクリプトの Excel オブジェクトで典型的な「テンプレート Excel の {{フィールド名}} プレースホルダを
+    /// スクリプトの Excel オブジェクトで典型的な「テンプレート Excel の $フィールド名.Value セル (セル全体が $ で始まるもの) を
     /// 自モジュールの値で置換してダウンロードする」処理を、スクリプトなしで実行する。
     /// テンプレートはアプリのリソース (Resources) に置く。出力は xlsx / PDF を選択できる
     /// (PDF はサーバーの変換エンドポイント等、Excel オブジェクトと同じ仕組みを使う)。
@@ -22,7 +22,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         /// <summary>デザインチェック指摘の番号。DesignCheckCode.Create で発行クラス名と結合して "クラス名:番号" になる。番号は固定(追加は末尾・欠番は再利用しない)。</summary>
         private const int CodeTemplateRequired = 1;
 
-        /// <summary>テンプレート Excel のリソースパス。テンプレート内の {{フィールド名}} が自モジュールの値で置換される。</summary>
+        /// <summary>テンプレート Excel のリソースパス。テンプレート内の $フィールド名.Value のセルが自モジュールの値で置換される。</summary>
         [Designer(Index = 1, CandidateType = CandidateType.Resource, DisplayName = "$ExcelReportButtonTemplateResourcePath")]
         public string TemplateResourcePath { get; set; } = string.Empty;
 

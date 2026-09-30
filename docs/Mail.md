@@ -258,6 +258,21 @@ UI もデータも持たない「宣言用」のフィールドです。役割 �
 0.5.0 のテンプレートにあった `MailService` (スクリプトオブジェクト) / `MailMessage` / サーバーの `SmtpMailService` / `MailSettings` は 0.12.0 で削除しました
 (スクリプトからは権限を通らずに送れてしまうため)。MailField / BulkMailField に置き換えてください。スクリプトから送るときは画面に置いたフィールドの `Send()` を使います。
 
+### セットアップコマンドの内容
+
+```
+<designer.exe> mail-setup "<projectDir>" [--data-source <name>]
+    [--no-history] [--history-name MailHistory]
+    [--no-history-detail] [--history-detail-name MailHistoryDetail]
+    [--no-pageframe] [--ddl-out <path.sql>]
+```
+
+- 生成物: 送信履歴モジュール `MailHistory` (`--no-history` で生成しない)、送信明細モジュール `MailHistoryDetail` (1 宛先 1 行。`--no-history-detail` で生成しない)、PageFrame の送信履歴ページのリンク (`--no-pageframe` で追加しない)、DDL、サーバー設定 (appsettings の `Mail` セクション) の案内
+- `--data-source` を省略すると `designer.settings.json` の先頭のデータソース
+- 冪等: 既にあるモジュールは生成しません
+- DDL は実行しません。`--ddl-out` を指定するとそのファイルへ書き出し、省略すると標準出力に出します
+- 送信明細には宛先アドレスと解決後の本文が残るので、履歴・明細モジュールの閲覧権限 (UserReadCondition) は管理者などに絞ってください
+
 ### サーバー側の結線 (アプリテンプレートに含まれるもの)
 
 新しいアプリテンプレートには最初から入っています。既存アプリに足す場合の要点:

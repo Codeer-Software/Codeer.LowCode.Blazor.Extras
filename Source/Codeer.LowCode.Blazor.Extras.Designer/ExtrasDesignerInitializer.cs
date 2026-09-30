@@ -31,7 +31,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designer
             //load dll.
             typeof(TaskBoardFieldDesign).ToString();
 
-            //headless CLI verb (approval-setup / mail-history-setup)。CCFD からも同じ生成を呼べる。
+            //headless CLI verb (approval-setup / mail-setup / edit-history-setup)。CCFD からも同じ生成を呼べる。
             //headless 分岐は base.OnStartup の先頭で走るため、ここ (base.OnStartup より前) で登録する
             SetupCli.Register();
 

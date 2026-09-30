@@ -201,6 +201,7 @@ var r = 承認.Submit();          if (!r.IsSuccess) Logger.Error(r.ErrorMessage)
 // 状態
 承認.FlowStatus      // "InProgress" 等 (未申請は空文字)
 承認.IsSubmitted
+承認.IsApplicant       // 今のユーザーが申請者か (表示制御用。強制はサーバー)
 
 // 外付けボタンの出し分け (表示制御用。強制はサーバー)
 申請ボタン.IsVisible   = 承認.CanSubmit;
@@ -234,4 +235,5 @@ var r = 承認.Submit();          if (!r.IsSuccess) Logger.Error(r.ErrorMessage)
 - 生成物: ApprovalFlow / ApprovalFlowMember / ApprovalHistory、MyApprovalList / ApprovalStatusList、
   経路マスタ 3 モジュール (`--route standard` のとき)、承認対象モジュール enum `ApprovalTargetModule`、PageFrame のリンク、DDL
 - 冪等: 既にあるモジュールは生成しません (承認モジュール群は 1 セットを全申請書で共有)
+- `--no-mail` (別名 `--no-turn-mail`) で順番が回ってきた人への通知メールを含めません
 - 通知メールを含める場合は、先に **メールのセットアップ** を実行しておきます

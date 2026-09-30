@@ -237,6 +237,7 @@ void Search_OnReindexCompleted()
 | `IsReindexing` | 走っている間 true |
 | `ReindexProcessed` / `ReindexTotal` | 書き直した行数 / 対象行数 (走っている間は途中経過) |
 | `ReindexError` | 最後の再索引のエラー (成功なら空。中断も文言が入る) |
+| `Text` | 今の行を索引用の文章にしたもの (確認用。Submit で送られるのと同じ規則。3 つの列が未設定なら空) |
 
 - スクリプトから `Search` を参照するには、SemanticSearchField がそのレイアウトの `DataOnlyFields` (またはレイアウト) に入っている必要があります (UI が無いので DataOnlyFields が自然です)
 - 誰が起こせるかは権限で決まります。API はその SemanticSearchField を今のユーザーがユーザー権限だけで読めるとき (アプリアクセス条件・モジュールの UserReadCondition・PermissionField) だけ受け付け、行の読み書きは実行ユーザーの ModuleDataIO で行います (読める行だけ・書ける行だけ)。ボタンを置くページの UserReadCondition でも絞れます

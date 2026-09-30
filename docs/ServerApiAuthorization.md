@@ -1,6 +1,6 @@
 # サーバー API の権限チェック (フィールド起点の API)
 
-Extras.Server が提供する API のうち、本体の通常経路 (一覧取得・保存) を通らないもの — メール送信、一斉送信、承認、AI チャット、AI 帳票解析 — は、
+Extras.Server が提供する API のうち、本体の通常経路 (一覧取得・保存) を通らないもの — メール送信、一斉送信、承認、AI チャット、AI 帳票解析、意味検索の再索引 — は、
 リクエストに **「どのモジュールのどのフィールドから呼ばれたか」** を載せ、サーバーは **そのフィールドが今のユーザーに見えるときだけ** 応じます。
 送信インフラの呼び名、Agent 名、補足文書のフォルダ、補足指示といった設定値はリクエストではなくフィールドのデザインから取るので、クライアントが値を書き換えても効きません。
 
@@ -34,6 +34,7 @@ Codeer.LowCode.Blazor 1.3.33 / Codeer.LowCode.Blazor.Extras 0.12.0 / Codeer.LowC
 | ApprovalFlowField ([承認フロー](ApprovalFlow.md)) | `POST /api/approval` | `TargetModuleName` / `FieldName` / `FlowId` | (1) 既存フローへの操作 (承認・却下・差し戻し・取り下げ・回覧確認・再申請) では**申請書の行を読めること** (DataReadCondition) (2) 本人性: 承認・却下・差し戻しは今順番の来ている承認者本人、取り下げ・再申請は申請者本人、回覧確認は到達済みの回覧者本人 (3) フローは申請書モジュールと組で識別 (別モジュール名を添えた要求は「フローなし」) (4) 申請・再申請の保存データはそのモジュールのもの、再申請はそのフローの申請書レコードの更新に限る (5) 申請・再申請の申請書保存は通常の保存経路 (UserWrite / DataWrite / 編集ロック) | `WithdrawPolicy` 等の運用設定 |
 | AIChatField ([AI チャット](AIChatField.md)) | `POST /api/ai_chat` | `ModuleName` / `FieldName` | ジョブの取得・中断はそのジョブの所有者 (ログイン ID) だけ。**AI が何を読めるか** (RawDataAccessAgent) は AI 用 DB ユーザーの権限で決まり、ここでは決めない | `Agent` / `DocumentFolder` |
 | AITextAnalyzerField ([AI 帳票解析](AITextAnalyzerField.md)) | `POST /api/ai_text_analyze/file` / `/text` | クエリの `moduleName` / `fieldName` | なし。検査は AI 呼び出し (ファイルの読み取り) より前 | `Remarks` (補足指示) |
+| SemanticSearchField ([意味検索](SemanticSearchField.md)) | `POST /api/semantic_search/reindex` (再索引の開始) | `ModuleName` / `FieldName` | 検査を通らなければジョブは作られない。行の読み書きは実行ユーザーの ModuleDataIO で行うので、読める行だけを読み、書ける行だけを書く (通常の権限)。状態の取得・中断はそのジョブを起こしたユーザー (ログイン ID) だけ | 文章にするフィールド・列 (`SourceFields` / `DbColumnText` 等) |
 
 ### 一斉送信で取得するデータ
 
@@ -56,11 +57,12 @@ Codeer.LowCode.Blazor 1.3.33 / Codeer.LowCode.Blazor.Extras 0.12.0 / Codeer.LowC
 | 承認 | `new ApprovalEngine(designData, moduleDataIO, db, addInternal, updateInternal).ExecuteAsync(command)` |
 | AI チャット | `AIChatService.StartAsync(owner, request, moduleDataIO)` |
 | AI 帳票解析 | `AITextAnalyzeService.AnalyzeFileAsync / AnalyzeTextAsync(moduleDataIO, modules, moduleName, fieldName, …)` |
+| 意味検索の再索引 | `SemanticSearchService.StartReindexAsync(owner, request, moduleDataIO, openScope)` (`openScope` はジョブ用に同じユーザーで開いた ModuleDataIO と DB 接続) |
 
 システムが送るメール (二要素認証のコードなど、画面のフィールドを介さないもの) は `MailDispatcher.SendAsync(mailInfraName, message)` を使います。こちらはフィールドの検査を持ちません (ホストのコードだけが呼べる)。
 
 ## 関連
 
-- [メール送信](Mail.md) / [承認フロー](ApprovalFlow.md) / [AIChatField](AIChatField.md) / [AITextAnalyzerField](AITextAnalyzerField.md)
+- [メール送信](Mail.md) / [承認フロー](ApprovalFlow.md) / [AIChatField](AIChatField.md) / [AITextAnalyzerField](AITextAnalyzerField.md) / [SemanticSearchField](SemanticSearchField.md)
 - [認証の全体像](Authentication.md) (ログインと CurrentUser の結びつけ)
 - [マニュアル: 認証 / 認可の概要](https://github.com/Codeer-Software/Codeer.LowCode.Blazor.Manual/blob/main/JP/authorization/authorization.md)

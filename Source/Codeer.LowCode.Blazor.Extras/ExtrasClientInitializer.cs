@@ -19,10 +19,10 @@ namespace Codeer.LowCode.Blazor.Extras
         }
 
         /// <summary>
-        /// 組み込みスクリプトオブジェクト (Excel, WebApi, Toaster) 込みの初期化。
+        /// 組み込みスクリプトオブジェクト (Excel, WebApiService, Toaster, BulkFileReader, BulkFileTransferService) 込みの初期化。
         /// エンドポイント URL はアプリの持ち物なので、各機能の静的プロパティで起動時に一度設定する
-        /// (MailTransport.SendMailEndPoint / BulkSearchMailEndPoint、Excel.ConvertPdfEndPoint、
-        /// AITextAnalyzerField.FileToModuleDataEndPoint / TextToModuleDataEndPoint)。
+        /// (MailTransport の *EndPoint、Excel.ConvertPdfEndPoint、AITextAnalyzerField / AIChatField / SemanticSearchField の *EndPoint、
+        /// BulkFileReader.ParseFileEndPoint、BulkFileTransferService の *EndPoint、TotpResetClient の *EndPoint)。
         /// </summary>
         public static void Initialize(IAppInfoService app, IHttpService http, ILogger logger, IToastService toaster)
         {

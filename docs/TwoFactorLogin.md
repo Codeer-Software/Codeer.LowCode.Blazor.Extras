@@ -93,6 +93,92 @@ if (totp != null)
 }
 ```
 
+## リセット (認証アプリの登録の解除)
+
+端末の紛失・機種変更のときは登録を解除します。解除すると次回ログイン時に QR から再登録になります (弱くなる方向ではありません)。どちらのボタンも確認ダイアログ付きです。
+
+| フィールド | 使う人 | 置き場所 | 対象 |
+|---|---|---|---|
+| TotpResetButtonField (認証アプリ解除ボタン) | 管理者 | ユーザーモジュールの詳細画面 | 表示中の行のユーザー |
+| MyTotpResetButtonField (自分の認証アプリ解除ボタン) | 本人 | 設定画面・マイページなど、どのモジュールにも置ける | ログイン中の自分 |
+
+### TotpResetButtonField (管理者用)
+
+解除は「TOTP の 3 列を空にする」データを持った**通常の保存**です。そのためモジュールの UserWriteCondition / 行の DataWriteCondition がそのまま効き (その行を編集できる人だけが解除できる)、サーバーに専用の API はありません。
+
+- ボタンを押すとモジュール全体が保存されます。編集中の他のフィールドも一緒に保存されます
+- 新規行 (ユーザーがまだ無い) では表示されません
+- 3 列は書き込み専用なので、秘密鍵はクライアントに来ず、登録済みかどうかも表示しません (ボタンだけ)
+
+| プロパティ | デザイナ表示名 | 型 | 説明 |
+|---|---|---|---|
+| Text | ボタンの文字 | string | 空なら「認証アプリを解除」 |
+| ConfirmMessage | 確認メッセージ | string | 解除前の確認メッセージ。空なら既定の文言 |
+| DbColumnTotpSecret | 認証アプリ: 秘密鍵列 | string | 秘密鍵の列 (書き込み専用。解除で NULL) |
+| DbColumnTotpConfirmed | 認証アプリ: 確認済み列 | string | 確認済みの列 (書き込み専用。解除で 0) |
+| DbColumnTotpLastTimestep | 認証アプリ: 最終タイムステップ列 | string | 最終タイムステップの列 (書き込み専用。解除で 0) |
+
+3 列は同じモジュールの `LoginAccountContractField` の TOTP 列と**同じ値**にしてください。サーバーのログイン処理が見るのは契約の列なので、ボタンが別の列を空にしても解除になりません。デザインチェックが次を指摘します。
+
+- `TotpResetButtonFieldDesign:1` — ログインユーザーモジュール (`AppSettings.CurrentUserModuleDesignName`) 以外に置いている
+- `TotpResetButtonFieldDesign:2` — 3 列のどれかが契約の列と違う (同じモジュールに契約が無い・契約に TOTP 列が無いときも指摘される)
+
+### MyTotpResetButtonField (本人用)
+
+登録済みなら「認証アプリ: 登録済み」と解除ボタン、未登録なら「認証アプリ: 未登録」だけを表示します。アプリで認証アプリの二要素認証を使っていない (契約に TOTP の列が無い) ときは何も表示しません。状態は表示時にサーバーへ問い合わせます。
+
+| プロパティ | デザイナ表示名 | 型 | 説明 |
+|---|---|---|---|
+| Text | ボタンの文字 | string | 空なら「認証アプリを解除」 |
+| ConfirmMessage | 確認メッセージ | string | 解除前の確認メッセージ。空なら既定の文言 |
+
+### スクリプト
+
+| フィールド | メンバー | 説明 |
+|---|---|---|
+| TotpResetButtonField | `Reset()` | 確認の後、表示中の行のユーザーの登録を解除してモジュールを保存する。成功なら true |
+| MyTotpResetButtonField | `Reset()` | 確認の後、自分の登録を解除する。成功なら true |
+| MyTotpResetButtonField | `IsRegistered` | 自分が登録済みか (bool?)。未取得・機能無効なら null |
+
+### サーバー API と結線 (MyTotpResetButtonField)
+
+Starter の Cookie テンプレートの `AccountController` に組み込み済みです。対象は常にログイン中のユーザーです。
+
+| API | 内容 |
+|---|---|
+| `GET api/account/totp/status` | 状態 `{ Enabled, Registered }` を返す (`Enabled` = 契約に TOTP 列がある) |
+| `POST api/account/totp/reset` | 自分の 3 列を空にし (`TotpLogin.ResetAsync`)、解除後の状態を返す |
+
+```csharp
+// AccountController (どちらも [Authorize])
+[HttpGet("totp/status")]
+public async Task<IActionResult> GetTotpStatus()
+{
+    var totp = TotpLogin.Create(DesignerService.GetDesignData(), SystemConfig.Instance.TotpLogin, _dataService.DbAccess);
+    if (totp == null) return Ok(new TotpStatus());
+    var current = await totp.FindAsync(DataService.GetCurrentUserId(HttpContext));
+    return Ok(new TotpStatus { Enabled = true, Registered = current?.IsConfirmed == true });
+}
+
+[HttpPost("totp/reset")]
+public async Task<IActionResult> TotpReset()
+{
+    var totp = TotpLogin.Create(DesignerService.GetDesignData(), SystemConfig.Instance.TotpLogin, _dataService.DbAccess);
+    if (totp == null) return NotFound();
+    await totp.ResetAsync(DataService.GetCurrentUserId(HttpContext));
+    return Ok(new TotpStatus { Enabled = true, Registered = false });
+}
+```
+
+クライアントは起動時にエンドポイントを設定します (テンプレートは `ServiceInitializer`)。未設定のときは状態が取れないので、ボタンは何も表示しません。
+
+```csharp
+using Codeer.LowCode.Blazor.Extras.Fields;
+
+TotpResetClient.StatusEndPoint = "/api/account/totp/status";
+TotpResetClient.ResetEndPoint = "/api/account/totp/reset";
+```
+
 ## 検証の既定
 
 - 照合窓は現在時刻 ±1 ステップ (30 秒ずれまで許容)

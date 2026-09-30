@@ -11,9 +11,9 @@
 
 | パッケージ | 内容 |
 |---|---|
-| Codeer.LowCode.Blazor.Extras | 拡張フィールド (メール送信・承認フローを含む)、スクリプトオブジェクト (Excel / WebApi / Toaster)、クライアントサービス |
+| Codeer.LowCode.Blazor.Extras | 拡張フィールド (メール送信・承認フロー・編集履歴・一括ファイル入出力を含む)、スクリプトオブジェクト (Excel / WebApi / Toaster / BulkFileReader / BulkFileTransferService)、クライアントサービス |
 | Codeer.LowCode.Blazor.Extras.Designer | デザイナ統合 (ツールボックス登録・AI 用ドキュメント登録) |
-| Codeer.LowCode.Blazor.Extras.Server | サーバーサービス (認証: ID/パスワード照合・外部 IdP・二要素認証 / メール送信 / 承認フローエンジン / AI ドキュメント解析 / ファイルストレージ / ASP.NET Core ヘルパ) |
+| Codeer.LowCode.Blazor.Extras.Server | サーバーサービス (認証: ID/パスワード照合・外部 IdP・二要素認証 / メール送信 / 承認フローエンジン / 編集履歴の記録 / 一括ファイル入出力 (CSV・固定長・列マッピング・値の変換) / AI チャット・意味検索 / AI ドキュメント解析 / ファイルストレージ (ファイルシステム / Azure Blob / Amazon S3) / ASP.NET Core ヘルパ) |
 
 ## 提供フィールド
 
@@ -28,6 +28,11 @@
 | [MarkerListField](docs/MarkerListField.md) | 画像上にマーカー(ピン)を配置・操作するフィールド |
 | [QrCodeField](docs/QrCodeField.md) | 文字列をQRコード画像として表示する表示専用フィールド (外部ライブラリ QRCoder を使用) |
 | [ProgressField](docs/ProgressField.md) | 進捗率を横バー / 半円メーターで表示する表示専用フィールド。値・色を別フィールドから参照 |
+| [ExcelReportButtonField](docs/ExcelReportButtonField.md) | テンプレート Excel のセル (`$フィールド名.Value`) を自モジュールの値で置き換えて xlsx / PDF でダウンロードするボタン。スクリプト不要 |
+| [BulkFileTransferButtonField](docs/BulkFileTransfer.md#bulkfiletransferbuttonfield-一括ファイル転送ボタン) | 詳細画面に置く一括ダウンロード / 一括更新ボタン。対象は同じ画面の検索フィールドか一覧の条件 |
+| [CsvFileFormatField](docs/BulkFileTransfer.md#csvfileformatfield-csvファイル形式) | 一括ダウンロード / 一括更新のファイル形式を CSV (エンコーディング・区切り文字指定) や固定長にする設定用フィールド (UI なし) |
+| [FileColumnMappingField](docs/BulkFileTransfer.md#filecolumnmappingfield-ファイル列マッピング) | 一括ダウンロード / 一括更新の列構成を相手仕様 (列の並び・列名・固定値・固定長の列幅) にする設定用フィールド (UI なし) |
+| [FileValueConversionField](docs/BulkFileTransfer.md#filevalueconversionfield-ファイル値変換) | 一括ダウンロード / 一括更新で、フィールドの値を変換表モジュールで引き当てる (リンクを名前で出し入れする・コード変換) 設定用フィールド (UI なし) |
 | [FileStorage](docs/FileStorage.md) | FileField のファイル保存先。FileSystem / Azure Blob / Amazon S3 (S3互換含む) と独自プロバイダ |
 | [EnterFocusMoveField](docs/EnterFocusMoveField.md) | Enterキーでモジュール内の次の入力要素にフォーカスを移動させるユーティリティフィールド |
 | [LoginAccountContractField](Source/Codeer.LowCode.Blazor.Extras.Designer/FieldDocs/LoginAccountContractFieldDesign.md) | ユーザーモジュールに置く契約フィールド。ログイン ID・外部 IdP の突き合わせ・有効フラグ・表示名・メール二要素の送信先・パスワード入力欄を役割で、パスワード照合用の列と認証アプリ (TOTP) の列を宣言する。サーバーのログイン処理はこの契約だけを見る ([認証の全体像](docs/Authentication.md)) |
@@ -40,6 +45,14 @@
 | [AIChatField](docs/AIChatField.md) | AI (サーバー側の Agent) とのチャット UI。送信→ポーリングで返事を受け取り HTML で表示する。Agent は名前で選び (`Agent` プロパティ)、標準で `RawDataAccessAgent` (Microsoft.Extensions.AI の IChatClient で会話し、DB を SQL で読んで集計・SVG グラフで答える) を用意 |
 | [SemanticSearchField](docs/SemanticSearchField.md) | 行を「内容の意味で探せる」ようにする補助フィールド (UI なし)。Submit 時に対象フィールドを「表示名: 値」の文章にして送り、サーバーが埋め込みベクトルを付けて書き込み専用の列に保存する。AIChatField の `RawDataAccessAgent` が `search_records` で「似た事例」を探し、AI の SQL の中でも `{embed:…}` で意味の近さを使える。距離計算は DB のベクトル検索 (PostgreSQL pgvector / SQL Server 2025) が行う = 対応 DB 限定 (サーバサイド実装が必要) |
 
+### 一覧の見出しに置く部品
+
+一覧レイアウトの見出しセルの「プロコード」(`ListElementComponent`) に指定して使う部品です。
+
+| 部品 | 説明 |
+|---|---|
+| SelectAllCheckBoxListElementComponent | チェックボックス列の見出しに出す全選択チェックボックス。クリックすると、その見出しの列のフィールド (`FieldName`。BooleanField) を全行まとめて ON / OFF する。見出しは幅 40 程度の固定幅・「リサイズ」なし・「ユーザーソート」なしにするのが定番。JSON では `Codeer.LowCode.Blazor.Extras.Components.SelectAllCheckBoxListElementComponent` を指定する |
+
 ## 認証 (ログイン)
 
 Codeer.LowCode.Blazor 本体が持つのは認可だけで、認証 (ログイン) はライブラリに含まれません。認証はホストアプリの担当で、その実装をこの Extras が MIT で提供します。
@@ -51,16 +64,16 @@ Codeer.LowCode.Blazor 本体が持つのは認可だけで、認証 (ログイ�
 | [外部ログイン](docs/ExternalLogin.md) | Entra ID / Google / AWS Cognito / 汎用 OpenID Connect。appsettings だけで有効化。MAUI 対応 |
 | [二要素認証](docs/TwoFactorLogin.md) | 認証アプリ (TOTP) とメールのワンタイムコード。解除ボタン |
 | [LoginAccountContractField](Source/Codeer.LowCode.Blazor.Extras.Designer/FieldDocs/LoginAccountContractFieldDesign.md) | ユーザーモジュールに置く契約フィールドの仕様 |
-| [サーバー API の権限チェック](docs/ServerApiAuthorization.md) | メール送信・一斉送信・承認・AI チャット・AI 帳票解析の API は、呼び出し元のフィールドが今のユーザーに見えるときだけ応じる。フィールドごとに何を見て何を見ないかの一覧 |
+| [サーバー API の権限チェック](docs/ServerApiAuthorization.md) | メール送信・一斉送信・承認・AI チャット・AI 帳票解析・意味検索の再索引の API は、呼び出し元のフィールドが今のユーザーに見えるときだけ応じる。フィールドごとに何を見て何を見ないかの一覧 |
 
 ## 業務機能
 
 | 機能 | 説明 |
 |---|---|
-| [メール送信](docs/Mail.md) | MailField (単発送信ボタン) / BulkMailField (名簿への一斉送信) / 送信履歴 / プレビュー。宛先・文面はレコードの値から組み立てる |
+| [メール送信](docs/Mail.md) | MailField (単発送信ボタン) / BulkMailField (名簿への一斉送信) / 送信履歴 / プレビュー。宛先・文面はレコードの値から組み立てる。契約フィールド: BulkMailRecipientContractField (一斉送信の宛先) / MailHistoryContractField・MailHistoryDetailContractField (送信履歴) |
 | [MailSender](docs/MailSender.md) | 担当者本人のアカウント (Gmail / Microsoft 365 / SMTP) 名義で送る Windows アプリ (`Tools/MailSender` をビルドして使う)。Web のプレビュー HTML を開いて送信。トークンは本人の PC にだけ置く。Web アプリのシステム送信者用トークンの発行にも使う |
-| [承認フロー](docs/ApprovalFlow.md) | ApprovalFlowField を申請書に置くだけで申請・承認・却下・差し戻し・取り下げ・再申請・回覧。承認データは通常のモジュール。状態遷移はサーバーが検証 |
-| [編集履歴](docs/EditHistory.md) | EditHistoryField をモジュールに置くと保存 (作成・更新・削除) ごとにレコード全体 (明細込み) のスナップショットが履歴モジュールへ記録される。詳細画面に版の一覧 (変更フィールドの 旧 → 新)・「この版を表示」・「この版に戻す」(フォームへ反映して保存で確定)・削除したレコードの復活。履歴は通常のモジュール = 閲覧権限は履歴モジュールの設定で、版の内容は読む人の権限に合わせて返される (サーバサイド実装が必要) |
+| [承認フロー](docs/ApprovalFlow.md) | ApprovalFlowField を申請書に置くだけで申請・承認・却下・差し戻し・取り下げ・再申請・回覧。承認データは通常のモジュール。状態遷移はサーバーが検証。履歴だけを別の場所に出す ApprovalHistoryField。契約フィールド: ApprovalFlowContractField / ApprovalMemberContractField / ApprovalHistoryContractField |
+| [編集履歴](docs/EditHistory.md) | EditHistoryField をモジュールに置くと保存 (作成・更新・削除) ごとにレコード全体 (明細込み) のスナップショットが履歴モジュールへ記録される。詳細画面に版の一覧 (変更フィールドの 旧 → 新)・「この版を表示」・「この版に戻す」(フォームへ反映して保存で確定)・削除したレコードの復活。履歴は通常のモジュール = 閲覧権限は履歴モジュールの設定で、版の内容は読む人の権限に合わせて返される (サーバサイド実装が必要)。履歴モジュールに置く EditHistoryContractField (契約) / EditHistoryUndeleteButtonField (削除したレコードの復活ボタン) |
 
 いずれもデザイナの **Tools > メールのセットアップ / 承認フローのセットアップ / 編集履歴のセットアップ** (または CLI の `mail-setup` / `approval-setup` / `edit-history-setup`) で
 必要なモジュール群を生成できます。
@@ -74,6 +87,8 @@ Codeer.LowCode.Blazor 本体が持つのは認可だけで、認証 (ログイ�
 | Excel | Excel ファイルの読み書き・テンプレートへの値書き込み・xlsx / PDF ダウンロード |
 | WebApiService | 外部 API への HTTP リクエスト (Get / Post / Put / Delete) |
 | Toaster | トースト通知の表示 (Success / Info / Warn / Error) |
+| BulkFileReader | `new BulkFileReader<モジュール名>()`。ファイルを選ばせ、そのモジュールの一括ファイル入出力の定義 (CSV / 固定長 / 列マッピング / 値の変換) で解析して行を返す (DB には書かない)。[一括ファイル入出力](docs/BulkFileTransfer.md#スクリプト) |
+| BulkFileTransferService | 検索条件や加工済みの行で一括ダウンロード (Download)、加工済みの行を 1 トランザクションで一括保存 (Submit)。[一括ファイル入出力](docs/BulkFileTransfer.md#スクリプト) |
 
 各オブジェクトの正確なシグネチャと使用例は、デザイナの入力補完、またはデザイナ CLI の
 `script-catalog` サブコマンドが生成するカタログで確認できます。
@@ -97,7 +112,9 @@ Codeer.LowCode.Blazor 本体が持つのは認可だけで、認証 (ログイ�
 - 認証 — LoginAccountStore (ID/パスワード照合・ユーザー行の解決) / 外部 IdP (OidcLoginProvider と Entra / Google / Cognito 実装) / TotpLogin・EmailOtpLogin (二要素認証)。[認証の全体像](docs/Authentication.md)
 - メール送信 — MailDispatcher (テンプレート解決・一斉送信・送信履歴) と SMTP / Microsoft Graph / SendGrid / Gmail API 送信。独自の送信手段は IMailSender で追加
 - 承認フロー — ApprovalEngine (状態遷移の検証と実行)
-- StorageAccess / TemporaryFileManager — ファイルストレージ (ファイルシステム / Azure Blob) と一時ファイル管理
+- 編集履歴 — EditHistoryRecorder (本体の IO インターセプタ。`ModuleDataIO` の派生 (テンプレートの `CustomizedModuleDataIO`) で `AddInterceptor(new EditHistoryRecorder(designData))` と登録すると、保存時の記録・復活と、版の内容を読む人の権限に落とす処理の両方に効く)。[編集履歴](docs/EditHistory.md)
+- 一括ファイル入出力 — BulkFileTransfer (一覧の一括ダウンロード / 一括更新とスクリプトの入出力の処理本体。ModuleDataController から移譲する)、CsvUtils (CSV の生成 / 解析)。[一括ファイル入出力](docs/BulkFileTransfer.md)
+- StorageAccess / TemporaryFileManager — ファイルストレージ (ファイルシステム / Azure Blob / Amazon S3 (S3 互換含む)。独自の保存先は IFileStorage で追加) と一時ファイル管理。[FileStorage](docs/FileStorage.md)
 - CustomFontResolver — Excel PDF 変換用のフォントリゾルバ
 - Web ヘルパ — ETag 付きファイル応答 (FileWithETag)、ホットリロード (HotReloadHub / FileWatcherService)
 
@@ -130,13 +147,14 @@ ExtrasClientInitializer.Initialize(this);
 ExtrasClientInitializer.Initialize(this, http, logger, toaster);
 ```
 
-メール送信・承認フロー・Excel PDF 変換・AI 解析・AI チャット・意味検索を使う場合は、エンドポイント URL を起動時に設定します
+メール送信・承認フロー・Excel PDF 変換・AI 解析・AI チャット・意味検索・スクリプトの一括ファイル入出力・自分の認証アプリ解除ボタンを使う場合は、エンドポイント URL を起動時に設定します
 (URL はアプリのコントローラに合わせて変更してください)。
 
 ```csharp
 using Codeer.LowCode.Blazor.Extras.Fields;
 using Codeer.LowCode.Blazor.Extras.Mail;
 using Codeer.LowCode.Blazor.Extras.Approval;
+using Codeer.LowCode.Blazor.Extras.ScriptObjects;
 
 MailTransport.SendMailEndPoint = "/api/mail";
 MailTransport.BulkSearchMailEndPoint = "/api/mail/bulk_search";
@@ -148,6 +166,11 @@ AITextAnalyzerField.FileToModuleDataEndPoint = "/api/ai_text_analyze/file";
 AITextAnalyzerField.TextToModuleDataEndPoint = "/api/ai_text_analyze/text";
 AIChatField.EndPoint = "/api/ai_chat";
 SemanticSearchField.EndPoint = "/api/semantic_search/reindex";
+BulkFileReader.ParseFileEndPoint = "/api/module_data/parse_file";
+BulkFileTransferService.ListFileByDataEndPoint = "/api/module_data/list_file_by_data";
+BulkFileTransferService.BulkSubmitEndPoint = "/api/module_data/bulk_submit";
+TotpResetClient.StatusEndPoint = "/api/account/totp/status";
+TotpResetClient.ResetEndPoint = "/api/account/totp/reset";
 ```
 
 #### LowCodeApp.Server
@@ -163,6 +186,8 @@ ExtrasServerInitializer.Initialize();
 メール送信・承認フローを使う場合は、受け口となるコントローラ (`MailController` / `ApprovalController`) と
 送信インフラの対応表 (`MailSenderTable`) が必要です。新しいアプリテンプレートには含まれています。
 詳細は [メール送信](docs/Mail.md) / [承認フロー](docs/ApprovalFlow.md) を参照してください。
+
+一括ファイル入出力 (CSV / 固定長 / 列マッピング / 値の変換) を使う場合は、`ModuleDataController` の `list_file` / `submit_by_file` を `BulkFileTransfer` に移譲し、スクリプト用の `list_file_by_data` / `bulk_submit` / `parse_file` を足します。新しいアプリテンプレートには含まれています。詳細は [一括ファイル入出力](docs/BulkFileTransfer.md#ホスト側の結線) を参照してください。
 
 AI チャット・意味検索を使う場合も同じ形で、受け口のコントローラ (`AIChatController` / `SemanticSearchController`) と対応表
 (Agent 名 → Agent の `AIChatAgentTable`、埋め込みプロバイダの呼び名 → 実装の `EmbeddingProviderTable`) をアプリが持ちます。
@@ -212,6 +237,9 @@ ExtrasDesignerInitializer.Setup(DesignerEnvironment);
 - [QrCodeField - QRコード](docs/QrCodeField.md)
 - [ProgressField - 進捗バー / メーター](docs/ProgressField.md)
 - [EnterFocusMoveField - Enterキーでフォーカス移動](docs/EnterFocusMoveField.md)
+- [ExcelReportButtonField - Excel 帳票ボタン](docs/ExcelReportButtonField.md)
+- [一括ファイル入出力 (CsvFileFormatField / FileColumnMappingField / FileValueConversionField / BulkFileTransferButtonField)](docs/BulkFileTransfer.md)
+- [FileStorage - ファイルの保存先](docs/FileStorage.md)
 - [認証の全体像 (ログインアカウント契約 / パスワード / 外部 IdP / 二要素認証)](docs/Authentication.md)
 - [外部ログイン (Entra ID / Google / AWS Cognito / OpenID Connect)](docs/ExternalLogin.md)
 - [二要素認証 (認証アプリ TOTP / メールのワンタイムコード)](docs/TwoFactorLogin.md)
@@ -219,7 +247,12 @@ ExtrasDesignerInitializer.Setup(DesignerEnvironment);
 - [PasswordHashField - パスワードハッシュ](docs/PasswordHashField.md)
 - [OrientationLockField - 画面の向き制御](docs/OrientationLockField.md)
 - [AITextAnalyzerField - AI 帳票解析](docs/AITextAnalyzerField.md)
+- [AIChatField - AI チャット](docs/AIChatField.md)
 - [SemanticSearchField - 意味検索 (AI)](docs/SemanticSearchField.md)
+- [メール送信 (MailField / BulkMailField)](docs/Mail.md)
+- [MailSender - 担当者本人のアカウント名義でメールを送る](docs/MailSender.md)
+- [承認フロー (ApprovalFlowField)](docs/ApprovalFlow.md)
+- [編集履歴 (EditHistoryField)](docs/EditHistory.md)
 
 ## CSS カスタマイズ
 

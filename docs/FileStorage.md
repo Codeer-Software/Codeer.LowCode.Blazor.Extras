@@ -62,7 +62,7 @@ FileField がアップロードしたファイルの実体を置く場所です�
 - **本番**: EC2 / ECS / EKS(IRSA) の IAM ロール。設定は `BucketName` と `Region` だけ
 - **ローカル開発**: 環境変数 `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` か、`~/.aws/credentials` の名前付きプロファイルを `ProfileName` で指定 (MinIO 等の S3 互換も同じ。プロファイルにそのストレージ用のキーを置く)
 - 複数バケットで別アカウントを使うときも `ProfileName` で切り替える
-| `KeyPrefix` | オブジェクトキーの接頭辞 (例 `attachments/`)。1 バケットを複数用途で共有するとき用 |
+- `KeyPrefix` はオブジェクトキーの接頭辞 (例 `attachments/`)。1 バケットを複数用途で共有するときに指定する
 
 ## アプリ側の結線 (テンプレート)
 

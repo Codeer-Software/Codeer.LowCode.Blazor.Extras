@@ -62,13 +62,13 @@ DDL は自動実行されないため、生成後にテーブルを作成する�
 
 ### デザイナー設定プロパティ
 
-| プロパティ | 説明 |
-|---|---|
-| DB列 | 承認フロー行への FK 列 (このフィールドが自テーブルに持つ列はこの1本だけ) |
-| 承認フローモジュール | フロー本体のモジュール名 (既定 ApprovalFlow)。メンバー・履歴モジュールはフロー契約の Members / Histories 一覧の参照先として決まるため指定不要 |
-| 取り下げ許可範囲 | BeforeFirstApproval (既定・承認が始まる前のみ) / Anytime (進行中ならいつでも)。業務ポリシー |
-| 進捗を表示 / 履歴を表示 / コメント欄を表示 / アクションボタンを表示 | 標準 UI の表示切り替え。アクションボタンを OFF にすると ButtonField ＋ スクリプト API でアプリ独自の承認 UI に置き換えられる (サーバーの検証はどの UI からでも同じ) |
-| 経路組み立て | ApprovalRouteData を返すスクリプト (null で申請中止)。設定すると組み込みの申請・再申請ボタンが出て、スクリプト API の Submit() / Resubmit() も使える |
+| プロパティ | プロパティ名 (JSON) | 説明 |
+|---|---|---|
+| DB列 | `DbColumn` | 承認フロー行への FK 列 (このフィールドが自テーブルに持つ列はこの1本だけ) |
+| 承認フローモジュール | `FlowModuleName` | フロー本体のモジュール名 (既定 ApprovalFlow)。メンバー・履歴モジュールはフロー契約の Members / Histories 一覧の参照先として決まるため指定不要 |
+| 取り下げ許可範囲 | `WithdrawPolicy` | BeforeFirstApproval (既定・承認が始まる前のみ) / Anytime (進行中ならいつでも)。業務ポリシー |
+| 進捗を表示 / 履歴を表示 / コメント欄を表示 / アクションボタンを表示 | `ShowProgress` / `ShowHistory` / `ShowComment` / `ShowActions` | 標準 UI の表示切り替え。アクションボタンを OFF にすると ButtonField ＋ スクリプト API でアプリ独自の承認 UI に置き換えられる (サーバーの検証はどの UI からでも同じ) |
+| 経路組み立て | `OnBuildRoute` | ApprovalRouteData を返すスクリプト (null で申請中止)。設定すると組み込みの申請・再申請ボタンが出て、スクリプト API の Submit() / Resubmit() も使える |
 
 ### 契約フィールド (インターフェイス) と必須フィールド
 
@@ -251,6 +251,8 @@ ApprovalRouteData Load(string routeName)
 // 状態参照
 var status = 承認.FlowStatus;                     // "InProgress" 等 (未申請は空文字)
 var submitted = 承認.IsSubmitted;
+var flowId = 承認.FlowId;                         // 承認フロー行の Id (未申請は空文字)
+var isApplicant = 承認.IsApplicant;               // 今のユーザーが申請者か (表示制御用。強制はサーバー)
 
 // 外付けボタンの出し分け (資格プロパティ。表示制御用で、強制は常にサーバー)
 申請ボタン.IsVisible = 承認.CanSubmit;
