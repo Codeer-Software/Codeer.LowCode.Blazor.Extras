@@ -39,15 +39,18 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
             return result;
         }
 
-        /// <summary>DB のベクトル検索で、質問ベクトルに近い順に上位 top 件を読む。</summary>
-        public static async Task<List<ScoredEntry>> SearchAsync(IDbAccessor db, ModuleDesign module, SemanticSearchFieldDesign field, float[] queryVector, int top, CancellationToken cancellationToken)
+        /// <summary>
+        /// DB のベクトル検索で、質問ベクトルに近い順に上位 top 件を読む。
+        /// dataSourceName は接続に使うデータソース (AI 用に別名の読み取り専用接続を作っている構成ではモジュールの DataSourceName と違う)。
+        /// </summary>
+        public static async Task<List<ScoredEntry>> SearchAsync(IDbAccessor db, string dataSourceName, ModuleDesign module, SemanticSearchFieldDesign field, float[] queryVector, int top, CancellationToken cancellationToken)
         {
             var idColumn = module.Fields.OfType<IdFieldDesign>().FirstOrDefault()?.DbColumn;
             if (string.IsNullOrWhiteSpace(module.DbTable) || string.IsNullOrWhiteSpace(idColumn) || !field.HasColumns) return new();
-            var type = DataSourceTypeOf(db, module.DataSourceName);
+            var type = DataSourceTypeOf(db, dataSourceName);
             var sql = BuildSearchSql(type, module.DbTable, idColumn, field.DbColumnText, field.DbColumnVectorSearch, LogicalDeleteColumn(module), VectorLiteral(type, queryVector), top);
             cancellationToken.ThrowIfCancellationRequested();
-            var rows = await db.QueryAsync(module.DataSourceName, sql, new());
+            var rows = await db.QueryAsync(dataSourceName, sql, new());
             var result = new List<ScoredEntry>();
             foreach (var row in rows)
             {

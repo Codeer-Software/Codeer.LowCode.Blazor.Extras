@@ -1,3 +1,4 @@
+using Codeer.LowCode.Blazor.DataIO.Db;
 using Codeer.LowCode.Blazor.DbAccess;
 using Codeer.LowCode.Blazor.DesignLogic;
 using Codeer.LowCode.Blazor.Extras.Designs;
@@ -112,11 +113,59 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
         }
 
         [Test]
-        public void 許されたデータソースに無いモジュールはツールに出ない()
+        public void 許されたデータソースが定義に無ければツールに出ない()
         {
             var toolSet = ToolSet(CreateDesign(), dataSourceNames: new List<string> { "Other" });
             Assert.That(toolSet.GetInstructions(Context()), Is.Empty);
             Assert.That(toolSet.CreateTools(Context()), Is.Empty);
+        }
+
+        //複数のデータソース定義 (接続はしない)
+        static DataSource[] DataSources(params (string Name, DataSourceType Type)[] dataSources)
+            => dataSources.Select(d => new DataSource { Name = d.Name, DataSourceType = d.Type, ConnectionString = "Host=none" }).ToArray();
+
+        //SQL は実行せず、どのデータソースに投げたかだけ記録する
+        sealed class RecordingDb(DataSource[] dataSources, List<string> queried) : DbAccessor(dataSources)
+        {
+            public override Task<List<IDictionary<string, object>>> QueryAsync(string dataSourceName, string query, Dictionary<string, ParamAndRawDbTypeName> args)
+            {
+                queried.Add(dataSourceName);
+                return Task.FromResult(new List<IDictionary<string, object>>());
+            }
+        }
+
+        [Test]
+        public void AI用の別名データソースだけを許した構成ではモジュールは別名の接続で意味検索の対象になる()
+        {
+            //モジュールは Main にあり、AI には読み取り専用の別名 Analytics (同じ DB) だけを許す = RawDataAccess と同じ構成
+            var dataSources = DataSources(("Main", DataSourceType.PostgreSQL), ("Analytics", DataSourceType.PostgreSQL));
+            var toolSet = new SemanticSearchToolSet(() => CreateDesign(), () => new DbAccessor(dataSources), () => new FakeEmbeddingProvider(), ["Analytics"]);
+            var text = toolSet.GetInstructions(Context());
+            Assert.That(text, Does.Contain("Inquiry").And.Contain("データソース Analytics"), "execute_sql で使うデータソース名は別名側");
+            Assert.That(text, Does.Not.Contain("データソース Main"));
+            Assert.That(toolSet.CreateTools(Context()).Select(t => t.Name), Is.EqualTo(new[] { "search_records" }));
+        }
+
+        [Test]
+        public async Task 検索はモジュールのデータソースが許されていればそれで_無ければ同じDB種別の別名の接続で実行する()
+        {
+            var queried = new List<string>();
+            var dataSources = DataSources(("Main", DataSourceType.PostgreSQL), ("Legacy", DataSourceType.SQLServer), ("Analytics", DataSourceType.PostgreSQL));
+            async Task<string?> QueriedWith(IList<string> allowed)
+            {
+                queried.Clear();
+                var toolSet = new SemanticSearchToolSet(() => CreateDesign(), () => new RecordingDb(dataSources, queried), () => new FakeEmbeddingProvider(), allowed);
+                var tools = toolSet.CreateTools(Context()).ToList();
+                if (tools.Count == 0) return null;
+                using var doc = await InvokeAsync(tools, new() { ["moduleName"] = "Inquiry", ["query"] = "納期" });
+                Assert.That(doc.RootElement.TryGetProperty("error", out _), Is.False, doc.RootElement.ToString());
+                return queried.Single();
+            }
+            Assert.That(await QueriedWith(["Main"]), Is.EqualTo("Main"));
+            Assert.That(await QueriedWith(["Analytics", "Main"]), Is.EqualTo("Main"), "モジュールのデータソースが一覧にあればそれ");
+            Assert.That(await QueriedWith(["Legacy", "Analytics"]), Is.EqualTo("Analytics"), "別名は同じ DB 種別のものを優先");
+            Assert.That(await QueriedWith(["Analytics"]), Is.EqualTo("Analytics"));
+            Assert.That(await QueriedWith(["Legacy"]), Is.Null, "SQL Server の別名しか無ければ PostgreSQL のモジュールには使えない");
         }
     }
 }

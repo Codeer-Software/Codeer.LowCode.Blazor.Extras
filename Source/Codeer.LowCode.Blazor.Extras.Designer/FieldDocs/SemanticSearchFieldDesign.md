@@ -110,7 +110,7 @@ AI チャットの `execute_sql` の SQL に `{embed:探したい内容}` と書
 - 意味検索できるのは PostgreSQL (pgvector) と SQL Server 2025 のデータソースだけ。SQLite / MySQL / Oracle のモジュールは検索対象にならない
 - 埋め込みモデルを変えたらベクトル列を作り直して全行の再索引が要る (次元が違うベクトルは入らない)
 - 文章は AI プロバイダに送られる。個人情報などを入れたくないときは `SourceFields` で絞る
-- 読める範囲は `RawDataAccessOptions.DataSourceNames` で決まり、行ごとの DataReadCondition は効かない。置くページの UserReadCondition で使える人を絞る
+- 読める範囲と接続は `RawDataAccessOptions.DataSourceNames` で決まる (モジュールのデータソースが一覧に無ければ、AI 用の別名接続のうち同じ DB 種別のもので同じ表を引く)。行ごとの DataReadCondition は効かない。置くページの UserReadCondition で使える人を絞る
 
 ## Script
 

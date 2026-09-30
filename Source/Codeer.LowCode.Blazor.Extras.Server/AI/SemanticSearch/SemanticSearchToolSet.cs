@@ -23,6 +23,8 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
     /// 距離計算は DB が行う。ベクトル検索に対応しない DB (SQLite 等) のモジュールは意味検索の対象にならない。
     /// SQL の集計 (RawDataAccessToolSet) と役割を分け、「似た事例」「〜のような問い合わせ」のように内容で探す質問に使わせる。
     /// 読める範囲は RawDataAccess と同じ (データソース名で絞る。行ごとの閲覧条件は効かない)。
+    /// 検索に使う接続も RawDataAccess と同じ規則で決める: モジュールの DataSourceName が許された一覧にあればそれ、無ければ
+    /// 一覧のうちどのモジュールも名指ししていないもの (= AI 用に作った別名の読み取り専用接続) で同じ表を引く。
     /// </summary>
     internal sealed class SemanticSearchToolSet : IAIChatToolSet
     {
@@ -33,7 +35,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
         readonly int _maxTextChars;
         readonly int _maxTop;
 
-        /// <param name="dataSourceNames">検索を許すデータソース名 (RawDataAccessOptions.DataSourceNames)。空なら全モジュール</param>
+        /// <param name="dataSourceNames">検索に使うデータソース名 (RawDataAccessOptions.DataSourceNames)。モジュールが名指ししていない名前は AI 用の別名の接続として全モジュールの表を引く。空なら各モジュールのデータソース</param>
         /// <param name="maxTextChars">1 件の文章を AI に返す最大文字数</param>
         /// <param name="maxTop">1 回に返す件数の上限</param>
         public SemanticSearchToolSet(Func<DesignData?> design, Func<IDbAccessor> dbAccessorFactory, Func<IEmbeddingProvider?> embeddingProvider,
@@ -54,7 +56,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
             if (targets.Count == 0) return string.Empty;
             var sb = new StringBuilder();
             sb.AppendLine("次のモジュールは意味検索 (search_records) で「内容が似た記録」を探せます (各行を文章にして埋め込みで索引済み):");
-            foreach (var (module, field, _) in targets)
+            foreach (var (module, field, _, _) in targets)
             {
                 var title = DesignDescriber.Title(design!, module);
                 sb.Append("- ").Append(module.Name);
@@ -66,8 +68,8 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
 
             //同じ表は execute_sql の中でも距離計算できる ({embed:…} を質問の埋め込みに置き換える)
             sb.AppendLine("- これらの表はベクトル型の列を持ち、execute_sql の SQL の中でも意味の近さで絞り込み・並べ替えができます。SQL に `{embed:探したい内容}` と書くと、実行前にその内容の埋め込みベクトルに置き換わります (自分で数値を書かないこと)。WHERE や JOIN・集計と組み合わせたいときはこちら、単に似た記録を挙げるだけなら search_records を使ってください:");
-            foreach (var (module, field, type) in targets)
-                sb.Append("  - ").Append(module.Name).Append(": 表 ").Append(module.DbTable).Append(" のベクトル列 ").Append(field.DbColumnVectorSearch).Append(" (データソース ").Append(module.DataSourceName).Append(")。").AppendLine(SemanticSearchIndexReader.DialectHint(type));
+            foreach (var (module, field, type, dataSourceName) in targets)
+                sb.Append("  - ").Append(module.Name).Append(": 表 ").Append(module.DbTable).Append(" のベクトル列 ").Append(field.DbColumnVectorSearch).Append(" (データソース ").Append(dataSourceName).Append(")。").AppendLine(SemanticSearchIndexReader.DialectHint(type));
             return sb.ToString();
         }
 
@@ -104,7 +106,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
                 //距離計算は DB。失敗 (拡張未導入・列の型違い等) はそのままエラーとして AI に返す (別経路で拾い直すことはしない)
                 List<SemanticSearchIndexReader.ScoredEntry> scored;
                 await using (var db = _dbAccessorFactory())
-                    scored = await SemanticSearchIndexReader.SearchAsync(db, target.Module, target.Field, queryVector, top, context.CancellationToken);
+                    scored = await SemanticSearchIndexReader.SearchAsync(db, target.DataSourceName, target.Module, target.Field, queryVector, top, context.CancellationToken);
 
                 var urls = DesignDescriber.PageUrls(design, target.Module);
                 var results = scored
@@ -126,31 +128,34 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
             }
         }
 
-        //意味検索できるモジュール = SemanticSearchField (3 列あり) を持ち、表があり、許されたデータソースにあり、そのデータソースがベクトル検索に対応する DB のもの。
-        //データソース種別は DataSource 定義から見る (接続はしない)
-        List<(ModuleDesign Module, SemanticSearchFieldDesign Field, DataSourceType Type)> SearchableModules(DesignData design)
+        //意味検索できるモジュール = SemanticSearchField (3 列あり) を持ち、表があり、検索に使えるデータソース (下記) があり、それがベクトル検索に対応する DB のもの。
+        //データソース種別は DataSource 定義から見る (接続はしない)。DataSourceName は検索に使う接続 (execute_sql の dataSource と同じ名前)
+        List<(ModuleDesign Module, SemanticSearchFieldDesign Field, DataSourceType Type, string DataSourceName)> SearchableModules(DesignData design)
         {
-            var result = new List<(ModuleDesign, SemanticSearchFieldDesign, DataSourceType)>();
+            var result = new List<(ModuleDesign, SemanticSearchFieldDesign, DataSourceType, string)>();
             //埋め込みプロバイダが無ければ (appsettings 未設定) 意味検索は使えない = ツールを出さない
             if (_embeddingProvider() == null) return result;
+            var all = design.Modules.GetModuleNames().Select(design.Modules.Find).Where(m => m != null && !string.IsNullOrEmpty(m.DbTable)).Select(m => m!).ToList();
             var candidates = new List<(ModuleDesign Module, SemanticSearchFieldDesign Field)>();
-            foreach (var name in design.Modules.GetModuleNames())
+            foreach (var module in all)
             {
-                var module = design.Modules.Find(name);
-                if (module == null || string.IsNullOrEmpty(module.DbTable)) continue;
-                if (_dataSourceNames.Count > 0 && !_dataSourceNames.Contains(module.DataSourceName, StringComparer.OrdinalIgnoreCase)) continue;
                 var field = module.Fields.OfType<SemanticSearchFieldDesign>().FirstOrDefault(f => f.HasColumns);
                 if (field != null) candidates.Add((module, field));
             }
             if (candidates.Count == 0) return result;
+
+            //許された一覧のうち、どのモジュールも名指ししていないデータソース = AI 用に作った別名の読み取り専用接続 (RawDataAccessToolSet と同じ見方)
+            var aliases = _dataSourceNames.Where(n => !all.Any(m => string.Equals(m.DataSourceName, n, StringComparison.OrdinalIgnoreCase))).ToList();
 
             var db = _dbAccessorFactory();
             try
             {
                 foreach (var (module, field) in candidates)
                 {
-                    var type = db.GetDataSource(module.DataSourceName)?.DataSourceType;
-                    if (type != null && SemanticSearchIndexReader.SupportsDbSearch(type.Value)) result.Add((module, field, type.Value));
+                    var dataSourceName = ResolveDataSource(db, module, aliases);
+                    if (dataSourceName == null) continue;
+                    var type = db.GetDataSource(dataSourceName)?.DataSourceType;
+                    if (type != null && SemanticSearchIndexReader.SupportsDbSearch(type.Value)) result.Add((module, field, type.Value, dataSourceName));
                 }
             }
             finally
@@ -158,6 +163,19 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
                 db.DisposeAsync().AsTask().GetAwaiter().GetResult();
             }
             return result;
+        }
+
+        //モジュールの表を引く接続。許された一覧が空ならモジュールのデータソース。一覧にモジュールのデータソースがあればそれ。
+        //無ければ別名の接続のうちモジュールのデータソースと同じ DB 種別のもの (別の DB 製品にその表は無い)。それも無ければ対象外
+        string? ResolveDataSource(IDbAccessor db, ModuleDesign module, List<string> aliases)
+        {
+            if (_dataSourceNames.Count == 0) return module.DataSourceName;
+            var own = _dataSourceNames.FirstOrDefault(n => string.Equals(n, module.DataSourceName, StringComparison.OrdinalIgnoreCase));
+            if (own != null) return own;
+            if (aliases.Count == 0) return null;
+            var ownType = db.GetDataSource(module.DataSourceName)?.DataSourceType;
+            if (ownType == null) return aliases[0];    //モジュールのデータソースが定義に無い (AI 用の接続しか appsettings に書いていない) なら種別で選べない
+            return aliases.FirstOrDefault(n => db.GetDataSource(n)?.DataSourceType == ownType);
         }
 
         IEmbeddingProvider RequireProvider()
