@@ -35,11 +35,12 @@ namespace Extras.Server.Controllers
                 .SendAsync(request);
 
         //プレビュー (送らずに解決結果を HTML で返す。宛先の解決は送信と同じ経路)
-        [HttpPost("preview")]
+        [HttpPost("preview"), Audit(AuditCategory.DataRead)]
         public async Task<IActionResult> PreviewAsync(MailPreviewRequest request)
             => PreviewFile(await CreatePreviewBuilder().BuildSingleHtmlAsync(request));
 
-        [HttpPost("bulk_preview")]
+        //一斉送信のプレビューは宛先の行を読んで描くので参照として記録する (読んだ行ごとの Read は Extras の MailPreviewBuilder が足す)
+        [HttpPost("bulk_preview"), Audit(AuditCategory.DataRead)]
         public async Task<IActionResult> PreviewBulkSearchAsync(MailBulkSearchRequest request)
             => PreviewFile(await CreatePreviewBuilder().BuildBulkHtmlAsync(request));
 

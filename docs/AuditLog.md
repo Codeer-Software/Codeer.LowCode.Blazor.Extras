@@ -93,7 +93,7 @@ create index "ix_audit_log_occurred_at" on "audit_log" ("occurred_at_utc");
 | `RequestId` | ASP.NET Core の TraceIdentifier。アプリのログ (ILogger) と突き合わせる鍵 |
 | `Host` | 発生したサーバー名 (複数インスタンス運用での発生元) |
 | `DesignVersion` | その操作が使ったデザインの版 (App.zip の SHA-256。小文字の 16 進 64 桁)。試行の行と結果の行は同じ値 |
-| `Targets` | 対象のレコードの並び。`Module` / `Id` / `Operation` (Read / Add / Update / Delete / Export / Import / BulkSubmit / Mail / BulkMail / MailTo / Download:フィールド名 / Approval:操作 など)。1 レコードに 500 件まで。超えた分は続きの行 |
+| `Targets` | 対象のレコードの並び。`Module` / `Id` / `Operation` (Read / Add / Update / Delete / Export / Import / BulkSubmit / Mail / BulkMail / MailTo / Preview / BulkPreview / Download:フィールド名 / Approval:操作 など)。1 レコードに 500 件まで。超えた分は続きの行 |
 | `Detail` | 補足。件数 (`Add=3; Update=1; Delete=0`、`Rows=1234` など)、取り込んだファイルのハッシュ (`File=...`)、失敗の理由、試行したログイン名 (`LoginName=...`)、二要素認証の状態、掃除の件数など |
 
 ### 分類と結果
@@ -101,11 +101,11 @@ create index "ix_audit_log_occurred_at" on "audit_log" ("occurred_at_utc");
 | 分類 | 記録される操作 (テンプレートの結線) |
 |---|---|
 | `Authentication` | ログイン (ID/パスワード・外部 IdP への遷移と IdP からの戻り・モバイルのチケット交換)、ログアウト、認証アプリの解除。ログイン失敗と二要素認証のコード不一致は `Denied`。成立した行だけ `user_id` が入る (二要素待ち・IdP への遷移は `Success` でも空) |
-| `DataRead` | 一覧・詳細の取得 (返した行ごとに `Read`) |
+| `DataRead` | 一覧・詳細の取得 (返した行ごとに `Read`)、メールのプレビュー (一斉送信のプレビューは描いた宛先の行ごとに `Read`。送らずに宛先の値を見る操作なので参照として残す) |
 | `DataWrite` | 保存・一括取込・スクリプトの一括保存 (行ごとに Add / Update / Delete と件数)、アップロード、承認フローの操作 |
 | `Export` | 一括ファイル出力 (出した行ごとに Export と件数)、Excel → PDF、添付ファイルのダウンロード (レコードとフィールド名)、メール送信・一斉送信 (送信元のレコード・件数・一斉送信は宛先の行)。画面に表示するだけの参照 (DataRead) と違い、ファイルとして持ち出す操作は既定で記録される |
 | `Admin` | 意味検索の再索引 |
-| `System` | アプリの起動 (有効な設定を Detail に残す)・停止、監査ログの掃除 (消した件数)、デザインの版の切替 (`Design.Loaded`) |
+| `System` | アプリの起動 (有効な設定を Detail に残す)・停止、監査ログの掃除 (消した件数)、デザインの版の切替 (`Design.Loaded`)、初期管理者の作成 (`Account.InitialUserCreated`。ユーザーが 0 件のときテンプレートが作る admin。作った行の Id が対象) |
 | `Other` | `[Audit]` を付けていない API (設計の取得、リソース、TOTP 状態、AI チャットの送信など)。失敗と拒否だけが残る |
 
 外部 IdP (Entra / Google / Cognito / OIDC) のログインは、IdP からの戻りを `Account.ExternalLoginCallback` として記録します。成立なら `Success` と解決したユーザー、
@@ -157,6 +157,7 @@ create index "ix_audit_log_occurred_at" on "audit_log" ("occurred_at_utc");
 | 一括ファイル出力 | 出した行ごとの `Export` と Id | `Rows=1234` |
 | メール送信 | 送信元のレコード (`Mail`) | `Total=1; Success=1; Failed=0` |
 | 一斉送信 | 送信元のレコード (`BulkMail`) と、宛先になった行 (`MailTo`) | `Total=120; Success=118; Failed=2` |
+| メールのプレビュー | 送信元のレコード (`Preview` / `BulkPreview`)。一斉送信のプレビューは描いた宛先の行 (`Read`。配信停止などで除外した行も描くので含む) | `Rows=120` (一斉送信のプレビュー) |
 
 - **どの保存も同じ形で残ります**: 保存の対象は、保存の合流点に置くインターセプタ (`AuditIOInterceptor`) が記録します。画面の保存もファイル取込もスクリプトの一括保存もここを通ります
 - **失敗した保存にも対象が残ります**: 権限で弾かれた変更も「誰がどのレコードを変えようとしたか」が分かります (ロールバックした新規行は Id が無いので、モジュール名と件数です)

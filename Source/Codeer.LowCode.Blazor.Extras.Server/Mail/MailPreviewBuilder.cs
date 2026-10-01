@@ -97,6 +97,14 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
             //送信と同じ検査 (BulkMailField が存在し、今のユーザーに見えること)。呼び名もデザインから
             var set = await new MailBulkSearch(_dispatcher, _moduleDataIO, _designData).ResolveRecipientsAsync(request);
             var infraName = _dispatcher.ResolveBulkInfraName(set.FieldDesign.MailInfraName);
+            //監査ログ: プレビューは宛先の行を読んで値を描く (除外行も描く) ので、一覧の取得と同じく読んだ行ごとの Read を残す。送信元は BulkPreview
+            var audit = AuditLog.AuditContext.Current;
+            if (audit != null)
+            {
+                if (!string.IsNullOrEmpty(request.SourceModule)) audit.AddTarget(request.SourceModule, request.SourceId, "BulkPreview");
+                foreach (var entry in set.Entries) audit.AddTarget(set.Design.Name, entry.Id, "Read");
+                audit.AddCount("Rows", set.Entries.Count);
+            }
             var doc = new MailPreviewDocument
             {
                 Kind = "bulk",
@@ -149,6 +157,8 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
         {
             //送信と同じ検査 (MailField が存在し、今のユーザーに見えること)。呼び名もデザインから
             var design = await MailFieldAuthorization.CheckAsync(_moduleDataIO, request.SourceModule, request.FieldName);
+            //監査ログ: 単発のプレビューはクライアントが組み立てた内容を描くだけで行は読まない。送信元のレコードだけ残す
+            if (!string.IsNullOrEmpty(request.SourceModule)) AuditLog.AuditContext.Current?.AddTarget(request.SourceModule, request.SourceId, "Preview");
             var message = request.Message;
             var doc = new MailPreviewDocument
             {
