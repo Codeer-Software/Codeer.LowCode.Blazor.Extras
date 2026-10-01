@@ -29,7 +29,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AuditLog
             var d = new Dialect(DataSourceType(db));
             var columns = new (string Column, object? Value)[]
             {
-                ("occurred_at_utc", e.OccurredAtUtc),
+                ("occurred_at_utc", DbDateTime(e.OccurredAtUtc)),
                 ("category", e.Category.ToString()),
                 ("action", Truncate(e.Action, 128)),
                 ("result", e.Result.ToString()),
@@ -61,7 +61,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AuditLog
             var d = new Dialect(DataSourceType(db));
             var p = d.Parameter(1);
             var sql = $"delete from {d.Quote(_settings.Table)} where {d.Quote("occurred_at_utc")} < {p}";
-            return await db.ExecuteAsync(_settings.DataSourceName, sql, new() { [p] = olderThanUtc });
+            return await db.ExecuteAsync(_settings.DataSourceName, sql, new() { [p] = DbDateTime(olderThanUtc) });
         }
 
         /// <summary>テーブルを作る SQL。列名は固定で、アプリからは INSERT しかしない。</summary>
@@ -118,6 +118,10 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AuditLog
         DataSourceType DataSourceType(IDbAccessor db)
             => db.GetDataSource(_settings.DataSourceName)?.DataSourceType
                ?? throw new InvalidOperationException($"Audit log data source '{_settings.DataSourceName}' (AuditLogDatabase.DataSourceName) does not exist.");
+
+        //UTC の時刻をそのまま列に入れる。Kind=Utc のまま渡すと PostgreSQL (Npgsql) は timestamptz として送り、
+        //timestamp 列へはセッションのタイムゾーンに直して入る (サーバーが Asia/Tokyo なら JST になる)
+        static DateTime DbDateTime(DateTime utc) => DateTime.SpecifyKind(utc, DateTimeKind.Unspecified);
 
         static string Truncate(string s, int max) => s.Length <= max ? s : s[..max];
 

@@ -5,6 +5,7 @@ using Codeer.LowCode.Blazor.Json;
 using Codeer.LowCode.Blazor.Extras.BulkFile;
 using Codeer.LowCode.Blazor.Extras.Designs;
 using System.Reflection;
+using Codeer.LowCode.Blazor.Extras.Server.AuditLog;
 using Codeer.LowCode.Blazor.Extras.Server.Csv;
 using Codeer.LowCode.Blazor.Repository.Data;
 using Codeer.LowCode.Blazor.Repository.Design;
@@ -139,10 +140,17 @@ namespace Codeer.LowCode.Blazor.Extras.Server.BulkFile
         /// (ファイル取込と同じ Id の一致で追加/更新判定・1トランザクション)、
         /// クライアントが復元する応答 JSON (List&lt;ModuleSubmitResult&gt;) を返す。
         /// ワイヤ形式は送信側 (BulkFileTransferService) とここで対になるため、テンプレートの Controller は移譲だけにする。
+        /// 監査ログを使うホストは <paramref name="audit"/> に今のリクエストの <see cref="AuditContext"/> を渡す (対象のモジュールと保存結果のエラーが記録される)。
         /// </summary>
-        public static async Task<string> BulkSubmitAsync(ModuleDataIO moduleDataIO, string? moduleName, Stream body)
-            => JsonConverterEx.SerializeObject(
-                await moduleDataIO.SubmitWithTransactionByModuleDataAsync(moduleName, await ReadModuleDataListAsync(body)));
+        public static async Task<string> BulkSubmitAsync(ModuleDataIO moduleDataIO, string? moduleName, Stream body, AuditContext? audit = null)
+        {
+            //監査ログ: 結果はここで JSON になるので、対象と保存結果のエラーもここで足す (audit を渡したときだけ)
+            audit?.AddTarget(moduleName ?? string.Empty, null, "BulkSubmit");
+            var results = await moduleDataIO.SubmitWithTransactionByModuleDataAsync(moduleName, await ReadModuleDataListAsync(body));
+            var error = results.FirstOrDefault(e => !string.IsNullOrEmpty(e.ExceptionMessage))?.ExceptionMessage;
+            if (error != null) audit?.Fail(error);
+            return JsonConverterEx.SerializeObject(results);
+        }
 
         //リクエストボディ (JsonConverterEx 直列化の List<ModuleData>) の復元
         static async Task<List<ModuleData>> ReadModuleDataListAsync(Stream body)

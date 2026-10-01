@@ -146,6 +146,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AuditLog
             Assert.That(result.UserId, Is.EqualTo("u1"));
             Assert.That(result.UserAgent, Is.EqualTo("probe/1.0"));
             Assert.That(result.RequestId, Is.Not.Empty.And.EqualTo(attempt.RequestId), "2 行は RequestId で結ぶ");
+            Assert.That(result.OccurredAtUtc, Is.GreaterThanOrEqualTo(attempt.OccurredAtUtc), "後段の時刻は操作が終わった時刻 (前段より前にならない)");
             Assert.That(result.Targets.Select(t => (t.Module, t.Id, t.Operation)).ToArray(), Is.EqualTo(new[] { ("Customer", "7", "Update") }));
         }
 

@@ -43,9 +43,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AuditLog
             var e = audit.Event;
             e.Category = endpoint!.Metadata.GetMetadata<AuditAttribute>()?.Category ?? AuditCategory.Other;
             e.Action = $"{action.ControllerName}.{action.ActionName}";
-            e.ClientIp = context.Connection.RemoteIpAddress?.ToString() ?? string.Empty;
-            e.UserAgent = context.Request.Headers.UserAgent.ToString();
-            e.RequestId = context.TraceIdentifier;
+            SetRequest(e, context);
             var userId = await ResolveUserIdAsync(context);
 
             //前段: 試行の記録。書けなければ (Strict) ここで例外 = 操作は実行されない
@@ -60,6 +58,8 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AuditLog
             {
                 if (completed) return;
                 completed = true;
+                //後段の時刻は操作が終わった時刻 (レコードはリクエストの最初に作られるので取り直す。前段より前の時刻にしない)
+                e.OccurredAtUtc = DateTime.UtcNow;
                 if (string.IsNullOrEmpty(e.UserId)) e.UserId = context.User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? userId;
                 if (exception != null)
                 {
@@ -90,6 +90,14 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AuditLog
                 try { await CompleteAsync(ex); } catch (AuditLogException) { }
                 throw;
             }
+        }
+
+        //リクエストの情報 (接続元・RequestId)。アクション以外の場所 (外部ログインのコールバック) から記録するときも同じものを入れる
+        internal static void SetRequest(AuditEvent e, HttpContext context)
+        {
+            e.ClientIp = context.Connection.RemoteIpAddress?.ToString() ?? string.Empty;
+            e.UserAgent = context.Request.Headers.UserAgent.ToString();
+            e.RequestId = context.TraceIdentifier;
         }
 
         //認証ミドルウェアより前に置かれるので、既定の認証スキームで自分で解決する (認証が無いアプリでは空)

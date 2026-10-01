@@ -1,5 +1,7 @@
 using Microsoft.Extensions.Logging;
+using Codeer.LowCode.Blazor.Extras.Server.AuditLog;
 using Codeer.LowCode.Blazor.Extras.Server.Auth;
+using Codeer.LowCode.Blazor.Extras.Test.AuditLog;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.AspNetCore.Authorization;
@@ -210,7 +212,8 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Auth
             public TestServer Server => _app!.GetTestServer();
             public static string? LastRemoteFailure;
 
-            public async Task StartAsync(FakeIdp idp, IEnumerable<IExternalLoginProvider> providers, string mobileCallback = "")
+            /// <param name="auditSink">渡すと監査ログを結線する (テンプレートと同じ並び: UseRouting → UseAuditLog → 認証)。</param>
+            public async Task StartAsync(FakeIdp idp, IEnumerable<IExternalLoginProvider> providers, string mobileCallback = "", IAuditSink? auditSink = null)
             {
                 var builder = WebApplication.CreateBuilder();
                 builder.WebHost.UseTestServer();
@@ -238,8 +241,14 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Auth
                     });
                 }
                 builder.Services.AddControllers().AddApplicationPart(typeof(TestAccountController).Assembly);
+                if (auditSink != null) builder.Services.AddAuditLog(new AuditLogSettings { Enabled = true }, [auditSink]);
 
                 _app = builder.Build();
+                if (auditSink != null)
+                {
+                    _app.UseRouting();
+                    _app.UseAuditLog();
+                }
                 _app.UseAuthentication();
                 _app.UseAuthorization();
                 _app.MapControllers();
@@ -438,6 +447,88 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Auth
             Assert.That(callback.Headers.Location!.ToString(), Is.EqualTo("/login.html?error=user_not_registered"));
             Assert.That(browser.HasAuthCookie, Is.False);
             Assert.That(FakeResolver.Last!.LoginName, Is.EqualTo("stranger"));
+        }
+
+        //IdP からのコールバックは認証ハンドラが処理する (コントローラのアクションではない) ので、ログインの成立と拒否は外部ログインの部品が監査ログに書く
+        [Test]
+        public async Task Audit_CallbackRecordsSignedInUser()
+        {
+            await using var idp = new FakeIdp();
+            idp.Claims["preferred_username"] = "taro";
+            await idp.StartAsync();
+            var sink = new CapturingAuditSink();
+            await using var app = new App();
+            await app.StartAsync(idp, [new OidcLoginProvider(new() { Name = "Test", ClientId = "client-1", Authority = "https://idp.test" })], auditSink: sink);
+            FakeResolver.Users["taro"] = "U1";
+            var browser = new Browser(app, idp);
+
+            await browser.SignInThroughIdpAsync("/api/account/login/Test");
+
+            Assert.That(browser.HasAuthCookie, Is.True);
+            var callback = sink.Events.Single(e => e.Action == "Account.ExternalLoginCallback");
+            Assert.That(callback.Category, Is.EqualTo(AuditCategory.Authentication));
+            Assert.That(callback.Result, Is.EqualTo(AuditResult.Success));
+            Assert.That(callback.UserId, Is.EqualTo("U1"));
+            Assert.That(callback.Detail, Is.EqualTo("Provider=Test; LoginName=taro"));
+            Assert.That(callback.RequestId, Is.Not.Empty);
+        }
+
+        [Test]
+        public async Task Audit_CallbackRecordsRejectedUserAsDenied()
+        {
+            await using var idp = new FakeIdp();
+            idp.Claims["preferred_username"] = "stranger";
+            await idp.StartAsync();
+            var sink = new CapturingAuditSink();
+            await using var app = new App();
+            await app.StartAsync(idp, [new OidcLoginProvider(new() { Name = "Test", ClientId = "client-1", Authority = "https://idp.test" })], auditSink: sink);
+            var browser = new Browser(app, idp);
+
+            await browser.SignInThroughIdpAsync("/api/account/login/Test");
+
+            Assert.That(browser.HasAuthCookie, Is.False);
+            var callback = sink.Events.Single(e => e.Action == "Account.ExternalLoginCallback");
+            Assert.That(callback.Result, Is.EqualTo(AuditResult.Denied));
+            Assert.That(callback.UserId, Is.Empty);
+            Assert.That(callback.Detail, Is.EqualTo("Provider=Test; Error=user_not_registered; LoginName=stranger"));
+        }
+
+        [Test]
+        public async Task Audit_StrictWriteFailureDoesNotSignIn()
+        {
+            await using var idp = new FakeIdp();
+            idp.Claims["preferred_username"] = "taro";
+            await idp.StartAsync();
+            var sink = new CapturingAuditSink();
+            await using var app = new App();
+            await app.StartAsync(idp, [new OidcLoginProvider(new() { Name = "Test", ClientId = "client-1", Authority = "https://idp.test" })], auditSink: sink);
+            FakeResolver.Users["taro"] = "U1";
+            var browser = new Browser(app, idp);
+
+            //チャレンジと IdP までは通し、コールバックの直前から監査ログを書けなくする
+            var challenge = await browser.GetAsync("/api/account/login/Test");
+            var idpResponse = await browser.GetAsync(challenge.Headers.Location!.ToString());
+            sink.Fail = true;
+            try { await browser.GetAsync(idpResponse.Headers.Location!.ToString()); } catch (Exception) { /*TestServer は例外がそのまま届く*/ }
+
+            Assert.That(browser.HasAuthCookie, Is.False, "記録できないログインは成立させない");
+        }
+
+        [Test]
+        public async Task Audit_MobileSignInIsRecordedByTheTicketExchange()
+        {
+            await using var idp = new FakeIdp();
+            idp.Claims["preferred_username"] = "taro";
+            await idp.StartAsync();
+            var sink = new CapturingAuditSink();
+            await using var app = new App();
+            await app.StartAsync(idp, [new OidcLoginProvider(new() { Name = "Test", ClientId = "client-1", Authority = "https://idp.test" })], mobileCallback: "lowcodeapp://auth", auditSink: sink);
+            FakeResolver.Users["taro"] = "U1";
+            var browser = new Browser(app, idp);
+
+            await browser.SignInThroughIdpAsync("/api/account/login/Test?mobile=true");
+
+            Assert.That(sink.Events.Where(e => e.Action == "Account.ExternalLoginCallback"), Is.Empty, "ネイティブアプリの成立はチケット交換のアクションが記録する (二重に数えない)");
         }
 
         [Test]

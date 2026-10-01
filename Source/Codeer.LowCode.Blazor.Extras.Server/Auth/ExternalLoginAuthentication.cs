@@ -1,3 +1,4 @@
+using Codeer.LowCode.Blazor.Extras.Server.AuditLog;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
@@ -60,9 +61,8 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Auth
                         OnTokenValidated = ctx => OnTokenValidatedAsync(ctx, provider),
                         OnRemoteFailure = ctx =>
                         {
-                            //IdP 側キャンセル・state 不一致など。詳細は漏らさずログイン画面へ差し戻す
-                            Fail(ctx.HttpContext, ctx.HandleResponse, ExternalLoginError.RemoteFailure, IsMobile(ctx.Properties));
-                            return Task.CompletedTask;
+                            //IdP 側キャンセル・state 不一致など。詳細は漏らさずログイン画面へ差し戻す (理由は監査ログにだけ残す)
+                            return FailAsync(ctx.HttpContext, ctx.HandleResponse, provider.Name, ExternalLoginError.RemoteFailure, IsMobile(ctx.Properties), ctx.Failure?.Message);
                         },
                     };
                 });
@@ -94,7 +94,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Auth
             var identity = provider.CreateIdentity(ctx.Principal!, out var error);
             if (identity == null)
             {
-                Fail(ctx.HttpContext, ctx.HandleResponse, string.IsNullOrEmpty(error) ? ExternalLoginError.InvalidClaims : error, mobile);
+                await FailAsync(ctx.HttpContext, ctx.HandleResponse, provider.Name, string.IsNullOrEmpty(error) ? ExternalLoginError.InvalidClaims : error, mobile);
                 return;
             }
 
@@ -103,7 +103,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Auth
             var user = await resolver.ResolveAsync(identity);
             if (user == null)
             {
-                Fail(ctx.HttpContext, ctx.HandleResponse, ExternalLoginError.UserNotRegistered, mobile);
+                await FailAsync(ctx.HttpContext, ctx.HandleResponse, provider.Name, ExternalLoginError.UserNotRegistered, mobile, $"LoginName={identity.LoginName}");
                 return;
             }
 
@@ -116,16 +116,32 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Auth
                 return;
             }
 
+            //ログインの成立を記録する。書けなければ (Strict) ここで例外 = サインインしない。
+            //ネイティブアプリの流れは上で抜けている (成立はチケットを Cookie に交換するアクションが記録する)
+            await AuditAsync(ctx.HttpContext, AuditResult.Success, user.UserId, $"Provider={provider.Name}; LoginName={identity.LoginName}");
+
             //Cookie にはパスワードログインと同形の最小クレームだけを積む
             ctx.Principal = service.CreatePrincipal(user, provider.Name);
         }
 
         //サインインさせずログイン画面 (モバイルはアプリ) へ差し戻す
-        static void Fail(HttpContext http, Action handleResponse, string error, bool mobile)
+        static async Task FailAsync(HttpContext http, Action handleResponse, string provider, string error, bool mobile, string? detail = null)
         {
+            await AuditAsync(http, AuditResult.Denied, string.Empty, $"Provider={provider}; Error={error}" + (string.IsNullOrEmpty(detail) ? string.Empty : $"; {detail}"));
             var service = http.RequestServices.GetRequiredService<ExternalLoginService>();
             http.Response.Redirect(mobile && service.IsMobileEnabled ? service.MobileCallback("error", error) : service.LoginErrorUrl(error));
             handleResponse();
+        }
+
+        //監査ログ: IdP からのコールバックは認証ハンドラが処理し、コントローラのアクションではないので AuditLogMiddleware には見えない。
+        //ログインの成立と拒否はここで記録する (監査ログを結線していないアプリでは何もしない)
+        static async Task AuditAsync(HttpContext http, AuditResult result, string userId, string detail)
+        {
+            var logger = http.RequestServices.GetService<AuditLogger>();
+            if (logger == null) return;
+            var e = new AuditEvent { Category = AuditCategory.Authentication, Action = "Account.ExternalLoginCallback", Result = result, UserId = userId, Detail = detail };
+            AuditLogMiddleware.SetRequest(e, http);
+            await logger.WriteAsync(e);
         }
     }
 }
