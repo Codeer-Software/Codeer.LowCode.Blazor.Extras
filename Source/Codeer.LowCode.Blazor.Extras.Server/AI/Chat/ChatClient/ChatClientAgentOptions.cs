@@ -39,7 +39,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat.ChatClient
         /// <summary>途中経過として「ここまでの返事」を流すか (モデルがストリーミングに対応していれば逐次表示になる)。</summary>
         public bool StreamPartialReplies { get; set; } = true;
 
-        /// <summary>ツール呼び出しの監査ログとモデル呼び出しのログの出力先。未設定ならログなし。</summary>
+        /// <summary>ツール呼び出しの実行ログとモデル呼び出しのログの出力先 (ILogger。監査ログ (AuditLog) ではない)。未設定ならログなし。</summary>
         public ILoggerFactory? LoggerFactory { get; set; }
     }
 }

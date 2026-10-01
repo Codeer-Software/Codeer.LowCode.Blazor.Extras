@@ -1,5 +1,6 @@
 using Codeer.LowCode.Blazor.Extras.AIChat;
 using Codeer.LowCode.Blazor.Extras.Server.AI.Chat;
+using Codeer.LowCode.Blazor.Extras.Server.AuditLog;
 
 namespace Codeer.LowCode.Blazor.Extras.Test.AI
 {
@@ -151,6 +152,25 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
             var done = await WaitDoneAsync(store, "u", store.Start("u", "c", "x", "NoSuchAgent"));
             Assert.That(done.Status, Is.EqualTo(AIChatJobStatus.Error));
             Assert.That(done.Error, Does.Contain("NoSuchAgent"));
+        }
+
+        [Test]
+        public async Task ジョブにはリクエストの監査レコードを引き継がない()
+        {
+            var agent = new FakeAIChatAgent();
+            using var store = new AIChatService(agent);
+            //リクエストの中 (AuditContext.Current あり) からジョブを起動しても、Agent が動くジョブの中では null
+            AuditContext.Current = new AuditContext();
+            try
+            {
+                await WaitDoneAsync(store, "u", store.Start("u", "c", "x"));
+            }
+            finally
+            {
+                AuditContext.Current = null;
+            }
+            Assert.That(agent.AuditContextsSeen, Is.Not.Empty);
+            Assert.That(agent.AuditContextsSeen, Is.All.Null);
         }
 
         [Test]

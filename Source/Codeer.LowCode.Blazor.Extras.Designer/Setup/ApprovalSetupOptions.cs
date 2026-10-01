@@ -84,6 +84,28 @@
         public bool AddPageFrameLink { get; set; } = true;
     }
 
+    /// <summary>監査ログのセットアップのオプション。</summary>
+    public class AuditLogSetupOptions
+    {
+        /// <summary>閲覧モジュール名。</summary>
+        public string ModuleName { get; set; } = "AuditLog";
+
+        /// <summary>監査ログのテーブル名 (ホストの appsettings の AuditLogDatabase.Table と同じにする)。</summary>
+        public string TableName { get; set; } = "audit_log";
+
+        /// <summary>データソース名 (ホストの appsettings の AuditLogDatabase.DataSourceName と同じにする)。</summary>
+        public string DataSourceName { get; set; } = string.Empty;
+
+        /// <summary>操作者 (UserId) のリンク先になるユーザーモジュール名。</summary>
+        public string UserModuleName { get; set; } = "AppUser";
+
+        /// <summary>ユーザーモジュールの表示名フィールド名 (操作者リンクの表示)。</summary>
+        public string UserDisplayNameField { get; set; } = "Name";
+
+        /// <summary>監査ログ一覧のページリンクを PageFrame に追加するか。</summary>
+        public bool AddPageFrameLink { get; set; } = true;
+    }
+
     /// <summary>セットアップの実行結果。</summary>
     public class SetupResult
     {

@@ -13,7 +13,7 @@
 |---|---|
 | Codeer.LowCode.Blazor.Extras | 拡張フィールド (メール送信・承認フロー・編集履歴・一括ファイル入出力を含む)、スクリプトオブジェクト (Excel / WebApi / Toaster / BulkFileReader / BulkFileTransferService)、クライアントサービス |
 | Codeer.LowCode.Blazor.Extras.Designer | デザイナ統合 (ツールボックス登録・AI 用ドキュメント登録) |
-| Codeer.LowCode.Blazor.Extras.Server | サーバーサービス (認証: ID/パスワード照合・外部 IdP・二要素認証 / メール送信 / 承認フローエンジン / 編集履歴の記録 / 一括ファイル入出力 (CSV・固定長・列マッピング・値の変換) / AI チャット・意味検索 / AI ドキュメント解析 / ファイルストレージ (ファイルシステム / Azure Blob / Amazon S3) / ASP.NET Core ヘルパ) |
+| Codeer.LowCode.Blazor.Extras.Server | サーバーサービス (認証: ID/パスワード照合・外部 IdP・二要素認証 / メール送信 / 承認フローエンジン / 編集履歴の記録 / 一括ファイル入出力 (CSV・固定長・列マッピング・値の変換) / AI チャット・意味検索 / AI ドキュメント解析 / ファイルストレージ (ファイルシステム / Azure Blob / Amazon S3) / 監査ログ / ASP.NET Core ヘルパ) |
 
 ## 提供フィールド
 
@@ -73,10 +73,11 @@ Codeer.LowCode.Blazor 本体が持つのは認可だけで、認証 (ログイ�
 | [メール送信](docs/Mail.md) | MailField (単発送信ボタン) / BulkMailField (名簿への一斉送信) / 送信履歴 / プレビュー。宛先・文面はレコードの値から組み立てる。契約フィールド: BulkMailRecipientContractField (一斉送信の宛先) / MailHistoryContractField・MailHistoryDetailContractField (送信履歴) |
 | [MailSender](docs/MailSender.md) | 担当者本人のアカウント (Gmail / Microsoft 365 / SMTP) 名義で送る Windows アプリ (`Tools/MailSender` をビルドして使う)。Web のプレビュー HTML を開いて送信。トークンは本人の PC にだけ置く。Web アプリのシステム送信者用トークンの発行にも使う |
 | [承認フロー](docs/ApprovalFlow.md) | ApprovalFlowField を申請書に置くだけで申請・承認・却下・差し戻し・取り下げ・再申請・回覧。承認データは通常のモジュール。状態遷移はサーバーが検証。履歴だけを別の場所に出す ApprovalHistoryField。契約フィールド: ApprovalFlowContractField / ApprovalMemberContractField / ApprovalHistoryContractField |
+| [監査ログ](docs/AuditLog.md) | いつ・誰が・どこから・何に・何をして・どうなったかをサーバーが WebAPI ごとに記録する。フィールド不要で appsettings だけで有効化。DB / JSON Lines ファイルへ出力、失敗・権限拒否も記録、保持期限で自動削除、監査ログのテーブルはアプリ経路から追記専用 (サーバサイド実装が必要) |
 | [編集履歴](docs/EditHistory.md) | EditHistoryField をモジュールに置くと保存 (作成・更新・削除) ごとにレコード全体 (明細込み) のスナップショットが履歴モジュールへ記録される。詳細画面に版の一覧 (変更フィールドの 旧 → 新)・「この版を表示」・「この版に戻す」(フォームへ反映して保存で確定)・削除したレコードの復活。履歴は通常のモジュール = 閲覧権限は履歴モジュールの設定で、版の内容は読む人の権限に合わせて返される (サーバサイド実装が必要)。履歴モジュールに置く EditHistoryContractField (契約) / EditHistoryUndeleteButtonField (削除したレコードの復活ボタン) |
 
-いずれもデザイナの **Tools > メールのセットアップ / 承認フローのセットアップ / 編集履歴のセットアップ** (または CLI の `mail-setup` / `approval-setup` / `edit-history-setup`) で
-必要なモジュール群を生成できます。
+いずれもデザイナの **Tools > メールのセットアップ / 承認フローのセットアップ / 編集履歴のセットアップ / 監査ログのセットアップ** (または CLI の `mail-setup` / `approval-setup` / `edit-history-setup` / `audit-log-setup`) で
+必要なモジュール群 (監査ログは閲覧モジュールとテーブル作成 DDL) を生成できます。
 
 ## スクリプトオブジェクト
 
@@ -116,6 +117,7 @@ Codeer.LowCode.Blazor 本体が持つのは認可だけで、認証 (ログイ�
 - 一括ファイル入出力 — BulkFileTransfer (一覧の一括ダウンロード / 一括更新とスクリプトの入出力の処理本体。ModuleDataController から移譲する)、CsvUtils (CSV の生成 / 解析)。[一括ファイル入出力](docs/BulkFileTransfer.md)
 - StorageAccess / TemporaryFileManager — ファイルストレージ (ファイルシステム / Azure Blob / Amazon S3 (S3 互換含む)。独自の保存先は IFileStorage で追加) と一時ファイル管理。[FileStorage](docs/FileStorage.md)
 - CustomFontResolver — Excel PDF 変換用のフォントリゾルバ
+- 監査ログ — AuditLogger (いつ・誰が・どこから・何に・何をして・どうなったかを WebAPI ごとに 1 レコード記録。DB / JSON Lines ファイルへ。Strict/BestEffort・保持期限・追記専用の保護)。appsettings だけで有効化。[監査ログ](docs/AuditLog.md)
 - Web ヘルパ — ETag 付きファイル応答 (FileWithETag)、ホットリロード (HotReloadHub / FileWatcherService)
 
 ## セットアップ
@@ -208,9 +210,9 @@ ExtrasDesignerInitializer.Initialize(BlazorRuntime);
 ExtrasDesignerInitializer.Setup(DesignerEnvironment);
 ```
 
-セットアップメニューは承認フロー・メール履歴・編集履歴に必要なモジュール群をテンプレートから生成し、
+セットアップメニューは承認フロー・メール履歴・編集履歴・監査ログに必要なモジュール群をテンプレートから生成し、
 テーブル作成 DDL の提示 (その場で実行可) と次にやることの案内まで行います
-(headless CLI の `approval-setup` / `mail-setup` / `edit-history-setup` verb からも同じ生成を実行できます)。
+(headless CLI の `approval-setup` / `mail-setup` / `edit-history-setup` / `audit-log-setup` verb からも同じ生成を実行できます)。
 
 ### 3. セットアップ完了
 

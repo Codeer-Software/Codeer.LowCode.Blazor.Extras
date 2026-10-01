@@ -177,6 +177,54 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Mail
         }
 
         [Test]
+        public async Task 一斉送信のプレビューの監査ログには送信元と描いた宛先の行のIdが残る()
+        {
+            var audit = new Codeer.LowCode.Blazor.Extras.Server.AuditLog.AuditContext();
+            Codeer.LowCode.Blazor.Extras.Server.AuditLog.AuditContext.Current = audit;
+            try
+            {
+                var (dispatcher, fake) = CreateDispatcher();
+                await new MailPreviewBuilder(dispatcher, CreateIO("2"), _designData).BuildBulkAsync(CreateRequest());
+                Assert.That(fake.SentBulk, Is.Empty, "プレビューは送らない");
+            }
+            finally
+            {
+                Codeer.LowCode.Blazor.Extras.Server.AuditLog.AuditContext.Current = null;
+            }
+
+            //読める行 (a, 配信停止の b) を描く = 行ごとの Read。読めない 'hidden' は無い。アドレスは残らない
+            var targets = audit.Event.Targets.Select(t => (t.Module, t.Id, t.Operation)).ToList();
+            Assert.That(targets[0], Is.EqualTo(("Campaign", "1", "BulkPreview")));
+            Assert.That(targets.Skip(1).OrderBy(t => t.Id).ToArray(), Is.EqualTo(new[] { ("Member", "1", "Read"), ("Member", "2", "Read") }));
+            Assert.That(audit.ComposeDetail(), Is.EqualTo("Rows=2"));
+            Assert.That(System.Text.Json.JsonSerializer.Serialize(audit.Event), Does.Not.Contain("example.com"));
+        }
+
+        [Test]
+        public async Task 監査ログには送信元のレコードと宛先の行のIdと件数が残りアドレスは残らない()
+        {
+            var audit = new Codeer.LowCode.Blazor.Extras.Server.AuditLog.AuditContext();
+            Codeer.LowCode.Blazor.Extras.Server.AuditLog.AuditContext.Current = audit;
+            try
+            {
+                var (dispatcher, _) = CreateDispatcher();
+                await CreateSearch(dispatcher, "2").SendAsync(CreateRequest());
+            }
+            finally
+            {
+                Codeer.LowCode.Blazor.Extras.Server.AuditLog.AuditContext.Current = null;
+            }
+
+            //宛先は読める行のうち配信停止でない 1 行だけ。アドレスではなく行の Id で残る
+            var targets = audit.Event.Targets.Select(t => (t.Module, t.Id, t.Operation)).ToList();
+            Assert.That(targets[0], Is.EqualTo(("Campaign", "1", "BulkMail")));
+            Assert.That(targets.Skip(1).Select(t => (t.Module, t.Operation)).ToArray(), Is.EqualTo(new[] { ("Member", "MailTo") }));
+            Assert.That(targets[1].Id, Is.Not.Null.And.Not.Empty);
+            Assert.That(audit.ComposeDetail(), Is.EqualTo("Total=1; Success=1; Failed=0"));
+            Assert.That(System.Text.Json.JsonSerializer.Serialize(audit.Event), Does.Not.Contain("example.com"));
+        }
+
+        [Test]
         public void モジュールを開けないユーザー_フィールド読取権限のないユーザー_停止ユーザー_フィールド違い_存在しないモジュールは送れない()
         {
             var (dispatcher, fake) = CreateDispatcher();

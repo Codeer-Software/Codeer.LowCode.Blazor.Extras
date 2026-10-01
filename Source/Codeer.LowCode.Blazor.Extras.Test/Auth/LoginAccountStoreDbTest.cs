@@ -88,8 +88,8 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Auth
             var accounts = LoginAccountStore.Create(CreateDesign(), _db)!;
             Assert.That(await accounts.AnyAsync(), Is.False);
 
-            //初回起動の管理者作成と同じ経路
-            await accounts.AddAsync("admin", "admin");
+            //初回起動の管理者作成と同じ経路。戻り値は作った行の Id (監査ログの対象)
+            Assert.That(await accounts.AddAsync("admin", "admin"), Is.EqualTo("1"));
             Assert.That(await accounts.AnyAsync(), Is.True);
 
             var account = await accounts.VerifyPasswordAsync("admin", "admin");

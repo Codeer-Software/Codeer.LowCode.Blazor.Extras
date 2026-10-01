@@ -160,12 +160,17 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
             _jobs[job.Id] = job;
             var culture = CultureInfo.CurrentCulture;
             var uiCulture = CultureInfo.CurrentUICulture;
-            job.Task = Task.Run(() =>
+            //リクエストの実行コンテキスト (監査ログの AuditContext.Current など AsyncLocal) をジョブに引き継がない。
+            //ジョブはリクエストの外で動くので、応答済みのリクエストの記録に書き足すことになる
+            using (ExecutionContext.SuppressFlow())
             {
-                CultureInfo.CurrentCulture = culture;
-                CultureInfo.CurrentUICulture = uiCulture;
-                return RunAsync(job, missingOnly, openScope);
-            });
+                job.Task = Task.Run(() =>
+                {
+                    CultureInfo.CurrentCulture = culture;
+                    CultureInfo.CurrentUICulture = uiCulture;
+                    return RunAsync(job, missingOnly, openScope);
+                });
+            }
             return job.Id;
         }
 

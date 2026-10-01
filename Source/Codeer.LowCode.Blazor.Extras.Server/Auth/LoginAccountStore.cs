@@ -129,8 +129,9 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Auth
         /// <summary>
         /// ログイン ID・パスワード (ハッシュ化して保存) でユーザー行を作る。初回起動時の管理者作成用。
         /// 表示名の列があれば同じ値、有効フラグの列があれば 1 を入れる。他の列は DB の既定値。
+        /// 戻り値は作った行の Id (監査ログの対象に使う)。
         /// </summary>
-        public async Task AddAsync(string loginName, string password)
+        public async Task<string> AddAsync(string loginName, string password)
         {
             if (!HasPassword) throw new InvalidOperationException("LoginAccountStore: the login account contract has no password columns.");
             var (q, p) = Sql();
@@ -142,6 +143,8 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Auth
             var parameters = values.Select((v, i) => (Key: $"{p}{i + 1}", Value: v)).ToList();
             var sql = $"insert into {q(_table)} ({string.Join(", ", columns)}) values ({string.Join(", ", parameters.Select(x => x.Key))})";
             await _db.ExecuteAsync(_dataSourceName, sql, parameters.ToDictionary(x => x.Key, x => x.Value));
+            var row = await FindRowAsync(_loginNameColumn, loginName);
+            return row == null ? string.Empty : ToAccount(row).UserId;
         }
 
         async Task<IDictionary<string, object>?> FindRowAsync(string keyColumn, string key)

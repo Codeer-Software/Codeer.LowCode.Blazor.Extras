@@ -72,6 +72,10 @@ namespace Codeer.LowCode.Blazor.Extras.Designer
             //このアセンブリの埋め込みから登録する。
             foreach (var kv in ExtrasScriptObjectDocs.GetScriptObjectDocs())
                 ScriptObjectCatalog.Add(kv.Key, kv.Value);
+
+            //フィールドを持たない機能 (監査ログ) の AI 用仕様。SpecDocCatalog に登録すると ai-refresh が
+            //_specs/<名前>.md に書き出す (CCFD はフィールドカタログに載らない機能をここから知る)
+            ExtrasSpecDocs.Register();
         }
     }
 }

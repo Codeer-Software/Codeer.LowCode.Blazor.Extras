@@ -28,6 +28,12 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
     ///   (履歴モジュール (契約・復活ボタン・対象リンク同梱) と対象モジュール enum を生成するだけ。
     ///    対象モジュールへの EditHistoryField の配置はデザイナで行う。--no-enum = ModuleName を素の名前で運用)
     ///
+    /// audit-log-setup:
+    ///   &lt;designer.exe&gt; audit-log-setup "&lt;projectDir&gt;" [--module-name AuditLog] [--table audit_log] [--data-source &lt;name&gt;]
+    ///     [--user-module AppUser] [--user-name-field Name] [--no-pageframe] [--ddl-out "&lt;path.sql&gt;"]
+    ///   (監査ログのテーブルを閲覧するモジュールと、テーブル作成 DDL (日時のインデックス込み) を生成するだけ。
+    ///    記録の有効化はホストの appsettings。--table / --data-source は appsettings の AuditLogDatabase と同じにする)
+    ///
     /// DDL は実行しない (--ddl-out へ書き出し、適用は sql verb またはユーザーが行う)。
     /// 終了コード: 0 = 成功 / 2 = 失敗。
     /// </summary>
@@ -36,12 +42,14 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
         internal const string ApprovalVerb = "approval-setup";
         internal const string MailVerb = "mail-setup";
         internal const string EditHistoryVerb = "edit-history-setup";
+        internal const string AuditLogVerb = "audit-log-setup";
 
         internal static void Register()
         {
             HeadlessCliVerbs.Register(ApprovalVerb, RunApproval);
             HeadlessCliVerbs.Register(MailVerb, RunMail);
             HeadlessCliVerbs.Register(EditHistoryVerb, RunEditHistory);
+            HeadlessCliVerbs.Register(AuditLogVerb, RunAuditLog);
         }
 
         static int RunApproval(string[] args)
@@ -128,6 +136,35 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
             };
 
             var result = EditHistorySetupService.Run(designData, projectDir, options, dataSourceType);
+            return Report(result, named.GetValueOrDefault("--ddl-out"));
+        }
+
+        static int RunAuditLog(string[] args)
+        {
+            if (args.Length < 2)
+            {
+                Console.Error.WriteLine($"usage: {AuditLogVerb} \"<projectDir>\" [--module-name AuditLog] [--table audit_log] [--data-source <name>] [--user-module AppUser] ...");
+                return 2;
+            }
+            var projectDir = Path.GetFullPath(args[1]);
+            var named = ParseNamed(args);
+
+            var designData = LoadDesignData(projectDir);
+            var (dataSourceName, dataSourceType) = ResolveDataSource(projectDir, named.GetValueOrDefault("--data-source"));
+
+            var options = new AuditLogSetupOptions
+            {
+                ModuleName = named.GetValueOrDefault("--module-name", "AuditLog"),
+                TableName = named.GetValueOrDefault("--table", "audit_log"),
+                DataSourceName = dataSourceName,
+                UserModuleName = named.GetValueOrDefault("--user-module",
+                    string.IsNullOrEmpty(designData.AppSettings.CurrentUserModuleDesignName)
+                        ? "AppUser" : designData.AppSettings.CurrentUserModuleDesignName),
+                UserDisplayNameField = named.GetValueOrDefault("--user-name-field", "Name"),
+                AddPageFrameLink = !args.Contains("--no-pageframe"),
+            };
+
+            var result = AuditLogSetupService.Run(designData, projectDir, options, dataSourceType);
             return Report(result, named.GetValueOrDefault("--ddl-out"));
         }
 

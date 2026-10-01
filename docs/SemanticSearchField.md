@@ -188,7 +188,7 @@ new RawDataAccessAgent(chatClientFactory, () => new DbAccessor(config.DataSource
 
 `search_records` は質問文を埋め込みにし、DB のベクトル検索 (PostgreSQL は pgvector の `<=>`、SQL Server は `VECTOR_DISTANCE('cosine', …)`) で似ている順に上位 N 件だけを読み、Id・score (0〜1)・詳細ページの URL・文章を返します。AI は行を挙げるときに詳細リンクを付け、score が低ければ「近いものは見つからなかった」と伝えます。DB 側の検索が失敗したとき (拡張未導入・列の型違いなど) はそのエラーが AI に返ります (サーバーで代わりに計算することはしません)。
 
-読める範囲と使う接続は `execute_sql` と同じ (`RawDataAccessOptions.DataSourceNames`)。モジュールのデータソースがその一覧にあればその接続、無ければ一覧のうちどのモジュールも名指ししていないデータソース (AI 用に作った読み取り専用の別名接続) のうちモジュールと同じ DB 種別のもので同じ表を引きます。ログインユーザーごとの行制限 (DataReadCondition) は効かないので、置くページの UserReadCondition で使える人を絞ってください ([サーバー API の権限](AIChatField.md))。
+読める範囲と使う接続は `execute_sql` と同じ (`RawDataAccessOptions.DataSourceNames`)。モジュールのデータソースがその一覧にあればその接続、無ければ一覧のうちどのモジュールも名指ししていないデータソース (AI 用に作った読み取り専用の別名接続) のうちモジュールと同じ DB 種別のもので同じ表を引きます。ログインユーザーごとの行制限 (DataReadCondition) は効かないので、置くページの UserReadCondition で使える人を絞ってください ([サーバー API の権限](AIChatField.md))。読んだ行は監査ログ ([AuditLog](AuditLog.md)) にも残りません。監査が要る環境では、`execute_sql` と同様に実行ユーザーの `ModuleDataIO` 経由で引く Agent にします (SearchCondition に意味検索の条件を足して `GetListAsync` で読む。距離計算を DB にさせる `DbColumnVectorSearch` はそのまま使えます)。
 
 同じ表では、AI チャットの `execute_sql` の中でも距離計算ができます。AI は SQL に `{embed:探したい内容}` と書き、サーバーが実行前にその内容の埋め込みベクトルのリテラルに置き換えます (数値はサーバーが並べるので AI が書くことはありません)。WHERE・JOIN・集計と「意味の近さ」を 1 本の SQL で組み合わせられます。
 

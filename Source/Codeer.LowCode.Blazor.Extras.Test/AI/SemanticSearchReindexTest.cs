@@ -6,6 +6,7 @@ using Codeer.LowCode.Blazor.Extras.AIChat;
 using Codeer.LowCode.Blazor.Extras.Designs;
 using Codeer.LowCode.Blazor.Extras.SemanticSearch;
 using Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch;
+using Codeer.LowCode.Blazor.Extras.Server.AuditLog;
 using Codeer.LowCode.Blazor.Extras.Server.FileManagement;
 using Codeer.LowCode.Blazor.Repository.Data;
 using Codeer.LowCode.Blazor.Repository.Design;
@@ -174,6 +175,28 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
             Assert.That(done.Total, Is.EqualTo(7));
             Assert.That(store.GetReindexStatus("someone-else", id), Is.Null, "他人には見えない");
             Assert.That(store.GetReindexStatus("user1", "nope"), Is.Null);
+        }
+
+        [Test]
+        public async Task ジョブにはリクエストの監査レコードを引き継がない()
+        {
+            var indexer = Service(pageSize: 2);
+            using var store = indexer;
+            //リクエストの中 (AuditContext.Current あり) からジョブを起動しても、ジョブの中では null (応答済みのリクエストの記録に書き足さない)
+            var inJob = new List<AuditContext?>();
+            AuditContext.Current = new AuditContext();
+            try
+            {
+                var id = store.StartReindex("user1", "Inquiry", missingOnly: false, () => { lock (inJob) inJob.Add(AuditContext.Current); return OpenScope(indexer); });
+                var done = await WaitDoneAsync(store, "user1", id);
+                Assert.That(done.Status, Is.EqualTo(AIChatJobStatus.Done));
+            }
+            finally
+            {
+                AuditContext.Current = null;
+            }
+            Assert.That(inJob, Is.Not.Empty);
+            Assert.That(inJob, Is.All.Null);
         }
 
         [Test]

@@ -5,6 +5,7 @@ using Codeer.LowCode.Blazor.Json;
 using Codeer.LowCode.Blazor.Extras.BulkFile;
 using Codeer.LowCode.Blazor.Extras.Designs;
 using System.Reflection;
+using Codeer.LowCode.Blazor.Extras.Server.AuditLog;
 using Codeer.LowCode.Blazor.Extras.Server.Csv;
 using Codeer.LowCode.Blazor.Repository.Data;
 using Codeer.LowCode.Blazor.Repository.Design;
@@ -36,9 +37,19 @@ namespace Codeer.LowCode.Blazor.Extras.Server.BulkFile
         {
             var (module, csv, mapping) = FindTransferFields(designData, condition.ModuleName);
 
-            var texts = mapping != null
-                ? await FileColumnMappingTransform.ToExternalAsync((await moduleDataIO.GetListAsync(condition, 0)).Items, mapping, module!, moduleDataIO)
-                : await ToExternalValuesAsync(await moduleDataIO.GetTableTextsAsync(condition), module, moduleDataIO);
+            List<List<string>> texts;
+            if (mapping != null)
+            {
+                var items = (await moduleDataIO.GetListAsync(condition, 0)).Items;
+                AuditExport(condition.ModuleName, items.Select(ModuleDataValues.GetId), items.Count);
+                texts = await FileColumnMappingTransform.ToExternalAsync(items, mapping, module!, moduleDataIO);
+            }
+            else
+            {
+                var table = await moduleDataIO.GetTableTextsAsync(condition);
+                AuditExport(condition.ModuleName, IdsOf(table), Math.Max(0, table.Count - 1));
+                texts = await ToExternalValuesAsync(table, module, moduleDataIO);
+            }
 
             //固定長形式 (幅に収まらない値は行番号付きエラーで失敗する。黙って切り詰めない)
             if (IsFixedLength(csv, mapping))
@@ -58,6 +69,10 @@ namespace Codeer.LowCode.Blazor.Extras.Server.BulkFile
         public static async Task<List<ModuleSubmitResult>> SubmitByFileAsync(DesignData designData, ModuleDataIO moduleDataIO, string? moduleName, Stream file, bool dryRun = false)
         {
             var (module, csv, mapping) = FindTransferFields(designData, moduleName ?? string.Empty);
+
+            //監査ログ: 取り込んだファイルを特定できるようハッシュを残す (行の中身の証拠は取込ファイルそのもの。
+            //本体の一括 INSERT で入った新規行は採番 Id が返らないので、件数とこのハッシュで押さえる)
+            file = await AuditImportFileAsync(file);
 
             //ファイル → テーブルテキスト (固定長/CSV は内容で xlsx との自動判定あり)
             var texts = IsFixedLength(csv, mapping)
@@ -112,6 +127,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.BulkFile
         {
             var (module, csv, mapping) = FindTransferFields(designData, moduleName ?? string.Empty);
             if (module == null) return new MemoryStream();
+            AuditExport(module.Name, items.Select(ModuleDataValues.GetId).Where(e => !IdFieldData.IsTemporaryId(e)), items.Count);
 
             var texts = mapping != null
                 ? await FileColumnMappingTransform.ToExternalAsync(items, mapping, module, moduleDataIO)
@@ -141,8 +157,41 @@ namespace Codeer.LowCode.Blazor.Extras.Server.BulkFile
         /// ワイヤ形式は送信側 (BulkFileTransferService) とここで対になるため、テンプレートの Controller は移譲だけにする。
         /// </summary>
         public static async Task<string> BulkSubmitAsync(ModuleDataIO moduleDataIO, string? moduleName, Stream body)
-            => JsonConverterEx.SerializeObject(
+        {
+            //監査ログ: 行ごとの対象・件数・保存結果のエラーは保存の合流点 (AuditIOInterceptor) が記録する。ここではモジュールだけ足す
+            AuditContext.Current?.AddTarget(moduleName ?? string.Empty, null, "BulkSubmit");
+            return JsonConverterEx.SerializeObject(
                 await moduleDataIO.SubmitWithTransactionByModuleDataAsync(moduleName, await ReadModuleDataListAsync(body)));
+        }
+
+        //監査ログ: 出力した行の Id と件数 (レコードの値は残さない)
+        static void AuditExport(string moduleName, IEnumerable<string> ids, int rows)
+        {
+            var audit = AuditContext.Current;
+            if (audit == null) return;
+            foreach (var id in ids.Where(e => !string.IsNullOrEmpty(e))) audit.AddTarget(moduleName, id, "Export");
+            audit.AddCount("Rows", rows);
+        }
+
+        //内部名ヘッダのテーブルテキスト (1 行目が "フィールド名.メンバー名") から Id の列を取る。Id の列が無ければ空
+        static IEnumerable<string> IdsOf(List<List<string>> table)
+        {
+            var index = table.Count == 0 ? -1 : table[0].IndexOf($"{SystemFieldNames.Id}.{nameof(IdFieldData.Value)}");
+            return index < 0 ? [] : table.Skip(1).Where(row => index < row.Count).Select(row => row[index]);
+        }
+
+        //監査ログ: 取り込むファイルの SHA-256 を補足に残す。ハッシュを取るために一度メモリへ読むので、読み直せるストリームを返す
+        static async Task<Stream> AuditImportFileAsync(Stream file)
+        {
+            var audit = AuditContext.Current;
+            if (audit == null) return file;
+            var memory = new MemoryStream();
+            await file.CopyToAsync(memory);
+            memory.Position = 0;
+            audit.AddNote("File", Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(memory)).ToLowerInvariant());
+            memory.Position = 0;
+            return memory;
+        }
 
         //リクエストボディ (JsonConverterEx 直列化の List<ModuleData>) の復元
         static async Task<List<ModuleData>> ReadModuleDataListAsync(Stream body)

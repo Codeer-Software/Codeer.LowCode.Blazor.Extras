@@ -173,6 +173,26 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Mail
         }
 
         [Test]
+        public async Task 監査ログには送信元のレコードと件数が残り宛先のアドレスは残らない()
+        {
+            var audit = new Codeer.LowCode.Blazor.Extras.Server.AuditLog.AuditContext();
+            Codeer.LowCode.Blazor.Extras.Server.AuditLog.AuditContext.Current = audit;
+            try
+            {
+                var (dispatcher, _) = CreateDispatcher();
+                await dispatcher.SendAsync(CreateRequest("1"), CreateIO("2"));
+            }
+            finally
+            {
+                Codeer.LowCode.Blazor.Extras.Server.AuditLog.AuditContext.Current = null;
+            }
+
+            Assert.That(audit.Event.Targets.Select(t => (t.Module, t.Id, t.Operation)).ToArray(), Is.EqualTo(new[] { ("Item", "1", "Mail") }));
+            Assert.That(audit.ComposeDetail(), Is.EqualTo("Total=1; Success=1; Failed=0"));
+            Assert.That(audit.ComposeDetail(), Does.Not.Contain("example.com"));
+        }
+
+        [Test]
         public async Task 行は読まないので読めない行_未保存_存在しない行_DB無しモジュールからも送れる()
         {
             var (dispatcher, fake) = CreateDispatcher();

@@ -1,4 +1,5 @@
 using Codeer.LowCode.Blazor.Extras.Server.AI.Chat;
+using Codeer.LowCode.Blazor.Extras.Server.AuditLog;
 using System.Collections.Concurrent;
 
 namespace Codeer.LowCode.Blazor.Extras.Test.AI
@@ -16,9 +17,13 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
 
         public List<AIChatAgentRequest> Requests { get; } = new();
 
+        /// <summary>呼ばれたときの監査レコード (AuditContext.Current)。ジョブはリクエストの外なので null のはず。</summary>
+        public List<AuditContext?> AuditContextsSeen { get; } = new();
+
         public async Task<AIChatReply> ReplyAsync(AIChatAgentRequest request, IAIChatProgress progress, CancellationToken cancellationToken)
         {
             lock (Requests) Requests.Add(request);
+            lock (AuditContextsSeen) AuditContextsSeen.Add(AuditContext.Current);
             var turn = _turns.AddOrUpdate(request.ConversationId, 1, (_, n) => n + 1);
             var lower = request.Message.ToLowerInvariant();
 

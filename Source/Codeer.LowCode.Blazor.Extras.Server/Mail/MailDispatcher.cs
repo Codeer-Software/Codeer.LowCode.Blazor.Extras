@@ -146,7 +146,21 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
             var message = request.Message;
             message.From = string.Empty;
             message.FromDisplayName = string.Empty;
-            return await SendAsync(design.MailInfraName, message, CreateSource(request.SourceModule, request.SourceId));
+            var result = await SendAsync(design.MailInfraName, message, CreateSource(request.SourceModule, request.SourceId));
+            Audit(request.SourceModule, request.SourceId, "Mail", result);
+            return result;
+        }
+
+        //監査ログ: 送信元のレコードと件数を残す。宛先のアドレスは残さない (失敗の理由にも宛先が混ざるので、理由は固定の文言にする)
+        internal static void Audit(string sourceModule, string sourceId, string operation, MailSendResult result)
+        {
+            var audit = AuditLog.AuditContext.Current;
+            if (audit == null) return;
+            if (!string.IsNullOrEmpty(sourceModule)) audit.AddTarget(sourceModule, sourceId, operation);
+            audit.AddCount("Total", result.TotalCount);
+            audit.AddCount("Success", result.SuccessCount);
+            audit.AddCount("Failed", result.Failures.Count);
+            if (!result.IsSuccess) audit.Fail("Mail send failed.");
         }
 
         internal static MailHistorySource? CreateSource(string sourceModule, string sourceId)
