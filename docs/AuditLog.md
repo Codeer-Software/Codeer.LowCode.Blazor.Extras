@@ -284,6 +284,21 @@ select * from audit_log where targets like '%{"Module":"Order","Id":"123",%' ord
 
 見つかった行が `Continued` なら、同じ `request_id` の結果の行 (`Success` / `Failure` / `Denied`) に、誰が・何の操作で・結果がどうだったかがあります。
 
+#### 操作者を特定する
+
+`user_id` はユーザーモジュールの行の Id です。名前やログイン名はユーザーモジュールの行から引きます。
+退職者のユーザー行を物理削除すると、保持期間内のログの操作者がユーザーモジュールから引けなくなるので、ユーザーモジュールは論理削除にするか、
+行を消さずに無効化 (ログインできなくする) してください。
+
+ユーザー行が無くなっていても、ログイン成功の行 (`Authentication` / `Account.Login` または `Account.ExternalLoginCallback` の `Success`) には
+その `user_id` と `detail` の `LoginName=...` が残っているので、保持期間内にログインしていれば監査ログの中だけで Id からログイン名を引けます。
+
+```sql
+-- user_id 'u-123' のログイン名
+select distinct detail from audit_log
+ where user_id = 'u-123' and category = 'Authentication' and result = 'Success' and detail like '%LoginName=%'
+```
+
 ### ホストの結線
 
 テンプレート (Cookie) には含まれています。既存のアプリに足す場合:

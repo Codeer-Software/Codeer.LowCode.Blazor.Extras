@@ -59,20 +59,24 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat
             //進捗やエラーの文言は依頼したユーザーのカルチャで出す (バックグラウンドスレッドに引き継ぐ)
             var culture = CultureInfo.CurrentCulture;
             var uiCulture = CultureInfo.CurrentUICulture;
-            job.Task = Task.Run(() =>
+            //リクエストの実行コンテキスト (監査ログの AuditContext.Current など AsyncLocal) はジョブに引き継がない (ジョブはリクエストの外)
+            using (ExecutionContext.SuppressFlow())
             {
-                CultureInfo.CurrentCulture = culture;
-                CultureInfo.CurrentUICulture = uiCulture;
-                return RunAsync(job, new AIChatAgentRequest
+                job.Task = Task.Run(() =>
                 {
-                    ConversationId = conversationId ?? string.Empty,
-                    Message = message ?? string.Empty,
-                    UserName = ownerKey ?? string.Empty,
-                    AgentName = agentName ?? string.Empty,
-                    DocumentFolder = documentFolder ?? string.Empty,
-                    Transcript = transcript ?? Array.Empty<Codeer.LowCode.Blazor.Extras.AIChat.AIChatTranscriptMessage>(),
+                    CultureInfo.CurrentCulture = culture;
+                    CultureInfo.CurrentUICulture = uiCulture;
+                    return RunAsync(job, new AIChatAgentRequest
+                    {
+                        ConversationId = conversationId ?? string.Empty,
+                        Message = message ?? string.Empty,
+                        UserName = ownerKey ?? string.Empty,
+                        AgentName = agentName ?? string.Empty,
+                        DocumentFolder = documentFolder ?? string.Empty,
+                        Transcript = transcript ?? Array.Empty<Codeer.LowCode.Blazor.Extras.AIChat.AIChatTranscriptMessage>(),
+                    });
                 });
-            });
+            }
             return job.Id;
         }
 

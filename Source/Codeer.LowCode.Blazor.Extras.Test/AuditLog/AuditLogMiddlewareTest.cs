@@ -106,7 +106,11 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AuditLog
             public CapturingAuditSink Sink { get; } = new();
             public HttpClient Client => _app!.GetTestClient();
 
-            public async Task StartAsync(AuditLogSettings settings, bool clearStartEvents = true, Func<HttpContext?, string>? designVersion = null)
+            /// <param name="exceptionHandlerInside">
+            /// 例外ハンドラを監査ミドルウェアより内側 (後) に置く。テンプレートの UseExceptionHandlerSendToFront と同じ並びで、
+            /// アクションの例外はミドルウェアまで上がらずエラー応答に変わる
+            /// </param>
+            public async Task StartAsync(AuditLogSettings settings, bool clearStartEvents = true, Func<HttpContext?, string>? designVersion = null, bool exceptionHandlerInside = false)
             {
                 var builder = WebApplication.CreateBuilder();
                 builder.WebHost.UseTestServer();
@@ -117,11 +121,13 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AuditLog
                 builder.Services.AddAuditLog(settings, [Sink], designVersion);
 
                 _app = builder.Build();
-                _app.UseExceptionHandler(e => e.Run(async ctx => { ctx.Response.StatusCode = 500; await ctx.Response.WriteAsync("error"); }));
+                void UseHandler() => _app.UseExceptionHandler(e => e.Run(async ctx => { ctx.Response.StatusCode = 500; await ctx.Response.WriteAsync("error"); }));
+                if (!exceptionHandlerInside) UseHandler();
                 _app.UseRouting();
                 _app.UseAuditLog();
                 _app.UseAuthentication();
                 _app.UseAuthorization();
+                if (exceptionHandlerInside) UseHandler();
                 _app.MapControllers();
                 await _app.StartAsync();
                 if (clearStartEvents) Sink.Events.Clear(); //Application.Start / 掃除の記録は見ない
@@ -264,6 +270,21 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AuditLog
             var e = app.Sink.Events[1];
             Assert.That(e.Detail, Is.EqualTo("boom"));
             Assert.That(e.UserId, Is.EqualTo("u1"));
+        }
+
+        [Test]
+        public async Task ExceptionBehindAnInnerExceptionHandlerStillRecordsTheReason()
+        {
+            await using var app = new App();
+            await app.StartAsync(new AuditLogSettings { Enabled = true }, exceptionHandlerInside: true);
+
+            //例外は内側のハンドラが 500 の応答に変える。ミドルウェアはその応答を書く時点で例外をフィーチャーから取る
+            var response = await GetAsync(app, "/api/probe/throw", user: "u1");
+
+            Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.InternalServerError));
+            Assert.That(await response.Content.ReadAsStringAsync(), Is.EqualTo("error"));
+            Assert.That(app.Sink.Events.Select(e => e.Result).ToArray(), Is.EqualTo(new[] { AuditResult.Attempt, AuditResult.Failure }));
+            Assert.That(app.Sink.Events[1].Detail, Is.EqualTo("boom"));
         }
 
         [Test]
