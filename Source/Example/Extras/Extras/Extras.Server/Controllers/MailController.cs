@@ -1,4 +1,5 @@
 ﻿using Codeer.LowCode.Blazor.Extras.Mail;
+using Codeer.LowCode.Blazor.Extras.Server.AuditLog;
 using Codeer.LowCode.Blazor.Extras.Server.Mail;
 using Microsoft.AspNetCore.Mvc;
 using Extras.Server.Services;
@@ -22,12 +23,12 @@ namespace Extras.Server.Controllers
             => await _dataService.DisposeAsync();
 
         //単発送信
-        [HttpPost]
+        [HttpPost, Audit(AuditCategory.Export)]
         public async Task<MailSendResult> SendEmailAsync(MailSendRequest request)
             => await CreateDispatcher().SendAsync(request, _dataService.ModuleDataIO);
 
         //一斉送信(宛先はサーバーで検索条件から解決。読み取り権限が効き、宛先一覧はクライアントに渡らない)
-        [HttpPost("bulk_search")]
+        [HttpPost("bulk_search"), Audit(AuditCategory.Export)]
         public async Task<MailSendResult> SendBulkSearchAsync(MailBulkSearchRequest request)
             => await new MailBulkSearch(CreateDispatcher(), _dataService.ModuleDataIO, DesignerService.GetDesignData(),
                     e => _logger.LogError("{Error}", e))

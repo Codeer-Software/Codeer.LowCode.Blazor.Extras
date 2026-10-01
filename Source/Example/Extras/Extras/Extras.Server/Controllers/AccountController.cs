@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using Codeer.LowCode.Blazor.Extras.Server.AuditLog;
 using Codeer.LowCode.Blazor.SystemSettings;
 using Extras.Server.Services;
 using Microsoft.AspNetCore.Authentication;
@@ -47,11 +48,18 @@ namespace Extras.Server.Controllers
             }).ToList();
         }
 
-        [HttpPost("login")]
-        public async Task<IActionResult> LoginAsync(DemoLoginRequest request)
+        //監査ログ: ログインは認証前なのでユーザーが Cookie から取れない。試行したユーザーと、成功したユーザー Id を AuditContext から足す
+        [HttpPost("login"), Audit(AuditCategory.Authentication)]
+        public async Task<IActionResult> LoginAsync(DemoLoginRequest request, [FromServices] AuditContext audit)
         {
+            audit.Event.Detail = $"LoginName={request.UserId}";
             var user = (await GetUsersAsync()).FirstOrDefault(e => e.Id == request.UserId);
-            if (user == null) return BadRequest("unknown user");
+            if (user == null)
+            {
+                audit.Deny("unknown user");
+                return BadRequest("unknown user");
+            }
+            audit.Event.UserId = user.Id;
 
             var claims = new List<Claim>
             {
@@ -64,7 +72,7 @@ namespace Extras.Server.Controllers
             return Ok();
         }
 
-        [HttpPost("logout")]
+        [HttpPost("logout"), Audit(AuditCategory.Authentication)]
         public async Task<IActionResult> LogoutAsync()
         {
             await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);

@@ -1,5 +1,6 @@
 using Codeer.LowCode.Blazor.Extras.AIChat;
 using Codeer.LowCode.Blazor.Extras.Server.AI.Chat;
+using Codeer.LowCode.Blazor.Extras.Server.AuditLog;
 using Extras.Server.AI;
 using Extras.Server.Services;
 using Microsoft.AspNetCore.Mvc;
@@ -31,7 +32,8 @@ namespace Extras.Server.Controllers
         //匿名同士は共有になるので、テンプレートに持っていくときは [Authorize] を付けて匿名で入れないようにする
         string Owner => User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.Identity?.Name ?? string.Empty;
 
-        [HttpPost]
+        //AI はユーザーの権限で DB を読む = データ参照として記録する
+        [HttpPost, Audit(AuditCategory.DataRead)]
         public async Task<ActionResult<AIChatSendResponse>> Send([FromBody] AIChatSendRequest request)
             => Accepted(new AIChatSendResponse { RequestId = await _aiChat.StartAsync(Owner, request, _dataService.ModuleDataIO) });
 

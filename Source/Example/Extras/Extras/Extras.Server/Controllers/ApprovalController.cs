@@ -1,6 +1,7 @@
 ﻿using Codeer.LowCode.Blazor.DesignLogic;
 using Codeer.LowCode.Blazor.Extras.Approval;
 using Codeer.LowCode.Blazor.Extras.Server.Approval;
+using Codeer.LowCode.Blazor.Extras.Server.AuditLog;
 using Codeer.LowCode.Blazor.Extras.Server.Mail;
 using Extras.Server.Services;
 using Microsoft.AspNetCore.Mvc;
@@ -26,9 +27,14 @@ namespace Extras.Server.Controllers
             => await _dataService.DisposeAsync();
 
         //すべての操作 (申請/再申請/承認/却下/差し戻し/取り下げ/確認) を 1 本で受け、ApprovalEngine が Action で振り分ける
-        [HttpPost]
-        public async Task<ApprovalActionResult> ExecuteAsync(ApprovalCommand command)
-            => await CreateEngine().ExecuteAsync(command);
+        [HttpPost, Audit(AuditCategory.DataWrite)]
+        public async Task<ApprovalActionResult> ExecuteAsync(ApprovalCommand command, [FromServices] AuditContext audit)
+        {
+            var result = await CreateEngine().ExecuteAsync(command);
+            audit.AddTarget(command.TargetModuleName, result.TargetId, $"Approval:{command.Action}");
+            if (!string.IsNullOrEmpty(result.ErrorMessage)) audit.Fail(result.ErrorMessage);
+            return result;
+        }
 
         //承認データの書き込みはシステムの記録なので、操作ユーザーの書き込み権限に依存しない内部経路で行う
         ApprovalEngine CreateEngine()

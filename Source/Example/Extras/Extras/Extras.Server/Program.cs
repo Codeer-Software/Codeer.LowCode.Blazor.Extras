@@ -6,6 +6,7 @@ using Codeer.LowCode.Blazor.License;
 using Codeer.LowCode.Blazor.SystemSettings;
 using Extras.Server.Services;
 using Codeer.LowCode.Blazor.Extras.Server.AI;
+using Codeer.LowCode.Blazor.Extras.Server.AuditLog;
 using Extras.Server.AI;
 using Codeer.LowCode.Blazor.Extras.Server.Excel;
 using Codeer.LowCode.Blazor.Extras.Server.Mail;
@@ -51,6 +52,10 @@ SystemConfig.Instance.AIChat = builder.Configuration.GetSection("AIChat").Get<AI
 //意味検索の埋め込みプロバイダ: 呼び名は SemanticSearch.EmbeddingProvider、プロバイダ設定はそれぞれ独立したセクション (使うものだけ書けばよい)
 SystemConfig.Instance.SemanticSearch = builder.Configuration.GetSection("SemanticSearch").Get<SemanticSearchSettings>() ?? new();
 SystemConfig.Instance.AzureOpenAIEmbedding = builder.Configuration.GetSection("AzureOpenAIEmbedding").Get<AzureOpenAIEmbeddingSettings>() ?? new();
+//監査ログ: 有効化と方針は AuditLog、出力先は種類ごとのセクション (使うものだけ書けばよい)
+SystemConfig.Instance.AuditLog = builder.Configuration.GetSection("AuditLog").Get<AuditLogSettings>() ?? new();
+SystemConfig.Instance.AuditLogDatabase = builder.Configuration.GetSection("AuditLogDatabase").Get<AuditLogDatabaseSettings>() ?? new();
+SystemConfig.Instance.AuditLogFile = builder.Configuration.GetSection("AuditLogFile").Get<AuditLogFileSettings>() ?? new();
 SystemConfig.Instance.DataSources.ToList().ForEach(e => e.ConnectionString = builder.Configuration.GetConnectionString(e.Name) ?? string.Empty);
 
 GlobalFontSettings.FontResolver = new CustomFontResolver(SystemConfig.Instance.FontFileDirectory);
@@ -108,6 +113,8 @@ builder.Services.Configure<RequestLocalizationOptions>(options =>
 });
 
 builder.Services.AddScoped<DataService>();
+//監査ログ: WebAPI ごとに誰が・どこから・何を・結果を記録する (appsettings の AuditLog で有効化)。出力先は Services/AuditSinkTable
+builder.Services.AddAuditLog(SystemConfig.Instance.AuditLog, AuditSinkTable.Create());
 
 //AIChatField の Agent は AI/AIChatAgentTable.cs の対応表 (Agent 名 → Agent) で決める。DI 登録は不要 (AIChatController が AIChatAgentTable.Service を使う)
 
@@ -140,6 +147,8 @@ app.UseBlazorFrameworkFiles();
 app.UseStaticFiles();
 
 app.UseRouting();
+//監査ログの記録は認証・認可の前に置く (401/403 の拒否も記録する)
+app.UseAuditLog();
 
 app.UseAuthentication();
 

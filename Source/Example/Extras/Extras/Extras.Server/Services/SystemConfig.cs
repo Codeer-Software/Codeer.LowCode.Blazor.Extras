@@ -6,6 +6,7 @@ using Extras.Server.Services.DataChangeHistory;
 using Codeer.LowCode.Blazor.Extras.Server.FileManagement;
 
 using Codeer.LowCode.Blazor.Extras.Server.AI.Embedding;
+using Codeer.LowCode.Blazor.Extras.Server.AuditLog;
 
 namespace Extras.Server.Services
 {
@@ -32,6 +33,10 @@ namespace Extras.Server.Services
         public SemanticSearchSettings SemanticSearch { get; set; } = new();
         public AzureOpenAIEmbeddingSettings AzureOpenAIEmbedding { get; set; } = new();
         public Extras.Server.AI.AIChatSettings AIChat { get; set; } = new();
+        //監査ログ (Extras.Server の AuditLog)。有効・失敗時の扱い・保持日数・分類は AuditLog、出力先は種類ごとのセクション (DB / ファイル)。実体 (IAuditSink) は Services/AuditSinkTable が組み立てる
+        public AuditLogSettings AuditLog { get; set; } = new();
+        public AuditLogDatabaseSettings AuditLogDatabase { get; set; } = new();
+        public AuditLogFileSettings AuditLogFile { get; set; } = new();
         public SystemConfigForFront ForFront() => new SystemConfigForFront { CanScriptDebug = CanScriptDebug, UseHotReload = UseHotReload };
     }
 }
