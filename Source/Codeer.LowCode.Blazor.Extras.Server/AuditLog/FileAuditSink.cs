@@ -1,10 +1,13 @@
 using System.Globalization;
+using System.Text;
 
 namespace Codeer.LowCode.Blazor.Extras.Server.AuditLog
 {
     /// <summary>
     /// JSON Lines のファイルへ書く出力先。<c>audit-{ホスト名}-{yyyyMMdd}.jsonl</c> に 1 行 1 レコードで追記する
     /// (ホスト名で分けるので複数インスタンスが同じフォルダを共有できる)。SIEM やログ収集への転送元として使う。
+    /// 同じホストの別プロセス (IIS のオーバーラップリサイクル中の新旧ワーカー) と同時に書いても共有違反にならないよう、
+    /// 他のプロセスの読み書きを許して開く (追記モードなので互いの行を壊さない)。
     /// </summary>
     public class FileAuditSink : IAuditSink
     {
@@ -17,12 +20,14 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AuditLog
 
         public async Task WriteAsync(AuditEvent e)
         {
-            var line = AuditEventJson.Serialize(e) + "\n";
+            var line = Encoding.UTF8.GetBytes(AuditEventJson.Serialize(e) + "\n");
             await _lock.WaitAsync();
             try
             {
                 Directory.CreateDirectory(_directory);
-                await File.AppendAllTextAsync(Path.Combine(_directory, FileName(e.Host, e.OccurredAtUtc)), line);
+                await using var stream = new FileStream(Path.Combine(_directory, FileName(e.Host, e.OccurredAtUtc)),
+                    FileMode.Append, FileAccess.Write, FileShare.ReadWrite, bufferSize: 4096, useAsync: true);
+                await stream.WriteAsync(line);
             }
             finally
             {

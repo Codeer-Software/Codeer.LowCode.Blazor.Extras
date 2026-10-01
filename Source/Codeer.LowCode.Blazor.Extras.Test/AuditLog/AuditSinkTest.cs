@@ -48,6 +48,29 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AuditLog
             Assert.That(deleted, Is.EqualTo(1));
             Assert.That(Directory.GetFiles(_dir).Select(Path.GetFileName).Order().ToArray(), Is.EqualTo(new[] { "audit-h-20260201.jsonl", "audit-h-20260301.jsonl" }));
         }
+
+        [Test]
+        public async Task WritesWhileAnotherProcessHoldsTheFileOpen()
+        {
+            //同じホストの別プロセス (IIS のオーバーラップリサイクル中の新旧ワーカー) が同じファイルを追記用に開いていても書ける。
+            //別プロセスが開いている状態を、他の書き込みを許す追記用ハンドルで作る
+            var day = new DateTime(2026, 9, 30, 0, 0, 0, DateTimeKind.Utc);
+            Directory.CreateDirectory(_dir);
+            var path = Path.Combine(_dir, "audit-h-20260930.jsonl");
+            await using (var other = new FileStream(path, FileMode.Append, FileAccess.Write, FileShare.ReadWrite))
+            {
+                await other.WriteAsync("{\"Action\":\"other\"}\n"u8.ToArray());
+                await other.FlushAsync();
+
+                var sink = new FileAuditSink(_dir);
+                await sink.WriteAsync(new AuditEvent { OccurredAtUtc = day, Host = "h", Action = "Mine" });
+            }
+
+            var lines = File.ReadAllText(path).Split('\n', StringSplitOptions.RemoveEmptyEntries);
+            Assert.That(lines, Has.Length.EqualTo(2));
+            Assert.That(lines[0], Does.Contain("\"other\""));
+            Assert.That(lines[1], Does.Contain("\"Mine\""));
+        }
     }
 
     public class DatabaseAuditSinkTest

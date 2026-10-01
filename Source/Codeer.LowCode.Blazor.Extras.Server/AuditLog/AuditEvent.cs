@@ -5,11 +5,11 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AuditLog
     {
         /// <summary>ログイン・ログアウト・二要素認証。</summary>
         Authentication,
-        /// <summary>レコードの参照 (一覧・詳細・ファイルのダウンロード)。</summary>
+        /// <summary>レコードの参照 (一覧・詳細)。</summary>
         DataRead,
         /// <summary>レコードの変更 (追加・更新・削除・一括取込・アップロード)。</summary>
         DataWrite,
-        /// <summary>外へ出す操作 (ファイル出力・PDF・メール送信)。</summary>
+        /// <summary>外へ出す操作 (ファイル出力・PDF・添付ファイルのダウンロード・メール送信)。</summary>
         Export,
         /// <summary>管理操作 (再索引・設定の変化)。</summary>
         Admin,

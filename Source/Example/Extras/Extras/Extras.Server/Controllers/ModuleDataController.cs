@@ -117,7 +117,7 @@ namespace Extras.Server.Controllers
             return mem == null ? Ok() : this.FileWithETag(mem.ToArray(), "application/octet-stream");
         }
 
-        [HttpGet("download"), Audit(AuditCategory.DataRead)]
+        [HttpGet("download"), Audit(AuditCategory.Export)]
         public async Task<IActionResult> DownloadFileAsync(string? moduleName, string? id, string? fieldName)
         {
             _audit.AddTarget(moduleName ?? string.Empty, id, $"Download:{fieldName}");
