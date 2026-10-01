@@ -1,6 +1,4 @@
 using System.Globalization;
-using System.Text.Json;
-using System.Text.Json.Serialization;
 
 namespace Codeer.LowCode.Blazor.Extras.Server.AuditLog
 {
@@ -10,12 +8,6 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AuditLog
     /// </summary>
     public class FileAuditSink : IAuditSink
     {
-        static readonly JsonSerializerOptions Json = new()
-        {
-            DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
-            Converters = { new JsonStringEnumConverter() },
-        };
-
         readonly string _directory;
         readonly SemaphoreSlim _lock = new(1, 1);
 
@@ -25,7 +17,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AuditLog
 
         public async Task WriteAsync(AuditEvent e)
         {
-            var line = JsonSerializer.Serialize(e, Json) + "\n";
+            var line = AuditEventJson.Serialize(e) + "\n";
             await _lock.WaitAsync();
             try
             {

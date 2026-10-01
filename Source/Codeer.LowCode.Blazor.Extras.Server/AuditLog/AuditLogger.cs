@@ -59,7 +59,8 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AuditLog
                 }
                 catch (Exception ex)
                 {
-                    _logger?.LogCritical(ex, "Audit log write failed ({Sink}): {Action} {Result} user={UserId}", sink.GetType().Name, e.Action, e.Result, e.UserId);
+                    //書けなかったレコードは内容ごとアプリのログに残す (ファイル出力と同じ JSON 1 行。後段が書けなかった操作や BestEffort ではこれが唯一の記録になる)
+                    _logger?.LogCritical(ex, "Audit log write failed ({Sink}): {Event}", sink.GetType().Name, AuditEventJson.Serialize(e));
                     (failures ??= new()).Add(ex);
                 }
             }

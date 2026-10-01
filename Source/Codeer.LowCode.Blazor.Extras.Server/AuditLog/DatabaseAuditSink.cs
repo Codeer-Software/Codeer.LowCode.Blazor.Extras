@@ -91,9 +91,11 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AuditLog
                 SystemSettings.DataSourceType.SQLite => "text",
                 _ => $"varchar({n})",
             };
+            //対象 (行ごとの Id) と理由は長さに上限が無い。MySQL の text は 64KB までなので longtext にする
             string text = type switch
             {
                 SystemSettings.DataSourceType.SQLServer => "nvarchar(max)",
+                SystemSettings.DataSourceType.MySQL => "longtext",
                 SystemSettings.DataSourceType.Oracle => "clob",
                 _ => "text",
             };

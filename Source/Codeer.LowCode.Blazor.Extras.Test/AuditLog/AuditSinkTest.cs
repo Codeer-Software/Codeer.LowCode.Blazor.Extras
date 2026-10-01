@@ -119,7 +119,8 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AuditLog
         {
             Assert.That(DatabaseAuditSink.CreateTableSql(DataSourceType.SQLServer, "audit_log"), Does.Contain("[id] bigint identity(1,1) primary key").And.Contain("nvarchar(max)"));
             Assert.That(DatabaseAuditSink.CreateTableSql(DataSourceType.PostgreSQL, "audit_log"), Does.Contain("\"id\" bigserial primary key"));
-            Assert.That(DatabaseAuditSink.CreateTableSql(DataSourceType.MySQL, "audit_log"), Does.Contain("`id` bigint auto_increment primary key"));
+            Assert.That(DatabaseAuditSink.CreateTableSql(DataSourceType.MySQL, "audit_log"), Does.Contain("`id` bigint auto_increment primary key")
+                .And.Contain("`targets` longtext").And.Contain("`detail` longtext"), "MySQL の text は 64KB までで、行の多い対象が入らない");
             Assert.That(DatabaseAuditSink.CreateTableSql(DataSourceType.Oracle, "audit_log"), Does.Contain("generated always as identity").And.Contain("clob"));
         }
     }

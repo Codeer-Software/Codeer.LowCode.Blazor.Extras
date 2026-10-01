@@ -1,4 +1,6 @@
 using Codeer.LowCode.Blazor.Extras.Server.AuditLog;
+using Microsoft.Extensions.Logging;
+using System.Text.Json;
 
 namespace Codeer.LowCode.Blazor.Extras.Test.AuditLog
 {
@@ -80,6 +82,49 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AuditLog
             var logger = new AuditLogger(new AuditLogSettings { Enabled = true, FailureMode = AuditFailureMode.BestEffort }, [down, ok]);
             await logger.WriteAsync(Event(AuditCategory.DataWrite));
             Assert.That(ok.Events, Has.Count.EqualTo(1));
+        }
+
+        [Test]
+        public async Task SinkFailureLeavesTheWholeRecordInTheApplicationLog()
+        {
+            //後段が書けなかった操作や BestEffort では、アプリのログが唯一の記録になる。対象・RequestId・詳細まで残す
+            var log = new CapturingLogger();
+            var logger = new AuditLogger(new AuditLogSettings { Enabled = true, FailureMode = AuditFailureMode.BestEffort }, [new CapturingAuditSink { Fail = true }], log);
+            var e = Event(AuditCategory.DataWrite);
+            e.UserId = "u1";
+            e.RequestId = "req-1";
+            e.ClientIp = "203.0.113.7";
+            e.Detail = "reason";
+            e.Targets.Add(new AuditTarget { Module = "Order", Id = "302", Operation = "Update" });
+            await logger.WriteAsync(e);
+
+            Assert.That(log.Entries, Has.Count.EqualTo(1));
+            Assert.That(log.Entries[0].Level, Is.EqualTo(LogLevel.Critical));
+            var message = log.Entries[0].Message;
+            Assert.That(message, Does.Contain("CapturingAuditSink"));
+            //ファイル出力と同じ JSON 1 行
+            var json = message[message.IndexOf('{')..];
+            var recorded = JsonDocument.Parse(json).RootElement;
+            Assert.That(recorded.GetProperty("Category").GetString(), Is.EqualTo("DataWrite"));
+            Assert.That(recorded.GetProperty("Action").GetString(), Is.EqualTo("Test.Action"));
+            Assert.That(recorded.GetProperty("Result").GetString(), Is.EqualTo("Success"));
+            Assert.That(recorded.GetProperty("UserId").GetString(), Is.EqualTo("u1"));
+            Assert.That(recorded.GetProperty("RequestId").GetString(), Is.EqualTo("req-1"));
+            Assert.That(recorded.GetProperty("ClientIp").GetString(), Is.EqualTo("203.0.113.7"));
+            Assert.That(recorded.GetProperty("Detail").GetString(), Is.EqualTo("reason"));
+            var target = recorded.GetProperty("Targets")[0];
+            Assert.That(target.GetProperty("Module").GetString(), Is.EqualTo("Order"));
+            Assert.That(target.GetProperty("Id").GetString(), Is.EqualTo("302"));
+            Assert.That(target.GetProperty("Operation").GetString(), Is.EqualTo("Update"));
+        }
+
+        sealed class CapturingLogger : ILogger
+        {
+            public List<(LogLevel Level, string Message)> Entries { get; } = new();
+            public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+            public bool IsEnabled(LogLevel logLevel) => true;
+            public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+                => Entries.Add((logLevel, formatter(state, exception)));
         }
 
         [Test]
