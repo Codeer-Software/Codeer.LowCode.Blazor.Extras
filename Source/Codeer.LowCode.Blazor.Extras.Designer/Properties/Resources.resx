@@ -141,4 +141,10 @@
   <data name="SetupEditHistoryTargetEnum" xml:space="preserve">
     <value>Create the target module enum (EditHistoryTargetModule) for the module column of the history list</value>
   </data>
+  <data name="SetupMenuAuditLog" xml:space="preserve">
+    <value>Audit Log Setup</value>
+  </data>
+  <data name="SetupTableName" xml:space="preserve">
+    <value>Table name</value>
+  </data>
 </root>

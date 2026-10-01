@@ -142,5 +142,9 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Properties
 
         public static string SetupEditHistoryTargetEnum => GetString("SetupEditHistoryTargetEnum");
 
+        public static string SetupMenuAuditLog => GetString("SetupMenuAuditLog");
+
+        public static string SetupTableName => GetString("SetupTableName");
+
     }
 }

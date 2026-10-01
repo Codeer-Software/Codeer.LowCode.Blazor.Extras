@@ -76,8 +76,8 @@ Codeer.LowCode.Blazor 本体が持つのは認可だけで、認証 (ログイ�
 | [監査ログ](docs/AuditLog.md) | いつ・誰が・どこから・何に・何をして・どうなったかをサーバーが WebAPI ごとに記録する。フィールド不要で appsettings だけで有効化。DB / JSON Lines ファイルへ出力、失敗・権限拒否も記録、保持期限で自動削除、監査ログのテーブルはアプリ経路から追記専用 (サーバサイド実装が必要) |
 | [編集履歴](docs/EditHistory.md) | EditHistoryField をモジュールに置くと保存 (作成・更新・削除) ごとにレコード全体 (明細込み) のスナップショットが履歴モジュールへ記録される。詳細画面に版の一覧 (変更フィールドの 旧 → 新)・「この版を表示」・「この版に戻す」(フォームへ反映して保存で確定)・削除したレコードの復活。履歴は通常のモジュール = 閲覧権限は履歴モジュールの設定で、版の内容は読む人の権限に合わせて返される (サーバサイド実装が必要)。履歴モジュールに置く EditHistoryContractField (契約) / EditHistoryUndeleteButtonField (削除したレコードの復活ボタン) |
 
-いずれもデザイナの **Tools > メールのセットアップ / 承認フローのセットアップ / 編集履歴のセットアップ** (または CLI の `mail-setup` / `approval-setup` / `edit-history-setup`) で
-必要なモジュール群を生成できます。
+いずれもデザイナの **Tools > メールのセットアップ / 承認フローのセットアップ / 編集履歴のセットアップ / 監査ログのセットアップ** (または CLI の `mail-setup` / `approval-setup` / `edit-history-setup` / `audit-log-setup`) で
+必要なモジュール群 (監査ログは閲覧モジュールとテーブル作成 DDL) を生成できます。
 
 ## スクリプトオブジェクト
 
@@ -210,9 +210,9 @@ ExtrasDesignerInitializer.Initialize(BlazorRuntime);
 ExtrasDesignerInitializer.Setup(DesignerEnvironment);
 ```
 
-セットアップメニューは承認フロー・メール履歴・編集履歴に必要なモジュール群をテンプレートから生成し、
+セットアップメニューは承認フロー・メール履歴・編集履歴・監査ログに必要なモジュール群をテンプレートから生成し、
 テーブル作成 DDL の提示 (その場で実行可) と次にやることの案内まで行います
-(headless CLI の `approval-setup` / `mail-setup` / `edit-history-setup` verb からも同じ生成を実行できます)。
+(headless CLI の `approval-setup` / `mail-setup` / `edit-history-setup` / `audit-log-setup` verb からも同じ生成を実行できます)。
 
 ### 3. セットアップ完了
 

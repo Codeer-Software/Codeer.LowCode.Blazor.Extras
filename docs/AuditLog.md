@@ -9,7 +9,7 @@
 Codeer.LowCode.Blazor.Extras.Server 0.17.0 以降。
 
 - [概略](#概略) — 何が記録されるか、有効化
-- [詳細](#詳細) — レコード、分類と結果、監査の対象外、対象と件数、デザインの版、出力先、失敗時の扱い、保持と削除、改ざん対策、参照の仕方、ホストの結線、独自 API への追加
+- [詳細](#詳細) — レコード、分類と結果、監査の対象外、対象と件数、デザインの版、出力先、失敗時の扱い、保持と削除、改ざん対策、参照の仕方、セットアップ、ホストの結線、独自 API への追加
 
 ---
 
@@ -51,8 +51,9 @@ appsettings に 3 つのセクションを書きます。出力先は DB とフ�
 }
 ```
 
-DB に書く場合はテーブルを先に作ります。列は固定で、`DatabaseAuditSink.CreateTableSql(DataSourceType, table)` が各 DB 向けの `create table` を返します
-(SQL Server / PostgreSQL / MySQL / Oracle / SQLite)。
+DB に書く場合はテーブルを先に作ります。デザイナの **Tools > 監査ログのセットアップ** (CLI は `audit-log-setup`) が、テーブル作成 DDL と閲覧用のモジュールを生成します
+([セットアップ](#セットアップ-閲覧モジュールの生成))。列は固定で、`DatabaseAuditSink.CreateTableSql(DataSourceType, table)` が各 DB 向けの `create table` を、
+`CreateIndexSql` が日時のインデックスを返します (SQL Server / PostgreSQL / MySQL / Oracle / SQLite)。
 
 ```sql
 -- PostgreSQL の例
@@ -70,7 +71,9 @@ create table "audit_log" (
   "design_version" varchar(64),
   "targets" text,
   "detail" text
-)
+);
+-- 保持期限の掃除と閲覧の日時絞り込み用
+create index "ix_audit_log_occurred_at" on "audit_log" ("occurred_at_utc");
 ```
 
 ---
@@ -85,7 +88,7 @@ create table "audit_log" (
 | `Category` | 分類 (下記) |
 | `Action` | 操作の名前。WebAPI は "Controller.Action" (例 `ModuleData.Submit`、`Account.Login`) |
 | `Result` | `Attempt` (操作前の試行) / `Success` / `Failure` / `Denied` / `Continued` (対象の続きの行) |
-| `UserId` | 操作したユーザーの Id (ユーザーモジュールの行の Id)。未認証なら空。ログイン成功時は成功したユーザー |
+| `UserId` | 操作したユーザーの Id (ユーザーモジュールの行の Id)。未認証なら空。ログインでは **Cookie を発行した (成立した) ときだけ** そのユーザー。パスワードは合ったが二要素認証のコード待ち・認証アプリの登録待ちの行は HTTP としては成功なので `Success` だが `user_id` は空 (`Detail` の `TwoFactor=...` と `LoginName=...`)。ログインの成立は「`Success` で `user_id` がある行」で数える |
 | `ClientIp` / `UserAgent` | 接続元。リバースプロキシ越しの IP は ASP.NET Core の Forwarded Headers ミドルウェアで解決したものが入る |
 | `RequestId` | ASP.NET Core の TraceIdentifier。アプリのログ (ILogger) と突き合わせる鍵 |
 | `Host` | 発生したサーバー名 (複数インスタンス運用での発生元) |
@@ -97,7 +100,7 @@ create table "audit_log" (
 
 | 分類 | 記録される操作 (テンプレートの結線) |
 |---|---|
-| `Authentication` | ログイン (ID/パスワード・外部 IdP への遷移と IdP からの戻り・モバイルのチケット交換)、ログアウト、認証アプリの解除。ログイン失敗と二要素認証のコード不一致は `Denied` |
+| `Authentication` | ログイン (ID/パスワード・外部 IdP への遷移と IdP からの戻り・モバイルのチケット交換)、ログアウト、認証アプリの解除。ログイン失敗と二要素認証のコード不一致は `Denied`。成立した行だけ `user_id` が入る (二要素待ち・IdP への遷移は `Success` でも空) |
 | `DataRead` | 一覧・詳細の取得 (返した行ごとに `Read`) |
 | `DataWrite` | 保存・一括取込・スクリプトの一括保存 (行ごとに Add / Update / Delete と件数)、アップロード、承認フローの操作 |
 | `Export` | 一括ファイル出力 (出した行ごとに Export と件数)、Excel → PDF、添付ファイルのダウンロード (レコードとフィールド名)、メール送信・一斉送信 (送信元のレコード・件数・一斉送信は宛先の行)。画面に表示するだけの参照 (DataRead) と違い、ファイルとして持ち出す操作は既定で記録される |
@@ -284,7 +287,7 @@ PCI DSS のようにログの変更検知が明示的に要る規格には別途
 
 ### 参照の仕方
 
-専用の画面はありません。監査ログのテーブルに対して通常のデザインで一覧モジュールを作り、UserRead 条件で監査役に絞ってください
+専用の画面はありません。監査ログのテーブルに対する一覧モジュール ([セットアップ](#セットアップ-閲覧モジュールの生成) が生成します) を使い、UserRead 条件で監査役に絞ってください
 (`targets` / `detail` は文字列なので、検索は LIKE 相当になります)。
 
 あるレコードを触った操作を全部探すときは、`targets` をレコードの形で検索します。続きの行 (`Continued`) にも対象が入っているので、`result` では絞りません。
@@ -309,6 +312,26 @@ select * from audit_log where targets like '%{"Module":"Order","Id":"123",%' ord
 -- user_id 'u-123' のログイン名
 select distinct detail from audit_log
  where user_id = 'u-123' and category = 'Authentication' and result = 'Success' and detail like '%LoginName=%'
+```
+
+### セットアップ (閲覧モジュールの生成)
+
+デザイナの **Tools > 監査ログのセットアップ**。モジュール名 (既定 AuditLog)・テーブル名 (既定 audit_log)・データソース・操作者リンクのユーザーモジュールと表示名フィールド・
+ページリンクを追加するか、を聞いて次を生成する (冪等。既にあるものは触らない):
+
+- 閲覧モジュール (固定列に対応するフィールド・一覧 / 詳細 / 検索レイアウト・作成 / 更新 / 削除できない設定と「誰も書けない」保護条件)。
+  日時は UTC で入っているので表示はローカル時刻に直す (`SaveAsUtc`)。分類と結果は候補付きの選択。操作者はユーザーモジュールへのリンク
+- PageFrame のページリンク「監査ログ」(新規作成なし・詳細遷移あり・Id の降順)
+- テーブル作成 DDL (結果ダイアログでその場で実行できる)。`DatabaseAuditSink.CreateTableSql` と同じ列に、保持期限の掃除と日時絞り込み用の `occurred_at_utc` のインデックスを足したもの。
+  テーブルが既にあれば出さない
+
+テーブル名とデータソースは、ホストの appsettings の `AuditLogDatabase` と同じにしてください。記録の有効化 (appsettings)・閲覧できる人の制限 (UserReadCondition)・
+追記専用の担保 (DB ユーザーの権限) は生成しない (結果ダイアログに手順が出る)。生成したモジュールからの追加・更新・削除は `AuditIOInterceptor` が拒否する。
+
+headless CLI:
+
+```
+<designer.exe> audit-log-setup "<projectDir>" [--module-name AuditLog] [--table audit_log] [--data-source <name>] [--user-module AppUser] [--user-name-field Name] [--no-pageframe] [--ddl-out "<path.sql>"]
 ```
 
 ### ホストの結線

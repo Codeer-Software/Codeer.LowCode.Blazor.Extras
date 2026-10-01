@@ -141,4 +141,10 @@
   <data name="SetupEditHistoryTargetEnum" xml:space="preserve">
     <value>対象モジュールの enum (EditHistoryTargetModule) を作る (履歴一覧のモジュール列の表示名と検索候補)</value>
   </data>
+  <data name="SetupMenuAuditLog" xml:space="preserve">
+    <value>監査ログのセットアップ</value>
+  </data>
+  <data name="SetupTableName" xml:space="preserve">
+    <value>テーブル名</value>
+  </data>
 </root>

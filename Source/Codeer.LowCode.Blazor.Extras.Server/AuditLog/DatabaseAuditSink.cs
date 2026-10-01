@@ -119,6 +119,16 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AuditLog
                 """;
         }
 
+        /// <summary>
+        /// 日時のインデックスを作る SQL。保持期限の掃除 (occurred_at_utc &lt; 期限の DELETE) と閲覧の日時絞り込みが全件走査にならないようにする。
+        /// デザイナの監査ログのセットアップが出す DDL にも同じものが入る。
+        /// </summary>
+        public static string CreateIndexSql(DataSourceType type, string table)
+        {
+            var d = new Dialect(type);
+            return $"create index {d.Quote($"ix_{table}_occurred_at")} on {d.Quote(table)} ({d.Quote("occurred_at_utc")})";
+        }
+
         DataSourceType DataSourceType(IDbAccessor db)
             => db.GetDataSource(_settings.DataSourceName)?.DataSourceType
                ?? throw new InvalidOperationException($"Audit log data source '{_settings.DataSourceName}' (AuditLogDatabase.DataSourceName) does not exist.");
