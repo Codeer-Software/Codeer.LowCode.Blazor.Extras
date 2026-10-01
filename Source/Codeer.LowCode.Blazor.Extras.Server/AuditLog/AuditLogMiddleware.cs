@@ -41,6 +41,8 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AuditLog
             }
 
             var audit = context.RequestServices.GetRequiredService<AuditContext>();
+            //引数で持ち回れない処理 (保存のインターセプタ・一括ファイル・メール) が対象を足せるよう、このリクエストの間だけ見えるようにする
+            AuditContext.Current = audit;
             var e = audit.Event;
             e.Category = endpoint!.Metadata.GetMetadata<AuditAttribute>()?.Category ?? AuditCategory.Other;
             e.Action = $"{action.ControllerName}.{action.ActionName}";
@@ -79,6 +81,8 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AuditLog
                         if (string.IsNullOrEmpty(e.Detail)) e.Detail = $"HTTP {status}";
                     }
                 }
+                //件数・補足 (AddCount / AddNote) を Detail の先頭に入れる
+                e.Detail = audit.ComposeDetail();
                 await _logger.WriteAsync(e);
             }
 

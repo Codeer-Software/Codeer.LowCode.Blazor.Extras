@@ -41,6 +41,15 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AuditLog
             return Ok();
         }
 
+        //引数で監査レコードを受け取れない処理 (保存のインターセプタ・一括ファイル・メール) は Current から足す
+        [HttpGet("ambient"), Audit(AuditCategory.Export)]
+        public IActionResult Ambient()
+        {
+            AuditContext.Current!.AddTarget("Customer", "7", "Export");
+            AuditContext.Current.AddCount("Rows", 1);
+            return Ok();
+        }
+
         [HttpGet("read"), Audit(AuditCategory.DataRead)]
         public IActionResult Read() => Ok();
 
@@ -180,6 +189,20 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AuditLog
                 ("AuditProbe.Write", AuditResult.Attempt, "v2"),
                 ("AuditProbe.Write", AuditResult.Success, "v2"),
             }));
+        }
+
+        [Test]
+        public async Task TheRecordOfTheRequestIsAvailableAsCurrent_AndCountsGoToDetail()
+        {
+            await using var app = new App();
+            await app.StartAsync(new AuditLogSettings { Enabled = true });
+
+            await GetAsync(app, "/api/probe/ambient", user: "u1");
+
+            var result = app.Sink.Events.Single(e => e.Result == AuditResult.Success);
+            Assert.That(result.Targets.Select(t => (t.Module, t.Id, t.Operation)).ToArray(), Is.EqualTo(new[] { ("Customer", "7", "Export") }));
+            Assert.That(result.Detail, Is.EqualTo("Rows=1"));
+            Assert.That(AuditContext.Current, Is.Null, "リクエストの外には漏れない");
         }
 
         [Test]

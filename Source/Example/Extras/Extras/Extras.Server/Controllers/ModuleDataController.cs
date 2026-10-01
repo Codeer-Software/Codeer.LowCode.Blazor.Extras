@@ -66,8 +66,8 @@ namespace Extras.Server.Controllers
             await Request.Body.CopyToAsync(memory);
             memory.Position = 0;
             var data = MessagePackSerializer.Typeless.Deserialize(memory) as List<ModuleSubmitData>;
-            //監査: 行ごとの対象 (Add / Update / Delete) と採番 Id、結果のエラーを記録する
-            return await _audit.RecordSubmitAsync(data!, () => _dataService.ModuleDataIO.SubmitWithTransactionAsync(data!));
+            //監査ログ: 行ごとの対象 (Add / Update / Delete) と採番 Id、結果のエラーは保存の合流点 (CustomizedModuleDataIO の AuditIOInterceptor) が記録する
+            return await _dataService.ModuleDataIO.SubmitWithTransactionAsync(data!);
         }
 
         [HttpPost("list_file"), Audit(AuditCategory.Export)]
@@ -100,7 +100,7 @@ namespace Extras.Server.Controllers
         //クライアントで加工済みのモジュールデータ列を一括保存する (ファイル取込と同じ追加/更新判定の経路)
         [HttpPost("bulk_submit"), Audit(AuditCategory.DataWrite)]
         public async Task<IActionResult> BulkSubmitAsync(string? moduleName)
-            => Content(await BulkFileTransfer.BulkSubmitAsync(_dataService.ModuleDataIO, moduleName, Request.Body, _audit), "application/json");
+            => Content(await BulkFileTransfer.BulkSubmitAsync(_dataService.ModuleDataIO, moduleName, Request.Body), "application/json");
 
         //スクリプトの一括ファイル取込 (BulkFileReader) 用。ファイルを解析してモジュールデータ列を返す (DB には書き込まない)。
         //ModuleData はポリモーフィックなので JsonConverterEx で直列化して返す

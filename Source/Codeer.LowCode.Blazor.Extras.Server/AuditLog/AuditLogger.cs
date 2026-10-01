@@ -7,6 +7,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AuditLog
     /// 監査ログを保存する部品。設定と出力先を持ち、何を記録するかは決めない (呼び出し側が <see cref="AuditEvent"/> を組み立てて渡す)。
     /// - 分類の絞り込み (<see cref="AuditLogSettings.Categories"/>。失敗・拒否は常に記録。試行は <see cref="AuditLogSettings.AttemptCategories"/>)
     /// - 全出力先に書く。書けない出力先があれば Strict なら <see cref="AuditLogException"/>、BestEffort なら ILogger の Critical
+    /// - 対象が多いレコードは続きの行に分ける (<see cref="MaxTargetsPerRecord"/>)
     /// - 保持期限切れの削除 (<see cref="PurgeAsync"/>。消した事実も System として記録)
     /// - デザインの版 (<see cref="AuditEvent.DesignVersion"/>)。ホストが版を渡せば全レコードに入れ、版の切替を System として記録する
     /// アプリで 1 つ (シングルトン)。リクエストの外 (バックグラウンドのジョブ・起動/停止) からもそのまま呼べる。
@@ -18,6 +19,13 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AuditLog
         readonly ILogger? _logger;
         readonly Func<HttpContext?, string>? _designVersion;
         readonly SemaphoreSlim _designLock = new(1, 1);
+
+        /// <summary>
+        /// 1 レコードに入れる対象の数の上限。超えた分は切り捨てず、同じ RequestId の続きの行 (Result = Continued) に分けて書く。
+        /// 一括取込・ファイル出力で対象が数万件になっても、1 行の大きさは数十 KB に収まる
+        /// (DB の 1 回の送信の上限・ログ収集基盤の 1 件の上限・閲覧画面の重さへの対策)。
+        /// </summary>
+        public const int MaxTargetsPerRecord = 500;
         string? _loadedDesignVersion;
 
         /// <param name="designVersion">
@@ -68,7 +76,30 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AuditLog
             //リクエストの外の記録 (起動・停止・掃除・バックグラウンドのジョブ) は、今読み込んでいる版
             if (string.IsNullOrEmpty(e.DesignVersion)) e.DesignVersion = GetDesignVersion(null);
             if (!ShouldRecord(e)) return;
-            await WriteToSinksAsync(e);
+            foreach (var record in Split(e)) await WriteToSinksAsync(record);
+        }
+
+        //対象が多いレコードを、結果の行 (先頭の MaxTargetsPerRecord 件) と続きの行に分ける
+        static IEnumerable<AuditEvent> Split(AuditEvent e)
+        {
+            if (e.Targets.Count <= MaxTargetsPerRecord)
+            {
+                yield return e;
+                yield break;
+            }
+            //続きの行は RequestId で結ぶ。リクエストの外の記録には RequestId が無いので、ここで付ける
+            if (string.IsNullOrEmpty(e.RequestId)) e.RequestId = Guid.NewGuid().ToString("N");
+            for (var i = 0; i < e.Targets.Count; i += MaxTargetsPerRecord)
+            {
+                yield return new AuditEvent
+                {
+                    OccurredAtUtc = e.OccurredAtUtc, Category = e.Category, Action = e.Action,
+                    Result = i == 0 ? e.Result : AuditResult.Continued,
+                    UserId = e.UserId, ClientIp = e.ClientIp, UserAgent = e.UserAgent, RequestId = e.RequestId, Host = e.Host, DesignVersion = e.DesignVersion,
+                    Targets = e.Targets.GetRange(i, Math.Min(MaxTargetsPerRecord, e.Targets.Count - i)),
+                    Detail = i == 0 ? e.Detail : string.Empty,
+                };
+            }
         }
 
         //このプロセスが読み込んでいるデザインの版が替わったら System の Design.Loaded として記録する (インスタンスごとの切替の時刻)。

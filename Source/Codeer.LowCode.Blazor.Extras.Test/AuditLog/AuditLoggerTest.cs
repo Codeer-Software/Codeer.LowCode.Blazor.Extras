@@ -166,6 +166,56 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AuditLog
             Assert.That(sink.Events.Select(e => (e.Action, e.DesignVersion)).ToArray(), Is.EqualTo(new[] { ("Test.Action", "v1"), ("Design.Loaded", "v2") }));
         }
 
+        [Test]
+        public async Task ManyTargetsAreSplitIntoContinuationRecords()
+        {
+            //1 レコードの対象は MaxTargetsPerRecord 件まで。超えた分は切り捨てず、同じ RequestId の続きの行 (Continued) に分ける
+            var sink = new CapturingAuditSink();
+            var logger = new AuditLogger(new AuditLogSettings { Enabled = true }, [sink]);
+            var e = Event(AuditCategory.DataWrite);
+            e.RequestId = "req-1";
+            e.UserId = "u1";
+            e.Detail = "Add=1201; Update=0; Delete=0";
+            for (var i = 0; i < 1201; i++) e.Targets.Add(new AuditTarget { Module = "Item", Id = i.ToString(), Operation = "Add" });
+
+            await logger.WriteAsync(e);
+
+            Assert.That(sink.Events.Select(x => (x.Result, x.Targets.Count, x.Detail)).ToArray(), Is.EqualTo(new[]
+            {
+                (AuditResult.Success, 500, "Add=1201; Update=0; Delete=0"),
+                (AuditResult.Continued, 500, ""),
+                (AuditResult.Continued, 201, ""),
+            }));
+            Assert.That(sink.Events.All(x => x.RequestId == "req-1" && x.UserId == "u1" && x.Action == "Test.Action" && x.Category == AuditCategory.DataWrite), Is.True);
+            Assert.That(sink.Events.SelectMany(x => x.Targets).Select(t => t.Id).ToArray(), Is.EqualTo(Enumerable.Range(0, 1201).Select(i => i.ToString()).ToArray()), "対象は 1 件も欠けない");
+        }
+
+        [Test]
+        public async Task ContinuationRecordsOutsideARequestAreTiedByAGeneratedId()
+        {
+            //リクエストの外の記録には RequestId が無い。続きの行と結べるよう、分けるときに付ける
+            var sink = new CapturingAuditSink();
+            var logger = new AuditLogger(new AuditLogSettings { Enabled = true }, [sink]);
+            var e = Event(AuditCategory.DataWrite);
+            for (var i = 0; i < 501; i++) e.Targets.Add(new AuditTarget { Module = "Item", Id = i.ToString(), Operation = "Add" });
+
+            await logger.WriteAsync(e);
+
+            Assert.That(sink.Events, Has.Count.EqualTo(2));
+            Assert.That(sink.Events[0].RequestId, Is.Not.Empty.And.EqualTo(sink.Events[1].RequestId));
+        }
+
+        [Test]
+        public async Task UpToTheLimitIsWrittenAsOneRecord()
+        {
+            var sink = new CapturingAuditSink();
+            var logger = new AuditLogger(new AuditLogSettings { Enabled = true }, [sink]);
+            var e = Event(AuditCategory.DataWrite);
+            for (var i = 0; i < AuditLogger.MaxTargetsPerRecord; i++) e.Targets.Add(new AuditTarget { Module = "Item", Id = i.ToString(), Operation = "Add" });
+            await logger.WriteAsync(e);
+            Assert.That(sink.Events, Is.EqualTo(new[] { e }));
+        }
+
         sealed class CapturingLogger : ILogger
         {
             public List<(LogLevel Level, string Message)> Entries { get; } = new();

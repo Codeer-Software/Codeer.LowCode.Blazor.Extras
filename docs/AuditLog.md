@@ -9,7 +9,7 @@
 Codeer.LowCode.Blazor.Extras.Server 0.17.0 以降。
 
 - [概略](#概略) — 何が記録されるか、有効化
-- [詳細](#詳細) — レコード、分類と結果、デザインの版、出力先、失敗時の扱い、保持と削除、改ざん対策、参照の仕方、ホストの結線、独自 API への追加
+- [詳細](#詳細) — レコード、分類と結果、対象と件数、デザインの版、出力先、失敗時の扱い、保持と削除、改ざん対策、参照の仕方、ホストの結線、独自 API への追加
 
 ---
 
@@ -26,7 +26,8 @@ WebAPI (コントローラのアクション) を単位に記録します。ロ�
 状態を変える操作 (保存・取込・承認・出力・メール送信・管理操作) と認証は **二段** で記録します。操作の前に「誰が・どこから・どの API を呼んだか」(試行)、
 操作の後に「対象と結果」です。試行が書けなければ操作を実行しないので、記録の無い操作は起きません。
 
-記録するのは項目名・Id・件数・理由までで、**レコードの値は記録しません** (個人情報を監査ログに複製しない)。
+操作が触ったレコードは、画面からの保存でも一括取込でもファイル出力でも、**行ごとの Id** で残します ([対象と件数](#対象と件数))。
+記録するのは項目名・Id・件数・理由までで、**レコードの値は記録しません** (個人情報を監査ログに複製しない)。メールの宛先のアドレスも残しません。
 ユーザーや権限の変更も「誰がどのユーザーの行を変えたか」までです。付けた権限の中身まで残すには、ユーザーモジュールに編集履歴 (EditHistoryField) を置いてください。
 
 ### 有効化
@@ -83,14 +84,14 @@ create table "audit_log" (
 | `OccurredAtUtc` | サーバー時刻 (UTC)。試行の行は操作の前、結果の行は操作が終わった時刻 |
 | `Category` | 分類 (下記) |
 | `Action` | 操作の名前。WebAPI は "Controller.Action" (例 `ModuleData.Submit`、`Account.Login`) |
-| `Result` | `Attempt` (操作前の試行) / `Success` / `Failure` / `Denied` |
+| `Result` | `Attempt` (操作前の試行) / `Success` / `Failure` / `Denied` / `Continued` (対象の続きの行) |
 | `UserId` | 操作したユーザーの Id (ユーザーモジュールの行の Id)。未認証なら空。ログイン成功時は成功したユーザー |
 | `ClientIp` / `UserAgent` | 接続元。リバースプロキシ越しの IP は ASP.NET Core の Forwarded Headers ミドルウェアで解決したものが入る |
 | `RequestId` | ASP.NET Core の TraceIdentifier。アプリのログ (ILogger) と突き合わせる鍵 |
 | `Host` | 発生したサーバー名 (複数インスタンス運用での発生元) |
 | `DesignVersion` | その操作が使ったデザインの版 (App.zip の SHA-256。小文字の 16 進 64 桁)。試行の行と結果の行は同じ値 |
-| `Targets` | 対象のレコードの並び。`Module` / `Id` / `Operation` (Read / Add / Update / Delete / Export / Import / BulkSubmit / Download:フィールド名 / Approval:操作 など) |
-| `Detail` | 補足。失敗の理由、試行したログイン名 (`LoginName=...`)、二要素認証の状態、掃除の件数など |
+| `Targets` | 対象のレコードの並び。`Module` / `Id` / `Operation` (Read / Add / Update / Delete / Export / Import / BulkSubmit / Mail / BulkMail / MailTo / Download:フィールド名 / Approval:操作 など)。1 レコードに 500 件まで。超えた分は続きの行 |
+| `Detail` | 補足。件数 (`Add=3; Update=1; Delete=0`、`Rows=1234` など)、取り込んだファイルのハッシュ (`File=...`)、失敗の理由、試行したログイン名 (`LoginName=...`)、二要素認証の状態、掃除の件数など |
 
 ### 分類と結果
 
@@ -98,8 +99,8 @@ create table "audit_log" (
 |---|---|
 | `Authentication` | ログイン (ID/パスワード・外部 IdP への遷移と IdP からの戻り・モバイルのチケット交換)、ログアウト、認証アプリの解除。ログイン失敗と二要素認証のコード不一致は `Denied` |
 | `DataRead` | 一覧・詳細の取得 (返した行ごとに `Read`)、添付ファイルのダウンロード、AI チャット (ユーザーの権限で DB を読む) |
-| `DataWrite` | 保存 (行ごとに Add / Update / Delete)、一括取込、アップロード、承認フローの操作 |
-| `Export` | 一括ファイル出力、Excel → PDF、メール送信・一斉送信 |
+| `DataWrite` | 保存・一括取込・スクリプトの一括保存 (行ごとに Add / Update / Delete と件数)、アップロード、承認フローの操作 |
+| `Export` | 一括ファイル出力 (出した行ごとに Export と件数)、Excel → PDF、メール送信・一斉送信 (送信元のレコード・件数・一斉送信は宛先の行) |
 | `Admin` | 意味検索の再索引 |
 | `System` | アプリの起動 (有効な設定を Detail に残す)・停止、監査ログの掃除 (消した件数)、デザインの版の切替 (`Design.Loaded`) |
 | `Other` | `[Audit]` を付けていない API (設計の取得、リソース、TOTP 状態など) |
@@ -129,6 +130,42 @@ create table "audit_log" (
 
 `Categories` は **成功した操作の絞り込み** です。失敗と拒否は分類に関係なく常に記録されます。空なら全部記録します。
 `DataRead` は行ごとに残るので量が多く、必要な場合だけ入れてください。
+
+### 対象と件数
+
+操作が触ったレコードは、経路によらず `Targets` に行ごとの Id で残り、件数が `Detail` の先頭に入ります。
+
+| 操作 | `Targets` | `Detail` |
+|---|---|---|
+| 保存 (画面)・一括取込・スクリプトの一括保存 | 行ごとの `Add` / `Update` / `Delete` と Id。条件での削除 (一覧の洗い替え) は `SearchDelete` でモジュール名だけ | `Add=3; Update=1; Delete=0` |
+| 一括取込 (ファイル) | 上に加えて、モジュール名の `Import` | 件数に加えて `File=取り込んだファイルの SHA-256` |
+| 一括ファイル出力 | 出した行ごとの `Export` と Id | `Rows=1234` |
+| メール送信 | 送信元のレコード (`Mail`) | `Total=1; Success=1; Failed=0` |
+| 一斉送信 | 送信元のレコード (`BulkMail`) と、宛先になった行 (`MailTo`) | `Total=120; Success=118; Failed=2` |
+
+- **どの保存も同じ形で残ります**: 保存の対象は、保存の合流点に置くインターセプタ (`AuditIOInterceptor`) が記録します。画面の保存もファイル取込もスクリプトの一括保存もここを通ります
+- **失敗した保存にも対象が残ります**: 権限で弾かれた変更も「誰がどのレコードを変えようとしたか」が分かります (ロールバックした新規行は Id が無いので、モジュール名と件数です)
+- **メールの宛先はアドレスではなく行の Id で残ります**: 一斉送信の宛先は検索で引いたレコードなので、Id で「誰に送ったか」を追えます。自由入力の宛先 (単発のメール) は件数だけです。
+  宛先ごとの記録が要る場合は、メールの送信履歴を使ってください
+
+#### 対象が多いとき (続きの行)
+
+1 レコードに入れる対象は 500 件までです。超えた分は切り捨てず、同じ `RequestId` の **続きの行** (`Result = Continued`) に分けて書きます。
+続きの行は日時・分類・API 名・ユーザーなどが結果の行と同じで、`Targets` だけが続きです (`Detail` は空)。
+
+- 操作の件数を数えるときは `Success` / `Failure` / `Denied` の行だけを数えます (`Attempt` と `Continued` は結果ではありません)
+- あるレコードを触った操作を探すときは、`Continued` の行も対象に含めます (下の「参照の仕方」)
+- 1 行の大きさが数十 KB に収まるので、DB の 1 回の送信の上限やログ収集基盤の 1 件の上限に当たらず、一覧画面も重くなりません
+
+#### 一括 INSERT で入った新規行
+
+本体は、100 行以上の純粋な追加 (テンプレートの `BulkAddThreshold = 100`) を一括 INSERT で処理します。この経路は採番された Id を返さないので、
+その新規行は Id 無しで、モジュールごとに 1 件の `Add` と件数 (`Add=620`) だけが残ります。監査ログのために一括 INSERT を止めることはしません (大量の取込が遅くなるため)。
+
+- 更新と削除は一括 INSERT の対象ではないので、必ず Id が残ります。Id が残らないのは「自動採番の新規行を 100 行以上まとめて入れたとき」だけです
+- 100 行未満の取込、追加と更新が混ざった取込、編集履歴 (EditHistoryField) を持つモジュールへの取込は、新規行にも採番 Id が残ります
+- Id が無い行は、バッチ単位で追います。ファイル取込なら `Detail` の `File=...` が取り込んだファイルの SHA-256 です。**取込ファイルを保管しておけば**、
+  「誰が・いつ・どのファイルを・何件取り込んだか」を証明でき、行の中身はファイルが証拠になります (ハッシュの確かめ方は「デザインの版」の節と同じです)
 
 ### デザインの版
 
@@ -222,7 +259,7 @@ DB の掃除は監査ログのデータソースで DELETE を実行します。
 
 アプリの経路からは追記しかできません。
 
-- 監査ログのテーブルに対してモジュールを作ることはできます (閲覧用)。そのモジュールからの追加・更新・削除は `AuditTableGuard` (IO インターセプタ) がサーバーで拒否します
+- 監査ログのテーブルに対してモジュールを作ることはできます (閲覧用)。そのモジュールからの追加・更新・削除は `AuditIOInterceptor` (IO インターセプタ) がサーバーで拒否します
 - DB のユーザーを分け、監査ログのデータソースは UPDATE / DELETE のできないユーザーで繋ぐ運用を推奨します。必要な権限は INSERT と、閲覧用のモジュールを作るなら SELECT です
   (保持期限の掃除をアプリに任せる場合だけ DELETE も要ります。上の「保持と削除」)
 - ファイル出力を SIEM などアプリ管理者の手が届かない場所へ転送しておけば、DB 側を直接いじっても写しと食い違うので発覚します
@@ -235,6 +272,15 @@ PCI DSS のようにログの変更検知が明示的に要る規格には別途
 専用の画面はありません。監査ログのテーブルに対して通常のデザインで一覧モジュールを作り、UserRead 条件で監査役に絞ってください
 (`targets` / `detail` は文字列なので、検索は LIKE 相当になります)。
 
+あるレコードを触った操作を全部探すときは、`targets` をレコードの形で検索します。続きの行 (`Continued`) にも対象が入っているので、`result` では絞りません。
+
+```sql
+-- モジュール Order の Id 123 を触った操作 (参照・追加・更新・削除・出力・メールの宛先)
+select * from audit_log where targets like '%{"Module":"Order","Id":"123",%' order by id
+```
+
+見つかった行が `Continued` なら、同じ `request_id` の結果の行 (`Success` / `Failure` / `Denied`) に、誰が・何の操作で・結果がどうだったかがあります。
+
 ### ホストの結線
 
 テンプレート (Cookie) には含まれています。既存のアプリに足す場合:
@@ -246,8 +292,10 @@ PCI DSS のようにログの変更検知が明示的に要る規格には別途
    テンプレートは `Services/RequestDesign` (スコープ) がリクエストの最初にデザインを 1 つに固定し、コントローラは `DataService.Design` 経由でその版だけを使います
    (`DesignerService` から直接取ると、処理の途中で差し替わった版が混ざります)。渡さなければ版は記録されません
 4. `app.UseRouting();` の直後に `app.UseAuditLog();` (認可の前。401/403 も記録するため。認証はミドルウェアが自分で解決するので認証ミドルウェアより前でよい)
-5. `CustomizedModuleDataIO` のコンストラクタで `AddInterceptor(new AuditTableGuard(designData, SystemConfig.Instance.AuditLogDatabase));`
+5. `CustomizedModuleDataIO` のコンストラクタで `AddInterceptor(new AuditIOInterceptor(designData, SystemConfig.Instance.AuditLogDatabase));`
+   保存の対象の記録と、監査ログのテーブルの保護を行います。保存の最終結果を記録するので、**他のインターセプタ (編集履歴など) より先に登録します**
 6. 各コントローラのアクションに `[Audit(AuditCategory.Xxx)]` を付け、対象や業務上の失敗は `AuditContext` (スコープ) で足す
+   (保存の対象は 5 のインターセプタが記録するので、保存のアクションで対象を足す必要はありません)
 
 ### 独自 API への追加
 
@@ -264,14 +312,23 @@ public async Task<IActionResult> CloseAsync(string id, [FromServices] AuditConte
 }
 ```
 
+コントローラから離れた処理 (公開メソッドの引数に持ち回れないところ) は、今のリクエストのレコードを `AuditContext.Current` から取れます
+(リクエストの外や監査ログが無効のときは null)。
+
+```csharp
+var audit = AuditContext.Current;
+audit?.AddTarget("Order", id, "Export");
+audit?.AddCount("Rows", rows.Count);
+```
+
 リクエストの外 (バックグラウンドのジョブ) では `AuditLogger` (シングルトン) に `AuditEvent` を組み立てて `WriteAsync` します。
 
 | 部品 | 役割 |
 |---|---|
 | `AuditAttribute` | アクションの分類の宣言。クラスに付けると既定になり、アクション側が優先 |
-| `AuditContext` | 今のリクエストのレコード。`AddTarget` / `RecordSubmitAsync` (保存を包む) / `AddRead` / `Fail` / `Deny`、`Event.UserId` (ログイン時)。スクリプトの一括保存は `BulkFileTransfer.BulkSubmitAsync` に渡す |
-| `AuditLogger` | 保存する部品。分類の絞り込み・全出力先への書き込み・Strict/BestEffort・掃除・デザインの版の記入と切替の記録 |
+| `AuditContext` | 今のリクエストのレコード。`AddTarget` / `AddCount` (件数) / `AddNote` (補足) / `AddRead` / `Fail` / `Deny`、`Event.UserId` (ログイン時)。`AuditContext.Current` で今のリクエストのものを取れる |
+| `AuditLogger` | 保存する部品。分類の絞り込み・全出力先への書き込み・Strict/BestEffort・掃除・デザインの版の記入と切替の記録・対象が多いレコードの分割 |
 | `AuditLogMiddleware` | WebAPI を記録 (前段の試行と後段の結果)。`UseAuditLog()` |
 | `AuditLogHostedService` | 起動・停止の記録と 1 日 1 回の掃除。`AddAuditLog()` が登録する |
 | `IAuditSink` / `DatabaseAuditSink` / `FileAuditSink` | 出力先 |
-| `AuditTableGuard` | 監査ログのテーブルをモジュールの保存から守る IO インターセプタ |
+| `AuditIOInterceptor` | 保存の合流点に置く IO インターセプタ。保存の対象 (行ごとの Add / Update / Delete と Id・件数) を記録し、監査ログのテーブルをモジュールの保存から守る |

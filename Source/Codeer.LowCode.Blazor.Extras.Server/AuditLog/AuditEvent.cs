@@ -19,7 +19,10 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AuditLog
         Other,
     }
 
-    /// <summary>操作の結果。Attempt だけは「結果」ではなく、操作の前に書く試行の記録 (二段記録の前段)。</summary>
+    /// <summary>
+    /// 操作の結果。Attempt と Continued は「結果」ではない (Attempt = 操作の前に書く試行の記録、Continued = 対象の続きの行)。
+    /// 操作の件数は Success / Failure / Denied の行で数える。
+    /// </summary>
     public enum AuditResult
     {
         /// <summary>操作の前に書く試行の記録。誰が・どこから・どの API を呼んだか。結果は同じ RequestId の後段の行にある。</summary>
@@ -29,6 +32,11 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AuditLog
         Failure,
         /// <summary>認証・認可で拒否された (HTTP 401/403、ログイン失敗、二要素認証のコード不一致)。</summary>
         Denied,
+        /// <summary>
+        /// 対象の続きの行。1 レコードに入れる対象は <see cref="AuditLogger.MaxTargetsPerRecord"/> 件までで、
+        /// 超えた分は同じ RequestId のこの行に分けて書く (切り捨てない)。結果は同じ RequestId の結果の行にある。
+        /// </summary>
+        Continued,
     }
 
     /// <summary>監査ログの 1 レコード。いつ・誰が・どこから・何に・何を・結果。</summary>
@@ -52,7 +60,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AuditLog
         /// リクエストの間は変わらないので、試行の行と結果の行は同じ値になる。
         /// </summary>
         public string DesignVersion { get; set; } = string.Empty;
-        /// <summary>対象のレコード (モジュール名・Id・操作)。</summary>
+        /// <summary>対象のレコード (モジュール名・Id・操作)。多いときは続きの行 (Result = Continued) に分かれる。</summary>
         public List<AuditTarget> Targets { get; set; } = new();
         /// <summary>補足 (失敗の理由・試行したログイン名・件数など)。値そのものは入れない。</summary>
         public string Detail { get; set; } = string.Empty;

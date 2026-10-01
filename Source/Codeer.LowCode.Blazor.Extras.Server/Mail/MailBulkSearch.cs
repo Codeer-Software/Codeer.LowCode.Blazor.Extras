@@ -38,6 +38,8 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
         internal class RecipientEntry
         {
             public MailBulkRecipient? Recipient { get; init; }
+            /// <summary>宛先 (行) の Id。監査ログはアドレスではなくこの Id で「誰に送ったか」を残す。</summary>
+            public string Id { get; init; } = string.Empty;
             public MailRecipientExclusion Exclusion { get; init; }
             public Dictionary<string, string> Variables { get; init; } = new();
             public string DisplayName { get; init; } = string.Empty;
@@ -69,8 +71,15 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
                 Attachments = request.Attachments,
             };
             //差出人はクライアントの値を信用せず、常に送信インフラ設定のシステム送信者。呼び名もデザインから
-            return await _dispatcher.SendBulkAsync(set.FieldDesign.MailInfraName, template, recipients,
+            var result = await _dispatcher.SendBulkAsync(set.FieldDesign.MailInfraName, template, recipients,
                 MailDispatcher.CreateSource(request.SourceModule, request.SourceId));
+
+            //監査ログ: 送信元のレコード・件数に加えて、宛先になった行を Id で残す (アドレスは残さない)
+            MailDispatcher.Audit(request.SourceModule, request.SourceId, "BulkMail", result);
+            var audit = AuditLog.AuditContext.Current;
+            if (audit != null)
+                foreach (var entry in set.Entries.Where(e => e.Recipient != null)) audit.AddTarget(set.Design.Name, entry.Id, "MailTo");
+            return result;
         }
 
         /// <summary>
@@ -125,6 +134,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
                 return new RecipientEntry
                 {
                     Recipient = recipient,
+                    Id = ModuleDataValues.GetId(row),
                     Exclusion = exclusion,
                     Variables = variables,
                     To = recipient?.To ?? MailVariableResolver.GetValueText(row, contract.Email),

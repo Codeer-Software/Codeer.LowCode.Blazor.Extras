@@ -177,6 +177,30 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Mail
         }
 
         [Test]
+        public async Task 監査ログには送信元のレコードと宛先の行のIdと件数が残りアドレスは残らない()
+        {
+            var audit = new Codeer.LowCode.Blazor.Extras.Server.AuditLog.AuditContext();
+            Codeer.LowCode.Blazor.Extras.Server.AuditLog.AuditContext.Current = audit;
+            try
+            {
+                var (dispatcher, _) = CreateDispatcher();
+                await CreateSearch(dispatcher, "2").SendAsync(CreateRequest());
+            }
+            finally
+            {
+                Codeer.LowCode.Blazor.Extras.Server.AuditLog.AuditContext.Current = null;
+            }
+
+            //宛先は読める行のうち配信停止でない 1 行だけ。アドレスではなく行の Id で残る
+            var targets = audit.Event.Targets.Select(t => (t.Module, t.Id, t.Operation)).ToList();
+            Assert.That(targets[0], Is.EqualTo(("Campaign", "1", "BulkMail")));
+            Assert.That(targets.Skip(1).Select(t => (t.Module, t.Operation)).ToArray(), Is.EqualTo(new[] { ("Member", "MailTo") }));
+            Assert.That(targets[1].Id, Is.Not.Null.And.Not.Empty);
+            Assert.That(audit.ComposeDetail(), Is.EqualTo("Total=1; Success=1; Failed=0"));
+            Assert.That(System.Text.Json.JsonSerializer.Serialize(audit.Event), Does.Not.Contain("example.com"));
+        }
+
+        [Test]
         public void モジュールを開けないユーザー_フィールド読取権限のないユーザー_停止ユーザー_フィールド違い_存在しないモジュールは送れない()
         {
             var (dispatcher, fake) = CreateDispatcher();
