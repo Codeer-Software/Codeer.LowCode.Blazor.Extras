@@ -118,6 +118,54 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AuditLog
             Assert.That(target.GetProperty("Operation").GetString(), Is.EqualTo("Update"));
         }
 
+        [Test]
+        public async Task DesignVersionIsEmptyWhenTheHostDoesNotProvideIt()
+        {
+            var sink = new CapturingAuditSink();
+            var logger = new AuditLogger(new AuditLogSettings { Enabled = true }, [sink]);
+            await logger.WriteAsync(Event(AuditCategory.DataWrite));
+            Assert.That(sink.Events.Select(e => (e.Action, e.DesignVersion)).ToArray(), Is.EqualTo(new[] { ("Test.Action", "") }));
+        }
+
+        [Test]
+        public async Task DesignVersionIsFilled_AndTheSwitchIsRecordedOncePerProcess()
+        {
+            var current = "v1";
+            var sink = new CapturingAuditSink();
+            var logger = new AuditLogger(new AuditLogSettings { Enabled = true }, [sink], designVersion: _ => current);
+
+            //リクエストの外の記録は今読み込んでいる版。最初の 1 回は切替として書かない (起動の記録が版を持つ)
+            await logger.WriteAsync(Event(AuditCategory.System));
+            current = "v2";
+            await logger.WriteAsync(Event(AuditCategory.DataWrite));
+            //切替の前に受け付けたリクエストの結果 (版は v1 のまま)。古い版へ戻す切替の記録は書かない
+            var inFlight = Event(AuditCategory.DataWrite);
+            inFlight.DesignVersion = "v1";
+            await logger.WriteAsync(inFlight);
+
+            Assert.That(sink.Events.Select(e => (e.Action, e.DesignVersion, e.Detail)).ToArray(), Is.EqualTo(new[]
+            {
+                ("Test.Action", "v1", ""),
+                ("Design.Loaded", "v2", "Previous=v1"),
+                ("Test.Action", "v2", ""),
+                ("Test.Action", "v1", ""),
+            }));
+            Assert.That(sink.Events[1].Category, Is.EqualTo(AuditCategory.System));
+        }
+
+        [Test]
+        public async Task TheSwitchIsNoticedEvenWhenTheEventItselfIsNotRecorded()
+        {
+            //成功した DataRead を記録しない設定でも、切替はその API が来た時点で記録する
+            var current = "v1";
+            var sink = new CapturingAuditSink();
+            var logger = new AuditLogger(new AuditLogSettings { Enabled = true, Categories = [AuditCategory.System] }, [sink], designVersion: _ => current);
+            await logger.WriteAsync(Event(AuditCategory.System));
+            current = "v2";
+            await logger.WriteAsync(Event(AuditCategory.DataRead));
+            Assert.That(sink.Events.Select(e => (e.Action, e.DesignVersion)).ToArray(), Is.EqualTo(new[] { ("Test.Action", "v1"), ("Design.Loaded", "v2") }));
+        }
+
         sealed class CapturingLogger : ILogger
         {
             public List<(LogLevel Level, string Message)> Entries { get; } = new();

@@ -29,7 +29,7 @@ namespace Extras.Server.Controllers
             try
             {
                 return await new AITextAnalyzeService(SystemConfig.Instance.AISettings).AnalyzeFileAsync(
-                    _dataService.ModuleDataIO, DesignerService.GetDesignData().Modules, moduleName, fieldName, fileName, memoryStream);
+                    _dataService.ModuleDataIO, _dataService.Design.DesignData.Modules, moduleName, fieldName, fileName, memoryStream);
             }
             catch (LowCodeException)
             {
@@ -48,7 +48,7 @@ namespace Extras.Server.Controllers
             try
             {
                 return await new AITextAnalyzeService(SystemConfig.Instance.AISettings).AnalyzeTextAsync(
-                    _dataService.ModuleDataIO, DesignerService.GetDesignData().Modules, moduleName, fieldName, text);
+                    _dataService.ModuleDataIO, _dataService.Design.DesignData.Modules, moduleName, fieldName, text);
             }
             catch (LowCodeException)
             {

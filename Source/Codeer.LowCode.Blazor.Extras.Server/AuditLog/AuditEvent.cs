@@ -47,6 +47,11 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AuditLog
         public string RequestId { get; set; } = string.Empty;
         /// <summary>発生したサーバー (複数インスタンス運用での発生元)。</summary>
         public string Host { get; set; } = Environment.MachineName;
+        /// <summary>
+        /// この操作が使ったデザインの版 (App.zip の SHA-256)。ホストが版を渡していなければ空。
+        /// リクエストの間は変わらないので、試行の行と結果の行は同じ値になる。
+        /// </summary>
+        public string DesignVersion { get; set; } = string.Empty;
         /// <summary>対象のレコード (モジュール名・Id・操作)。</summary>
         public List<AuditTarget> Targets { get; set; } = new();
         /// <summary>補足 (失敗の理由・試行したログイン名・件数など)。値そのものは入れない。</summary>

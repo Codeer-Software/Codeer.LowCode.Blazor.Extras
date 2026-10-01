@@ -139,7 +139,11 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Auth
         {
             var logger = http.RequestServices.GetService<AuditLogger>();
             if (logger == null) return;
-            var e = new AuditEvent { Category = AuditCategory.Authentication, Action = "Account.ExternalLoginCallback", Result = result, UserId = userId, Detail = detail };
+            var e = new AuditEvent
+            {
+                Category = AuditCategory.Authentication, Action = "Account.ExternalLoginCallback", Result = result, UserId = userId, Detail = detail,
+                DesignVersion = logger.GetDesignVersion(http),
+            };
             AuditLogMiddleware.SetRequest(e, http);
             await logger.WriteAsync(e);
         }

@@ -9,7 +9,7 @@
 Codeer.LowCode.Blazor.Extras.Server 0.17.0 以降。
 
 - [概略](#概略) — 何が記録されるか、有効化
-- [詳細](#詳細) — レコード、分類と結果、出力先、失敗時の扱い、保持と削除、改ざん対策、参照の仕方、ホストの結線、独自 API への追加
+- [詳細](#詳細) — レコード、分類と結果、デザインの版、出力先、失敗時の扱い、保持と削除、改ざん対策、参照の仕方、ホストの結線、独自 API への追加
 
 ---
 
@@ -19,6 +19,9 @@ Codeer.LowCode.Blazor.Extras.Server 0.17.0 以降。
 
 WebAPI (コントローラのアクション) を単位に記録します。ログインの成功・失敗、レコードの参照・変更、ファイル出力・メール送信、
 再索引のような管理操作、それらの失敗と権限による拒否 (401/403) が残ります。加えて、アプリの起動・停止と監査ログ自身の掃除がシステムのイベントとして残ります。
+
+どの行にも、その操作が使った **デザインの版** (App.zip の SHA-256) が入ります。デザインは画面や権限の定義そのものなので、
+「その操作の時点でどの定義が動いていたか」を行から引けるようにしています ([デザインの版](#デザインの版))。
 
 状態を変える操作 (保存・取込・承認・出力・メール送信・管理操作) と認証は **二段** で記録します。操作の前に「誰が・どこから・どの API を呼んだか」(試行)、
 操作の後に「対象と結果」です。試行が書けなければ操作を実行しないので、記録の無い操作は起きません。
@@ -63,6 +66,7 @@ create table "audit_log" (
   "user_agent" varchar(512),
   "request_id" varchar(64),
   "host" varchar(128),
+  "design_version" varchar(64),
   "targets" text,
   "detail" text
 )
@@ -84,6 +88,7 @@ create table "audit_log" (
 | `ClientIp` / `UserAgent` | 接続元。リバースプロキシ越しの IP は ASP.NET Core の Forwarded Headers ミドルウェアで解決したものが入る |
 | `RequestId` | ASP.NET Core の TraceIdentifier。アプリのログ (ILogger) と突き合わせる鍵 |
 | `Host` | 発生したサーバー名 (複数インスタンス運用での発生元) |
+| `DesignVersion` | その操作が使ったデザインの版 (App.zip の SHA-256。小文字の 16 進 64 桁)。試行の行と結果の行は同じ値 |
 | `Targets` | 対象のレコードの並び。`Module` / `Id` / `Operation` (Read / Add / Update / Delete / Export / Import / BulkSubmit / Download:フィールド名 / Approval:操作 など) |
 | `Detail` | 補足。失敗の理由、試行したログイン名 (`LoginName=...`)、二要素認証の状態、掃除の件数など |
 
@@ -96,7 +101,7 @@ create table "audit_log" (
 | `DataWrite` | 保存 (行ごとに Add / Update / Delete)、一括取込、アップロード、承認フローの操作 |
 | `Export` | 一括ファイル出力、Excel → PDF、メール送信・一斉送信 |
 | `Admin` | 意味検索の再索引 |
-| `System` | アプリの起動 (有効な設定を Detail に残す)・停止、監査ログの掃除 (消した件数) |
+| `System` | アプリの起動 (有効な設定を Detail に残す)・停止、監査ログの掃除 (消した件数)、デザインの版の切替 (`Design.Loaded`) |
 | `Other` | `[Audit]` を付けていない API (設計の取得、リソース、TOTP 状態など) |
 
 外部 IdP (Entra / Google / Cognito / OIDC) のログインは、IdP からの戻りを `Account.ExternalLoginCallback` として記録します。成立なら `Success` と解決したユーザー、
@@ -124,6 +129,67 @@ create table "audit_log" (
 
 `Categories` は **成功した操作の絞り込み** です。失敗と拒否は分類に関係なく常に記録されます。空なら全部記録します。
 `DataRead` は行ごとに残るので量が多く、必要な場合だけ入れてください。
+
+### デザインの版
+
+デザイン (App.zip) は画面・権限・スクリプトの定義で、プログラムと同じ扱いです。監査ログは「どの版で動いていたか」を次の形で残します。
+
+- **各行の `DesignVersion`**: その操作が使った App.zip の SHA-256 です。サーバーが複数インスタンスでも、行を見ればその行を書いたインスタンスの版が分かります
+- **リクエストの間は版が変わりません**: リクエストを受け付けた時点の版を最後まで使います。処理の途中で App.zip が差し替わっても、そのリクエストは元の版で動き、
+  試行の行にも結果の行にも元の版が残ります (結果の行が書けなかった場合も、試行の行にある版が実際に使った版です)
+- **版の切替 `Design.Loaded`**: インスタンスが新しい版を読み込むと、System の `Design.Loaded` を 1 行書きます。`DesignVersion` が新しい版、`Detail` が `Previous=前の版` です。
+  インスタンスごとに書くので、`Host` で並べれば「どのインスタンスがいつ替わったか」「替わっていないインスタンスが無いか」が分かります
+- 起動の記録 (`Application.Start`) にも、起動時に読み込んだ版が入ります
+
+監査ログが残すのは版 (ハッシュ) だけです。App.zip そのものの保管と、誰がいつ送ったかの記録は、システムの外で運用します (プログラムのデプロイと同じ考え方です)。
+
+#### 運用: 送った App.zip を保管する
+
+デザイナのデプロイ設定に **送信履歴フォルダ** (`HistoryDirectory`) を指定してください。送信のたびに、送る App.zip をそのフォルダへ保存してから送ります。
+
+- ファイル名は `版の先頭 16 桁_UTC 日時_マシン名.zip` (例 `3f9a1c0b7d2e4a55_20261001T021530Z_DEV-PC01.zip`)
+- 保存できなければ送信しません (履歴に無い版が稼働することはありません)
+- 本番・検証など、記録を残したい送信先にだけ指定します (ローカル向けは空のままで構いません)。複数の PC から送るなら共有フォルダを指定します
+- コマンドライン (`deploy`) から送った場合も同じように保存され、結果の JSON の `designVersion` に版が入ります。CI から送るなら、この値を CI の記録に残してください
+- 保管する期間は、監査ログの保持期間 (`RetentionDays`) に合わせてください
+
+設定は `designer.settings.Development.json` の `DeployInfo` です (デザイナのデプロイ設定の追加ダイアログでも入力できます)。
+
+```json
+"DeployInfo": {
+  "production": {
+    "DeployMethod": "FTPS",
+    "FTPSEndPoint": "ftps://example.ftp.azurewebsites.windows.net/site/wwwroot/Designs",
+    "UserName": "...",
+    "Password": "...",
+    "HistoryDirectory": "\\\\fileserver\\release\\app-design-history"
+  }
+}
+```
+
+#### 運用: 監査ログの行から、その時のデザインを特定する
+
+1. 調べたい行の `DesignVersion` (`design_version` 列) を見る
+2. 送信履歴フォルダで、ファイル名がその値の先頭 16 桁で始まる zip を探す
+3. その zip の SHA-256 が `DesignVersion` と一致することを確かめる (大文字・小文字の違いは無視します)
+
+```powershell
+(Get-FileHash .\3f9a1c0b7d2e4a55_20261001T021530Z_DEV-PC01.zip -Algorithm SHA256).Hash
+```
+
+一致すれば、その zip が操作の時点で動いていたデザインそのものです。履歴フォルダの zip を後から差し替えても、監査ログ側の値と食い違うので分かります。
+
+#### 運用: 誰が送ったか
+
+システムは送信者を記録しません。デザイナは送信先へファイルを直接置く (ファイルコピー / FTPS) ので、サーバーからは誰が送ったかを確かめようがなく、
+自己申告の名前を残しても証拠にならないためです。送信者は、プログラムのリリースと同じく運用の側で担保してください。
+
+- 送信先に書ける人を絞る (本番の資格情報を配らない・個人ごとの資格情報にする)
+- 変更の記録 (変更依頼・リリースの記録) に版 (SHA-256) を書く。デザイナは送信の完了時に版を表示します。履歴のファイル名にあるマシン名と日時は、調べるときの手掛かりです
+- 個人まで厳密に残すなら、CI からコマンドラインで送る (実行者と承認者が CI に残ります)
+- デザインファイルを git で管理しているなら、コミットしてから送る (履歴の zip の中身とコミットの中身が同じになります)
+
+デザイナを使わずに App.zip を置いた場合も、置いた zip の SHA-256 がそのまま版になります。
 
 ### 出力先
 
@@ -175,7 +241,10 @@ PCI DSS のようにログの変更検知が明示的に要る規格には別途
 
 1. `SystemConfig` に `AuditLogSettings` / `AuditLogDatabaseSettings` / `AuditLogFileSettings` を持ち、`Program.cs` で 3 セクションを束ねる
 2. `Services/AuditSinkTable.cs` (設定 → `IAuditSink` の並び) を置く
-3. `builder.Services.AddAuditLog(SystemConfig.Instance.AuditLog, AuditSinkTable.Create());`
+3. `builder.Services.AddAuditLog(SystemConfig.Instance.AuditLog, AuditSinkTable.Create(), designVersion);`
+   `designVersion` はデザインの版を返す関数です。リクエストの中 (HttpContext あり) ではそのリクエストが使う版、外 (null) では今読み込んでいる版を返します。
+   テンプレートは `Services/RequestDesign` (スコープ) がリクエストの最初にデザインを 1 つに固定し、コントローラは `DataService.Design` 経由でその版だけを使います
+   (`DesignerService` から直接取ると、処理の途中で差し替わった版が混ざります)。渡さなければ版は記録されません
 4. `app.UseRouting();` の直後に `app.UseAuditLog();` (認可の前。401/403 も記録するため。認証はミドルウェアが自分で解決するので認証ミドルウェアより前でよい)
 5. `CustomizedModuleDataIO` のコンストラクタで `AddInterceptor(new AuditTableGuard(designData, SystemConfig.Instance.AuditLogDatabase));`
 6. 各コントローラのアクションに `[Audit(AuditCategory.Xxx)]` を付け、対象や業務上の失敗は `AuditContext` (スコープ) で足す
@@ -201,7 +270,7 @@ public async Task<IActionResult> CloseAsync(string id, [FromServices] AuditConte
 |---|---|
 | `AuditAttribute` | アクションの分類の宣言。クラスに付けると既定になり、アクション側が優先 |
 | `AuditContext` | 今のリクエストのレコード。`AddTarget` / `RecordSubmitAsync` (保存を包む) / `AddRead` / `Fail` / `Deny`、`Event.UserId` (ログイン時)。スクリプトの一括保存は `BulkFileTransfer.BulkSubmitAsync` に渡す |
-| `AuditLogger` | 保存する部品。分類の絞り込み・全出力先への書き込み・Strict/BestEffort・掃除 |
+| `AuditLogger` | 保存する部品。分類の絞り込み・全出力先への書き込み・Strict/BestEffort・掃除・デザインの版の記入と切替の記録 |
 | `AuditLogMiddleware` | WebAPI を記録 (前段の試行と後段の結果)。`UseAuditLog()` |
 | `AuditLogHostedService` | 起動・停止の記録と 1 日 1 回の掃除。`AddAuditLog()` が登録する |
 | `IAuditSink` / `DatabaseAuditSink` / `FileAuditSink` | 出力先 |

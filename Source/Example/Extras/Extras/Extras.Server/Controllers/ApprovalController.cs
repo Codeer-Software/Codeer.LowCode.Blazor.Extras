@@ -43,9 +43,9 @@ namespace Extras.Server.Controllers
             //送信履歴はシステムの記録なので内部経路で書く (MailController と同じ)
             var historyWriter = string.IsNullOrEmpty(mail.HistoryModuleName)
                 ? null
-                : new MailHistoryWriter(mail.HistoryModuleName, DesignerService.GetDesignData(),
+                : new MailHistoryWriter(mail.HistoryModuleName, _dataService.Design.DesignData,
                     data => _dataService.ModuleDataIO.AddSystemRecordAsync(data), e => _logger.LogError("{Error}", e));
-            return new(DesignerService.GetDesignData(), _dataService.ModuleDataIO, _dataService.DbAccess,
+            return new(_dataService.Design.DesignData, _dataService.ModuleDataIO, _dataService.DbAccess,
                 data => _dataService.ModuleDataIO.AddSystemRecordAsync(data),
                 data => _dataService.ModuleDataIO.UpdateSystemRecordAsync(data))
             {

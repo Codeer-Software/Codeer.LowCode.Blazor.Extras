@@ -14,6 +14,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AuditLog
     /// - 分類はアクションの <see cref="AuditAttribute"/>、名前は "Controller.Action"
     /// - 二段で書く: 操作の前に試行の行 (Result = Attempt。<see cref="AuditLogSettings.AttemptCategories"/> の分類だけ)、
     ///   操作の後に結果の行。2 行は RequestId で結ぶ。前段が書けなければ (Strict) 操作を実行しない = 記録の無い操作は起きない
+    /// - デザインの版 (<see cref="AuditEvent.DesignVersion"/>) は前段の前に決め、2 行とも同じ値を書く
     /// - 結果: 例外 = Failure、401/403 = Denied、その他 4xx/5xx = Failure。コントローラが <see cref="AuditContext"/> で上書きできる
     /// - 後段の書き込みはレスポンスの先頭が出る前 (OnStarting)。Strict で書けなければレスポンスは 500 になる
     ///   (操作自体はコミット済みのことがある = 前段の行だけが残り、結果は ILogger の Critical にある)
@@ -44,13 +45,15 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AuditLog
             e.Category = endpoint!.Metadata.GetMetadata<AuditAttribute>()?.Category ?? AuditCategory.Other;
             e.Action = $"{action.ControllerName}.{action.ActionName}";
             SetRequest(e, context);
+            //デザインの版はここで 1 つに決まり、このリクエストの間は変わらない (ホストがリクエストの版を固定する)
+            e.DesignVersion = _logger.GetDesignVersion(context);
             var userId = await ResolveUserIdAsync(context);
 
             //前段: 試行の記録。書けなければ (Strict) ここで例外 = 操作は実行されない
             await _logger.WriteAsync(new AuditEvent
             {
                 Category = e.Category, Action = e.Action, Result = AuditResult.Attempt, UserId = userId,
-                ClientIp = e.ClientIp, UserAgent = e.UserAgent, RequestId = e.RequestId,
+                ClientIp = e.ClientIp, UserAgent = e.UserAgent, RequestId = e.RequestId, DesignVersion = e.DesignVersion,
             });
 
             var completed = false;

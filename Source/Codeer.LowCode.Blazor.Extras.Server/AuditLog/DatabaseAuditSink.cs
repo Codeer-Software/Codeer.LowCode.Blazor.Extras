@@ -38,6 +38,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AuditLog
                 ("user_agent", Truncate(e.UserAgent, 512)),
                 ("request_id", Truncate(e.RequestId, 64)),
                 ("host", Truncate(e.Host, 128)),
+                ("design_version", Truncate(e.DesignVersion, 64)),
                 ("targets", JsonSerializer.Serialize(e.Targets, TargetsJson)),
                 ("detail", e.Detail),
             };
@@ -111,6 +112,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AuditLog
                   {d.Quote("user_agent")} {Varchar(512)},
                   {d.Quote("request_id")} {Varchar(64)},
                   {d.Quote("host")} {Varchar(128)},
+                  {d.Quote("design_version")} {Varchar(64)},
                   {d.Quote("targets")} {text},
                   {d.Quote("detail")} {text}
                 )

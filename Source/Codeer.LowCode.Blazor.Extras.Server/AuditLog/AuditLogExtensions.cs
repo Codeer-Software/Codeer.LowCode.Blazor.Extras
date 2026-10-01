@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
@@ -12,11 +13,15 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AuditLog
         /// 出力先はホストが設定から組み立てて渡す (DB なら <see cref="DatabaseAuditSink"/>、ファイルなら <see cref="FileAuditSink"/>、独自なら <see cref="IAuditSink"/>)。
         /// 無効 (Enabled=false) でも登録してよい (何も書かない)。
         /// </summary>
-        public static IServiceCollection AddAuditLog(this IServiceCollection services, AuditLogSettings settings, IEnumerable<IAuditSink> sinks)
+        /// <param name="designVersion">
+        /// デザインの版 (App.zip の SHA-256)。HttpContext があればそのリクエストが使う版 (リクエストの間は変わらない)、
+        /// null ならこのプロセスが今読み込んでいる版を返す。渡せば全レコードに版が入り、版の切替も記録される。
+        /// </param>
+        public static IServiceCollection AddAuditLog(this IServiceCollection services, AuditLogSettings settings, IEnumerable<IAuditSink> sinks, Func<HttpContext?, string>? designVersion = null)
         {
             var sinkList = sinks.ToList();
             foreach (var sink in sinkList) services.AddSingleton(sink);
-            services.AddSingleton(sp => new AuditLogger(settings, sinkList, sp.GetService<ILoggerFactory>()?.CreateLogger<AuditLogger>()));
+            services.AddSingleton(sp => new AuditLogger(settings, sinkList, sp.GetService<ILoggerFactory>()?.CreateLogger<AuditLogger>(), designVersion));
             services.AddScoped<AuditContext>();
             services.AddHostedService<AuditLogHostedService>();
             return services;

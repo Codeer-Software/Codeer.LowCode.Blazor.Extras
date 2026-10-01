@@ -19,6 +19,8 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AuditLog
     public class AuditProbeController : ControllerBase
     {
         public static int WriteCalls;
+        /// <summary>今読み込んでいるデザインの版 (テストがホストの代わりに持つ)。</summary>
+        public static string DesignVersion = "v1";
 
         readonly AuditContext _audit;
         public AuditProbeController(AuditContext audit) => _audit = audit;
@@ -29,6 +31,14 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AuditLog
             WriteCalls++;
             _audit.AddTarget("Customer", "7", "Update");
             return Ok("done");
+        }
+
+        //処理の途中でデザインが差し替わる
+        [HttpGet("swap"), Audit(AuditCategory.DataWrite)]
+        public IActionResult Swap()
+        {
+            DesignVersion = "v2";
+            return Ok();
         }
 
         [HttpGet("read"), Audit(AuditCategory.DataRead)]
@@ -87,7 +97,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AuditLog
             public CapturingAuditSink Sink { get; } = new();
             public HttpClient Client => _app!.GetTestClient();
 
-            public async Task StartAsync(AuditLogSettings settings, bool clearStartEvents = true)
+            public async Task StartAsync(AuditLogSettings settings, bool clearStartEvents = true, Func<HttpContext?, string>? designVersion = null)
             {
                 var builder = WebApplication.CreateBuilder();
                 builder.WebHost.UseTestServer();
@@ -95,7 +105,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AuditLog
                 builder.Services.AddAuthentication("Header").AddScheme<AuthenticationSchemeOptions, HeaderAuthHandler>("Header", null);
                 builder.Services.AddAuthorization();
                 builder.Services.AddControllers().AddApplicationPart(typeof(AuditProbeController).Assembly);
-                builder.Services.AddAuditLog(settings, [Sink]);
+                builder.Services.AddAuditLog(settings, [Sink], designVersion);
 
                 _app = builder.Build();
                 _app.UseExceptionHandler(e => e.Run(async ctx => { ctx.Response.StatusCode = 500; await ctx.Response.WriteAsync("error"); }));
@@ -148,6 +158,28 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AuditLog
             Assert.That(result.RequestId, Is.Not.Empty.And.EqualTo(attempt.RequestId), "2 行は RequestId で結ぶ");
             Assert.That(result.OccurredAtUtc, Is.GreaterThanOrEqualTo(attempt.OccurredAtUtc), "後段の時刻は操作が終わった時刻 (前段より前にならない)");
             Assert.That(result.Targets.Select(t => (t.Module, t.Id, t.Operation)).ToArray(), Is.EqualTo(new[] { ("Customer", "7", "Update") }));
+        }
+
+        [Test]
+        public async Task DesignVersionIsFixedPerRequest_AndTheSwitchIsRecorded()
+        {
+            //ホストの渡し方と同じ: リクエストの版は最初に聞かれた時に決めて持ち続け、リクエストの外は今読み込んでいる版
+            AuditProbeController.DesignVersion = "v1";
+            await using var app = new App();
+            await app.StartAsync(new AuditLogSettings { Enabled = true },
+                designVersion: http => http == null ? AuditProbeController.DesignVersion : (string)(http.Items["design"] ??= AuditProbeController.DesignVersion));
+
+            await GetAsync(app, "/api/probe/swap", user: "u1");
+            await GetAsync(app, "/api/probe/write", user: "u1");
+
+            Assert.That(app.Sink.Events.Select(e => (e.Action, e.Result, e.DesignVersion)).ToArray(), Is.EqualTo(new[]
+            {
+                ("AuditProbe.Swap", AuditResult.Attempt, "v1"),
+                ("Design.Loaded", AuditResult.Success, "v2"),
+                ("AuditProbe.Swap", AuditResult.Success, "v1"), //差し替えの前に受け付けたリクエストは最後まで元の版
+                ("AuditProbe.Write", AuditResult.Attempt, "v2"),
+                ("AuditProbe.Write", AuditResult.Success, "v2"),
+            }));
         }
 
         [Test]

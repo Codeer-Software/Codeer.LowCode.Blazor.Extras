@@ -42,7 +42,7 @@ namespace Extras.Server.Controllers
         {
             await LicenseService.UpdateAsync(Request);
             await _dataService.ModuleDataIO.CheckAppAuthorization();
-            return this.FileWithETag(DesignerService.GetDesignDataForFront(await _dataService.ModuleDataIO.GetCurrentUser()), "application/octet-stream");
+            return this.FileWithETag(_dataService.Design.ForFront(await _dataService.ModuleDataIO.GetCurrentUser()), "application/octet-stream");
         }
 
         [HttpPost("list"), Audit(AuditCategory.DataRead)]
@@ -74,14 +74,14 @@ namespace Extras.Server.Controllers
         public async Task<IActionResult> GetListFileAsync(SearchCondition? condition)
         {
             _audit.AddTarget(condition?.ModuleName ?? string.Empty, null, "Export");
-            return Ok(await BulkFileTransfer.GetListFileAsync(DesignerService.GetDesignData(), _dataService.ModuleDataIO, condition!));
+            return Ok(await BulkFileTransfer.GetListFileAsync(_dataService.Design.DesignData, _dataService.ModuleDataIO, condition!));
         }
 
         [HttpPost("submit_by_file"), Audit(AuditCategory.DataWrite)]
         public async Task<List<ModuleSubmitResult>> SubmitByFileAsync(string? moduleName)
         {
             _audit.AddTarget(moduleName ?? string.Empty, null, "Import");
-            var results = await BulkFileTransfer.SubmitByFileAsync(DesignerService.GetDesignData(), _dataService.ModuleDataIO, moduleName, Request.Body);
+            var results = await BulkFileTransfer.SubmitByFileAsync(_dataService.Design.DesignData, _dataService.ModuleDataIO, moduleName, Request.Body);
             var error = results.FirstOrDefault(e => !string.IsNullOrEmpty(e.ExceptionMessage))?.ExceptionMessage;
             if (error != null) _audit.Fail(error);
             return results;
@@ -93,7 +93,7 @@ namespace Extras.Server.Controllers
         public async Task<IActionResult> GetListFileByDataAsync(string? moduleName)
         {
             _audit.AddTarget(moduleName ?? string.Empty, null, "Export");
-            return Ok(await BulkFileTransfer.GetListFileByDataAsync(DesignerService.GetDesignData(), _dataService.ModuleDataIO, moduleName, Request.Body));
+            return Ok(await BulkFileTransfer.GetListFileByDataAsync(_dataService.Design.DesignData, _dataService.ModuleDataIO, moduleName, Request.Body));
         }
 
         //スクリプトの一括保存 (BulkFileTransferService.Submit(List<Module>)) 用。
@@ -107,7 +107,7 @@ namespace Extras.Server.Controllers
         [HttpPost("parse_file")]
         public async Task<IActionResult> ParseFileAsync(string? moduleName)
             => Content(Codeer.LowCode.Blazor.Json.JsonConverterEx.SerializeObject(
-                await BulkFileTransfer.ParseFileAsync(DesignerService.GetDesignData(), _dataService.ModuleDataIO, moduleName, Request.Body)),
+                await BulkFileTransfer.ParseFileAsync(_dataService.Design.DesignData, _dataService.ModuleDataIO, moduleName, Request.Body)),
                 "application/json");
 
         [HttpGet("resource")]

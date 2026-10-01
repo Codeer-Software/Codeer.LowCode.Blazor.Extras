@@ -112,9 +112,13 @@ builder.Services.Configure<RequestLocalizationOptions>(options =>
     }));
 });
 
+//リクエストが使うデザインは最初に参照した時点の版に固定する (途中で App.zip が差し替わっても最後まで同じ版で動く)
+builder.Services.AddScoped<RequestDesign>();
 builder.Services.AddScoped<DataService>();
-//監査ログ: WebAPI ごとに誰が・どこから・何を・結果を記録する (appsettings の AuditLog で有効化)。出力先は Services/AuditSinkTable
-builder.Services.AddAuditLog(SystemConfig.Instance.AuditLog, AuditSinkTable.Create());
+//監査ログ: WebAPI ごとに誰が・どこから・何を・結果を記録する (appsettings の AuditLog で有効化)。出力先は Services/AuditSinkTable。
+//デザインの版 (App.zip の SHA-256) は、リクエストの中ではそのリクエストの版、外では今読み込んでいる版
+builder.Services.AddAuditLog(SystemConfig.Instance.AuditLog, AuditSinkTable.Create(),
+    http => http?.RequestServices.GetRequiredService<RequestDesign>().Version ?? DesignerService.GetCurrent().Version);
 
 //AIChatField の Agent は AI/AIChatAgentTable.cs の対応表 (Agent 名 → Agent) で決める。DI 登録は不要 (AIChatController が AIChatAgentTable.Service を使う)
 
