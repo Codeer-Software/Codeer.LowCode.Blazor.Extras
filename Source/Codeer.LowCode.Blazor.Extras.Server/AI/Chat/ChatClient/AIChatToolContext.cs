@@ -25,7 +25,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat.ChatClient
 
         public CancellationToken CancellationToken { get; }
 
-        /// <summary>監査ログ (ツール呼び出しの内容を残す)。未設定なら null。</summary>
+        /// <summary>実行ログ (ツール呼び出しの内容を ILogger に残す。監査ログ (AuditLog) ではない)。未設定なら null。</summary>
         public ILogger? Logger { get; }
 
         /// <summary>このターンの間だけ生きる置き場。ツールが作った成果物 (グラフ等) を返事の後処理へ渡すのに使う。</summary>

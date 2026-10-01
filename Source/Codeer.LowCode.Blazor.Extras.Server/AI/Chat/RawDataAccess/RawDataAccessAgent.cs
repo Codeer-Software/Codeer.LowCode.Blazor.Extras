@@ -38,7 +38,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat.RawDataAccess
         /// <param name="design">デザイン定義の取り方 (ホットリロードで変わるので都度呼ぶ)。null なら設計参照ツールを付けない</param>
         /// <param name="documents">補足文書の取り方。引数は AIChatField のデザインの DocumentFolder (Resources からの相対パス)。null なら文書を渡さない</param>
         /// <param name="options">データソース名・上限値・プロンプト・履歴の設定</param>
-        /// <param name="loggerFactory">実行した SQL の監査ログとモデル呼び出しのログの出力先。null ならログなし</param>
+        /// <param name="loggerFactory">実行した SQL の実行ログとモデル呼び出しのログの出力先 (ILogger。監査ログ (AuditLog) ではない)。null ならログなし</param>
         /// <param name="semanticSearch">意味検索 (SemanticSearchField のサーバー側入口。保存時の索引付けに使っているものと同じ)。渡すと、設計に SemanticSearchField があり埋め込みプロバイダが設定されているとき意味検索ツール (search_records / {embed:…}) が付く。null なら意味検索なし</param>
         public RawDataAccessAgent(Func<IChatClient> clientFactory, Func<IDbAccessor> dbAccessorFactory,
             Func<DesignData?>? design, Func<string, IReadOnlyList<AIChatDocument>>? documents,

@@ -1,6 +1,5 @@
 using Codeer.LowCode.Blazor.Extras.AIChat;
 using Codeer.LowCode.Blazor.Extras.Server.AI.Chat;
-using Codeer.LowCode.Blazor.Extras.Server.AuditLog;
 using Extras.Server.AI;
 using Extras.Server.Services;
 using Microsoft.AspNetCore.Mvc;
@@ -32,8 +31,9 @@ namespace Extras.Server.Controllers
         //匿名同士は共有になるので、テンプレートに持っていくときは [Authorize] を付けて匿名で入れないようにする
         string Owner => User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.Identity?.Name ?? string.Empty;
 
-        //AI はユーザーの権限で DB を読む = データ参照として記録する
-        [HttpPost, Audit(AuditCategory.DataRead)]
+        //監査ログ: RawDataAccessAgent の読み出し (AI 用 DB ユーザーの生 SQL) は監査ログの対象外なので分類を付けない (失敗・拒否だけ Other で残る)。
+        //監査基準が要る環境では ModuleDataIO 経由で読む Agent にする (docs/AuditLog.md「監査の対象外」)
+        [HttpPost]
         public async Task<ActionResult<AIChatSendResponse>> Send([FromBody] AIChatSendRequest request)
             => Accepted(new AIChatSendResponse { RequestId = await _aiChat.StartAsync(Owner, request, _dataService.ModuleDataIO) });
 

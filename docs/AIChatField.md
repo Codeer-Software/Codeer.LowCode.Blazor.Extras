@@ -80,7 +80,7 @@ DELETE {EndPoint}/{requestId}   // 中断
 |---|---|
 | `IAIChatAgent` | 返事を作る側のインターフェース。`ReplyAsync(request, progress, cancellationToken)` で `AIChatReply` (テキスト / Markdown / HTML / Auto) を返す。途中経過は `IAIChatProgress` に報告。`request.AgentName` にデザインの Agent 名が入る |
 | `AIChatService` | AIChat のサーバー側入口 (プロセス内のジョブ置き場)。コンストラクタで対応表 (`Func<string, IAIChatAgent?>`。Agent が 1 つなら `IAIChatAgent` を直接) を受け、送信で Agent をバックグラウンド実行し、状態をポーリングに返す。ジョブの保持時間・最長実行時間は `FinishedRetention` / `MaxRunning` プロパティ。`StartAsync(owner, request, moduleDataIO)` で送信リクエストと ModuleDataIO を渡す (リクエストの ModuleName / FieldName の AIChatField が今のユーザーに見えるときだけ受け付け、Agent 名と文書フォルダはそのデザインから取る。見えなければ LowCodeException)。対応表に無い名前は error になる。プロセスに 1 つ (アプリの静的プロパティ) |
-| `RawDataAccessAgent` (+ `RawDataAccessOptions`) | アプリの設計を読み、DB を直接読んで集計・グラフで答える Agent (会話の基盤は内部の会話エンジン: モデル呼び出し、会話履歴、逐次表示、Markdown → HTML。履歴の鍵は「ログイン ID + 会話 ID」(認証の無いアプリでは会話 ID だけ) で保持期限つき。トークンの膨張は `RawDataAccessOptions` の `KeepToolResultsForTurns` / `MaxHistoryTurns` / `MaxHistoryCharacters` の 3 段で抑える)。内部のツール: `list_modules` / `describe_module` (モジュール定義: フィールドの表示名・型・DB 列、候補値 (コード=名称)、リンク (結合相手とキー)、論理削除、スクリプト)、`read_document` (補足文書)、画面 URL (一覧 `/{フレーム}/{セグメント}`・詳細 `/{フレーム}/{セグメント}/{Id}` をページフレームのリンクから組み、行を挙げる返事に「開く」リンクを付ける)、`get_schema` (引数なしなら表名の目次だけ、`tables` を指定した表の列だけを 1 表 1 行で。方言はシステムプロンプトに常時入っていて、設計で表と列が分かるときは呼ばない指示にしている = トークン節約)、`execute_sql` (指定データソースで読み取り専用 SELECT を 1 文。行数・文字数・時間の上限、監査ログ)、`render_chart` (棒 / 折れ線 / 円。サーバーで SVG を作るので数字が狂わない)、`search_records` ([SemanticSearchField](SemanticSearchField.md) を置いたモジュールの行を内容の意味で探す。コンストラクタの `embeddingProvider` に埋め込みプロバイダ (IEmbeddingProvider) を渡したときだけ付く)。依存 (IChatClient と IDbAccessor の作り方、デザイン定義、文書) はコンストラクタ、設定 (`RawDataAccessOptions`: データソース名の一覧と上限) は別 |
+| `RawDataAccessAgent` (+ `RawDataAccessOptions`) | アプリの設計を読み、DB を直接読んで集計・グラフで答える Agent (会話の基盤は内部の会話エンジン: モデル呼び出し、会話履歴、逐次表示、Markdown → HTML。履歴の鍵は「ログイン ID + 会話 ID」(認証の無いアプリでは会話 ID だけ) で保持期限つき。トークンの膨張は `RawDataAccessOptions` の `KeepToolResultsForTurns` / `MaxHistoryTurns` / `MaxHistoryCharacters` の 3 段で抑える)。内部のツール: `list_modules` / `describe_module` (モジュール定義: フィールドの表示名・型・DB 列、候補値 (コード=名称)、リンク (結合相手とキー)、論理削除、スクリプト)、`read_document` (補足文書)、画面 URL (一覧 `/{フレーム}/{セグメント}`・詳細 `/{フレーム}/{セグメント}/{Id}` をページフレームのリンクから組み、行を挙げる返事に「開く」リンクを付ける)、`get_schema` (引数なしなら表名の目次だけ、`tables` を指定した表の列だけを 1 表 1 行で。方言はシステムプロンプトに常時入っていて、設計で表と列が分かるときは呼ばない指示にしている = トークン節約)、`execute_sql` (指定データソースで読み取り専用 SELECT を 1 文。行数・文字数・時間の上限、実行ログ)、`render_chart` (棒 / 折れ線 / 円。サーバーで SVG を作るので数字が狂わない)、`search_records` ([SemanticSearchField](SemanticSearchField.md) を置いたモジュールの行を内容の意味で探す。コンストラクタの `embeddingProvider` に埋め込みプロバイダ (IEmbeddingProvider) を渡したときだけ付く)。依存 (IChatClient と IDbAccessor の作り方、デザイン定義、文書) はコンストラクタ、設定 (`RawDataAccessOptions`: データソース名の一覧と上限) は別 |
 | `AIChatDocument` | Agent に渡す補足文書 (名前と本文)。出所はホストが決める。標準はデザインプロジェクトの `Resources/{DocumentFolder}/*.md` (フォルダはフィールドの `DocumentFolder`) |
 | (内部) HTML 化 | 返事は `AIChatService` の中で HTML に揃えられる。Markdown は [Markdig](https://github.com/xoofx/markdig) (表・タスクリスト・自動リンク、単独改行は `<br>`)、テキストはエスケープ、HTML は素通し (リンクに `target="_blank"` を付けるだけ)。Agent 側で HTML 化のコードを書く必要はない |
 
@@ -165,7 +165,9 @@ AIChatField.EndPoint = "/api/ai_chat";
 - SQLite はユーザーが無いので接続文字列の `Mode=ReadOnly` で読み取り専用にする (表・列の限定はできない)
 - ログインユーザーごとの行制限 (モジュールの UserRead / DataRead 条件) は効かない。「誰がこのチャットを使えるか」は、フィールドを置くページやモジュールの UserReadCondition (と PermissionField) で絞る。サーバーは送信のたびに、リクエストの `ModuleName` / `FieldName` の AIChatField が今のユーザーに見えることを確かめてから受け付け、Agent 名と文書フォルダもそのデザインから取る ([サーバー API の権限チェック](ServerApiAuthorization.md))
 
-`execute_sql` 側の SELECT 判定 (1 文だけ・INSERT/UPDATE/DELETE 等の語を含まない) は補助で、書き込み拒否の本体は DB ユーザーの権限です。行数 (`MaxRows` 既定 200)、文字数 (`MaxResultChars` 既定 20000)、タイムアウト (`CommandTimeoutSeconds` 既定 30) の上限と、実行した SQL のログ (`RawDataAccessAgent` のコンストラクタの `ILoggerFactory` を設定したとき) はツール側が担います。
+`execute_sql` 側の SELECT 判定 (1 文だけ・INSERT/UPDATE/DELETE 等の語を含まない) は補助で、書き込み拒否の本体は DB ユーザーの権限です。行数 (`MaxRows` 既定 200)、文字数 (`MaxResultChars` 既定 20000)、タイムアウト (`CommandTimeoutSeconds` 既定 30) の上限と、実行した SQL のログ (`RawDataAccessAgent` のコンストラクタの `ILoggerFactory` を設定したとき。ILogger の Information) はツール側が担います。
+
+**監査ログ ([AuditLog](AuditLog.md)) との関係**: `RawDataAccessAgent` の読み出しは監査ログの対象外です。行制限が効かないことに加えて、SQL は送信とは別のジョブで実行されるので、読んだ行をモジュール・Id で監査ログに残せません (残るのは送信の失敗・拒否だけ)。上場企業の内部統制のように参照の証跡まで求められる環境では `RawDataAccessAgent` を使わず、実行ユーザーの `ModuleDataIO` 経由で行を読む Agent (`IAIChatAgent` の実装) にしてください。その形なら行制限と列の読取権限が効き、読んだ行を監査ログに残せます。`RawDataAccessAgent` は、行単位の統制と監査証跡を要しない分析用途向けです。
 
 **権限管理はライブラリではなく DB 側の設定と接続文字列で行ってください。** `RawDataAccessAgent` は「渡された接続で読めるものは読む」だけで、表や列の許可・不許可を判断する仕組みを持ちません。AI 用の DB ユーザー (またはビュー) を用意し、そのユーザーで接続するデータソースを appsettings に書く、が正式な手順です。
 
@@ -187,7 +189,7 @@ AIChatField.EndPoint = "/api/ai_chat";
 2. **ビューをかませる。** AI 用に個人情報の列を落とした (またはマスクした) ビューを作り、AI ユーザーにはビューだけを見せる。運用上いちばん説明しやすい方法です
 3. **送る先を変える。** どうしても外に出せない場合は、`IChatClient` を閉域 (Private Endpoint) の Azure OpenAI やローカルのモデル (Ollama 等) に差し替える。ライブラリは `IChatClient` 抽象しか知らないので Agent 側の変更は不要です
 
-行数や文字数の上限はトークンの節約のためのもので、漏えい防止の手段ではありません。プロンプトで「個人情報を列挙しない」と指示するのも振る舞いを整える程度の効果です。DB から読める時点でデータは送られているので、対策は必ず DB 側で行ってください。実行した SQL は監査ログに全文残るので、「何が送られたか」は後から追えます。
+行数や文字数の上限はトークンの節約のためのもので、漏えい防止の手段ではありません。プロンプトで「個人情報を列挙しない」と指示するのも振る舞いを整える程度の効果です。DB から読める時点でデータは送られているので、対策は必ず DB 側で行ってください。実行した SQL は実行ログ (ILogger) に全文残るので、「何が送られたか」は後から追えます (監査ログ (AuditLog) には残りません)。
 
 ### 設計と補足文書を AI に渡す
 
