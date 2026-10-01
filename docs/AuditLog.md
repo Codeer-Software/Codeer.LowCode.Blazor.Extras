@@ -89,7 +89,7 @@ create index "ix_audit_log_occurred_at" on "audit_log" ("occurred_at_utc");
 | `Action` | 操作の名前。WebAPI は "Controller.Action" (例 `ModuleData.Submit`、`Account.Login`) |
 | `Result` | `Attempt` (操作前の試行) / `Success` / `Failure` / `Denied` / `Continued` (対象の続きの行) |
 | `UserId` | 操作したユーザーの Id (ユーザーモジュールの行の Id)。未認証なら空。ログインでは **Cookie を発行した (成立した) ときだけ** そのユーザー。パスワードは合ったが二要素認証のコード待ち・認証アプリの登録待ちの行は HTTP としては成功なので `Success` だが `user_id` は空 (`Detail` の `TwoFactor=...` と `LoginName=...`)。ログインの成立は「`Success` で `user_id` がある行」で数える |
-| `ClientIp` / `UserAgent` | 接続元。リバースプロキシ越しの IP は ASP.NET Core の Forwarded Headers ミドルウェアで解決したものが入る |
+| `ClientIp` / `UserAgent` | 接続元。`ClientIp` は ASP.NET Core が見た接続元 (`RemoteIpAddress`)。Azure App Service は基盤が Forwarded Headers を解決するので利用者の IP が入るが、IIS (ARR) や nginx 等のリバースプロキシを自前で置いた構成では**プロキシの IP が入る**。その構成では `Program.cs` で `UseForwardedHeaders` (`KnownProxies` にプロキシを登録) を `UseAuditLog` より前に足す。テンプレートには入れていない (プロキシの無い構成で有効にすると `X-Forwarded-For` の偽装を信用してしまうため) |
 | `RequestId` | ASP.NET Core の TraceIdentifier。アプリのログ (ILogger) と突き合わせる鍵 |
 | `Host` | 発生したサーバー名 (複数インスタンス運用での発生元) |
 | `DesignVersion` | その操作が使ったデザインの版 (App.zip の SHA-256。小文字の 16 進 64 桁)。試行の行と結果の行は同じ値 |
