@@ -6,7 +6,7 @@
     <UseWPF>true</UseWPF>
     <ImplicitUsings>enable</ImplicitUsings>
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
-	  <Version>0.17.1</Version>
+	  <Version>0.17.2</Version>
     <Authors>Codeer</Authors>
     <Company>Codeer</Company>
     <Description>Designer support for Codeer.LowCode.Blazor.Extras. Provides property controls and initializers for the LowCode Designer application.</Description>
@@ -17,7 +17,7 @@
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
     <PackageReadmeFile>README.md</PackageReadmeFile>
-    <PackageReleaseNotes>Setup (approval / edit history / audit log): the user display-name field defaults to the login account contract's DisplayName when the user module has no Name field (Empty template).</PackageReleaseNotes>
+    <PackageReleaseNotes>Claude Code docs: how to answer audit questions (audit log and the RawDataAccess AI chat agent).</PackageReleaseNotes>
     <PackageId>Codeer.LowCode.Blazor.Extras.Designer</PackageId>
   </PropertyGroup>
 

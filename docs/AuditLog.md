@@ -88,7 +88,7 @@ create index "ix_audit_log_occurred_at" on "audit_log" ("occurred_at_utc");
 - 監査ログの DB ユーザーは INSERT (と閲覧用の SELECT) だけにする (アプリは監査ログを消さない。古い行の整理は DB 管理者の運用)
 - 閲覧モジュールの UserRead 条件で閲覧者を監査役に絞る
 - 送信履歴フォルダを指定し、App.zip を監査ログを残す期間と同じだけ保管する
-- AI チャットは「誰が・どの画面で・どの Agent に聞いたか」までが残り、Agent が読んだ行は残らない ([監査の対象外](#監査の対象外))。参照の証跡まで要るなら、実行ユーザーの `ModuleDataIO` 経由で行を読む Agent にする
+- AI チャットは「誰が・どの画面で・どの Agent に聞いたか」までが残り、Agent が読んだ行は残らない ([監査の対象外](#監査の対象外))。AI が読める範囲は AI 用 DB ユーザー (個人情報を除いたビュー) で固定し、利用の事実は送信の行で示す ([AIChatField](AIChatField.md) の「監査基準への対応」)
 
 暗号学的な改ざん検知 (ハッシュチェーン) は J-SOX / ISMS では求められないため持ちません。PCI DSS のようにログの変更検知を明示的に要求する規格は対象外です。
 
@@ -138,8 +138,9 @@ create index "ix_audit_log_occurred_at" on "audit_log" ("occurred_at_utc");
   監査ログに残るのは送信 (`AIChat.Send`。`DataRead`) の「誰が・どの画面の AIChatField を・どの Agent で使ったか」までで、発言の内容と読んだ行は残りません。
   実行した SQL は `RawDataAccessAgent` に `ILoggerFactory` を渡したときにアプリの実行ログ (ILogger) へ出ますが、
   これは調査用のログで監査ログではありません ([AIChatField](AIChatField.md) の「RawDataAccessAgent と DB の権限」)。
-  監査が要る環境で AI チャットを使うなら、実行ユーザーの `ModuleDataIO` 経由で行を読む Agent (`IAIChatAgent` の実装) にします。
-  その形なら行制限と列の読取権限が効き、読んだ行を `AuditEvent` の対象として `AuditLogger` に書けます
+  監査が要る環境では、AI 用 DB ユーザーに個人情報を除いたビューだけを許可して「行単位の説明責任があるデータに AI が届かない」構成にし、
+  範囲 (DB ユーザーの権限) と利用の事実 (送信の行) で説明します ([AIChatField](AIChatField.md) の「監査基準への対応」)。
+  ユーザーごとに見える行が違うデータは DB ユーザーでは表現できないので、AI の範囲に入れません
 - **意味検索の再索引 (`SemanticSearch.Start`) が書き直した行**。管理操作として `Admin` の行は残りますが、ジョブが書き直す行 (索引用の書き込み専用列だけ) は記録しません
 
 ### 二段の記録 (試行と結果)
