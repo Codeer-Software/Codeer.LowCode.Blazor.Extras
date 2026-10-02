@@ -3,6 +3,7 @@ using Codeer.LowCode.Blazor.Extras.Designs;
 using Codeer.LowCode.Blazor.Extras.Server.Properties;
 using System.Globalization;
 using Codeer.LowCode.Blazor.Extras.AIChat;
+using Codeer.LowCode.Blazor.Extras.Server.AuditLog;
 using System.Collections.Concurrent;
 
 namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat
@@ -43,6 +44,14 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat
         public async Task<string> StartAsync(string ownerKey, AIChatSendRequest request, ModuleDataIO moduleDataIO)
         {
             var design = await FieldApiAuthorization.CheckAsync<AIChatFieldDesign>(moduleDataIO, request.ModuleName, request.FieldName, Resources.AIChatField_NotFound);
+            //監査ログ: 誰が・どの画面の AI チャットを・どの Agent で使ったかを送信の行に残す (発言と、Agent が読んだ行は残さない。
+            //読み出しはジョブの中 = リクエストの外で、ここでは分からない)。Agent 名は複数の Agent を使い分ける構成で「どれに聞いたか」の鍵
+            var audit = AuditContext.Current;
+            if (audit != null)
+            {
+                audit.AddTarget(request.ModuleName, null, $"AIChat:{request.FieldName}");
+                audit.AddNote("Agent", string.IsNullOrEmpty(design.Agent) ? "(default)" : design.Agent);
+            }
             return Start(ownerKey, request.ConversationId, request.Message, design.Agent, design.DocumentFolder, request.Transcript);
         }
 

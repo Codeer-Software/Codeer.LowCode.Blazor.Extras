@@ -6,6 +6,7 @@ using Codeer.LowCode.Blazor.DesignLogic;
 using Codeer.LowCode.Blazor.Extras.AIChat;
 using Codeer.LowCode.Blazor.Extras.Designs;
 using Codeer.LowCode.Blazor.Extras.Server.AI.Chat;
+using Codeer.LowCode.Blazor.Extras.Server.AuditLog;
 using Codeer.LowCode.Blazor.Extras.Server.FileManagement;
 using Codeer.LowCode.Blazor.Repository;
 using Codeer.LowCode.Blazor.Repository.Design;
@@ -163,6 +164,47 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
             Assert.That(request.UserName, Is.EqualTo("owner2"));
             Assert.That(request.ConversationId, Is.EqualTo("conv1"));
             Assert.That(request.Message, Is.EqualTo("こんにちは"));
+        }
+
+        [Test]
+        public async Task 送信は監査レコードに画面とAgent名を残す()
+        {
+            //誰が・どの画面の AIChatField を・どの Agent で使ったか (発言と読んだ行は残さない)。Agent 名はデザインの値 (クライアントの値ではない)
+            var (store, _) = CreateStore();
+            using var __ = store;
+            var audit = new AuditContext();
+            AuditContext.Current = audit;
+            try
+            {
+                await WaitDoneAsync(store, "owner2", await store.StartAsync("owner2", CreateRequest(), CreateIO("2")));
+            }
+            finally
+            {
+                AuditContext.Current = null;
+            }
+            var target = audit.Event.Targets.Single();
+            Assert.That((target.Module, target.Id, target.Operation), Is.EqualTo(("Item", (string?)null, "AIChat:Chat")));
+            Assert.That(audit.ComposeDetail(), Is.EqualTo("Agent=Main"));
+            Assert.That(audit.ComposeDetail(), Does.Not.Contain("こんにちは"));
+        }
+
+        [Test]
+        public async Task 既定Agentの送信はAgent名をdefaultとして残す()
+        {
+            var (store, _) = CreateStore();
+            using var __ = store;
+            var audit = new AuditContext();
+            AuditContext.Current = audit;
+            try
+            {
+                await WaitDoneAsync(store, "owner1", await store.StartAsync("owner1", CreateRequest(moduleName: "Memo"), CreateIO("1")));
+            }
+            finally
+            {
+                AuditContext.Current = null;
+            }
+            Assert.That(audit.Event.Targets.Single().Operation, Is.EqualTo("AIChat:Chat"));
+            Assert.That(audit.ComposeDetail(), Is.EqualTo("Agent=(default)"));
         }
 
         [Test]

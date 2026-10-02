@@ -96,7 +96,7 @@ create index "ix_audit_log_occurred_at" on "audit_log" ("occurred_at_utc");
 - 監査ログの DB ユーザーは INSERT (と閲覧用の SELECT) だけにし、`RetentionDays` を 0 にして掃除は DB 管理者のジョブで行う
 - 閲覧モジュールの UserRead 条件で閲覧者を監査役に絞る
 - 送信履歴フォルダを指定し、App.zip を監査ログの保持期間と同じだけ保管する
-- `RawDataAccessAgent` (AI チャット) のように [監査の対象外](#監査の対象外) の機能は使わない
+- AI チャットは「誰が・どの画面で・どの Agent に聞いたか」までが残り、Agent が読んだ行は残らない ([監査の対象外](#監査の対象外))。参照の証跡まで要るなら、実行ユーザーの `ModuleDataIO` 経由で行を読む Agent にする
 
 暗号学的な改ざん検知 (ハッシュチェーン) は J-SOX / ISMS では求められないため持ちません。PCI DSS のようにログの変更検知を明示的に要求する規格は対象外です。
 
@@ -125,12 +125,12 @@ create index "ix_audit_log_occurred_at" on "audit_log" ("occurred_at_utc");
 | 分類 | 記録される操作 (テンプレートの結線) |
 |---|---|
 | `Authentication` | ログイン (ID/パスワード・外部 IdP への遷移と IdP からの戻り・モバイルのチケット交換)、ログアウト、認証アプリの解除。ログイン失敗と二要素認証のコード不一致は `Denied`。成立した行だけ `user_id` が入る (二要素待ち・IdP への遷移は `Success` でも空) |
-| `DataRead` | 一覧・詳細の取得 (返した行ごとに `Read`)、メールのプレビュー (一斉送信のプレビューは描いた宛先の行ごとに `Read`。送らずに宛先の値を見る操作なので参照として残す) |
+| `DataRead` | 一覧・詳細の取得 (返した行ごとに `Read`)、メールのプレビュー (一斉送信のプレビューは描いた宛先の行ごとに `Read`。送らずに宛先の値を見る操作なので参照として残す)、AI チャットの送信 (`AIChat.Send`。対象は AIChatField のモジュールと `AIChat:フィールド名`、`Detail` に `Agent=Agent 名`。発言と Agent が読んだ行は残さない) |
 | `DataWrite` | 保存・一括取込・スクリプトの一括保存 (行ごとに Add / Update / Delete と件数)、アップロード、承認フローの操作 |
 | `Export` | 一括ファイル出力 (出した行ごとに Export と件数)、Excel → PDF、添付ファイルのダウンロード (レコードとフィールド名)、メール送信・一斉送信 (送信元のレコード・件数・一斉送信は宛先の行)。画面に表示するだけの参照 (DataRead) と違い、ファイルとして持ち出す操作は既定で記録される |
 | `Admin` | 意味検索の再索引 |
 | `System` | アプリの起動 (有効な設定を Detail に残す)・停止、監査ログの掃除 (消した件数)、デザインの版の切替 (`Design.Loaded`)、初期管理者の作成 (`Account.InitialUserCreated`。ユーザーが 0 件のときテンプレートが作る admin。作った行の Id が対象) |
-| `Other` | `[Audit]` を付けていない API (設計の取得、リソース、TOTP 状態、AI チャットの送信など)。失敗と拒否だけが残る |
+| `Other` | `[Audit]` を付けていない API (設計の取得、リソース、TOTP 状態、AI チャットのポーリング・中断など)。失敗と拒否だけが残る |
 
 外部 IdP (Entra / Google / Cognito / OIDC) のログインは、IdP からの戻りを `Account.ExternalLoginCallback` として記録します。成立なら `Success` と解決したユーザー、
 未登録のユーザー・クレームの不備・IdP 側の失敗は `Denied` で、`Detail` に `Provider=...; Error=...; LoginName=...` が入ります。
@@ -141,9 +141,10 @@ create index "ix_audit_log_occurred_at" on "audit_log" ("occurred_at_utc");
 
 次の操作は監査ログに残りません。上場企業の内部統制のように参照の証跡まで求められる環境では、これらを使わない構成にしてください。
 
-- **AI チャットの `RawDataAccessAgent`** (`execute_sql` / `search_records` / `{embed:…}`)。AI が組んだ SQL を AI 用 DB ユーザーの接続で直接実行するので、
-  ログインユーザーごとの行制限 (UserRead / DataRead 条件) が効かず、読んだ行をモジュール・Id で記録することもできません。実行は送信とは別のジョブで行われるため、
-  監査ログに残るのは `AIChat.Send` の失敗・拒否 (`Other`) だけです。実行した SQL は `RawDataAccessAgent` に `ILoggerFactory` を渡したときにアプリの実行ログ (ILogger) へ出ますが、
+- **AI チャットの `RawDataAccessAgent` が読んだ行** (`execute_sql` / `search_records` / `{embed:…}`)。AI が組んだ SQL を AI 用 DB ユーザーの接続で直接実行するので、
+  ログインユーザーごとの行制限 (UserRead / DataRead 条件) が効かず、読んだ行をモジュール・Id で記録することもできません。実行は送信とは別のジョブで行われます。
+  監査ログに残るのは送信 (`AIChat.Send`。`DataRead`) の「誰が・どの画面の AIChatField を・どの Agent で使ったか」までで、発言の内容と読んだ行は残りません。
+  実行した SQL は `RawDataAccessAgent` に `ILoggerFactory` を渡したときにアプリの実行ログ (ILogger) へ出ますが、
   これは調査用のログで監査ログではありません ([AIChatField](AIChatField.md) の「RawDataAccessAgent と DB の権限」)。
   監査が要る環境で AI チャットを使うなら、実行ユーザーの `ModuleDataIO` 経由で行を読む Agent (`IAIChatAgent` の実装) にします。
   その形なら行制限と列の読取権限が効き、読んだ行を `AuditEvent` の対象として `AuditLogger` に書けます

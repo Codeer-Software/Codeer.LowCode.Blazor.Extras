@@ -167,7 +167,7 @@ AIChatField.EndPoint = "/api/ai_chat";
 
 `execute_sql` 側の SELECT 判定 (1 文だけ・INSERT/UPDATE/DELETE 等の語を含まない) は補助で、書き込み拒否の本体は DB ユーザーの権限です。行数 (`MaxRows` 既定 200)、文字数 (`MaxResultChars` 既定 20000)、タイムアウト (`CommandTimeoutSeconds` 既定 30) の上限と、実行した SQL のログ (`RawDataAccessAgent` のコンストラクタの `ILoggerFactory` を設定したとき。ILogger の Information) はツール側が担います。
 
-**監査ログ ([AuditLog](AuditLog.md)) との関係**: `RawDataAccessAgent` の読み出しは監査ログの対象外です。行制限が効かないことに加えて、SQL は送信とは別のジョブで実行されるので、読んだ行をモジュール・Id で監査ログに残せません (残るのは送信の失敗・拒否だけ)。上場企業の内部統制のように参照の証跡まで求められる環境では `RawDataAccessAgent` を使わず、実行ユーザーの `ModuleDataIO` 経由で行を読む Agent (`IAIChatAgent` の実装) にしてください。その形なら行制限と列の読取権限が効き、読んだ行を監査ログに残せます。`RawDataAccessAgent` は、行単位の統制と監査証跡を要しない分析用途向けです。
+**監査ログ ([AuditLog](AuditLog.md)) との関係**: 送信 (`AIChat.Send`) は `DataRead` として「誰が・どの画面の AIChatField を・どの Agent で使ったか」が残ります (`Targets` にモジュールと `AIChat:フィールド名`、`Detail` に `Agent=`。発言は残しません)。`RawDataAccessAgent` が読んだ行は監査ログの対象外です。行制限が効かないことに加えて、SQL は送信とは別のジョブで実行されるので、読んだ行をモジュール・Id で監査ログに残せません。上場企業の内部統制のように参照の証跡まで求められる環境では `RawDataAccessAgent` を使わず、実行ユーザーの `ModuleDataIO` 経由で行を読む Agent (`IAIChatAgent` の実装) にしてください。その形なら行制限と列の読取権限が効き、読んだ行を監査ログに残せます。`RawDataAccessAgent` は、行単位の統制と監査証跡を要しない分析用途向けです。
 
 **権限管理はライブラリではなく DB 側の設定と接続文字列で行ってください。** `RawDataAccessAgent` は「渡された接続で読めるものは読む」だけで、表や列の許可・不許可を判断する仕組みを持ちません。AI 用の DB ユーザー (またはビュー) を用意し、そのユーザーで接続するデータソースを appsettings に書く、が正式な手順です。
 
@@ -189,7 +189,7 @@ AIChatField.EndPoint = "/api/ai_chat";
 2. **ビューをかませる。** AI 用に個人情報の列を落とした (またはマスクした) ビューを作り、AI ユーザーにはビューだけを見せる。運用上いちばん説明しやすい方法です
 3. **送る先を変える。** どうしても外に出せない場合は、`IChatClient` を閉域 (Private Endpoint) の Azure OpenAI やローカルのモデル (Ollama 等) に差し替える。ライブラリは `IChatClient` 抽象しか知らないので Agent 側の変更は不要です
 
-行数や文字数の上限はトークンの節約のためのもので、漏えい防止の手段ではありません。プロンプトで「個人情報を列挙しない」と指示するのも振る舞いを整える程度の効果です。DB から読める時点でデータは送られているので、対策は必ず DB 側で行ってください。実行した SQL は実行ログ (ILogger) に全文残るので、「何が送られたか」は後から追えます (監査ログ (AuditLog) には残りません)。
+行数や文字数の上限はトークンの節約のためのもので、漏えい防止の手段ではありません。プロンプトで「個人情報を列挙しない」と指示するのも振る舞いを整える程度の効果です。DB から読める時点でデータは送られているので、対策は必ず DB 側で行ってください。実行した SQL は実行ログ (ILogger) に全文残るので、「何が送られたか」は後から追えます (監査ログ (AuditLog) に残るのは「誰がどの Agent を使ったか」までで、SQL と読んだ行は残りません)。
 
 ### 設計と補足文書を AI に渡す
 
