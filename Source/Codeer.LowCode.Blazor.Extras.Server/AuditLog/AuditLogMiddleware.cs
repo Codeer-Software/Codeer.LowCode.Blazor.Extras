@@ -1,3 +1,4 @@
+using Codeer.LowCode.Blazor;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Diagnostics;
@@ -16,7 +17,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AuditLog
     /// - 二段で書く: 操作の前に試行の行 (Result = Attempt。<see cref="AuditLogSettings.AttemptCategories"/> の分類だけ)、
     ///   操作の後に結果の行。2 行は RequestId で結ぶ。前段が書けなければ (Strict) 操作を実行しない = 記録の無い操作は起きない
     /// - デザインの版 (<see cref="AuditEvent.DesignVersion"/>) は前段の前に決め、2 行とも同じ値を書く
-    /// - 結果: 例外 = Failure、401/403 = Denied、その他 4xx/5xx = Failure。コントローラが <see cref="AuditContext"/> で上書きできる
+    /// - 結果: 例外 = Failure (本体の権限拒否 LowCodeAccessDeniedException は Denied)、401/403 = Denied、その他 4xx/5xx = Failure。コントローラが <see cref="AuditContext"/> で上書きできる
     /// - 後段の書き込みはレスポンスの先頭が出る前 (OnStarting)。Strict で書けなければレスポンスは 500 になる
     ///   (操作自体はコミット済みのことがある = 前段の行だけが残り、結果は ILogger の Critical にある)
     /// </summary>
@@ -72,7 +73,8 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AuditLog
                 exception ??= context.Features.Get<IExceptionHandlerFeature>()?.Error;
                 if (exception != null)
                 {
-                    e.Result = AuditResult.Failure;
+                    //本体の権限拒否 (LowCodeAccessDeniedException) は 401/403 と同じ Denied。それ以外の例外は Failure
+                    e.Result = exception is LowCodeAccessDeniedException ? AuditResult.Denied : AuditResult.Failure;
                     if (string.IsNullOrEmpty(e.Detail)) e.Detail = exception.Message;
                 }
                 else if (e.Result == AuditResult.Success)

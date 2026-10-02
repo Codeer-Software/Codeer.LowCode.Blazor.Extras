@@ -1,3 +1,4 @@
+using Codeer.LowCode.Blazor;
 using Codeer.LowCode.Blazor.DataIO;
 using Codeer.LowCode.Blazor.DesignLogic;
 using Codeer.LowCode.Blazor.Repository.Data;
@@ -78,7 +79,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AuditLog
         ///   Id の無い新規行 (ファイル取込の自動採番) には、採番 Id を結果から引くために仮 Id を付ける。
         ///   記録が済んだら、呼び出し元へ返す結果は仮 Id を付ける前の形に戻す (監査ログの有無で保存の応答を変えない)
         /// - 本体の一括 INSERT (BulkAddThreshold 以上の純粋な追加) は採番 Id を返さない。その新規行は Id 無しで、モジュールごとに 1 件の Add と件数だけが残る
-        /// - 結果にエラーがあれば失敗にする。保存が例外で終わっても対象は残す (結果はミドルウェアが例外から Failure にする)
+        /// - 結果にエラーがあれば失敗にする。保存が例外で終わっても対象は残す (権限拒否 LowCodeAccessDeniedException は Denied、他の例外はミドルウェアが Failure にする)
         /// </summary>
         internal async Task<List<ModuleSubmitResult>> RecordSubmitAsync(List<ModuleSubmitData> data, Func<Task<List<ModuleSubmitResult>>> submit)
         {
@@ -96,6 +97,12 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AuditLog
             {
                 results = await submit();
                 return results;
+            }
+            catch (LowCodeAccessDeniedException ex)
+            {
+                //本体の権限拒否は型のまま上がってくる (ModuleDataIO.SubmitAsync が呼び出し元には ExceptionMessage にする)。対象は finally が残す
+                Deny(ex.Message);
+                throw;
             }
             finally
             {

@@ -1,3 +1,4 @@
+using Codeer.LowCode.Blazor;
 using Codeer.LowCode.Blazor.DataIO;
 using Codeer.LowCode.Blazor.DesignLogic;
 using Codeer.LowCode.Blazor.Extras.Designs;
@@ -121,7 +122,8 @@ namespace Codeer.LowCode.Blazor.Extras.Server.EditHistory
                         var restored = await _undeleter.RestoreAsync(io, submitData, request);
                         if (restored.IsWholeRecord) restores[i] = restored;
                     }
-                    catch (Exception ex)
+                    //権限の拒否は型のまま外側 (監査ログのインターセプタ) へ上げる。本体の SubmitAsync が同じ形の結果にする
+                    catch (Exception ex) when (ex is not LowCodeAccessDeniedException)
                     {
                         return Fail(transactionData, ex.Message);
                     }

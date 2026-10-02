@@ -225,12 +225,12 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
             var (store, fake) = CreateStore();
             using var _ = store;
             //UserReadCondition 不成立
-            Assert.ThrowsAsync<LowCodeException>(async () => await store.StartAsync("owner1", CreateRequest(), CreateIO("1")));
+            Assert.ThrowsAsync<LowCodeAccessDeniedException>(async () => await store.StartAsync("owner1", CreateRequest(), CreateIO("1")));
             //PermissionField で隠された AIChatField (モジュールは開けるがフィールドが見えない)
-            Assert.ThrowsAsync<LowCodeException>(async () => await store.StartAsync("owner2", CreateRequest(fieldName: "SecretChat"), CreateIO("2")));
+            Assert.ThrowsAsync<LowCodeAccessDeniedException>(async () => await store.StartAsync("owner2", CreateRequest(fieldName: "SecretChat"), CreateIO("2")));
             //停止ユーザー (AppAccessConditions 不成立)。DB 無しモジュールでも入口で弾かれる
-            Assert.ThrowsAsync<LowCodeException>(async () => await store.StartAsync("owner3", CreateRequest(), CreateIO("3")));
-            Assert.ThrowsAsync<LowCodeException>(async () => await store.StartAsync("owner3", CreateRequest(moduleName: "Memo"), CreateIO("3")));
+            Assert.ThrowsAsync<LowCodeAccessDeniedException>(async () => await store.StartAsync("owner3", CreateRequest(), CreateIO("3")));
+            Assert.ThrowsAsync<LowCodeAccessDeniedException>(async () => await store.StartAsync("owner3", CreateRequest(moduleName: "Memo"), CreateIO("3")));
             //AIChatField ではないフィールド・存在しないフィールド・存在しないモジュール・未指定
             Assert.ThrowsAsync<LowCodeException>(async () => await store.StartAsync("owner2", CreateRequest(fieldName: "Title"), CreateIO("2")));
             Assert.ThrowsAsync<LowCodeException>(async () => await store.StartAsync("owner2", CreateRequest(fieldName: "Nope"), CreateIO("2")));

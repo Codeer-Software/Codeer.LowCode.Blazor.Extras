@@ -83,7 +83,7 @@ create index "ix_audit_log_occurred_at" on "audit_log" ("occurred_at_utc");
 
 | 観点 | 監査ログが残すもの |
 |---|---|
-| アクセス管理 | ログインの成功・失敗・ログアウト、二要素認証のコード不一致、外部 IdP の成立と拒否、権限による拒否 (401/403)。ユーザーや権限の変更は「誰がどのユーザーの行を変えたか」(Id) |
+| アクセス管理 | ログインの成功・失敗・ログアウト、二要素認証のコード不一致、外部 IdP の成立と拒否、権限による拒否 (401/403 とデザインの権限条件による拒否。`result = Denied` で引ける)。ユーザーや権限の変更は「誰がどのユーザーの行を変えたか」(Id) |
 | 変更管理 | 全行にその操作が使ったデザインの版 (App.zip の SHA-256)、インスタンスごとの版の切替 (`Design.Loaded`)、送った App.zip の保管 (送信履歴フォルダ) |
 | 運用管理 | アプリの起動 (有効な監査設定つき)・停止、保持期限の掃除とその件数、管理操作 (再索引) |
 | 記録の完全性 | 状態を変える操作・外へ出す操作・認証は操作の前に試行の行を書き、書けなければ (Strict) 操作を実行しない。失敗と拒否は設定に関係なく常に記録 |
@@ -111,7 +111,7 @@ create index "ix_audit_log_occurred_at" on "audit_log" ("occurred_at_utc");
 | `OccurredAtUtc` | サーバー時刻 (UTC)。試行の行は操作の前、結果の行は操作が終わった時刻 |
 | `Category` | 分類 (下記) |
 | `Action` | 操作の名前。WebAPI は "Controller.Action" (例 `ModuleData.Submit`、`Account.Login`) |
-| `Result` | `Attempt` (操作前の試行) / `Success` / `Failure` / `Denied` / `Continued` (対象の続きの行) |
+| `Result` | `Attempt` (操作前の試行) / `Success` / `Failure` / `Denied` (認証・権限で拒否された) / `Continued` (対象の続きの行) |
 | `UserId` | 操作したユーザーの Id (ユーザーモジュールの行の Id)。未認証なら空。ログインでは **Cookie を発行した (成立した) ときだけ** そのユーザー。パスワードは合ったが二要素認証のコード待ち・認証アプリの登録待ちの行は HTTP としては成功なので `Success` だが `user_id` は空 (`Detail` の `TwoFactor=...` と `LoginName=...`)。ログインの成立は「`Success` で `user_id` がある行」で数える |
 | `ClientIp` / `UserAgent` | 接続元。`ClientIp` は ASP.NET Core が見た接続元 (`RemoteIpAddress`)。Azure App Service は基盤が Forwarded Headers を解決するので利用者の IP が入るが、IIS (ARR) や nginx 等のリバースプロキシを自前で置いた構成では**プロキシの IP が入る**。その構成では `Program.cs` で `UseForwardedHeaders` (`KnownProxies` にプロキシを登録) を `UseAuditLog` より前に足す。テンプレートには入れていない (プロキシの無い構成で有効にすると `X-Forwarded-For` の偽装を信用してしまうため) |
 | `RequestId` | ASP.NET Core の TraceIdentifier。アプリのログ (ILogger) と突き合わせる鍵 |
@@ -164,6 +164,7 @@ create index "ix_audit_log_occurred_at" on "audit_log" ("occurred_at_utc");
 結果の決まり方:
 
 - アクションが例外を投げた → `Failure` (Detail に例外メッセージ)
+- 本体の権限チェックで拒否された (`LowCodeAccessDeniedException`。アプリアクセス条件・モジュールの UserRead / UserWrite 条件・行の条件・フィールドの権限・デザインが許していない追加 / 更新 / 削除) → `Denied` (Detail にその文言。保存では対象の行も残る)
 - HTTP 401 / 403 → `Denied` (認可ミドルウェアの拒否も含む)
 - その他の 4xx / 5xx → `Failure`
 - 200 でも業務として失敗したもの (保存結果の `ExceptionMessage`、承認の `ErrorMessage`、ログインのコード不一致) はコントローラが `Failure` / `Denied` に上書きする

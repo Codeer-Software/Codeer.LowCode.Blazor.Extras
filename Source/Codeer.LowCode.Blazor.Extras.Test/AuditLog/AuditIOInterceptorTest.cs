@@ -1,3 +1,4 @@
+using Codeer.LowCode.Blazor;
 using Codeer.LowCode.Blazor.DataIO;
 using Codeer.LowCode.Blazor.DesignLogic;
 using Codeer.LowCode.Blazor.Extras.Server.AuditLog;
@@ -93,6 +94,22 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AuditLog
             Assert.That(audit.Event.Result, Is.EqualTo(AuditResult.Failure));
             Assert.That(audit.Event.Detail, Does.Contain("append-only"));
             Assert.That(audit.Event.Targets.Select(t => (t.Module, t.Id, t.Operation)).ToArray(), Is.EqualTo(new[] { ("AuditView", "1", "Update") }));
+        }
+
+        [Test]
+        public async Task AccessDeniedSavesAreRecordedAsDeniedWithTheirTargets()
+        {
+            //本体の権限拒否は型のままインターセプタまで上がる。拒否として対象ごと残し、例外はそのまま上げる (本体が ExceptionMessage にする)
+            var audit = new AuditContext();
+            AuditContext.Current = audit;
+            var interceptor = new AuditIOInterceptor(CreateDesign(), Settings);
+
+            Assert.ThrowsAsync<LowCodeAccessDeniedException>(async () =>
+                await interceptor.SubmitAsync(null!, [Submit("Customer")], () => throw LowCodeAccessDeniedException.Create("no permission")));
+
+            Assert.That(audit.Event.Result, Is.EqualTo(AuditResult.Denied));
+            Assert.That(audit.ComposeDetail(), Is.EqualTo("Add=0; Update=1; Delete=0; no permission"));
+            Assert.That(audit.Event.Targets.Select(t => (t.Module, t.Id, t.Operation)).ToArray(), Is.EqualTo(new[] { ("Customer", "1", "Update") }));
         }
 
         [Test]

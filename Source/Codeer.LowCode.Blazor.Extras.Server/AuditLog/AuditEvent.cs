@@ -30,7 +30,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AuditLog
         Success,
         /// <summary>例外・エラー応答 (HTTP 4xx/5xx。認可拒否を除く)・保存結果のエラー。</summary>
         Failure,
-        /// <summary>認証・認可で拒否された (HTTP 401/403、ログイン失敗、二要素認証のコード不一致)。</summary>
+        /// <summary>認証・認可で拒否された (HTTP 401/403、本体の権限拒否 LowCodeAccessDeniedException、ログイン失敗、二要素認証のコード不一致)。</summary>
         Denied,
         /// <summary>
         /// 対象の続きの行。1 レコードに入れる対象は <see cref="AuditLogger.MaxTargetsPerRecord"/> 件までで、

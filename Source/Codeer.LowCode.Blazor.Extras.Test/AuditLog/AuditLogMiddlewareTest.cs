@@ -1,3 +1,4 @@
+using Codeer.LowCode.Blazor;
 using Codeer.LowCode.Blazor.Extras.Server.AuditLog;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
@@ -58,6 +59,10 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AuditLog
 
         [HttpGet("throw"), Audit(AuditCategory.DataWrite)]
         public IActionResult Throw() => throw new InvalidOperationException("boom");
+
+        //本体の権限チェック (AuthorizationChecker 等) が投げる型
+        [HttpGet("denied"), Audit(AuditCategory.DataWrite)]
+        public IActionResult DeniedByDesign() => throw LowCodeAccessDeniedException.Create("no permission");
 
         [HttpGet("fail"), Audit(AuditCategory.DataWrite)]
         public IActionResult Fail()
@@ -255,6 +260,19 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AuditLog
             var e = app.Sink.Events.Single();
             Assert.That(e.Action, Is.EqualTo("AuditProbe.Secret"));
             Assert.That(e.Result, Is.EqualTo(AuditResult.Denied));
+        }
+
+        [Test]
+        public async Task AccessDeniedExceptionIsRecordedAsDenied_NotFailure()
+        {
+            await using var app = new App();
+            await app.StartAsync(new AuditLogSettings { Enabled = true });
+
+            var response = await GetAsync(app, "/api/probe/denied", user: "u1");
+
+            Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.InternalServerError));
+            Assert.That(app.Sink.Events.Select(e => e.Result).ToArray(), Is.EqualTo(new[] { AuditResult.Attempt, AuditResult.Denied }));
+            Assert.That(app.Sink.Events[1].Detail, Is.EqualTo("no permission"));
         }
 
         [Test]
