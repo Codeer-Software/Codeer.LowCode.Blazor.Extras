@@ -10,7 +10,7 @@
 
 - デザイナ: メニュー Tools > 承認フローのセットアップ
 - CLI (headless): `<designer.exe> approval-setup "<projectDir>" [--data-source <name>]
-  [--route standard|none] [--user-module <ユーザーモジュール>] [--user-name-field Name] [--user-email-field Email]
+  [--route standard|none] [--user-module <ユーザーモジュール>] [--user-name-field <表示名フィールド>] [--user-email-field Email]
   [--no-mail] [--no-pageframe] [--ddl-out <path.sql>]`
 
 生成内容: 承認モジュール群 (フロー / メンバー / 履歴 + 検索用の承認待ち・承認状況 + 任意で経路マスタ 3 つ) +

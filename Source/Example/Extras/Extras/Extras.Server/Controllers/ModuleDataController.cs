@@ -45,16 +45,16 @@ namespace Extras.Server.Controllers
             return this.FileWithETag(_dataService.Design.ForFront(await _dataService.ModuleDataIO.GetCurrentUser()), "application/octet-stream");
         }
 
-        //監査ログ: 一覧・詳細の参照は返した行ごとに残るので量が多く、既定では分類を付けない (失敗と拒否だけ残る)。
-        //閲覧の証跡まで求められる環境では [HttpPost("list"), Audit(AuditCategory.DataRead)] にする (AddRead が行ごとの Read を足す)
-        [HttpPost("list")]
+        //監査ログ: 参照は「誰が・どのモジュールを・何件読んだか」を常に残す (DataRead)。
+        //行ごとの Id まで残す (閲覧の証跡。行数ぶん大きくなる) なら AddRead の recordIds を true にする
+        [HttpPost("list"), Audit(AuditCategory.DataRead)]
         public async Task<IActionResult> GetListAsync(List<GetListRequest> request)
         {
             var ret = new List<Paging<ModuleData>>();
             foreach (var e in request)
             {
                 var page = await _dataService.ModuleDataIO.GetListAsync(e.Condition, e.PageIndex);
-                _audit.AddRead(e.Condition.ModuleName, page);
+                _audit.AddRead(e.Condition.ModuleName, page, recordIds: false);
                 ret.Add(page);
             }
             return File(new MemoryStream(MessagePackSerializer.Typeless.Serialize(ret)), "application/octet-stream");

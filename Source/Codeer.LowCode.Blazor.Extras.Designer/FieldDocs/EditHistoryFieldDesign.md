@@ -13,7 +13,7 @@
 
 - デザイナ: メニュー Tools > 編集履歴のセットアップ
 - CLI (headless): `<designer.exe> edit-history-setup "<projectDir>" [--history-name EditHistory] [--data-source <name>]
-  [--user-module <ユーザーモジュール>] [--user-name-field Name] [--no-enum] [--no-pageframe] [--ddl-out <path.sql>]`
+  [--user-module <ユーザーモジュール>] [--user-name-field <表示名フィールド>] [--no-enum] [--no-pageframe] [--ddl-out <path.sql>]`
 
 生成内容・冪等性・対象モジュール側の手順は EditHistoryContractField の「セットアップ」を参照。
 履歴モジュールは全モジュールで 1 つ共有するので、2 つ目以降の対象モジュールでは実行不要 (このフィールドを置いて enum にメンバーを足すだけ)。

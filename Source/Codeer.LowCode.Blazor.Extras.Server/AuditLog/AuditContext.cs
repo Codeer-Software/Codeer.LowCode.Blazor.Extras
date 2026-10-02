@@ -57,10 +57,15 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AuditLog
             Event.Detail = reason;
         }
 
-        /// <summary>一覧の読み出しの対象。返した行ごとに Read を記録する。</summary>
-        public void AddRead(string module, Paging<ModuleData> page)
+        /// <summary>
+        /// 一覧・詳細の読み出しの対象。参照した事実 (モジュールと件数 <c>Rows=</c>) は常に残し、
+        /// recordIds なら返した行ごとの Id (<c>Read</c>) も残す (閲覧の証跡まで求められる環境向け。行数ぶん大きくなる)。
+        /// </summary>
+        public void AddRead(string module, Paging<ModuleData> page, bool recordIds)
         {
-            foreach (var e in page.Items) AddTarget(module, ModuleDataValues.GetId(e), "Read");
+            if (recordIds) foreach (var e in page.Items) AddTarget(module, ModuleDataValues.GetId(e), "Read");
+            else AddTarget(module, null, "Read");
+            AddCount("Rows", page.Items.Count);
         }
 
         //Detail の最終形: 件数 → 補足 → 理由など (Event.Detail)

@@ -251,7 +251,7 @@
 headless CLI:
 
 ```
-<designer.exe> edit-history-setup "<projectDir>" [--history-name EditHistory] [--data-source <name>] [--user-module AppUser] [--user-name-field Name] [--no-enum] [--no-pageframe] [--ddl-out "<path.sql>"]
+<designer.exe> edit-history-setup "<projectDir>" [--history-name EditHistory] [--data-source <name>] [--user-module AppUser] [--user-name-field <表示名フィールド>] [--no-enum] [--no-pageframe] [--ddl-out "<path.sql>"]
 ```
 
 ### サーバーの結線

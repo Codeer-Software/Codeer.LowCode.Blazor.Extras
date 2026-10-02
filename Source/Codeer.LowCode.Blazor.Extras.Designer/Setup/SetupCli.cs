@@ -13,7 +13,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
     ///
     /// approval-setup:
     ///   &lt;designer.exe&gt; approval-setup "&lt;projectDir&gt;" [--data-source &lt;name&gt;] [--user-module AppUser]
-    ///     [--user-name-field Name] [--user-email-field Email] [--route standard|none] [--no-mail] [--no-pageframe] [--ddl-out "&lt;path.sql&gt;"]
+    ///     [--user-name-field <表示名フィールド>] [--user-email-field Email] [--route standard|none] [--no-mail] [--no-pageframe] [--ddl-out "&lt;path.sql&gt;"]
     ///   (承認モジュール群を生成するだけ。申請書側 (ApprovalFlowField / OnBuildRoute) はデザイナで行う。
     ///    --no-mail = 通知メールを含めない。メール側の準備は先に mail-setup で行う)
     ///
@@ -24,16 +24,17 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
     ///
     /// edit-history-setup:
     ///   &lt;designer.exe&gt; edit-history-setup "&lt;projectDir&gt;" [--history-name EditHistory] [--data-source &lt;name&gt;]
-    ///     [--user-module AppUser] [--user-name-field Name] [--no-enum] [--no-pageframe] [--ddl-out "&lt;path.sql&gt;"]
+    ///     [--user-module AppUser] [--user-name-field <表示名フィールド>] [--no-enum] [--no-pageframe] [--ddl-out "&lt;path.sql&gt;"]
     ///   (履歴モジュール (契約・復活ボタン・対象リンク同梱) と対象モジュール enum を生成するだけ。
     ///    対象モジュールへの EditHistoryField の配置はデザイナで行う。--no-enum = ModuleName を素の名前で運用)
     ///
     /// audit-log-setup:
     ///   &lt;designer.exe&gt; audit-log-setup "&lt;projectDir&gt;" [--module-name AuditLog] [--table audit_log] [--data-source &lt;name&gt;]
-    ///     [--user-module AppUser] [--user-name-field Name] [--no-pageframe] [--ddl-out "&lt;path.sql&gt;"]
+    ///     [--user-module AppUser] [--user-name-field <表示名フィールド>] [--no-pageframe] [--ddl-out "&lt;path.sql&gt;"]
     ///   (監査ログのテーブルを閲覧するモジュールと、テーブル作成 DDL (日時のインデックス込み) を生成するだけ。
     ///    記録の有効化はホストの appsettings。--table / --data-source は appsettings の AuditLog.Database と同じにする)
     ///
+    /// --user-name-field の既定は UserModuleFields.DefaultDisplayNameField (Name があればそれ、無ければログインアカウント契約の DisplayName の役割)。
     /// DDL は実行しない (--ddl-out へ書き出し、適用は sql verb またはユーザーが行う)。
     /// 終了コード: 0 = 成功 / 2 = 失敗。
     /// </summary>
@@ -71,7 +72,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
                 UserModuleName = named.GetValueOrDefault("--user-module",
                     string.IsNullOrEmpty(designData.AppSettings.CurrentUserModuleDesignName)
                         ? "AppUser" : designData.AppSettings.CurrentUserModuleDesignName),
-                UserDisplayNameField = named.GetValueOrDefault("--user-name-field", "Name"),
+                UserDisplayNameField = named.GetValueOrDefault("--user-name-field", UserModuleFields.DefaultDisplayNameField(designData, named.GetValueOrDefault("--user-module"))),
                 UserEmailField = named.GetValueOrDefault("--user-email-field", "Email"),
                 RouteMaster = named.GetValueOrDefault("--route", "standard").ToLowerInvariant() == "none"
                     ? ApprovalRouteMasterKind.None : ApprovalRouteMasterKind.Standard,
@@ -130,7 +131,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
                 UserModuleName = named.GetValueOrDefault("--user-module",
                     string.IsNullOrEmpty(designData.AppSettings.CurrentUserModuleDesignName)
                         ? "AppUser" : designData.AppSettings.CurrentUserModuleDesignName),
-                UserDisplayNameField = named.GetValueOrDefault("--user-name-field", "Name"),
+                UserDisplayNameField = named.GetValueOrDefault("--user-name-field", UserModuleFields.DefaultDisplayNameField(designData, named.GetValueOrDefault("--user-module"))),
                 CreateTargetModuleEnum = !args.Contains("--no-enum"),
                 AddPageFrameLink = !args.Contains("--no-pageframe"),
             };
@@ -160,7 +161,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
                 UserModuleName = named.GetValueOrDefault("--user-module",
                     string.IsNullOrEmpty(designData.AppSettings.CurrentUserModuleDesignName)
                         ? "AppUser" : designData.AppSettings.CurrentUserModuleDesignName),
-                UserDisplayNameField = named.GetValueOrDefault("--user-name-field", "Name"),
+                UserDisplayNameField = named.GetValueOrDefault("--user-name-field", UserModuleFields.DefaultDisplayNameField(designData, named.GetValueOrDefault("--user-module"))),
                 AddPageFrameLink = !args.Contains("--no-pageframe"),
             };
 

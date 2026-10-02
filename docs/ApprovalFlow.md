@@ -228,7 +228,7 @@ var r = 承認.Submit();          if (!r.IsSuccess) Logger.Error(r.ErrorMessage)
 
 ```
 <designer.exe> approval-setup "<projectDir>" [--data-source <name>] [--route standard|none]
-    [--user-module AppUser] [--user-name-field Name] [--user-email-field Email]
+    [--user-module AppUser] [--user-name-field <表示名フィールド>] [--user-email-field Email]
     [--no-mail] [--no-pageframe] [--ddl-out <path.sql>]
 ```
 

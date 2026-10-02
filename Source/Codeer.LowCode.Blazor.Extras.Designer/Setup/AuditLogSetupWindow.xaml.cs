@@ -42,7 +42,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
         void FillUserFields()
         {
             var module = _designData.Modules.Find((string?)_comboUserModule.SelectedItem ?? string.Empty);
-            SetupUi.FillFields(_comboUserNameField, module, null, "Name");
+            SetupUi.FillFields(_comboUserNameField, module, null, UserModuleFields.DefaultDisplayNameField(module));
         }
 
         internal static AuditLogSetupOptions? ShowDialog(DesignData designData, List<string> dataSourceNames)

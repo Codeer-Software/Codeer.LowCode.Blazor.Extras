@@ -117,7 +117,7 @@ create index "ix_audit_log_occurred_at" on "audit_log" ("occurred_at_utc");
 | 分類 | 記録される操作 (テンプレートの結線) |
 |---|---|
 | `Authentication` | ログイン (ID/パスワード・外部 IdP への遷移と IdP からの戻り・モバイルのチケット交換)、ログアウト、認証アプリの解除。ログイン失敗と二要素認証のコード不一致は `Denied`。成立した行だけ `user_id` が入る (二要素待ち・IdP への遷移は `Success` でも空) |
-| `DataRead` | 一覧・詳細の取得 (返した行ごとに `Read`)、メールのプレビュー (一斉送信のプレビューは描いた宛先の行ごとに `Read`。送らずに宛先の値を見る操作なので参照として残す)、AI チャットの送信 (`AIChat.Send`。対象は AIChatField のモジュールと `AIChat:フィールド名`、`Detail` に `Agent=Agent 名`。発言と Agent が読んだ行は残さない) |
+| `DataRead` | 一覧・詳細の取得 (誰が・どのモジュールを・何件。`AddRead(..., recordIds: true)` なら返した行ごとに `Read` と Id)、メールのプレビュー (一斉送信のプレビューは描いた宛先の行ごとに `Read`。送らずに宛先の値を見る操作なので参照として残す)、AI チャットの送信 (`AIChat.Send`。対象は AIChatField のモジュールと `AIChat:フィールド名`、`Detail` に `Agent=Agent 名`。発言と Agent が読んだ行は残さない) |
 | `DataWrite` | 保存・一括取込・スクリプトの一括保存 (行ごとに Add / Update / Delete と件数)、アップロード、承認フローの操作 |
 | `Export` | 一括ファイル出力 (出した行ごとに Export と件数)、Excel → PDF、添付ファイルのダウンロード (レコードとフィールド名)、メール送信・一斉送信 (送信元のレコード・件数・一斉送信は宛先の行)。画面に表示するだけの参照 (DataRead) と違い、ファイルとして持ち出す操作は既定で記録される |
 | `Admin` | 意味検索の再索引 |
@@ -162,9 +162,9 @@ create index "ix_audit_log_occurred_at" on "audit_log" ("occurred_at_utc");
 - 200 でも業務として失敗したもの (保存結果の `ExceptionMessage`、承認の `ErrorMessage`、ログインのコード不一致) はコントローラが `Failure` / `Denied` に上書きする
 
 何を記録するかは appsettings ではなく **ホストのコード** (コントローラの `[Audit]`) で決まります。分類を宣言したアクションは成功も失敗も記録し、
-宣言の無いアクション (`Other`) は失敗と拒否だけが残ります。参照 (`DataRead`) は返した行ごとに残るので量が多く、テンプレートでは一覧取得 (`ModuleData.GetList`) に
-宣言を付けていません。閲覧の証跡まで求められる環境では `ModuleDataController` の一覧取得に `[Audit(AuditCategory.DataRead)]` を付けてください
-(メールのプレビューと AI チャットの送信は量が少ないので付けてあります)。
+宣言の無いアクション (`Other`) は失敗と拒否だけが残ります。参照 (`DataRead`) も常に残り、既定は「誰が・どのモジュールを・何件読んだか」(`Targets` にモジュール名、
+`Detail` に `Rows=`) です。返した行の Id まで残す (閲覧の証跡) には、`ModuleDataController` の一覧取得で `AddRead(..., recordIds: true)` にします
+(行数ぶん大きくなるのでテンプレートの既定は false)。
 
 ### 対象と件数
 
@@ -172,6 +172,7 @@ create index "ix_audit_log_occurred_at" on "audit_log" ("occurred_at_utc");
 
 | 操作 | `Targets` | `Detail` |
 |---|---|---|
+| 一覧・詳細の参照 | モジュール名の `Read` (`recordIds: true` なら行ごとの `Read` と Id) | `Rows=50` |
 | 保存 (画面)・一括取込・スクリプトの一括保存 | 行ごとの `Add` / `Update` / `Delete` と Id。条件での削除 (一覧の洗い替え) は `SearchDelete` でモジュール名だけ | `Add=3; Update=1; Delete=0` |
 | 一括取込 (ファイル) | 上に加えて、モジュール名の `Import` | 件数に加えて `File=取り込んだファイルの SHA-256` |
 | 一括ファイル出力 | 出した行ごとの `Export` と Id | `Rows=1234` |
@@ -343,13 +344,13 @@ select distinct detail from audit_log
 - テーブル作成 DDL (結果ダイアログでその場で実行できる)。`DatabaseAuditSink.CreateTableSql` と同じ列に、日時絞り込み (と DB 管理者の整理) 用の `occurred_at_utc` のインデックスを足したもの。
   テーブルが既にあれば出さない
 
-テーブル名とデータソースは、ホストの appsettings の `AuditLog.Database` と同じにしてください。記録の有効化 (appsettings)・閲覧できる人の制限 (UserReadCondition)・
+テーブル名とデータソースは、ホストの appsettings の `AuditLog.Database` と同じにしてください。操作者の表示名のフィールドは、ユーザーモジュールに `Name` があればそれ、無ければログインアカウント契約の表示名の役割を使います (`--user-name-field` で指定可)。記録の有効化 (appsettings)・閲覧できる人の制限 (UserReadCondition)・
 追記専用の担保 (DB ユーザーの権限) は生成しない (結果ダイアログに手順が出る)。生成したモジュールからの追加・更新・削除は `AuditIOInterceptor` が拒否する。
 
 headless CLI:
 
 ```
-<designer.exe> audit-log-setup "<projectDir>" [--module-name AuditLog] [--table audit_log] [--data-source <name>] [--user-module AppUser] [--user-name-field Name] [--no-pageframe] [--ddl-out "<path.sql>"]
+<designer.exe> audit-log-setup "<projectDir>" [--module-name AuditLog] [--table audit_log] [--data-source <name>] [--user-module AppUser] [--user-name-field <表示名フィールド>] [--no-pageframe] [--ddl-out "<path.sql>"]
 ```
 
 Claude Code でデザインを編集している場合 (デザイナの Tools > Claude Code Workspace)、この手順は `ClaudeCodeForDesigner/_specs/AuditLog.md` として展開されます。
@@ -400,7 +401,7 @@ audit?.AddCount("Rows", rows.Count);
 | 部品 | 役割 |
 |---|---|
 | `AuditAttribute` | アクションの分類の宣言。クラスに付けると既定になり、アクション側が優先 |
-| `AuditContext` | 今のリクエストのレコード。`AddTarget` / `AddCount` (件数) / `AddNote` (補足) / `AddRead` / `Fail` / `Deny`、`Event.UserId` (ログイン時)。`AuditContext.Current` で今のリクエストのものを取れる |
+| `AuditContext` | 今のリクエストのレコード。`AddTarget` / `AddCount` (件数) / `AddNote` (補足) / `AddRead` (参照。recordIds で行の Id) / `Fail` / `Deny`、`Event.UserId` (ログイン時)。`AuditContext.Current` で今のリクエストのものを取れる |
 | `AuditLogger` | 保存する部品。記録の規則 (分類あり = 全部 / 無し = 失敗と拒否だけ / 試行は分類で固定)・全出力先への書き込み・Strict/BestEffort・デザインの版の記入と切替の記録・対象が多いレコードの分割 |
 | `AuditLogMiddleware` | WebAPI を記録 (前段の試行と後段の結果)。`UseAuditLog()` |
 | `AuditLogHostedService` | 起動・停止の記録。`AddAuditLog()` が登録する |

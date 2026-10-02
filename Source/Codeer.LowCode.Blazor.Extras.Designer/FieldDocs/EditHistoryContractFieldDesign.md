@@ -9,13 +9,13 @@ UI もデータも持たない (DB 列不要)。対象モジュールの EditHis
 
 - デザイナ: メニュー Tools > 編集履歴のセットアップ
 - CLI (headless): `<designer.exe> edit-history-setup "<projectDir>" [--history-name EditHistory] [--data-source <name>]
-  [--user-module <ユーザーモジュール>] [--user-name-field Name] [--no-enum] [--no-pageframe] [--ddl-out <path.sql>]`
+  [--user-module <ユーザーモジュール>] [--user-name-field <表示名フィールド>] [--no-enum] [--no-pageframe] [--ddl-out <path.sql>]`
 
 生成内容: 履歴モジュール (契約フィールド・復活ボタン・対象レコードを開くリンク・一覧 / 検索 / 詳細レイアウト・書き込めない保護条件) +
 対象モジュール enum `EditHistoryTargetModule` (空。`--no-enum` で作らず ModuleName を素の名前で運用) + PageFrame のページリンク +
 テーブル作成 DDL ((module_name, data_id) のインデックス込み)。**それだけ**。
 **冪等**: 既存のモジュール・enum は生成しない (履歴モジュールは全モジュールで 1 つ共有する。対象モジュールが増えても再実行不要)。
-`--user-module` の既定はアプリ設定のカレントユーザーモジュール (未設定なら AppUser)、`--data-source` の既定は先頭のデータソース。
+`--user-module` の既定はアプリ設定のカレントユーザーモジュール (未設定なら AppUser)、`--data-source` の既定は先頭のデータソース、`--user-name-field` の既定はユーザーモジュールの `Name`、無ければログインアカウント契約の表示名の役割 (Empty テンプレートの AppUser は日本語名なのでこちら)。
 DDL は自動実行されない。CLI は標準出力 (または `--ddl-out` のファイル) に出すので、それを実行してテーブルを作成する。
 
 ### 対象モジュール側の手順 (セットアップ後)

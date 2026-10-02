@@ -28,7 +28,7 @@
 
 - デザイナ: メニュー Tools > 監査ログのセットアップ
 - CLI (headless): `"<デザイナexeのパス>" audit-log-setup "<projectDir>" [--module-name AuditLog] [--table audit_log] [--data-source <name>]
-  [--user-module <ユーザーモジュール>] [--user-name-field Name] [--no-pageframe] [--ddl-out "<path.sql>"]`
+  [--user-module <ユーザーモジュール>] [--user-name-field <表示名フィールド>] [--no-pageframe] [--ddl-out "<path.sql>"]`
 
 生成内容:
 
@@ -39,7 +39,7 @@
 - テーブル作成 DDL (`create table` + 日時 `occurred_at_utc` のインデックス)。**テーブルの列はサーバーが決める**ので、モジュールからではなくこの DDL でテーブルを作る
 
 **冪等**: 同名モジュールがあれば生成しない。テーブルが既にあれば DDL を出さない。
-既定: `--data-source` は先頭のデータソース、`--user-module` はアプリ設定 (app.clprj) のカレントユーザーモジュール (未設定なら `AppUser`)。
+既定: `--data-source` は先頭のデータソース、`--user-module` はアプリ設定 (app.clprj) のカレントユーザーモジュール (未設定なら `AppUser`)、`--user-name-field` の既定はユーザーモジュールの `Name`、無ければログインアカウント契約の表示名の役割 (Empty テンプレートの AppUser は日本語名なのでこちら)。
 **DDL は自動実行されない**。`--ddl-out` に書き出し、`sql` CLI で流してテーブルを作る (流したら `designcheck` で確認)。
 `--table` / `--data-source` は、ホストの appsettings の `AuditLog.Database` (`Table` / `DataSourceName`) と同じにする。
 
@@ -69,7 +69,7 @@
    }
    ```
 
-   何を記録するかは設定ではなくホストのコード (コントローラの `[Audit]`) で決まっている。閲覧の証跡 (一覧を開くたびに返した行の Id) まで要るなら、ホストの `ModuleDataController` の一覧取得に `[Audit(AuditCategory.DataRead)]` を付けてもらう (量が多いので既定では付いていない)。
+   何を記録するかは設定ではなくホストのコード (コントローラの `[Audit]`) で決まっている。参照も既定で「誰が・どのモジュールを・何件」まで残る。返した行の Id まで (閲覧の証跡) 要るなら、ホストの `ModuleDataController` の一覧取得で `AddRead(..., recordIds: true)` にしてもらう (行数ぶん大きくなるので既定は false)。
    ファイルにも出すなら `AuditLog` に `"File": { "Directory": "<フォルダ>" }` を足す (SIEM への転送元)
 3. **追記専用の担保を伝える**: 監査ログのデータソースは INSERT (と SELECT) だけの DB ユーザーで繋ぐ。アプリは監査ログを消さない (保持期限の機能は無い)。古い行の整理は DB 管理者の運用
 4. `designcheck` を実行する

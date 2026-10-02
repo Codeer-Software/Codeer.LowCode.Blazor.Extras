@@ -13,6 +13,23 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AuditLog
         static ModuleData NewRow(string module) => new() { Name = module };
 
         [Test]
+        public void AddRead_RecordsTheModuleAndCount_AndRowIdsOnlyWhenAsked()
+        {
+            //参照は「誰が・どのモジュールを・何件」を常に残し、行の Id は recordIds のときだけ (閲覧の証跡)
+            var page = new Codeer.LowCode.Blazor.Utils.Paging<ModuleData> { Items = { Row("Order", "1"), Row("Order", "2") } };
+
+            var summary = new AuditContext();
+            summary.AddRead("Order", page, recordIds: false);
+            Assert.That(summary.Event.Targets.Select(t => (t.Module, t.Id, t.Operation)).ToArray(), Is.EqualTo(new[] { ("Order", (string?)null, "Read") }));
+            Assert.That(summary.ComposeDetail(), Is.EqualTo("Rows=2"));
+
+            var detailed = new AuditContext();
+            detailed.AddRead("Order", page, recordIds: true);
+            Assert.That(detailed.Event.Targets.Select(t => (t.Module, t.Id, t.Operation)).ToArray(), Is.EqualTo(new[] { ("Order", (string?)"1", "Read"), ("Order", "2", "Read") }));
+            Assert.That(detailed.ComposeDetail(), Is.EqualTo("Rows=2"));
+        }
+
+        [Test]
         public async Task RecordSubmitResolvesAssignedIdsAndTakesTargetsBeforeSubmit()
         {
             var audit = new AuditContext();
