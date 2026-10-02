@@ -5,7 +5,7 @@
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>enable</Nullable>
 		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
-		<Version>0.17.1</Version>
+		<Version>0.18.0</Version>
 		<Authors>Codeer</Authors>
 		<Company>Codeer</Company>
 		<Description>Server-side services for Codeer.LowCode.Blazor apps. Includes AI document analysis (Azure Document Intelligence + Azure OpenAI), mail sending (SMTP / Microsoft Graph / SendGrid / Gmail), file storage (file system / Azure Blob / S3), external logins (Entra ID / Google / AWS Cognito / OIDC), TOTP two-factor authentication, audit log (who / when / from where / what / result, per Web API, to database and JSON Lines files), and ASP.NET Core helpers (hot reload, ETag file responses).</Description>
@@ -16,7 +16,7 @@
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>
 		<PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
-		<PackageReleaseNotes>Audit log: list reads always record the module and the row count; row ids are recorded with AddRead(..., recordIds: true).</PackageReleaseNotes>
+		<PackageReleaseNotes>ModuleDataAccessAgent: an AI chat agent that reads records through the user's ModuleDataIO, so module/row/field permissions apply.</PackageReleaseNotes>
 		<PackageId>Codeer.LowCode.Blazor.Extras.Server</PackageId>
 		<!-- NU5104: Azure.AI.OpenAI has no stable release built for the OpenAI 2.9+ line yet, so the prerelease dependency is intentional -->
 		<NoWarn>$(NoWarn);NU5104</NoWarn>

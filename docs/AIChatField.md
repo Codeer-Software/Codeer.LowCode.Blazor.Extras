@@ -74,13 +74,14 @@ DELETE {EndPoint}/{requestId}   // 中断
 
 ## サーバー側の実装
 
-`Codeer.LowCode.Blazor.Extras.Server` に部品があります。フォルダと名前空間は役割で分かれています: `AI/Chat/` (共有: 契約 `IAIChatAgent` と窓口 `AIChatService`)、`AI/Chat/ChatClient/` (内部: 会話エンジン `ChatClientAgent`。公開しない)、`AI/Chat/RawDataAccess/` (専用: `RawDataAccessAgent` とその設定)。アプリに見える入口は、契約 `IAIChatAgent`、窓口 `AIChatService`、標準 Agent 2 つ (`ChatClientAgent` / `RawDataAccessAgent`) だけです。アプリは「Agent 名 → Agent」の対応表 (メールの `MailSenderTable` と同じ位置づけの静的クラス) で Agent を持ち、AIChatField はデザインの `Agent` でその名前を指定します。DI は要りません。
+`Codeer.LowCode.Blazor.Extras.Server` に部品があります。フォルダと名前空間は役割で分かれています: `AI/Chat/` (共有: 契約 `IAIChatAgent` と窓口 `AIChatService`)、`AI/Chat/ChatClient/` (内部: 会話エンジン `ChatClientAgent`。公開しない)、`AI/Chat/RawDataAccess/` (専用: `RawDataAccessAgent` とその設定)、`AI/Chat/ModuleDataAccess/` (専用: `ModuleDataAccessAgent` とその設定)。アプリに見える入口は、契約 `IAIChatAgent`、窓口 `AIChatService`、標準 Agent 2 つ (`RawDataAccessAgent` / `ModuleDataAccessAgent`) だけです。アプリは「Agent 名 → Agent」の対応表 (メールの `MailSenderTable` と同じ位置づけの静的クラス) で Agent を持ち、AIChatField はデザインの `Agent` でその名前を指定します。DI は要りません。
 
 | 型 | 役割 |
 |---|---|
 | `IAIChatAgent` | 返事を作る側のインターフェース。`ReplyAsync(request, progress, cancellationToken)` で `AIChatReply` (テキスト / Markdown / HTML / Auto) を返す。途中経過は `IAIChatProgress` に報告。`request.AgentName` にデザインの Agent 名が入る |
 | `AIChatService` | AIChat のサーバー側入口 (プロセス内のジョブ置き場)。コンストラクタで対応表 (`Func<string, IAIChatAgent?>`。Agent が 1 つなら `IAIChatAgent` を直接) を受け、送信で Agent をバックグラウンド実行し、状態をポーリングに返す。ジョブの保持時間・最長実行時間は `FinishedRetention` / `MaxRunning` プロパティ。`StartAsync(owner, request, moduleDataIO)` で送信リクエストと ModuleDataIO を渡す (リクエストの ModuleName / FieldName の AIChatField が今のユーザーに見えるときだけ受け付け、Agent 名と文書フォルダはそのデザインから取る。見えなければ LowCodeException)。対応表に無い名前は error になる。プロセスに 1 つ (アプリの静的プロパティ) |
 | `RawDataAccessAgent` (+ `RawDataAccessOptions`) | アプリの設計を読み、DB を直接読んで集計・グラフで答える Agent (会話の基盤は内部の会話エンジン: モデル呼び出し、会話履歴、逐次表示、Markdown → HTML。履歴の鍵は「ログイン ID + 会話 ID」(認証の無いアプリでは会話 ID だけ) で保持期限つき。トークンの膨張は `RawDataAccessOptions` の `KeepToolResultsForTurns` / `MaxHistoryTurns` / `MaxHistoryCharacters` の 3 段で抑える)。内部のツール: `list_modules` / `describe_module` (モジュール定義: フィールドの表示名・型・DB 列、候補値 (コード=名称)、リンク (結合相手とキー)、論理削除、スクリプト)、`read_document` (補足文書)、画面 URL (一覧 `/{フレーム}/{セグメント}`・詳細 `/{フレーム}/{セグメント}/{Id}` をページフレームのリンクから組み、行を挙げる返事に「開く」リンクを付ける)、`get_schema` (引数なしなら表名の目次だけ、`tables` を指定した表の列だけを 1 表 1 行で。方言はシステムプロンプトに常時入っていて、設計で表と列が分かるときは呼ばない指示にしている = トークン節約)、`execute_sql` (指定データソースで読み取り専用 SELECT を 1 文。行数・文字数・時間の上限、実行ログ)、`render_chart` (棒 / 折れ線 / 円。サーバーで SVG を作るので数字が狂わない)、`search_records` ([SemanticSearchField](SemanticSearchField.md) を置いたモジュールの行を内容の意味で探す。コンストラクタの `embeddingProvider` に埋め込みプロバイダ (IEmbeddingProvider) を渡したときだけ付く)。依存 (IChatClient と IDbAccessor の作り方、デザイン定義、文書) はコンストラクタ、設定 (`RawDataAccessOptions`: データソース名の一覧と上限) は別 |
+| `ModuleDataAccessAgent` (+ `ModuleDataAccessOptions` / `ModuleDataAccessScope`) | アプリの設計を読み、レコードを**実行ユーザーの権限で**読んで答える Agent。行の読み出しは本体の `ModuleDataIO.GetListAsync` を通るので、モジュールの閲覧権限 (UserRead)・行の条件 (DataRead)・項目の読み取り権限 (PermissionField)・論理削除・アプリアクセス条件が画面と同じに効く。SQL は書かせない。内部のツール: `list_modules` / `describe_module` / `read_document` (RawDataAccessAgent と同じ)、`find_records` (モジュール名・絞り込み (項目名・比較・値。all / any のグループで入れ子・not で否定)・並び・項目・ページを指定して行を返す。選択・リンクは `{ value, text }`)、`aggregate_records` (条件に合う行をサーバーで count / sum / avg / min / max。項目でグループ化、日付は year / month / day で丸める)、`render_chart`。読む ModuleDataIO はツール呼び出しごとに `ModuleDataAccessScope` (ユーザー Id → そのユーザーの `DataService`) として開いて閉じる。詳細は [ModuleDataAccessAgent](#moduledataaccessagent-実行ユーザーの権限で読む-agent) |
 | `AIChatDocument` | Agent に渡す補足文書 (名前と本文)。出所はホストが決める。標準はデザインプロジェクトの `Resources/{DocumentFolder}/*.md` (フォルダはフィールドの `DocumentFolder`) |
 | (内部) HTML 化 | 返事は `AIChatService` の中で HTML に揃えられる。Markdown は [Markdig](https://github.com/xoofx/markdig) (表・タスクリスト・自動リンク、単独改行は `<br>`)、テキストはエスケープ、HTML は素通し (リンクに `target="_blank"` を付けるだけ)。Agent 側で HTML 化のコードを書く必要はない |
 
@@ -167,7 +168,7 @@ AIChatField.EndPoint = "/api/ai_chat";
 
 `execute_sql` 側の SELECT 判定 (1 文だけ・INSERT/UPDATE/DELETE 等の語を含まない) は補助で、書き込み拒否の本体は DB ユーザーの権限です。行数 (`MaxRows` 既定 200)、文字数 (`MaxResultChars` 既定 20000)、タイムアウト (`CommandTimeoutSeconds` 既定 30) の上限と、実行した SQL のログ (`RawDataAccessAgent` のコンストラクタの `ILoggerFactory` を設定したとき。ILogger の Information) はツール側が担います。
 
-**監査ログ ([AuditLog](AuditLog.md)) との関係**: 送信 (`AIChat.Send`) は `DataRead` として「誰が・どの画面の AIChatField を・どの Agent で使ったか」が残ります (`Targets` にモジュールと `AIChat:フィールド名`、`Detail` に `Agent=`。発言は残しません)。`RawDataAccessAgent` が読んだ行は監査ログの対象外です。行制限が効かないことに加えて、SQL は送信とは別のジョブで実行されるので、読んだ行をモジュール・Id で監査ログに残せません。上場企業の内部統制のように参照の証跡まで求められる環境では `RawDataAccessAgent` を使わず、実行ユーザーの `ModuleDataIO` 経由で行を読む Agent (`IAIChatAgent` の実装) にしてください。その形なら行制限と列の読取権限が効き、読んだ行を監査ログに残せます。`RawDataAccessAgent` は、行単位の統制と監査証跡を要しない分析用途向けです。
+**監査ログ ([AuditLog](AuditLog.md)) との関係**: 送信 (`AIChat.Send`) は `DataRead` として「誰が・どの画面の AIChatField を・どの Agent で使ったか」が残ります (`Targets` にモジュールと `AIChat:フィールド名`、`Detail` に `Agent=`。発言は残しません)。`RawDataAccessAgent` が読んだ行は監査ログの対象外です。行制限が効かないことに加えて、SQL は送信とは別のジョブで実行されるので、読んだ行をモジュール・Id で監査ログに残せません。行単位の統制が要る環境では `RawDataAccessAgent` ではなく、実行ユーザーの `ModuleDataIO` 経由で行を読む [`ModuleDataAccessAgent`](#moduledataaccessagent-実行ユーザーの権限で読む-agent) を使ってください (行制限と列の読取権限が効く)。`RawDataAccessAgent` は、行単位の統制を要しない分析用途向けです。どちらの Agent も、ジョブの中で読んだ行はまだ監査ログに残りません (送信の行だけ)。
 
 **権限管理はライブラリではなく DB 側の設定と接続文字列で行ってください。** `RawDataAccessAgent` は「渡された接続で読めるものは読む」だけで、表や列の許可・不許可を判断する仕組みを持ちません。AI 用の DB ユーザー (またはビュー) を用意し、そのユーザーで接続するデータソースを appsettings に書く、が正式な手順です。
 
@@ -194,6 +195,34 @@ AIChatField.EndPoint = "/api/ai_chat";
 ### 設計と補足文書を AI に渡す
 
 業務の意味は DB スキーマではなくデザインプロジェクトにあります。`RawDataAccessAgent` はデザイン定義 (`DesignData`) を受け取り、モデルに「業務語はまずモジュール定義で確かめ、表と列は describe_module で確認してから SQL を書く」よう指示します。モジュール定義に書けないこと (用語の定義、集計の決まり、データの見方) は、デザインプロジェクトの `Resources` の下のフォルダに Markdown で置き、フィールドの `DocumentFolder` でそのフォルダを指定します (例: `Resources/AIChat/Sales/` に置いて `DocumentFolder` = `AIChat/Sales`)。チャットごとに別のフォルダを指せるので、売上分析のチャットには売上の説明書だけ、在庫のチャットには在庫の説明書だけ、と分けられます。App.zip に入ってデプロイで反映されます。文書の合計が小さい (既定 8000 文字以下) うちは全文がシステムプロンプトに入り、大きくなると一覧と冒頭の抜粋だけが入って AI が `read_document` で必要なものを読みます (App.zip からの読み出しは Codeer.LowCode.Blazor 1.3.32 以降の `DesignDataFileManager.GetResourceTexts` で行います)。用語の定義 (「売上」は完了分だけ、など) は列名からは分からないので、ここに書くと答えの精度が目に見えて変わります。
+
+### ModuleDataAccessAgent (実行ユーザーの権限で読む Agent)
+
+`RawDataAccessAgent` は DB を生で読むため、ログインユーザーごとの行制限と項目の読み取り権限が効きません。ユーザーごとに見える行が違うアプリ (担当者は自分の案件だけ、部門ごとのデータ等) や、
+一部の項目を特定の人にしか見せていないアプリでは `ModuleDataAccessAgent` を使います。レコードは本体の `ModuleDataIO.GetListAsync` で読むので、**画面と同じ権限** (モジュールの UserReadCondition・行の DataReadCondition・PermissionField の読取条件・論理削除・アプリアクセス条件) がそのまま効きます。
+権限が無くて読めなかったときは AI にエラー (`accessDenied`) が返り、AI はその旨をユーザーに伝えます。
+
+```csharp
+//対応表 (AIChatAgentTable) に 1 行足す。テンプレート (Cookie) には "ModuleDataAccess" の名前で入っている
+"ModuleDataAccess" => new ModuleDataAccessAgent(
+    chatClientFactory,                                          // IChatClient の作り方 (アプリの責務)
+    userId =>                                                   // そのユーザーの権限を持つ ModuleDataIO (ツール呼び出しごとに開いて閉じる)
+    {
+        var dataService = new DataService(userId);              // テンプレートの「ユーザー Id を固定した DataService」
+        return Task.FromResult(new ModuleDataAccessScope(dataService.ModuleDataIO, dataService));
+    },
+    () => DesignerService.GetDesignData(),                      // デザイン定義 (ホットリロードで変わるので都度)
+    folder => DesignDataFileManager.GetResourceTexts(config.DesignFileDirectory, folder, ".md", ".txt")
+        .Select(e => new AIChatDocument(e.Name, e.Text)).ToList(),
+    new ModuleDataAccessOptions()),
+```
+
+- ユーザー Id は `AIChatAgentRequest.UserName` (= `AIChatService.StartAsync` の ownerKey。テンプレートはログインユーザーの Id) で、Agent はそれで `ModuleDataAccessScope` を開きます。バックグラウンド実行なのでリクエストの `DataService` は使えず、意味検索の再索引と同じく「ユーザー Id を固定した DataService」を新しく開きます
+- AI が使うツールは `find_records` (条件・並び・項目・ページを指定して行を返す) と `aggregate_records` (条件に合う行をサーバーで count / sum / avg / min / max。項目でグループ化、日付は year / month / day で丸める)。SQL は書きません。項目は describe_module に出るフィールド名で指し、条件の値は項目の型 (数値・真偽・日付・時刻) に合わせて変換されます。条件は項目の比較を並べる (AND。`matchAny` で OR) ほか、グループ (`all` / `any`) を入れ子にして AND と OR を組み合わせられ、`not` で否定できます (本体の `MultiMatchCondition` の木にそのまま落ちる)。選択・リンクは `{ value, text }` の形で値と表示名の両方が返ります
+- リンク先の項目 (絞り込み・グループ化・表示名) は、モジュールにリンク越しのフィールド (`Customer.Name` のように名前にドットを含む列。デザイナでリンク先の項目をレイアウトに置くと作られる) があるときだけ使えます。無ければリンクは値 (Id) だけで返ります
+- 上限は `ModuleDataAccessOptions`: `MaxRows` (find_records の 1 回の行数。既定 200)、`MaxResultChars` (ツール結果の文字数。既定 20000)、`MaxAggregateRows` (集計のために読む行数。既定 10000。超えたら `truncated=true`)、`MaxGroups` (返すグループ数。既定 100)。会話の設定 (プロンプト・履歴・逐次表示) は `RawDataAccessOptions` と同じ項目
+- できないこと: データソースをまたぐ結合、設計に無い表、ウィンドウ関数などの自由な SQL (これらは `RawDataAccessAgent`)。意味検索 (`search_records`) もこの Agent には付きません
+- 監査ログ: 送信 (`AIChat.Send`) の行は残りますが、ジョブの中で読んだ行はまだ残りません (リクエストの外で実行されるため)。読んだ行の記録は今後の対応です
 
 ### Agent を実装する
 
