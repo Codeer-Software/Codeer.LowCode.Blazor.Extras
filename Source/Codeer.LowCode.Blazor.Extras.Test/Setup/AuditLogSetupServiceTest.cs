@@ -64,7 +64,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Setup
 
             //次にやること (appsettings の有効化・閲覧の制限・追記専用の担保)
             var notes = string.Join("\n", result.Notes);
-            Assert.That(notes, Does.Contain("AuditLog.Enabled").And.Contain("UserReadCondition").And.Contain("RetentionDays"));
+            Assert.That(notes, Does.Contain("AuditLog.Enabled").And.Contain("UserReadCondition").And.Contain("INSERT"));
         }
 
         [TestCase(DataSourceType.SQLite)]

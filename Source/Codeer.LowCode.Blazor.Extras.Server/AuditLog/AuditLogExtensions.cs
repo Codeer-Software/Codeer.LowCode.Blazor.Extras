@@ -9,7 +9,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AuditLog
     public static class AuditLogExtensions
     {
         /// <summary>
-        /// <see cref="AuditLogger"/> (シングルトン)・<see cref="AuditContext"/> (スコープ)・起動/停止/掃除の <see cref="AuditLogHostedService"/> を登録する。
+        /// <see cref="AuditLogger"/> (シングルトン)・<see cref="AuditContext"/> (スコープ)・起動/停止の <see cref="AuditLogHostedService"/> を登録する。
         /// 出力先はホストが設定から組み立てて渡す (DB なら <see cref="DatabaseAuditSink"/>、ファイルなら <see cref="FileAuditSink"/>、独自なら <see cref="IAuditSink"/>)。
         /// 無効 (Enabled=false) でも登録してよい (何も書かない)。
         /// </summary>

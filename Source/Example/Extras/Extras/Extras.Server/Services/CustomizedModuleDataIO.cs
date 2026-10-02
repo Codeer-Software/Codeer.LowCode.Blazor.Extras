@@ -22,7 +22,7 @@ namespace Extras.Server.Services
             //監査ログ: 保存の対象 (行ごとの Add / Update / Delete と Id・件数) を記録する。画面の保存・ファイル取込・スクリプトの一括保存はどれもここを通る。
             //監査ログのテーブルへのモジュールの保存は拒否する (追記専用。閲覧用のモジュールを作るのは可)。
             //保存の最終結果を記録するので、他のインターセプタより先 (外側) に登録する
-            AddInterceptor(new AuditIOInterceptor(designData, SystemConfig.Instance.AuditLogDatabase));
+            AddInterceptor(new AuditIOInterceptor(designData, SystemConfig.Instance.AuditLog.Database));
             //編集履歴: EditHistoryField を置いたモジュールの保存ごとに履歴モジュールへスナップショットを書き、履歴モジュールを読むときは Snapshot を読む人の権限に落とす (結線はこの 1 行)
             AddInterceptor(new EditHistoryRecorder(designData));
         }

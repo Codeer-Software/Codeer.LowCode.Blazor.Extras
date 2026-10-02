@@ -45,7 +45,9 @@ namespace Extras.Server.Controllers
             return this.FileWithETag(_dataService.Design.ForFront(await _dataService.ModuleDataIO.GetCurrentUser()), "application/octet-stream");
         }
 
-        [HttpPost("list"), Audit(AuditCategory.DataRead)]
+        //監査ログ: 一覧・詳細の参照は返した行ごとに残るので量が多く、既定では分類を付けない (失敗と拒否だけ残る)。
+        //閲覧の証跡まで求められる環境では [HttpPost("list"), Audit(AuditCategory.DataRead)] にする (AddRead が行ごとの Read を足す)
+        [HttpPost("list")]
         public async Task<IActionResult> GetListAsync(List<GetListRequest> request)
         {
             var ret = new List<Paging<ModuleData>>();

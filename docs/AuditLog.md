@@ -19,7 +19,7 @@ Codeer.LowCode.Blazor.Extras.Server 0.17.0 以降。
 ### 何が記録されるか
 
 WebAPI (コントローラのアクション) を単位に記録します。ログインの成功・失敗、レコードの参照・変更、ファイル出力・メール送信、
-再索引のような管理操作、それらの失敗と権限による拒否 (401/403) が残ります。加えて、アプリの起動・停止と監査ログ自身の掃除がシステムのイベントとして残ります。
+再索引のような管理操作、それらの失敗と権限による拒否 (401/403) が残ります。加えて、アプリの起動・停止がシステムのイベントとして残ります。
 
 どの行にも、その操作が使った **デザインの版** (App.zip の SHA-256) が入ります。デザインは画面や権限の定義そのものなので、
 「その操作の時点でどの定義が動いていたか」を行から引けるようにしています ([デザインの版](#デザインの版))。
@@ -33,22 +33,14 @@ WebAPI (コントローラのアクション) を単位に記録します。ロ�
 
 ### 有効化
 
-appsettings に 3 つのセクションを書きます。出力先は DB とファイルのどちらか、または両方です。
+appsettings の `AuditLog` セクションに書きます。出力先 (`Database` / `File`) は DB とファイルのどちらか、または両方で、使うものだけ書きます。
 
 ```json
 "AuditLog": {
   "Enabled": true,
   "FailureMode": "Strict",
-  "RetentionDays": 1825,
-  "Categories": [ "Authentication", "DataWrite", "Export", "Admin", "System" ],
-  "AttemptCategories": [ "Authentication", "DataWrite", "Export", "Admin" ]
-},
-"AuditLogDatabase": {
-  "DataSourceName": "Audit",
-  "Table": "audit_log"
-},
-"AuditLogFile": {
-  "Directory": "/var/log/lowcode/audit"
+  "Database": { "DataSourceName": "Audit", "Table": "audit_log" },
+  "File": { "Directory": "/var/log/lowcode/audit" }
 }
 ```
 
@@ -73,7 +65,7 @@ create table "audit_log" (
   "targets" text,
   "detail" text
 );
--- 保持期限の掃除と閲覧の日時絞り込み用
+-- 閲覧の日時絞り込みと、DB 管理者が古い行を整理するとき用
 create index "ix_audit_log_occurred_at" on "audit_log" ("occurred_at_utc");
 ```
 
@@ -85,7 +77,7 @@ create index "ix_audit_log_occurred_at" on "audit_log" ("occurred_at_utc");
 |---|---|
 | アクセス管理 | ログインの成功・失敗・ログアウト、二要素認証のコード不一致、外部 IdP の成立と拒否、権限による拒否 (401/403 とデザインの権限条件による拒否。`result = Denied` で引ける)。ユーザーや権限の変更は「誰がどのユーザーの行を変えたか」(Id) |
 | 変更管理 | 全行にその操作が使ったデザインの版 (App.zip の SHA-256)、インスタンスごとの版の切替 (`Design.Loaded`)、送った App.zip の保管 (送信履歴フォルダ) |
-| 運用管理 | アプリの起動 (有効な監査設定つき)・停止、保持期限の掃除とその件数、管理操作 (再索引) |
+| 運用管理 | アプリの起動 (有効な監査設定つき)・停止、管理操作 (再索引) |
 | 記録の完全性 | 状態を変える操作・外へ出す操作・認証は操作の前に試行の行を書き、書けなければ (Strict) 操作を実行しない。失敗と拒否は設定に関係なく常に記録 |
 | 証跡の保護 | 追記専用は DB の権限分離で担保 (アプリの接続ユーザーは INSERT のみ)、アプリ経路からの変更はサーバーが拒否、ファイル出力を SIEM へ転送して外部に写しを持つ |
 | 追跡性 | 触ったレコードは経路によらず行ごとの Id、`RequestId` でアプリのログと突き合わせ、ファイル取込は取り込んだファイルの SHA-256 |
@@ -93,9 +85,9 @@ create index "ix_audit_log_occurred_at" on "audit_log" ("occurred_at_utc");
 これを満たす構成は次のとおりです (いずれも本書の各節に手順があります)。
 
 - `FailureMode` は `Strict` (既定) のまま
-- 監査ログの DB ユーザーは INSERT (と閲覧用の SELECT) だけにし、`RetentionDays` を 0 にして掃除は DB 管理者のジョブで行う
+- 監査ログの DB ユーザーは INSERT (と閲覧用の SELECT) だけにする (アプリは監査ログを消さない。古い行の整理は DB 管理者の運用)
 - 閲覧モジュールの UserRead 条件で閲覧者を監査役に絞る
-- 送信履歴フォルダを指定し、App.zip を監査ログの保持期間と同じだけ保管する
+- 送信履歴フォルダを指定し、App.zip を監査ログを残す期間と同じだけ保管する
 - AI チャットは「誰が・どの画面で・どの Agent に聞いたか」までが残り、Agent が読んだ行は残らない ([監査の対象外](#監査の対象外))。参照の証跡まで要るなら、実行ユーザーの `ModuleDataIO` 経由で行を読む Agent にする
 
 暗号学的な改ざん検知 (ハッシュチェーン) は J-SOX / ISMS では求められないため持ちません。PCI DSS のようにログの変更検知を明示的に要求する規格は対象外です。
@@ -118,7 +110,7 @@ create index "ix_audit_log_occurred_at" on "audit_log" ("occurred_at_utc");
 | `Host` | 発生したサーバー名 (複数インスタンス運用での発生元) |
 | `DesignVersion` | その操作が使ったデザインの版 (App.zip の SHA-256。小文字の 16 進 64 桁)。試行の行と結果の行は同じ値 |
 | `Targets` | 対象のレコードの並び。`Module` / `Id` / `Operation` (Read / Add / Update / Delete / Export / Import / BulkSubmit / Mail / BulkMail / MailTo / Preview / BulkPreview / Download:フィールド名 / Approval:操作 など)。1 レコードに 500 件まで。超えた分は続きの行 |
-| `Detail` | 補足。件数 (`Add=3; Update=1; Delete=0`、`Rows=1234` など)、取り込んだファイルのハッシュ (`File=...`)、失敗の理由、試行したログイン名 (`LoginName=...`)、二要素認証の状態、掃除の件数など |
+| `Detail` | 補足。件数 (`Add=3; Update=1; Delete=0`、`Rows=1234` など)、取り込んだファイルのハッシュ (`File=...`)、失敗の理由、試行したログイン名 (`LoginName=...`)、二要素認証の状態など |
 
 ### 分類と結果
 
@@ -129,7 +121,7 @@ create index "ix_audit_log_occurred_at" on "audit_log" ("occurred_at_utc");
 | `DataWrite` | 保存・一括取込・スクリプトの一括保存 (行ごとに Add / Update / Delete と件数)、アップロード、承認フローの操作 |
 | `Export` | 一括ファイル出力 (出した行ごとに Export と件数)、Excel → PDF、添付ファイルのダウンロード (レコードとフィールド名)、メール送信・一斉送信 (送信元のレコード・件数・一斉送信は宛先の行)。画面に表示するだけの参照 (DataRead) と違い、ファイルとして持ち出す操作は既定で記録される |
 | `Admin` | 意味検索の再索引 |
-| `System` | アプリの起動 (有効な設定を Detail に残す)・停止、監査ログの掃除 (消した件数)、デザインの版の切替 (`Design.Loaded`)、初期管理者の作成 (`Account.InitialUserCreated`。ユーザーが 0 件のときテンプレートが作る admin。作った行の Id が対象) |
+| `System` | アプリの起動 (有効な設定を Detail に残す)・停止、デザインの版の切替 (`Design.Loaded`)、初期管理者の作成 (`Account.InitialUserCreated`。ユーザーが 0 件のときテンプレートが作る admin。作った行の Id が対象) |
 | `Other` | `[Audit]` を付けていない API (設計の取得、リソース、TOTP 状態、AI チャットのポーリング・中断など)。失敗と拒否だけが残る |
 
 外部 IdP (Entra / Google / Cognito / OIDC) のログインは、IdP からの戻りを `Account.ExternalLoginCallback` として記録します。成立なら `Success` と解決したユーザー、
@@ -152,13 +144,13 @@ create index "ix_audit_log_occurred_at" on "audit_log" ("occurred_at_utc");
 
 ### 二段の記録 (試行と結果)
 
-`AttemptCategories` の分類では、操作の前に `Result = Attempt` の行を書きます。内容は日時・分類・API 名・ユーザー・接続元・RequestId で、対象や結果はまだ入っていません。
+状態を変える操作 (`DataWrite` / `Admin`)・外へ出す操作 (`Export`)・認証 (`Authentication`) では、操作の前に `Result = Attempt` の行を書きます。内容は日時・分類・API 名・ユーザー・接続元・RequestId で、対象や結果はまだ入っていません。
 操作の後に通常の行 (Success / Failure / Denied、対象と詳細付き) を書き、2 行は `RequestId` で結びます。
 
 - 前段が書けなければ (Strict) 操作を実行しません。この分類の操作に「記録の無い操作」は起きません
 - 後段が書けなかったときは前段だけが残ります。「試行はあったが結果が無い」行は、業務データで結果を確かめる手掛かりです (内容は ILogger の Critical にも残ります)
 - 操作がロールバックしても前段は残り、後段が `Failure` になります。監査ログは業務のトランザクションと別なので、失敗の記録がロールバックに巻き込まれません
-- 既定 (省略時) は Authentication / DataWrite / Export / Admin。`DataRead` は行数が多いので前段を付けません。書いた場合はその分類だけになります (appsettings の配列は既定に継ぎ足されず置き換わる。空配列は省略と同じ)
+- どの分類が二段かはコードで固定です (`AuditLogger.HasAttempt`)。参照 (`DataRead`) は行数が多いので結果の行だけです
 - 業務の DB と監査の DB は別トランザクションです (別 DB・ファイルにも書くため)。「両方成功か両方無し」ではなく「試行は必ず残る」で保証します
 
 結果の決まり方:
@@ -169,8 +161,10 @@ create index "ix_audit_log_occurred_at" on "audit_log" ("occurred_at_utc");
 - その他の 4xx / 5xx → `Failure`
 - 200 でも業務として失敗したもの (保存結果の `ExceptionMessage`、承認の `ErrorMessage`、ログインのコード不一致) はコントローラが `Failure` / `Denied` に上書きする
 
-`Categories` は **成功した操作の絞り込み** です。失敗と拒否は分類に関係なく常に記録されます。空なら全部記録します。
-`DataRead` は行ごとに残るので量が多く、必要な場合だけ入れてください。
+何を記録するかは appsettings ではなく **ホストのコード** (コントローラの `[Audit]`) で決まります。分類を宣言したアクションは成功も失敗も記録し、
+宣言の無いアクション (`Other`) は失敗と拒否だけが残ります。参照 (`DataRead`) は返した行ごとに残るので量が多く、テンプレートでは一覧取得 (`ModuleData.GetList`) に
+宣言を付けていません。閲覧の証跡まで求められる環境では `ModuleDataController` の一覧取得に `[Audit(AuditCategory.DataRead)]` を付けてください
+(メールのプレビューと AI チャットの送信は量が少ないので付けてあります)。
 
 ### 対象と件数
 
@@ -230,7 +224,7 @@ create index "ix_audit_log_occurred_at" on "audit_log" ("occurred_at_utc");
 - 保存できなければ送信しません (履歴に無い版が稼働することはありません)
 - 本番・検証など、記録を残したい送信先にだけ指定します (ローカル向けは空のままで構いません)。複数の PC から送るなら共有フォルダを指定します
 - コマンドライン (`deploy`) から送った場合も同じように保存され、結果の JSON の `designVersion` に版が入ります。CI から送るなら、この値を CI の記録に残してください
-- 保管する期間は、監査ログの保持期間 (`RetentionDays`) に合わせてください
+- 保管する期間は、監査ログを残す期間 (社内規程) に合わせてください
 
 設定は `designer.settings.Development.json` の `DeployInfo` です (デザイナのデプロイ設定の追加ダイアログでも入力できます)。
 
@@ -274,8 +268,8 @@ create index "ix_audit_log_occurred_at" on "audit_log" ("occurred_at_utc");
 
 | 設定 | 実装 | 内容 |
 |---|---|---|
-| `AuditLogDatabase` (`DataSourceName` / `Table`) | `DatabaseAuditSink` | テーブルへ 1 行ずつ INSERT。書き込みは操作のトランザクションとは別の接続で行う (操作が失敗しても記録は残る) |
-| `AuditLogFile` (`Directory`) | `FileAuditSink` | JSON Lines。`audit-{ホスト名}-{yyyyMMdd}.jsonl` に追記。SIEM やログ収集への転送元 |
+| `AuditLog.Database` (`DataSourceName` / `Table`) | `DatabaseAuditSink` | テーブルへ 1 行ずつ INSERT。書き込みは操作のトランザクションとは別の接続で行う (操作が失敗しても記録は残る) |
+| `AuditLog.File` (`Directory`) | `FileAuditSink` | JSON Lines。`audit-{ホスト名}-{yyyyMMdd}.jsonl` に追記。SIEM やログ収集への転送元 |
 
 両方書くと二重に残ります。DB を主、ファイルを外部転送用の写しにする構成を想定しています。
 独自の出力先 (SIEM 直送など) は `IAuditSink` を実装してテンプレートの `AuditSinkTable` に足します。
@@ -292,10 +286,8 @@ create index "ix_audit_log_occurred_at" on "audit_log" ("occurred_at_utc");
 
 ### 保持と削除
 
-`RetentionDays` より古いレコードを 1 日 1 回 (起動直後と 24 時間ごと) 消し、消した件数を `System` の `AuditLog.Purge` として記録します。0 なら消しません。
-ファイルはファイル名の日付で判定し、書きかけの当日分は残ります。
-DB の掃除は監査ログのデータソースで DELETE を実行します。DELETE 権限の無い DB ユーザーで繋ぐ場合は `RetentionDays` を 0 にして、掃除は DB 管理者のジョブで行ってください
-(0 にしないと掃除が毎日失敗し、アプリのログにエラーが出ます)。追記専用を厳密に求められる環境ではこちらが推奨です (下の「改ざん対策」)。
+アプリは監査ログを消しません (保持期限の掃除のような機能は持ちません)。何年残すか・古い行をどう整理するかは法令と社内規程で決まる運用で、
+DB 管理者が `occurred_at_utc` (セットアップがインデックスを張る列) で行います。ファイル出力は日付ごとのファイルなので、古いファイルを移す・消すだけです。
 
 ### 改ざん対策
 
@@ -303,8 +295,7 @@ DB の掃除は監査ログのデータソースで DELETE を実行します。
 
 - DB のユーザーを分け、監査ログのデータソースは UPDATE / DELETE のできないユーザーで繋いでください。必要な権限は INSERT と、閲覧用のモジュールを作るなら SELECT です。
   この構成なら、デザイン (スクリプトや ExecuteSqlField の生 SQL) を含むアプリのどの経路からも消したり書き換えたりできません
-- 保持期限の掃除をアプリに任せる (`RetentionDays` > 0) と接続ユーザーに DELETE が要り、デザインから監査ログを消せる余地が残ります。
-  上場企業の内部統制のように追記専用を厳密に求められる場合は、`RetentionDays` を 0 にして掃除は DB 管理者のジョブで行ってください (上の「保持と削除」)
+- アプリは監査ログを消す機能を持たないので、接続ユーザーに DELETE / UPDATE を与える理由がありません。与えなければ、デザインから監査ログを消す余地もありません
 - 監査ログのテーブルに対してモジュールを作ることはできます (閲覧用)。そのモジュールからの追加・更新・削除は `AuditIOInterceptor` (IO インターセプタ) がサーバーで拒否します。
   これは設計ミスで監査ログを普通のデータとして編集してしまうのを防ぐもので、権限分離の代わりにはなりません
 - ファイル出力を SIEM などアプリ管理者の手が届かない場所へ転送しておけば、DB 側を直接いじっても写しと食い違うので発覚します
@@ -349,10 +340,10 @@ select distinct detail from audit_log
 - 閲覧モジュール (固定列に対応するフィールド・一覧 / 詳細 / 検索レイアウト・作成 / 更新 / 削除できない設定と「誰も書けない」保護条件)。
   日時は UTC で入っているので表示はローカル時刻に直す (`SaveAsUtc`)。分類と結果は候補付きの選択。操作者はユーザーモジュールへのリンク
 - PageFrame のページリンク「監査ログ」(新規作成なし・詳細遷移あり・Id の降順)
-- テーブル作成 DDL (結果ダイアログでその場で実行できる)。`DatabaseAuditSink.CreateTableSql` と同じ列に、保持期限の掃除と日時絞り込み用の `occurred_at_utc` のインデックスを足したもの。
+- テーブル作成 DDL (結果ダイアログでその場で実行できる)。`DatabaseAuditSink.CreateTableSql` と同じ列に、日時絞り込み (と DB 管理者の整理) 用の `occurred_at_utc` のインデックスを足したもの。
   テーブルが既にあれば出さない
 
-テーブル名とデータソースは、ホストの appsettings の `AuditLogDatabase` と同じにしてください。記録の有効化 (appsettings)・閲覧できる人の制限 (UserReadCondition)・
+テーブル名とデータソースは、ホストの appsettings の `AuditLog.Database` と同じにしてください。記録の有効化 (appsettings)・閲覧できる人の制限 (UserReadCondition)・
 追記専用の担保 (DB ユーザーの権限) は生成しない (結果ダイアログに手順が出る)。生成したモジュールからの追加・更新・削除は `AuditIOInterceptor` が拒否する。
 
 headless CLI:
@@ -368,14 +359,14 @@ Claude Code でデザインを編集している場合 (デザイナの Tools > 
 
 テンプレート (Cookie) には含まれています。既存のアプリに足す場合:
 
-1. `SystemConfig` に `AuditLogSettings` / `AuditLogDatabaseSettings` / `AuditLogFileSettings` を持ち、`Program.cs` で 3 セクションを束ねる
+1. `SystemConfig` に `AuditLogSettings` を持ち、`Program.cs` で `AuditLog` セクションを読む (出力先の `Database` / `File` は入れ子)
 2. `Services/AuditSinkTable.cs` (設定 → `IAuditSink` の並び) を置く
 3. `builder.Services.AddAuditLog(SystemConfig.Instance.AuditLog, AuditSinkTable.Create(), designVersion);`
    `designVersion` はデザインの版を返す関数です。リクエストの中 (HttpContext あり) ではそのリクエストが使う版、外 (null) では今読み込んでいる版を返します。
    テンプレートは `Services/RequestDesign` (スコープ) がリクエストの最初にデザインを 1 つに固定し、コントローラは `DataService.Design` 経由でその版だけを使います
    (`DesignerService` から直接取ると、処理の途中で差し替わった版が混ざります)。渡さなければ版は記録されません
 4. `app.UseRouting();` の直後に `app.UseAuditLog();` (認可の前。401/403 も記録するため。認証はミドルウェアが自分で解決するので認証ミドルウェアより前でよい)
-5. `CustomizedModuleDataIO` のコンストラクタで `AddInterceptor(new AuditIOInterceptor(designData, SystemConfig.Instance.AuditLogDatabase));`
+5. `CustomizedModuleDataIO` のコンストラクタで `AddInterceptor(new AuditIOInterceptor(designData, SystemConfig.Instance.AuditLog.Database));`
    保存の対象の記録と、監査ログのテーブルの保護を行います。保存の最終結果を記録するので、**他のインターセプタ (編集履歴など) より先に登録します**
 6. 各コントローラのアクションに `[Audit(AuditCategory.Xxx)]` を付け、対象や業務上の失敗は `AuditContext` (スコープ) で足す
    (保存の対象は 5 のインターセプタが記録するので、保存のアクションで対象を足す必要はありません)
@@ -410,8 +401,8 @@ audit?.AddCount("Rows", rows.Count);
 |---|---|
 | `AuditAttribute` | アクションの分類の宣言。クラスに付けると既定になり、アクション側が優先 |
 | `AuditContext` | 今のリクエストのレコード。`AddTarget` / `AddCount` (件数) / `AddNote` (補足) / `AddRead` / `Fail` / `Deny`、`Event.UserId` (ログイン時)。`AuditContext.Current` で今のリクエストのものを取れる |
-| `AuditLogger` | 保存する部品。分類の絞り込み・全出力先への書き込み・Strict/BestEffort・掃除・デザインの版の記入と切替の記録・対象が多いレコードの分割 |
+| `AuditLogger` | 保存する部品。記録の規則 (分類あり = 全部 / 無し = 失敗と拒否だけ / 試行は分類で固定)・全出力先への書き込み・Strict/BestEffort・デザインの版の記入と切替の記録・対象が多いレコードの分割 |
 | `AuditLogMiddleware` | WebAPI を記録 (前段の試行と後段の結果)。`UseAuditLog()` |
-| `AuditLogHostedService` | 起動・停止の記録と 1 日 1 回の掃除。`AddAuditLog()` が登録する |
+| `AuditLogHostedService` | 起動・停止の記録。`AddAuditLog()` が登録する |
 | `IAuditSink` / `DatabaseAuditSink` / `FileAuditSink` | 出力先 |
 | `AuditIOInterceptor` | 保存の合流点に置く IO インターセプタ。保存の対象 (行ごとの Add / Update / Delete と Id・件数) を記録し、監査ログのテーブルをモジュールの保存から守る |

@@ -56,15 +56,6 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AuditLog
             await db.ExecuteAsync(_settings.DataSourceName, sql, args);
         }
 
-        public async Task<int> PurgeAsync(DateTime olderThanUtc)
-        {
-            await using var db = _createDbAccessor();
-            var d = new Dialect(DataSourceType(db));
-            var p = d.Parameter(1);
-            var sql = $"delete from {d.Quote(_settings.Table)} where {d.Quote("occurred_at_utc")} < {p}";
-            return await db.ExecuteAsync(_settings.DataSourceName, sql, new() { [p] = DbDateTime(olderThanUtc) });
-        }
-
         /// <summary>テーブルを作る SQL。列名は固定で、アプリからは INSERT しかしない。</summary>
         public static string CreateTableSql(DataSourceType type, string table)
         {
@@ -120,7 +111,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AuditLog
         }
 
         /// <summary>
-        /// 日時のインデックスを作る SQL。保持期限の掃除 (occurred_at_utc &lt; 期限の DELETE) と閲覧の日時絞り込みが全件走査にならないようにする。
+        /// 日時のインデックスを作る SQL。閲覧の日時絞り込みと、DB 管理者が古い行を整理するときの条件 (occurred_at_utc) が全件走査にならないようにする。
         /// デザイナの監査ログのセットアップが出す DDL にも同じものが入る。
         /// </summary>
         public static string CreateIndexSql(DataSourceType type, string table)
@@ -131,7 +122,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AuditLog
 
         DataSourceType DataSourceType(IDbAccessor db)
             => db.GetDataSource(_settings.DataSourceName)?.DataSourceType
-               ?? throw new InvalidOperationException($"Audit log data source '{_settings.DataSourceName}' (AuditLogDatabase.DataSourceName) does not exist.");
+               ?? throw new InvalidOperationException($"Audit log data source '{_settings.DataSourceName}' (AuditLog.Database.DataSourceName) does not exist.");
 
         //UTC の時刻をそのまま列に入れる。Kind=Utc のまま渡すと PostgreSQL (Npgsql) は timestamptz として送り、
         //timestamp 列へはセッションのタイムゾーンに直して入る (サーバーが Asia/Tokyo なら JST になる)

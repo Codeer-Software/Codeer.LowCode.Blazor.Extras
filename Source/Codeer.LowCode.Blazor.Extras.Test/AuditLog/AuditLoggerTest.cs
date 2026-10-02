@@ -26,41 +26,33 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AuditLog
         }
 
         [Test]
-        public async Task CategoriesFilterSuccessOnly()
+        public async Task AttributedSuccessIsRecorded_OtherOnlyWhenItFailsOrIsDenied()
         {
+            //何を記録するかは設定ではなくコード (分類の宣言) が決める。宣言の無い Other は失敗と拒否だけ
             var sink = new CapturingAuditSink();
-            var logger = new AuditLogger(new AuditLogSettings { Enabled = true, Categories = [AuditCategory.DataWrite] }, [sink]);
+            var logger = new AuditLogger(new AuditLogSettings { Enabled = true }, [sink]);
             await logger.WriteAsync(Event(AuditCategory.DataWrite));
             await logger.WriteAsync(Event(AuditCategory.DataRead));
-            await logger.WriteAsync(Event(AuditCategory.DataRead, AuditResult.Failure));
+            await logger.WriteAsync(Event(AuditCategory.Other));
+            await logger.WriteAsync(Event(AuditCategory.Other, AuditResult.Failure));
             await logger.WriteAsync(Event(AuditCategory.Other, AuditResult.Denied));
             Assert.That(sink.Events.Select(e => (e.Category, e.Result)).ToArray(), Is.EqualTo(new[]
             {
                 (AuditCategory.DataWrite, AuditResult.Success),
-                (AuditCategory.DataRead, AuditResult.Failure),
+                (AuditCategory.DataRead, AuditResult.Success),
+                (AuditCategory.Other, AuditResult.Failure),
                 (AuditCategory.Other, AuditResult.Denied),
             }));
         }
 
         [Test]
-        public void AttemptFollowsBothCategoriesAndAttemptCategories()
+        public void AttemptIsFixedByCategory()
         {
-            var sink = new CapturingAuditSink();
-            var logger = new AuditLogger(new AuditLogSettings { Enabled = true, Categories = [AuditCategory.DataWrite, AuditCategory.DataRead] }, [sink]);
-            Assert.That(logger.ShouldRecord(Event(AuditCategory.DataWrite, AuditResult.Attempt)), Is.True, "既定の AttemptCategories に DataWrite がある");
-            Assert.That(logger.ShouldRecord(Event(AuditCategory.DataRead, AuditResult.Attempt)), Is.False, "DataRead には前段を付けない");
-            Assert.That(logger.ShouldRecord(Event(AuditCategory.Export, AuditResult.Attempt)), Is.False, "Categories に無い分類は前段も書かない");
-            var none = new AuditLogger(new AuditLogSettings { Enabled = true, AttemptCategories = [] }, [sink]);
-            Assert.That(none.ShouldRecord(Event(AuditCategory.DataWrite, AuditResult.Attempt)), Is.False);
-        }
-
-        [Test]
-        public async Task EmptyCategoriesMeansAll()
-        {
-            var sink = new CapturingAuditSink();
-            var logger = new AuditLogger(new AuditLogSettings { Enabled = true }, [sink]);
-            await logger.WriteAsync(Event(AuditCategory.Other));
-            Assert.That(sink.Events, Has.Count.EqualTo(1));
+            var logger = new AuditLogger(new AuditLogSettings { Enabled = true }, [new CapturingAuditSink()]);
+            foreach (var category in new[] { AuditCategory.Authentication, AuditCategory.DataWrite, AuditCategory.Export, AuditCategory.Admin })
+                Assert.That(logger.ShouldRecord(Event(category, AuditResult.Attempt)), Is.True, $"{category} は二段");
+            foreach (var category in new[] { AuditCategory.DataRead, AuditCategory.System, AuditCategory.Other })
+                Assert.That(logger.ShouldRecord(Event(category, AuditResult.Attempt)), Is.False, $"{category} には前段を付けない");
         }
 
         [Test]
@@ -156,13 +148,13 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AuditLog
         [Test]
         public async Task TheSwitchIsNoticedEvenWhenTheEventItselfIsNotRecorded()
         {
-            //成功した DataRead を記録しない設定でも、切替はその API が来た時点で記録する
+            //記録しないレコード (Other の成功) でも、切替はその API が来た時点で記録する
             var current = "v1";
             var sink = new CapturingAuditSink();
-            var logger = new AuditLogger(new AuditLogSettings { Enabled = true, Categories = [AuditCategory.System] }, [sink], designVersion: _ => current);
+            var logger = new AuditLogger(new AuditLogSettings { Enabled = true }, [sink], designVersion: _ => current);
             await logger.WriteAsync(Event(AuditCategory.System));
             current = "v2";
-            await logger.WriteAsync(Event(AuditCategory.DataRead));
+            await logger.WriteAsync(Event(AuditCategory.Other));
             Assert.That(sink.Events.Select(e => (e.Action, e.DesignVersion)).ToArray(), Is.EqualTo(new[] { ("Test.Action", "v1"), ("Design.Loaded", "v2") }));
         }
 
@@ -223,27 +215,6 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AuditLog
             public bool IsEnabled(LogLevel logLevel) => true;
             public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
                 => Entries.Add((logLevel, formatter(state, exception)));
-        }
-
-        [Test]
-        public async Task PurgeRecordsCountsAsSystemEvent()
-        {
-            var sink = new CapturingAuditSink { Purged = 12 };
-            var logger = new AuditLogger(new AuditLogSettings { Enabled = true, RetentionDays = 30 }, [sink]);
-            await logger.PurgeAsync();
-            Assert.That(sink.Events, Has.Count.EqualTo(1));
-            Assert.That(sink.Events[0].Category, Is.EqualTo(AuditCategory.System));
-            Assert.That(sink.Events[0].Action, Is.EqualTo("AuditLog.Purge"));
-            Assert.That(sink.Events[0].Detail, Does.Contain("CapturingAuditSink=12"));
-        }
-
-        [Test]
-        public async Task PurgeIsSkippedWithoutRetention()
-        {
-            var sink = new CapturingAuditSink { Purged = 12 };
-            var logger = new AuditLogger(new AuditLogSettings { Enabled = true, RetentionDays = 0 }, [sink]);
-            await logger.PurgeAsync();
-            Assert.That(sink.Events, Is.Empty);
         }
     }
 }

@@ -13,7 +13,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AuditLog
         Export,
         /// <summary>管理操作 (再索引・設定の変化)。</summary>
         Admin,
-        /// <summary>システムのイベント (起動・停止・監査ログの掃除)。</summary>
+        /// <summary>システムのイベント (起動・停止・デザインの版の切替)。</summary>
         System,
         /// <summary>宣言のない API。</summary>
         Other,

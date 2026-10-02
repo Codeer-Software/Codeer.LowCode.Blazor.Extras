@@ -32,7 +32,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
     ///   &lt;designer.exe&gt; audit-log-setup "&lt;projectDir&gt;" [--module-name AuditLog] [--table audit_log] [--data-source &lt;name&gt;]
     ///     [--user-module AppUser] [--user-name-field Name] [--no-pageframe] [--ddl-out "&lt;path.sql&gt;"]
     ///   (監査ログのテーブルを閲覧するモジュールと、テーブル作成 DDL (日時のインデックス込み) を生成するだけ。
-    ///    記録の有効化はホストの appsettings。--table / --data-source は appsettings の AuditLogDatabase と同じにする)
+    ///    記録の有効化はホストの appsettings。--table / --data-source は appsettings の AuditLog.Database と同じにする)
     ///
     /// DDL は実行しない (--ddl-out へ書き出し、適用は sql verb またはユーザーが行う)。
     /// 終了コード: 0 = 成功 / 2 = 失敗。

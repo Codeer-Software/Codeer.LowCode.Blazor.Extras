@@ -36,20 +36,6 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AuditLog
         }
 
         [Test]
-        public async Task PurgeDeletesOnlyFilesOlderThanCutoff()
-        {
-            var sink = new FileAuditSink(_dir);
-            await sink.WriteAsync(new AuditEvent { OccurredAtUtc = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc), Host = "h" });
-            await sink.WriteAsync(new AuditEvent { OccurredAtUtc = new DateTime(2026, 2, 1, 0, 0, 0, DateTimeKind.Utc), Host = "h" });
-            await sink.WriteAsync(new AuditEvent { OccurredAtUtc = new DateTime(2026, 3, 1, 0, 0, 0, DateTimeKind.Utc), Host = "h" });
-
-            var deleted = await sink.PurgeAsync(new DateTime(2026, 2, 1, 12, 0, 0, DateTimeKind.Utc));
-
-            Assert.That(deleted, Is.EqualTo(1));
-            Assert.That(Directory.GetFiles(_dir).Select(Path.GetFileName).Order().ToArray(), Is.EqualTo(new[] { "audit-h-20260201.jsonl", "audit-h-20260301.jsonl" }));
-        }
-
-        [Test]
         public async Task WritesWhileAnotherProcessHoldsTheFileOpen()
         {
             //同じホストの別プロセス (IIS のオーバーラップリサイクル中の新旧ワーカー) が同じファイルを追記用に開いていても書ける。
@@ -124,20 +110,6 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AuditLog
             Assert.That(row["occurred_at_utc"]!.ToString(), Does.StartWith("2026-09-30 01:02:03"));
         }
 
-        [Test]
-        public async Task PurgeDeletesOlderRows()
-        {
-            var sink = CreateSink();
-            await sink.WriteAsync(new AuditEvent { OccurredAtUtc = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc), Action = "old" });
-            await sink.WriteAsync(new AuditEvent { OccurredAtUtc = new DateTime(2026, 3, 1, 0, 0, 0, DateTimeKind.Utc), Action = "new" });
-
-            var deleted = await sink.PurgeAsync(new DateTime(2026, 2, 1, 0, 0, 0, DateTimeKind.Utc));
-
-            Assert.That(deleted, Is.EqualTo(1));
-            await using var db = new DbAccessor(_dataSources);
-            var rows = await db.QueryAsync(Ds, "select action from audit_log", new());
-            Assert.That(rows.Select(r => r["action"]).ToArray(), Is.EqualTo(new[] { "new" }));
-        }
 
         [Test]
         public void CreateTableSqlPerDatabase()

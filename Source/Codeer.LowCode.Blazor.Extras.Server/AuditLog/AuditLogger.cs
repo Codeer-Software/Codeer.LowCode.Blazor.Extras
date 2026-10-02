@@ -5,10 +5,9 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AuditLog
 {
     /// <summary>
     /// 監査ログを保存する部品。設定と出力先を持ち、何を記録するかは決めない (呼び出し側が <see cref="AuditEvent"/> を組み立てて渡す)。
-    /// - 分類の絞り込み (<see cref="AuditLogSettings.Categories"/>。失敗・拒否は常に記録。試行は <see cref="AuditLogSettings.AttemptCategories"/>)
+    /// - 記録の規則は固定: 分類の付いたレコードは全部、分類の無い (Other) レコードは失敗と拒否だけ。試行の行は分類で決まる (<see cref="HasAttempt"/>)
     /// - 全出力先に書く。書けない出力先があれば Strict なら <see cref="AuditLogException"/>、BestEffort なら ILogger の Critical
     /// - 対象が多いレコードは続きの行に分ける (<see cref="MaxTargetsPerRecord"/>)
-    /// - 保持期限切れの削除 (<see cref="PurgeAsync"/>。消した事実も System として記録)
     /// - デザインの版 (<see cref="AuditEvent.DesignVersion"/>)。ホストが版を渡せば全レコードに入れ、版の切替を System として記録する
     /// アプリで 1 つ (シングルトン)。リクエストの外 (バックグラウンドのジョブ・起動/停止) からもそのまま呼べる。
     /// </summary>
@@ -40,7 +39,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AuditLog
             _designVersion = designVersion;
             //有効なのに出力先が無い設定は起動で止める (記録が静かに欠けるのを防ぐ)
             if (_settings.Enabled && _sinks.Count == 0)
-                throw new InvalidOperationException("AuditLog is enabled but no sink is configured (AuditLogDatabase.DataSourceName / AuditLogFile.Directory).");
+                throw new InvalidOperationException("AuditLog is enabled but no sink is configured (AuditLog.Database.DataSourceName / AuditLog.File.Directory).");
         }
 
         public bool IsEnabled => _settings.Enabled;
@@ -48,22 +47,26 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AuditLog
         public AuditLogSettings Settings => _settings;
 
         /// <summary>
-        /// 記録の対象か。無効なら false。成功した操作は分類の絞り込み (Categories) に従い、失敗・拒否は常に true。
-        /// 試行 (Attempt) は、その分類を記録する設定で、かつ AttemptCategories にあるとき。
+        /// 操作の前に試行の行 (Attempt) を書く分類か。状態を変える操作 (DataWrite / Admin)・外へ出す操作 (Export)・認証は二段で、
+        /// 試行が書けなければ操作を実行しない (Strict) = 記録の無い操作が起きない。参照 (DataRead) は行数が多いので結果だけ。
+        /// </summary>
+        public static bool HasAttempt(AuditCategory category)
+            => category is AuditCategory.Authentication or AuditCategory.DataWrite or AuditCategory.Export or AuditCategory.Admin;
+
+        /// <summary>
+        /// 記録の対象か。無効なら false。失敗・拒否は常に true。成功は分類の付いた操作 (Other 以外) だけ。
+        /// 試行 (Attempt) は <see cref="HasAttempt"/> の分類だけ。
         /// </summary>
         public bool ShouldRecord(AuditEvent e)
         {
             if (!IsEnabled) return false;
             return e.Result switch
             {
-                AuditResult.Attempt => Accepts(e.Category) && _settings.EffectiveAttemptCategories.Contains(e.Category),
-                AuditResult.Success => Accepts(e.Category),
+                AuditResult.Attempt => HasAttempt(e.Category),
+                AuditResult.Success => e.Category != AuditCategory.Other,
                 _ => true,
             };
         }
-
-        bool Accepts(AuditCategory category)
-            => _settings.Categories.Length == 0 || _settings.Categories.Contains(category);
 
         /// <summary>デザインの版。HttpContext を渡せばそのリクエストが使う版、null ならこのプロセスが今読み込んでいる版。ホストが版を渡していなければ空。</summary>
         public string GetDesignVersion(HttpContext? context)
@@ -73,7 +76,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AuditLog
         {
             if (!IsEnabled) return;
             await RecordDesignLoadedAsync();
-            //リクエストの外の記録 (起動・停止・掃除・バックグラウンドのジョブ) は、今読み込んでいる版
+            //リクエストの外の記録 (起動・停止・バックグラウンドのジョブ) は、今読み込んでいる版
             if (string.IsNullOrEmpty(e.DesignVersion)) e.DesignVersion = GetDesignVersion(null);
             if (!ShouldRecord(e)) return;
             foreach (var record in Split(e)) await WriteToSinksAsync(record);
@@ -146,21 +149,6 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AuditLog
                 throw new AuditLogException("Audit log could not be written.", failures.Count == 1 ? failures[0] : new AggregateException(failures));
         }
 
-        /// <summary>保持期限 (RetentionDays) より古いレコードを全出力先から消し、消した数を System として記録する。RetentionDays が 0 なら何もしない。</summary>
-        public async Task PurgeAsync()
-        {
-            if (!IsEnabled || _settings.RetentionDays <= 0) return;
-            var cutoff = DateTime.UtcNow.AddDays(-_settings.RetentionDays);
-            var counts = new List<string>();
-            foreach (var sink in _sinks)
-                counts.Add($"{sink.GetType().Name}={await sink.PurgeAsync(cutoff)}");
-            await WriteAsync(new AuditEvent
-            {
-                Category = AuditCategory.System,
-                Action = "AuditLog.Purge",
-                Detail = $"olderThan={cutoff:O}; {string.Join("; ", counts)}",
-            });
-        }
     }
 
     /// <summary>Strict のとき、監査ログを書けなかった操作に投げる。</summary>

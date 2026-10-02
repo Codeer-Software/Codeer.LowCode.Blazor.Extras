@@ -90,10 +90,10 @@
         /// <summary>閲覧モジュール名。</summary>
         public string ModuleName { get; set; } = "AuditLog";
 
-        /// <summary>監査ログのテーブル名 (ホストの appsettings の AuditLogDatabase.Table と同じにする)。</summary>
+        /// <summary>監査ログのテーブル名 (ホストの appsettings の AuditLog.Database.Table と同じにする)。</summary>
         public string TableName { get; set; } = "audit_log";
 
-        /// <summary>データソース名 (ホストの appsettings の AuditLogDatabase.DataSourceName と同じにする)。</summary>
+        /// <summary>データソース名 (ホストの appsettings の AuditLog.Database.DataSourceName と同じにする)。</summary>
         public string DataSourceName { get; set; } = string.Empty;
 
         /// <summary>操作者 (UserId) のリンク先になるユーザーモジュール名。</summary>

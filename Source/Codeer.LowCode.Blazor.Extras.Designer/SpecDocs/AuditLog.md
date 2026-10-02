@@ -19,7 +19,7 @@
 | 作業 | 誰が | 内容 |
 |---|---|---|
 | 閲覧モジュール + テーブル作成 DDL | デザイン (下のセットアップ) | `audit-log-setup` で生成する。手で作らない |
-| 記録の有効化 | ホストの appsettings (ユーザー) | `AuditLog` / `AuditLogDatabase` / `AuditLogFile` の 3 セクション。結線はアプリテンプレート (Cookie) に含まれている。デザインからは触れないので、下の「生成後の手順」の文面でユーザーに伝える |
+| 記録の有効化 | ホストの appsettings (ユーザー) | `AuditLog` セクション 1 つ (`Enabled` / `FailureMode` / 出力先 `Database` / `File`)。結線はアプリテンプレート (Cookie) に含まれている。デザインからは触れないので、下の「生成後の手順」の文面でユーザーに伝える |
 | 追記専用の担保 | DB 管理者 | 監査ログのデータソースを INSERT (閲覧用に SELECT) だけの DB ユーザーで繋ぐ |
 
 ## セットアップ (閲覧モジュールとテーブル DDL の生成)
@@ -41,7 +41,7 @@
 **冪等**: 同名モジュールがあれば生成しない。テーブルが既にあれば DDL を出さない。
 既定: `--data-source` は先頭のデータソース、`--user-module` はアプリ設定 (app.clprj) のカレントユーザーモジュール (未設定なら `AppUser`)。
 **DDL は自動実行されない**。`--ddl-out` に書き出し、`sql` CLI で流してテーブルを作る (流したら `designcheck` で確認)。
-`--table` / `--data-source` は、ホストの appsettings の `AuditLogDatabase` (`Table` / `DataSourceName`) と同じにする。
+`--table` / `--data-source` は、ホストの appsettings の `AuditLog.Database` (`Table` / `DataSourceName`) と同じにする。
 
 ## 生成後の手順
 
@@ -65,15 +65,13 @@
    "AuditLog": {
      "Enabled": true,
      "FailureMode": "Strict",
-     "RetentionDays": 1825,
-     "Categories": [ "Authentication", "DataWrite", "Export", "Admin", "System" ]
-   },
-   "AuditLogDatabase": { "DataSourceName": "Main", "Table": "audit_log" }
+     "Database": { "DataSourceName": "Main", "Table": "audit_log" }
+   }
    ```
 
-   `Categories` は成功した操作の絞り込みで、失敗と拒否は常に記録される。参照の証跡まで要るなら `DataRead` を足す (行ごとに残るので量が多い)。
-   ファイルにも出すなら `"AuditLogFile": { "Directory": "<フォルダ>" }` を足す (SIEM への転送元)
-3. **追記専用の担保を伝える**: 監査ログのデータソースは INSERT (と SELECT) だけの DB ユーザーで繋ぎ、厳密に求められる環境では `RetentionDays` を 0 にして掃除は DB 管理者のジョブで行う
+   何を記録するかは設定ではなくホストのコード (コントローラの `[Audit]`) で決まっている。閲覧の証跡 (一覧を開くたびに返した行の Id) まで要るなら、ホストの `ModuleDataController` の一覧取得に `[Audit(AuditCategory.DataRead)]` を付けてもらう (量が多いので既定では付いていない)。
+   ファイルにも出すなら `AuditLog` に `"File": { "Directory": "<フォルダ>" }` を足す (SIEM への転送元)
+3. **追記専用の担保を伝える**: 監査ログのデータソースは INSERT (と SELECT) だけの DB ユーザーで繋ぐ。アプリは監査ログを消さない (保持期限の機能は無い)。古い行の整理は DB 管理者の運用
 4. `designcheck` を実行する
 
 ## 生成物の構成 (生成後に直すときに崩さない)

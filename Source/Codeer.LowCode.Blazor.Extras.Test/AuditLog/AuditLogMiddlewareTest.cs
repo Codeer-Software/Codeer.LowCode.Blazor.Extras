@@ -226,40 +226,31 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AuditLog
         }
 
         [Test]
-        public async Task AttemptCategoriesCanBeTurnedOff()
+        public async Task UnattributedActionIsNotRecordedWhenItSucceeds()
         {
-            await using var app = new App();
-            await app.StartAsync(new AuditLogSettings { Enabled = true, AttemptCategories = [] });
-            await GetAsync(app, "/api/probe/write", user: "u1");
-            Assert.That(app.Sink.Events.Select(e => e.Result).ToArray(), Is.EqualTo(new[] { AuditResult.Success }));
-        }
-
-        [Test]
-        public async Task UnattributedActionIsOther_WithoutAttempt()
-        {
+            //何を記録するかはコード ([Audit]) が決める。宣言の無いアクションは失敗と拒否だけ
             await using var app = new App();
             await app.StartAsync(new AuditLogSettings { Enabled = true });
             await GetAsync(app, "/api/probe/plain");
-            var e = app.Sink.Events.Single();
-            Assert.That(e.Category, Is.EqualTo(AuditCategory.Other));
-            Assert.That(e.Result, Is.EqualTo(AuditResult.Success));
+            Assert.That(app.Sink.Events, Is.Empty);
         }
 
         [Test]
         public async Task AuthorizationDenialIsRecordedAsDenied()
         {
             await using var app = new App();
-            await app.StartAsync(new AuditLogSettings { Enabled = true, Categories = [AuditCategory.DataWrite] });
+            await app.StartAsync(new AuditLogSettings { Enabled = true });
 
             var denied = await GetAsync(app, "/api/probe/secret");
             var allowed = await GetAsync(app, "/api/probe/secret", user: "u1");
 
             Assert.That(denied.StatusCode, Is.EqualTo(HttpStatusCode.Unauthorized));
             Assert.That(allowed.StatusCode, Is.EqualTo(HttpStatusCode.OK));
-            //DataRead は Categories に無いので成功は記録されず、拒否だけが残る
-            var e = app.Sink.Events.Single();
+            var e = app.Sink.Events[0];
             Assert.That(e.Action, Is.EqualTo("AuditProbe.Secret"));
             Assert.That(e.Result, Is.EqualTo(AuditResult.Denied));
+            Assert.That(e.UserId, Is.Empty);
+            Assert.That(app.Sink.Events.Select(x => x.Result).ToArray(), Is.EqualTo(new[] { AuditResult.Denied, AuditResult.Success }));
         }
 
         [Test]
@@ -355,13 +346,14 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AuditLog
         public async Task StrictResultFailureFailsTheResponse()
         {
             await using var app = new App();
-            await app.StartAsync(new AuditLogSettings { Enabled = true, FailureMode = AuditFailureMode.Strict, AttemptCategories = [] });
+            await app.StartAsync(new AuditLogSettings { Enabled = true, FailureMode = AuditFailureMode.Strict });
             app.Sink.Fail = true;
 
             //後段はレスポンスの先頭が出る前 (OnStarting) に走り、失敗はそこで例外になる。
             //Kestrel / IIS はこの時点ではレスポンス未開始なので例外ハンドラが 500 を返す。TestServer は開始済み扱いにするため例外がそのまま届く。
             //どちらでも「200 と本文は返らない」が契約
-            var ex = Assert.ThrowsAsync<AuditLogException>(() => GetAsync(app, "/api/probe/write", user: "u1"));
+            //参照 (DataRead) には試行が無いので、最初に失敗する書き込みが後段になる
+            var ex = Assert.ThrowsAsync<AuditLogException>(() => GetAsync(app, "/api/probe/read", user: "u1"));
             Assert.That(ex!.InnerException, Is.InstanceOf<IOException>());
         }
 
@@ -389,16 +381,12 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AuditLog
         }
 
         [Test]
-        public async Task StartPurgeAndStopAreRecordedAsSystemEvents()
+        public async Task StartAndStopAreRecordedAsSystemEvents()
         {
             var app = new App();
-            await app.StartAsync(new AuditLogSettings { Enabled = true, RetentionDays = 7 }, clearStartEvents: false);
-            Assert.That(app.Sink.Events.Select(e => (e.Category, e.Action)).ToArray(), Is.EqualTo(new[]
-            {
-                (AuditCategory.System, "Application.Start"),
-                (AuditCategory.System, "AuditLog.Purge"),
-            }));
-            Assert.That(app.Sink.Events[0].Detail, Does.Contain("RetentionDays=7").And.Contain("AttemptCategories=Authentication,DataWrite,Export,Admin").And.Contain("Sinks=CapturingAuditSink"));
+            await app.StartAsync(new AuditLogSettings { Enabled = true }, clearStartEvents: false);
+            Assert.That(app.Sink.Events.Select(e => (e.Category, e.Action)).ToArray(), Is.EqualTo(new[] { (AuditCategory.System, "Application.Start") }));
+            Assert.That(app.Sink.Events[0].Detail, Does.Contain("FailureMode=Strict").And.Contain("Sinks=CapturingAuditSink"));
             await app.DisposeAsync();
             Assert.That(app.Sink.Events.Last().Action, Is.EqualTo("Application.Stop"));
         }

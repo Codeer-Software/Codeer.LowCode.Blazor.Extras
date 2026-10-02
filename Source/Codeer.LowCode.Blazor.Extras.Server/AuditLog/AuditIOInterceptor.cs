@@ -11,7 +11,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AuditLog
     /// - 保存の対象を今のリクエストの監査レコード (<see cref="AuditContext.Current"/>) に記録する。
     ///   画面の保存・ファイル取込・スクリプトの一括保存はどれもここを通るので、経路によらず同じ形で残る (<see cref="AuditContext.RecordSubmitAsync"/>)
     /// - 監査ログのテーブルをモジュールの保存から守る。監査ログのテーブルに一覧モジュールを作って閲覧するのは通常のデザインでできるが、
-    ///   そのモジュールからの追加・更新・削除は拒否する (監査ログは追記専用。消せるのは保持期限の掃除と DB 管理者だけ)
+    ///   そのモジュールからの追加・更新・削除は拒否する (監査ログは追記専用。アプリは消さない。消せるのは DB 管理者だけ)
     /// ホストは <c>AddInterceptor(new AuditIOInterceptor(designData, settings))</c> で登録する。
     /// 保存の最終結果 (他のインターセプタが失敗にした結果も) を記録するので、他のインターセプタより先 (外側) に登録する。
     /// </summary>

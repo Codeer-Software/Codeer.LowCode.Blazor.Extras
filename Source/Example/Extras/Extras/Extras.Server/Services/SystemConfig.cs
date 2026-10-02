@@ -33,10 +33,8 @@ namespace Extras.Server.Services
         public SemanticSearchSettings SemanticSearch { get; set; } = new();
         public AzureOpenAIEmbeddingSettings AzureOpenAIEmbedding { get; set; } = new();
         public Extras.Server.AI.AIChatSettings AIChat { get; set; } = new();
-        //監査ログ (Extras.Server の AuditLog)。有効・失敗時の扱い・保持日数・分類は AuditLog、出力先は種類ごとのセクション (DB / ファイル)。実体 (IAuditSink) は Services/AuditSinkTable が組み立てる
+        //監査ログ (Extras.Server の AuditLog)。有効・失敗時の扱いと出力先 (Database / File) が 1 セクション。実体 (IAuditSink) は Services/AuditSinkTable が組み立てる
         public AuditLogSettings AuditLog { get; set; } = new();
-        public AuditLogDatabaseSettings AuditLogDatabase { get; set; } = new();
-        public AuditLogFileSettings AuditLogFile { get; set; } = new();
         public SystemConfigForFront ForFront() => new SystemConfigForFront { CanScriptDebug = CanScriptDebug, UseHotReload = UseHotReload };
     }
 }

@@ -14,7 +14,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AuditLog
     /// (<see cref="AuditLogExtensions.UseAuditLog"/>)。認可ミドルウェアの 401/403 やアンチフォージェリの 400 も見える位置。
     /// 認証は自分で解決する (既定の認証スキームで AuthenticateAsync) ので、認証ミドルウェアより前に置いてもユーザーが入る。
     /// - 分類はアクションの <see cref="AuditAttribute"/>、名前は "Controller.Action"
-    /// - 二段で書く: 操作の前に試行の行 (Result = Attempt。<see cref="AuditLogSettings.AttemptCategories"/> の分類だけ)、
+    /// - 二段で書く: 操作の前に試行の行 (Result = Attempt。<see cref="AuditLogger.HasAttempt"/> の分類だけ)、
     ///   操作の後に結果の行。2 行は RequestId で結ぶ。前段が書けなければ (Strict) 操作を実行しない = 記録の無い操作は起きない
     /// - デザインの版 (<see cref="AuditEvent.DesignVersion"/>) は前段の前に決め、2 行とも同じ値を書く
     /// - 結果: 例外 = Failure (本体の権限拒否 LowCodeAccessDeniedException は Denied)、401/403 = Denied、その他 4xx/5xx = Failure。コントローラが <see cref="AuditContext"/> で上書きできる

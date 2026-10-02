@@ -7,7 +7,6 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AuditLog
     {
         public List<AuditEvent> Events { get; } = new();
         public bool Fail { get; set; }
-        public int Purged { get; set; }
 
         public Task WriteAsync(AuditEvent auditEvent)
         {
@@ -16,6 +15,5 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AuditLog
             return Task.CompletedTask;
         }
 
-        public Task<int> PurgeAsync(DateTime olderThanUtc) => Task.FromResult(Purged);
     }
 }

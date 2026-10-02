@@ -83,10 +83,10 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
         static string CreateNextStepsNote(AuditLogSetupOptions options)
             => $"""
                 監査ログの閲覧モジュールを生成しました。記録はサーバー機能なので、次の手順で仕上げてください:
-                1. ホストの appsettings で有効にする: AuditLog.Enabled = true、AuditLogDatabase.DataSourceName = {options.DataSourceName}、Table = {options.TableName} (このモジュールと同じテーブル)。
+                1. ホストの appsettings で有効にする: AuditLog.Enabled = true、AuditLog.Database.DataSourceName = {options.DataSourceName}、Table = {options.TableName} (このモジュールと同じテーブル)。
                    結線はアプリテンプレート (Cookie) に含まれています (docs/AuditLog.md「ホストの結線」)
                 2. 閲覧できる人を絞る: {options.ModuleName} の UserReadCondition を監査役・管理者に設定する (生成直後は誰でも読めます)
-                3. 追記専用を担保する: 監査ログのデータソースは INSERT (閲覧用に SELECT) だけの DB ユーザーで繋ぎ、掃除をアプリに任せない (RetentionDays = 0) 構成が厳密です (docs/AuditLog.md「改ざん対策」)
+                3. 追記専用を担保する: 監査ログのデータソースは INSERT (閲覧用に SELECT) だけの DB ユーザーで繋ぐ (アプリは消さない。古い行の整理は DB 管理者の運用) (docs/AuditLog.md「改ざん対策」)
                 このモジュールからの追加・更新・削除はサーバー (AuditIOInterceptor) が拒否します。列名は固定なので DbColumn は変えないでください。
                 """;
     }
