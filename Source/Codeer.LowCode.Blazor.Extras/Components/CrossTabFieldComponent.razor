@@ -22,14 +22,20 @@
 @using Microsoft.AspNetCore.Components.Web
 @inject IJSRuntime JSRuntime
 
-<div @ref="Element" class="crosstab" style="@Field.GetOwnStyleString()">
+@* カスタマイズは表全体の右クリックで開く (エラーで表が出ないときも、自分の設定を直せるように) *@
+<div @ref="Element" class="crosstab" style="@Field.GetOwnStyleString()" @oncontextmenu="OnContextMenu" @oncontextmenu:preventDefault="@Field.CanCustomize">
   @if (string.IsNullOrEmpty(Field.ModuleName)) {
     @if (Services.AppInfoService.IsDesignMode) {
       <div class="text-muted small">@Resources.CrossTab_ScriptOnly</div>
     }
   } else {
     @if (!string.IsNullOrEmpty(Field.LoadError)) {
-      <div class="text-danger small">@Field.LoadError</div>
+      <div class="text-danger small">
+        @Field.LoadError
+        @if (Field.CanCustomize) {
+          <a href="javascript:void(0)" class="ms-2" data-name="customize" @onclick="ShowCustomDialog">@Resources.CrossTab_Customize</a>
+        }
+      </div>
     } else if (Field.Table == null) {
       @if (Field.IsLoading) { <div class="text-muted small">...</div> }
     } else {
@@ -41,7 +47,7 @@
       var showGrand = Field.Design.ShowGrandTotal && table.HasTotals && hasColumns;
       <div class="crosstab-scroll">
         <table class="table table-sm table-bordered crosstab-table">
-          <thead @oncontextmenu="OnHeaderContextMenu" @oncontextmenu:preventDefault="@Field.CanCustomize">
+          <thead>
             <tr>
               <th class="crosstab-corner" rowspan="@(measures.Count > 1 ? 2 : 1)">@RowHeaderText()</th>
               @foreach (var column in table.Columns) {
@@ -152,7 +158,7 @@
     await Field.ApplyUserSettingAsync(setting, saved?.ValueDisplay);
   }
 
-  async Task OnHeaderContextMenu(MouseEventArgs e)
+  async Task OnContextMenu(MouseEventArgs e)
   {
     if (!Field.CanCustomize) return;
     await ShowCustomDialog();
