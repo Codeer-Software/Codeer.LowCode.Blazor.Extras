@@ -112,7 +112,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
                     if (includeUnknownField) result.Add((Codes.UnknownField, string.Format(Resources.CrossTab_UnknownField, group.Variable)));
                     continue;
                 }
-                if (group is DateGroup && field is not DateFieldDesign && field is not DateTimeFieldDesign)
+                if (group is DateGroup && !group.CanApplyTo(field))
                     result.Add((Codes.DateBucketRequiresDate, string.Format(Resources.CrossTab_DateBucketRequiresDate, group.Variable)));
             }
             if (setting.Measures.Count == 0) result.Add((Codes.NoMeasure, Resources.CrossTab_NoMeasure));
@@ -125,13 +125,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
                     if (includeUnknownField) result.Add((Codes.UnknownField, string.Format(Resources.CrossTab_UnknownField, measure.Variable)));
                     continue;
                 }
-                var ok = measure.Function switch
-                {
-                    AggregateFunction.Sum or AggregateFunction.Avg => field is NumberFieldDesign,
-                    AggregateFunction.Min or AggregateFunction.Max => field is NumberFieldDesign or DateFieldDesign or DateTimeFieldDesign or TimeFieldDesign or TextFieldDesign or IdFieldDesign,
-                    _ => true,
-                };
-                if (!ok) result.Add((Codes.InvalidFunction, string.Format(Resources.CrossTab_InvalidFunction, measure.Function, measure.Variable)));
+                if (!measure.CanApplyTo(field)) result.Add((Codes.InvalidFunction, string.Format(Resources.CrossTab_InvalidFunction, measure.Function, measure.Variable)));
             }
             var groupCount = setting.Rows.Count + setting.Columns.Count;
             foreach (var h in setting.Having)

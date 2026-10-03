@@ -184,6 +184,8 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             if (string.IsNullOrEmpty(ModuleName)) return;
             var condition = GetAggregateCondition();
             if (condition.Measures.Count == 0) return;
+            //UTC 保存の日時は見ている人 (ブラウザ) の時差で区切る
+            if (condition.UtcOffsetMinutes == null) condition.UseLocalTimeZone();
             IsLoading = true;
             LoadError = string.Empty;
             NotifyStateChanged();
@@ -233,7 +235,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
 
         static AggregateCondition CloneCondition(AggregateCondition src)
         {
-            var dst = new AggregateCondition(src.ModuleName) { Condition = src.Condition, LimitCount = src.LimitCount };
+            var dst = new AggregateCondition(src.ModuleName) { Condition = src.Condition, LimitCount = src.LimitCount, UtcOffsetMinutes = src.UtcOffsetMinutes };
             dst.Groups.AddRange(src.Groups);
             dst.Measures.AddRange(src.Measures);
             dst.Having.AddRange(src.Having);
