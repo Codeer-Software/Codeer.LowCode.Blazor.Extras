@@ -141,7 +141,9 @@ Summary.SetAdditionalCondition(searcher);
 void Summary_OnCellClick(CrossTabCell cell)
 {
     Details.SetAdditionalCondition(cell.CreateSearcher());
+    Details.Reload();   // ListField の SetAdditionalCondition は条件を入れるだけなので読み直す
 }
+// 行・列にリンク越しの項目 ("Customer.Region.Value" 等) を置いた表では、その項目 (ドット列) を一覧のモジュールにも置く (一覧の検索は設計に無いリンク越しの項目を条件に使えない)
 
 // グラフに渡す
 var agg = new ModuleAggregator<Order>();

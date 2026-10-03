@@ -43,7 +43,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         [ScriptHide]
         public Codeer.LowCode.Blazor.RequestInterfaces.Services? Services { get; set; }
 
-        /// <summary>このセルに数えた行を読む ModuleSearcher (元モジュール)。一覧の SetAdditionalCondition に渡せば明細の一覧になる。</summary>
+        /// <summary>このセルに数えた行を読む ModuleSearcher (元モジュール)。一覧の SetAdditionalCondition に渡して Reload すれば明細の一覧になる。</summary>
         public ModuleSearcher CreateSearcher()
         {
             var searcher = new ModuleSearcher(ModuleName) { Services = Services };
