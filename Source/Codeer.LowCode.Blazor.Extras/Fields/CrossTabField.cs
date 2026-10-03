@@ -33,6 +33,8 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         Func<Task> _showCustomDialog = () => Task.CompletedTask;
         List<AggregateGroup> _rows;
         List<AggregateGroup> _columns;
+        //今の表を作った集計定義 (セルの条件を作るのに使う。時差も入っている)
+        AggregateCondition? _tableCondition;
 
         [ScriptHide]
         public Func<SearchCondition?, Task> OnQueryChangedAsync { get; set; } = _ => Task.CompletedTask;
@@ -193,10 +195,12 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             {
                 var totals = Design.ShowRowTotals || Design.ShowColumnTotals || Design.ShowGrandTotal || ValueDisplay != CrossTabValueDisplay.Value;
                 Table = await CrossTabBuilder.BuildAsync(condition, _rows.Count, Services.ModuleDataService.AggregateAsync, totals, MaxCellCount);
+                _tableCondition = condition;
             }
             catch (Exception e)
             {
                 Table = null;
+                _tableCondition = null;
                 LoadError = e.Message;
             }
             finally
@@ -220,6 +224,50 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         {
             if (!string.IsNullOrEmpty(Design.OnCellClick)) await Module.ExecuteScriptAsync(Design.OnCellClick, cell);
             await OnCellClickAsync(cell);
+        }
+
+        /// <summary>
+        /// 今の表のセルに数えた行の条件 (rowIndex / columnIndex が null なら その向きの合計)。表の条件 + 行・列の鍵で、鍵は軸の型が作る (日付は期間の範囲・空値は空値の行)。
+        /// 集計後の絞り込み・上限で行 (行の軸が無ければ列) を選んでいる表の合計は、表に出ている項目の分だけ (合計の値と同じ範囲)。表が無ければ null。
+        /// </summary>
+        internal MatchConditionBase? CreateCellCondition(int? rowIndex, int? columnIndex)
+        {
+            var table = Table;
+            var source = _tableCondition;
+            if (table == null || source == null) return null;
+            var designData = Services.AppInfoService.GetDesignData();
+            var module = designData.Modules.Find(source.ModuleName);
+            if (module == null) return null;
+            var offset = source.UtcOffsetMinutes ?? 0;
+
+            MatchConditionBase? Keys(CrossTabAxisValue axis, List<AggregateGroup> groups)
+            {
+                var parts = new List<MatchConditionBase>();
+                for (var i = 0; i < axis.Keys.Count && i < groups.Count; i++)
+                {
+                    var field = CrossTabFieldDesign.ResolveField(designData, module, groups[i].Variable);
+                    if (field == null) return null;
+                    parts.Add(groups[i].CreateKeyCondition(axis.Keys[i].Value, field, offset));
+                }
+                return parts.Count switch { 0 => null, 1 => parts[0], _ => MultiMatchCondition.And(parts.ToArray()) };
+            }
+            MatchConditionBase? AnyOf(List<CrossTabAxisValue> axes, List<AggregateGroup> groups)
+            {
+                var parts = axes.Select(a => Keys(a, groups)).ToList();
+                return parts.Count == 0 || parts.Any(e => e == null) ? null : MultiMatchCondition.Or(parts.ToArray()!);
+            }
+
+            var conditions = new List<MatchConditionBase>();
+            if (source.Condition != null) conditions.Add(source.Condition.JsonClone());
+            if (rowIndex != null && Keys(table.Rows[rowIndex.Value], _rows) is { } row) conditions.Add(row);
+            if (columnIndex != null && Keys(table.Columns[columnIndex.Value], _columns) is { } column) conditions.Add(column);
+            var cuts = source.Having.Count > 0 || source.LimitCount != null;
+            if (cuts)
+            {
+                if (_rows.Count > 0 && rowIndex == null && AnyOf(table.Rows, _rows) is { } shownRows) conditions.Add(shownRows);
+                else if (_rows.Count == 0 && columnIndex == null && AnyOf(table.Columns, _columns) is { } shownColumns) conditions.Add(shownColumns);
+            }
+            return conditions.Count == 0 ? null : MultiMatchCondition.And(conditions.ToArray());
         }
 
         //条件の元: 設計の検索条件、または Show で渡した定義の条件

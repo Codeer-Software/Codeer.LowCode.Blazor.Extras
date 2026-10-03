@@ -31,7 +31,7 @@
 | ShowGrandTotal | 総計を表示 | bool | 右下に総計を出す (デフォルト: true) |
 | ValueDisplay | 値の表示形式 | CrossTabValueDisplay | Value / PercentOfTotal / PercentOfRow / PercentOfColumn |
 | CanCustomize | 利用者が集計を変更できる | bool | 利用者が集計を自分用に変えられる (デフォルト: false。後述) |
-| OnCellClick | OnCellClick | string | セルをクリックしたときのスクリプト (引数 `CrossTabCell`) |
+| OnCellClick | OnCellClick | string | セルをクリックしたときのスクリプト (引数 `CrossTabCell`。`cell.CreateSearcher()` がそのセルに数えた行の条件を返すので、一覧の `SetAdditionalCondition` に渡せば明細になる) |
 
 割合は件数と合計にだけ掛かり、平均・最小・最大・重複を除いた件数は値のまま表示します。割合の表示形式では、分母にした合計のセル (行の合計に対する割合なら右端の合計列、列の合計に対する割合なら下端の合計行、総計) は 100% になります。
 

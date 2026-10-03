@@ -114,6 +114,7 @@ public class CrossTabCell   // OnCellClick の引数
     public List<object?> ColumnKeyValues; public List<string> ColumnKeyTexts;
     public int MeasureIndex; public object? Value; public bool IsRowTotal; public bool IsColumnTotal;
     public string RowText; public string ColumnText;
+    public ModuleSearcher CreateSearcher();   // このセルに数えた行の条件 (表の条件 + 行・列の鍵。日付は期間の範囲・空値は空値の行・合計のセルは表に出ている行の分)
 }
 ```
 
@@ -135,11 +136,11 @@ var searcher = new ModuleSearcher<Order>();
 searcher.AddGreaterThanOrEqual(m => m.OrderedOn.Value, Period.Value);
 Summary.SetAdditionalCondition(searcher);
 
-// セルをクリックしたら明細の一覧へ (行 = 状態、列 = 月)
+// セルをクリックしたら、そのセルに数えた明細を同じ画面の一覧 (元モジュールと同じモジュールの ListField) に出す。
+// 条件はセルが作るので、行・列の項目や日付の単位を書かなくてよい (利用者が行・列を変えても正しい)
 void Summary_OnCellClick(CrossTabCell cell)
 {
-    var status = cell.RowKeyValues.Count > 0 ? cell.RowKeyValues[0] : null;
-    Navigation.NavigateTo(Navigation.GetModuleUrl("Order") + "?status=" + status + "&month=" + cell.ColumnText);
+    Details.SetAdditionalCondition(cell.CreateSearcher());
 }
 
 // グラフに渡す

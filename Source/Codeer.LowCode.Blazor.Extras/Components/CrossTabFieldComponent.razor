@@ -313,6 +313,9 @@
       ColumnKeyTexts = table.Columns[c].Keys.Select((k, i) => KeyText(k, Field.ColumnGroups.ElementAtOrDefault(i))).ToList(),
       MeasureIndex = m,
       Value = table.Cells[m][r][c].GetValue(),
+      ModuleName = Field.ModuleName,
+      Condition = Field.CreateCellCondition(r, c),
+      Services = Services,
     });
   }
 
@@ -320,7 +323,11 @@
   {
     if (!HasClick || Field.Table == null) return;
     var table = Field.Table;
-    var cell = new CrossTabCell { MeasureIndex = m, IsRowTotal = r != null && c == null, IsColumnTotal = c != null && r == null };
+    var cell = new CrossTabCell
+    {
+      MeasureIndex = m, IsRowTotal = r != null && c == null, IsColumnTotal = c != null && r == null,
+      ModuleName = Field.ModuleName, Condition = Field.CreateCellCondition(r, c), Services = Services,
+    };
     if (r != null)
     {
       cell.RowKeyValues = table.Rows[r.Value].Keys.Select(k => k.Value.GetValue()).ToList();
