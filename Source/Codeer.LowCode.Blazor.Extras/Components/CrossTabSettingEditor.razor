@@ -1,0 +1,293 @@
+@using System.Globalization
+@using Codeer.LowCode.Blazor.Extras.Designs
+@using Codeer.LowCode.Blazor.Extras.Fields
+@using Codeer.LowCode.Blazor.Extras.Properties
+@using Codeer.LowCode.Blazor.Repository
+@using Codeer.LowCode.Blazor.Repository.Match
+@using Codeer.LowCode.Blazor.RequestInterfaces
+@using Microsoft.AspNetCore.Components.Web
+@inject Services Services
+
+@* 利用者のカスタマイズ用の集計の設定エディタ (デザイナのダイアログと同じ構成: 行 / 列 / 値 / 値で絞り込み / 並べ替え・表示件数の上限 + 値の表示形式) *@
+<div class="crosstab-editor" data-system="crosstab-editor">
+  <div class="d-flex align-items-center gap-2 mb-2">
+    <label class="small m-0">@Resources.CrossTab_ValueDisplay</label>
+    <select class="form-select form-select-sm w-auto" data-name="value-display" value="@Value.ValueDisplay.ToString()"
+            @onchange="OnValueDisplayChanged">
+      <option value="@nameof(CrossTabValueDisplay.Value)">@Resources.CrossTab_Value</option>
+      <option value="@nameof(CrossTabValueDisplay.PercentOfTotal)">@Resources.CrossTab_PercentOfTotal</option>
+      <option value="@nameof(CrossTabValueDisplay.PercentOfRow)">@Resources.CrossTab_PercentOfRow</option>
+      <option value="@nameof(CrossTabValueDisplay.PercentOfColumn)">@Resources.CrossTab_PercentOfColumn</option>
+    </select>
+  </div>
+  <ul class="nav nav-tabs mb-2">
+    @foreach (var (tab, text) in Tabs)
+    {
+      var t = tab;
+      <li class="nav-item">
+        <button type="button" class="nav-link @(_tab == t ? "active" : "")" data-name="tab-@t" @onclick="() => _tab = t">@text</button>
+      </li>
+    }
+  </ul>
+
+  @if (_tab == "rows" || _tab == "columns")
+  {
+    var groups = _tab == "rows" ? Value.Setting.Rows : Value.Setting.Columns;
+    <table class="table table-sm table-borderless m-0">
+      <thead><tr><th class="small text-muted">@Resources.CrossTab_Field</th><th class="small text-muted">@Resources.CrossTab_DateUnit</th><th></th></tr></thead>
+      <tbody>
+        @foreach (var group in groups.ToList())
+        {
+          var g = group;
+          <tr data-name="group-row">
+            <td>@FieldSelect(g.Variable, v => { g.Variable = v; if (!IsDate(v)) g.DateBucket = DateBucket.None; })</td>
+            <td>
+              <select class="form-select form-select-sm" disabled="@(!IsDate(g.Variable))" value="@g.DateBucket.ToString()"
+                      @onchange="e => SetBucket(g, e)">
+                @foreach (var b in DateBuckets) { <option value="@b.ToString()">@BucketText(b)</option> }
+              </select>
+            </td>
+            <td><button type="button" class="btn btn-sm btn-outline-secondary" title="×" @onclick="() => RemoveGroup(groups, g)">×</button></td>
+          </tr>
+        }
+      </tbody>
+    </table>
+    <button type="button" class="btn btn-sm btn-outline-primary" data-name="add" @onclick="() => groups.Add(new AggregateGroup { Variable = Candidates.FirstOrDefault().Variable ?? string.Empty })">@Resources.CrossTab_Add</button>
+  }
+  else if (_tab == "values")
+  {
+    <table class="table table-sm table-borderless m-0">
+      <thead><tr><th class="small text-muted">@Resources.CrossTab_Function</th><th class="small text-muted">@Resources.CrossTab_Field</th><th class="small text-muted">@Resources.CrossTab_Caption</th><th></th></tr></thead>
+      <tbody>
+        @foreach (var measure in Value.Setting.Measures.ToList())
+        {
+          var m = measure;
+          <tr data-name="measure-row">
+            <td>
+              <select class="form-select form-select-sm" value="@m.Function.ToString()"
+                      @onchange="e => SetFunction(m, e)">
+                @foreach (var f in Enum.GetValues<AggregateFunction>()) { <option value="@f.ToString()">@FunctionText(f)</option> }
+              </select>
+            </td>
+            <td>
+              @if (m.Function == AggregateFunction.Count) { <span class="small text-muted">-</span> }
+              else { @FieldSelect(m.Variable, v => m.Variable = v) }
+            </td>
+            <td><input class="form-control form-control-sm" value="@m.Name" @onchange="e => SetName(m, e)" /></td>
+            <td><button type="button" class="btn btn-sm btn-outline-secondary" @onclick="() => RemoveMeasure(m)">×</button></td>
+          </tr>
+        }
+      </tbody>
+    </table>
+    <button type="button" class="btn btn-sm btn-outline-primary" data-name="add" @onclick="() => Value.Setting.Measures.Add(new AggregateMeasure { Function = AggregateFunction.Count })">@Resources.CrossTab_Add</button>
+  }
+  else if (_tab == "having")
+  {
+    <table class="table table-sm table-borderless m-0">
+      <thead><tr><th class="small text-muted">@Resources.CrossTab_Target</th><th class="small text-muted">@Resources.CrossTab_Comparison</th><th class="small text-muted">@Resources.CrossTab_CompareValue</th><th></th></tr></thead>
+      <tbody>
+        @foreach (var having in Value.Setting.Having.ToList())
+        {
+          var h = having;
+          <tr data-name="having-row">
+            <td>
+              <select class="form-select form-select-sm" value="@h.MeasureIndex" @onchange="e => SetHavingIndex(h, e)">
+                @foreach (var (index, text) in MeasureItems) { <option value="@index">@text</option> }
+              </select>
+            </td>
+            <td>
+              <select class="form-select form-select-sm" value="@h.Comparison.ToString()" @onchange="e => SetComparison(h, e)">
+                @foreach (var (c, text) in Comparisons) { <option value="@c.ToString()">@text</option> }
+              </select>
+            </td>
+            <td><input type="number" class="form-control form-control-sm" value="@h.Value.ToString(CultureInfo.InvariantCulture)"
+                       @onchange="e => SetHavingValue(h, e)" /></td>
+            <td><button type="button" class="btn btn-sm btn-outline-secondary" @onclick="() => Value.Setting.Having.Remove(h)">×</button></td>
+          </tr>
+        }
+      </tbody>
+    </table>
+    <button type="button" class="btn btn-sm btn-outline-primary" data-name="add" @onclick="() => Value.Setting.Having.Add(new AggregateHaving { Comparison = MatchComparison.GreaterThanOrEqual })">@Resources.CrossTab_Add</button>
+  }
+  else
+  {
+    <table class="table table-sm table-borderless m-0">
+      <thead><tr><th class="small text-muted">@Resources.CrossTab_Target</th><th class="small text-muted">@Resources.CrossTab_SortBy</th><th class="small text-muted">@Resources.CrossTab_Descending</th><th></th></tr></thead>
+      <tbody>
+        @foreach (var sort in Value.Setting.SortConditions.ToList())
+        {
+          var s = sort;
+          <tr data-name="sort-row">
+            <td>
+              <select class="form-select form-select-sm" value="@s.Target.ToString()" @onchange="e => SetSortTarget(s, e)">
+                <option value="@nameof(AggregateSortTarget.Group)">@Resources.CrossTab_GroupTarget</option>
+                <option value="@nameof(AggregateSortTarget.Measure)">@Resources.CrossTab_MeasureTarget</option>
+              </select>
+            </td>
+            <td>
+              <select class="form-select form-select-sm" value="@s.Index" @onchange="e => SetSortIndex(s, e)">
+                @foreach (var (index, text) in s.Target == AggregateSortTarget.Group ? GroupItems : MeasureItems) { <option value="@index">@text</option> }
+              </select>
+            </td>
+            <td class="align-middle"><input type="checkbox" class="form-check-input" checked="@s.IsDescending" @onchange="e => s.IsDescending = e.Value is true" /></td>
+            <td><button type="button" class="btn btn-sm btn-outline-secondary" @onclick="() => Value.Setting.SortConditions.Remove(s)">×</button></td>
+          </tr>
+        }
+      </tbody>
+    </table>
+    <div class="d-flex align-items-center gap-2">
+      <button type="button" class="btn btn-sm btn-outline-primary" data-name="add" @onclick="() => Value.Setting.SortConditions.Add(new AggregateSort())">@Resources.CrossTab_Add</button>
+      <label class="small m-0 ms-3">@Resources.CrossTab_Limit</label>
+      <input type="number" min="1" class="form-control form-control-sm" style="width: 7rem" data-name="limit" value="@(Value.Setting.LimitCount?.ToString(CultureInfo.InvariantCulture) ?? string.Empty)"
+             @onchange="OnLimitChanged" />
+    </div>
+  }
+</div>
+
+@code {
+  /// <summary>編集する設定 (複製を渡す。OK のときに呼び出し側が採用する)。</summary>
+  [Parameter, EditorRequired] public CrossTabUserSetting Value { get; set; } = new();
+  [Parameter, EditorRequired] public CrossTabFieldDesign Design { get; set; } = default!;
+
+  string _tab = "rows";
+  List<(string Variable, string Text, bool IsDate)> _candidates = new();
+
+  List<(string Variable, string Text, bool IsDate)> Candidates => _candidates;
+
+  protected override void OnParametersSet()
+  {
+    base.OnParametersSet();
+    _candidates = Design.GetFieldCandidates(Services.AppInfoService.GetDesignData(), Services.AppInfoService.Localize);
+  }
+
+  IEnumerable<(string, string)> Tabs =>
+  [
+    ("rows", Resources.CrossTab_Rows), ("columns", Resources.CrossTab_Columns), ("values", Resources.CrossTab_Values),
+    ("having", Resources.CrossTab_ValueFilter), ("sort", Resources.CrossTab_SortLimit),
+  ];
+
+  static readonly DateBucket[] DateBuckets = [DateBucket.None, DateBucket.Year, DateBucket.Quarter, DateBucket.Month, DateBucket.Week, DateBucket.Day];
+
+  static IEnumerable<(MatchComparison, string)> Comparisons =>
+  [
+    (MatchComparison.Equal, "="), (MatchComparison.NotEqual, "≠"), (MatchComparison.LessThan, "<"),
+    (MatchComparison.LessThanOrEqual, "≤"), (MatchComparison.GreaterThan, ">"), (MatchComparison.GreaterThanOrEqual, "≥"),
+  ];
+
+  void OnValueDisplayChanged(ChangeEventArgs e)
+  {
+    Value.ValueDisplay = Enum.TryParse<CrossTabValueDisplay>(e.Value?.ToString(), out var v) ? v : CrossTabValueDisplay.Value;
+  }
+
+  void SetBucket(AggregateGroup g, ChangeEventArgs e)
+    => g.DateBucket = Enum.TryParse<DateBucket>(e.Value?.ToString(), out var b) ? b : DateBucket.None;
+
+  void SetFunction(AggregateMeasure m, ChangeEventArgs e)
+  {
+    m.Function = Enum.TryParse<AggregateFunction>(e.Value?.ToString(), out var f) ? f : AggregateFunction.Count;
+    if (m.Function == AggregateFunction.Count) m.Variable = string.Empty;
+    else if (string.IsNullOrEmpty(m.Variable)) m.Variable = _candidates.FirstOrDefault().Variable ?? string.Empty;
+  }
+
+  static void SetName(AggregateMeasure m, ChangeEventArgs e) => m.Name = e.Value?.ToString() ?? string.Empty;
+
+  static void SetHavingIndex(AggregateHaving h, ChangeEventArgs e) => h.MeasureIndex = int.TryParse(e.Value?.ToString(), out var i) ? i : 0;
+
+  static void SetComparison(AggregateHaving h, ChangeEventArgs e)
+    => h.Comparison = Enum.TryParse<MatchComparison>(e.Value?.ToString(), out var c) ? c : MatchComparison.GreaterThanOrEqual;
+
+  static void SetHavingValue(AggregateHaving h, ChangeEventArgs e)
+    => h.Value = decimal.TryParse(e.Value?.ToString(), NumberStyles.Any, CultureInfo.InvariantCulture, out var d) ? d : 0;
+
+  static void SetSortTarget(AggregateSort s, ChangeEventArgs e)
+  {
+    s.Target = Enum.TryParse<AggregateSortTarget>(e.Value?.ToString(), out var t) ? t : AggregateSortTarget.Group;
+    s.Index = 0;
+  }
+
+  static void SetSortIndex(AggregateSort s, ChangeEventArgs e) => s.Index = int.TryParse(e.Value?.ToString(), out var i) ? i : 0;
+
+  void OnLimitChanged(ChangeEventArgs e)
+    => Value.Setting.LimitCount = int.TryParse(e.Value?.ToString(), out var n) && n > 0 ? n : null;
+
+  bool IsDate(string variable) => _candidates.Any(c => c.Variable == variable && c.IsDate);
+
+  string FieldTextOf(string variable) => _candidates.FirstOrDefault(c => c.Variable == variable).Text ?? variable;
+
+  RenderFragment FieldSelect(string current, Action<string> set) => __builder =>
+  {
+    <select class="form-select form-select-sm" value="@current" @onchange="e => set(e.Value?.ToString() ?? string.Empty)">
+      @if (!string.IsNullOrEmpty(current) && _candidates.All(c => c.Variable != current))
+      {
+        <option value="@current">@current</option>
+      }
+      @foreach (var c in _candidates) { <option value="@c.Variable">@c.Text</option> }
+    </select>
+  };
+
+  //値を消したら、その値を指す絞り込み・並べ替えを外し、後ろの番号を詰める
+  void RemoveMeasure(AggregateMeasure measure)
+  {
+    var index = Value.Setting.Measures.IndexOf(measure);
+    if (index < 0) return;
+    Value.Setting.Measures.RemoveAt(index);
+    Value.Setting.Having.RemoveAll(h => h.MeasureIndex == index);
+    foreach (var h in Value.Setting.Having.Where(h => index < h.MeasureIndex)) h.MeasureIndex--;
+    Value.Setting.SortConditions.RemoveAll(s => s.Target == AggregateSortTarget.Measure && s.Index == index);
+    foreach (var s in Value.Setting.SortConditions.Where(s => s.Target == AggregateSortTarget.Measure && index < s.Index)) s.Index--;
+  }
+
+  //行・列を消したら、その項目を指す並べ替えを外し、後ろの番号を詰める (番号は 行 → 列 の通し)
+  void RemoveGroup(List<AggregateGroup> groups, AggregateGroup group)
+  {
+    var offset = ReferenceEquals(groups, Value.Setting.Rows) ? 0 : Value.Setting.Rows.Count;
+    var index = groups.IndexOf(group);
+    if (index < 0) return;
+    groups.RemoveAt(index);
+    var removed = offset + index;
+    Value.Setting.SortConditions.RemoveAll(s => s.Target == AggregateSortTarget.Group && s.Index == removed);
+    foreach (var s in Value.Setting.SortConditions.Where(s => s.Target == AggregateSortTarget.Group && removed < s.Index)) s.Index--;
+  }
+
+  IEnumerable<(int, string)> MeasureItems => Value.Setting.Measures.Count == 0
+    ? [(0, "1")]
+    : Value.Setting.Measures.Select((m, i) => (i, $"{i + 1}: {MeasureText(m)}"));
+
+  IEnumerable<(int, string)> GroupItems
+  {
+    get
+    {
+      var groups = Value.Setting.Rows.Concat(Value.Setting.Columns).ToList();
+      if (groups.Count == 0) return [(0, "1")];
+      return groups.Select((g, i) => (i, $"{i + 1}: {FieldTextOf(g.Variable)}"));
+    }
+  }
+
+  string MeasureText(AggregateMeasure m)
+  {
+    if (!string.IsNullOrEmpty(m.Name)) return m.Name;
+    return m.Function == AggregateFunction.Count ? FunctionText(m.Function) : $"{FieldTextOf(m.Variable)} {FunctionText(m.Function)}";
+  }
+
+  static string FunctionText(AggregateFunction f) => f switch
+  {
+    AggregateFunction.Count => Resources.CrossTab_Count,
+    AggregateFunction.CountDistinct => Resources.CrossTab_CountDistinct,
+    AggregateFunction.Sum => Resources.CrossTab_Sum,
+    AggregateFunction.Avg => Resources.CrossTab_Avg,
+    AggregateFunction.Min => Resources.CrossTab_Min,
+    AggregateFunction.Max => Resources.CrossTab_Max,
+    _ => f.ToString(),
+  };
+
+  static string BucketText(DateBucket b) => b switch
+  {
+    DateBucket.Year => Resources.CrossTab_Year,
+    DateBucket.Quarter => Resources.CrossTab_Quarter,
+    DateBucket.Month => Resources.CrossTab_Month,
+    DateBucket.Week => Resources.CrossTab_Week,
+    DateBucket.Day => Resources.CrossTab_Day,
+    DateBucket.Hour => Resources.CrossTab_Hour,
+    _ => Resources.CrossTab_DateUnitNone,
+  };
+}

@@ -1,0 +1,91 @@
+.crosstab {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
+  /* 表の幅を外 (カラム → 行 → frame) に伝えない。常に与えられた幅の中で横スクロールする */
+  contain: inline-size;
+}
+
+.crosstab-scroll {
+  overflow: auto;
+  min-height: 0;
+  flex: 1 1 auto;
+}
+
+/* 見出し (上)・行見出し (左)・合計 (下) を固定するため separate にし、罫線は右と下だけにする */
+.crosstab-table {
+  width: auto;
+  min-width: 100%;
+  margin-bottom: 0.25rem;
+  white-space: nowrap;
+  border-collapse: separate;
+  border-spacing: 0;
+  border-left: 1px solid var(--bs-border-color, #dee2e6);
+  border-top: 1px solid var(--bs-border-color, #dee2e6);
+}
+
+.crosstab-table th,
+.crosstab-table td {
+  border-width: 0 1px 1px 0;
+}
+
+.crosstab-table th {
+  font-weight: 600;
+  text-align: center;
+  vertical-align: middle;
+  background-color: #f5f5f5;
+  background-color: color-mix(in srgb, var(--bs-body-bg, #fff) 96%, #000);
+}
+
+.crosstab-table thead {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+.crosstab-table tfoot {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+}
+
+.crosstab-table th.crosstab-row {
+  text-align: left;
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background-color: var(--bs-body-bg, #fff);
+}
+
+.crosstab-table th.crosstab-corner,
+.crosstab-table tfoot th {
+  position: sticky;
+  left: 0;
+  z-index: 3;
+  text-align: left;
+}
+
+.crosstab-table td.crosstab-cell {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.crosstab-table .crosstab-total {
+  font-weight: 600;
+  background-color: #f0f0f0;
+  background-color: color-mix(in srgb, var(--bs-body-bg, #fff) 94%, #000);
+}
+
+.crosstab-table .crosstab-grand {
+  background-color: #e6e6e6;
+  background-color: color-mix(in srgb, var(--bs-body-bg, #fff) 90%, #000);
+}
+
+.crosstab-table td.crosstab-clickable {
+  cursor: pointer;
+}
+
+.crosstab-table td.crosstab-clickable:hover {
+  background-color: rgba(13, 110, 253, 0.1);
+}

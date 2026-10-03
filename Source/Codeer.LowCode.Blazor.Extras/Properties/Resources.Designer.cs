@@ -3491,5 +3491,518 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
                 return ResourceManager.GetString("EditHistoryRestoreNothingApplied", resourceCulture);
             }
         }
+    
+        /// <summary>
+        ///   CrossTab に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string CrossTabField {
+            get {
+                return ResourceManager.GetString("CrossTabField", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Rows, columns and values に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string CrossTabSetting {
+            get {
+                return ResourceManager.GetString("CrossTabSetting", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Show row totals に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string ShowRowTotals {
+            get {
+                return ResourceManager.GetString("ShowRowTotals", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Show column totals に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string ShowColumnTotals {
+            get {
+                return ResourceManager.GetString("ShowColumnTotals", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Show grand total に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string ShowGrandTotal {
+            get {
+                return ResourceManager.GetString("ShowGrandTotal", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Show values as に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string CrossTabValueDisplay {
+            get {
+                return ResourceManager.GetString("CrossTabValueDisplay", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Fraction digits に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string FractionDigits {
+            get {
+                return ResourceManager.GetString("FractionDigits", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   OnCellClick に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string OnCellClick {
+            get {
+                return ResourceManager.GetString("OnCellClick", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Shown by Show from a script に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string CrossTab_ScriptOnly {
+            get {
+                return ResourceManager.GetString("CrossTab_ScriptOnly", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Total に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string CrossTab_Total {
+            get {
+                return ResourceManager.GetString("CrossTab_Total", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Showing {0} of {1} groups. Narrow the condition or raise the limit. に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string CrossTab_Limited {
+            get {
+                return ResourceManager.GetString("CrossTab_Limited", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   (blank) に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string CrossTab_Empty {
+            get {
+                return ResourceManager.GetString("CrossTab_Empty", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Count に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string CrossTab_Count {
+            get {
+                return ResourceManager.GetString("CrossTab_Count", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Distinct count に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string CrossTab_CountDistinct {
+            get {
+                return ResourceManager.GetString("CrossTab_CountDistinct", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Sum に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string CrossTab_Sum {
+            get {
+                return ResourceManager.GetString("CrossTab_Sum", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Average に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string CrossTab_Avg {
+            get {
+                return ResourceManager.GetString("CrossTab_Avg", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Min に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string CrossTab_Min {
+            get {
+                return ResourceManager.GetString("CrossTab_Min", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Max に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string CrossTab_Max {
+            get {
+                return ResourceManager.GetString("CrossTab_Max", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Year に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string CrossTab_Year {
+            get {
+                return ResourceManager.GetString("CrossTab_Year", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Quarter に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string CrossTab_Quarter {
+            get {
+                return ResourceManager.GetString("CrossTab_Quarter", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Month に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string CrossTab_Month {
+            get {
+                return ResourceManager.GetString("CrossTab_Month", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Week に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string CrossTab_Week {
+            get {
+                return ResourceManager.GetString("CrossTab_Week", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Day に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string CrossTab_Day {
+            get {
+                return ResourceManager.GetString("CrossTab_Day", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Hour に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string CrossTab_Hour {
+            get {
+                return ResourceManager.GetString("CrossTab_Hour", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   At least one measure is required. に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string CrossTab_NoMeasure {
+            get {
+                return ResourceManager.GetString("CrossTab_NoMeasure", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   A date unit (year, month, ...) can be set only on a date or date-time field: {0} に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string CrossTab_DateBucketRequiresDate {
+            get {
+                return ResourceManager.GetString("CrossTab_DateBucketRequiresDate", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   There is no row, column or value with that number: {0} に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string CrossTab_IndexOutOfRange {
+            get {
+                return ResourceManager.GetString("CrossTab_IndexOutOfRange", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   {0} cannot be applied to {1}. に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string CrossTab_InvalidFunction {
+            get {
+                return ResourceManager.GetString("CrossTab_InvalidFunction", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Allow users to customize the aggregation に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string CrossTabCanCustomize {
+            get {
+                return ResourceManager.GetString("CrossTabCanCustomize", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Customize aggregation に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string CrossTab_Customize {
+            get {
+                return ResourceManager.GetString("CrossTab_Customize", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Rows に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string CrossTab_Rows {
+            get {
+                return ResourceManager.GetString("CrossTab_Rows", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Columns に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string CrossTab_Columns {
+            get {
+                return ResourceManager.GetString("CrossTab_Columns", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Values に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string CrossTab_Values {
+            get {
+                return ResourceManager.GetString("CrossTab_Values", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Value filter に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string CrossTab_ValueFilter {
+            get {
+                return ResourceManager.GetString("CrossTab_ValueFilter", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Sort / Limit に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string CrossTab_SortLimit {
+            get {
+                return ResourceManager.GetString("CrossTab_SortLimit", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Field に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string CrossTab_Field {
+            get {
+                return ResourceManager.GetString("CrossTab_Field", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Date unit に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string CrossTab_DateUnit {
+            get {
+                return ResourceManager.GetString("CrossTab_DateUnit", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   (none) に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string CrossTab_DateUnitNone {
+            get {
+                return ResourceManager.GetString("CrossTab_DateUnitNone", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Summarize by に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string CrossTab_Function {
+            get {
+                return ResourceManager.GetString("CrossTab_Function", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Caption に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string CrossTab_Caption {
+            get {
+                return ResourceManager.GetString("CrossTab_Caption", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Target に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string CrossTab_Target {
+            get {
+                return ResourceManager.GetString("CrossTab_Target", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Condition に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string CrossTab_Comparison {
+            get {
+                return ResourceManager.GetString("CrossTab_Comparison", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Value に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string CrossTab_CompareValue {
+            get {
+                return ResourceManager.GetString("CrossTab_CompareValue", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Sort by に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string CrossTab_SortBy {
+            get {
+                return ResourceManager.GetString("CrossTab_SortBy", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Descending に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string CrossTab_Descending {
+            get {
+                return ResourceManager.GetString("CrossTab_Descending", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Limit に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string CrossTab_Limit {
+            get {
+                return ResourceManager.GetString("CrossTab_Limit", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Add に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string CrossTab_Add {
+            get {
+                return ResourceManager.GetString("CrossTab_Add", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Show values as に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string CrossTab_ValueDisplay {
+            get {
+                return ResourceManager.GetString("CrossTab_ValueDisplay", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Value に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string CrossTab_Value {
+            get {
+                return ResourceManager.GetString("CrossTab_Value", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   % of grand total に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string CrossTab_PercentOfTotal {
+            get {
+                return ResourceManager.GetString("CrossTab_PercentOfTotal", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   % of row total に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string CrossTab_PercentOfRow {
+            get {
+                return ResourceManager.GetString("CrossTab_PercentOfRow", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   % of column total に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string CrossTab_PercentOfColumn {
+            get {
+                return ResourceManager.GetString("CrossTab_PercentOfColumn", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Row / column field に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string CrossTab_GroupTarget {
+            get {
+                return ResourceManager.GetString("CrossTab_GroupTarget", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Value に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string CrossTab_MeasureTarget {
+            get {
+                return ResourceManager.GetString("CrossTab_MeasureTarget", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Reset to design に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string CrossTab_ResetToDesign {
+            get {
+                return ResourceManager.GetString("CrossTab_ResetToDesign", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Cancel に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string CrossTab_Cancel {
+            get {
+                return ResourceManager.GetString("CrossTab_Cancel", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Field not found: {0} に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string CrossTab_UnknownField {
+            get {
+                return ResourceManager.GetString("CrossTab_UnknownField", resourceCulture);
+            }
+        }
     }
 }

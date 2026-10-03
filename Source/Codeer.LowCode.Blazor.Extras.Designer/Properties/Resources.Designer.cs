@@ -146,5 +146,347 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Properties
 
         public static string SetupTableName => GetString("SetupTableName");
 
-    }
+    
+        /// <summary>
+        ///   Rows に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        public static string CrossTabSetting_Rows {
+            get {
+                return ResourceManager.GetString("CrossTabSetting_Rows", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Columns に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        public static string CrossTabSetting_Columns {
+            get {
+                return ResourceManager.GetString("CrossTabSetting_Columns", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Values に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        public static string CrossTabSetting_Measures {
+            get {
+                return ResourceManager.GetString("CrossTabSetting_Measures", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Value filter に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        public static string CrossTabSetting_Having {
+            get {
+                return ResourceManager.GetString("CrossTabSetting_Having", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Sort / Limit に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        public static string CrossTabSetting_Sort {
+            get {
+                return ResourceManager.GetString("CrossTabSetting_Sort", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Limit に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        public static string CrossTabSetting_Limit {
+            get {
+                return ResourceManager.GetString("CrossTabSetting_Limit", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Add に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        public static string CrossTabSetting_Add {
+            get {
+                return ResourceManager.GetString("CrossTabSetting_Add", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Descending に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        public static string CrossTabSetting_Descending {
+            get {
+                return ResourceManager.GetString("CrossTabSetting_Descending", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Field に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        public static string CrossTabSetting_Field {
+            get {
+                return ResourceManager.GetString("CrossTabSetting_Field", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Date unit に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        public static string CrossTabSetting_DateUnit {
+            get {
+                return ResourceManager.GetString("CrossTabSetting_DateUnit", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Summarize by に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        public static string CrossTabSetting_Function {
+            get {
+                return ResourceManager.GetString("CrossTabSetting_Function", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Caption に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        public static string CrossTabSetting_Caption {
+            get {
+                return ResourceManager.GetString("CrossTabSetting_Caption", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Target に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        public static string CrossTabSetting_Target {
+            get {
+                return ResourceManager.GetString("CrossTabSetting_Target", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Condition に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        public static string CrossTabSetting_Comparison {
+            get {
+                return ResourceManager.GetString("CrossTabSetting_Comparison", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Value に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        public static string CrossTabSetting_CompareValue {
+            get {
+                return ResourceManager.GetString("CrossTabSetting_CompareValue", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Sort by に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        public static string CrossTabSetting_SortBy {
+            get {
+                return ResourceManager.GetString("CrossTabSetting_SortBy", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Order に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        public static string CrossTabSetting_Order {
+            get {
+                return ResourceManager.GetString("CrossTabSetting_Order", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Count に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        public static string CrossTabSetting_Enum_Count {
+            get {
+                return ResourceManager.GetString("CrossTabSetting_Enum_Count", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Distinct count に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        public static string CrossTabSetting_Enum_CountDistinct {
+            get {
+                return ResourceManager.GetString("CrossTabSetting_Enum_CountDistinct", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Sum に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        public static string CrossTabSetting_Enum_Sum {
+            get {
+                return ResourceManager.GetString("CrossTabSetting_Enum_Sum", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Average に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        public static string CrossTabSetting_Enum_Avg {
+            get {
+                return ResourceManager.GetString("CrossTabSetting_Enum_Avg", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Min に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        public static string CrossTabSetting_Enum_Min {
+            get {
+                return ResourceManager.GetString("CrossTabSetting_Enum_Min", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Max に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        public static string CrossTabSetting_Enum_Max {
+            get {
+                return ResourceManager.GetString("CrossTabSetting_Enum_Max", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   (none) に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        public static string CrossTabSetting_Enum_None {
+            get {
+                return ResourceManager.GetString("CrossTabSetting_Enum_None", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Year に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        public static string CrossTabSetting_Enum_Year {
+            get {
+                return ResourceManager.GetString("CrossTabSetting_Enum_Year", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Quarter に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        public static string CrossTabSetting_Enum_Quarter {
+            get {
+                return ResourceManager.GetString("CrossTabSetting_Enum_Quarter", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Month に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        public static string CrossTabSetting_Enum_Month {
+            get {
+                return ResourceManager.GetString("CrossTabSetting_Enum_Month", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Week に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        public static string CrossTabSetting_Enum_Week {
+            get {
+                return ResourceManager.GetString("CrossTabSetting_Enum_Week", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Day に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        public static string CrossTabSetting_Enum_Day {
+            get {
+                return ResourceManager.GetString("CrossTabSetting_Enum_Day", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Hour に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        public static string CrossTabSetting_Enum_Hour {
+            get {
+                return ResourceManager.GetString("CrossTabSetting_Enum_Hour", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Row / column field に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        public static string CrossTabSetting_Enum_Group {
+            get {
+                return ResourceManager.GetString("CrossTabSetting_Enum_Group", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Value に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        public static string CrossTabSetting_Enum_Measure {
+            get {
+                return ResourceManager.GetString("CrossTabSetting_Enum_Measure", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   = に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        public static string CrossTabSetting_Enum_Equal {
+            get {
+                return ResourceManager.GetString("CrossTabSetting_Enum_Equal", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   ≠ に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        public static string CrossTabSetting_Enum_NotEqual {
+            get {
+                return ResourceManager.GetString("CrossTabSetting_Enum_NotEqual", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   &lt; に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        public static string CrossTabSetting_Enum_LessThan {
+            get {
+                return ResourceManager.GetString("CrossTabSetting_Enum_LessThan", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   ≤ に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        public static string CrossTabSetting_Enum_LessThanOrEqual {
+            get {
+                return ResourceManager.GetString("CrossTabSetting_Enum_LessThanOrEqual", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   &gt; に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        public static string CrossTabSetting_Enum_GreaterThan {
+            get {
+                return ResourceManager.GetString("CrossTabSetting_Enum_GreaterThan", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   ≥ に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        public static string CrossTabSetting_Enum_GreaterThanOrEqual {
+            get {
+                return ResourceManager.GetString("CrossTabSetting_Enum_GreaterThanOrEqual", resourceCulture);
+            }
+        }
+}
 }
