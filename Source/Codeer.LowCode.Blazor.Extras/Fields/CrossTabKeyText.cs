@@ -6,7 +6,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
     /// クロス表の軸の見出しのうち、年・四半期の文字。年度の開始月が 1 以外なら「2025年度」「2025年度 Q1」(英語は FY2025 / FY2025 Q1)、1 なら「2026」「2026 Q2」。
     /// 鍵は期間の開始日なので、年度は開始日の年、四半期の番号は年度の開始月からの月数で決まる。
     /// </summary>
-    public static class CrossTabKeyText
+    internal static class CrossTabKeyText
     {
         public static string Year(int fiscalYear, int fiscalYearStartMonth)
             => fiscalYearStartMonth is <= 1 or > 12 ? fiscalYear.ToString() : string.Format(Resources.CrossTab_FiscalYear, fiscalYear);

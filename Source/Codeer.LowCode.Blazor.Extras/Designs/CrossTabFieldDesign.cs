@@ -78,11 +78,11 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         public override FieldBase CreateField() => new CrossTabField(this);
 
         /// <summary>設定を集計定義にする (条件は SearchCondition のもの。追加の条件は実行側が足す)。</summary>
-        public AggregateCondition CreateAggregateCondition(IEnumerable<AggregateGroup>? rows = null, IEnumerable<AggregateGroup>? columns = null)
+        internal AggregateCondition CreateAggregateCondition(IEnumerable<AggregateGroup>? rows = null, IEnumerable<AggregateGroup>? columns = null)
             => CreateAggregateCondition(Setting, rows, columns);
 
         /// <summary>指定した設定 (利用者のカスタマイズなど) を集計定義にする。元モジュールと条件はこの設計のもの。</summary>
-        public AggregateCondition CreateAggregateCondition(CrossTabSetting setting, IEnumerable<AggregateGroup>? rows = null, IEnumerable<AggregateGroup>? columns = null)
+        internal AggregateCondition CreateAggregateCondition(CrossTabSetting setting, IEnumerable<AggregateGroup>? rows = null, IEnumerable<AggregateGroup>? columns = null)
         {
             var condition = new AggregateCondition(SearchCondition.ModuleName) { Condition = SearchCondition.Condition };
             condition.Groups.AddRange(rows ?? setting.Rows);
@@ -98,7 +98,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         /// 設定の不整合 (値が無い・使えない集計方法・日付でない項目の日付の単位・範囲外の番号) を (番号, 文言) で返す。デザインチェックと利用者のカスタマイズで共用する。
         /// includeUnknownField: 元モジュールに無い項目も返す (デザインチェックは本体の存在確認が別に出すので false)
         /// </summary>
-        public List<(int Code, string Message)> ValidateSetting(CrossTabSetting setting, DesignData designData, bool includeUnknownField)
+        internal List<(int Code, string Message)> ValidateSetting(CrossTabSetting setting, DesignData designData, bool includeUnknownField)
         {
             var result = new List<(int Code, string Message)>();
             var module = designData.Modules.Find(SearchCondition.ModuleName);
@@ -146,7 +146,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         /// 保存してあった利用者の設定を今の設計に合わせる (ListField のカラムカスタマイズと同じく黙って合わせる)。
         /// 元モジュールに無い項目を指す行・列・値は捨て、値を捨てたぶん値で絞り込み・並べ替えの番号を詰め、指す先が無くなったものは捨てる。値が 1 つも残らなければ null (設計の設定で表示する)。
         /// </summary>
-        public CrossTabSetting? ReconcileSetting(CrossTabSetting saved, DesignData designData)
+        internal CrossTabSetting? ReconcileSetting(CrossTabSetting saved, DesignData designData)
         {
             var module = designData.Modules.Find(SearchCondition.ModuleName);
             if (module == null) return null;
@@ -192,7 +192,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         }
 
         /// <summary>利用者のカスタマイズで選べる項目: 元モジュールの値の項目と、リンク先 1 段の値の項目 (変数名と見出し)。</summary>
-        public List<(string Variable, string Text, bool IsDate)> GetFieldCandidates(DesignData designData, Func<string, string> localize)
+        internal List<(string Variable, string Text, bool IsDate)> GetFieldCandidates(DesignData designData, Func<string, string> localize)
         {
             var list = new List<(string Variable, string Text, bool IsDate)>();
             var module = designData.Modules.Find(SearchCondition.ModuleName);
@@ -219,7 +219,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         /// リンク越しの項目をたどるときの相手のモジュール名 (リンクでなければ null)。
         /// 本体の集計が解決するリンクと同じ範囲: LinkField・ModuleField・モジュール参照の SelectField。
         /// </summary>
-        public static string? LinkTargetModuleName(FieldDesignBase field) => field switch
+        internal static string? LinkTargetModuleName(FieldDesignBase field) => field switch
         {
             LinkFieldDesign l => l.SearchCondition.ModuleName,
             ModuleFieldDesign m => m.ModuleName,
@@ -228,7 +228,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         };
 
         /// <summary>変数名から元モジュールの項目を引く。リンク越し ("Customer.Region.Value") はリンク (LinkField / ModuleField / モジュール参照の SelectField) をたどる。無ければ null。</summary>
-        public static FieldDesignBase? ResolveField(DesignData designData, ModuleDesign module, string variable)
+        internal static FieldDesignBase? ResolveField(DesignData designData, ModuleDesign module, string variable)
         {
             if (string.IsNullOrEmpty(variable)) return null;
             var fieldName = new VariableName(variable).FieldName;

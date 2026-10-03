@@ -5,7 +5,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
     /// <summary>
     /// 値の書式の候補 (.NET の数値の書式文字列と、利用者向けの説明)。候補に無い書式も自由に入力できる。空は「元の項目の書式」。
     /// </summary>
-    public static class CrossTabFormatPresets
+    internal static class CrossTabFormatPresets
     {
         public static IReadOnlyList<(string Code, string Text)> All =>
         [

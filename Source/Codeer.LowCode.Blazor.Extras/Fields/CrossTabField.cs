@@ -36,11 +36,6 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         //今の表を作った集計定義 (セルの条件を作るのに使う。時差も入っている)
         AggregateCondition? _tableCondition;
 
-        [ScriptHide]
-        public Func<SearchCondition?, Task> OnQueryChangedAsync { get; set; } = _ => Task.CompletedTask;
-        [ScriptHide]
-        public Func<CrossTabCell, Task> OnCellClickAsync { get; set; } = _ => Task.CompletedTask;
-
         public CrossTabField(CrossTabFieldDesign design) : base(design)
         {
             _rows = design.Setting.Rows.Select(e => Clone(e)).ToList();
@@ -66,29 +61,20 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         public bool IsLoading { get; private set; }
 
         /// <summary>値の表示形式 (値 / 総計・行の合計・列の合計 に対する割合)。利用者のカスタマイズがあればそれ、無ければ設計。</summary>
-        [ScriptHide]
-        public CrossTabValueDisplay ValueDisplay => _scriptCondition == null ? _userValueDisplay ?? Design.ValueDisplay : Design.ValueDisplay;
+        internal CrossTabValueDisplay ValueDisplay => _scriptCondition == null ? _userValueDisplay ?? Design.ValueDisplay : Design.ValueDisplay;
 
         /// <summary>今使っている集計の設定 (利用者のカスタマイズがあればそれ、無ければ設計)。スクリプトの Show で渡した定義は含まない。</summary>
-        [ScriptHide]
-        public CrossTabSetting CurrentSetting => _userSetting ?? Design.Setting;
+        internal CrossTabSetting CurrentSetting => _userSetting ?? Design.Setting;
 
         /// <summary>利用者がカスタマイズできる状態か (設計で許可・元モジュールあり・スクリプトの Show で定義を渡していない・実行時)。</summary>
-        [ScriptHide]
-        public bool CanCustomize => Design.CanCustomize && _scriptCondition == null
+        internal bool CanCustomize => Design.CanCustomize && _scriptCondition == null
             && !string.IsNullOrEmpty(Design.SearchCondition.ModuleName) && !Services.AppInfoService.IsDesignMode;
 
-        /// <summary>利用者のカスタマイズが効いているか。</summary>
-        [ScriptHide]
-        public bool IsCustomized => _userSetting != null || _userValueDisplay != null;
-
         /// <summary>行に置いた項目 (設計の Rows、または Show で渡した定義の先頭 rowCount 個)。</summary>
-        [ScriptHide]
-        public List<AggregateGroup> RowGroups => _rows;
+        internal IReadOnlyList<AggregateGroup> RowGroups => _rows;
 
         /// <summary>列に置いた項目。</summary>
-        [ScriptHide]
-        public List<AggregateGroup> ColumnGroups => _columns;
+        internal IReadOnlyList<AggregateGroup> ColumnGroups => _columns;
 
         public override bool IsModified => false;
 
@@ -159,7 +145,6 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             if (condition.ModuleName != ModuleName)
                 throw LowCodeException.Create("{0} Invalid Module", ModuleName, condition.ModuleName);
             _additionalCondition = condition;
-            await OnQueryChangedAsync(GetSearchCondition());
             await ReloadAsync();
         }
 
@@ -211,19 +196,16 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         }
 
         /// <summary>今の集計定義 (設計 または Show で渡した定義。条件は追加の条件と AND)。</summary>
-        [ScriptHide]
-        public AggregateCondition GetAggregateCondition()
+        internal AggregateCondition GetAggregateCondition()
         {
             var condition = _scriptCondition == null ? Design.CreateAggregateCondition(CurrentSetting, _rows, _columns) : CloneCondition(_scriptCondition);
             condition.Condition = GetSearchCondition().Condition;
             return condition;
         }
 
-        [ScriptHide]
-        public async Task InvokeCellClickAsync(CrossTabCell cell)
+        internal async Task InvokeCellClickAsync(CrossTabCell cell)
         {
             if (!string.IsNullOrEmpty(Design.OnCellClick)) await Module.ExecuteScriptAsync(Design.OnCellClick, cell);
-            await OnCellClickAsync(cell);
         }
 
         /// <summary>

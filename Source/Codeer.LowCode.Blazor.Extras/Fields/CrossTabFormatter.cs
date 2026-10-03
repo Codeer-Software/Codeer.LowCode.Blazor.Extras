@@ -12,7 +12,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
     /// 軸は 真偽が TrueText / FalseText、数値が項目の Format。日付は単位に合わせた見出し (CrossTabKeyText)。
     /// UTC で保存した日時・時刻 (SaveAsUtc) はローカル時刻で出す。
     /// </summary>
-    public static class CrossTabFormatter
+    internal static class CrossTabFormatter
     {
         const string DefaultNumberFormat = "#,##0.##";
 

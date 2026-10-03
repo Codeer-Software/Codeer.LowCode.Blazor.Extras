@@ -1,6 +1,5 @@
 using Codeer.LowCode.Blazor.Json;
 using Codeer.LowCode.Blazor.Repository.Match;
-using Codeer.LowCode.Blazor.Script;
 using Codeer.LowCode.Blazor.Script.Internal.ScriptServices;
 
 namespace Codeer.LowCode.Blazor.Extras.Fields
@@ -33,19 +32,15 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         public string ColumnText => string.Join(" / ", ColumnKeyTexts);
 
         /// <summary>集計した元モジュール。</summary>
-        [ScriptHide]
-        public string ModuleName { get; set; } = string.Empty;
+        internal string ModuleName { get; set; } = string.Empty;
 
         /// <summary>このセルに数えた行の条件 (表の条件 + 行・列の鍵。日付は期間の範囲、空値は空値の行)。合計のセルで行を絞り込み・上限で選んでいれば表に出ている行の分。</summary>
-        [ScriptHide]
-        public MatchConditionBase? Condition { get; set; }
+        internal MatchConditionBase? Condition { get; set; }
 
-        [ScriptHide]
-        public Codeer.LowCode.Blazor.RequestInterfaces.Services? Services { get; set; }
+        internal Codeer.LowCode.Blazor.RequestInterfaces.Services? Services { get; set; }
 
         /// <summary>このセルの条件では明細を読めない理由 (読めるなら null)。リンク越しの項目で分けた表で、その項目を元モジュールに置いていないとき。</summary>
-        [ScriptHide]
-        public string? DetailError { get; set; }
+        internal string? DetailError { get; set; }
 
         /// <summary>このセルに数えた行を読む ModuleSearcher (元モジュール)。一覧の SetAdditionalCondition に渡して Reload すれば明細の一覧になる。</summary>
         public ModuleSearcher CreateSearcher()
