@@ -22,20 +22,20 @@
 @using Microsoft.AspNetCore.Components.Web
 @inject IJSRuntime JSRuntime
 
-@* カスタマイズは表全体の右クリックで開く (エラーで表が出ないときも、自分の設定を直せるように) *@
-<div @ref="Element" class="crosstab" style="@Field.GetOwnStyleString()" @oncontextmenu="OnContextMenu" @oncontextmenu:preventDefault="@Field.CanCustomize">
+<div @ref="Element" class="crosstab" style="@Field.GetOwnStyleString()">
+  @* カスタマイズできる表だけ右上にボタンを出す (エラーで表が出ないときも、自分の設定を直せるように表の外に置く) *@
+  @if (Field.CanCustomize) {
+    <div class="crosstab-toolbar">
+      <button type="button" class="btn btn-sm btn-outline-secondary" data-name="customize" @onclick="ShowCustomDialog">@Resources.CrossTab_Customize</button>
+    </div>
+  }
   @if (string.IsNullOrEmpty(Field.ModuleName)) {
     @if (Services.AppInfoService.IsDesignMode) {
       <div class="text-muted small">@Resources.CrossTab_ScriptOnly</div>
     }
   } else {
     @if (!string.IsNullOrEmpty(Field.LoadError)) {
-      <div class="text-danger small">
-        @Field.LoadError
-        @if (Field.CanCustomize) {
-          <a href="javascript:void(0)" class="ms-2" data-name="customize" @onclick="ShowCustomDialog">@Resources.CrossTab_Customize</a>
-        }
-      </div>
+      <div class="text-danger small">@Field.LoadError</div>
     } else if (Field.Table == null) {
       @if (Field.IsLoading) { <div class="text-muted small">...</div> }
     } else {
@@ -156,12 +156,6 @@
     }
     var setting = saved == null ? null : Field.Design.ReconcileSetting(saved.Setting, Services.AppInfoService.GetDesignData());
     await Field.ApplyUserSettingAsync(setting, saved?.ValueDisplay);
-  }
-
-  async Task OnContextMenu(MouseEventArgs e)
-  {
-    if (!Field.CanCustomize) return;
-    await ShowCustomDialog();
   }
 
   async Task ShowCustomDialog()
@@ -315,6 +309,7 @@
       Value = table.Cells[m][r][c].GetValue(),
       ModuleName = Field.ModuleName,
       Condition = Field.CreateCellCondition(r, c),
+      DetailError = Field.GetCellDetailError(r, c),
       Services = Services,
     });
   }
@@ -326,7 +321,7 @@
     var cell = new CrossTabCell
     {
       MeasureIndex = m, IsRowTotal = r != null && c == null, IsColumnTotal = c != null && r == null,
-      ModuleName = Field.ModuleName, Condition = Field.CreateCellCondition(r, c), Services = Services,
+      ModuleName = Field.ModuleName, Condition = Field.CreateCellCondition(r, c), DetailError = Field.GetCellDetailError(r, c), Services = Services,
     };
     if (r != null)
     {

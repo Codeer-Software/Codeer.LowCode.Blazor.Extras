@@ -23,7 +23,14 @@ namespace Codeer.LowCode.Blazor.Extras.Test.CrossTab
             order.Fields.Add(status);
             order.Fields.Add(new DateFieldDesign { Name = "OrderedOn", DbColumn = "ordered_on" });
             order.Fields.Add(new TextFieldDesign { Name = "Owner", DbColumn = "owner" });
+            order.Fields.Add(new LinkFieldDesign { Name = "Customer", DisplayName = "顧客", DbColumn = "customer_id", SearchCondition = new SearchCondition("Customer"), ValueVariable = "Id.Value", DisplayTextVariable = "Name.Value" });
             d.AddModule(order);
+
+            var customer = new ModuleDesign { Name = "Customer", DataSourceName = "Main", DbTable = "customers" };
+            customer.Fields.Add(new IdFieldDesign { Name = "Id", DbColumn = "id" });
+            customer.Fields.Add(new TextFieldDesign { Name = "Name", DbColumn = "name" });
+            customer.Fields.Add(new TextFieldDesign { Name = "Region", DisplayName = "地域", DbColumn = "region" });
+            d.AddModule(customer);
 
             var summary = new ModuleDesign { Name = "Summary" };
             var tab = new CrossTabFieldDesign { Name = "Tab" };
@@ -113,6 +120,49 @@ namespace Codeer.LowCode.Blazor.Extras.Test.CrossTab
             await field.ApplyUserSettingAsync(swapped, null);
 
             Assert.That(Text(field.CreateCellCondition(0, 0)), Is.EqualTo($"({Owner} & {January} & Status.Value Equal 10)"));
+        }
+
+        //列をリンク越しの項目 (顧客 / 地域) にした表。declare なら元モジュールにその項目 (ドット列) を置く
+        static async Task<CrossTabField> LoadLinkAxisAsync(bool declare)
+        {
+            var design = Design();
+            if (declare) design.Modules.Find("Order")!.Fields.Add(new TextFieldDesign { Name = "Customer.Region", DbColumn = "region" });
+            var tab = (CrossTabFieldDesign)design.Modules.Find("Summary")!.Fields.Single();
+            tab.Setting.Columns[0] = new ValueGroup { Variable = "Customer.Region.Value" };
+            tab.Setting.LimitCount = null;
+            var svc = new TestServices(design);
+            svc.App.AggregateProvider = conditions => conditions.Select(c => c.Groups.Count switch
+            {
+                0 => new AggregateResult { Rows = [Row(1)], TotalCount = 1, GroupCount = 1 },
+                2 => new AggregateResult { Rows = [Row(1, "10", "関東")], TotalCount = 1, GroupCount = 1 },
+                _ when c.Groups[0].Variable.StartsWith("Customer.") => new AggregateResult { Rows = [Row(1, "関東")], TotalCount = 1, GroupCount = 1 },
+                _ => new AggregateResult { Rows = [Row(1, "10")], TotalCount = 1, GroupCount = 1 },
+            }).ToList();
+            var module = await svc.CreateModuleAsync("Summary");
+            var field = module.GetField<CrossTabField>("Tab")!;
+            await field.ReloadAsync();
+            Assert.That(field.Table, Is.Not.Null, field.LoadError);
+            return field;
+        }
+
+        [Test]
+        public async Task リンク越しの項目を元モジュールに置いていない表は明細を読む前に何を置けばよいかの文言で止める()
+        {
+            var field = await LoadLinkAxisAsync(declare: false);
+            var error = field.GetCellDetailError(0, 0);
+            Assert.That(error, Does.Contain("顧客 / 地域").And.Contain("Order").And.Contain("Customer.Region"));
+            //行計はリンク越しの列を使わないので読める
+            Assert.That(field.GetCellDetailError(0, null), Is.Null);
+            var cell = new CrossTabCell { ModuleName = field.ModuleName, Condition = field.CreateCellCondition(0, 0), DetailError = error };
+            Assert.That(() => cell.CreateSearcher(), Throws.TypeOf<LowCodeException>().With.Message.EqualTo(error));
+        }
+
+        [Test]
+        public async Task リンク越しの項目を元モジュールに置いていれば明細の条件になる()
+        {
+            var field = await LoadLinkAxisAsync(declare: true);
+            Assert.That(field.GetCellDetailError(0, 0), Is.Null);
+            Assert.That(Text(field.CreateCellCondition(0, 0)), Is.EqualTo($"({Owner} & Status.Value Equal 10 & Customer.Region.Value Equal 関東)"));
         }
 
         [Test]

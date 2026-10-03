@@ -231,6 +231,37 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         /// 集計後の絞り込み・上限で行 (行の軸が無ければ列) を選んでいる表の合計は、表に出ている項目の分だけ (合計の値と同じ範囲)。表が無ければ null。
         /// </summary>
         internal MatchConditionBase? CreateCellCondition(int? rowIndex, int? columnIndex)
+            => BuildCellCondition(rowIndex, columnIndex, new());
+
+        /// <summary>
+        /// セルの条件では明細を読めないときの文言 (読めるなら null)。一覧の検索は元モジュールに置いていないリンク越しの項目を条件に使えないので、
+        /// セルの条件に使うリンク越しの軸の項目 ("顧客Id.業種Id") が元モジュールに無ければ、どの項目をどこに置けばよいかを返す。
+        /// </summary>
+        internal string? GetCellDetailError(int? rowIndex, int? columnIndex)
+        {
+            var missing = new List<AggregateGroup>();
+            BuildCellCondition(rowIndex, columnIndex, missing);
+            if (missing.Count == 0) return null;
+            var designData = Services.AppInfoService.GetDesignData();
+            var module = designData.Modules.Find(ModuleName);
+            var group = missing[0];
+            var fieldName = new VariableName(group.Variable).FieldName;
+            return string.Format(Properties.Resources.CrossTab_DetailNeedsLinkField, LinkPathText(designData, module, group.Variable), ModuleName, fieldName.FullName);
+        }
+
+        //リンク越しの項目の見出し ("顧客 / 業種")。カスタマイズの候補と同じ書き方
+        string LinkPathText(DesignData designData, ModuleDesign? module, string variable)
+        {
+            var fieldName = new VariableName(variable).FieldName;
+            if (module == null) return fieldName.FullName;
+            var root = module.Fields.FirstOrDefault(e => e.Name == fieldName.Root);
+            var leaf = CrossTabFieldDesign.ResolveField(designData, module, variable);
+            string Text(FieldDesignBase? f, string fallback) => f == null ? fallback : Services.AppInfoService.Localize(CrossTabFieldDesign.DisplayTextOf(f));
+            return $"{Text(root, fieldName.Root)} / {Text(leaf, fieldName.FullName)}";
+        }
+
+        //セルの条件を組む。missingLinkFields には、条件に使ったリンク越しの軸のうち元モジュールに置いていないものを入れる
+        MatchConditionBase? BuildCellCondition(int? rowIndex, int? columnIndex, List<AggregateGroup> missingLinkFields)
         {
             var table = Table;
             var source = _tableCondition;
@@ -247,6 +278,8 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
                 {
                     var field = CrossTabFieldDesign.ResolveField(designData, module, groups[i].Variable);
                     if (field == null) return null;
+                    var fieldName = new VariableName(groups[i].Variable).FieldName;
+                    if (fieldName.IsLink && module.Fields.All(e => e.Name != fieldName.FullName) && !missingLinkFields.Contains(groups[i])) missingLinkFields.Add(groups[i]);
                     parts.Add(groups[i].CreateKeyCondition(axis.Keys[i].Value, field, offset));
                 }
                 return parts.Count switch { 0 => null, 1 => parts[0], _ => MultiMatchCondition.And(parts.ToArray()) };

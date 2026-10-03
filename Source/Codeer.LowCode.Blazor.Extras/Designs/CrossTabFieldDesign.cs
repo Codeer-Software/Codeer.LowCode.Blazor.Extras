@@ -61,7 +61,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
 
         /// <summary>
         /// 利用者が集計 (行・列・値・値で絞り込み・並べ替え・表示件数の上限・値の表示形式) を自分用に変えられる。
-        /// 表の右クリック (エラー表示のときはその横のリンク) かスクリプトの ShowCustomDialog() で開き、ブラウザ (localStorage) に保存する。ListField のカラムカスタマイズと同じ作り
+        /// 表の右上の「集計のカスタマイズ」ボタン かスクリプトの ShowCustomDialog() で開き、ブラウザ (localStorage) に保存する。ListField のカラムカスタマイズと同じ作り
         /// </summary>
         [Designer(Index = 9, Scope = DesignerScope.All, DisplayName = "$CrossTabCanCustomize")]
         public bool CanCustomize { get; set; }

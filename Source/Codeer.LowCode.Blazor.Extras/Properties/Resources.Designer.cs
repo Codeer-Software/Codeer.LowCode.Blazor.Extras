@@ -3747,6 +3747,12 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
         /// <summary>
         ///   {0} cannot be applied to {1}. に類似しているローカライズされた文字列を検索します。
         /// </summary>
+        internal static string CrossTab_DetailNeedsLinkField {
+            get {
+                return ResourceManager.GetString("CrossTab_DetailNeedsLinkField", resourceCulture);
+            }
+        }
+        
         internal static string CrossTab_InvalidFunction {
             get {
                 return ResourceManager.GetString("CrossTab_InvalidFunction", resourceCulture);

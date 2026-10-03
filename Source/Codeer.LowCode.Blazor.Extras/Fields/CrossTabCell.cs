@@ -43,9 +43,15 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         [ScriptHide]
         public Codeer.LowCode.Blazor.RequestInterfaces.Services? Services { get; set; }
 
+        /// <summary>このセルの条件では明細を読めない理由 (読めるなら null)。リンク越しの項目で分けた表で、その項目を元モジュールに置いていないとき。</summary>
+        [ScriptHide]
+        public string? DetailError { get; set; }
+
         /// <summary>このセルに数えた行を読む ModuleSearcher (元モジュール)。一覧の SetAdditionalCondition に渡して Reload すれば明細の一覧になる。</summary>
         public ModuleSearcher CreateSearcher()
         {
+            //一覧の検索で「フィールドが存在しません」になる前に、何をすればよいかが分かる文言で止める
+            if (!string.IsNullOrEmpty(DetailError)) throw new LowCodeException(DetailError);
             var searcher = new ModuleSearcher(ModuleName) { Services = Services };
             if (Condition != null) searcher.AddConditions(Condition.JsonClone());
             return searcher;
