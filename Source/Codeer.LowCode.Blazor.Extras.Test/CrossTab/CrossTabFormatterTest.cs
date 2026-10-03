@@ -60,5 +60,29 @@ namespace Codeer.LowCode.Blazor.Extras.Test.CrossTab
             Assert.That(CrossTabFormatter.Key(new AggregateKey { Value = new NullValue() }, group, flag, "(空白)", "", "", Inv), Is.EqualTo("(空白)"));
             Assert.That(CrossTabFormatter.Key(new AggregateKey { Value = V(3m), DisplayText = "高" }, group, null, "(空白)", "", "", Inv), Is.EqualTo("高"));
         }
+
+        [Test]
+        public void UTCで保存した日時と時刻はローカル時刻で出し時でまとめた軸はそのまま()
+        {
+            var utc = new DateTime(2026, 4, 1, 15, 30, 0);
+            var utcTime = new TimeOnly(15, 30);
+            var localText = DateTime.SpecifyKind(utc, DateTimeKind.Utc).ToLocalTime().ToString("yyyy-MM-dd HH:mm", Inv);
+            var localTimeText = TimeOnly.FromDateTime(new DateTime(new DateOnly(2000, 1, 1), utcTime, DateTimeKind.Utc).ToLocalTime()).ToString("HH:mm", Inv);
+
+            var utcDateTime = new DateTimeFieldDesign { Name = "VisitedAt", SaveAsUtc = true };
+            var localDateTime = new DateTimeFieldDesign { Name = "PlannedAt" };
+            var utcTimeField = new TimeFieldDesign { Name = "StartTime", SaveAsUtc = true };
+            var max = new AggregateMeasure { Function = AggregateFunction.Max, Variable = "VisitedAt.Value" };
+
+            //値 (最小・最大)
+            Assert.That(CrossTabFormatter.Measure(MultiTypeValue.Create(utc), max, utcDateTime, Inv), Is.EqualTo(localText));
+            Assert.That(CrossTabFormatter.Measure(MultiTypeValue.Create(utc), max, localDateTime, Inv), Is.EqualTo("2026-04-01 15:30"));
+            Assert.That(CrossTabFormatter.Measure(MultiTypeValue.Create(utcTime), max, utcTimeField, Inv), Is.EqualTo(localTimeText));
+
+            //まとめない軸はローカル、時でまとめた軸は SQL で時差を足し済なのでそのまま
+            Assert.That(CrossTabFormatter.Key(new AggregateKey { Value = MultiTypeValue.Create(utc) }, new ValueGroup { Variable = "VisitedAt.Value" }, utcDateTime, "(空白)", "", "", Inv), Is.EqualTo(localText));
+            Assert.That(CrossTabFormatter.Key(new AggregateKey { Value = MultiTypeValue.Create(utcTime) }, new ValueGroup { Variable = "StartTime.Value" }, utcTimeField, "(空白)", "", "", Inv), Is.EqualTo(localTimeText));
+            Assert.That(CrossTabFormatter.Key(new AggregateKey { Value = MultiTypeValue.Create(utc) }, new DateGroup { Variable = "VisitedAt.Value", Bucket = DateBucket.Hour }, utcDateTime, "(空白)", "", "", Inv), Is.EqualTo("2026-04-01 15:30"));
+        }
     }
 }

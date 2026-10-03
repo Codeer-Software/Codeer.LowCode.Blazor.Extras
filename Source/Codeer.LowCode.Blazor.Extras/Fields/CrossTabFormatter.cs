@@ -10,6 +10,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
     /// クロス表のセルと軸の見出しの文字。見た目は元のフィールドの設計に従う:
     /// 値は 値の Format → 元の項目 (NumberField) の Format → 既定 (桁区切り・小数は 2 桁まで) の順。件数・重複を除いた件数は整数。
     /// 軸は 真偽が TrueText / FalseText、数値が項目の Format。日付は単位に合わせた見出し (CrossTabKeyText)。
+    /// UTC で保存した日時・時刻 (SaveAsUtc) はローカル時刻で出す。
     /// </summary>
     public static class CrossTabFormatter
     {
@@ -27,11 +28,18 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             {
                 decimal d => Number(d, format, culture),
                 DateOnly d => d.ToString("yyyy-MM-dd", culture),
-                DateTime d => d.ToString("yyyy-MM-dd HH:mm", culture),
-                TimeOnly t => t.ToString("HH:mm", culture),
+                DateTime d => ToLocal(d, sourceField).ToString("yyyy-MM-dd HH:mm", culture),
+                TimeOnly t => ToLocal(t, sourceField).ToString("HH:mm", culture),
                 _ => Convert.ToString(v, culture) ?? string.Empty,
             };
         }
+
+        //UTC で保存した項目 (SaveAsUtc) は画面の項目と同じくローカル時刻で出す
+        static DateTime ToLocal(DateTime value, FieldDesignBase? sourceField)
+            => sourceField is DateTimeFieldDesign { SaveAsUtc: true } ? DateTime.SpecifyKind(value, DateTimeKind.Utc).ToLocalTime() : value;
+
+        static TimeOnly ToLocal(TimeOnly value, FieldDesignBase? sourceField)
+            => sourceField is TimeFieldDesign { SaveAsUtc: true } ? TimeOnly.FromDateTime(new DateTime(new DateOnly(2000, 1, 1), value, DateTimeKind.Utc).ToLocalTime()) : value;
 
         /// <summary>軸の値の文字 (表示名があればそれ、空値は emptyText)。</summary>
         public static string Key(AggregateKey key, AggregateGroup? group, FieldDesignBase? sourceField, string emptyText, string trueText, string falseText, CultureInfo culture)
@@ -49,7 +57,9 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
                     _ => date.ToString("yyyy-MM-dd", culture),
                 };
             }
-            if (value is DateTime dateTime) return dateTime.ToString("yyyy-MM-dd HH:mm", culture);
+            //「時」でまとめた軸は SQL が時差を足して丸め済なので、そのまま
+            if (value is DateTime dateTime) return (group is DateGroup ? dateTime : ToLocal(dateTime, sourceField)).ToString("yyyy-MM-dd HH:mm", culture);
+            if (value is TimeOnly time) return ToLocal(time, sourceField).ToString("HH:mm", culture);
             if (value is bool b)
             {
                 var boolean = sourceField as BooleanFieldDesign;
