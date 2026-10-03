@@ -126,6 +126,24 @@ namespace Codeer.LowCode.Blazor.Extras.Test.CrossTab
         }
 
         [Test]
+        public void モジュール参照の選択項目もリンクとしてたどれて候補に出て利用者の設定から捨てられない()
+        {
+            var d = Design();
+            d.Modules.Find("Order")!.Fields.Add(new SelectFieldDesign { Name = "Buyer", DbColumn = "buyer_id", SearchCondition = new SearchCondition("Customer"), ValueVariable = "Id.Value", DisplayTextVariable = "Region.Value" });
+            var field = d.Modules.Find("Dashboard")!.Fields.OfType<CrossTabFieldDesign>().Single();
+
+            Assert.That(CrossTabFieldDesign.ResolveField(d, d.Modules.Find("Order")!, "Buyer.Region.Value"), Is.InstanceOf<TextFieldDesign>());
+            Assert.That(field.GetFieldCandidates(d, s => s).Select(e => e.Variable), Does.Contain("Buyer.Region.Value"));
+            var saved = new CrossTabSetting();
+            saved.Rows.Add(new ValueGroup { Variable = "Buyer.Region.Value" });
+            saved.Measures.Add(new AggregateMeasure { Function = AggregateFunction.Count });
+            Assert.That(field.ValidateSetting(saved, d, includeUnknownField: true), Is.Empty);
+            Assert.That(field.ReconcileSetting(saved, d)!.Rows.Select(e => e.Variable), Is.EqualTo(new[] { "Buyer.Region.Value" }));
+            //候補値の選択 (モジュール参照でない) はリンクではない
+            Assert.That(CrossTabFieldDesign.LinkTargetModuleName(new SelectFieldDesign { Name = "Status" }), Is.Null);
+        }
+
+        [Test]
         public void 利用者の設定の検査は無い項目も指摘する()
         {
             var d = Design();

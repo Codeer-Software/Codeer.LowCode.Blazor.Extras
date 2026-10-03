@@ -101,7 +101,7 @@
         </table>
       </div>
       @if (table.IsLimited) {
-        <div class="text-warning small">@string.Format(Resources.CrossTab_Limited, table.Rows.Count * table.Columns.Count, table.GroupCount)</div>
+        <div class="text-warning small">@string.Format(Field.RowGroups.Count == 0 && Field.ColumnGroups.Count > 0 ? Resources.CrossTab_LimitedColumns : Resources.CrossTab_Limited, table.ShownGroupCount, table.GroupCount, table.TotalCount)</div>
       }
     }
   }

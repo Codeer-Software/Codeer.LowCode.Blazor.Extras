@@ -3583,11 +3583,20 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
         }
         
         /// <summary>
-        ///   Showing {0} of {1} groups. Narrow the condition or raise the limit. に類似しているローカライズされた文字列を検索します。
+        ///   Showing {0} of {1} rows ({2} records). Narrow the condition or raise the limit. に類似しているローカライズされた文字列を検索します。
         /// </summary>
         internal static string CrossTab_Limited {
             get {
                 return ResourceManager.GetString("CrossTab_Limited", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Showing {0} of {1} columns ({2} records). Narrow the condition or raise the limit. に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string CrossTab_LimitedColumns {
+            get {
+                return ResourceManager.GetString("CrossTab_LimitedColumns", resourceCulture);
             }
         }
         

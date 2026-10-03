@@ -203,12 +203,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
             {
                 var text = localize(DisplayTextOf(field));
                 list.Add(($"{field.Name}.Value", text, IsDate(field)));
-                var target = field switch
-                {
-                    LinkFieldDesign l => l.SearchCondition.ModuleName,
-                    ModuleFieldDesign m => m.ModuleName,
-                    _ => null,
-                };
+                var target = LinkTargetModuleName(field);
                 if (string.IsNullOrEmpty(target) || designData.Modules.Find(target) is not { } targetModule) continue;
                 foreach (var linked in targetModule.Fields.Where(IsScalar))
                     list.Add(($"{field.Name}.{linked.Name}.Value", $"{text} / {localize(DisplayTextOf(linked))}", IsDate(linked)));
@@ -220,7 +215,19 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         internal static string DisplayTextOf(FieldDesignBase field)
             => field is IDisplayName d && !string.IsNullOrEmpty(d.DisplayName) ? d.DisplayName : field.Name;
 
-        /// <summary>変数名から元モジュールの項目を引く。リンク越し ("Customer.Region.Value") はリンク (LinkField / ModuleField) をたどる。無ければ null。</summary>
+        /// <summary>
+        /// リンク越しの項目をたどるときの相手のモジュール名 (リンクでなければ null)。
+        /// 本体の集計が解決するリンクと同じ範囲: LinkField・ModuleField・モジュール参照の SelectField。
+        /// </summary>
+        public static string? LinkTargetModuleName(FieldDesignBase field) => field switch
+        {
+            LinkFieldDesign l => l.SearchCondition.ModuleName,
+            ModuleFieldDesign m => m.ModuleName,
+            SelectFieldDesign s when !string.IsNullOrEmpty(s.SearchCondition.ModuleName) => s.SearchCondition.ModuleName,
+            _ => null,
+        };
+
+        /// <summary>変数名から元モジュールの項目を引く。リンク越し ("Customer.Region.Value") はリンク (LinkField / ModuleField / モジュール参照の SelectField) をたどる。無ければ null。</summary>
         public static FieldDesignBase? ResolveField(DesignData designData, ModuleDesign module, string variable)
         {
             if (string.IsNullOrEmpty(variable)) return null;
@@ -231,12 +238,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
                 var exact = current.Fields.FirstOrDefault(e => e.Name == fieldName.FullName);
                 if (exact != null || !fieldName.IsLink) return exact;
                 var link = current.Fields.FirstOrDefault(e => e.Name == fieldName.Root);
-                var target = link switch
-                {
-                    LinkFieldDesign l => l.SearchCondition.ModuleName,
-                    ModuleFieldDesign m => m.ModuleName,
-                    _ => null,
-                };
+                var target = link == null ? null : LinkTargetModuleName(link);
                 if (string.IsNullOrEmpty(target) || designData.Modules.Find(target) is not { } next) return null;
                 current = next;
                 fieldName = fieldName.SkipRoot();

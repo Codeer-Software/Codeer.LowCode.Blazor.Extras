@@ -369,12 +369,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Controls
             foreach (var field in module.Fields.Where(IsScalar))
             {
                 list.Add(field.Name + ".Value");
-                var target = field switch
-                {
-                    LinkFieldDesign l => l.SearchCondition.ModuleName,
-                    ModuleFieldDesign m => m.ModuleName,
-                    _ => null,
-                };
+                var target = CrossTabFieldDesign.LinkTargetModuleName(field);
                 if (string.IsNullOrEmpty(target)) continue;
                 var targetModule = _designData.Modules.Find(target);
                 if (targetModule == null) continue;

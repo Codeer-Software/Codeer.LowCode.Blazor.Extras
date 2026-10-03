@@ -31,7 +31,7 @@ public class CrossTabSetting
     public List<AggregateMeasure> Measures { get; set; }          // 値 (1 つ以上)
     public List<AggregateHaving> Having { get; set; }             // 値で絞り込み (値の番号・比較・値)
     public List<AggregateSort> SortConditions { get; set; }       // 並べ替え (Group / Measure の番号・降順)
-    public int? LimitCount { get; set; }                          // 表示件数の上限 (集計後のグループ数)
+    public int? LimitCount { get; set; }                          // 表示件数の上限 (行の項目の数。行が無ければ列の項目)
 }
 // 軸 (まとめ方) は型で表す。JSON は条件やフィールドと同じく TypeFullName で型を持つ
 public abstract class AggregateGroup { public string Variable; }
@@ -52,7 +52,9 @@ public class AggregateSort { public AggregateSortTarget Target; public int Index
 - 値の表示は 値の `Format` → 元の項目 (NumberField) の `Format` → 既定 (桁区切り・小数 2 桁まで) の順。件数・重複を除いた件数は整数。確度を `P0` で設計していれば平均も「40%」で出る。表全体の小数桁の設定は無い。エディタの書式欄は候補 (`N0` 整数 / `N1` 小数 1 桁 / `N2` / `P0` パーセント / `P1` / `C0` 通貨) から選ぶか自由に入力する
 - `Having` と `SortConditions` の番号は 0 始まり。`SortConditions` の Group の番号は Rows → Columns の順
 - 表のセル (行の種類 × 列の種類 × 値の数) が 20,000 を超えると表を描かずにエラーを出す (日単位 × 顧客 のような細かすぎる組み合わせの暴走止め)。集計の件数自体に上限は無い
-- 上限を超えたグループがあると表の下に「n 件中 m 件だけ表示」の注意が出る (黙って欠けない)
+- `Having`・値 (Measure) の並べ替え・`LimitCount` は**行の項目**に掛かり、その行の合計 (行の軸だけで集計し直した値。平均・重複を除いた件数も正しい) で評価する (Excel のピボットと同じ)。列の項目は絞らず全部出し、項目の順に並べる (Group の並べ替えで列の項目の昇順・降順は指定できる)。列が無ければ行、行が無ければ列に掛かる
+- 列ごとの合計・総計・割合の分母は表に出ている行の分 (表が縦に足し合う)。全データを分母にした構成比は出せない
+- 上限で切れると表の下に「条件に合う n 件・全 m 行のうち k 行を表示」の注意が出る (黙って欠けない)
 - 一覧ページの表示 (ListPageDesign) にこのフィールドを置くと、検索条件がそのまま集計の条件になる
 - `SearchCondition.ModuleName` を空にしておくと設計では何も集計せず、スクリプトの `Show(aggregator)` で渡した定義だけを表示する (条件で集計の中身を切り替えたいとき)
 - 割合表示は件数 (Count) と合計 (Sum) にだけ掛かる (平均・最小・最大・重複を除いた件数は値のまま)。分母にした合計のセル (行の合計に対する割合なら右端の合計列、列の合計に対する割合なら下端の合計行、総計) は 100% になる。他の合計セルは総計に対する割合

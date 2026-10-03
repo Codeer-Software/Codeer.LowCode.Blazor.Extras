@@ -1600,7 +1600,10 @@
     <value>合計</value>
   </data>
   <data name="CrossTab_Limited" xml:space="preserve">
-    <value>集計結果が多いため {1} 件中 {0} 件だけ表示しています。条件を絞るか上限を増やしてください。</value>
+    <value>条件に合う {2} 件・全 {1} 行のうち {0} 行を表示しています。条件を絞るか上限を増やしてください。</value>
+  </data>
+  <data name="CrossTab_LimitedColumns" xml:space="preserve">
+    <value>条件に合う {2} 件・全 {1} 列のうち {0} 列を表示しています。条件を絞るか上限を増やしてください。</value>
   </data>
   <data name="CrossTab_Empty" xml:space="preserve">
     <value>(空白)</value>

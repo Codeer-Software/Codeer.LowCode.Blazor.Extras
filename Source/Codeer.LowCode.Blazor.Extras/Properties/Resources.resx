@@ -1600,7 +1600,10 @@ Recipients: {1}</value>
     <value>Total</value>
   </data>
   <data name="CrossTab_Limited" xml:space="preserve">
-    <value>Showing {0} of {1} groups. Narrow the condition or raise the limit.</value>
+    <value>Showing {0} of {1} rows ({2} records). Narrow the condition or raise the limit.</value>
+  </data>
+  <data name="CrossTab_LimitedColumns" xml:space="preserve">
+    <value>Showing {0} of {1} columns ({2} records). Narrow the condition or raise the limit.</value>
   </data>
   <data name="CrossTab_Empty" xml:space="preserve">
     <value>(blank)</value>
