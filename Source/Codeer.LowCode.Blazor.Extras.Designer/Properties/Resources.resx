@@ -175,7 +175,7 @@
     <value>Field</value>
   </data>
   <data name="CrossTabSetting_DateUnit" xml:space="preserve">
-    <value>Date unit</value>
+    <value>Group by</value>
   </data>
   <data name="CrossTabSetting_Function" xml:space="preserve">
     <value>Summarize by</value>

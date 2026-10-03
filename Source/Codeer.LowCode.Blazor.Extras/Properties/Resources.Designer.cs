@@ -3817,7 +3817,7 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
         }
         
         /// <summary>
-        ///   Date unit に類似しているローカライズされた文字列を検索します。
+        ///   Group by に類似しているローカライズされた文字列を検索します。
         /// </summary>
         internal static string CrossTab_DateUnit {
             get {

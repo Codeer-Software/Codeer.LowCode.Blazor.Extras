@@ -34,7 +34,7 @@
   {
     var groups = _tab == "rows" ? Value.Setting.Rows : Value.Setting.Columns;
     <table class="table table-sm table-borderless m-0">
-      <thead><tr><th class="small text-muted">@Resources.CrossTab_Field</th><th class="small text-muted">@Resources.CrossTab_DateUnit</th><th class="small text-muted">@Resources.CrossTab_FiscalYearStartMonth</th><th></th></tr></thead>
+      <thead><tr><th class="small text-muted">@Resources.CrossTab_Field</th><th></th><th></th></tr></thead>
       <tbody>
         @foreach (var group in groups.ToList())
         {
@@ -42,18 +42,24 @@
           <tr data-name="group-row">
             <td>@FieldSelect(g.Variable, v => SetVariable(groups, g, v))</td>
             <td>
-              @* まとめ方: 値そのまま (ValueGroup) か 日付の単位 (DateGroup) *@
-              <select class="form-select form-select-sm" disabled="@(!IsDate(g.Variable))" value="@BucketKey(g)"
-                      @onchange="e => SetBucket(groups, g, e)">
-                <option value="@NoneKey">@Resources.CrossTab_DateUnitNone</option>
-                @foreach (var b in DateBuckets) { <option value="@b.ToString()">@BucketText(b)</option> }
-              </select>
-            </td>
-            <td>
-              @* 年度の開始月は 年・四半期 のときだけ *@
-              <select class="form-select form-select-sm" disabled="@(!IsFiscal(g))" value="@((g as DateGroup)?.FiscalYearStartMonth ?? 1)" @onchange="e => SetFiscalYearStartMonth(g, e)">
-                @for (var month = 1; month <= 12; month++) { <option value="@month">@month</option> }
-              </select>
+              @* まとめる単位は日付・日時の項目のときだけ (選ぶと DateGroup、まとめないなら ValueGroup)。年度の開始月は 年・四半期 のときだけ *@
+              @if (IsDate(g.Variable))
+              {
+                <div class="d-flex align-items-center gap-1">
+                  <label class="small text-nowrap m-0">@Resources.CrossTab_DateUnit</label>
+                  <select class="form-select form-select-sm w-auto" data-name="date-unit" value="@BucketKey(g)" @onchange="e => SetBucket(groups, g, e)">
+                    <option value="@NoneKey">@Resources.CrossTab_DateUnitNone</option>
+                    @foreach (var b in DateBuckets) { <option value="@b.ToString()">@BucketText(b)</option> }
+                  </select>
+                  @if (g is DateGroup { Bucket: DateBucket.Year or DateBucket.Quarter } d)
+                  {
+                    <label class="small text-nowrap m-0 ms-2">@Resources.CrossTab_FiscalYearStartMonth</label>
+                    <select class="form-select form-select-sm w-auto" data-name="fiscal-year-start-month" value="@d.FiscalYearStartMonth" @onchange="e => SetFiscalYearStartMonth(d, e)">
+                      @for (var month = 1; month <= 12; month++) { <option value="@month">@month</option> }
+                    </select>
+                  }
+                </div>
+              }
             </td>
             <td><button type="button" class="btn btn-sm btn-outline-secondary" title="×" @onclick="() => RemoveGroup(groups, g)">×</button></td>
           </tr>
@@ -222,8 +228,6 @@
     if (g is DateGroup d) d.Bucket = bucket;
     else Replace(groups, g, new DateGroup { Variable = g.Variable, Bucket = bucket });
   }
-
-  bool IsFiscal(AggregateGroup g) => IsDate(g.Variable) && g is DateGroup { Bucket: DateBucket.Year or DateBucket.Quarter };
 
   static void SetFiscalYearStartMonth(AggregateGroup g, ChangeEventArgs e)
   {

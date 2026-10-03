@@ -59,7 +59,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Controls
         void CancelClick(object sender, RoutedEventArgs e) => _completion(false);
     }
 
-    /// <summary>列挙 (集計方法・日付の単位・比較・並べ替えの対象) を利用者向けの文言にする (Resources の CrossTabSetting_Enum_名前)。</summary>
+    /// <summary>列挙 (集計方法・まとめる単位・比較・並べ替えの対象) を利用者向けの文言にする (Resources の CrossTabSetting_Enum_名前)。</summary>
     public class AggregateEnumTextConverter : IValueConverter
     {
         public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
@@ -123,7 +123,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Controls
                 OnPropertyChanged(); OnPropertyChanged(nameof(IsDate)); OnPropertyChanged(nameof(Bucket)); OnPropertyChanged(nameof(IsFiscal)); Owner.Refresh();
             }
         }
-        //まとめ方: "None" = 値そのまま、それ以外は DateBucket の名前 (日付の単位)
+        //まとめ方: "None" = 値そのまま、それ以外は DateBucket の名前 (まとめる単位。日付・日時の項目のときだけ出す)
         public string Bucket
         {
             get => Model is DateGroup d ? d.Bucket.ToString() : NoneBucket;
@@ -258,7 +258,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Controls
         public ICommand AddSortCommand { get; }
 
         public List<string> FieldCandidates { get; }
-        //まとめ方の候補: 値そのまま + 日付の単位 (表示は CrossTabSetting_Enum_* で日本語化)
+        //まとめる単位の候補: まとめない + 日付の単位 (表示は CrossTabSetting_Enum_* で日本語化)
         public IEnumerable<string> Buckets => new[] { GroupItemViewModel.NoneBucket }.Concat(Enum.GetNames<DateBucket>());
         //値の書式の候補 (自由入力も可)
         public IEnumerable<string> FormatCandidates => CrossTabFormatPresets.All.Select(e => e.Code);

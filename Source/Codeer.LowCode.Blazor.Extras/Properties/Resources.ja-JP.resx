@@ -1678,10 +1678,10 @@
     <value>項目</value>
   </data>
   <data name="CrossTab_DateUnit" xml:space="preserve">
-    <value>日付の単位</value>
+    <value>まとめる単位</value>
   </data>
   <data name="CrossTab_DateUnitNone" xml:space="preserve">
-    <value>(そのまま)</value>
+    <value>(まとめない)</value>
   </data>
   <data name="CrossTab_Function" xml:space="preserve">
     <value>集計方法</value>

@@ -229,7 +229,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Properties
         }
         
         /// <summary>
-        ///   Date unit に類似しているローカライズされた文字列を検索します。
+        ///   Group by に類似しているローカライズされた文字列を検索します。
         /// </summary>
         public static string CrossTabSetting_DateUnit {
             get {
@@ -510,7 +510,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Properties
         /// <summary>
         ///   Display format (.NET numeric format). Pick from the list or type one such as N1 / P0 / C0. Empty = the field's format. に類似しているローカライズされた文字列を検索します。
         /// </summary>
-        internal static string CrossTabSetting_FormatHint {
+        public static string CrossTabSetting_FormatHint {
             get {
                 return ResourceManager.GetString("CrossTabSetting_FormatHint", resourceCulture);
             }

@@ -175,7 +175,7 @@
     <value>項目</value>
   </data>
   <data name="CrossTabSetting_DateUnit" xml:space="preserve">
-    <value>日付の単位</value>
+    <value>まとめる単位</value>
   </data>
   <data name="CrossTabSetting_Function" xml:space="preserve">
     <value>集計方法</value>
@@ -217,7 +217,7 @@
     <value>最大</value>
   </data>
   <data name="CrossTabSetting_Enum_None" xml:space="preserve">
-    <value>(そのまま)</value>
+    <value>(まとめない)</value>
   </data>
   <data name="CrossTabSetting_Enum_Year" xml:space="preserve">
     <value>年</value>

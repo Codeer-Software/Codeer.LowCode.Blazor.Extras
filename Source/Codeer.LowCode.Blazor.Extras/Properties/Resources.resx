@@ -1678,7 +1678,7 @@ Recipients: {1}</value>
     <value>Field</value>
   </data>
   <data name="CrossTab_DateUnit" xml:space="preserve">
-    <value>Date unit</value>
+    <value>Group by</value>
   </data>
   <data name="CrossTab_DateUnitNone" xml:space="preserve">
     <value>(none)</value>
