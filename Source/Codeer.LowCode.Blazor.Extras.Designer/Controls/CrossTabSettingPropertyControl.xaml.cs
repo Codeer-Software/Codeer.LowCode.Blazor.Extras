@@ -260,11 +260,28 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Controls
             foreach (var s in Sorts) s.NotifyIndexItems();
         }
 
+        //値・行・列を消したら、それを指す値で絞り込み・並べ替えを外し、後ろの番号を詰める (実行時のエディタと同じ。番号は 行 → 列 の通し)
         void Remove<TVm, TModel>(ObservableCollection<TVm> items, TModel model) where TVm : CrossTabItemViewModelBase
         {
             var item = items.FirstOrDefault(e => ReferenceEquals(ModelOf(e), model));
-            if (item != null) items.Remove(item);
+            if (item == null) return;
+            var groupIndex = item is GroupItemViewModel g ? Rows.Concat(Columns).ToList().IndexOf(g) : -1;
+            var measureIndex = item is MeasureItemViewModel m ? Measures.IndexOf(m) : -1;
+            items.Remove(item);
+            if (0 <= measureIndex)
+            {
+                foreach (var h in Having.Where(h => h.MeasureIndex == measureIndex).ToList()) Having.Remove(h);
+                foreach (var h in Having.Where(h => measureIndex < h.MeasureIndex)) h.MeasureIndex--;
+                RemoveSortIndex(AggregateSortTarget.Measure, measureIndex);
+            }
+            if (0 <= groupIndex) RemoveSortIndex(AggregateSortTarget.Group, groupIndex);
             Refresh();
+        }
+
+        void RemoveSortIndex(AggregateSortTarget target, int index)
+        {
+            foreach (var s in Sorts.Where(s => s.Target == target && s.Index == index).ToList()) Sorts.Remove(s);
+            foreach (var s in Sorts.Where(s => s.Target == target && index < s.Index)) s.Index--;
         }
 
         static object ModelOf(CrossTabItemViewModelBase vm) => vm switch
