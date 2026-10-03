@@ -34,7 +34,7 @@
   {
     var groups = _tab == "rows" ? Value.Setting.Rows : Value.Setting.Columns;
     <table class="table table-sm table-borderless m-0">
-      <thead><tr><th class="small text-muted">@Resources.CrossTab_Field</th><th class="small text-muted">@Resources.CrossTab_DateUnit</th><th></th></tr></thead>
+      <thead><tr><th class="small text-muted">@Resources.CrossTab_Field</th><th class="small text-muted">@Resources.CrossTab_DateUnit</th><th class="small text-muted">@Resources.CrossTab_FiscalYearStartMonth</th><th></th></tr></thead>
       <tbody>
         @foreach (var group in groups.ToList())
         {
@@ -47,6 +47,12 @@
                 @foreach (var b in DateBuckets) { <option value="@b.ToString()">@BucketText(b)</option> }
               </select>
             </td>
+            <td>
+              @* 年度の開始月は 年・四半期 のときだけ *@
+              <select class="form-select form-select-sm" disabled="@(!IsFiscal(g))" value="@g.FiscalYearStartMonth" @onchange="e => SetFiscalYearStartMonth(g, e)">
+                @for (var month = 1; month <= 12; month++) { <option value="@month">@month</option> }
+              </select>
+            </td>
             <td><button type="button" class="btn btn-sm btn-outline-secondary" title="×" @onclick="() => RemoveGroup(groups, g)">×</button></td>
           </tr>
         }
@@ -57,7 +63,7 @@
   else if (_tab == "values")
   {
     <table class="table table-sm table-borderless m-0">
-      <thead><tr><th class="small text-muted">@Resources.CrossTab_Function</th><th class="small text-muted">@Resources.CrossTab_Field</th><th class="small text-muted">@Resources.CrossTab_Caption</th><th></th></tr></thead>
+      <thead><tr><th class="small text-muted">@Resources.CrossTab_Function</th><th class="small text-muted">@Resources.CrossTab_Field</th><th class="small text-muted">@Resources.CrossTab_Caption</th><th class="small text-muted">@Resources.CrossTab_Format</th><th></th></tr></thead>
       <tbody>
         @foreach (var measure in Value.Setting.Measures.ToList())
         {
@@ -74,6 +80,10 @@
               else { @FieldSelect(m.Variable, v => m.Variable = v) }
             </td>
             <td><input class="form-control form-control-sm" value="@m.Name" @onchange="e => SetName(m, e)" /></td>
+            <td>
+              @* 表示の書式 (.NET の数値の書式。空なら元の項目の書式)。件数には使わない *@
+              <input class="form-control form-control-sm" style="width: 5rem" placeholder="N1" disabled="@(m.Function == AggregateFunction.Count)" value="@m.Format" @onchange="e => SetFormat(m, e)" />
+            </td>
             <td><button type="button" class="btn btn-sm btn-outline-secondary" @onclick="() => RemoveMeasure(m)">×</button></td>
           </tr>
         }
@@ -182,6 +192,11 @@
   void SetBucket(AggregateGroup g, ChangeEventArgs e)
     => g.DateBucket = Enum.TryParse<DateBucket>(e.Value?.ToString(), out var b) ? b : DateBucket.None;
 
+  bool IsFiscal(AggregateGroup g) => IsDate(g.Variable) && g.DateBucket is DateBucket.Year or DateBucket.Quarter;
+
+  static void SetFiscalYearStartMonth(AggregateGroup g, ChangeEventArgs e)
+    => g.FiscalYearStartMonth = int.TryParse(e.Value?.ToString(), out var m) && 1 <= m && m <= 12 ? m : 1;
+
   void SetFunction(AggregateMeasure m, ChangeEventArgs e)
   {
     m.Function = Enum.TryParse<AggregateFunction>(e.Value?.ToString(), out var f) ? f : AggregateFunction.Count;
@@ -190,6 +205,8 @@
   }
 
   static void SetName(AggregateMeasure m, ChangeEventArgs e) => m.Name = e.Value?.ToString() ?? string.Empty;
+
+  static void SetFormat(AggregateMeasure m, ChangeEventArgs e) => m.Format = e.Value?.ToString()?.Trim() ?? string.Empty;
 
   static void SetHavingIndex(AggregateHaving h, ChangeEventArgs e) => h.MeasureIndex = int.TryParse(e.Value?.ToString(), out var i) ? i : 0;
 

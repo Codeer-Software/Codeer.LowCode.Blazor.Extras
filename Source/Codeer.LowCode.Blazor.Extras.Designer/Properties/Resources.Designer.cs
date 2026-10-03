@@ -488,5 +488,23 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Properties
                 return ResourceManager.GetString("CrossTabSetting_Enum_GreaterThanOrEqual", resourceCulture);
             }
         }
-}
+        
+        /// <summary>
+        ///   Fiscal year start に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        public static string CrossTabSetting_FiscalYearStartMonth {
+            get {
+                return ResourceManager.GetString("CrossTabSetting_FiscalYearStartMonth", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Format に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        public static string CrossTabSetting_Format {
+            get {
+                return ResourceManager.GetString("CrossTabSetting_Format", resourceCulture);
+            }
+        }
+    }
 }

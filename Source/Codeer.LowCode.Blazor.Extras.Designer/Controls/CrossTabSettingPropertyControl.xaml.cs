@@ -105,9 +105,16 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Controls
         public DateBucket DateBucket
         {
             get => Model.DateBucket;
-            set { Model.DateBucket = value; OnPropertyChanged(); }
+            set { Model.DateBucket = value; OnPropertyChanged(); OnPropertyChanged(nameof(IsFiscal)); }
+        }
+        public int FiscalYearStartMonth
+        {
+            get => Model.FiscalYearStartMonth;
+            set { Model.FiscalYearStartMonth = value; OnPropertyChanged(); }
         }
         public bool IsDate => Owner.IsDateField(Variable);
+        //年度の開始月が効くのは 年・四半期 だけ
+        public bool IsFiscal => IsDate && Model.DateBucket is DateBucket.Year or DateBucket.Quarter;
     }
 
     class MeasureItemViewModel : CrossTabItemViewModelBase
@@ -134,6 +141,12 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Controls
         {
             get => Model.Name;
             set { Model.Name = value ?? string.Empty; OnPropertyChanged(); Owner.Refresh(); }
+        }
+        //表示の書式 (.NET の数値の書式。空なら元の項目の書式)。件数には使わない
+        public string Format
+        {
+            get => Model.Format;
+            set { Model.Format = value ?? string.Empty; OnPropertyChanged(); }
         }
         public bool NeedsVariable => Model.Function != AggregateFunction.Count;
     }
@@ -215,6 +228,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Controls
 
         public List<string> FieldCandidates { get; }
         public IEnumerable<DateBucket> DateBuckets => Enum.GetValues<DateBucket>();
+        public IEnumerable<int> Months => Enumerable.Range(1, 12);
         public IEnumerable<AggregateFunction> Functions => Enum.GetValues<AggregateFunction>();
         public IEnumerable<MatchComparison> Comparisons =>
         [

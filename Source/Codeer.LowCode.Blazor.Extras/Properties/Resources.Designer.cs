@@ -4004,5 +4004,50 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
                 return ResourceManager.GetString("CrossTab_UnknownField", resourceCulture);
             }
         }
+        
+        /// <summary>
+        ///   Fiscal year start に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string CrossTab_FiscalYearStartMonth {
+            get {
+                return ResourceManager.GetString("CrossTab_FiscalYearStartMonth", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   FY{0} に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string CrossTab_FiscalYear {
+            get {
+                return ResourceManager.GetString("CrossTab_FiscalYear", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Format に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string CrossTab_Format {
+            get {
+                return ResourceManager.GetString("CrossTab_Format", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Yes に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string CrossTab_True {
+            get {
+                return ResourceManager.GetString("CrossTab_True", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   No に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string CrossTab_False {
+            get {
+                return ResourceManager.GetString("CrossTab_False", resourceCulture);
+            }
+        }
     }
 }

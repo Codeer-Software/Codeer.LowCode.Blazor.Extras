@@ -1740,4 +1740,19 @@ Recipients: {1}</value>
   <data name="CrossTab_UnknownField" xml:space="preserve">
     <value>Field not found: {0}</value>
   </data>
+  <data name="CrossTab_FiscalYearStartMonth" xml:space="preserve">
+    <value>Fiscal year start</value>
+  </data>
+  <data name="CrossTab_FiscalYear" xml:space="preserve">
+    <value>FY{0}</value>
+  </data>
+  <data name="CrossTab_Format" xml:space="preserve">
+    <value>Format</value>
+  </data>
+  <data name="CrossTab_True" xml:space="preserve">
+    <value>Yes</value>
+  </data>
+  <data name="CrossTab_False" xml:space="preserve">
+    <value>No</value>
+  </data>
 </root>

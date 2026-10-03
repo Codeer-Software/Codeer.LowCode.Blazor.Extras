@@ -18,32 +18,36 @@
       <Setter Property="Foreground" Value="Gray" />
       <Setter Property="Margin" Value="2,0,4,2" />
     </Style>
-    <!-- 行・列の 1 行: 項目 / 日付の単位 / 削除 -->
+    <!-- 行・列の 1 行: 項目 / 日付の単位 / 年度の開始月 (年・四半期のとき) / 削除 -->
     <DataTemplate x:Key="GroupTemplate" DataType="{x:Type local:GroupItemViewModel}">
       <Grid Margin="0,0,0,4">
         <Grid.ColumnDefinitions>
           <ColumnDefinition Width="2*" />
           <ColumnDefinition Width="*" />
+          <ColumnDefinition Width="90" />
           <ColumnDefinition Width="Auto" />
         </Grid.ColumnDefinitions>
         <ComboBox Margin="0,0,4,0" IsEditable="True" Text="{Binding Variable, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" ItemsSource="{Binding Owner.FieldCandidates}" />
         <ComboBox Grid.Column="1" Margin="0,0,4,0" SelectedItem="{Binding DateBucket, Mode=TwoWay}" ItemsSource="{Binding Owner.DateBuckets}" IsEnabled="{Binding IsDate}" ItemTemplate="{StaticResource EnumItemTemplate}" />
-        <Button Grid.Column="2" Width="24" FontFamily="Segoe Fluent Icons" Content="&#xE74D;" Command="{Binding RemoveCommand}" />
+        <ComboBox Grid.Column="2" Margin="0,0,4,0" SelectedItem="{Binding FiscalYearStartMonth, Mode=TwoWay}" ItemsSource="{Binding Owner.Months}" IsEnabled="{Binding IsFiscal}" />
+        <Button Grid.Column="3" Width="24" FontFamily="Segoe Fluent Icons" Content="&#xE74D;" Command="{Binding RemoveCommand}" />
       </Grid>
     </DataTemplate>
-    <!-- 値の 1 行: 集計方法 / 項目 / 表示名 / 削除 -->
+    <!-- 値の 1 行: 集計方法 / 項目 / 表示名 / 書式 (件数以外) / 削除 -->
     <DataTemplate x:Key="MeasureTemplate" DataType="{x:Type local:MeasureItemViewModel}">
       <Grid Margin="0,0,0,4">
         <Grid.ColumnDefinitions>
           <ColumnDefinition Width="*" />
           <ColumnDefinition Width="2*" />
           <ColumnDefinition Width="*" />
+          <ColumnDefinition Width="70" />
           <ColumnDefinition Width="Auto" />
         </Grid.ColumnDefinitions>
         <ComboBox Margin="0,0,4,0" SelectedItem="{Binding Function, Mode=TwoWay}" ItemsSource="{Binding Owner.Functions}" ItemTemplate="{StaticResource EnumItemTemplate}" />
         <ComboBox Grid.Column="1" Margin="0,0,4,0" IsEditable="True" Text="{Binding Variable, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" ItemsSource="{Binding Owner.FieldCandidates}" IsEnabled="{Binding NeedsVariable}" />
         <TextBox Grid.Column="2" Margin="0,0,4,0" Text="{Binding Name, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-        <Button Grid.Column="3" Width="24" FontFamily="Segoe Fluent Icons" Content="&#xE74D;" Command="{Binding RemoveCommand}" />
+        <TextBox Grid.Column="3" Margin="0,0,4,0" Text="{Binding Format, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding NeedsVariable}" />
+        <Button Grid.Column="4" Width="24" FontFamily="Segoe Fluent Icons" Content="&#xE74D;" Command="{Binding RemoveCommand}" />
       </Grid>
     </DataTemplate>
     <!-- 値で絞り込みの 1 行: 対象の値 / 条件 / 比較する値 / 削除 -->
@@ -90,10 +94,12 @@
             <Grid.ColumnDefinitions>
               <ColumnDefinition Width="2*" />
               <ColumnDefinition Width="*" />
+              <ColumnDefinition Width="90" />
               <ColumnDefinition Width="24" />
             </Grid.ColumnDefinitions>
             <TextBlock Style="{StaticResource HeaderText}" Text="{x:Static properties:Resources.CrossTabSetting_Field}" />
             <TextBlock Grid.Column="1" Style="{StaticResource HeaderText}" Text="{x:Static properties:Resources.CrossTabSetting_DateUnit}" />
+            <TextBlock Grid.Column="2" Style="{StaticResource HeaderText}" Text="{x:Static properties:Resources.CrossTabSetting_FiscalYearStartMonth}" />
           </Grid>
           <ScrollViewer VerticalScrollBarVisibility="Auto">
             <ItemsControl ItemsSource="{Binding Rows}" ItemTemplate="{StaticResource GroupTemplate}" />
@@ -107,10 +113,12 @@
             <Grid.ColumnDefinitions>
               <ColumnDefinition Width="2*" />
               <ColumnDefinition Width="*" />
+              <ColumnDefinition Width="90" />
               <ColumnDefinition Width="24" />
             </Grid.ColumnDefinitions>
             <TextBlock Style="{StaticResource HeaderText}" Text="{x:Static properties:Resources.CrossTabSetting_Field}" />
             <TextBlock Grid.Column="1" Style="{StaticResource HeaderText}" Text="{x:Static properties:Resources.CrossTabSetting_DateUnit}" />
+            <TextBlock Grid.Column="2" Style="{StaticResource HeaderText}" Text="{x:Static properties:Resources.CrossTabSetting_FiscalYearStartMonth}" />
           </Grid>
           <ScrollViewer VerticalScrollBarVisibility="Auto">
             <ItemsControl ItemsSource="{Binding Columns}" ItemTemplate="{StaticResource GroupTemplate}" />
@@ -125,11 +133,13 @@
               <ColumnDefinition Width="*" />
               <ColumnDefinition Width="2*" />
               <ColumnDefinition Width="*" />
+              <ColumnDefinition Width="70" />
               <ColumnDefinition Width="24" />
             </Grid.ColumnDefinitions>
             <TextBlock Style="{StaticResource HeaderText}" Text="{x:Static properties:Resources.CrossTabSetting_Function}" />
             <TextBlock Grid.Column="1" Style="{StaticResource HeaderText}" Text="{x:Static properties:Resources.CrossTabSetting_Field}" />
             <TextBlock Grid.Column="2" Style="{StaticResource HeaderText}" Text="{x:Static properties:Resources.CrossTabSetting_Caption}" />
+            <TextBlock Grid.Column="3" Style="{StaticResource HeaderText}" Text="{x:Static properties:Resources.CrossTabSetting_Format}" />
           </Grid>
           <ScrollViewer VerticalScrollBarVisibility="Auto">
             <ItemsControl ItemsSource="{Binding Measures}" ItemTemplate="{StaticResource MeasureTemplate}" />

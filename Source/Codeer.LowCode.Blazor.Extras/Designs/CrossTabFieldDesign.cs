@@ -58,9 +58,6 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         [Designer(Index = 7, Scope = DesignerScope.All, DisplayName = "$CrossTabValueDisplay")]
         public CrossTabValueDisplay ValueDisplay { get; set; } = CrossTabValueDisplay.Value;
 
-        [Designer(Index = 8, Scope = DesignerScope.All, DisplayName = "$FractionDigits")]
-        public int FractionDigits { get; set; }
-
         /// <summary>
         /// 利用者が集計 (行・列・値・値で絞り込み・並べ替え・表示件数の上限・値の表示形式) を自分用に変えられる。
         /// 表の見出しの右クリックかスクリプトの ShowCustomDialog() で開き、ブラウザ (localStorage) に保存する。ListField のカラムカスタマイズと同じ作り
@@ -168,12 +165,12 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
             foreach (var i in keptRows)
             {
                 groupMap[i] = result.Rows.Count;
-                result.Rows.Add(new AggregateGroup { Variable = saved.Rows[i].Variable, DateBucket = saved.Rows[i].DateBucket });
+                result.Rows.Add(new AggregateGroup { Variable = saved.Rows[i].Variable, DateBucket = saved.Rows[i].DateBucket, FiscalYearStartMonth = saved.Rows[i].FiscalYearStartMonth });
             }
             foreach (var i in keptColumns)
             {
                 groupMap[saved.Rows.Count + i] = keptRows.Count + result.Columns.Count;
-                result.Columns.Add(new AggregateGroup { Variable = saved.Columns[i].Variable, DateBucket = saved.Columns[i].DateBucket });
+                result.Columns.Add(new AggregateGroup { Variable = saved.Columns[i].Variable, DateBucket = saved.Columns[i].DateBucket, FiscalYearStartMonth = saved.Columns[i].FiscalYearStartMonth });
             }
 
             var measureMap = new Dictionary<int, int>();
@@ -182,7 +179,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
                 var m = saved.Measures[i];
                 if (m.Function != AggregateFunction.Count && !Exists(m.Variable)) continue;
                 measureMap[i] = result.Measures.Count;
-                result.Measures.Add(new AggregateMeasure { Function = m.Function, Variable = m.Variable, Name = m.Name });
+                result.Measures.Add(new AggregateMeasure { Function = m.Function, Variable = m.Variable, Name = m.Name, Format = m.Format });
             }
             if (result.Measures.Count == 0) return null;
             foreach (var h in saved.Having)

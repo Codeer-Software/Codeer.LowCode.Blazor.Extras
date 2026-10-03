@@ -20,7 +20,6 @@ public class CrossTabFieldDesign : FieldDesignBase, IDisplayName, ISearchResults
     public bool ShowColumnTotals { get; set; } = true;
     public bool ShowGrandTotal { get; set; } = true;
     public CrossTabValueDisplay ValueDisplay { get; set; }        // Value / PercentOfTotal / PercentOfRow / PercentOfColumn (値 / 総計・行の合計・列の合計 に対する割合)
-    public int FractionDigits { get; set; }                       // 小数点以下の桁数
     public bool CanCustomize { get; set; }                        // 利用者が集計 (行・列・値・絞り込み・並べ替え・上限・値の表示形式) を自分用に変えられる
     public string OnCellClick { get; set; }                       // セルをクリックしたとき (引数 CrossTabCell)
 }
@@ -34,8 +33,8 @@ public class CrossTabSetting
     public List<AggregateSort> SortConditions { get; set; }       // 並べ替え (Group / Measure の番号・降順)
     public int? LimitCount { get; set; }                          // 表示件数の上限 (集計後のグループ数)
 }
-public class AggregateGroup { public string Variable; public DateBucket DateBucket; }      // DateBucket: None / Year / Quarter / Month / Week / Day / Hour
-public class AggregateMeasure { public AggregateFunction Function; public string Variable; public string Name; }  // Count / CountDistinct / Sum / Avg / Min / Max
+public class AggregateGroup { public string Variable; public DateBucket DateBucket; public int FiscalYearStartMonth = 1; }  // DateBucket: None / Year / Quarter / Month / Week / Day / Hour。FiscalYearStartMonth は Year / Quarter の年度の開始月
+public class AggregateMeasure { public AggregateFunction Function; public string Variable; public string Name; public string Format; }  // Count / CountDistinct / Sum / Avg / Min / Max。Format は表示の書式 (.NET の数値の書式 "N1" / "P0" / "C0"。空なら元の項目の Format)
 public class AggregateHaving { public int MeasureIndex; public MatchComparison Comparison; public decimal Value; }
 public class AggregateSort { public AggregateSortTarget Target; public int Index; public bool IsDescending; }
 ```
@@ -44,15 +43,16 @@ public class AggregateSort { public AggregateSortTarget Target; public int Index
 
 - `Variable` は検索条件と同じ変数名 (`Status.Value`、リンク越しは `Customer.Region.Value`)。`Count` の `Variable` は空
 - `Sum` / `Avg` は数値項目、`Min` / `Max` は数値・日付・日時・文字、`CountDistinct` はどの項目でも
-- 日付の丸め: 年と四半期はアプリ設定 (app.clprj) の `FiscalYearStartMonth` (既定 1 = 暦年) で切る。週は月曜始まり。`SaveAsUtc` の日時はローカル時刻に直してから丸める
-- 選択・リンクの項目は値 (コード) で分類し、表示名 (候補値の名前・リンク先の表示項目) が表に出る。空値は「(空白)」の 1 グループ
+- 日付の丸め: 年と四半期は軸ごとの `FiscalYearStartMonth` (年度の開始月 1〜12。既定 1 = 暦年) で切る。4 なら 4 月〜翌 3 月が 1 年度で、見出しは「2026年度」「2026年度 Q1」(暦年は「2026」「2026 Q2」)。同じ表に年度の軸と暦年の軸を置ける。週は月曜始まり。`SaveAsUtc` の日時はローカル時刻に直してから丸める
+- 選択・リンクの項目は値 (コード) で分類し、表示名 (候補値の名前・リンク先の表示項目) が表に出る。空値は「(空白)」の 1 グループ。真偽の項目は `TrueText` / `FalseText`、数値の項目は `Format` で出る (元のフィールドの設計に従う)
+- 値の表示は 値の `Format` → 元の項目 (NumberField) の `Format` → 既定 (桁区切り・小数 2 桁まで) の順。件数・重複を除いた件数は整数。確度を `P0` で設計していれば平均も「40%」で出る。表全体の小数桁の設定は無い
 - `Having` と `SortConditions` の番号は 0 始まり。`SortConditions` の Group の番号は Rows → Columns の順
 - 表のセル (行の種類 × 列の種類 × 値の数) が 20,000 を超えると表を描かずにエラーを出す (日単位 × 顧客 のような細かすぎる組み合わせの暴走止め)。集計の件数自体に上限は無い
 - 上限を超えたグループがあると表の下に「n 件中 m 件だけ表示」の注意が出る (黙って欠けない)
 - 一覧ページの表示 (ListPageDesign) にこのフィールドを置くと、検索条件がそのまま集計の条件になる
 - `SearchCondition.ModuleName` を空にしておくと設計では何も集計せず、スクリプトの `Show(aggregator)` で渡した定義だけを表示する (条件で集計の中身を切り替えたいとき)
 - 割合表示は件数 (Count) と合計 (Sum) にだけ掛かる (平均・最小・最大・重複を除いた件数は値のまま)。分母にした合計のセル (行の合計に対する割合なら右端の合計列、列の合計に対する割合なら下端の合計行、総計) は 100% になる。他の合計セルは総計に対する割合
-- `CanCustomize: true` にすると、利用者が表の見出しの右クリック (またはスクリプトの `ShowCustomDialog()`) で集計を自分用に変えられる。保存先はブラウザ (localStorage。キーは「モジュール名.フィールド名」で ListField のカラムカスタマイズと同じ)。共通にしたい集計は設計 (Setting) に書く。設計が変わって保存内容が合わなくなったら、無い項目を捨てて合わせる (値が残らなければ設計どおり)。元モジュールと絞り込み条件・合計の表示・小数桁は変えられない。スクリプトの `Show` で定義を渡している表ではカスタマイズしない
+- `CanCustomize: true` にすると、利用者が表の見出しの右クリック (またはスクリプトの `ShowCustomDialog()`) で集計を自分用に変えられる。保存先はブラウザ (localStorage。キーは「モジュール名.フィールド名」で ListField のカラムカスタマイズと同じ)。共通にしたい集計は設計 (Setting) に書く。設計が変わって保存内容が合わなくなったら、無い項目を捨てて合わせる (値が残らなければ設計どおり)。元モジュールと絞り込み条件・合計の表示は変えられない。スクリプトの `Show` で定義を渡している表ではカスタマイズしない
 - 表は与えられた幅と高さの中で内部スクロールし、見出し・行見出し・合計行は固定される。幅はレイアウトのカラムに従い、表の広さでページを広げない
 
 ### JSON 例 (状態 × 月 の受注金額と件数。完了の金額が多い順)
@@ -64,17 +64,17 @@ public class AggregateSort { public AggregateSortTarget Target; public int Index
   "DisplayName": "受注サマリー",
   "Setting": {
     "Rows": [ { "Variable": "Status.Value", "DateBucket": "None" } ],
-    "Columns": [ { "Variable": "OrderedOn.Value", "DateBucket": "Month" } ],
+    "Columns": [ { "Variable": "OrderedOn.Value", "DateBucket": "Month", "FiscalYearStartMonth": 1 } ],
     "Measures": [
-      { "Function": "Sum", "Variable": "Amount.Value", "Name": "金額" },
-      { "Function": "Count", "Variable": "", "Name": "件数" }
+      { "Function": "Sum", "Variable": "Amount.Value", "Name": "金額", "Format": "" },
+      { "Function": "Count", "Variable": "", "Name": "件数", "Format": "" }
     ],
     "Having": [],
     "SortConditions": [ { "Target": "Measure", "Index": 0, "IsDescending": true } ],
     "LimitCount": null
   },
   "ShowRowTotals": true, "ShowColumnTotals": true, "ShowGrandTotal": true,
-  "ValueDisplay": "Value", "FractionDigits": 0, "CanCustomize": false,
+  "ValueDisplay": "Value", "CanCustomize": false,
   "OnCellClick": "",
   "TypeFullName": "Codeer.LowCode.Blazor.Extras.Designs.CrossTabFieldDesign"
 }

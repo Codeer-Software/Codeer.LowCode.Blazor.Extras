@@ -228,7 +228,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             return baseCondition.MergeSearchCondition(_additionalCondition);
         }
 
-        static AggregateGroup Clone(AggregateGroup g) => new() { Variable = g.Variable, DateBucket = g.DateBucket };
+        static AggregateGroup Clone(AggregateGroup g) => new() { Variable = g.Variable, DateBucket = g.DateBucket, FiscalYearStartMonth = g.FiscalYearStartMonth };
 
         static AggregateCondition CloneCondition(AggregateCondition src)
         {
@@ -276,8 +276,8 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             {
                 return group.DateBucket switch
                 {
-                    DateBucket.Year => ["2025", "2026", "2027"],
-                    DateBucket.Quarter => ["2026-01~", "2026-04~", "2026-07~"],
+                    DateBucket.Year => [CrossTabKeyText.Year(2025, group.FiscalYearStartMonth), CrossTabKeyText.Year(2026, group.FiscalYearStartMonth), CrossTabKeyText.Year(2027, group.FiscalYearStartMonth)],
+                    DateBucket.Quarter => [CrossTabKeyText.Quarter(2026, 1, group.FiscalYearStartMonth), CrossTabKeyText.Quarter(2026, 2, group.FiscalYearStartMonth), CrossTabKeyText.Quarter(2026, 3, group.FiscalYearStartMonth)],
                     DateBucket.Month => ["2026-01", "2026-02", "2026-03"],
                     DateBucket.Week => ["2026-01-05", "2026-01-12", "2026-01-19"],
                     DateBucket.Hour => ["2026-01-01 09:00", "2026-01-01 10:00", "2026-01-01 11:00"],

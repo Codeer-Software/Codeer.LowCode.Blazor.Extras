@@ -240,25 +240,18 @@
     return measure.Function == AggregateFunction.Count ? function : $"{FieldText(measure.Variable)} {function}";
   }
 
-  string KeyText(AggregateKey key, AggregateGroup? group)
+  //軸・値が指す元モジュールの項目 (見た目の設定を引き継ぐ。リンク越しも可。無ければ null)
+  FieldDesignBase? SourceField(string variable)
   {
-    if (!string.IsNullOrEmpty(key.DisplayText)) return key.DisplayText;
-    var value = key.Value.GetValue();
-    if (value == null) return Resources.CrossTab_Empty;
-    if (value is DateOnly date && group != null)
-    {
-      return group.DateBucket switch
-      {
-        DateBucket.Year => date.ToString("yyyy", CultureInfo.CurrentCulture),
-        DateBucket.Quarter => date.ToString("yyyy-MM", CultureInfo.CurrentCulture) + "~",
-        DateBucket.Month => date.ToString("yyyy-MM", CultureInfo.CurrentCulture),
-        _ => date.ToString("yyyy-MM-dd", CultureInfo.CurrentCulture),
-      };
-    }
-    if (value is DateTime dateTime) return dateTime.ToString("yyyy-MM-dd HH:mm", CultureInfo.CurrentCulture);
-    if (value is bool b) return b ? "True" : "False";
-    return Convert.ToString(value, CultureInfo.CurrentCulture) ?? string.Empty;
+    if (string.IsNullOrEmpty(variable)) return null;
+    var designData = Services.AppInfoService.GetDesignData();
+    var module = designData.Modules.Find(Field.ModuleName);
+    return module == null ? null : CrossTabFieldDesign.ResolveField(designData, module, variable);
   }
+
+  string KeyText(AggregateKey key, AggregateGroup? group)
+    => CrossTabFormatter.Key(key, group, group == null ? null : SourceField(group.Variable),
+         Resources.CrossTab_Empty, Resources.CrossTab_True, Resources.CrossTab_False, CultureInfo.CurrentCulture);
 
   string RowText(CrossTabAxisValue axis) => string.Join(" / ", axis.Keys.Select((k, i) => KeyText(k, Field.RowGroups.ElementAtOrDefault(i))));
   string ColumnText(CrossTabAxisValue axis) => string.Join(" / ", axis.Keys.Select((k, i) => KeyText(k, Field.ColumnGroups.ElementAtOrDefault(i))));
@@ -292,20 +285,9 @@
     return isDenominator ? Percent(value, value) : Percent(value, table.GrandTotals[m]);
   }
 
-  //件数は整数、それ以外は設計の小数桁
+  //値の書式 → 元の項目の書式 → 既定。件数は整数
   string Format(MultiTypeValue value, AggregateMeasure measure)
-  {
-    var v = value.GetValue();
-    var digits = measure.Function is AggregateFunction.Count or AggregateFunction.CountDistinct ? 0 : Math.Max(0, Field.Design.FractionDigits);
-    return v switch
-    {
-      null => string.Empty,
-      decimal d => d.ToString("N" + digits, CultureInfo.CurrentCulture),
-      DateOnly d => d.ToString("yyyy-MM-dd", CultureInfo.CurrentCulture),
-      DateTime d => d.ToString("yyyy-MM-dd HH:mm", CultureInfo.CurrentCulture),
-      _ => Convert.ToString(v, CultureInfo.CurrentCulture) ?? string.Empty,
-    };
-  }
+    => CrossTabFormatter.Measure(value, measure, SourceField(measure.Variable), CultureInfo.CurrentCulture);
 
   static string Percent(MultiTypeValue value, MultiTypeValue denominator)
   {

@@ -261,4 +261,10 @@
   <data name="CrossTabSetting_Enum_GreaterThanOrEqual" xml:space="preserve">
     <value>≥</value>
   </data>
+  <data name="CrossTabSetting_FiscalYearStartMonth" xml:space="preserve">
+    <value>Fiscal year start</value>
+  </data>
+  <data name="CrossTabSetting_Format" xml:space="preserve">
+    <value>Format</value>
+  </data>
 </root>
