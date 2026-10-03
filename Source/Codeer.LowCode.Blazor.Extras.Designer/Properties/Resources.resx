@@ -267,4 +267,7 @@
   <data name="CrossTabSetting_Format" xml:space="preserve">
     <value>Format</value>
   </data>
+  <data name="CrossTabSetting_FormatHint" xml:space="preserve">
+    <value>Display format (.NET numeric format). Pick from the list or type one such as N1 / P0 / C0. Empty = the field's format.</value>
+  </data>
 </root>

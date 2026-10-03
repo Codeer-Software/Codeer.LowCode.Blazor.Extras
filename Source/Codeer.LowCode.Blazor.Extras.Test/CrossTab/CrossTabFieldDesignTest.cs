@@ -27,8 +27,8 @@ namespace Codeer.LowCode.Blazor.Extras.Test.CrossTab
             d.AddModule(order);
             var dashboard = new ModuleDesign { Name = "Dashboard" };
             var field = new CrossTabFieldDesign { Name = "Summary", SearchCondition = new SearchCondition("Order") };
-            field.Setting.Rows.Add(new AggregateGroup { Variable = "Customer.Region.Value" });
-            field.Setting.Columns.Add(new AggregateGroup { Variable = "OrderedOn.Value", DateBucket = DateBucket.Month });
+            field.Setting.Rows.Add(new ValueGroup { Variable = "Customer.Region.Value" });
+            field.Setting.Columns.Add(new DateGroup { Variable = "OrderedOn.Value", Bucket = DateBucket.Month });
             field.Setting.Measures.Add(new AggregateMeasure { Function = AggregateFunction.Sum, Variable = "Amount.Value", Name = "金額" });
             field.Setting.Measures.Add(new AggregateMeasure { Function = AggregateFunction.Count });
             configure?.Invoke(field);
@@ -56,13 +56,13 @@ namespace Codeer.LowCode.Blazor.Extras.Test.CrossTab
 
             Assert.That(c.ModuleName, Is.EqualTo("Order"));
             Assert.That(c.Groups.Select(g => g.Variable), Is.EqualTo(new[] { "Customer.Region.Value", "OrderedOn.Value" }));
-            Assert.That(c.Groups[1].DateBucket, Is.EqualTo(DateBucket.Month));
+            Assert.That(((DateGroup)c.Groups[1]).Bucket, Is.EqualTo(DateBucket.Month));
             Assert.That(c.Measures.Count, Is.EqualTo(2));
             Assert.That(c.Having.Single().Value, Is.EqualTo(100m));
             Assert.That(c.SortConditions.Single().IsDescending, Is.True);
             Assert.That(c.LimitCount, Is.EqualTo(20));
             //実行時の軸を差し替えられる
-            var runtime = field.CreateAggregateCondition([new AggregateGroup { Variable = "Title.Value" }], []);
+            var runtime = field.CreateAggregateCondition([new ValueGroup { Variable = "Title.Value" }], []);
             Assert.That(runtime.Groups.Select(g => g.Variable), Is.EqualTo(new[] { "Title.Value" }));
         }
 
@@ -76,7 +76,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.CrossTab
             var restored = JsonConverterEx.DeserializeObject<FieldDesignBase>(json) as CrossTabFieldDesign;
 
             Assert.That(restored, Is.Not.Null);
-            Assert.That(restored!.Setting.Columns.Single().DateBucket, Is.EqualTo(DateBucket.Month));
+            Assert.That(((DateGroup)restored!.Setting.Columns.Single()).Bucket, Is.EqualTo(DateBucket.Month));
             Assert.That(restored.Setting.Measures[0].Name, Is.EqualTo("金額"));
             Assert.That(restored.ValueDisplay, Is.EqualTo(CrossTabValueDisplay.PercentOfRow));
             Assert.That(restored.Setting.GetCurrentSettings(), Is.EqualTo("Customer.Region x OrderedOn(Month) : Sum(Amount), Count"));
@@ -97,7 +97,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.CrossTab
             var sumOfText = Check(Design(f => f.Setting.Measures.Add(new AggregateMeasure { Function = AggregateFunction.Sum, Variable = "Title.Value" })));
             Assert.That(sumOfText.Any(e => e.Code == DesignCheckCode.Create(typeof(CrossTabFieldDesign), CrossTabFieldDesign.Codes.InvalidFunction)), Is.True);
 
-            var monthOfText = Check(Design(f => f.Setting.Rows.Add(new AggregateGroup { Variable = "Title.Value", DateBucket = DateBucket.Month })));
+            var monthOfText = Check(Design(f => f.Setting.Rows.Add(new DateGroup { Variable = "Title.Value", Bucket = DateBucket.Month })));
             Assert.That(monthOfText.Any(e => e.Code == DesignCheckCode.Create(typeof(CrossTabFieldDesign), CrossTabFieldDesign.Codes.DateBucketRequiresDate)), Is.True);
 
             var badIndex = Check(Design(f =>
@@ -107,7 +107,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.CrossTab
             }));
             Assert.That(badIndex.Count(e => e.Code == DesignCheckCode.Create(typeof(CrossTabFieldDesign), CrossTabFieldDesign.Codes.IndexOutOfRange)), Is.EqualTo(2));
 
-            var unknown = Check(Design(f => f.Setting.Rows.Add(new AggregateGroup { Variable = "Nothing.Value" })));
+            var unknown = Check(Design(f => f.Setting.Rows.Add(new ValueGroup { Variable = "Nothing.Value" })));
             Assert.That(unknown.Count, Is.EqualTo(1));
         }
 
@@ -115,7 +115,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.CrossTab
         public void リンク越しの項目もリンク先の型で指摘される()
         {
             //Customer.Region はリンク先 (Customer) の文字項目: 月の丸めも合計もできない
-            var monthOfLinkedText = Check(Design(f => f.Setting.Columns.Add(new AggregateGroup { Variable = "Customer.Region.Value", DateBucket = DateBucket.Month })));
+            var monthOfLinkedText = Check(Design(f => f.Setting.Columns.Add(new DateGroup { Variable = "Customer.Region.Value", Bucket = DateBucket.Month })));
             Assert.That(monthOfLinkedText.Any(e => e.Code == DesignCheckCode.Create(typeof(CrossTabFieldDesign), CrossTabFieldDesign.Codes.DateBucketRequiresDate)), Is.True);
             var sumOfLinkedText = Check(Design(f => f.Setting.Measures.Add(new AggregateMeasure { Function = AggregateFunction.Sum, Variable = "Customer.Region.Value" })));
             Assert.That(sumOfLinkedText.Any(e => e.Code == DesignCheckCode.Create(typeof(CrossTabFieldDesign), CrossTabFieldDesign.Codes.InvalidFunction)), Is.True);
@@ -133,7 +133,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.CrossTab
             Assert.That(field.ValidateSetting(field.Setting, d, includeUnknownField: true), Is.Empty);
 
             var setting = field.Setting.JsonClone();
-            setting.Rows.Add(new AggregateGroup { Variable = "Nothing.Value" });
+            setting.Rows.Add(new ValueGroup { Variable = "Nothing.Value" });
             setting.Measures.Add(new AggregateMeasure { Function = AggregateFunction.Sum, Variable = "Title.Value" });
             var codes = field.ValidateSetting(setting, d, includeUnknownField: true).Select(e => e.Code).ToList();
             Assert.That(codes, Does.Contain(CrossTabFieldDesign.Codes.UnknownField));
@@ -148,9 +148,9 @@ namespace Codeer.LowCode.Blazor.Extras.Test.CrossTab
             var d = Design();
             var field = d.Modules.Find("Dashboard")!.Fields.OfType<CrossTabFieldDesign>().Single();
             var saved = new CrossTabSetting { LimitCount = 10 };
-            saved.Rows.Add(new AggregateGroup { Variable = "Removed.Value" });                                   //行 0: 消えた項目
-            saved.Rows.Add(new AggregateGroup { Variable = "Customer.Region.Value" });                           //行 1 → 0
-            saved.Columns.Add(new AggregateGroup { Variable = "OrderedOn.Value", DateBucket = DateBucket.Year }); //列 (通し 2) → 1
+            saved.Rows.Add(new ValueGroup { Variable = "Removed.Value" });                                   //行 0: 消えた項目
+            saved.Rows.Add(new ValueGroup { Variable = "Customer.Region.Value" });                           //行 1 → 0
+            saved.Columns.Add(new DateGroup { Variable = "OrderedOn.Value", Bucket = DateBucket.Year }); //列 (通し 2) → 1
             saved.Measures.Add(new AggregateMeasure { Function = AggregateFunction.Sum, Variable = "Gone.Value" });   //値 0: 消えた項目
             saved.Measures.Add(new AggregateMeasure { Function = AggregateFunction.Sum, Variable = "Amount.Value" }); //値 1 → 0
             saved.Measures.Add(new AggregateMeasure { Function = AggregateFunction.Count, Name = "件数" });          //値 2 → 1
@@ -163,7 +163,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.CrossTab
             var r = field.ReconcileSetting(saved, d)!;
 
             Assert.That(r.Rows.Select(g => g.Variable), Is.EqualTo(new[] { "Customer.Region.Value" }));
-            Assert.That(r.Columns.Single().DateBucket, Is.EqualTo(DateBucket.Year));
+            Assert.That(((DateGroup)r.Columns.Single()).Bucket, Is.EqualTo(DateBucket.Year));
             Assert.That(r.Measures.Select(m => m.Function), Is.EqualTo(new[] { AggregateFunction.Sum, AggregateFunction.Count }));
             Assert.That(r.Having.Single().MeasureIndex, Is.EqualTo(1));
             Assert.That(r.SortConditions.Select(s => (s.Target, s.Index)), Is.EqualTo(new[] { (AggregateSortTarget.Group, 1), (AggregateSortTarget.Measure, 0) }));
@@ -177,7 +177,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.CrossTab
             var d = Design();
             var field = d.Modules.Find("Dashboard")!.Fields.OfType<CrossTabFieldDesign>().Single();
             var saved = new CrossTabSetting();
-            saved.Rows.Add(new AggregateGroup { Variable = "Customer.Region.Value" });
+            saved.Rows.Add(new ValueGroup { Variable = "Customer.Region.Value" });
             saved.Measures.Add(new AggregateMeasure { Function = AggregateFunction.Sum, Variable = "Gone.Value" });
             Assert.That(field.ReconcileSetting(saved, d), Is.Null);
         }

@@ -220,7 +220,7 @@
   };
 
   string GroupText(AggregateGroup group)
-    => group.DateBucket == DateBucket.None ? FieldText(group.Variable) : $"{FieldText(group.Variable)} ({BucketText(group.DateBucket)})";
+    => group is DateGroup d ? $"{FieldText(group.Variable)} ({BucketText(d.Bucket)})" : FieldText(group.Variable);
 
   string RowHeaderText() => string.Join(" / ", Field.RowGroups.Select(GroupText));
 

@@ -10,6 +10,10 @@
              d:DesignHeight="520" d:DesignWidth="760">
   <UserControl.Resources>
     <local:AggregateEnumTextConverter x:Key="EnumText" />
+    <local:CrossTabFormatTextConverter x:Key="FormatText" />
+    <DataTemplate x:Key="FormatItemTemplate">
+      <TextBlock Text="{Binding Converter={StaticResource FormatText}}" />
+    </DataTemplate>
     <!-- 列挙は利用者向けの文言で見せる (CrossTabSetting_Enum_*) -->
     <DataTemplate x:Key="EnumItemTemplate">
       <TextBlock Text="{Binding Converter={StaticResource EnumText}}" />
@@ -28,7 +32,7 @@
           <ColumnDefinition Width="Auto" />
         </Grid.ColumnDefinitions>
         <ComboBox Margin="0,0,4,0" IsEditable="True" Text="{Binding Variable, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" ItemsSource="{Binding Owner.FieldCandidates}" />
-        <ComboBox Grid.Column="1" Margin="0,0,4,0" SelectedItem="{Binding DateBucket, Mode=TwoWay}" ItemsSource="{Binding Owner.DateBuckets}" IsEnabled="{Binding IsDate}" ItemTemplate="{StaticResource EnumItemTemplate}" />
+        <ComboBox Grid.Column="1" Margin="0,0,4,0" SelectedItem="{Binding Bucket, Mode=TwoWay}" ItemsSource="{Binding Owner.Buckets}" IsEnabled="{Binding IsDate}" ItemTemplate="{StaticResource EnumItemTemplate}" />
         <ComboBox Grid.Column="2" Margin="0,0,4,0" SelectedItem="{Binding FiscalYearStartMonth, Mode=TwoWay}" ItemsSource="{Binding Owner.Months}" IsEnabled="{Binding IsFiscal}" />
         <Button Grid.Column="3" Width="24" FontFamily="Segoe Fluent Icons" Content="&#xE74D;" Command="{Binding RemoveCommand}" />
       </Grid>
@@ -40,13 +44,13 @@
           <ColumnDefinition Width="*" />
           <ColumnDefinition Width="2*" />
           <ColumnDefinition Width="*" />
-          <ColumnDefinition Width="70" />
+          <ColumnDefinition Width="130" />
           <ColumnDefinition Width="Auto" />
         </Grid.ColumnDefinitions>
         <ComboBox Margin="0,0,4,0" SelectedItem="{Binding Function, Mode=TwoWay}" ItemsSource="{Binding Owner.Functions}" ItemTemplate="{StaticResource EnumItemTemplate}" />
         <ComboBox Grid.Column="1" Margin="0,0,4,0" IsEditable="True" Text="{Binding Variable, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" ItemsSource="{Binding Owner.FieldCandidates}" IsEnabled="{Binding NeedsVariable}" />
         <TextBox Grid.Column="2" Margin="0,0,4,0" Text="{Binding Name, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-        <TextBox Grid.Column="3" Margin="0,0,4,0" Text="{Binding Format, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding NeedsVariable}" />
+        <ComboBox Grid.Column="3" Margin="0,0,4,0" IsEditable="True" Text="{Binding Format, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" ItemsSource="{Binding Owner.FormatCandidates}" ItemTemplate="{StaticResource FormatItemTemplate}" IsEnabled="{Binding NeedsVariable}" ToolTip="{x:Static properties:Resources.CrossTabSetting_FormatHint}" />
         <Button Grid.Column="4" Width="24" FontFamily="Segoe Fluent Icons" Content="&#xE74D;" Command="{Binding RemoveCommand}" />
       </Grid>
     </DataTemplate>
@@ -133,7 +137,7 @@
               <ColumnDefinition Width="*" />
               <ColumnDefinition Width="2*" />
               <ColumnDefinition Width="*" />
-              <ColumnDefinition Width="70" />
+              <ColumnDefinition Width="130" />
               <ColumnDefinition Width="24" />
             </Grid.ColumnDefinitions>
             <TextBlock Style="{StaticResource HeaderText}" Text="{x:Static properties:Resources.CrossTabSetting_Function}" />

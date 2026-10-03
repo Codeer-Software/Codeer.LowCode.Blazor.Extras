@@ -267,4 +267,7 @@
   <data name="CrossTabSetting_Format" xml:space="preserve">
     <value>書式</value>
   </data>
+  <data name="CrossTabSetting_FormatHint" xml:space="preserve">
+    <value>表示の書式 (.NET の数値の書式)。候補から選ぶか N1 / P0 / C0 などを入力。空なら元の項目の書式</value>
+  </data>
 </root>

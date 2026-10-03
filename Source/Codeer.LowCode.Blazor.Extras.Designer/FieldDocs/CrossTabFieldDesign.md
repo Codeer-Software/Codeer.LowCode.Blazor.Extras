@@ -33,7 +33,10 @@ public class CrossTabSetting
     public List<AggregateSort> SortConditions { get; set; }       // 並べ替え (Group / Measure の番号・降順)
     public int? LimitCount { get; set; }                          // 表示件数の上限 (集計後のグループ数)
 }
-public class AggregateGroup { public string Variable; public DateBucket DateBucket; public int FiscalYearStartMonth = 1; }  // DateBucket: None / Year / Quarter / Month / Week / Day / Hour。FiscalYearStartMonth は Year / Quarter の年度の開始月
+// 軸 (まとめ方) は型で表す。JSON は条件やフィールドと同じく TypeFullName で型を持つ
+public abstract class AggregateGroup { public string Variable; }
+public class ValueGroup : AggregateGroup { }                                               // 値そのまま (文字・選択・リンク・真偽・数値)
+public class DateGroup : AggregateGroup { public DateBucket Bucket; public int FiscalYearStartMonth = 1; }  // 日付・日時を単位でまとめる。Bucket: Year / Quarter / Month / Week / Day / Hour。FiscalYearStartMonth は Year / Quarter の年度の開始月
 public class AggregateMeasure { public AggregateFunction Function; public string Variable; public string Name; public string Format; }  // Count / CountDistinct / Sum / Avg / Min / Max。Format は表示の書式 (.NET の数値の書式 "N1" / "P0" / "C0"。空なら元の項目の Format)
 public class AggregateHaving { public int MeasureIndex; public MatchComparison Comparison; public decimal Value; }
 public class AggregateSort { public AggregateSortTarget Target; public int Index; public bool IsDescending; }
@@ -45,7 +48,7 @@ public class AggregateSort { public AggregateSortTarget Target; public int Index
 - `Sum` / `Avg` は数値項目、`Min` / `Max` は数値・日付・日時・文字、`CountDistinct` はどの項目でも
 - 日付の丸め: 年と四半期は軸ごとの `FiscalYearStartMonth` (年度の開始月 1〜12。既定 1 = 暦年) で切る。4 なら 4 月〜翌 3 月が 1 年度で、見出しは「2026年度」「2026年度 Q1」(暦年は「2026」「2026 Q2」)。同じ表に年度の軸と暦年の軸を置ける。週は月曜始まり。`SaveAsUtc` の日時はローカル時刻に直してから丸める
 - 選択・リンクの項目は値 (コード) で分類し、表示名 (候補値の名前・リンク先の表示項目) が表に出る。空値は「(空白)」の 1 グループ。真偽の項目は `TrueText` / `FalseText`、数値の項目は `Format` で出る (元のフィールドの設計に従う)
-- 値の表示は 値の `Format` → 元の項目 (NumberField) の `Format` → 既定 (桁区切り・小数 2 桁まで) の順。件数・重複を除いた件数は整数。確度を `P0` で設計していれば平均も「40%」で出る。表全体の小数桁の設定は無い
+- 値の表示は 値の `Format` → 元の項目 (NumberField) の `Format` → 既定 (桁区切り・小数 2 桁まで) の順。件数・重複を除いた件数は整数。確度を `P0` で設計していれば平均も「40%」で出る。表全体の小数桁の設定は無い。エディタの書式欄は候補 (`N0` 整数 / `N1` 小数 1 桁 / `N2` / `P0` パーセント / `P1` / `C0` 通貨) から選ぶか自由に入力する
 - `Having` と `SortConditions` の番号は 0 始まり。`SortConditions` の Group の番号は Rows → Columns の順
 - 表のセル (行の種類 × 列の種類 × 値の数) が 20,000 を超えると表を描かずにエラーを出す (日単位 × 顧客 のような細かすぎる組み合わせの暴走止め)。集計の件数自体に上限は無い
 - 上限を超えたグループがあると表の下に「n 件中 m 件だけ表示」の注意が出る (黙って欠けない)
@@ -63,8 +66,8 @@ public class AggregateSort { public AggregateSortTarget Target; public int Index
   "SearchCondition": { "ModuleName": "Order", "LimitCount": null },
   "DisplayName": "受注サマリー",
   "Setting": {
-    "Rows": [ { "Variable": "Status.Value", "DateBucket": "None" } ],
-    "Columns": [ { "Variable": "OrderedOn.Value", "DateBucket": "Month", "FiscalYearStartMonth": 1 } ],
+    "Rows": [ { "Variable": "Status.Value", "TypeFullName": "Codeer.LowCode.Blazor.Repository.Match.ValueGroup" } ],
+    "Columns": [ { "Variable": "OrderedOn.Value", "Bucket": "Month", "FiscalYearStartMonth": 1, "TypeFullName": "Codeer.LowCode.Blazor.Repository.Match.DateGroup" } ],
     "Measures": [
       { "Function": "Sum", "Variable": "Amount.Value", "Name": "金額", "Format": "" },
       { "Function": "Count", "Variable": "", "Name": "件数", "Format": "" }

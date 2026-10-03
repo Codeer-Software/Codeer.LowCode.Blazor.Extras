@@ -51,12 +51,12 @@ namespace Codeer.LowCode.Blazor.Extras.Test.CrossTab
         public void 軸の真偽は項目の文言で数値は項目の書式で出る()
         {
             var flag = new BooleanFieldDesign { Name = "IsActive", TrueText = "有効", FalseText = "無効" };
-            var group = new AggregateGroup { Variable = "IsActive.Value" };
+            var group = new ValueGroup { Variable = "IsActive.Value" };
             Assert.That(CrossTabFormatter.Key(new AggregateKey { Value = MultiTypeValue.Create(true) }, group, flag, "(空白)", "はい", "いいえ", Inv), Is.EqualTo("有効"));
             Assert.That(CrossTabFormatter.Key(new AggregateKey { Value = MultiTypeValue.Create(false) }, group, new BooleanFieldDesign { Name = "X" }, "(空白)", "はい", "いいえ", Inv), Is.EqualTo("いいえ"));
 
             var rate = new NumberFieldDesign { Name = "Rate", Format = "P0" };
-            Assert.That(CrossTabFormatter.Key(new AggregateKey { Value = V(0.25m) }, new AggregateGroup { Variable = "Rate.Value" }, rate, "(空白)", "", "", Inv), Is.EqualTo("25 %"));
+            Assert.That(CrossTabFormatter.Key(new AggregateKey { Value = V(0.25m) }, new ValueGroup { Variable = "Rate.Value" }, rate, "(空白)", "", "", Inv), Is.EqualTo("25 %"));
             Assert.That(CrossTabFormatter.Key(new AggregateKey { Value = new NullValue() }, group, flag, "(空白)", "", "", Inv), Is.EqualTo("(空白)"));
             Assert.That(CrossTabFormatter.Key(new AggregateKey { Value = V(3m), DisplayText = "高" }, group, null, "(空白)", "", "", Inv), Is.EqualTo("高"));
         }

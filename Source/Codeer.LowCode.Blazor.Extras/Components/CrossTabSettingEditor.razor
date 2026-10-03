@@ -40,16 +40,18 @@
         {
           var g = group;
           <tr data-name="group-row">
-            <td>@FieldSelect(g.Variable, v => { g.Variable = v; if (!IsDate(v)) g.DateBucket = DateBucket.None; })</td>
+            <td>@FieldSelect(g.Variable, v => SetVariable(groups, g, v))</td>
             <td>
-              <select class="form-select form-select-sm" disabled="@(!IsDate(g.Variable))" value="@g.DateBucket.ToString()"
-                      @onchange="e => SetBucket(g, e)">
+              @* まとめ方: 値そのまま (ValueGroup) か 日付の単位 (DateGroup) *@
+              <select class="form-select form-select-sm" disabled="@(!IsDate(g.Variable))" value="@BucketKey(g)"
+                      @onchange="e => SetBucket(groups, g, e)">
+                <option value="@NoneKey">@Resources.CrossTab_DateUnitNone</option>
                 @foreach (var b in DateBuckets) { <option value="@b.ToString()">@BucketText(b)</option> }
               </select>
             </td>
             <td>
               @* 年度の開始月は 年・四半期 のときだけ *@
-              <select class="form-select form-select-sm" disabled="@(!IsFiscal(g))" value="@g.FiscalYearStartMonth" @onchange="e => SetFiscalYearStartMonth(g, e)">
+              <select class="form-select form-select-sm" disabled="@(!IsFiscal(g))" value="@((g as DateGroup)?.FiscalYearStartMonth ?? 1)" @onchange="e => SetFiscalYearStartMonth(g, e)">
                 @for (var month = 1; month <= 12; month++) { <option value="@month">@month</option> }
               </select>
             </td>
@@ -58,7 +60,7 @@
         }
       </tbody>
     </table>
-    <button type="button" class="btn btn-sm btn-outline-primary" data-name="add" @onclick="() => groups.Add(new AggregateGroup { Variable = Candidates.FirstOrDefault().Variable ?? string.Empty })">@Resources.CrossTab_Add</button>
+    <button type="button" class="btn btn-sm btn-outline-primary" data-name="add" @onclick="() => groups.Add(new ValueGroup { Variable = Candidates.FirstOrDefault().Variable ?? string.Empty })">@Resources.CrossTab_Add</button>
   }
   else if (_tab == "values")
   {
@@ -82,7 +84,7 @@
             <td><input class="form-control form-control-sm" value="@m.Name" @onchange="e => SetName(m, e)" /></td>
             <td>
               @* 表示の書式 (.NET の数値の書式。空なら元の項目の書式)。件数には使わない *@
-              <input class="form-control form-control-sm" style="width: 5rem" placeholder="N1" disabled="@(m.Function == AggregateFunction.Count)" value="@m.Format" @onchange="e => SetFormat(m, e)" />
+              <input class="form-control form-control-sm" style="width: 9rem" list="@_formatListId" placeholder="@Resources.CrossTab_FormatDefault" disabled="@(m.Function == AggregateFunction.Count)" value="@m.Format" @onchange="e => SetFormat(m, e)" />
             </td>
             <td><button type="button" class="btn btn-sm btn-outline-secondary" @onclick="() => RemoveMeasure(m)">×</button></td>
           </tr>
@@ -90,6 +92,9 @@
       </tbody>
     </table>
     <button type="button" class="btn btn-sm btn-outline-primary" data-name="add" @onclick="() => Value.Setting.Measures.Add(new AggregateMeasure { Function = AggregateFunction.Count })">@Resources.CrossTab_Add</button>
+    <datalist id="@_formatListId">
+      @foreach (var (fmt, text) in CrossTabFormatPresets.All) { <option value="@fmt">@text</option> }
+    </datalist>
   }
   else if (_tab == "having")
   {
@@ -160,6 +165,7 @@
   [Parameter, EditorRequired] public CrossTabFieldDesign Design { get; set; } = default!;
 
   string _tab = "rows";
+  readonly string _formatListId = "crosstab-format-" + Guid.NewGuid().ToString("N");
   List<(string Variable, string Text, bool IsDate)> _candidates = new();
 
   List<(string Variable, string Text, bool IsDate)> Candidates => _candidates;
@@ -176,7 +182,24 @@
     ("having", Resources.CrossTab_ValueFilter), ("sort", Resources.CrossTab_SortLimit),
   ];
 
-  static readonly DateBucket[] DateBuckets = [DateBucket.None, DateBucket.Year, DateBucket.Quarter, DateBucket.Month, DateBucket.Week, DateBucket.Day, DateBucket.Hour];
+  const string NoneKey = "None";
+  static readonly DateBucket[] DateBuckets = [DateBucket.Year, DateBucket.Quarter, DateBucket.Month, DateBucket.Week, DateBucket.Day, DateBucket.Hour];
+
+  static string BucketKey(AggregateGroup g) => g is DateGroup d ? d.Bucket.ToString() : NoneKey;
+
+  //軸を別の型に差し替える (行・列の並びは変えない)
+  static void Replace(List<AggregateGroup> groups, AggregateGroup old, AggregateGroup replacement)
+  {
+    var index = groups.IndexOf(old);
+    if (0 <= index) groups[index] = replacement;
+  }
+
+  //項目を変えたとき、日付でなくなったら 値そのまま に戻す
+  void SetVariable(List<AggregateGroup> groups, AggregateGroup g, string variable)
+  {
+    g.Variable = variable;
+    if (g is DateGroup && !IsDate(variable)) Replace(groups, g, new ValueGroup { Variable = variable });
+  }
 
   static IEnumerable<(MatchComparison, string)> Comparisons =>
   [
@@ -189,13 +212,23 @@
     Value.ValueDisplay = Enum.TryParse<CrossTabValueDisplay>(e.Value?.ToString(), out var v) ? v : CrossTabValueDisplay.Value;
   }
 
-  void SetBucket(AggregateGroup g, ChangeEventArgs e)
-    => g.DateBucket = Enum.TryParse<DateBucket>(e.Value?.ToString(), out var b) ? b : DateBucket.None;
+  static void SetBucket(List<AggregateGroup> groups, AggregateGroup g, ChangeEventArgs e)
+  {
+    if (!Enum.TryParse<DateBucket>(e.Value?.ToString(), out var bucket))
+    {
+      if (g is DateGroup) Replace(groups, g, new ValueGroup { Variable = g.Variable });
+      return;
+    }
+    if (g is DateGroup d) d.Bucket = bucket;
+    else Replace(groups, g, new DateGroup { Variable = g.Variable, Bucket = bucket });
+  }
 
-  bool IsFiscal(AggregateGroup g) => IsDate(g.Variable) && g.DateBucket is DateBucket.Year or DateBucket.Quarter;
+  bool IsFiscal(AggregateGroup g) => IsDate(g.Variable) && g is DateGroup { Bucket: DateBucket.Year or DateBucket.Quarter };
 
   static void SetFiscalYearStartMonth(AggregateGroup g, ChangeEventArgs e)
-    => g.FiscalYearStartMonth = int.TryParse(e.Value?.ToString(), out var m) && 1 <= m && m <= 12 ? m : 1;
+  {
+    if (g is DateGroup d) d.FiscalYearStartMonth = int.TryParse(e.Value?.ToString(), out var m) && 1 <= m && m <= 12 ? m : 1;
+  }
 
   void SetFunction(AggregateMeasure m, ChangeEventArgs e)
   {

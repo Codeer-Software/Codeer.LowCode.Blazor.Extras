@@ -20,7 +20,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
 
         public string GetCurrentSettings()
         {
-            string Axis(IEnumerable<AggregateGroup> groups) => string.Join(", ", groups.Select(g => FieldOf(g.Variable) + (g.DateBucket == DateBucket.None ? string.Empty : $"({g.DateBucket})")));
+            string Axis(IEnumerable<AggregateGroup> groups) => string.Join(", ", groups.Select(g => FieldOf(g.Variable) + (g is DateGroup d ? $"({d.Bucket})" : string.Empty)));
             var measures = string.Join(", ", Measures.Select(m => m.Function == AggregateFunction.Count ? "Count" : $"{m.Function}({FieldOf(m.Variable)})"));
             return $"{Axis(Rows)} x {Axis(Columns)} : {measures}";
         }

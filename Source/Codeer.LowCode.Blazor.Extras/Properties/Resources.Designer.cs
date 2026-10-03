@@ -4049,5 +4049,68 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
                 return ResourceManager.GetString("CrossTab_False", resourceCulture);
             }
         }
+        
+        /// <summary>
+        ///   (field format) に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string CrossTab_FormatDefault {
+            get {
+                return ResourceManager.GetString("CrossTab_FormatDefault", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Integer に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string CrossTab_Format_N0 {
+            get {
+                return ResourceManager.GetString("CrossTab_Format_N0", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   1 decimal place に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string CrossTab_Format_N1 {
+            get {
+                return ResourceManager.GetString("CrossTab_Format_N1", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   2 decimal places に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string CrossTab_Format_N2 {
+            get {
+                return ResourceManager.GetString("CrossTab_Format_N2", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Percent (0.4 → 40%) に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string CrossTab_Format_P0 {
+            get {
+                return ResourceManager.GetString("CrossTab_Format_P0", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Percent, 1 decimal place に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string CrossTab_Format_P1 {
+            get {
+                return ResourceManager.GetString("CrossTab_Format_P1", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Currency に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string CrossTab_Format_C0 {
+            get {
+                return ResourceManager.GetString("CrossTab_Format_C0", resourceCulture);
+            }
+        }
     }
 }

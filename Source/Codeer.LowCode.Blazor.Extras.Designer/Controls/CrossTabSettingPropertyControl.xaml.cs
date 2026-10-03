@@ -70,6 +70,18 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Controls
         public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) => throw new NotSupportedException();
     }
 
+    /// <summary>値の書式の候補を「N1 — 小数 1 桁」のように見せる (選択後のテキストは書式そのもの)。</summary>
+    public class CrossTabFormatTextConverter : IValueConverter
+    {
+        public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+        {
+            var code = value?.ToString() ?? string.Empty;
+            var text = CrossTabFormatPresets.TextOf(code);
+            return text == code ? code : $"{code} — {text}";
+        }
+        public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) => throw new NotSupportedException();
+    }
+
     /// <summary>番号で指す行・列・値を「番号: 名前」で選ばせるための項目。</summary>
     public record IndexItem(int Index, string Text);
 
@@ -95,26 +107,45 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Controls
             Model = model;
             RemoveCommand = new CrossTabRelayCommand(remove);
         }
+        public const string NoneBucket = "None";
+
         public CrossTabSettingViewModel Owner { get; }
-        public AggregateGroup Model { get; }
+        //まとめ方が変わると型ごと差し替わる (ValueGroup ⇔ DateGroup)。Apply が読むのはこの Model
+        public AggregateGroup Model { get; private set; }
         public string Variable
         {
             get => Model.Variable;
-            set { Model.Variable = value ?? string.Empty; OnPropertyChanged(); OnPropertyChanged(nameof(IsDate)); Owner.Refresh(); }
+            set
+            {
+                Model.Variable = value ?? string.Empty;
+                //日付でなくなったら 値そのまま に戻す
+                if (Model is DateGroup && !IsDate) Model = new ValueGroup { Variable = Model.Variable };
+                OnPropertyChanged(); OnPropertyChanged(nameof(IsDate)); OnPropertyChanged(nameof(Bucket)); OnPropertyChanged(nameof(IsFiscal)); Owner.Refresh();
+            }
         }
-        public DateBucket DateBucket
+        //まとめ方: "None" = 値そのまま、それ以外は DateBucket の名前 (日付の単位)
+        public string Bucket
         {
-            get => Model.DateBucket;
-            set { Model.DateBucket = value; OnPropertyChanged(); OnPropertyChanged(nameof(IsFiscal)); }
+            get => Model is DateGroup d ? d.Bucket.ToString() : NoneBucket;
+            set
+            {
+                if (Enum.TryParse<DateBucket>(value, out var bucket))
+                {
+                    if (Model is DateGroup d) d.Bucket = bucket;
+                    else Model = new DateGroup { Variable = Model.Variable, Bucket = bucket };
+                }
+                else if (Model is DateGroup) Model = new ValueGroup { Variable = Model.Variable };
+                OnPropertyChanged(); OnPropertyChanged(nameof(IsFiscal)); OnPropertyChanged(nameof(FiscalYearStartMonth));
+            }
         }
         public int FiscalYearStartMonth
         {
-            get => Model.FiscalYearStartMonth;
-            set { Model.FiscalYearStartMonth = value; OnPropertyChanged(); }
+            get => (Model as DateGroup)?.FiscalYearStartMonth ?? 1;
+            set { if (Model is DateGroup d) d.FiscalYearStartMonth = value; OnPropertyChanged(); }
         }
         public bool IsDate => Owner.IsDateField(Variable);
         //年度の開始月が効くのは 年・四半期 だけ
-        public bool IsFiscal => IsDate && Model.DateBucket is DateBucket.Year or DateBucket.Quarter;
+        public bool IsFiscal => IsDate && Model is DateGroup { Bucket: DateBucket.Year or DateBucket.Quarter };
     }
 
     class MeasureItemViewModel : CrossTabItemViewModelBase
@@ -207,8 +238,8 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Controls
             foreach (var m in value.Measures) Measures.Add(new MeasureItemViewModel(this, m, () => Remove(Measures, m)));
             foreach (var h in value.Having) Having.Add(new HavingItemViewModel(this, h, () => Remove(Having, h)));
             foreach (var s in value.SortConditions) Sorts.Add(new SortItemViewModel(this, s, () => Remove(Sorts, s)));
-            AddRowCommand = new CrossTabRelayCommand(() => { var g = new AggregateGroup(); Rows.Add(new GroupItemViewModel(this, g, () => Remove(Rows, g))); Refresh(); });
-            AddColumnCommand = new CrossTabRelayCommand(() => { var g = new AggregateGroup(); Columns.Add(new GroupItemViewModel(this, g, () => Remove(Columns, g))); Refresh(); });
+            AddRowCommand = new CrossTabRelayCommand(() => { var g = new ValueGroup(); Rows.Add(new GroupItemViewModel(this, g, () => Remove(Rows, g))); Refresh(); });
+            AddColumnCommand = new CrossTabRelayCommand(() => { var g = new ValueGroup(); Columns.Add(new GroupItemViewModel(this, g, () => Remove(Columns, g))); Refresh(); });
             AddMeasureCommand = new CrossTabRelayCommand(() => { var m = new AggregateMeasure(); Measures.Add(new MeasureItemViewModel(this, m, () => Remove(Measures, m))); Refresh(); });
             AddHavingCommand = new CrossTabRelayCommand(() => { var h = new AggregateHaving { Comparison = MatchComparison.GreaterThanOrEqual }; Having.Add(new HavingItemViewModel(this, h, () => Remove(Having, h))); });
             AddSortCommand = new CrossTabRelayCommand(() => { var s = new AggregateSort(); Sorts.Add(new SortItemViewModel(this, s, () => Remove(Sorts, s))); });
@@ -227,7 +258,10 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Controls
         public ICommand AddSortCommand { get; }
 
         public List<string> FieldCandidates { get; }
-        public IEnumerable<DateBucket> DateBuckets => Enum.GetValues<DateBucket>();
+        //まとめ方の候補: 値そのまま + 日付の単位 (表示は CrossTabSetting_Enum_* で日本語化)
+        public IEnumerable<string> Buckets => new[] { GroupItemViewModel.NoneBucket }.Concat(Enum.GetNames<DateBucket>());
+        //値の書式の候補 (自由入力も可)
+        public IEnumerable<string> FormatCandidates => CrossTabFormatPresets.All.Select(e => e.Code);
         public IEnumerable<int> Months => Enumerable.Range(1, 12);
         public IEnumerable<AggregateFunction> Functions => Enum.GetValues<AggregateFunction>();
         public IEnumerable<MatchComparison> Comparisons =>

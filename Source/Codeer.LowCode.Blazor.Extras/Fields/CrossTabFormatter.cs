@@ -39,12 +39,12 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             if (!string.IsNullOrEmpty(key.DisplayText)) return key.DisplayText;
             var value = key.Value.GetValue();
             if (value == null) return emptyText;
-            if (value is DateOnly date && group != null)
+            if (value is DateOnly date && group is DateGroup dateGroup)
             {
-                return group.DateBucket switch
+                return dateGroup.Bucket switch
                 {
-                    DateBucket.Year => CrossTabKeyText.Year(date, group.FiscalYearStartMonth),
-                    DateBucket.Quarter => CrossTabKeyText.Quarter(date, group.FiscalYearStartMonth),
+                    DateBucket.Year => CrossTabKeyText.Year(date, dateGroup.FiscalYearStartMonth),
+                    DateBucket.Quarter => CrossTabKeyText.Quarter(date, dateGroup.FiscalYearStartMonth),
                     DateBucket.Month => date.ToString("yyyy-MM", culture),
                     _ => date.ToString("yyyy-MM-dd", culture),
                 };

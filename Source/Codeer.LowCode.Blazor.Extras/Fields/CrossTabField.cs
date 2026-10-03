@@ -2,6 +2,7 @@ using Codeer.LowCode.Blazor.Aggregation;
 using Codeer.LowCode.Blazor.DataIO;
 using Codeer.LowCode.Blazor.DesignLogic;
 using Codeer.LowCode.Blazor.Extras.Designs;
+using Codeer.LowCode.Blazor.Json;
 using Codeer.LowCode.Blazor.OperatingModel;
 using Codeer.LowCode.Blazor.Repository;
 using Codeer.LowCode.Blazor.Repository.Data;
@@ -228,7 +229,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             return baseCondition.MergeSearchCondition(_additionalCondition);
         }
 
-        static AggregateGroup Clone(AggregateGroup g) => new() { Variable = g.Variable, DateBucket = g.DateBucket, FiscalYearStartMonth = g.FiscalYearStartMonth };
+        static AggregateGroup Clone(AggregateGroup g) => g.JsonClone();
 
         static AggregateCondition CloneCondition(AggregateCondition src)
         {
@@ -274,10 +275,12 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             var field = module == null ? null : CrossTabFieldDesign.ResolveField(designData, module, group.Variable);
             if (field is DateFieldDesign or DateTimeFieldDesign)
             {
-                return group.DateBucket switch
+                var dateGroup = group as DateGroup;
+                var fiscal = dateGroup?.FiscalYearStartMonth ?? 1;
+                return dateGroup?.Bucket switch
                 {
-                    DateBucket.Year => [CrossTabKeyText.Year(2025, group.FiscalYearStartMonth), CrossTabKeyText.Year(2026, group.FiscalYearStartMonth), CrossTabKeyText.Year(2027, group.FiscalYearStartMonth)],
-                    DateBucket.Quarter => [CrossTabKeyText.Quarter(2026, 1, group.FiscalYearStartMonth), CrossTabKeyText.Quarter(2026, 2, group.FiscalYearStartMonth), CrossTabKeyText.Quarter(2026, 3, group.FiscalYearStartMonth)],
+                    DateBucket.Year => [CrossTabKeyText.Year(2025, fiscal), CrossTabKeyText.Year(2026, fiscal), CrossTabKeyText.Year(2027, fiscal)],
+                    DateBucket.Quarter => [CrossTabKeyText.Quarter(2026, 1, fiscal), CrossTabKeyText.Quarter(2026, 2, fiscal), CrossTabKeyText.Quarter(2026, 3, fiscal)],
                     DateBucket.Month => ["2026-01", "2026-02", "2026-03"],
                     DateBucket.Week => ["2026-01-05", "2026-01-12", "2026-01-19"],
                     DateBucket.Hour => ["2026-01-01 09:00", "2026-01-01 10:00", "2026-01-01 11:00"],

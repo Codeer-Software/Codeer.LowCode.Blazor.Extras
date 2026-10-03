@@ -5,6 +5,7 @@ using Codeer.LowCode.Blazor.DesignLogic.Refactor;
 using Codeer.LowCode.Blazor.Extras.Components;
 using Codeer.LowCode.Blazor.Extras.Fields;
 using Codeer.LowCode.Blazor.Extras.Properties;
+using Codeer.LowCode.Blazor.Json;
 using Codeer.LowCode.Blazor.OperatingModel;
 using Codeer.LowCode.Blazor.Repository;
 using Codeer.LowCode.Blazor.Repository.Data;
@@ -111,7 +112,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
                     if (includeUnknownField) result.Add((Codes.UnknownField, string.Format(Resources.CrossTab_UnknownField, group.Variable)));
                     continue;
                 }
-                if (group.DateBucket != DateBucket.None && field is not DateFieldDesign && field is not DateTimeFieldDesign)
+                if (group is DateGroup && field is not DateFieldDesign && field is not DateTimeFieldDesign)
                     result.Add((Codes.DateBucketRequiresDate, string.Format(Resources.CrossTab_DateBucketRequiresDate, group.Variable)));
             }
             if (setting.Measures.Count == 0) result.Add((Codes.NoMeasure, Resources.CrossTab_NoMeasure));
@@ -165,12 +166,12 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
             foreach (var i in keptRows)
             {
                 groupMap[i] = result.Rows.Count;
-                result.Rows.Add(new AggregateGroup { Variable = saved.Rows[i].Variable, DateBucket = saved.Rows[i].DateBucket, FiscalYearStartMonth = saved.Rows[i].FiscalYearStartMonth });
+                result.Rows.Add(saved.Rows[i].JsonClone());
             }
             foreach (var i in keptColumns)
             {
                 groupMap[saved.Rows.Count + i] = keptRows.Count + result.Columns.Count;
-                result.Columns.Add(new AggregateGroup { Variable = saved.Columns[i].Variable, DateBucket = saved.Columns[i].DateBucket, FiscalYearStartMonth = saved.Columns[i].FiscalYearStartMonth });
+                result.Columns.Add(saved.Columns[i].JsonClone());
             }
 
             var measureMap = new Dictionary<int, int>();

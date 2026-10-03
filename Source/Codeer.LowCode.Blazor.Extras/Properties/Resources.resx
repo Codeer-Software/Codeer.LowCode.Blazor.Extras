@@ -1755,4 +1755,25 @@ Recipients: {1}</value>
   <data name="CrossTab_False" xml:space="preserve">
     <value>No</value>
   </data>
+  <data name="CrossTab_FormatDefault" xml:space="preserve">
+    <value>(field format)</value>
+  </data>
+  <data name="CrossTab_Format_N0" xml:space="preserve">
+    <value>Integer</value>
+  </data>
+  <data name="CrossTab_Format_N1" xml:space="preserve">
+    <value>1 decimal place</value>
+  </data>
+  <data name="CrossTab_Format_N2" xml:space="preserve">
+    <value>2 decimal places</value>
+  </data>
+  <data name="CrossTab_Format_P0" xml:space="preserve">
+    <value>Percent (0.4 → 40%)</value>
+  </data>
+  <data name="CrossTab_Format_P1" xml:space="preserve">
+    <value>Percent, 1 decimal place</value>
+  </data>
+  <data name="CrossTab_Format_C0" xml:space="preserve">
+    <value>Currency</value>
+  </data>
 </root>

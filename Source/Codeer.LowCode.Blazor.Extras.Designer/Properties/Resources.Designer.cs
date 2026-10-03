@@ -506,5 +506,14 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Properties
                 return ResourceManager.GetString("CrossTabSetting_Format", resourceCulture);
             }
         }
+        
+        /// <summary>
+        ///   Display format (.NET numeric format). Pick from the list or type one such as N1 / P0 / C0. Empty = the field's format. に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string CrossTabSetting_FormatHint {
+            get {
+                return ResourceManager.GetString("CrossTabSetting_FormatHint", resourceCulture);
+            }
+        }
     }
 }
