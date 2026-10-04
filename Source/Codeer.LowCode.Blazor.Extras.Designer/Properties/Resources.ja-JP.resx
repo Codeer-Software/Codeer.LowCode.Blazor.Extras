@@ -147,4 +147,127 @@
   <data name="SetupTableName" xml:space="preserve">
     <value>テーブル名</value>
   </data>
+  <data name="CrossTabSetting_Rows" xml:space="preserve">
+    <value>行</value>
+  </data>
+  <data name="CrossTabSetting_Columns" xml:space="preserve">
+    <value>列</value>
+  </data>
+  <data name="CrossTabSetting_Measures" xml:space="preserve">
+    <value>値</value>
+  </data>
+  <data name="CrossTabSetting_Having" xml:space="preserve">
+    <value>値で絞り込み</value>
+  </data>
+  <data name="CrossTabSetting_Sort" xml:space="preserve">
+    <value>並べ替え / 表示件数の上限</value>
+  </data>
+  <data name="CrossTabSetting_Limit" xml:space="preserve">
+    <value>表示件数の上限</value>
+  </data>
+  <data name="CrossTabSetting_Add" xml:space="preserve">
+    <value>追加</value>
+  </data>
+  <data name="CrossTabSetting_Descending" xml:space="preserve">
+    <value>降順</value>
+  </data>
+  <data name="CrossTabSetting_Field" xml:space="preserve">
+    <value>項目</value>
+  </data>
+  <data name="CrossTabSetting_DateUnit" xml:space="preserve">
+    <value>まとめる単位</value>
+  </data>
+  <data name="CrossTabSetting_Function" xml:space="preserve">
+    <value>集計方法</value>
+  </data>
+  <data name="CrossTabSetting_Caption" xml:space="preserve">
+    <value>表示名</value>
+  </data>
+  <data name="CrossTabSetting_Target" xml:space="preserve">
+    <value>対象</value>
+  </data>
+  <data name="CrossTabSetting_Comparison" xml:space="preserve">
+    <value>条件</value>
+  </data>
+  <data name="CrossTabSetting_CompareValue" xml:space="preserve">
+    <value>比較する値</value>
+  </data>
+  <data name="CrossTabSetting_SortBy" xml:space="preserve">
+    <value>並べ替えの基準</value>
+  </data>
+  <data name="CrossTabSetting_Order" xml:space="preserve">
+    <value>順序</value>
+  </data>
+  <data name="CrossTabSetting_Enum_Count" xml:space="preserve">
+    <value>件数</value>
+  </data>
+  <data name="CrossTabSetting_Enum_CountDistinct" xml:space="preserve">
+    <value>重複を除いた件数</value>
+  </data>
+  <data name="CrossTabSetting_Enum_Sum" xml:space="preserve">
+    <value>合計</value>
+  </data>
+  <data name="CrossTabSetting_Enum_Avg" xml:space="preserve">
+    <value>平均</value>
+  </data>
+  <data name="CrossTabSetting_Enum_Min" xml:space="preserve">
+    <value>最小</value>
+  </data>
+  <data name="CrossTabSetting_Enum_Max" xml:space="preserve">
+    <value>最大</value>
+  </data>
+  <data name="CrossTabSetting_Enum_None" xml:space="preserve">
+    <value>(まとめない)</value>
+  </data>
+  <data name="CrossTabSetting_Enum_Year" xml:space="preserve">
+    <value>年</value>
+  </data>
+  <data name="CrossTabSetting_Enum_Quarter" xml:space="preserve">
+    <value>四半期</value>
+  </data>
+  <data name="CrossTabSetting_Enum_Month" xml:space="preserve">
+    <value>月</value>
+  </data>
+  <data name="CrossTabSetting_Enum_Week" xml:space="preserve">
+    <value>週</value>
+  </data>
+  <data name="CrossTabSetting_Enum_Day" xml:space="preserve">
+    <value>日</value>
+  </data>
+  <data name="CrossTabSetting_Enum_Hour" xml:space="preserve">
+    <value>時</value>
+  </data>
+  <data name="CrossTabSetting_Enum_Group" xml:space="preserve">
+    <value>行・列の項目</value>
+  </data>
+  <data name="CrossTabSetting_Enum_Measure" xml:space="preserve">
+    <value>値</value>
+  </data>
+  <data name="CrossTabSetting_Enum_Equal" xml:space="preserve">
+    <value>=</value>
+  </data>
+  <data name="CrossTabSetting_Enum_NotEqual" xml:space="preserve">
+    <value>≠</value>
+  </data>
+  <data name="CrossTabSetting_Enum_LessThan" xml:space="preserve">
+    <value>&amp;lt;</value>
+  </data>
+  <data name="CrossTabSetting_Enum_LessThanOrEqual" xml:space="preserve">
+    <value>≤</value>
+  </data>
+  <data name="CrossTabSetting_Enum_GreaterThan" xml:space="preserve">
+    <value>&amp;gt;</value>
+  </data>
+  <data name="CrossTabSetting_Enum_GreaterThanOrEqual" xml:space="preserve">
+    <value>≥</value>
+  </data>
+  <data name="CrossTabSetting_FiscalYearStartMonth" xml:space="preserve">
+    <value>年度の開始月</value>
+  </data>
+  <data name="CrossTabSetting_Format" xml:space="preserve">
+    <value>書式</value>
+  </data>
+  <data name="CrossTabSetting_FormatHint" xml:space="preserve">
+    <value>表示の書式 (.NET の数値の書式)。候補から選ぶか N1 / P0 / C0 などを入力。空なら元の項目の書式</value>
+  </data>
 </root>

@@ -1,0 +1,189 @@
+<UserControl x:Class="Codeer.LowCode.Blazor.Extras.Designer.Controls.CrossTabSettingPropertyControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:local="clr-namespace:Codeer.LowCode.Blazor.Extras.Designer.Controls"
+             xmlns:properties="clr-namespace:Codeer.LowCode.Blazor.Extras.Designer.Properties"
+             mc:Ignorable="d"
+             d:DataContext="{d:DesignInstance local:CrossTabSettingViewModel}"
+             d:DesignHeight="520" d:DesignWidth="760">
+  <UserControl.Resources>
+    <local:AggregateEnumTextConverter x:Key="EnumText" />
+    <local:CrossTabFormatTextConverter x:Key="FormatText" />
+    <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
+    <DataTemplate x:Key="FormatItemTemplate">
+      <TextBlock Text="{Binding Converter={StaticResource FormatText}}" />
+    </DataTemplate>
+    <!-- 列挙は利用者向けの文言で見せる (CrossTabSetting_Enum_*) -->
+    <DataTemplate x:Key="EnumItemTemplate">
+      <TextBlock Text="{Binding Converter={StaticResource EnumText}}" />
+    </DataTemplate>
+    <Style x:Key="HeaderText" TargetType="TextBlock">
+      <Setter Property="Foreground" Value="Gray" />
+      <Setter Property="Margin" Value="2,0,4,2" />
+    </Style>
+    <!-- 行・列の 1 行: 項目 / まとめる単位 (日付・日時の項目のときだけ) / 年度の開始月 (年・四半期のときだけ) / 削除 -->
+    <DataTemplate x:Key="GroupTemplate" DataType="{x:Type local:GroupItemViewModel}">
+      <Grid Margin="0,0,0,4">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="*" />
+          <ColumnDefinition Width="Auto" />
+          <ColumnDefinition Width="Auto" />
+        </Grid.ColumnDefinitions>
+        <ComboBox Margin="0,0,4,0" IsEditable="True" Text="{Binding Variable, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" ItemsSource="{Binding Owner.FieldCandidates}" />
+        <StackPanel Grid.Column="1" Orientation="Horizontal">
+          <StackPanel Orientation="Horizontal" Visibility="{Binding IsDate, Converter={StaticResource BoolToVisibility}}">
+            <TextBlock Margin="4,0,4,0" VerticalAlignment="Center" Text="{x:Static properties:Resources.CrossTabSetting_DateUnit}" />
+            <ComboBox Width="110" Margin="0,0,4,0" SelectedItem="{Binding Bucket, Mode=TwoWay}" ItemsSource="{Binding Owner.Buckets}" ItemTemplate="{StaticResource EnumItemTemplate}" />
+          </StackPanel>
+          <StackPanel Orientation="Horizontal" Visibility="{Binding IsFiscal, Converter={StaticResource BoolToVisibility}}">
+            <TextBlock Margin="4,0,4,0" VerticalAlignment="Center" Text="{x:Static properties:Resources.CrossTabSetting_FiscalYearStartMonth}" />
+            <ComboBox Width="60" Margin="0,0,4,0" SelectedItem="{Binding FiscalYearStartMonth, Mode=TwoWay}" ItemsSource="{Binding Owner.Months}" />
+          </StackPanel>
+        </StackPanel>
+        <Button Grid.Column="2" Width="24" FontFamily="Segoe Fluent Icons" Content="&#xE74D;" Command="{Binding RemoveCommand}" />
+      </Grid>
+    </DataTemplate>
+    <!-- 値の 1 行: 集計方法 / 項目 / 表示名 / 書式 (件数以外) / 削除 -->
+    <DataTemplate x:Key="MeasureTemplate" DataType="{x:Type local:MeasureItemViewModel}">
+      <Grid Margin="0,0,0,4">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="*" />
+          <ColumnDefinition Width="2*" />
+          <ColumnDefinition Width="*" />
+          <ColumnDefinition Width="130" />
+          <ColumnDefinition Width="Auto" />
+        </Grid.ColumnDefinitions>
+        <ComboBox Margin="0,0,4,0" SelectedItem="{Binding Function, Mode=TwoWay}" ItemsSource="{Binding Owner.Functions}" ItemTemplate="{StaticResource EnumItemTemplate}" />
+        <ComboBox Grid.Column="1" Margin="0,0,4,0" IsEditable="True" Text="{Binding Variable, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" ItemsSource="{Binding Owner.FieldCandidates}" IsEnabled="{Binding NeedsVariable}" />
+        <TextBox Grid.Column="2" Margin="0,0,4,0" Text="{Binding Name, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+        <ComboBox Grid.Column="3" Margin="0,0,4,0" IsEditable="True" Text="{Binding Format, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" ItemsSource="{Binding Owner.FormatCandidates}" ItemTemplate="{StaticResource FormatItemTemplate}" IsEnabled="{Binding NeedsVariable}" ToolTip="{x:Static properties:Resources.CrossTabSetting_FormatHint}" />
+        <Button Grid.Column="4" Width="24" FontFamily="Segoe Fluent Icons" Content="&#xE74D;" Command="{Binding RemoveCommand}" />
+      </Grid>
+    </DataTemplate>
+    <!-- 値で絞り込みの 1 行: 対象の値 / 条件 / 比較する値 / 削除 -->
+    <DataTemplate x:Key="HavingTemplate" DataType="{x:Type local:HavingItemViewModel}">
+      <Grid Margin="0,0,0,4">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="*" />
+          <ColumnDefinition Width="*" />
+          <ColumnDefinition Width="*" />
+          <ColumnDefinition Width="Auto" />
+        </Grid.ColumnDefinitions>
+        <ComboBox Margin="0,0,4,0" SelectedValue="{Binding MeasureIndex, Mode=TwoWay}" SelectedValuePath="Index" DisplayMemberPath="Text" ItemsSource="{Binding Owner.MeasureIndexItems}" />
+        <ComboBox Grid.Column="1" Margin="0,0,4,0" SelectedItem="{Binding Comparison, Mode=TwoWay}" ItemsSource="{Binding Owner.Comparisons}" ItemTemplate="{StaticResource EnumItemTemplate}" />
+        <TextBox Grid.Column="2" Margin="0,0,4,0" Text="{Binding Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+        <Button Grid.Column="3" Width="24" FontFamily="Segoe Fluent Icons" Content="&#xE74D;" Command="{Binding RemoveCommand}" />
+      </Grid>
+    </DataTemplate>
+    <!-- 並べ替えの 1 行: 対象 / 並べ替えの基準 / 降順 / 削除 -->
+    <DataTemplate x:Key="SortTemplate" DataType="{x:Type local:SortItemViewModel}">
+      <Grid Margin="0,0,0,4">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="*" />
+          <ColumnDefinition Width="*" />
+          <ColumnDefinition Width="Auto" />
+          <ColumnDefinition Width="Auto" />
+        </Grid.ColumnDefinitions>
+        <ComboBox Margin="0,0,4,0" SelectedItem="{Binding Target, Mode=TwoWay}" ItemsSource="{Binding Owner.SortTargets}" ItemTemplate="{StaticResource EnumItemTemplate}" />
+        <ComboBox Grid.Column="1" Margin="0,0,4,0" SelectedValue="{Binding Index, Mode=TwoWay}" SelectedValuePath="Index" DisplayMemberPath="Text" ItemsSource="{Binding IndexItems}" />
+        <CheckBox Grid.Column="2" Margin="0,0,8,0" VerticalAlignment="Center" IsChecked="{Binding IsDescending, Mode=TwoWay}" Content="{x:Static properties:Resources.CrossTabSetting_Descending}" />
+        <Button Grid.Column="3" Width="24" FontFamily="Segoe Fluent Icons" Content="&#xE74D;" Command="{Binding RemoveCommand}" />
+      </Grid>
+    </DataTemplate>
+  </UserControl.Resources>
+  <Grid Margin="4">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="*" />
+      <RowDefinition Height="Auto" />
+    </Grid.RowDefinitions>
+    <TabControl>
+      <TabItem Header="{x:Static properties:Resources.CrossTabSetting_Rows}">
+        <DockPanel Margin="4">
+          <Button DockPanel.Dock="Bottom" HorizontalAlignment="Left" Margin="0,4,0,0" Content="{x:Static properties:Resources.CrossTabSetting_Add}" Command="{Binding AddRowCommand}" />
+          <TextBlock DockPanel.Dock="Top" Margin="2,0,4,2" Foreground="Gray" Text="{x:Static properties:Resources.CrossTabSetting_Field}" />
+          <ScrollViewer VerticalScrollBarVisibility="Auto">
+            <ItemsControl ItemsSource="{Binding Rows}" ItemTemplate="{StaticResource GroupTemplate}" />
+          </ScrollViewer>
+        </DockPanel>
+      </TabItem>
+      <TabItem Header="{x:Static properties:Resources.CrossTabSetting_Columns}">
+        <DockPanel Margin="4">
+          <Button DockPanel.Dock="Bottom" HorizontalAlignment="Left" Margin="0,4,0,0" Content="{x:Static properties:Resources.CrossTabSetting_Add}" Command="{Binding AddColumnCommand}" />
+          <TextBlock DockPanel.Dock="Top" Margin="2,0,4,2" Foreground="Gray" Text="{x:Static properties:Resources.CrossTabSetting_Field}" />
+          <ScrollViewer VerticalScrollBarVisibility="Auto">
+            <ItemsControl ItemsSource="{Binding Columns}" ItemTemplate="{StaticResource GroupTemplate}" />
+          </ScrollViewer>
+        </DockPanel>
+      </TabItem>
+      <TabItem Header="{x:Static properties:Resources.CrossTabSetting_Measures}">
+        <DockPanel Margin="4">
+          <Button DockPanel.Dock="Bottom" HorizontalAlignment="Left" Margin="0,4,0,0" Content="{x:Static properties:Resources.CrossTabSetting_Add}" Command="{Binding AddMeasureCommand}" />
+          <Grid DockPanel.Dock="Top" Margin="0,0,0,2">
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="*" />
+              <ColumnDefinition Width="2*" />
+              <ColumnDefinition Width="*" />
+              <ColumnDefinition Width="130" />
+              <ColumnDefinition Width="24" />
+            </Grid.ColumnDefinitions>
+            <TextBlock Style="{StaticResource HeaderText}" Text="{x:Static properties:Resources.CrossTabSetting_Function}" />
+            <TextBlock Grid.Column="1" Style="{StaticResource HeaderText}" Text="{x:Static properties:Resources.CrossTabSetting_Field}" />
+            <TextBlock Grid.Column="2" Style="{StaticResource HeaderText}" Text="{x:Static properties:Resources.CrossTabSetting_Caption}" />
+            <TextBlock Grid.Column="3" Style="{StaticResource HeaderText}" Text="{x:Static properties:Resources.CrossTabSetting_Format}" />
+          </Grid>
+          <ScrollViewer VerticalScrollBarVisibility="Auto">
+            <ItemsControl ItemsSource="{Binding Measures}" ItemTemplate="{StaticResource MeasureTemplate}" />
+          </ScrollViewer>
+        </DockPanel>
+      </TabItem>
+      <TabItem Header="{x:Static properties:Resources.CrossTabSetting_Having}">
+        <DockPanel Margin="4">
+          <Button DockPanel.Dock="Bottom" HorizontalAlignment="Left" Margin="0,4,0,0" Content="{x:Static properties:Resources.CrossTabSetting_Add}" Command="{Binding AddHavingCommand}" />
+          <Grid DockPanel.Dock="Top" Margin="0,0,0,2">
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="*" />
+              <ColumnDefinition Width="*" />
+              <ColumnDefinition Width="*" />
+              <ColumnDefinition Width="24" />
+            </Grid.ColumnDefinitions>
+            <TextBlock Style="{StaticResource HeaderText}" Text="{x:Static properties:Resources.CrossTabSetting_Target}" />
+            <TextBlock Grid.Column="1" Style="{StaticResource HeaderText}" Text="{x:Static properties:Resources.CrossTabSetting_Comparison}" />
+            <TextBlock Grid.Column="2" Style="{StaticResource HeaderText}" Text="{x:Static properties:Resources.CrossTabSetting_CompareValue}" />
+          </Grid>
+          <ScrollViewer VerticalScrollBarVisibility="Auto">
+            <ItemsControl ItemsSource="{Binding Having}" ItemTemplate="{StaticResource HavingTemplate}" />
+          </ScrollViewer>
+        </DockPanel>
+      </TabItem>
+      <TabItem Header="{x:Static properties:Resources.CrossTabSetting_Sort}">
+        <DockPanel Margin="4">
+          <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="0,4,0,0">
+            <Button Content="{x:Static properties:Resources.CrossTabSetting_Add}" Command="{Binding AddSortCommand}" />
+            <TextBlock Margin="16,0,4,0" VerticalAlignment="Center" Text="{x:Static properties:Resources.CrossTabSetting_Limit}" />
+            <TextBox Width="80" Text="{Binding LimitCount, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+          </StackPanel>
+          <Grid DockPanel.Dock="Top" Margin="0,0,0,2">
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="*" />
+              <ColumnDefinition Width="*" />
+              <ColumnDefinition Width="Auto" />
+              <ColumnDefinition Width="24" />
+            </Grid.ColumnDefinitions>
+            <TextBlock Style="{StaticResource HeaderText}" Text="{x:Static properties:Resources.CrossTabSetting_Target}" />
+            <TextBlock Grid.Column="1" Style="{StaticResource HeaderText}" Text="{x:Static properties:Resources.CrossTabSetting_SortBy}" />
+            <TextBlock Grid.Column="2" Style="{StaticResource HeaderText}" Text="{x:Static properties:Resources.CrossTabSetting_Order}" />
+          </Grid>
+          <ScrollViewer VerticalScrollBarVisibility="Auto">
+            <ItemsControl ItemsSource="{Binding Sorts}" ItemTemplate="{StaticResource SortTemplate}" />
+          </ScrollViewer>
+        </DockPanel>
+      </TabItem>
+    </TabControl>
+    <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,6,0,0">
+      <Button Width="80" Margin="5,0,0,0" Content="OK" Click="OkClick" />
+      <Button Width="80" Margin="5,0,0,0" Content="Cancel" Click="CancelClick" />
+    </StackPanel>
+  </Grid>
+</UserControl>
