@@ -1374,6 +1374,9 @@ Recipients: {1}</value>
   <data name="EditHistoryPageSize" xml:space="preserve">
     <value>Versions per page</value>
   </data>
+  <data name="EditHistoryCanRestore" xml:space="preserve">
+    <value>Allow restore</value>
+  </data>
   <data name="EditHistoryExcludedOwnedRecords" xml:space="preserve">
     <value>Owned records left out of the history</value>
   </data>

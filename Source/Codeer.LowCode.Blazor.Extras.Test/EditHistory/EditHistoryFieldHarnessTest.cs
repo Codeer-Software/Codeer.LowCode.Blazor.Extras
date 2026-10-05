@@ -59,10 +59,12 @@ namespace Codeer.LowCode.Blazor.Extras.Test.EditHistory
             HistoryRow("101", "Add", _v1, new DateTime(2026, 9, 1)),
         ];
 
-        static TestServices CreateServices(int pageSize = 20, bool logicalDelete = false)
+        static TestServices CreateServices(int pageSize = 20, bool logicalDelete = false, bool canRestore = true)
         {
             var design = EditHistoryTestDesigns.Create(logicalDelete: logicalDelete);
-            ((Extras.Designs.EditHistoryFieldDesign)design.Modules.Find("Order")!.Fields.First(e => e.Name == "History")).PageSize = pageSize;
+            var history = (Extras.Designs.EditHistoryFieldDesign)design.Modules.Find("Order")!.Fields.First(e => e.Name == "History");
+            history.PageSize = pageSize;
+            history.CanRestore = canRestore;
             var services = new TestServices(design);
             services.App.CurrentUserData = new ModuleData { Name = "AppUser" };
             services.App.ListProvider = request =>
@@ -244,6 +246,20 @@ namespace Codeer.LowCode.Blazor.Extras.Test.EditHistory
             Assert.That(row.GetField<NumberField>("Qty")!.Value, Is.EqualTo(1));
             Assert.That(module.IsModified, Is.True, "保存はユーザーが行う (変更扱いになる)");
             Assert.That(module.GetField<IdField>("Id")!.Value, Is.EqualTo("1"));
+        }
+
+        [Test]
+        public async Task 復元を禁止すると版に戻せない_表示はできる()
+        {
+            var services = CreateServices(canRestore: false);
+            var (module, field) = await CreateOrderModuleAsync(services, _v3);
+            Assert.That(field.Versions.Count, Is.EqualTo(3), "版の一覧は出る");
+            Assert.That(field.CanRestore, Is.False);
+
+            await field.RestoreAsync(field.Versions[2]);
+
+            Assert.That(module.GetField<TextField>("Title")!.Value, Is.EqualTo("B"), "フォームは変わらない");
+            Assert.That(module.IsModified, Is.False);
         }
 
         [Test]

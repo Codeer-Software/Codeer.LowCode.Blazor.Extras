@@ -2984,6 +2984,15 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
         }
 
         /// <summary>
+        ///   Allow restore に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string EditHistoryCanRestore {
+            get {
+                return ResourceManager.GetString("EditHistoryCanRestore", resourceCulture);
+            }
+        }
+
+        /// <summary>
         ///   Looks up a localized string similar to Edit History Contract.
         /// </summary>
         internal static string EditHistoryContractField {

@@ -11,7 +11,8 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
 {
     /// <summary>
     /// 削除されたレコードを履歴から復活させるボタン。履歴モジュール (EditHistoryContractField を置いたモジュール) の
-    /// 詳細画面に置く。そのレコードの最新の版が削除 (ChangeType が Delete) で、対象モジュールで削除できる人にだけ出る。
+    /// 詳細画面に置く。そのレコードの最新の版が削除 (ChangeType が Delete) で、対象モジュールで削除できる人にだけ出る
+    /// (対象モジュールの EditHistoryField が CanRestore = false なら出ない。サーバーも拒否する)。
     /// クライアントは履歴行の Id だけを送り、サーバー (EditHistoryRecorder) が版のスナップショットからレコード全体を戻す。
     /// 対象モジュールが論理削除なら Id を保ったまま戻す (明細も。リンクは切れない)。
     /// 物理削除なら作り直す (手入力 Id は元の Id、自動採番は新しい Id で、旧 Id の版を新しい Id に付け替える)。

@@ -63,6 +63,13 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         [Designer(Index = 7, DisplayName = "$EditHistoryIndividuallyRecordedOwnedRecords")]
         public List<string> IndividuallyRecordedOwnedRecords { get; set; } = [];
 
+        /// <summary>
+        /// 履歴からデータを戻せるか (「この版に戻す」と、履歴モジュールの復活ボタンでの削除の取り消し)。
+        /// false なら履歴は見るだけ (版の一覧・差分・「この版を表示」は出る)。
+        /// </summary>
+        [Designer(Index = 8, DisplayName = "$EditHistoryCanRestore")]
+        public bool CanRestore { get; set; } = true;
+
         public override string GetWebComponentTypeFullName() => typeof(EditHistoryFieldComponent).FullName!;
 
         public override string GetSearchWebComponentTypeFullName() => string.Empty;

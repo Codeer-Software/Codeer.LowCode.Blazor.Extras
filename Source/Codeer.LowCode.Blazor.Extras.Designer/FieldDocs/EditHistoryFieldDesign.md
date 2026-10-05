@@ -25,6 +25,7 @@
 - `PageSize`: 一度に読み込む版の数 (既定 20)。「さらに表示」で次を読む
 - `ExcludedOwnedRecords`: 履歴に含めない従属レコード (下の「従属レコードの扱い」)
 - `IndividuallyRecordedOwnedRecords`: 行ごとに記録する従属レコード (同上)
+- `CanRestore`: 履歴からデータを戻せるか (既定 true)。false で「この版に戻す」と、履歴モジュールの復活ボタン (EditHistoryUndeleteButtonField) でのこのモジュールのレコードの復活ができなくなる (サーバーも拒否する)。版の一覧・差分・「この版を表示」はそのまま
 
 ```json
 { "Name": "History", "TypeFullName": "Codeer.LowCode.Blazor.Extras.Designs.EditHistoryFieldDesign", "HistoryModuleName": "EditHistory" }
@@ -68,7 +69,7 @@
 
 ## この版に戻す
 
-- 表示専用でないレコードの、最新でない版に出る (最新の版と削除の版には出ない)
+- `CanRestore` が true で、表示専用でないレコードの、最新でない版に出る (最新の版と削除の版には出ない)
 - 値フィールドを変更扱いで反映する (OnDataChanged スクリプトも動く)。保存で確定し、その保存も 1 版として記録される
 - 従属レコードは行 Id で突き合わせて更新・追加・削除する (一覧、埋め込みモジュールの子、Gantt のタスクと依存関係 / Calendar / TaskBoard / MarkerList)
 - 無い行は、行のモジュールが論理削除なら Id を保って復活 (保存に「その版からの取り消し」が同梱され、サーバーが戻す)、物理削除なら新しい行になる (Id は振り直し)

@@ -1374,6 +1374,9 @@
   <data name="EditHistoryPageSize" xml:space="preserve">
     <value>1ページの版数</value>
   </data>
+  <data name="EditHistoryCanRestore" xml:space="preserve">
+    <value>復元を許可</value>
+  </data>
   <data name="EditHistoryExcludedOwnedRecords" xml:space="preserve">
     <value>履歴に含めない従属レコード</value>
   </data>
