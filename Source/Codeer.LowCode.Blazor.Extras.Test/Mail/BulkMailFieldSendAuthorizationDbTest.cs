@@ -229,11 +229,11 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Mail
         {
             var (dispatcher, fake) = CreateDispatcher();
             //UserReadCondition 不成立 (宛先 Member 自体は誰でも読めるが、配信モジュールが開けない)
-            Assert.ThrowsAsync<LowCodeException>(async () => await CreateSearch(dispatcher, "1").SendAsync(CreateRequest()));
+            Assert.ThrowsAsync<LowCodeAccessDeniedException>(async () => await CreateSearch(dispatcher, "1").SendAsync(CreateRequest()));
             //PermissionField で隠された BulkMailField (モジュールは開けるがフィールドが見えない)
-            Assert.ThrowsAsync<LowCodeException>(async () => await CreateSearch(dispatcher, "2").SendAsync(CreateRequest(fieldName: "SecretBulk")));
+            Assert.ThrowsAsync<LowCodeAccessDeniedException>(async () => await CreateSearch(dispatcher, "2").SendAsync(CreateRequest(fieldName: "SecretBulk")));
             //停止ユーザー (AppAccessConditions 不成立)
-            Assert.ThrowsAsync<LowCodeException>(async () => await CreateSearch(dispatcher, "3").SendAsync(CreateRequest()));
+            Assert.ThrowsAsync<LowCodeAccessDeniedException>(async () => await CreateSearch(dispatcher, "3").SendAsync(CreateRequest()));
             //BulkMailField ではないフィールド・存在しないフィールド・存在しないモジュール
             Assert.ThrowsAsync<LowCodeException>(async () => await CreateSearch(dispatcher, "2").SendAsync(CreateRequest(fieldName: "Title")));
             Assert.ThrowsAsync<LowCodeException>(async () => await CreateSearch(dispatcher, "2").SendAsync(CreateRequest(fieldName: "Nope")));
@@ -257,8 +257,8 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Mail
             Assert.That(doc.SendCount, Is.EqualTo(1));
 
             //モジュールを開けないユーザー・隠されたフィールドはプレビューも拒否
-            Assert.ThrowsAsync<LowCodeException>(async () => await new MailPreviewBuilder(dispatcher, CreateIO("1"), _designData).BuildBulkAsync(request));
-            Assert.ThrowsAsync<LowCodeException>(async () => await new MailPreviewBuilder(dispatcher, CreateIO("2"), _designData).BuildBulkAsync(CreateRequest(fieldName: "SecretBulk")));
+            Assert.ThrowsAsync<LowCodeAccessDeniedException>(async () => await new MailPreviewBuilder(dispatcher, CreateIO("1"), _designData).BuildBulkAsync(request));
+            Assert.ThrowsAsync<LowCodeAccessDeniedException>(async () => await new MailPreviewBuilder(dispatcher, CreateIO("2"), _designData).BuildBulkAsync(CreateRequest(fieldName: "SecretBulk")));
         }
     }
 }
