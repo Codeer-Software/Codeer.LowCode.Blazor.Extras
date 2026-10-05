@@ -14,6 +14,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
     /// <summary>
     /// タグを保持する値フィールド。Value はタグを ", " でつないだ文字列 (DB に入る形)。
     /// 読むときは「,」「、」「，」のどれでも区切り、前後の空白・空のタグ・重複を落とす。
+    /// タグの同一判定は大文字小文字を区別しない (先に入っていた表記を残す)。
     /// </summary>
     public class TagField(TagFieldDesign design)
         : ValueFieldBase<TagFieldDesign, TagFieldData, string>(design), ISearchableField
@@ -25,6 +26,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         const int CandidateRowCount = 1000;
 
         static readonly char[] _separators = [',', '、', '，'];
+        static readonly StringComparer _tagComparer = StringComparer.OrdinalIgnoreCase;
 
         List<string> _searchTags = new();
         TagSearchMatch? _searchMatch;
@@ -51,11 +53,11 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         public async Task RemoveTagAsync(string tag)
         {
             var target = tag.Trim();
-            await SetTagsAsync(Tags.Where(e => e != target));
+            await SetTagsAsync(Tags.Where(e => !_tagComparer.Equals(e, target)));
         }
 
-        /// <summary>そのタグが付いているか。</summary>
-        public bool HasTag(string tag) => Tags.Contains(tag.Trim());
+        /// <summary>そのタグが付いているか (大文字小文字は区別しない)。</summary>
+        public bool HasTag(string tag) => Tags.Contains(tag.Trim(), _tagComparer);
 
         /// <summary>タグを置き換える (入力欄から)。タグが無ければデザインの TextEditEmptyType の値 ("" か null)。</summary>
         [ScriptHide]
@@ -147,7 +149,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             })).FirstOrDefault();
             _candidates = (page?.Items ?? new())
                 .SelectMany(e => Split((e.Fields.GetValueOrDefault(fieldName) as ValueFieldDataBase<string>)?.Value))
-                .GroupBy(e => e)
+                .GroupBy(e => e, _tagComparer)
                 .OrderByDescending(e => e.Count())
                 .ThenBy(e => e.Key, StringComparer.Ordinal)
                 .Select(e => e.Key)
@@ -169,12 +171,15 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         /// <summary>保存された値をタグに分ける。</summary>
         internal static List<string> Split(string? text) => Normalize(new[] { text });
 
-        /// <summary>区切って前後の空白・空のタグ・重複を落とす (順序は保つ)。</summary>
+        /// <summary>区切って前後の空白・空のタグ・重複を落とす (順序は保つ。重複は大文字小文字を区別せず、先の表記を残す)。</summary>
         internal static List<string> Normalize(IEnumerable<string?> texts)
             => texts.SelectMany(e => (e ?? string.Empty).Split(_separators))
                 .Select(e => e.Trim())
                 .Where(e => e.Length > 0)
-                .Distinct()
+                .Distinct(_tagComparer)
                 .ToList();
+
+        /// <summary>タグの同一判定 (大文字小文字を区別しない)。</summary>
+        internal static bool SameTag(string a, string b) => _tagComparer.Equals(a, b);
     }
 }

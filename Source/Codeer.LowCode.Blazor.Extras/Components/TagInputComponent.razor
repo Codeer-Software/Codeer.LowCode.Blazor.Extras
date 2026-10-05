@@ -155,7 +155,7 @@ else
     Filter();
   }
 
-  async Task RemoveAsync(string tag) => await ChangeAsync(Tags.Where(e => e != tag));
+  async Task RemoveAsync(string tag) => await ChangeAsync(Tags.Where(e => !TagField.SameTag(e, tag)));
 
   async Task ChangeAsync(IEnumerable<string> tags) => await TagsChanged.InvokeAsync(tags.ToList());
 
@@ -178,7 +178,7 @@ else
     var text = _text.Trim();
     _matches = text.Length == 0 || _candidates == null
       ? new()
-      : _candidates.Where(e => !Tags.Contains(e) && e.Contains(text, StringComparison.OrdinalIgnoreCase)).Take(MaxMatches).ToList();
+      : _candidates.Where(e => !Tags.Any(t => TagField.SameTag(t, e)) && e.Contains(text, StringComparison.OrdinalIgnoreCase)).Take(MaxMatches).ToList();
     if (_matches.Count <= _active) _active = -1;
   }
 

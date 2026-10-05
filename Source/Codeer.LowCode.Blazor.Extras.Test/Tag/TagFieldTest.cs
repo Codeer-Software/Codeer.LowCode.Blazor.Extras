@@ -61,6 +61,22 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Tag
         }
 
         [Test]
+        public async Task 大文字小文字は区別せず先の表記を残す()
+        {
+            var (_, field) = await CreateAsync();
+            await field.AddTagAsync("DXPO");
+            await field.AddTagAsync("dxpo");
+            Assert.That(field.Value, Is.EqualTo("DXPO"));
+            Assert.That(field.HasTag("Dxpo"), Is.True);
+
+            await field.SetValueAsync("展示会, Expo, expo, EXPO");
+            Assert.That(field.Tags, Is.EqualTo(new[] { "展示会", "Expo" }));
+
+            await field.RemoveTagAsync("EXPO");
+            Assert.That(field.Tags, Is.EqualTo(new[] { "展示会" }));
+        }
+
+        [Test]
         public async Task RemoveTagとHasTag_タグが無くなれば値は空文字()
         {
             var (_, field) = await CreateAsync();
