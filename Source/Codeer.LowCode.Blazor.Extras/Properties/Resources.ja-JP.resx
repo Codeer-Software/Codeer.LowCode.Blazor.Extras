@@ -1569,4 +1569,43 @@
   <data name="EditHistoryOpen" xml:space="preserve">
     <value>表示</value>
   </data>
+  <data name="TagField" xml:space="preserve">
+    <value>タグ</value>
+  </data>
+  <data name="TagFieldDbColumn" xml:space="preserve">
+    <value>DBカラム</value>
+  </data>
+  <data name="TagFieldPlaceholder" xml:space="preserve">
+    <value>プレースホルダ</value>
+  </data>
+  <data name="TagFieldConfirmOnSpace" xml:space="preserve">
+    <value>スペースでも確定</value>
+  </data>
+  <data name="TagFieldCandidateModuleName" xml:space="preserve">
+    <value>候補のモジュール</value>
+  </data>
+  <data name="TagFieldCandidateFieldName" xml:space="preserve">
+    <value>候補のフィールド</value>
+  </data>
+  <data name="TagFieldSearchMatchDefaultValue" xml:space="preserve">
+    <value>検索の一致の既定</value>
+  </data>
+  <data name="TagSearchMatch_All" xml:space="preserve">
+    <value>すべて含む</value>
+  </data>
+  <data name="TagSearchMatch_Any" xml:space="preserve">
+    <value>いずれかを含む</value>
+  </data>
+  <data name="TagFieldRemove" xml:space="preserve">
+    <value>外す</value>
+  </data>
+  <data name="TagFieldEmptySearchNotAllowed" xml:space="preserve">
+    <value>検索条件でフィールド '{0}' の空検索が指定されていますが、このフィールドでは空検索が許可されていません。</value>
+  </data>
+  <data name="TagFieldSearchComparisonNotAvailable" xml:space="preserve">
+    <value>検索条件でフィールド '{0}' に比較 '{1}' が指定されていますが、使用できません。</value>
+  </data>
+  <data name="TagFieldTextEditEmptyType" xml:space="preserve">
+    <value>空のときの値</value>
+  </data>
 </root>

@@ -16,6 +16,7 @@ namespace Codeer.LowCode.Blazor.Extras
             //script runtime types.
             app.GetScriptRuntimeTypeManager().AddType<CalendarViewMode>();
             app.GetScriptRuntimeTypeManager().AddType<GanttViewMode>();
+            app.GetScriptRuntimeTypeManager().AddType<TagSearchMatch>();
         }
 
         /// <summary>

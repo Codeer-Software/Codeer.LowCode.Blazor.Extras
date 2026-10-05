@@ -1,0 +1,194 @@
+@using Microsoft.AspNetCore.Components.Web
+@using Microsoft.JSInterop
+@using Codeer.LowCode.Blazor.Extras.Fields
+@using Codeer.LowCode.Blazor.Extras.Properties
+@implements IAsyncDisposable
+@inject IJSRuntime JSRuntime
+
+@* TagField の入力欄 (チップ + 入力 + 候補)。編集 (TagFieldComponent) と検索 (TagFieldSearchComponent) で共通 *@
+@if (IsViewOnly)
+{
+  <div class="tag-view" id="@InputId" style="@Style" data-role="view">
+    @foreach (var tag in Tags)
+    {
+      <span class="tag-chip" data-role="tag">@tag</span>
+    }
+  </div>
+}
+else
+{
+  <div class="form-control tag-editor @(IsDisabled ? "tag-disabled" : "") @(IsInvalid ? "is-invalid" : "")" style="@Style" @onclick="FocusAsync">
+    @foreach (var tag in Tags)
+    {
+      <span class="tag-chip" data-role="tag">
+        <span class="tag-chip-text">@tag</span>
+        @if (!IsDisabled)
+        {
+          <button type="button" class="tag-chip-remove" title="@Resources.TagFieldRemove" data-role="remove"
+                  @onclick="() => RemoveAsync(tag)" @onclick:stopPropagation="true">&#215;</button>
+        }
+      </span>
+    }
+    <input type="text" class="tag-input" id="@InputId" @ref="_input" data-role="input" data-consumes-enter autocomplete="off"
+           placeholder="@(Tags.Count == 0 ? Placeholder : string.Empty)" disabled="@IsDisabled"
+           @onfocus="OpenAsync" @onblur="Close" />
+    @if (_open && _matches.Count > 0)
+    {
+      <div class="dropdown-menu show tag-candidates" data-role="candidates">
+        @for (var i = 0; i < _matches.Count; i++)
+        {
+          var index = i;
+          <button type="button" class="dropdown-item @(index == _active ? "active" : "")" data-role="candidate" tabindex="-1"
+                  @onclick="() => AddAsync(_matches[index])">@_matches[index]</button>
+        }
+      </div>
+    }
+  </div>
+}
+
+@code {
+  //候補に出す数 (プロパティにはしない)
+  const int MaxMatches = 10;
+
+  ElementReference _input;
+  IJSObjectReference? _jsModule;
+  DotNetObjectReference<TagInputComponent>? _dotNetRef;
+  List<string>? _candidates;
+  List<string> _matches = new();
+  string _text = string.Empty;
+  int _active = -1;
+  bool _open;
+
+  [Parameter] public List<string> Tags { get; set; } = new();
+  [Parameter] public EventCallback<List<string>> TagsChanged { get; set; }
+  [Parameter] public Func<Task<List<string>>>? GetCandidatesAsync { get; set; }
+  [Parameter] public string Placeholder { get; set; } = string.Empty;
+  [Parameter] public bool ConfirmOnSpace { get; set; }
+  [Parameter] public bool IsViewOnly { get; set; }
+  [Parameter] public bool IsDisabled { get; set; }
+  [Parameter] public bool IsInvalid { get; set; }
+  [Parameter] public bool IsDesignMode { get; set; }
+  [Parameter] public string InputId { get; set; } = string.Empty;
+  [Parameter] public string? Style { get; set; }
+
+  char[] Separators => ConfirmOnSpace ? [',', '、', '，', ' ', '　'] : [',', '、', '，'];
+
+  protected override void OnParametersSet() => Filter();
+
+  protected override async Task OnAfterRenderAsync(bool firstRender)
+  {
+    await base.OnAfterRenderAsync(firstRender);
+    if (IsViewOnly || IsDesignMode) return;
+    if (_jsModule == null)
+    {
+      _jsModule = await JSRuntime.InvokeAsync<IJSObjectReference>(
+        "import", "./_content/Codeer.LowCode.Blazor.Extras/tag-interop.js");
+      _dotNetRef = DotNetObjectReference.Create(this);
+    }
+    //閲覧から編集に切り替わると入力欄が作り直されるので毎描画で呼ぶ (JS 側は二重登録しない)
+    await _jsModule.InvokeVoidAsync("initialize", _input, _dotNetRef, ConfirmOnSpace);
+  }
+
+  public async Task FocusAsync()
+  {
+    if (_jsModule != null) await _jsModule.InvokeVoidAsync("focus", _input);
+  }
+
+  //確定 (Enter・「,」・設定でスペース)、候補の上下、閉じる、空欄での Backspace。IME 変換中のキーは JS が送らない
+  [JSInvokable]
+  public async Task OnKey(string key, string text)
+  {
+    switch (key)
+    {
+      case "Enter":
+        await AddAsync(0 <= _active && _active < _matches.Count ? _matches[_active] : text);
+        break;
+      case "Backspace":
+        if (Tags.Count > 0) await ChangeAsync(Tags.Take(Tags.Count - 1));
+        break;
+      case "ArrowDown":
+      case "ArrowUp":
+        _open = true;
+        _active = Math.Clamp(_active + (key == "ArrowDown" ? 1 : -1), -1, _matches.Count - 1);
+        break;
+      case "Escape":
+        Close();
+        break;
+    }
+    StateHasChanged();
+  }
+
+  //入力のたび (IME 変換中は除く)。区切りが入っていれば (変換で入った「、」・貼り付け) 最後の区切りまでをタグにする
+  [JSInvokable]
+  public async Task OnText(string text)
+  {
+    var last = text.LastIndexOfAny(Separators);
+    if (0 <= last)
+    {
+      await AddAsync(text[..last], text[(last + 1)..]);
+    }
+    else
+    {
+      _text = text;
+      Filter();
+    }
+    StateHasChanged();
+  }
+
+  //箱の外へフォーカスが移った時。打ちかけの文字もタグにする (空欄・ウィンドウの切り替えでは JS が送らない)
+  [JSInvokable]
+  public async Task OnBlur(string text)
+  {
+    await AddAsync(text);
+    StateHasChanged();
+  }
+
+  //text をタグにして足し、入力欄を rest にする
+  async Task AddAsync(string text, string rest = "")
+  {
+    if (ConfirmOnSpace) text = text.Replace(' ', ',').Replace('　', ',');
+    var tags = TagField.Normalize(new[] { text });
+    if (0 < tags.Count) await ChangeAsync(Tags.Concat(tags));
+    _text = rest;
+    _active = -1;
+    if (_jsModule != null) await _jsModule.InvokeVoidAsync("setText", _input, rest);
+    Filter();
+  }
+
+  async Task RemoveAsync(string tag) => await ChangeAsync(Tags.Where(e => e != tag));
+
+  async Task ChangeAsync(IEnumerable<string> tags) => await TagsChanged.InvokeAsync(tags.ToList());
+
+  async Task OpenAsync()
+  {
+    if (_candidates == null && GetCandidatesAsync != null) _candidates = await GetCandidatesAsync();
+    _open = true;
+    Filter();
+  }
+
+  void Close()
+  {
+    _open = false;
+    _active = -1;
+  }
+
+  //打っている文字を含む候補 (付いているタグは除く)。何も打っていなければ出さない
+  void Filter()
+  {
+    var text = _text.Trim();
+    _matches = text.Length == 0 || _candidates == null
+      ? new()
+      : _candidates.Where(e => !Tags.Contains(e) && e.Contains(text, StringComparison.OrdinalIgnoreCase)).Take(MaxMatches).ToList();
+    if (_matches.Count <= _active) _active = -1;
+  }
+
+  public async ValueTask DisposeAsync()
+  {
+    if (_jsModule != null)
+    {
+      try { await _jsModule.InvokeVoidAsync("dispose", _input); } catch { }
+      try { await _jsModule.DisposeAsync(); } catch { }
+    }
+    _dotNetRef?.Dispose();
+  }
+}

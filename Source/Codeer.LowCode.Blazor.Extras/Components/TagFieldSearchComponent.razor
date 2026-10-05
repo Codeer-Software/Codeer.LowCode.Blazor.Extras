@@ -1,0 +1,38 @@
+@using Microsoft.AspNetCore.Components.Web
+@using Codeer.LowCode.Blazor.Components
+@using Codeer.LowCode.Blazor.Extras.Designs
+@using Codeer.LowCode.Blazor.Extras.Fields
+@using Codeer.LowCode.Blazor.Extras.Properties
+@inherits FieldComponentBase<TagField>
+
+@* 本体 TextField の検索欄と同じ形: input-group に入力欄と一致の選択 (IsSimpleSearchParameter なら入力欄だけ)。タグを選ばなければ絞らない *@
+<div class="input-group">
+  <TagInputComponent Tags="@Field.SearchTags"
+                     TagsChanged="@(tags => Field.SetSearchTagsAsync(tags))"
+                     GetCandidatesAsync="@Field.GetCandidatesAsync"
+                     Placeholder="@Field.Design.Placeholder"
+                     ConfirmOnSpace="@Field.Design.ConfirmOnSpace"
+                     IsDisabled="@(Field.IsEnabled == false)"
+                     IsDesignMode="@Field.Services.AppInfoService.IsDesignMode"
+                     InputId="@WebElementId" />
+  @if (!Field.Design.IsSimpleSearchParameter)
+  {
+    <select class="form-select w-auto" style="flex: unset" value="@Field.SearchMatch.ToString()" data-role="match" @onchange="OnMatchChangedAsync">
+      <option value="@nameof(TagSearchMatch.All)">@Resources.TagSearchMatch_All</option>
+      <option value="@nameof(TagSearchMatch.Any)">@Resources.TagSearchMatch_Any</option>
+    </select>
+  }
+</div>
+
+@code {
+  protected override async Task OnParametersSetAsync()
+  {
+    await base.OnParametersSetAsync();
+    Field.OnSearchDataChangedAsync = () => InvokeAsync(StateHasChanged);
+  }
+
+  async Task OnMatchChangedAsync(ChangeEventArgs e)
+  {
+    if (Enum.TryParse<TagSearchMatch>(e.Value?.ToString(), out var match)) await Field.SetSearchMatchAsync(match);
+  }
+}

@@ -3491,5 +3491,83 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
                 return ResourceManager.GetString("EditHistoryRestoreNothingApplied", resourceCulture);
             }
         }
+
+        internal static string TagField {
+            get {
+                return ResourceManager.GetString("TagField", resourceCulture);
+            }
+        }
+
+        internal static string TagFieldDbColumn {
+            get {
+                return ResourceManager.GetString("TagFieldDbColumn", resourceCulture);
+            }
+        }
+
+        internal static string TagFieldPlaceholder {
+            get {
+                return ResourceManager.GetString("TagFieldPlaceholder", resourceCulture);
+            }
+        }
+
+        internal static string TagFieldConfirmOnSpace {
+            get {
+                return ResourceManager.GetString("TagFieldConfirmOnSpace", resourceCulture);
+            }
+        }
+
+        internal static string TagFieldCandidateModuleName {
+            get {
+                return ResourceManager.GetString("TagFieldCandidateModuleName", resourceCulture);
+            }
+        }
+
+        internal static string TagFieldCandidateFieldName {
+            get {
+                return ResourceManager.GetString("TagFieldCandidateFieldName", resourceCulture);
+            }
+        }
+
+        internal static string TagFieldSearchMatchDefaultValue {
+            get {
+                return ResourceManager.GetString("TagFieldSearchMatchDefaultValue", resourceCulture);
+            }
+        }
+
+        internal static string TagSearchMatch_All {
+            get {
+                return ResourceManager.GetString("TagSearchMatch_All", resourceCulture);
+            }
+        }
+
+        internal static string TagSearchMatch_Any {
+            get {
+                return ResourceManager.GetString("TagSearchMatch_Any", resourceCulture);
+            }
+        }
+
+        internal static string TagFieldRemove {
+            get {
+                return ResourceManager.GetString("TagFieldRemove", resourceCulture);
+            }
+        }
+
+        internal static string TagFieldEmptySearchNotAllowed {
+            get {
+                return ResourceManager.GetString("TagFieldEmptySearchNotAllowed", resourceCulture);
+            }
+        }
+
+        internal static string TagFieldSearchComparisonNotAvailable {
+            get {
+                return ResourceManager.GetString("TagFieldSearchComparisonNotAvailable", resourceCulture);
+            }
+        }
+
+        internal static string TagFieldTextEditEmptyType {
+            get {
+                return ResourceManager.GetString("TagFieldTextEditEmptyType", resourceCulture);
+            }
+        }
     }
 }

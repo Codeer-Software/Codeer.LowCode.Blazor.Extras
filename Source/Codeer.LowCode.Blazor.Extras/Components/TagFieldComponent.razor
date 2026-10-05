@@ -1,0 +1,37 @@
+@using Codeer.LowCode.Blazor.Components
+@using Codeer.LowCode.Blazor.Components.Primitives
+@using Codeer.LowCode.Blazor.Extras.Fields
+@inherits FieldComponentBase<TagField>
+
+<TagInputComponent @ref="_editor"
+                   Tags="@ShownTags"
+                   TagsChanged="@(tags => Field.SetTagsAsync(tags))"
+                   GetCandidatesAsync="@Field.GetCandidatesAsync"
+                   Placeholder="@Field.Design.Placeholder"
+                   ConfirmOnSpace="@Field.Design.ConfirmOnSpace"
+                   IsViewOnly="@Field.IsViewOnly"
+                   IsDisabled="@(Field.IsEnabled == false)"
+                   IsInvalid="@(!Field.IsValid)"
+                   IsDesignMode="@IsDesignMode"
+                   InputId="@WebElementId"
+                   Style="@Field.GetOwnStyleString()" />
+@if (!Field.IsViewOnly)
+{
+  <ValidationFeedback IsValid="@Field.IsValid" ErrorMessage="@Field.ErrorText" />
+}
+
+@code {
+  TagInputComponent? _editor;
+
+  bool IsDesignMode => Field.Services.AppInfoService.IsDesignMode;
+
+  //デザイナではタグが無くても見本を 1 つ出す
+  List<string> ShownTags => IsDesignMode && Field.Tags.Count == 0 ? new() { "Tag" } : Field.Tags;
+
+  protected override async Task OnParametersSetAsync()
+  {
+    await base.OnParametersSetAsync();
+    //スクリプトの Focus() は入力欄に当てる
+    Field.SetFocusReceiver(() => _editor?.FocusAsync() ?? Task.CompletedTask);
+  }
+}

@@ -1569,4 +1569,43 @@ Recipients: {1}</value>
   <data name="EditHistoryOpen" xml:space="preserve">
     <value>Show</value>
   </data>
+  <data name="TagField" xml:space="preserve">
+    <value>Tag</value>
+  </data>
+  <data name="TagFieldDbColumn" xml:space="preserve">
+    <value>DB Column</value>
+  </data>
+  <data name="TagFieldPlaceholder" xml:space="preserve">
+    <value>Placeholder</value>
+  </data>
+  <data name="TagFieldConfirmOnSpace" xml:space="preserve">
+    <value>Confirm a Tag with Space</value>
+  </data>
+  <data name="TagFieldCandidateModuleName" xml:space="preserve">
+    <value>Candidate Module</value>
+  </data>
+  <data name="TagFieldCandidateFieldName" xml:space="preserve">
+    <value>Candidate Field</value>
+  </data>
+  <data name="TagFieldSearchMatchDefaultValue" xml:space="preserve">
+    <value>Default Search Match</value>
+  </data>
+  <data name="TagSearchMatch_All" xml:space="preserve">
+    <value>Contains all</value>
+  </data>
+  <data name="TagSearchMatch_Any" xml:space="preserve">
+    <value>Contains any</value>
+  </data>
+  <data name="TagFieldRemove" xml:space="preserve">
+    <value>Remove</value>
+  </data>
+  <data name="TagFieldEmptySearchNotAllowed" xml:space="preserve">
+    <value>The search condition uses an empty search for the field '{0}', but empty search is not allowed on it.</value>
+  </data>
+  <data name="TagFieldSearchComparisonNotAvailable" xml:space="preserve">
+    <value>The search condition uses the comparison '{1}' for the field '{0}', but that comparison is not available.</value>
+  </data>
+  <data name="TagFieldTextEditEmptyType" xml:space="preserve">
+    <value>Value when Empty</value>
+  </data>
 </root>
