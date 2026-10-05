@@ -78,7 +78,7 @@ dotnet build Source/Codeer.LowCode.Blazor.Extras/Codeer.LowCode.Blazor.Extras.cs
 - **機能**: 行・列 (複数可・日付は年/四半期/月/週/日)、値 (件数/重複を除いた件数/合計/平均/最小/最大)、行ごと・列ごとの合計と総計、割合表示、値で絞り込み・並べ替え・表示件数の上限。定義は設計 (Setting) か、スクリプトの `Show(aggregator[, rowCount])`。`CanCustomize` で利用者が自分用に変えられる (表の右上の「集計のカスタマイズ」ボタン (エラー時も出る) / `ShowCustomDialog()` → Blazor の CrossTabSettingEditor。保存は localStorage「モジュール名.フィールド名」= ListField のカラムカスタマイズと同じ。読み込み時は `ReconcileSetting` で今の設計に合わせ、OK 時は `ValidateSetting` で検査)。チームで共有する集計は設計に書く
 - **インターフェース**: `IDisplayName`, `ISearchResultsViewFieldDesign`, `IFillHeightFieldDesign`
 - **ファイル**: `Designs/CrossTabFieldDesign.cs`, `Designs/CrossTabSetting.cs`, `Fields/CrossTabField.cs`, `Fields/CrossTabCell.cs`, `Components/CrossTabFieldComponent.razor`。デザイナの設定ダイアログは Extras.Designer `Controls/CrossTabSettingPropertyControl`
-- リンク越しの項目の解決 (`CrossTabFieldDesign.ResolveField`) は LinkField / ModuleField をたどる Extras 側の実装 (本体の解決は internal のため使わない)
+- リンク越しの項目の解決 (`CrossTabFieldDesign.ResolveField`) は LinkField / ModuleField / モジュール参照の SelectField をたどる Extras 側の実装 (`LinkTargetModuleName`。本体の解決は internal のため使わない)
 
 #### MarkerListField - 画像マーカー
 - **状態**: 実装済み (docs/MarkerListField.md)
