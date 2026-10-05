@@ -75,7 +75,7 @@ Codeer.LowCode.Blazor 本体が持つのは認可だけで、認証 (ログイ�
 | [MailSender](docs/MailSender.md) | 担当者本人のアカウント (Gmail / Microsoft 365 / SMTP) 名義で送る Windows アプリ (`Tools/MailSender` をビルドして使う)。Web のプレビュー HTML を開いて送信。トークンは本人の PC にだけ置く。Web アプリのシステム送信者用トークンの発行にも使う |
 | [承認フロー](docs/ApprovalFlow.md) | ApprovalFlowField を申請書に置くだけで申請・承認・却下・差し戻し・取り下げ・再申請・回覧。承認データは通常のモジュール。状態遷移はサーバーが検証。履歴だけを別の場所に出す ApprovalHistoryField。契約フィールド: ApprovalFlowContractField / ApprovalMemberContractField / ApprovalHistoryContractField |
 | [監査ログ](docs/AuditLog.md) | いつ・誰が・どこから・何に・何をして・どうなったかをサーバーが WebAPI ごとに記録する。フィールド不要で appsettings だけで有効化。DB / JSON Lines ファイルへ出力、失敗・権限拒否も記録、保持期限で自動削除、監査ログのテーブルはアプリ経路から追記専用 (サーバサイド実装が必要) |
-| [編集履歴](docs/EditHistory.md) | EditHistoryField をモジュールに置くと保存 (作成・更新・削除) ごとにレコード全体 (明細込み) のスナップショットが履歴モジュールへ記録される。詳細画面に版の一覧 (変更フィールドの 旧 → 新)・「この版を表示」・「この版に戻す」(フォームへ反映して保存で確定)・削除したレコードの復活。履歴は通常のモジュール = 閲覧権限は履歴モジュールの設定で、版の内容は読む人の権限に合わせて返される (サーバサイド実装が必要)。履歴モジュールに置く EditHistoryContractField (契約) / EditHistoryUndeleteButtonField (削除したレコードの復活ボタン) |
+| [編集履歴](docs/EditHistory.md) | EditHistoryField をモジュールに置くと保存 (作成・更新・削除) ごとにレコード全体 (明細込み) のスナップショットが履歴モジュールへ記録される。詳細画面に版の一覧 (変更フィールドの 旧 → 新)・「この版を表示」・「この版に置き換える」(フォームへ反映して保存で確定)・削除したレコードの復活。履歴は通常のモジュール = 閲覧権限は履歴モジュールの設定で、版の内容は読む人の権限に合わせて返される (サーバサイド実装が必要)。履歴モジュールに置く EditHistoryContractField (契約) / EditHistoryUndeleteButtonField (削除したレコードの復活ボタン) |
 
 いずれもデザイナの **Tools > メールのセットアップ / 承認フローのセットアップ / 編集履歴のセットアップ / 監査ログのセットアップ** (または CLI の `mail-setup` / `approval-setup` / `edit-history-setup` / `audit-log-setup`) で
 必要なモジュール群 (監査ログは閲覧モジュールとテーブル作成 DDL) を生成できます。

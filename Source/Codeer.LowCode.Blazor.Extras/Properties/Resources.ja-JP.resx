@@ -1450,16 +1450,13 @@
     <value>この版を表示</value>
   </data>
   <data name="EditHistoryRestoreVersion" xml:space="preserve">
-    <value>この版に戻す</value>
-  </data>
-  <data name="EditHistoryRestoreConfirmFormat" xml:space="preserve">
-    <value>版 {0} の内容をフォームに反映します。保存すると確定します。よろしいですか？</value>
+    <value>編集中の内容をこの版に置き換える</value>
   </data>
   <data name="EditHistoryRestoredFormat" xml:space="preserve">
-    <value>版 {0} の内容を反映しました。保存して確定してください。</value>
+    <value>編集中の内容を版 {0} に置き換えました。保存して確定してください。</value>
   </data>
   <data name="EditHistoryRestore" xml:space="preserve">
-    <value>戻す</value>
+    <value>復活する</value>
   </data>
   <data name="EditHistoryCancel" xml:space="preserve">
     <value>キャンセル</value>
@@ -1549,7 +1546,7 @@
     <value>編集履歴と退避 (削除テーブルへの移動) は併用できません。論理削除か物理削除にしてください。</value>
   </data>
   <data name="EditHistoryCheck_OwnedRecordsNotHeldFormat" xml:space="preserve">
-    <value>モジュール '{0}' の従属レコード '{1}' はランタイムで全件を持たない設定 (サーバーページングの一覧など) なので、'{2}' の編集履歴の「この版に戻す」で差し替えられません。全件を持つ設定 (一覧ならメモリ内ページングか件数制限なし) にしてください。</value>
+    <value>モジュール '{0}' の従属レコード '{1}' はランタイムで全件を持たない設定 (サーバーページングの一覧など) なので、'{2}' の編集履歴の「この版に置き換える」で差し替えられません。全件を持つ設定 (一覧ならメモリ内ページングか件数制限なし) にしてください。</value>
   </data>
   <data name="EditHistoryRecordRestored" xml:space="preserve">
     <value>レコードが復活しました</value>
@@ -1561,7 +1558,7 @@
     <value>変更 {0} 項目: {1}</value>
   </data>
   <data name="EditHistoryRestoreNothingApplied" xml:space="preserve">
-    <value>この版から反映できる項目がありませんでした。書き込み権限のない項目・添付ファイル・システム項目は対象外です。</value>
+    <value>この版に置き換えられる項目がありませんでした。書き込み権限のない項目・添付ファイル・システム項目は対象外です。</value>
   </data>
   <data name="EditHistoryCheck_ChildHasOwnHistoryFormat" xml:space="preserve">
     <value>従属レコード '{0}' のモジュール '{1}' は自分の EditHistoryField を持っていますが、このモジュール経由の編集はこのモジュールの版にだけ記録され、'{1}' の履歴には残りません。'{0}' を {2} (このモジュール経由では記録しない) か {3} ('{1}' の履歴に行ごとに記録する) に指定してください。</value>

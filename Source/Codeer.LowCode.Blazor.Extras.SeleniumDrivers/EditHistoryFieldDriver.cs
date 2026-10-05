@@ -30,9 +30,6 @@ namespace Codeer.LowCode.Blazor.Extras.SeleniumDrivers
         public IReadOnlyList<string> ChangedFieldNames => Element.FindElements(By.CssSelector(".edit-history-changes > .edit-history-change > .edit-history-field")).Select(e => e.TextContent()).ToList();
         /// <summary>「この版を表示」(開いた状態で出る)。</summary>
         public ButtonDriver Show => ByCssSelector("[data-system='edit-history-show']").Wait();
-        /// <summary>「この版に戻す」。表示専用・最新版・削除の版では出ない。</summary>
-        public ButtonDriver Restore => ByCssSelector("[data-system='edit-history-restore']").Wait();
-        public bool HasRestore => Element.FindElements(By.CssSelector("[data-system='edit-history-restore']")).Count > 0;
 
         string OptionalText(string selector)
         {
@@ -121,7 +118,7 @@ namespace Codeer.LowCode.Blazor.Extras.SeleniumDrivers
 
     /// <summary>
     /// 「この版を表示」のダイアログ (本体のモジュールダイアログ)。ページ全体から <c>[data-system='module-dialog']</c> で探す。
-    /// 強調された要素 (変更セル / 追加行 / 削除行 / 変更された従属レコードの項目) の数と「閉じる」。
+    /// 強調された要素 (変更セル / 追加行 / 削除行 / 変更された従属レコードの項目) の数と、フッターのボタン。
     /// </summary>
     public class EditHistoryVersionDialogDriver : ComponentBase
     {
@@ -130,8 +127,11 @@ namespace Codeer.LowCode.Blazor.Extras.SeleniumDrivers
         public int AddedRowCount => Element.FindElements(By.CssSelector(".edit-history-added-row")).Count;
         public int RemovedRowCount => Element.FindElements(By.CssSelector(".edit-history-removed-row")).Count;
         public int ChangedRowCount => Element.FindElements(By.CssSelector(".edit-history-changed-row")).Count;
-        /// <summary>フッターのボタン (「閉じる」)。</summary>
-        public ButtonDriver Close => ByCssSelector(".modal-footer button").Wait();
+        /// <summary>「編集中の内容をこの版に置き換える」。復元を許可していない・表示専用・最新版・削除の版では出ない。</summary>
+        public ButtonDriver Restore => ByCssSelector(".modal-footer button.edit-history-restore").Wait();
+        public bool HasRestore => Element.FindElements(By.CssSelector(".modal-footer button.edit-history-restore")).Count > 0;
+        /// <summary>「閉じる」。</summary>
+        public ButtonDriver Close => ByCssSelector(".modal-footer button:not(.edit-history-restore)").Wait();
         public EditHistoryVersionDialogDriver(IWebElement element) : base(element) { }
         public static implicit operator EditHistoryVersionDialogDriver(ElementFinder finder) => finder.Find<EditHistoryVersionDialogDriver>();
     }

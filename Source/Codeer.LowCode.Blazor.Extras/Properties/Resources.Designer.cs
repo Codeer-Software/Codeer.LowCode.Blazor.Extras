@@ -3128,15 +3128,6 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to Apply the content of version {0} to the form? It is confirmed when you save..
-        /// </summary>
-        internal static string EditHistoryRestoreConfirmFormat {
-            get {
-                return ResourceManager.GetString("EditHistoryRestoreConfirmFormat", resourceCulture);
-            }
-        }
-
-        /// <summary>
         ///   Looks up a localized string similar to Version {0} has been applied. Save to confirm..
         /// </summary>
         internal static string EditHistoryRestoredFormat {
