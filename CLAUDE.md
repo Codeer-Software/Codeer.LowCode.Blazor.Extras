@@ -109,6 +109,15 @@ dotnet build Source/Codeer.LowCode.Blazor.Extras/Codeer.LowCode.Blazor.Extras.cs
 - **スクリプト**: `Value` / `Html` / `PlainText` / `AppendLine(string)`
 - **ファイル**: `Designs/MarkdownFieldDesign.cs` (enum `MarkdownPreviewMode` 同居), `Data/MarkdownFieldData.cs`, `Fields/MarkdownField.cs`, `Components/MarkdownFieldComponent.razor(.css)`, `Markdown/MarkdownRenderer.cs`, `wwwroot/markdown-interop.js`
 
+#### TagField - タグ入力
+- **状態**: 実装済み (docs/TagField.md)
+- **機能**: タグを「, 」区切りの 1 文字列で DB 列に保存し、チップ (× で外す) で表示。Enter・「,」・「、」で確定 (`ConfirmOnSpace` でスペースも)、入力欄の外へフォーカスが移ったら打ちかけも確定 (ウィンドウ切替では確定しない)。候補 = その列 (または `CandidateModuleName` / `CandidateFieldName` の列) に既にあるタグを、打った文字を含むものだけ最大 10 件 (多く付いている順。1 回だけ新しい 1000 行をタグの列だけ読んで保持。閲覧権限に従う。1000 = 「1 回で読み込む候補」の一般的な上限 (SelectField の LimitCount と同じ考え方。それ以上は本来サーバー側の逐次検索の領分)。設定にはしない = 利用者には適切な値が判断できないため、定数 `CandidateRowCount`)。読むときは「,」「、」「，」で区切り、前後空白・空・重複を落とす (`Normalize`。同一判定は大文字小文字を区別、候補の絞り込みは区別しない)。`TextEditEmptyType` (TextField と同じ、既定 StringEmpty)。必須 = 1 つ以上
+- **基底**: `DbValueFieldDesignBase` (本体 TextField と同じ、検索できる DB 列のフィールド。Extras の EditHistory / SemanticSearch の「DB フィールド」判定もこれ)。**Extras で初めて検索に対応したフィールド**: `ISearchableField` (`GetMatchCondition` = 選んだタグごとの `Like` を `FieldMatchCondition` に AND / OR、タグなしは null = 条件なし / `SetMatchConditionAsync` / `ClearMatchConditionAsync`)、`ValidateSearchCondition` は TextField と同じ規則 (テストで突き合わせ)、デザイナの条件エディタは本体の `TextSearchControl` を名前で指定 (LinkField と同じ)。検索欄 `TagFieldSearchComponent` は本体 TextField の検索欄と同じ input-group + 一致の select (`IsSimpleSearchParameter` で隠す。本体と同じ振る舞いを 10-05 に実測)
+- **IME**: `wwwroot/tag-interop.js` が `isComposing` / keyCode 229 の間はキーを送らない (変換を確定する Enter でタグを作らない)。確定後の `input` / `compositionend` で区切りがあれば .NET が分ける。箱の中の mousedown は preventDefault でフォーカスを入力欄に留める (候補のクリックが blur で消えない)
+- **スクリプト**: `Tags` / `AddTag` / `RemoveTag` / `HasTag`、検索欄 `SearchTags` / `SearchMatch` (`TagSearchMatch` を `ExtrasClientInitializer` で登録)。内部用は `[ScriptHide]`
+- **一覧のセル**: 編集できるセルではチップ + 入力欄、閲覧ならチップだけ。本体の `td.form-control-style-inline input:focus` の内側リングは、`.razor.css` で同じ `:not` 列を付けた高い詳細度のセレクタで消す (!important は使わない)
+- **ファイル**: `Designs/TagFieldDesign.cs` (enum `TagSearchMatch` 同居), `Data/TagFieldData.cs`, `Fields/TagField.cs`, `Components/TagFieldComponent.razor` / `TagFieldSearchComponent.razor` / `TagInputComponent.razor(.css)` (編集と検索で共有するチップ入力), `wwwroot/tag-interop.js`, `Extras.SeleniumDrivers/TagFieldDriver.cs` (+ `TagFieldSearchDriver`), テスト `Extras.Test/Tag/` (ランタイム・SQLite 実 DB・サンプルデザイン)
+
 #### ColorPickerField - カラーピッカー
 - **状態**: 実装済み (docs/ColorPickerField.md)
 - **機能**: HTML5ネイティブカラーピッカー。色をHEX文字列として保存

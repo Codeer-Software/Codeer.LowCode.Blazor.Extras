@@ -24,6 +24,7 @@
 | [TaskBoardField](docs/TaskBoardField.md) | カンバンボード。ドラッグ&ドロップでステータス変更が可能 |
 | [RichTextField](docs/RichTextField.md) | 書式付きテキストエディタ。太字・色・リンクなどのHTMLフォーマットに対応 |
 | [MarkdownField](docs/MarkdownField.md) | Markdown エディタ / ビューア。Markdown をプレーンテキストのまま保存し、閲覧時は HTML に描画。ツールバーとプレビュー (タブ / 左右並び) 付き。生 HTML は無効化 (外部ライブラリ Markdig を使用) |
+| [TagField](docs/TagField.md) | タグ入力。チップ表示・× で外す・既存のタグを候補に出す。値は「, 」区切りの 1 文字列として保存 (既存のテキスト列をそのまま使える)。検索条件では「すべて含む / いずれかを含む」で絞り込める |
 | [ColorPickerField](docs/ColorPickerField.md) | カラーピッカー。HTML5ネイティブカラーピッカーで色をHEX文字列として保存 |
 | [MarkerListField](docs/MarkerListField.md) | 画像上にマーカー(ピン)を配置・操作するフィールド |
 | [QrCodeField](docs/QrCodeField.md) | 文字列をQRコード画像として表示する表示専用フィールド (外部ライブラリ QRCoder を使用) |
@@ -234,6 +235,7 @@ ExtrasDesignerInitializer.Setup(DesignerEnvironment);
 - [TaskBoardField - カンバンボード](docs/TaskBoardField.md)
 - [RichTextField - リッチテキストエディタ](docs/RichTextField.md)
 - [MarkdownField - Markdown エディタ / ビューア](docs/MarkdownField.md)
+- [TagField - タグ入力](docs/TagField.md)
 - [ColorPickerField - カラーピッカー](docs/ColorPickerField.md)
 - [MarkerListField - 画像マーカー](docs/MarkerListField.md)
 - [QrCodeField - QRコード](docs/QrCodeField.md)
