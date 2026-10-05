@@ -17,7 +17,7 @@
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>
 		<PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
-		<PackageReleaseNotes>EditHistoryField: CanRestore setting (restoring can be turned off). The restore button moved into the "Show this version" dialog.</PackageReleaseNotes>
+		<PackageReleaseNotes>EditHistoryField: CanRestore setting (restoring can be turned off). The restore button moved into the "Show this version" dialog. Edit history diff shows the display text of fixed select candidates.</PackageReleaseNotes>
 		<PackageId>Codeer.LowCode.Blazor.Extras</PackageId>
 	</PropertyGroup>
 
