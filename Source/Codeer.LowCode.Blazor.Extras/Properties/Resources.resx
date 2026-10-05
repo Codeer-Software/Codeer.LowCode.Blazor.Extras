@@ -1662,6 +1662,9 @@ Recipients: {1}</value>
   <data name="CrossTab_NotTableModule" xml:space="preserve">
     <value>Only modules that have a table can be aggregated (modules defined by a QueryField or without a table cannot be used): {0}</value>
   </data>
+  <data name="CrossTab_AggregateFailed" xml:space="preserve">
+    <value>Could not aggregate. See the notification for the reason.</value>
+  </data>
   <data name="CrossTabCanCustomize" xml:space="preserve">
     <value>Allow users to customize the aggregation</value>
   </data>

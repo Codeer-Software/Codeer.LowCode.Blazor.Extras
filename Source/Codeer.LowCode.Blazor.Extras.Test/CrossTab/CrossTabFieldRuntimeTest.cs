@@ -182,6 +182,22 @@ namespace Codeer.LowCode.Blazor.Extras.Test.CrossTab
         }
 
         [Test]
+        public async Task ホストが空のリストで失敗を返したら表を消して集計できなかった旨を出す()
+        {
+            //ホストは通信の失敗を空のリストで返す (理由はホストが通知済み)。例外は来ない
+            var (svc, field) = await CreateAsync(Design());
+            svc.App.AggregateProvider = _ => new List<AggregateResult>();
+            await field.ReloadAsync();
+            Assert.Multiple(() =>
+            {
+                Assert.That(field.Table, Is.Null);
+                Assert.That(field.LoadError, Is.EqualTo(Properties.Resources.CrossTab_AggregateFailed));
+                Assert.That(field.IsLoading, Is.False);
+            });
+            Assert.That(field.CreateCellCondition(0, null), Is.Null);
+        }
+
+        [Test]
         public async Task カスタマイズできる表は画面が保存内容を渡すまで集計せず渡したら1回だけ集計する()
         {
             //カスタマイズできない表は読み込みで集計する (比較用)

@@ -3760,6 +3760,15 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
         }
 
         /// <summary>
+        ///   Could not aggregate. See the notification for the reason. に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string CrossTab_AggregateFailed {
+            get {
+                return ResourceManager.GetString("CrossTab_AggregateFailed", resourceCulture);
+            }
+        }
+
+        /// <summary>
         ///   Only modules that have a table can be aggregated (modules defined by a QueryField or without a table cannot be used): {0} に類似しているローカライズされた文字列を検索します。
         /// </summary>
         internal static string CrossTab_NotTableModule {
