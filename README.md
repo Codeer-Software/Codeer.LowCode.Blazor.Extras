@@ -22,6 +22,7 @@
 | [CalendarField](docs/CalendarField.md) | 月・週・日表示のカレンダー。イベントの表示・追加・編集が可能 |
 | [GanttField](docs/GanttField.md) | SVGベースのガントチャート。タスクのドラッグ移動・リサイズ、依存関係の管理が可能 |
 | [TaskBoardField](docs/TaskBoardField.md) | カンバンボード。ドラッグ&ドロップでステータス変更が可能 |
+| [CrossTabField](docs/CrossTabField.md) | クロス集計表。行の項目 × 列の項目 で件数・合計・平均などを集計して表示 (集計はサーバー側・権限は一覧と同じ) |
 | [RichTextField](docs/RichTextField.md) | 書式付きテキストエディタ。太字・色・リンクなどのHTMLフォーマットに対応 |
 | [MarkdownField](docs/MarkdownField.md) | Markdown エディタ / ビューア。Markdown をプレーンテキストのまま保存し、閲覧時は HTML に描画。ツールバーとプレビュー (タブ / 左右並び) 付き。生 HTML は無効化 (外部ライブラリ Markdig を使用) |
 | [TagField](docs/TagField.md) | タグ入力。チップ表示・× で外す・既存のタグを候補に出す。値は「, 」区切りの 1 文字列として保存 (既存のテキスト列をそのまま使える)。検索条件では「すべて含む / いずれかを含む」で絞り込める |
@@ -233,6 +234,7 @@ ExtrasDesignerInitializer.Setup(DesignerEnvironment);
 - [CalendarField - カレンダー](docs/CalendarField.md)
 - [GanttField - ガントチャート](docs/GanttField.md)
 - [TaskBoardField - カンバンボード](docs/TaskBoardField.md)
+- [CrossTabField - クロス集計](docs/CrossTabField.md)
 - [RichTextField - リッチテキストエディタ](docs/RichTextField.md)
 - [MarkdownField - Markdown エディタ / ビューア](docs/MarkdownField.md)
 - [TagField - タグ入力](docs/TagField.md)

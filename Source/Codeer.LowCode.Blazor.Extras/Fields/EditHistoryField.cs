@@ -150,8 +150,8 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         /// <summary>履歴を読める状態か (デザインモード・未保存のレコードでは読まない)。</summary>
         internal bool IsAvailable => !Services.AppInfoService.IsDesignMode && !Module.IsNewData;
 
-        /// <summary>復元 (フォームへの反映) ができるか。表示専用・未保存では不可。</summary>
-        internal bool CanRestore => !Module.IsViewOnly && !Module.IsNewData;
+        /// <summary>復元 (フォームへの反映) ができるか。設計で禁止・表示専用・未保存では不可。</summary>
+        internal bool CanRestore => Design.CanRestore && !Module.IsViewOnly && !Module.IsNewData;
 
         ModuleDesign? HistoryModule => Services.AppInfoService.GetDesignData().Modules.Find(Design.HistoryModuleName);
 

@@ -48,6 +48,8 @@ namespace Codeer.LowCode.Blazor.Extras.Server.EditHistory
             var module = designData.Modules.Find(targetModuleName)
                 ?? throw new InvalidOperationException($"Module '{targetModuleName}' does not exist.");
             var field = EditHistoryContracts.Field(module);
+            if (field?.CanRestore == false)
+                throw new InvalidOperationException($"Restoring from the edit history is disabled for '{module.Name}'.");
 
             if (!request.RestoreWholeRecord)
             {

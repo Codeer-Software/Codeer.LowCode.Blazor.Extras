@@ -1,4 +1,5 @@
-﻿using Codeer.LowCode.Blazor.Components.Dialog;
+﻿using Codeer.LowCode.Blazor.Aggregation;
+using Codeer.LowCode.Blazor.Components.Dialog;
 using Codeer.LowCode.Blazor.DataIO;
 using Codeer.LowCode.Blazor.DesignLogic;
 using Codeer.LowCode.Blazor.OperatingModel;
@@ -67,6 +68,15 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Harness
 
         /// <summary>GetListAsync の応答を差し替える (null = 空ページ)。</summary>
         public Func<GetListRequest, Paging<ModuleData>?>? ListProvider { get; set; }
+        /// <summary>集計の結果を返す (テストが組む)。渡された定義は AggregateRequests に残る。</summary>
+        public Func<List<AggregateCondition>, List<AggregateResult>>? AggregateProvider { get; set; }
+        public List<List<AggregateCondition>> AggregateRequests { get; } = new();
+        public Task<List<AggregateResult>> AggregateAsync(List<AggregateCondition> conditions)
+        {
+            AggregateRequests.Add(conditions);
+            return Task.FromResult(AggregateProvider?.Invoke(conditions) ?? conditions.Select(_ => new AggregateResult()).ToList());
+        }
+
         public Task<List<ModuleSubmitResult>?> SubmitAsync(List<ModuleSubmitData> data)
             => throw new NotImplementedException();
         public Task<Codeer.LowCode.Blazor.DataIO.FileInfo?> UploadFile(string moduleName, string fieldName, string fileName, StreamContent content)
