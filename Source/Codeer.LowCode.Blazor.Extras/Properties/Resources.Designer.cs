@@ -3758,6 +3758,15 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
                 return ResourceManager.GetString("CrossTab_InvalidFunction", resourceCulture);
             }
         }
+
+        /// <summary>
+        ///   Only modules that have a table can be aggregated (modules defined by a QueryField or without a table cannot be used): {0} に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string CrossTab_NotTableModule {
+            get {
+                return ResourceManager.GetString("CrossTab_NotTableModule", resourceCulture);
+            }
+        }
         
         /// <summary>
         ///   Allow users to customize the aggregation に類似しているローカライズされた文字列を検索します。

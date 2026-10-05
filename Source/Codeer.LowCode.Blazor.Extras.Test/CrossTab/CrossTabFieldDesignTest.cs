@@ -206,5 +206,32 @@ namespace Codeer.LowCode.Blazor.Extras.Test.CrossTab
             var d = Design(f => { f.SearchCondition = new SearchCondition(); f.Setting = new CrossTabSetting(); });
             Assert.That(Check(d).Count, Is.EqualTo(0));
         }
+
+        static readonly string NotTableModule = DesignCheckCode.Create(typeof(CrossTabFieldDesign), CrossTabFieldDesign.Codes.NotTableModule);
+
+        [Test]
+        public void QueryFieldで定義したモジュールは集計できないと指摘される()
+        {
+            var d = Design();
+            d.Modules.Find("Order")!.Fields.Add(new QueryFieldDesign { Name = "Query" });
+            var info = Check(d).Single(e => e.Code == NotTableModule);
+            Assert.That(((FieldDesignCheckInfo)info).Location.Member, Is.EqualTo(nameof(CrossTabFieldDesign.SearchCondition)));
+        }
+
+        [Test]
+        public void テーブルの無いモジュールは集計できないと指摘される()
+        {
+            var d = Design();
+            d.Modules.Find("Order")!.DbTable = string.Empty;
+            Assert.That(Check(d).Count(e => e.Code == NotTableModule), Is.EqualTo(1));
+        }
+
+        [Test]
+        public void テーブルを持つモジュールと元モジュールが空の設計はテーブルの指摘なし()
+        {
+            Assert.That(Check(Design()).Any(e => e.Code == NotTableModule), Is.False);
+            var scriptOnly = Design(f => { f.SearchCondition = new SearchCondition(); f.Setting = new CrossTabSetting(); });
+            Assert.That(Check(scriptOnly).Any(e => e.Code == NotTableModule), Is.False);
+        }
     }
 }

@@ -97,5 +97,6 @@ agg.Count("件数");
 ## 注意事項
 
 - 集計できるのはテーブルを持つモジュールだけです (QueryField で定義したモジュールは使えません)
+- SQLite では日付の列を DATE / DATETIME で宣言してください (TEXT で宣言した列は、日付の単位 (月・四半期・年など) でまとめられず、セルをクリックしたときの明細の絞り込みも効きません)
 - リンク先のモジュールの行の閲覧条件は効きません (一覧のリンク表示と同じ)。隠したい項目は元モジュール側の PermissionField で制御します
 - ホスト (アプリ) が本体の集計 API に対応している必要があります。対応していないホストでは、表の代わりに「ホストが集計 API を実装していない」旨のエラー (The host does not implement IModuleDataService.AggregateAsync …) が出ます。1.3.39 より前のテンプレートで作ったアプリは [集計 API の結線](https://github.com/Codeer-Software/Codeer.LowCode.Blazor.Manual/blob/main/JP/user_code/aggregate_api.md) を行ってください

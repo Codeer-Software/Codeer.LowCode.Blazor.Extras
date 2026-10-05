@@ -1659,6 +1659,9 @@
   <data name="CrossTab_InvalidFunction" xml:space="preserve">
     <value>{0} は {1} に使えません。</value>
   </data>
+  <data name="CrossTab_NotTableModule" xml:space="preserve">
+    <value>集計できるのはテーブルを持つモジュールだけです (QueryField で定義したモジュール・テーブルの無いモジュールは使えません): {0}</value>
+  </data>
   <data name="CrossTabCanCustomize" xml:space="preserve">
     <value>利用者が集計を変更できる</value>
   </data>
