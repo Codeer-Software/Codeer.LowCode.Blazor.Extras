@@ -244,7 +244,14 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat.ModuleDataAccess
             {
                 return Error(e.Message);
             }
-            condition.SelectFields = SelectFields(design, module, (fields ?? Array.Empty<string>()).Where(f => !string.IsNullOrWhiteSpace(f)));
+            try
+            {
+                condition.SelectFields = SelectFields(design, module, (fields ?? Array.Empty<string>()).Where(f => !string.IsNullOrWhiteSpace(f)));
+            }
+            catch (InvalidOperationException e)
+            {
+                return Error(e.Message);
+            }
             condition.LimitCount = Math.Clamp(limit ?? _options.MaxRows, 1, _options.MaxRows);
             page = Math.Max(0, page);
 
@@ -289,7 +296,14 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat.ModuleDataAccess
             {
                 return Error(e.Message);
             }
-            condition.SelectFields = SelectFields(design, module, (fields ?? Array.Empty<string>()).Where(f => !string.IsNullOrWhiteSpace(f)));
+            try
+            {
+                condition.SelectFields = SelectFields(design, module, (fields ?? Array.Empty<string>()).Where(f => !string.IsNullOrWhiteSpace(f)));
+            }
+            catch (InvalidOperationException e)
+            {
+                return Error(e.Message);
+            }
             condition.LimitCount = Math.Clamp(top, 1, _options.MaxRows);
             //近い順 (距離の昇順)。並べる式は SemanticSearchField が作る
             condition.SortConditions.Add(new SortCondition { Variable = ModuleDataConverter.ToVariable(target.Field.Name) });
@@ -681,11 +695,13 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat.ModuleDataAccess
             => ModuleDataConverter.FindField(design, module, field)
                 ?? throw new InvalidOperationException($"項目 '{field}' はモジュール '{module.Name}' にありません。describe_module で項目名を確かめてください。");
 
-        //読む項目。指定が無ければ DB 列を持つ全項目 (子一覧は除く)。Id は常に。
+        //読む項目。指定が無ければ DB 列を持つ全項目 (子一覧は除く)。Id は常に。指定に無い項目があれば例外 (メッセージを AI に返す)。
         //選択・リンクの表示名は、モジュールにあるリンク越しフィールド ("Customer.Name") を一緒に読んだときだけ分かるので足す
         static List<string> SelectFields(DesignData design, ModuleDesign module, IEnumerable<string> requested)
         {
             var names = requested.Select(f => ModuleDataConverter.ToFieldName(f)).Where(f => f.Length > 0).Distinct().ToList();
+            //無い項目 (表示名で頼んだ等) を黙って落とすと、AI は値が無いと受け取る。条件と同じく項目名を確かめるよう返す
+            foreach (var name in names) FindFieldOrThrow(design, module, name);
             if (names.Count == 0) names = module.Fields.Where(f => f is DbValueFieldDesignBase).Select(f => f.Name).ToList();
             if (!names.Contains(SystemFieldNames.Id)) names.Insert(0, SystemFieldNames.Id);
             foreach (var name in names.ToList())
