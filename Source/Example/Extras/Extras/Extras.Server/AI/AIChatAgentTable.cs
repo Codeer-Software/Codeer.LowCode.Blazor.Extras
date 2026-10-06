@@ -2,6 +2,7 @@ using Codeer.LowCode.Blazor.DbAccess;
 using Codeer.LowCode.Blazor.DesignLogic;
 using Codeer.LowCode.Blazor.Extras.Server.AI;
 using Codeer.LowCode.Blazor.Extras.Server.AI.Chat;
+using Codeer.LowCode.Blazor.Extras.Server.AI.Chat.ModuleDataAccess;
 using Codeer.LowCode.Blazor.Extras.Server.AI.Chat.RawDataAccess;
 using Extras.Server.Services;
 using System.Collections.Concurrent;
@@ -13,6 +14,7 @@ namespace Extras.Server.AI
     /// AIChatField のデザインの Agent にここの名前を書く。自分の Agent を足すときはこの表に 1 行足す。
     ///   ""              = DummyAIChatAgent (AI を呼ばない。UI 確認用の既定)
     ///   "RawDataAccess" = RawDataAccessAgent (DB を直接読んで集計・グラフで答える)。AISettings (Azure OpenAI) が設定されているときだけ使える
+    ///   "ModuleDataAccess" = ModuleDataAccessAgent (レコードを実行ユーザーの権限で読んで答える。行の条件・項目の読み取り権限が効く)。同じく AISettings が要る
     /// Agent は会話履歴を持つので、名前ごとに 1 つ作って使い回す。<see cref="Service"/> がその表を使う AIChat のサーバー側入口 (プロセスに 1 つ)。
     /// </summary>
     internal static class AIChatAgentTable
@@ -30,6 +32,7 @@ namespace Extras.Server.AI
         {
             "" => new DummyAIChatAgent(),
             "RawDataAccess" => CreateRawDataAccess(),
+            "ModuleDataAccess" => CreateModuleDataAccess(),
             _ => null,
         };
 
@@ -52,6 +55,25 @@ namespace Extras.Server.AI
                 options,
                 //SemanticSearchField を置いたモジュールを search_records (意味検索) で探せるようにする (埋め込みプロバイダ未設定ならツールは付かない)
                 semanticSearch: SemanticSearchIndex.Service);
+        }
+
+        //レコードは依頼したユーザーの権限で読む。バックグラウンド実行なので、ユーザー Id を固定した DataService をツール呼び出しごとに開く
+        static IAIChatAgent? CreateModuleDataAccess()
+        {
+            var config = SystemConfig.Instance;
+            var chatClientFactory = AzureOpenAIClients.ChatClientFactory(config.AISettings);
+            if (chatClientFactory == null) return null;
+            return new ModuleDataAccessAgent(
+                chatClientFactory,
+                userId =>
+                {
+                    var dataService = new DataService(userId);
+                    //接続も渡すと AIChat:ModuleDataAccess の CommandTimeoutSeconds が効く
+                    return Task.FromResult(new ModuleDataAccessScope(dataService.ModuleDataIO, dataService, dataService.DbAccess));
+                },
+                () => DesignerService.GetDesignData(),
+                folder => DesignDataFileManager.GetResourceTexts(config.DesignFileDirectory, folder, ".md", ".txt").Select(e => new AIChatDocument(e.Name, e.Text)).ToList(),
+                config.AIChat.ModuleDataAccess);
         }
     }
 }

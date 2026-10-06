@@ -51,6 +51,12 @@
   <data name="AITextAnalyzerField_NotFound" xml:space="preserve">
     <value>Module '{0}' has no AITextAnalyzerField named '{1}'.</value>
   </data>
+  <data name="AIChat_ReadingRecords" xml:space="preserve">
+    <value>Reading records…</value>
+  </data>
+  <data name="AIChat_Aggregating" xml:space="preserve">
+    <value>Aggregating…</value>
+  </data>
   <data name="AIChat_SearchingRecords" xml:space="preserve">
     <value>Searching for similar records…</value>
   </data>
