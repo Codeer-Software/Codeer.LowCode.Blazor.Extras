@@ -319,6 +319,25 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Tag
         }
 
         [Test]
+        public async Task 部分一致の設定では打った文字を含むタグ全部が対象()
+        {
+            //タグ: 展示会 / DXPO / セミナー / 100%達成 + 展示会2026 (E に付ける)。A = 展示会, DXPO / B = 展示会 / E = 展示会2026, DXPO
+            await _db.ExecuteAsync(Ds, "INSERT INTO tags (name) VALUES ('展示会2026')", new());
+            await _db.ExecuteAsync(Ds, "INSERT INTO contacts (name) VALUES ('E')", new());
+            await _db.ExecuteAsync(Ds, "INSERT INTO contact_tags (contact_id, tag_id) VALUES (5, 5), (5, 2)", new());
+            _design = TagTestDesigns.Create(e => e.PartialMatch = true);
+
+            Assert.That(await NamesAsync(f => f.SetSearchTagsAsync(["展示"])), Is.EqualTo(new[] { "A", "B", "E" }), "展示会 と 展示会2026 のどちらか");
+            Assert.That(await NamesAsync(f => f.SetSearchTagsAsync(["展示", "dxpo"])), Is.EqualTo(new[] { "A", "E" }), "すべて含む: 展示会系のどれか AND DXPO");
+            Assert.That(await NamesAsync(async f =>
+            {
+                await f.SetSearchTagsAsync(["2026", "セミナー"]);
+                await f.SetSearchMatchAsync(TagSearchMatch.Any);
+            }), Is.EqualTo(new[] { "C", "E" }));
+            Assert.That(await NamesAsync(f => f.SetSearchTagsAsync(["展示", "無い"])), Is.Empty, "どれにも合わない文字があれば すべて含む は 0 件");
+        }
+
+        [Test]
         public async Task タグを選ばなければ絞らない()
             => Assert.That(await NamesAsync(f => f.SetSearchTagsAsync([]), f => Assert.That(f.GetMatchCondition(), Is.Null)), Is.EqualTo(new[] { "A", "B", "C", "D" }));
 

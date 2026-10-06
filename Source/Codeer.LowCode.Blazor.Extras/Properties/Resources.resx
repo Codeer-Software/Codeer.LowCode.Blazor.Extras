@@ -1806,6 +1806,9 @@ Recipients: {1}</value>
   <data name="TagFieldSearchMatchDefaultValue" xml:space="preserve">
     <value>Default Search Match</value>
   </data>
+  <data name="TagFieldPartialMatch" xml:space="preserve">
+    <value>Partial Match in Search</value>
+  </data>
   <data name="TagSearchMatch_All" xml:space="preserve">
     <value>Contains all</value>
   </data>

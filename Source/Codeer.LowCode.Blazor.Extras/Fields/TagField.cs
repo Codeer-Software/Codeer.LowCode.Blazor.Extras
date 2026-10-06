@@ -409,21 +409,25 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             var binding = Binding;
             if (_searchTags.Count == 0 || binding == null || !binding.IsBound) return;
 
-            var ids = new List<string>();
+            //打ったタグごとのタグ Id (部分一致なら、その文字を含むタグ全部)。どれかが 0 件なら「すべて含む」は誰にも合わない
+            var terms = new List<List<string>>();
             var unknown = false;
             foreach (var name in _searchTags)
             {
-                var entry = await FindTagAsync(name);
-                if (entry == null) unknown = true;
-                else ids.Add(entry.Id);
+                var found = Design.PartialMatch
+                    ? (await FindTagsLikeAsync(binding, name)).Select(e => e.Id).Distinct().ToList()
+                    : (await FindTagAsync(name)) is { } one ? new List<string> { one.Id } : new List<string>();
+                if (found.Count == 0) unknown = true;
+                else terms.Add(found);
             }
+            var ids = terms.SelectMany(e => e).Distinct().ToList();
 
             var any = SearchMatch == TagSearchMatch.Any;
             var group = new FieldMatchCondition { FieldName = Design.Name, IsOrMatch = any };
             group.Children.Add(new FieldValueMatchCondition { SearchTargetVariable = TagPathVariable(binding), Comparison = MatchComparison.In, Value = MultiTypeValue.Create(ids) });
-            if (!any && (unknown || ids.Count > 1))
+            if (!any && (unknown || terms.Count > 1))
             {
-                var owners = unknown ? new List<string>() : await OwnersHavingAllAsync(binding, ids);
+                var owners = unknown ? new List<string>() : await OwnersHavingAllAsync(binding, terms);
                 //親の検索レイアウトに LinkFieldNames で置いたとき (名前が "社員.タグ") は、レコードの Id も同じパスの下 ("社員.Id.Value")
                 var prefix = Design.Name.Contains('.') ? Design.Name[..(Design.Name.LastIndexOf('.') + 1)] : string.Empty;
                 group.Children.Add(new FieldValueMatchCondition { SearchTargetVariable = prefix + binding.OwnerKeyVariable, Comparison = MatchComparison.In, Value = MultiTypeValue.Create(owners) });
@@ -431,23 +435,37 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             _searchCondition = group;
         }
 
-        //選んだタグのタグ付け行を読み、全部のタグが付いているレコードの OwnerId を返す
-        async Task<List<string>> OwnersHavingAllAsync(TagBinding binding, List<string> tagIds)
+        //選んだタグのタグ付け行を読み、打ったタグごとにそのどれかが付いているレコード (= 全部を持つレコード) の OwnerId を返す。
+        //丸ごと一致ならタグごとに 1 つの Id、部分一致ならその文字を含むタグ Id の組
+        async Task<List<string>> OwnersHavingAllAsync(TagBinding binding, List<List<string>> terms)
         {
-            var distinct = tagIds.Distinct().ToList();
+            var all = terms.SelectMany(e => e).Distinct().ToList();
             var condition = new SearchCondition
             {
                 ModuleName = binding.LinkModule,
-                Condition = MultiMatchCondition.And(new FieldValueMatchCondition { SearchTargetVariable = $"{binding.TagLinkField}.Value", Comparison = MatchComparison.In, Value = MultiTypeValue.Create(distinct) }),
+                Condition = MultiMatchCondition.And(new FieldValueMatchCondition { SearchTargetVariable = $"{binding.TagLinkField}.Value", Comparison = MatchComparison.In, Value = MultiTypeValue.Create(all) }),
                 SortConditions = new List<SortCondition> { new() { Variable = $"{SystemFieldNames.Id}.Value" } },
                 SelectFields = new List<string> { SystemFieldNames.Id, binding.OwnerIdField, binding.TagLinkField },
             };
             var rows = await TagContracts.ReadAllAsync((c, page) => TagListBatchLoader.ReadPageAsync(Services, c, page), condition, 5000);
             return rows
                 .GroupBy(e => TagContracts.OwnerId(e, binding))
-                .Where(g => g.Key.Length > 0 && g.Select(e => (e.Fields.GetValueOrDefault(binding.TagLinkField) as LinkFieldData)?.Value).Distinct().Count() == distinct.Count)
+                .Where(g =>
+                {
+                    if (g.Key.Length == 0) return false;
+                    var mine = g.Select(e => (e.Fields.GetValueOrDefault(binding.TagLinkField) as LinkFieldData)?.Value ?? string.Empty).ToHashSet();
+                    return terms.All(term => term.Any(mine.Contains));
+                })
                 .Select(g => g.Key)
                 .ToList();
+        }
+
+        //打った文字を含むタグ (部分一致の検索用。マスタに 1 回問い合わせる。大文字小文字は手元で区別しない)
+        async Task<List<TagEntry>> FindTagsLikeAsync(TagBinding binding, string text)
+        {
+            if (Services.AppInfoService.IsDesignMode || !CanReadMaster(binding)) return new();
+            var condition = new FieldValueMatchCondition { SearchTargetVariable = $"{binding.MasterNameField}.Value", Comparison = MatchComparison.Like, Value = new StringValue { Value = text } };
+            return (await QueryMasterAsync(binding, condition, 1000)).Where(e => e.Name.Contains(text, StringComparison.OrdinalIgnoreCase)).ToList();
         }
 
         async Task AfterSearchParameterChangedAsync()

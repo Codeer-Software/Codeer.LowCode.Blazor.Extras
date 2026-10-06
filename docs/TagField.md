@@ -59,6 +59,7 @@ tag_tests (タグを付けるモジュール)   tag_test_tags (タグ付け)    
 | IsRequired | 必須 | bool | 1 つ以上のタグ |
 | IsSimpleSearchParameter | 簡易検索パラメータ | bool | 検索欄に一致の選択を出さない |
 | SearchMatchDefaultValue | 検索の一致の既定 | enum | `All` = すべて含む (既定) / `Any` = いずれかを含む。画面で切り替えられる |
+| PartialMatch | 検索は部分一致 | bool | 既定 false (タグ名は丸ごと一致)。true なら打った文字を含むタグ全部が対象 (「展示会」で「展示会2026」も)。打った文字ごとにマスタを 1 回引いてタグ Id にしてから探すので、タグの付いている人の数には影響されない |
 
 ほかに `DisplayName` / `OnDataChanged` / `OnSearchDataChanged` が使えます。一覧フィールドの表示用の設定 (ページング・行の追加削除ボタン等) はタグには関係ないので出ません。
 

@@ -1806,6 +1806,9 @@
   <data name="TagFieldSearchMatchDefaultValue" xml:space="preserve">
     <value>検索の一致の既定</value>
   </data>
+  <data name="TagFieldPartialMatch" xml:space="preserve">
+    <value>検索は部分一致</value>
+  </data>
   <data name="TagSearchMatch_All" xml:space="preserve">
     <value>すべて含む</value>
   </data>

@@ -36,6 +36,7 @@
 | `IsRequired` | bool | `false` | 1 つ以上のタグが必要。 |
 | `IsSimpleSearchParameter` | bool | `false` | 検索欄に一致の選択を出さない。 |
 | `SearchMatchDefaultValue` | enum | `All` | 検索の一致の既定。`All` = すべて含む、`Any` = いずれかを含む。 |
+| `PartialMatch` | bool | `false` | 検索で打った文字を含むタグ全部を対象にする (「展示会」で「展示会2026」も)。打った文字ごとにマスタを 1 回引いて Id にしてから探す。 |
 | `DisplayName` / `OnDataChanged` / `OnSearchDataChanged` | | | 一覧フィールド共通。 |
 
 ### 必要なモジュール構成 (セットアップの生成物)

@@ -87,6 +87,13 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         [Designer(Index = 1, DisplayName = "$TagFieldSearchMatchDefaultValue", Category = "$SearchSettings")]
         public TagSearchMatch SearchMatchDefaultValue { get; set; } = TagSearchMatch.All;
 
+        /// <summary>
+        /// 検索で打った文字を含むタグをすべて対象にする (「展示会」で「展示会2026」も)。既定は丸ごと一致。
+        /// 打った文字ごとにマスタを 1 回引いてタグ Id にしてから探すので、タグが付いている人の数には影響されない。
+        /// </summary>
+        [Designer(Index = 2, DisplayName = "$TagFieldPartialMatch", Category = "$SearchSettings")]
+        public bool PartialMatch { get; set; }
+
         public override string GetWebComponentTypeFullName() => typeof(TagFieldComponent).FullName!;
 
         public override string GetSearchWebComponentTypeFullName() => typeof(TagFieldSearchComponent).FullName!;

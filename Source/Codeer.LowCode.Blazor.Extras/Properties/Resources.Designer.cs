@@ -4179,6 +4179,12 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
             }
         }
 
+        internal static string TagFieldPartialMatch {
+            get {
+                return ResourceManager.GetString("TagFieldPartialMatch", resourceCulture);
+            }
+        }
+
         internal static string TagSearchMatch_All {
             get {
                 return ResourceManager.GetString("TagSearchMatch_All", resourceCulture);
