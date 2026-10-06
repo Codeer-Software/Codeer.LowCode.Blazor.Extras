@@ -297,15 +297,15 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             return await QueryMasterAsync(binding, null, Design.CandidateRowCount);
         }
 
-        //名前でタグを引く: 読んである候補 → マスタに直接 (候補は行数で切っているので、そこに無くてもマスタにはあり得る)。
-        //DB の = は照合順序しだいで大文字小文字を区別する (SQLite・PostgreSQL) ので、見つからなければ部分一致で引いて手元で比べる
         //読んである候補からだけ引く (問い合わせない)
         TagEntry? FindLoadedTag(string name)
             => _master is { IsCompletedSuccessfully: true } ? _master.Result.FirstOrDefault(e => _tagComparer.Equals(e.Name, name)) : null;
 
+        //名前でタグを引く: 読んである候補 → マスタに直接 (候補はまだ読んでいないことも、行数で切れていることもある。候補のためだけに大きく読まない)。
+        //DB の = は照合順序しだいで大文字小文字を区別する (SQLite・PostgreSQL) ので、見つからなければ部分一致で引いて手元で比べる
         async Task<TagEntry?> FindTagAsync(string name)
         {
-            var hit = (await GetMasterAsync()).FirstOrDefault(e => _tagComparer.Equals(e.Name, name));
+            var hit = FindLoadedTag(name);
             if (hit != null) return hit;
             var binding = Binding;
             if (binding == null || Services.AppInfoService.IsDesignMode || !CanReadMaster(binding)) return null;
