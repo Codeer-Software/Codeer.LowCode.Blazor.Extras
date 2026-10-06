@@ -68,11 +68,12 @@ namespace Extras.Server.AI
                 userId =>
                 {
                     var dataService = new DataService(userId);
-                    return Task.FromResult(new ModuleDataAccessScope(dataService.ModuleDataIO, dataService));
+                    //接続も渡すと AIChat:ModuleDataAccess の CommandTimeoutSeconds が効く
+                    return Task.FromResult(new ModuleDataAccessScope(dataService.ModuleDataIO, dataService, dataService.DbAccess));
                 },
                 () => DesignerService.GetDesignData(),
                 folder => DesignDataFileManager.GetResourceTexts(config.DesignFileDirectory, folder, ".md", ".txt").Select(e => new AIChatDocument(e.Name, e.Text)).ToList(),
-                new ModuleDataAccessOptions());
+                config.AIChat.ModuleDataAccess);
         }
     }
 }

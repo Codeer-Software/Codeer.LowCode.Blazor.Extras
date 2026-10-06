@@ -35,7 +35,7 @@
 
 	<ItemGroup>
 		<!-- 権限拒否の型 (LowCodeAccessDeniedException) は 1.3.38 から -->
-		<PackageReference Include="Codeer.LowCode.Blazor" Version="1.3.40" />
+		<PackageReference Include="Codeer.LowCode.Blazor" Version="1.3.41" />
 		<ProjectReference Include="..\Codeer.LowCode.Blazor.Extras\Codeer.LowCode.Blazor.Extras.csproj" />
 	</ItemGroup>
 

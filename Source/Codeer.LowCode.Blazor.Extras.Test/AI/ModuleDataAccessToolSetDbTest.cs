@@ -6,6 +6,7 @@ using Codeer.LowCode.Blazor.DesignLogic;
 using Codeer.LowCode.Blazor.Extras.Server.AI.Chat;
 using Codeer.LowCode.Blazor.Extras.Server.AI.Chat.ChatClient;
 using Codeer.LowCode.Blazor.Extras.Server.AI.Chat.ModuleDataAccess;
+using Codeer.LowCode.Blazor.Extras.Server.AI.Chat.RawDataAccess;
 using Codeer.LowCode.Blazor.Extras.Server.FileManagement;
 using Codeer.LowCode.Blazor.Repository;
 using Codeer.LowCode.Blazor.Repository.Design;
@@ -61,6 +62,8 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
                 "(2, '椅子', 50, '20', '2026-01-20', 1, '2'), " +
                 "(3, '棚', 300, '20', '2026-02-05', 2, '2'), " +
                 "(4, '照明', 80, '10', '2026-02-15', 2, '3')", new());
+            await _db.ExecuteAsync(Ds, "CREATE TABLE OrderLines (Id INTEGER PRIMARY KEY, OrderId INTEGER, Item TEXT, Qty INTEGER)", new());
+            await _db.ExecuteAsync(Ds, "INSERT INTO OrderLines VALUES (1, 1, '天板', 1), (2, 1, '脚', 4), (3, 3, '棚板', 3)", new());
 
             _designData = CreateDesignData();
             _currentUserId = "9";
@@ -121,10 +124,31 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
             //リンク越しフィールド (デザイナでリンク先の項目をレイアウトに置くと作られる列)。これがあるとリンクの表示名と、リンク先の項目での絞り込みが使える
             order.Fields.Add(new TextFieldDesign { Name = "Customer.Name", DbColumn = "Name" });
             order.Fields.Add(new TextFieldDesign { Name = "OwnerId", DbColumn = "OwnerId" });
+            //明細 (Order の子一覧)。get_record で親と一緒に読む
+            order.Fields.Add(new ListFieldDesign
+            {
+                Name = "Lines",
+                SearchCondition = new SearchCondition("OrderLine")
+                {
+                    Condition = new FieldVariableMatchCondition { SearchTargetVariable = "Order.Value", Comparison = MatchComparison.Equal, Variable = "Id.Value" },
+                    SortConditions = { new SortCondition { Variable = "Id.Value" } },
+                },
+            });
             var permission = new PermissionFieldDesign { Name = "P", TargetFields = { "Amount" } };
             permission.ReadCondition.Condition = Match("CurrentUser.Rank.Value", MatchComparison.GreaterThanOrEqual, MultiTypeValue.Create(20));
             order.Fields.Add(permission);
             d.AddModule(order);
+
+            var line = new ModuleDesign { Name = "OrderLine", DataSourceName = Ds, DbTable = "OrderLines" };
+            line.Fields.Add(new IdFieldDesign { Name = "Id", DbColumn = "Id" });
+            var orderLink = new LinkFieldDesign { Name = "Order", DbColumn = "OrderId", ValueVariable = "Id.Value", DisplayTextVariable = "Title.Value" };
+            orderLink.SearchCondition.ModuleName = "Order";
+            line.Fields.Add(orderLink);
+            line.Fields.Add(new TextFieldDesign { Name = "Item", DbColumn = "Item" });
+            line.Fields.Add(new NumberFieldDesign { Name = "Qty", DbColumn = "Qty" });
+            //子一覧として読まれる項目は一覧レイアウトに置いた項目 (画面と同じ)
+            line.ListLayouts[""] = new ListLayoutDesign { Elements = [new List<ListElement> { new() { FieldName = "Item" }, new() { FieldName = "Qty" } }] };
+            d.AddModule(line);
             return d;
         }
 
@@ -133,7 +157,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
         {
             _currentUserId = userId;
             var io = new ModuleDataIO(_designData, this, _db, new TemporaryFileManager(_db, [], new List<IFileStorage>()));
-            return Task.FromResult(new ModuleDataAccessScope(io));
+            return Task.FromResult(new ModuleDataAccessScope(io, null, _db));
         }
 
         ModuleDataAccessToolSet Create(Action<ModuleDataAccessOptions>? configure = null)
@@ -592,6 +616,75 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
             Assert.That(tooBig.TryGetProperty("error", out _), Is.True);
         }
 
+        [Test]
+        public async Task get_recordは1件を子一覧ごと返し無いか読めなければエラーになる()
+        {
+            var tools = Create().CreateTools(Context("2")).ToList();
+
+            var record = await InvokeAsync(tools, "get_record", new() { ["moduleName"] = "Order", ["purpose"] = "p", ["id"] = "1" });
+            Assert.That(ErrorOf(record), Is.Null);
+            Assert.That(record.GetProperty("row").GetProperty("Title").GetString(), Is.EqualTo("机"));
+            Assert.That(record.GetProperty("row").TryGetProperty("Amount", out _), Is.False, "Rank 10 には Amount が見えない");
+            var lines = record.GetProperty("children").GetProperty("Lines");
+            Assert.That(lines.GetProperty("module").GetString(), Is.EqualTo("OrderLine"));
+            Assert.That(lines.GetProperty("rowCount").GetInt32(), Is.EqualTo(2), lines.ToString());
+            Assert.That(lines.GetProperty("rows").EnumerateArray().Select(r => r.TryGetProperty("Item", out var item) ? item.GetString() : null), Is.EqualTo(new[] { "天板", "脚" }), lines.ToString());
+
+            //担当 B の行 (4) は行の条件で読めない = 無いのと同じ
+            var hidden = await InvokeAsync(tools, "get_record", new() { ["moduleName"] = "Order", ["purpose"] = "p", ["id"] = "4" });
+            Assert.That(ErrorOf(hidden), Does.Contain("読めません"));
+
+            var denied = await InvokeAsync(Create().CreateTools(Context("1")).ToList(), "get_record", new() { ["moduleName"] = "Order", ["purpose"] = "p", ["id"] = "1" });
+            Assert.That(denied.GetProperty("accessDenied").GetBoolean(), Is.True);
+        }
+
+        [Test]
+        public async Task 読み取りの時間予算を使い切ると以後はDBへ行かずに断る()
+        {
+            var context = Context("2");
+            var budget = QueryTimeBudget.Of(context.Items, 1);
+            budget.Add(TimeSpan.FromSeconds(2));
+            var tools = Create(o => o.MaxQuerySecondsPerReply = 1).CreateTools(context).ToList();
+            foreach (var (name, args) in new (string, Dictionary<string, object?>)[]
+            {
+                ("find_records", new() { ["moduleName"] = "Order", ["purpose"] = "p" }),
+                ("get_record", new() { ["moduleName"] = "Order", ["purpose"] = "p", ["id"] = "1" }),
+                ("aggregate_records", new() { ["moduleName"] = "Order", ["purpose"] = "p", ["measures"] = new object[] { new { Function = "count" } } }),
+                ("cross_tab", new() { ["moduleName"] = "Order", ["purpose"] = "p", ["rows"] = new[] { new { Field = "Status" } }, ["measures"] = new object[] { new { Function = "count" } } }),
+            })
+            {
+                Assert.That(ErrorOf(await InvokeAsync(tools, name, args)), Does.Contain("使い切りました"), name);
+            }
+        }
+
+        [Test]
+        public async Task 読み取りの実行時間は予算に足されタイムアウトは接続に入る()
+        {
+            var context = Context("2");
+            var tools = Create(o => { o.MaxQuerySecondsPerReply = 45; o.CommandTimeoutSeconds = 3; }).CreateTools(context).ToList();
+            await InvokeAsync(tools, "find_records", new() { ["moduleName"] = "Order", ["purpose"] = "p" });
+            Assert.That(((QueryTimeBudget)context.Items[QueryTimeBudget.ItemKey]).Remaining, Is.LessThan(TimeSpan.FromSeconds(45)));
+            Assert.That(_db.CommandTimeoutSeconds, Is.EqualTo(3), "スコープの IDbAccessor にタイムアウトが入る");
+        }
+
+        [Test]
+        public async Task 同時実行の上限に達していて空かなければ混雑を返す()
+        {
+            const int max = 7;  //他のテストと鍵 (データソース名 + 上限) が重ならない値
+            var gate = QueryGate.Get(Ds, max);
+            for (var i = 0; i < max; i++) await gate.WaitAsync();
+            try
+            {
+                var tools = Create(o => { o.MaxConcurrentQueries = max; o.CommandTimeoutSeconds = 1; }).CreateTools(Context("2")).ToList();
+                var json = await InvokeAsync(tools, "find_records", new() { ["moduleName"] = "Order", ["purpose"] = "p" });
+                Assert.That(ErrorOf(json), Does.Contain("混み合っています"));
+            }
+            finally
+            {
+                gate.Release(max);
+            }
+        }
+
         //実際の Azure OpenAI で ModuleDataAccessAgent を通す (課金あり・ネットワーク要)。cross_tab / aggregate_records をモデルが使い、権限の範囲 (担当 A の 3 行) で正しい数字を答えることを見る
         [Test, Explicit("実 Azure OpenAI を呼ぶ。AZURE_OPENAI_ENDPOINT / KEY / MODEL を設定して明示的に実行する")]
         public async Task 実AIで状態と月のクロス集計を頼むとcross_tabで答える()
@@ -637,7 +730,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
             var reply = await agent.ReplyAsync(new AIChatAgentRequest { ConversationId = "c", Message = "受注は何件", UserName = "2" }, new Progress(), CancellationToken.None);
 
             Assert.That(reply.Content, Does.Contain("受注は 3 件です。"));
-            Assert.That(client.Options[0]!.Tools!.Select(t => t.Name), Is.EquivalentTo(new[] { "list_modules", "describe_module", "find_records", "aggregate_records", "cross_tab", "render_chart" }));
+            Assert.That(client.Options[0]!.Tools!.Select(t => t.Name), Is.EquivalentTo(new[] { "list_modules", "describe_module", "find_records", "get_record", "aggregate_records", "cross_tab", "render_chart" }));
             Assert.That(client.Calls[0][0].Text, Does.Contain("画面で見られるレコードと項目だけ"));
             //ツールの結果 (担当 A の 3 行) が次の問い合わせに渡っている
             var toolResult = client.Calls[1].SelectMany(m => m.Contents.OfType<FunctionResultContent>()).Single();

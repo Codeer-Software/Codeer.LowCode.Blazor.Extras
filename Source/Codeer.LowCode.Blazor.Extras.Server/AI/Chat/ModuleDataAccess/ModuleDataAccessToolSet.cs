@@ -2,13 +2,16 @@ using Codeer.LowCode.Blazor.Aggregation;
 using Codeer.LowCode.Blazor.DataIO;
 using Codeer.LowCode.Blazor.DesignLogic;
 using Codeer.LowCode.Blazor.Extras.Server.AI.Chat.ChatClient;
+using Codeer.LowCode.Blazor.Extras.Server.AI.Chat.RawDataAccess;
 using Codeer.LowCode.Blazor.Extras.Server.Properties;
+using Codeer.LowCode.Blazor.Repository;
 using Codeer.LowCode.Blazor.Repository.Data;
 using Codeer.LowCode.Blazor.Repository.Design;
 using Codeer.LowCode.Blazor.Repository.Match;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Logging;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Globalization;
 using System.Text;
 using System.Text.Json;
@@ -124,6 +127,9 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat.ModuleDataAccess
             sb.AppendLine($"- 行と列の 2 方向で見たい表 (担当者 × 月など) は cross_tab で求めてください。行と列の見出し・セル・行ごとの合計・列ごとの合計・総計が揃って返るので、そのまま Markdown の表にします (合計は DB で別に集計した正しい値です。セルを足して作らないこと)。表のセル数の上限は {_options.MaxCrossTabCells} です。");
             sb.AppendLine($"- find_records は 1 回に最大 {_options.MaxRows} 行です。fields で必要な項目だけに絞ると結果が小さくなります。続きは page を進めて取ります (totalCount と pageCount が返ります)。");
             sb.AppendLine($"- aggregate_records は 1 回に最大 {_options.MaxGroups} グループです (limited=true なら続きがあります。並びを指定して必要な分だけ取ってください)。");
+            sb.AppendLine("- 1 件の内容を子一覧 (明細など) ごと見たいときは get_record (モジュール名と Id) を使います。find_records は子一覧を返しません。");
+            if (_options.CommandTimeoutSeconds > 0)
+                sb.AppendLine($"- 1 回の読み取りは {_options.CommandTimeoutSeconds} 秒で打ち切られます。時間切れになったら同じ指定を繰り返さず、条件で絞るか、日付の単位を大きくしてください。");
             sb.AppendLine("- 個々の行を挙げるときは describe_module の「画面 URL」と行の Id で詳細ページへの Markdown リンクを付けられます。");
             sb.AppendLine("- 結果は Markdown の表で示し、続けて短い解釈を書いてください。数値はツールの結果に基づくもの以外を書かないこと。");
             if (!string.IsNullOrWhiteSpace(_options.AdditionalInstructions)) sb.AppendLine().Append(_options.AdditionalInstructions.Trim());
@@ -144,6 +150,13 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat.ModuleDataAccess
                     => FindRecordsAsync(moduleName, purpose, filters, matchAny, sort, fields, limit, page, context),
                 "find_records",
                 "モジュールのレコードを、今のユーザーの権限で読んで返す (条件・並び・項目・ページ指定)。結果は rows (項目名 → 値。選択・リンクは { value, text }) と totalCount / pageCount。");
+            yield return AIFunctionFactory.Create(
+                ([Description("モジュール名 (list_modules の名前)。")] string moduleName,
+                 [Description("このツール呼び出しで何を調べるかを一文で (ユーザーに進捗として表示される)。")] string purpose,
+                 [Description("レコードの Id。")] string id)
+                    => GetRecordAsync(moduleName, purpose, id, context),
+                "get_record",
+                "Id で 1 件のレコードを、今のユーザーの権限で子一覧 (ListField / ModuleField) ごと読んで返す。結果は row (項目名 → 値) と children (子一覧名 → { module, rowCount, rows })。");
             yield return AIFunctionFactory.Create(
                 ([Description("モジュール名 (list_modules の名前)。")] string moduleName,
                  [Description("このツール呼び出しで何を調べるかを一文で (ユーザーに進捗として表示される)。")] string purpose,
@@ -202,10 +215,8 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat.ModuleDataAccess
             context.Logger?.LogInformation("AIChat ModuleDataAccess find_records by {User} (conversation {Conversation}): module={Module} filters={Filters} page={Page}",
                 context.Request.UserName, context.Request.ConversationId, module.Name, filters?.Length ?? 0, page);
 
-            try
+            return await ReadAsync(module, "find_records", context, async scope =>
             {
-                await using var scope = await _openScope(context.Request.UserName);
-                await scope.ModuleDataIO.CheckAppAuthorization();
                 var result = await scope.ModuleDataIO.GetListAsync(condition, page);
                 var rows = result.Items.Select(e => ModuleDataConverter.ToRow(design, module, e)).ToList();
                 return Serialize(new Dictionary<string, object?>
@@ -218,8 +229,102 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat.ModuleDataAccess
                     ["truncated"] = false,
                     ["rows"] = rows,
                 }, rows);
+            });
+        }
+
+        async Task<string> GetRecordAsync(string moduleName, string purpose, string id, AIChatToolContext context)
+        {
+            var design = _design();
+            var module = design?.Modules.Find((moduleName ?? string.Empty).Trim());
+            if (design == null || module == null) return Error($"モジュール '{moduleName}' はありません。list_modules で名前を確かめてください。");
+            if (string.IsNullOrWhiteSpace(id)) return Error("id を指定してください。");
+
+            var condition = new SearchCondition(module.Name)
+            {
+                Condition = new FieldValueMatchCondition { SearchTargetVariable = ModuleDataConverter.ToVariable(SystemFieldNames.Id), Comparison = MatchComparison.Equal, Value = MultiTypeValue.Create(id.Trim()) },
+                LimitCount = 1,
+            };
+            //値の項目 + 子一覧 (ListField / ModuleField)。孫 (子一覧の中の子一覧) は読まない
+            condition.SelectFields = SelectFields(design, module, Enumerable.Empty<string>())
+                .Concat(module.Fields.Where(f => f is ListFieldDesign or ModuleFieldDesign).Select(f => f.Name)).Distinct().ToList();
+
+            context.Progress.Report(string.IsNullOrWhiteSpace(purpose) ? Resources.AIChat_ReadingRecords : purpose.Trim());
+            context.Logger?.LogInformation("AIChat ModuleDataAccess get_record by {User} (conversation {Conversation}): module={Module} id={Id}", context.Request.UserName, context.Request.ConversationId, module.Name, id);
+
+            return await ReadAsync(module, "get_record", context, async scope =>
+            {
+                var result = await scope.ModuleDataIO.GetListAsync(condition, 0);
+                var data = result.Items.FirstOrDefault();
+                if (data == null) return Error($"モジュール '{module.Name}' に Id '{id}' のレコードは無いか、今のユーザーには読めません。");
+
+                var children = new Dictionary<string, object?>();
+                foreach (var (name, field) in data.Fields)
+                {
+                    switch (field)
+                    {
+                        case ListFieldData list:
+                        {
+                            var childModule = design.Modules.Find((module.Fields.FirstOrDefault(f => f.Name == name) as ListFieldDesign)?.SearchCondition.ModuleName ?? string.Empty);
+                            children[name] = new Dictionary<string, object?>
+                            {
+                                ["module"] = childModule?.Name,
+                                ["rowCount"] = list.Children.Count,
+                                ["truncated"] = list.Children.Count > _options.MaxRows,
+                                ["rows"] = list.Children.Take(_options.MaxRows).Select(c => ModuleDataConverter.ToRow(design, childModule, c)).ToList(),
+                            };
+                            break;
+                        }
+                        case ModuleFieldData child when !string.IsNullOrEmpty(child.Id):
+                        {
+                            var childModule = design.Modules.Find((module.Fields.FirstOrDefault(f => f.Name == name) as ModuleFieldDesign)?.ModuleName ?? string.Empty);
+                            children[name] = new Dictionary<string, object?>
+                            {
+                                ["module"] = childModule?.Name,
+                                ["id"] = child.Id,
+                                ["row"] = ModuleDataConverter.ToRow(design, childModule, child.Data),
+                            };
+                            break;
+                        }
+                    }
+                }
+                return Serialize(new Dictionary<string, object?>
+                {
+                    ["module"] = module.Name,
+                    ["id"] = id.Trim(),
+                    ["row"] = ModuleDataConverter.ToRow(design, module, data),
+                    ["children"] = children,
+                }, new List<Dictionary<string, object?>>());
+            });
+        }
+
+        //レコードを読むツールの共通の外枠: 1 返事の時間予算 → 同時実行の上限 → スコープを開いて (タイムアウトを入れて) 本体を呼ぶ → 権限拒否・時間切れを AI 向けのエラーに
+        async Task<string> ReadAsync(ModuleDesign module, string tool, AIChatToolContext context, Func<ModuleDataAccessScope, Task<string>> body)
+        {
+            var budget = QueryTimeBudget.Of(context.Items, _options.MaxQuerySecondsPerReply);
+            if (budget.IsExhausted)
+            {
+                context.Logger?.LogWarning("AIChat ModuleDataAccess query time budget exhausted for {User} (conversation {Conversation})", context.Request.UserName, context.Request.ConversationId);
+                return Error($"この返事でレコードの読み取りに使える時間 ({budget.LimitSeconds} 秒) を使い切りました。これ以上読まずに、ここまでの結果で答えてください。");
             }
-            catch (OperationCanceledException) { throw; }
+            using var slot = await QueryGate.EnterAsync(module.DataSourceName ?? string.Empty, _options.MaxConcurrentQueries, _options.CommandTimeoutSeconds, context.CancellationToken);
+            if (slot == null)
+            {
+                context.Logger?.LogWarning("AIChat ModuleDataAccess gate wait timed out on {DataSource}", module.DataSourceName);
+                return Error("データベースが混み合っています。少し待ってからもう一度試してください。");
+            }
+
+            var timeout = budget.CommandTimeoutSeconds(_options.CommandTimeoutSeconds);
+            var stopwatch = Stopwatch.StartNew();
+            try
+            {
+                await using var scope = await _openScope(context.Request.UserName);
+                if (scope.DbAccessor != null && timeout > 0) scope.DbAccessor.CommandTimeoutSeconds = timeout;
+                await scope.ModuleDataIO.CheckAppAuthorization();
+                var result = await body(scope);
+                context.Logger?.LogInformation("AIChat ModuleDataAccess {Tool} done by {User} on {Module}: {ElapsedMs} ms", tool, context.Request.UserName, module.Name, stopwatch.ElapsedMilliseconds);
+                return result;
+            }
+            catch (OperationCanceledException) when (context.CancellationToken.IsCancellationRequested) { throw; }
             catch (LowCodeAccessDeniedException e)
             {
                 context.Logger?.LogWarning("AIChat ModuleDataAccess denied for {User}: {Module} {Message}", context.Request.UserName, module.Name, e.Message);
@@ -227,8 +332,15 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat.ModuleDataAccess
             }
             catch (Exception e)
             {
-                context.Logger?.LogWarning("AIChat ModuleDataAccess find_records failed: {Message}", e.Message);
-                return Error(e.Message);
+                var timedOut = timeout > 0 && stopwatch.Elapsed >= TimeSpan.FromSeconds(timeout) - TimeSpan.FromMilliseconds(500);
+                context.Logger?.LogWarning("AIChat ModuleDataAccess {Tool} failed on {Module}: {ElapsedMs} ms, timedOut={TimedOut}: {Message}", tool, module.Name, stopwatch.ElapsedMilliseconds, timedOut, e.Message);
+                return Error(timedOut
+                    ? $"{timeout} 秒で時間切れになりました。同じ指定を繰り返さず、条件で絞るか、日付の単位を大きくするか、limit を減らしてください。(元のエラー: {e.Message})"
+                    : e.Message);
+            }
+            finally
+            {
+                budget.Add(stopwatch.Elapsed);
             }
         }
 
@@ -254,10 +366,8 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat.ModuleDataAccess
                 context.Request.UserName, context.Request.ConversationId, module.Name, filters?.Length ?? 0,
                 string.Join(",", condition.Groups.Select(g => g.Variable)), string.Join(",", condition.Measures.Select(MeasureName)));
 
-            try
+            return await ReadAsync(module, "aggregate_records", context, async scope =>
             {
-                await using var scope = await _openScope(context.Request.UserName);
-                await scope.ModuleDataIO.CheckAppAuthorization();
                 var result = await scope.ModuleDataIO.AggregateAsync(condition);
 
                 var groups = result.Rows.Select(row =>
@@ -278,18 +388,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat.ModuleDataAccess
                     ["truncated"] = false,
                     ["groups"] = groups,
                 }, groups);
-            }
-            catch (OperationCanceledException) { throw; }
-            catch (LowCodeAccessDeniedException e)
-            {
-                context.Logger?.LogWarning("AIChat ModuleDataAccess denied for {User}: {Module} {Message}", context.Request.UserName, module.Name, e.Message);
-                return Error(e.Message, accessDenied: true);
-            }
-            catch (Exception e)
-            {
-                context.Logger?.LogWarning("AIChat ModuleDataAccess aggregate_records failed: {Message}", e.Message);
-                return Error(e.Message);
-            }
+            });
         }
 
         async Task<string> CrossTabAsync(string moduleName, string purpose, GroupBy[] rows, GroupBy[]? columns, Measure[] measures, Filter[]? filters, bool matchAny,
@@ -328,10 +427,8 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat.ModuleDataAccess
                 string.Join(",", condition.Groups.Take(rowGroups.Length).Select(g => g.Variable)), string.Join(",", condition.Groups.Skip(rowGroups.Length).Select(g => g.Variable)),
                 string.Join(",", condition.Measures.Select(MeasureName)));
 
-            try
+            return await ReadAsync(module, "cross_tab", context, async scope =>
             {
-                await using var scope = await _openScope(context.Request.UserName);
-                await scope.ModuleDataIO.CheckAppAuthorization();
                 var table = await CrossTabBuilder.BuildAsync(condition, rowGroups.Length, scope.ModuleDataIO.AggregateAsync, withTotals, _options.MaxCrossTabCells);
                 if (table == null) return Error("集計に失敗しました。");
 
@@ -366,18 +463,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat.ModuleDataAccess
                 if (json.Length > _options.MaxResultChars)
                     return Error($"表が大きすぎます ({table.Rows.Count} 行 × {table.Columns.Count} 列)。条件で絞るか、日付の単位を大きくするか、limit で行を減らしてください。");
                 return json;
-            }
-            catch (OperationCanceledException) { throw; }
-            catch (LowCodeAccessDeniedException e)
-            {
-                context.Logger?.LogWarning("AIChat ModuleDataAccess denied for {User}: {Module} {Message}", context.Request.UserName, module.Name, e.Message);
-                return Error(e.Message, accessDenied: true);
-            }
-            catch (Exception e)
-            {
-                context.Logger?.LogWarning("AIChat ModuleDataAccess cross_tab failed: {Message}", e.Message);
-                return Error(e.Message);
-            }
+            });
         }
 
         //軸の値 1 つ (複数の軸を重ねたときは鍵が複数) を { key: { 項目: 値 }, text } に

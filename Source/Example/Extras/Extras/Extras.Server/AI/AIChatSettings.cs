@@ -1,3 +1,4 @@
+using Codeer.LowCode.Blazor.Extras.Server.AI.Chat.ModuleDataAccess;
 using Codeer.LowCode.Blazor.Extras.Server.AI.Chat.RawDataAccess;
 
 namespace Extras.Server.AI
@@ -10,5 +11,8 @@ namespace Extras.Server.AI
 
         /// <summary>RawDataAccess Agent の上限値 (SQL のタイムアウト・1 返事の合計時間・同時実行数など。0 / false で無効。待たせる・断る種類のものは既定で無効)。</summary>
         public RawDataAccessOptions RawDataAccess { get; set; } = new();
+
+        /// <summary>ModuleDataAccess Agent の上限値 (SQL のタイムアウト・1 返事の合計時間・同時実行数など。0 で無効。待たせる・断る種類のものは既定で無効)。</summary>
+        public ModuleDataAccessOptions ModuleDataAccess { get; set; } = new();
     }
 }

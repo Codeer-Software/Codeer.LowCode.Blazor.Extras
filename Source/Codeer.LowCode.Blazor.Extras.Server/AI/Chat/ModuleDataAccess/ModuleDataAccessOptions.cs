@@ -21,6 +21,20 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat.ModuleDataAccess
         /// <summary>年度の開始月 (1〜12)。日付を年・四半期でまとめるときの既定 (AI がグループごとに指定すればそちら)。1 なら暦年。</summary>
         public int FiscalYearStartMonth { get; set; } = 1;
 
+        // ---- DB の負荷の上限 (0 で無効。待たせる・断る種類のものは既定で無効) ----
+
+        /// <summary>
+        /// レコードを読む SQL 1 文のタイムアウト (秒)。<see cref="ModuleDataAccessScope"/> に渡された IDbAccessor の CommandTimeoutSeconds に入れる
+        /// (渡されていなければ効かない)。0 でドライバの既定。
+        /// </summary>
+        public int CommandTimeoutSeconds { get; set; }
+
+        /// <summary>1 回の返事でレコードの読み取り (find_records / aggregate_records / cross_tab / get_record) に使える合計時間 (秒)。使い切ったら以後は DB へ行かずに断る。0 で無制限 (既定)。</summary>
+        public int MaxQuerySecondsPerReply { get; set; }
+
+        /// <summary>同じデータソースへ同時に実行する読み取りの本数 (プロセス全体。RawDataAccessAgent と共有)。超えた分は空くまで待つ。0 で無制限 (既定)。</summary>
+        public int MaxConcurrentQueries { get; set; }
+
         /// <summary>システムプロンプトに追記する業務固有の説明 (用語、よく聞かれる集計の定義など)。文書として渡すなら <see cref="AIChatDocument"/> のほうが管理しやすい。</summary>
         public string AdditionalInstructions { get; set; } = string.Empty;
 
