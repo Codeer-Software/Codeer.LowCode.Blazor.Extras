@@ -1338,6 +1338,9 @@
   <data name="SemanticSearchText_False" xml:space="preserve">
     <value>いいえ</value>
   </data>
+  <data name="SemanticSearchCheck_SearchHasNoEffectFormat" xml:space="preserve">
+    <value>検索レイアウト '{0}' に意味検索の欄がありますが、この検索レイアウトを使う一覧 ({1}) の並びに {2}.Value が無く、距離の上限 (SearchMaxDistance) も空なので、文章を入れても一覧は索引のある行に絞られるだけで並びも変わりません。一覧の並び (SortConditions) に {2}.Value を入れるか、SearchMaxDistance を設定してください。</value>
+  </data>
   <data name="SemanticSearchCheck_FieldsNotLoadedFormat" xml:space="preserve">
     <value>詳細レイアウト '{0}' は意味検索の文章に使うフィールド {1} を読み込まないため、このレイアウトから保存した行の文章が欠けます。そのフィールドか、このフィールド (SourceFields を設定して) をレイアウトか DataOnlyFields に含めてください。</value>
   </data>

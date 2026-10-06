@@ -5,6 +5,7 @@ using Codeer.LowCode.Blazor.DesignLogic;
 using Codeer.LowCode.Blazor.DesignLogic.Check;
 using Codeer.LowCode.Blazor.Extras.Data;
 using Codeer.LowCode.Blazor.Extras.Designs;
+using Codeer.LowCode.Blazor.Extras.SemanticSearch;
 using Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch;
 using Codeer.LowCode.Blazor.Extras.Server.FileManagement;
 using Codeer.LowCode.Blazor.Repository.Data;

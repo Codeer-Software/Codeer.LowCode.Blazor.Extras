@@ -2,6 +2,7 @@ using Codeer.LowCode.Blazor;
 using Codeer.LowCode.Blazor.DataIO;
 using Codeer.LowCode.Blazor.DbAccess;
 using Codeer.LowCode.Blazor.DesignLogic;
+using Codeer.LowCode.Blazor.DesignLogic.Check;
 using Codeer.LowCode.Blazor.Extras.Designs;
 using Codeer.LowCode.Blazor.Extras.Fields;
 using Codeer.LowCode.Blazor.Extras.SemanticSearch;
@@ -93,6 +94,61 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
             var interceptor = new SemanticSearchService(() => null, () => CreateDesign()).ConditionInterceptor;
             var condition = new SearchCondition("Note") { Condition = new SemanticMatchCondition { FieldName = "Search", Text = "x" } };
             Assert.That(async () => await interceptor.PrepareConditionAsync(null!, condition), Throws.TypeOf<LowCodeException>());
+        }
+
+        [Test]
+        public void 検索欄の文章が一覧に効かない構成は設計チェックが指摘する()
+        {
+            var design = CreateDesign();
+            var module = design.Modules.Find("Note")!;
+            var field = module.Fields.OfType<SemanticSearchFieldDesign>().Single();
+            var code = DesignCheckCode.Create(typeof(SemanticSearchFieldDesign), 3 /* SearchHasNoEffect */);
+            List<DesignCheckInfo> Check() => field.CheckDesign(new DesignCheckContext("Note", design, Utilities.CreateDataSource())).Where(e => e.Code == code).ToList();
+            static SearchGridLayoutDesign Grid(params string[] fieldNames)
+            {
+                var grid = new SearchGridLayoutDesign();
+                var row = new GridRow();
+                foreach (var name in fieldNames) row.Columns.Add(new GridColumn { Layout = new FieldLayoutDesign(name) });
+                grid.Rows.Add(row);
+                return grid;
+            }
+
+            //ページの一覧 (既定の検索レイアウト)。検索レイアウトに置いていなければ対象外
+            var list = new ListFieldDesign();
+            list.SearchCondition.ModuleName = "Note";
+            var frame = new PageFrameDesign { Name = "Main", IsApplicationRoot = true };
+            frame.Left.Links.Add(new PageLink { Title = "Note", Module = "Note", ModulePageType = ModulePageType.List, ListPageDesign = new ListPageDesign { ListFieldDesign = list } });
+            ((IEditablePageFrameDesign)design.PageFrames).Add(frame);
+            module.SearchLayouts[""] = new SearchLayoutDesign { Layout = Grid("Title") };
+            Assert.That(Check(), Is.Empty);
+
+            //検索レイアウトに置いたが、並びにも距離の上限にも無い = 文章を入れても一覧が変わらない
+            module.SearchLayouts[""] = new SearchLayoutDesign { Layout = Grid("Title", "Search") };
+            var info = Check().Single();
+            Assert.That(info.Message, Does.Contain("PageFrame Main").And.Contain("Search.Value"));
+
+            //並びに入れれば効く
+            list.SearchCondition.SortConditions.Add(new SortCondition { Variable = "Search.Value" });
+            Assert.That(Check(), Is.Empty);
+
+            //距離の上限があれば並びに無くても絞られる
+            list.SearchCondition.SortConditions.Clear();
+            field.SearchMaxDistance = 0.5;
+            Assert.That(Check(), Is.Empty);
+            field.SearchMaxDistance = null;
+
+            //SearchField の結果の一覧も対象 (別の検索レイアウトを使う)
+            module.SearchLayouts[""] = new SearchLayoutDesign { Layout = Grid("Title") };
+            module.SearchLayouts["Semantic"] = new SearchLayoutDesign { Layout = Grid("Search") };
+            var owner = new ModuleDesign { Name = "Portal" };
+            var results = new ListFieldDesign { Name = "Notes" };
+            results.SearchCondition.ModuleName = "Note";
+            owner.Fields.Add(results);
+            owner.Fields.Add(new SearchFieldDesign { Name = "NoteSearch", ResultsViewFieldName = "Notes", LayoutName = "Semantic" });
+            design.AddModule(owner);
+            Assert.That(Check().Single().Message, Does.Contain("Portal.NoteSearch"));
+            results.SearchCondition.SortConditions.Add(new SortCondition { Variable = "Search.Value" });
+            Assert.That(Check(), Is.Empty);
         }
 
         [Test]

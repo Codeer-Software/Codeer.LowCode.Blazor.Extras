@@ -180,6 +180,20 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
                         screen.SortConditions.Add(new SortCondition { Variable = "Id.Value", IsDescending = true });
                         var page = await io.GetListAsync(screen, 0);
                         Assert.That(page.Items.Select(e => Convert.ToString((e.Fields["Id"] as IdFieldData)?.Value)), Is.EqualTo(ids));
+
+                        //距離の上限つき: 一覧と集計 (CrossTabField・集計チャートの経路) が同じ行を数える。上限は先頭 2 件の距離の間に置く
+                        var distances = (await screenDb.QueryAsync(Ds, $"select id, {SemanticSearchVector.CosineDistance(dataSources[0].DataSourceType, vectorSearchColumn, SemanticSearchVector.Literal(dataSources[0].DataSourceType, FakeEmbeddingProvider.Embed("納期が遅れている注文")))} as d from {table} order by d", new()))
+                            .Select(r => Convert.ToDouble(r["d"])).ToList();
+                        var maxDistance = (distances[0] + distances[1]) / 2;
+                        MatchConditionBase Near() => new SemanticMatchCondition { FieldName = "Search", Text = "納期が遅れている注文", MaxDistance = maxDistance };
+                        var near = await io.GetListAsync(new SearchCondition("Inquiry") { Condition = Near() }, 0);
+                        Assert.That(near.Items.Select(e => Convert.ToString((e.Fields["Id"] as IdFieldData)?.Value)), Is.EqualTo(ids.Take(1)), "上限より遠い行は出ない");
+                        var counts = await io.AggregateAsync(new AggregateCondition("Inquiry")
+                        {
+                            Condition = Near(),
+                            Measures = { new AggregateMeasure { Function = AggregateFunction.Count } },
+                        });
+                        Assert.That(Convert.ToInt32(counts.Rows.Single().Values[0].GetValue()), Is.EqualTo(1), "集計も同じ条件で絞れる");
                     }
 
                     //上位 1 件を論理削除すると検索から消える

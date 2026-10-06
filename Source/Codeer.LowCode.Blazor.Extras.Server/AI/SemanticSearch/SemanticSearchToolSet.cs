@@ -155,7 +155,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
                     var dataSourceName = ResolveDataSource(db, module, aliases);
                     if (dataSourceName == null) continue;
                     var type = db.GetDataSource(dataSourceName)?.DataSourceType;
-                    if (type != null && SemanticSearchIndexReader.SupportsDbSearch(type.Value)) result.Add((module, field, type.Value, dataSourceName));
+                    if (type != null && SemanticSearchVector.SupportsDbSearch(type.Value)) result.Add((module, field, type.Value, dataSourceName));
                 }
             }
             finally
@@ -202,13 +202,13 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
             DataSourceType type;
             await using (var db = _dbAccessorFactory())
                 type = SemanticSearchIndexReader.DataSourceTypeOf(db, dataSourceName);
-            if (!SemanticSearchIndexReader.SupportsDbSearch(type))
+            if (!SemanticSearchVector.SupportsDbSearch(type))
                 throw new InvalidOperationException($"データソース '{dataSourceName}' ({type}) はベクトル検索に対応していないので {{embed:…}} は使えません。");
 
             var texts = matches.Select(m => m.Groups[1].Value.Trim()).ToList();
             if (texts.Any(string.IsNullOrEmpty)) throw new InvalidOperationException("{embed:…} の中身が空です。探したい内容を書いてください。");
             var vectors = await RequireProvider().EmbedAsync(texts, cancellationToken);
-            var literals = vectors.Select(v => SemanticSearchIndexReader.VectorLiteral(type, v)).ToList();
+            var literals = vectors.Select(v => SemanticSearchVector.Literal(type, v)).ToList();
 
             var index = 0;
             return _embedPlaceholder.Replace(sql, _ => literals[index++]);

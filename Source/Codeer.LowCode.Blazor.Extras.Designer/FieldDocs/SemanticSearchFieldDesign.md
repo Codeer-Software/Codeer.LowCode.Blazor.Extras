@@ -111,13 +111,14 @@ AI チャットの `execute_sql` の SQL に `{embed:探したい内容}` と書
 - 検索レイアウトに置くと文章の入力欄が出る。文章で一覧を絞れる (行の条件・項目の読み取り権限は一覧検索と同じに効く)
 - **近い順にしたいときは、一覧の並び (ListField の `SearchCondition.SortConditions`) の先頭に `{ "Variable": "Search.Value", "IsDescending": false }` を入れる**。文章が空のときはこの並びは飛ばされ、次の並びになる
 - 文章を埋め込みにするのはサーバー (ホストが `AddInterceptor(SemanticSearchIndex.Service.ConditionInterceptor)` を登録済みであること。テンプレートは登録済み)
+- `SearchMaxDistance` が空で、その検索レイアウトを使う一覧 (ページの一覧・SearchField の結果の一覧・LinkField の検索ダイアログ) の並びに `Search.Value` が無いと、文章を入れても索引のある行に絞られるだけで一覧は変わらない。デザインチェック `SemanticSearchFieldDesign:3` が指摘する (並びに入れるか、`SearchMaxDistance` を設定する)
 
 ### 注意
 
 - 意味検索できるのは PostgreSQL (pgvector) と SQL Server 2025 のデータソースだけ。SQLite / MySQL / Oracle のモジュールは検索対象にならない
 - 埋め込みモデルを変えたらベクトル列を作り直して全行の再索引が要る (次元が違うベクトルは入らない)
 - 文章は AI プロバイダに送られる。個人情報などを入れたくないときは `SourceFields` で絞る
-- 読める範囲と接続は `RawDataAccessOptions.DataSourceNames` で決まる (モジュールのデータソースが一覧に無ければ、AI 用の別名接続のうち同じ DB 種別のもので同じ表を引く)。行ごとの DataReadCondition は効かない。置くページの UserReadCondition で使える人を絞る
+- `RawDataAccessAgent` の `search_records` だけは AI 用の DB 接続で直接読む: 読める範囲と接続は `RawDataAccessOptions.DataSourceNames` で決まり (モジュールのデータソースが一覧に無ければ、AI 用の別名接続のうち同じ DB 種別のもので同じ表を引く)、行ごとの DataReadCondition・項目の読み取り権限は効かない。置くページの UserReadCondition で使える人を絞る。画面の検索欄と `ModuleDataAccessAgent` は一覧検索なので行の条件・項目の権限が効く
 
 ## Script
 

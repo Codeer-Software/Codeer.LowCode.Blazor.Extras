@@ -10,8 +10,6 @@ using Codeer.LowCode.Blazor.OperatingModel;
 using Codeer.LowCode.Blazor.Repository.Data;
 using Codeer.LowCode.Blazor.Repository.Design;
 using Codeer.LowCode.Blazor.Repository.Match;
-using Codeer.LowCode.Blazor.SystemSettings;
-using System.Globalization;
 
 namespace Codeer.LowCode.Blazor.Extras.Designs
 {
@@ -30,6 +28,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         /// <summary>デザインチェック指摘の番号。DesignCheckCode.Create で発行クラス名と結合して "クラス名:番号" になる。番号は固定(追加は末尾・欠番は再利用しない)。</summary>
         private const int CodeColumnsRequired = 1;
         private const int CodeFieldsNotLoaded = 2;
+        private const int CodeSearchHasNoEffect = 3;
 
         /// <summary>文章にするフィールド (同じモジュール)。空なら DB 列を持つ入力フィールド全部 (Id・論理削除・楽観ロック・パスワード・作成/更新の記録は除く)。</summary>
         [Designer(Index = 2, CandidateType = CandidateType.Field, DisplayName = "$SemanticSearchFieldSourceFields")]
@@ -94,6 +93,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
             context.CheckFieldFunctionExistence(Name, nameof(OnReindexCompleted), OnReindexCompleted,
                 context.GetScriptMethodAttribute(GetType(), nameof(OnReindexCompleted))).AddTo(result);
             result.AddRange(CheckSourceFieldsLoaded(context));
+            result.AddRange(CheckSearchHasEffect(context));
             return result;
         }
 
@@ -130,6 +130,68 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         }
 
         /// <summary>
+        /// 検索レイアウトに置いたのに、文章を入れても一覧の見た目が変わらない構成を指摘する。距離の上限 (<see cref="SearchMaxDistance"/>) が空だと
+        /// 索引のある行に絞られるだけなので、その検索レイアウトを使う一覧の並びにこのフィールドが無ければ、検索欄の文章は結果に効かない。
+        /// 検索レイアウトを使う一覧は、ページの一覧 (PageFrame のリンク等)・SearchField の結果の一覧・LinkField の検索ダイアログ。
+        /// </summary>
+        IEnumerable<DesignCheckInfo> CheckSearchHasEffect(DesignCheckContext context)
+        {
+            var module = context.GetModuleDesign();
+            if (module == null || SearchMaxDistance != null) yield break;
+            var layouts = new HashSet<string>();
+            foreach (var (layoutName, layout) in module.SearchLayouts)
+            {
+                try { if (layout.Layout.GetDescendantFields(module).Any(f => f.Name == Name)) layouts.Add(layoutName); }
+                catch (InvalidOperationException) { } //存在しないフィールドがレイアウトにある = 別のチェックが指摘する
+            }
+            if (layouts.Count == 0) yield break;
+            foreach (var (layoutName, owner, sorts) in SearchLayoutUsages(context.DesignData, module.Name))
+            {
+                if (!layouts.Contains(layoutName) || sorts.Any(e => !string.IsNullOrEmpty(e.Variable) && new VariableName(e.Variable).FieldName.FullName == Name)) continue;
+                yield return new FieldDesignCheckInfo
+                {
+                    Code = DesignCheckCode.Create(typeof(SemanticSearchFieldDesign), CodeSearchHasNoEffect),
+                    Location = new FieldDesignDataLocation { Module = context.OwnerModule, Field = Name, Member = nameof(SearchMaxDistance) },
+                    Message = string.Format(Properties.Resources.SemanticSearchCheck_SearchHasNoEffectFormat, layoutName, owner, Name),
+                };
+            }
+        }
+
+        //モジュールの検索レイアウトを使う一覧: (検索レイアウト名, 置き場所, 一覧の並び)
+        static IEnumerable<(string Layout, string Owner, List<SortCondition> Sorts)> SearchLayoutUsages(DesignData design, string moduleName)
+        {
+            foreach (var frameName in design.PageFrames.GetPageFrameNames())
+            {
+                var frame = design.PageFrames.Find(frameName);
+                if (frame == null) continue;
+                var pages = frame.Header.Links.Concat(frame.Left.Links).Concat(frame.Right.Links).Cast<ModulePageDesign>()
+                    .Concat(frame.OtherPageModuleDesigns).Append(frame.TopPageModuleDesign).OfType<ModulePageDesign>();
+                foreach (var page in pages.Where(e => e.Module == moduleName && e.ModulePageType == ModulePageType.List))
+                {
+                    if (page.ListPageDesign.ListFieldDesign is ListFieldDesignBase list)
+                        yield return (page.ListPageDesign.SearchLayoutName, $"PageFrame {frameName}", Sorts(list.SearchCondition));
+                }
+            }
+            foreach (var owner in design.Modules.ToList())
+            {
+                foreach (var search in owner.Fields.OfType<SearchFieldDesign>())
+                {
+                    if (owner.Fields.FirstOrDefault(f => f.Name == search.ResultsViewFieldName) is ListFieldDesignBase list && list.SearchCondition.ModuleName == moduleName)
+                        yield return (search.LayoutName, $"{owner.Name}.{search.Name}", Sorts(list.SearchCondition));
+                }
+                foreach (var link in owner.Fields.OfType<LinkFieldDesign>().Where(e => e.SearchCondition.ModuleName == moduleName))
+                    yield return (link.SearchLayoutName, $"{owner.Name}.{link.Name}", Sorts(link.SearchCondition));
+            }
+        }
+
+        static List<SortCondition> Sorts(SearchCondition condition)
+        {
+#pragma warning disable CS0618 // 旧形式の並び指定 (SortFieldVariable) も見る
+            return condition.SortConditions.Append(new SortCondition { Variable = condition.SortFieldVariable }).ToList();
+#pragma warning restore CS0618
+        }
+
+        /// <summary>
         /// このフィールドがレイアウトか DataOnlyFields にあれば、文章にするフィールドも一緒に読み込む (本体の SELECT 列の補完。ProgressField 等と同じ仕組み)。
         /// SourceFields が空 (= 入力フィールド全部) のときはここでは列挙できない (モジュール定義が無い) ので何も足さない。
         /// </summary>
@@ -159,17 +221,13 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
             return semantic;
         }
 
-        //コサイン距離の式。ベクトルは数値だけを並べたリテラル (利用者の文字列は入らない)
+        //コサイン距離の式。ベクトルはパラメータで渡す (文字列で埋め込むと検索のたびに SQL 文が変わり、DB が毎回プランを作り直す)
         string Distance(SemanticMatchCondition condition, SqlConditionContext context)
         {
-            var vector = "[" + string.Join(",", condition.Vector.Select(e => e.ToString("R", CultureInfo.InvariantCulture))) + "]";
-            var column = context.Column(DbColumnVectorSearch);
-            return context.DataSourceType switch
-            {
-                DataSourceType.PostgreSQL => $"({column} <=> '{vector}'::vector)",
-                DataSourceType.SQLServer => $"VECTOR_DISTANCE('cosine', {column}, CAST('{vector}' AS VECTOR({condition.Vector.Length})))",
-                _ => throw LowCodeException.Create(Properties.Resources.SemanticSearch_DbNotSupported, context.DataSourceType.ToString()),
-            };
+            var type = context.DataSourceType;
+            if (!SemanticSearchVector.SupportsDbSearch(type)) throw LowCodeException.Create(Properties.Resources.SemanticSearch_DbNotSupported, type.ToString());
+            var vector = SemanticSearchVector.FromText(type, context.AddParameter(SemanticSearchVector.Encode(condition.Vector)), condition.Vector.Length);
+            return SemanticSearchVector.CosineDistance(type, context.Column(DbColumnVectorSearch), vector);
         }
     }
 }

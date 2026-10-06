@@ -231,7 +231,8 @@ var rows = await moduleDataIO.GetListAsync(condition, 0);
 検索レイアウトに SemanticSearchField を置くと、文章の入力欄 (「内容で探す」) が出ます。文章を入れて検索すると、一覧はその内容に近い行に絞られます (権限つきの検索と同じ仕組みで、行の条件・項目の読み取り権限が効きます)。
 
 - **近い順に並べるには、一覧の並び (ListField の SearchCondition の SortConditions) に `Search.Value` を入れておきます** (例: `[Search.Value 昇順, Subject 昇順]`)。文章が空のときはこの並びは飛ばされるので、普段は次の並び (件名順) になります。列ヘッダでの並べ替えも普段どおり使えます
-- 距離の上限 `SearchMaxDistance` (コサイン距離。0 = 同じ向き〜2) を設定すると、遠い行は出ません。空なら全行が対象で、並びだけが変わります
+- 距離の上限 `SearchMaxDistance` (コサイン距離。0 = 同じ向き〜2) を設定すると、遠い行は出ません。空なら全行 (索引のある行) が対象で、並びだけが変わります
+- 距離の上限が空で、一覧の並びにも `Search.Value` が無いと、文章を入れても一覧は変わりません。デザインチェックが指摘します (`SemanticSearchFieldDesign:3`)
 - 文章を埋め込みにするのはサーバーです。ホストの `CustomizedModuleDataIO` のコンストラクタで `AddInterceptor(SemanticSearchIndex.Service.ConditionInterceptor)` を登録してください (テンプレートは登録済み)。登録していないと「埋め込みベクトルがありません」のエラーになります
 - 集計 (CrossTabField・集計チャート) を表示先にした検索でも同じ条件で絞れますが、近い順の並びは集計には関係しません
 - メモリ内ページング (`IsInMemoryPaging`) の一覧では、列ヘッダで並べ替えるとメモリ上で並べ直すので近い順は失われます

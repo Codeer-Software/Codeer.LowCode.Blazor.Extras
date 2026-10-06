@@ -1338,6 +1338,9 @@ Recipients: {1}</value>
   <data name="SemanticSearchText_False" xml:space="preserve">
     <value>No</value>
   </data>
+  <data name="SemanticSearchCheck_SearchHasNoEffectFormat" xml:space="preserve">
+    <value>The search layout '{0}' has a semantic search box, but the list using it ({1}) does not sort by {2}.Value and SearchMaxDistance is empty, so entering text only narrows the list to indexed records and does not change the order. Add {2}.Value to the list's SortConditions, or set SearchMaxDistance.</value>
+  </data>
   <data name="SemanticSearchCheck_FieldsNotLoadedFormat" xml:space="preserve">
     <value>The detail layout '{0}' does not load the fields {1} used for the semantic search text, so a record saved from this layout gets an incomplete text. Place those fields, or this field (with SourceFields set), in the layout or in DataOnlyFields.</value>
   </data>

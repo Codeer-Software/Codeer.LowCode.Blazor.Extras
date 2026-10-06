@@ -2921,6 +2921,15 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
         }
         
         /// <summary>
+        ///   SemanticSearchCheck_SearchHasNoEffectFormat
+        /// </summary>
+        internal static string SemanticSearchCheck_SearchHasNoEffectFormat {
+            get {
+                return ResourceManager.GetString("SemanticSearchCheck_SearchHasNoEffectFormat", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   The detail layout '{0}' does not load the fields {1} used for the semantic search text, so a record saved from this layout gets an incomplete text. Place those fields, or this field (with SourceFields set), in the layout or in DataOnlyFields. に類似しているローカライズされた文字列を検索します。
         /// </summary>
         internal static string SemanticSearchCheck_FieldsNotLoadedFormat {

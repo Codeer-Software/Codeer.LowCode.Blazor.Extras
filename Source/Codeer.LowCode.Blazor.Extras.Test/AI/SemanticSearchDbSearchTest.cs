@@ -1,6 +1,7 @@
 using Codeer.LowCode.Blazor.DbAccess;
 using Codeer.LowCode.Blazor.DesignLogic;
 using Codeer.LowCode.Blazor.Extras.Designs;
+using Codeer.LowCode.Blazor.Extras.SemanticSearch;
 using Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch;
 using Codeer.LowCode.Blazor.Repository.Design;
 using Codeer.LowCode.Blazor.SystemSettings;
@@ -33,7 +34,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
             var sql = SemanticSearchIndexReader.BuildSearchSql(DataSourceType.PostgreSQL, "inquiries", "id", "search_text", "search_vector_v", "is_deleted", "'[1,2]'::vector", 5);
             Assert.That(sql, Does.StartWith("select \"id\", \"search_text\", 1 - (\"search_vector_v\" <=> '[1,2]'::vector) as semantic_score from \"inquiries\""));
             Assert.That(sql, Does.Contain("where \"search_vector_v\" is not null and (\"is_deleted\" is null or cast(\"is_deleted\" as integer) = 0)"));
-            Assert.That(sql, Does.EndWith("order by \"search_vector_v\" <=> '[1,2]'::vector limit 5"));
+            Assert.That(sql, Does.EndWith("order by (\"search_vector_v\" <=> '[1,2]'::vector) limit 5"));
 
             var noDelete = SemanticSearchIndexReader.BuildSearchSql(DataSourceType.PostgreSQL, "t", "id", "txt", "vec", null, "'[1]'::vector", 3);
             Assert.That(noDelete, Does.Contain("where \"vec\" is not null order by"));
@@ -51,18 +52,18 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
         public void 対応しないDBは例外()
         {
             Assert.That(() => SemanticSearchIndexReader.BuildSearchSql(DataSourceType.SQLite, "t", "id", "txt", "vec", null, "x", 1), Throws.TypeOf<NotSupportedException>());
-            Assert.That(() => SemanticSearchIndexReader.VectorLiteral(DataSourceType.MySQL, [1f]), Throws.TypeOf<NotSupportedException>());
-            Assert.That(SemanticSearchIndexReader.SupportsDbSearch(DataSourceType.PostgreSQL), Is.True);
-            Assert.That(SemanticSearchIndexReader.SupportsDbSearch(DataSourceType.SQLServer), Is.True);
-            Assert.That(SemanticSearchIndexReader.SupportsDbSearch(DataSourceType.SQLite), Is.False);
-            Assert.That(SemanticSearchIndexReader.SupportsDbSearch(DataSourceType.Oracle), Is.False);
+            Assert.That(() => SemanticSearchVector.Literal(DataSourceType.MySQL, [1f]), Throws.TypeOf<NotSupportedException>());
+            Assert.That(SemanticSearchVector.SupportsDbSearch(DataSourceType.PostgreSQL), Is.True);
+            Assert.That(SemanticSearchVector.SupportsDbSearch(DataSourceType.SQLServer), Is.True);
+            Assert.That(SemanticSearchVector.SupportsDbSearch(DataSourceType.SQLite), Is.False);
+            Assert.That(SemanticSearchVector.SupportsDbSearch(DataSourceType.Oracle), Is.False);
         }
 
         [Test]
         public void ベクトルリテラルは方言ごと()
         {
-            Assert.That(SemanticSearchIndexReader.VectorLiteral(DataSourceType.PostgreSQL, [1f, -0.5f]), Is.EqualTo("'[1,-0.5]'::vector"));
-            Assert.That(SemanticSearchIndexReader.VectorLiteral(DataSourceType.SQLServer, [1f, -0.5f, 0.25f]), Is.EqualTo("CAST('[1,-0.5,0.25]' AS VECTOR(3))"));
+            Assert.That(SemanticSearchVector.Literal(DataSourceType.PostgreSQL, [1f, -0.5f]), Is.EqualTo("'[1,-0.5]'::vector"));
+            Assert.That(SemanticSearchVector.Literal(DataSourceType.SQLServer, [1f, -0.5f, 0.25f]), Is.EqualTo("CAST('[1,-0.5,0.25]' AS VECTOR(3))"));
         }
 
         [Test]
@@ -77,14 +78,14 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
 
             var sql = "select id, subject from inquiries where customer_id = 3 order by search_vector_v <=> {embed:納期遅れのクレーム} limit 5";
             var expanded = await toolSet.ExpandEmbeddingsAsync("Main", sql, CancellationToken.None);
-            var expected = SemanticSearchIndexReader.VectorLiteral(DataSourceType.PostgreSQL, FakeEmbeddingProvider.Embed("納期遅れのクレーム"));
+            var expected = SemanticSearchVector.Literal(DataSourceType.PostgreSQL, FakeEmbeddingProvider.Embed("納期遅れのクレーム"));
             Assert.That(expanded, Is.EqualTo($"select id, subject from inquiries where customer_id = 3 order by search_vector_v <=> {expected} limit 5"));
             Assert.That(expanded, Does.Not.Contain("{embed"));
 
             //複数はそれぞれの内容で置き換わる
             var two = await toolSet.ExpandEmbeddingsAsync("Main", "select 1 - (v <=> {embed:A}) as a, 1 - (v <=> {embed: B }) as b from t", CancellationToken.None);
-            Assert.That(two, Does.Contain(SemanticSearchIndexReader.VectorLiteral(DataSourceType.PostgreSQL, FakeEmbeddingProvider.Embed("A"))));
-            Assert.That(two, Does.Contain(SemanticSearchIndexReader.VectorLiteral(DataSourceType.PostgreSQL, FakeEmbeddingProvider.Embed("B"))));
+            Assert.That(two, Does.Contain(SemanticSearchVector.Literal(DataSourceType.PostgreSQL, FakeEmbeddingProvider.Embed("A"))));
+            Assert.That(two, Does.Contain(SemanticSearchVector.Literal(DataSourceType.PostgreSQL, FakeEmbeddingProvider.Embed("B"))));
 
             //空の内容は拒否
             Assert.That(async () => await toolSet.ExpandEmbeddingsAsync("Main", "select {embed: } from t", CancellationToken.None), Throws.TypeOf<InvalidOperationException>());
