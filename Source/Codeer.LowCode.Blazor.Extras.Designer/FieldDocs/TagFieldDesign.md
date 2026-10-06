@@ -87,6 +87,7 @@
 | `RemoveTag(string tag)` | タグを外す |
 | `SetTags(List<string> tags)` | タグを置き換える |
 | `HasTag(string tag)` | そのタグが付いているか (大文字小文字を区別しない) |
+| `LoadTags()` | このレコードのタグを読む (まだなら)。スクリプトの ModuleSearcher で読んだレコードは子の一覧を読まないので、`Tags` を見る前に呼ぶ。`AddTag` / `RemoveTag` / `SetTags` は自分で読む |
 | `SearchTags` | 検索レイアウトで選んでいるタグ (`List<string>`、get / set) |
 | `SearchMatch` | 検索の一致 (`TagSearchMatch.All` / `TagSearchMatch.Any`、get / set) |
 

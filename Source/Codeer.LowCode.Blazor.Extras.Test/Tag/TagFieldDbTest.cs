@@ -217,6 +217,26 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Tag
         }
 
         [Test]
+        public async Task スクリプトで読んだレコードでも付いているタグを重ねず足せる()
+        {
+            //ModuleSearcher で読んだレコードと同じ: レイアウトなしで作る (本体は子の一覧を読まない)
+            var client = Client();
+            var page = await CreateIO().GetListAsync(new SearchCondition { ModuleName = "Contact", Condition = MultiMatchCondition.And(new FieldValueMatchCondition { SearchTargetVariable = "Id.Value", Comparison = MatchComparison.Equal, Value = new Codeer.LowCode.Blazor.Repository.StringValue { Value = "1" } }) }, 0);
+            var module = await ModuleCreationService.CreateModuleAsync(client.Core, page.Items.Single(), ModuleLayoutType.None);
+            var field = Tags(module);
+            Assert.That(field.Tags, Is.Empty, "まだ読んでいない");
+
+            await field.AddTagAsync("展示会, セミナー");
+            Assert.That(field.Tags, Is.EqualTo(new[] { "展示会", "DXPO", "セミナー" }), "読んでから足す");
+            Assert.That(await module.SubmitAsync(), Is.True, string.Join(" | ", client.Logger.ErrorList));
+            Assert.That(await LinksAsync(), Does.StartWith("A:展示会 A:DXPO A:セミナー B:"));
+
+            var other = await ModuleCreationService.CreateModuleAsync(client.Core, (await CreateIO().GetListAsync(new SearchCondition { ModuleName = "Contact" }, 0)).Items.First(e => ((TextFieldData)e.Fields["Name"]).Value == "B"), ModuleLayoutType.None);
+            await Tags(other).LoadTagsAsync();
+            Assert.That(Tags(other).Tags, Is.EqualTo(new[] { "展示会" }));
+        }
+
+        [Test]
         public async Task 必須ならタグが1つも無いと保存できない()
         {
             _design = TagTestDesigns.Create(e => e.IsRequired = true);

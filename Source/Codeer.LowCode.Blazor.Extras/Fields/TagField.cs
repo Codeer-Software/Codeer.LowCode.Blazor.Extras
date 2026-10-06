@@ -30,6 +30,8 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         readonly List<string> _unboundTags = new();
         readonly List<ModuleData> _stagedTags = new();
         bool _unboundModified;
+        //このレコードのタグ付け行を読んだか (詳細・新規・一覧の行のまとめ読み・LoadTags)
+        bool _rowsLoaded;
         TagBinding? _binding;
         bool _bindingResolved;
         Task<List<TagEntry>>? _master;
@@ -79,6 +81,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         [ScriptName("AddTag")]
         public async Task AddTagAsync(string tag)
         {
+            await LoadTagsAsync();
             var changed = false;
             foreach (var name in Normalize(new[] { tag })) changed |= await AddOneAsync(name);
             if (changed) await AfterTagsChangedAsync();
@@ -88,13 +91,29 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         [ScriptName("RemoveTag")]
         public async Task RemoveTagAsync(string tag)
         {
+            await LoadTagsAsync();
             if (await RemoveOneAsync(tag.Trim())) await AfterTagsChangedAsync();
+        }
+
+        /// <summary>
+        /// このレコードのタグを読む (まだ読んでいなければ)。詳細画面・一覧の行・新規のレコードは読み込み済み。
+        /// スクリプトの ModuleSearcher で読んだレコードは子の一覧を読まないので、Tags を見る前に呼ぶ (AddTag / RemoveTag / SetTags は自分で呼ぶ)。
+        /// </summary>
+        [ScriptName("LoadTags")]
+        public async Task LoadTagsAsync()
+        {
+            if (_rowsLoaded || !IsBound || Binding == null) return;
+            _rowsLoaded = true;
+            if (Module.IsNewData) return;
+            AllowLoad = true;
+            await ReloadAsync();
         }
 
         /// <summary>タグを置き換える (入力欄・スクリプトから)。外したタグを外し、無いタグを末尾に足す。</summary>
         [ScriptName("SetTags")]
         public async Task SetTagsAsync(List<string> tags)
         {
+            await LoadTagsAsync();
             var wanted = Normalize(tags);
             var changed = false;
             foreach (var current in Tags.Where(e => !wanted.Contains(e, _tagComparer)).ToList()) changed |= await RemoveOneAsync(current);
@@ -199,6 +218,8 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             var inListRow = ModuleLayoutType == ModuleLayoutType.List && !Services.AppInfoService.IsDesignMode && Binding != null;
             if (inListRow) AllowLoad = false;
             await base.InitializeDataAsync(fieldDataBase);
+            //本体の一覧が読むのは詳細だけ (スクリプトの ModuleSearcher で読んだレコードは読まない → LoadTags)
+            _rowsLoaded = ModuleLayoutType == ModuleLayoutType.Detail || Module.IsNewData;
             if (inListRow) ListLoad = TagListBatchLoader.Register(this);
         }
 
@@ -246,6 +267,9 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         /// <summary>一覧の行のまとめ読みの結果を受け取る (TagListBatchLoader から)。</summary>
         internal async Task ApplyListRowsAsync(List<ModuleData> rows)
         {
+            //その前にスクリプトが LoadTags / AddTag で読んでいれば、そちらが新しい
+            if (_rowsLoaded) return;
+            _rowsLoaded = true;
             await ApplyDataAsync(new Paging<ModuleData> { Items = rows, TotalCount = rows.Count });
             NotifyStateChanged();
         }

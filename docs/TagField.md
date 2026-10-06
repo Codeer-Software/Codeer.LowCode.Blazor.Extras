@@ -71,6 +71,7 @@ tag_tests (タグを付けるモジュール)   tag_test_tags (タグ付け)    
 | `RemoveTag(string tag)` | タグを外す |
 | `SetTags(List<string> tags)` | タグを置き換える (外したタグを外し、無いタグを足す) |
 | `HasTag(string tag)` | そのタグが付いているか |
+| `LoadTags()` | このレコードのタグを読む (まだなら)。スクリプトの ModuleSearcher で読んだレコードは子の一覧を読まないので、`Tags` を見る前に呼ぶ。`AddTag` / `RemoveTag` / `SetTags` は自分で読む |
 | `SearchTags` | 検索条件で選んでいるタグ (get / set) |
 | `SearchMatch` | 検索の一致 (`TagSearchMatch.All` / `TagSearchMatch.Any`、get / set) |
 
