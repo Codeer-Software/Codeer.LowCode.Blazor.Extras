@@ -156,6 +156,8 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
 
         static object Filter(string field, string comparison, object? value) => new { Field = field, Comparison = comparison, Value = value };
 
+        static string? ErrorOf(JsonElement e) => e.TryGetProperty("error", out var error) ? error.GetString() : null;
+
         #endregion
 
         [Test]
@@ -369,17 +371,75 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
                 ["purpose"] = "状態別の金額",
                 ["measures"] = new object[] { new { Function = "sum", Field = "Amount" }, new { Function = "count" } },
                 ["groupBy"] = new[] { new { Field = "Status" } },
+                ["sort"] = new object[] { new { Target = "measure", Index = 0, Descending = true } },
             });
 
-            Assert.That(result.GetProperty("scannedRows").GetInt32(), Is.EqualTo(3), "担当 B の行は数えない");
-            Assert.That(result.GetProperty("truncated").GetBoolean(), Is.False);
+            Assert.That(result.GetProperty("totalCount").GetInt32(), Is.EqualTo(3), "担当 B の行は数えない");
+            Assert.That(result.GetProperty("groupCount").GetInt32(), Is.EqualTo(2));
+            Assert.That(result.GetProperty("limited").GetBoolean(), Is.False);
             var groups = result.GetProperty("groups").EnumerateArray().ToList();
-            //最初の集計値 (sum) の降順: 完了 350 → 進行中 100。鍵は表示名
-            Assert.That(groups.Select(g => g.GetProperty("key").GetProperty("Status").GetString()), Is.EqualTo(new[] { "完了", "進行中" }));
+            //合計の降順: 完了 350 → 進行中 100。鍵は { value, text } (候補値のコードと表示名)
+            Assert.That(groups.Select(g => g.GetProperty("key").GetProperty("Status").GetProperty("text").GetString()), Is.EqualTo(new[] { "完了", "進行中" }));
+            Assert.That(groups.Select(g => g.GetProperty("key").GetProperty("Status").GetProperty("value").GetString()), Is.EqualTo(new[] { "20", "10" }));
             Assert.That(groups[0].GetProperty("sum_Amount").GetDecimal(), Is.EqualTo(350m));
             Assert.That(groups[0].GetProperty("count").GetInt32(), Is.EqualTo(2));
             Assert.That(groups[1].GetProperty("sum_Amount").GetDecimal(), Is.EqualTo(100m));
             Assert.That(progress.Texts, Does.Contain("状態別の金額"));
+
+            //並びを指定しなければグループ化した項目の昇順
+            var natural = await InvokeAsync(tools, "aggregate_records", new()
+            {
+                ["moduleName"] = "Order",
+                ["purpose"] = "p",
+                ["measures"] = new object[] { new { Function = "count" } },
+                ["groupBy"] = new[] { new { Field = "Status" } },
+            });
+            Assert.That(natural.GetProperty("groups").EnumerateArray().Select(g => g.GetProperty("key").GetProperty("Status").GetProperty("value").GetString()), Is.EqualTo(new[] { "10", "20" }));
+        }
+
+        [Test]
+        public async Task aggregate_recordsは集計後の絞り込みと上限が効き上限で切れたことを伝える()
+        {
+            await _db.ExecuteAsync(Ds, "UPDATE AppUsers SET Rank = 30 WHERE Id = '2'", new());
+            var tools = Create(o => o.MaxGroups = 5).CreateTools(Context("2")).ToList();
+
+            //having: 合計 100 以上のタイトル (机 100・棚 300)。limit 1 で上位 1 件 → limited
+            var top = await InvokeAsync(tools, "aggregate_records", new()
+            {
+                ["moduleName"] = "Order",
+                ["purpose"] = "p",
+                ["measures"] = new object[] { new { Function = "sum", Field = "Amount" } },
+                ["groupBy"] = new[] { new { Field = "Title" } },
+                ["having"] = new object[] { new { MeasureIndex = 0, Comparison = "GreaterThanOrEqual", Value = 100 } },
+                ["sort"] = new object[] { new { Target = "measure", Index = 0, Descending = true } },
+                ["limit"] = 1,
+            });
+            Assert.That(ErrorOf(top), Is.Null);
+            var groups = top.GetProperty("groups").EnumerateArray().ToList();
+            Assert.That(groups.Select(g => g.GetProperty("key").GetProperty("Title").GetString()), Is.EqualTo(new[] { "棚" }));
+            Assert.That(top.GetProperty("groupCount").GetInt32(), Is.EqualTo(2), "絞り込み後の総数");
+            Assert.That(top.GetProperty("limited").GetBoolean(), Is.True);
+
+            //limit は MaxGroups で頭打ち
+            var many = await InvokeAsync(tools, "aggregate_records", new()
+            {
+                ["moduleName"] = "Order",
+                ["purpose"] = "p",
+                ["measures"] = new object[] { new { Function = "count" } },
+                ["groupBy"] = new[] { new { Field = "Title" } },
+                ["limit"] = 1000,
+            });
+            Assert.That(many.GetProperty("groups").GetArrayLength(), Is.EqualTo(3));
+            Assert.That(many.GetProperty("limited").GetBoolean(), Is.False);
+
+            var badIndex = await InvokeAsync(tools, "aggregate_records", new()
+            {
+                ["moduleName"] = "Order",
+                ["purpose"] = "p",
+                ["measures"] = new object[] { new { Function = "count" } },
+                ["having"] = new object[] { new { MeasureIndex = 3, Comparison = "Equal", Value = 1 } },
+            });
+            Assert.That(badIndex.GetProperty("error").GetString(), Does.Contain("measureIndex"));
         }
 
         [Test]
@@ -394,8 +454,31 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
                 ["measures"] = new object[] { new { Function = "count" } },
                 ["groupBy"] = new[] { new { Field = "OrderedOn", DateUnit = "month" } },
             });
-            var months = byMonth.GetProperty("groups").EnumerateArray().ToDictionary(g => g.GetProperty("key").GetProperty("OrderedOn").GetString()!, g => g.GetProperty("count").GetInt32());
+            //日付の鍵は { value: 期間の開始日, text: 単位の見出し }
+            var months = byMonth.GetProperty("groups").EnumerateArray().ToDictionary(g => g.GetProperty("key").GetProperty("OrderedOn").GetProperty("text").GetString()!, g => g.GetProperty("count").GetInt32());
             Assert.That(months, Is.EqualTo(new Dictionary<string, int> { ["2026-01"] = 2, ["2026-02"] = 1 }));
+            Assert.That(byMonth.GetProperty("groups")[0].GetProperty("key").GetProperty("OrderedOn").GetProperty("value").GetString(), Is.EqualTo("2026-01-01"));
+
+            //四半期は年度の開始月で切る (4 月始まりなら 2026-01 は FY2025 Q4)。countDistinct も DB 側
+            var byQuarter = await InvokeAsync(tools, "aggregate_records", new()
+            {
+                ["moduleName"] = "Order",
+                ["purpose"] = "p",
+                ["measures"] = new object[] { new { Function = "countDistinct", Field = "Customer" } },
+                ["groupBy"] = new[] { new { Field = "OrderedOn", DateUnit = "quarter", FiscalYearStartMonth = 4 } },
+            });
+            var quarter = byQuarter.GetProperty("groups").EnumerateArray().Single();
+            Assert.That(quarter.GetProperty("key").GetProperty("OrderedOn").GetProperty("text").GetString(), Is.EqualTo("FY2025 Q4"));
+            Assert.That(quarter.GetProperty("countDistinct_Customer").GetInt32(), Is.EqualTo(2));
+
+            var badUnit = await InvokeAsync(tools, "aggregate_records", new()
+            {
+                ["moduleName"] = "Order",
+                ["purpose"] = "p",
+                ["measures"] = new object[] { new { Function = "count" } },
+                ["groupBy"] = new[] { new { Field = "Title", DateUnit = "month" } },
+            });
+            Assert.That(badUnit.GetProperty("error").GetString(), Does.Contain("日付・日時ではない"));
 
             var byCustomer = await InvokeAsync(tools, "aggregate_records", new()
             {
@@ -409,18 +492,18 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
         }
 
         [Test]
-        public async Task 読めない項目の合計は数えられず集計関数の誤りはエラーになる()
+        public async Task 読めない項目の集計は拒否され集計関数の誤りはエラーになる()
         {
             var tools = Create().CreateTools(Context("2")).ToList();
 
-            //Rank 10 には Amount が見えない → 合計は null (作らない)
+            //Rank 10 には Amount が見えない → 本体の集計 API が拒否する (accessDenied)
             var hidden = await InvokeAsync(tools, "aggregate_records", new()
             {
                 ["moduleName"] = "Order",
                 ["purpose"] = "p",
                 ["measures"] = new object[] { new { Function = "sum", Field = "Amount" } },
             });
-            Assert.That(hidden.GetProperty("groups").EnumerateArray().Single().GetProperty("sum_Amount").ValueKind, Is.EqualTo(JsonValueKind.Null));
+            Assert.That(hidden.GetProperty("accessDenied").GetBoolean(), Is.True);
 
             var bad = await InvokeAsync(tools, "aggregate_records", new()
             {
@@ -429,6 +512,118 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
                 ["measures"] = new object[] { new { Function = "median", Field = "Amount" } },
             });
             Assert.That(bad.GetProperty("error").GetString(), Does.Contain("median"));
+
+            var wrongType = await InvokeAsync(tools, "aggregate_records", new()
+            {
+                ["moduleName"] = "Order",
+                ["purpose"] = "p",
+                ["measures"] = new object[] { new { Function = "sum", Field = "Title" } },
+            });
+            Assert.That(wrongType.GetProperty("error").GetString(), Does.Contain("sum は使えません"));
+        }
+
+        [Test]
+        public async Task cross_tabは行と列の表と合計を返す()
+        {
+            await _db.ExecuteAsync(Ds, "UPDATE AppUsers SET Rank = 30 WHERE Id = '2'", new());
+            var tools = Create().CreateTools(Context("2")).ToList();
+
+            //担当 A の 3 行: 進行中 机 100 (1 月) / 完了 椅子 50 (1 月) / 完了 棚 300 (2 月)
+            var table = await InvokeAsync(tools, "cross_tab", new()
+            {
+                ["moduleName"] = "Order",
+                ["purpose"] = "状態 × 月",
+                ["rows"] = new[] { new { Field = "Status" } },
+                ["columns"] = new[] { new { Field = "OrderedOn", DateUnit = "month" } },
+                ["measures"] = new object[] { new { Function = "sum", Field = "Amount" }, new { Function = "count" } },
+            });
+
+            Assert.That(ErrorOf(table), Is.Null);
+            Assert.That(table.GetProperty("rows").EnumerateArray().Select(r => r.GetProperty("text").GetString()), Is.EqualTo(new[] { "進行中", "完了" }));
+            Assert.That(table.GetProperty("rows")[0].GetProperty("key").GetProperty("Status").GetProperty("value").GetString(), Is.EqualTo("10"));
+            Assert.That(table.GetProperty("columns").EnumerateArray().Select(c => c.GetProperty("text").GetString()), Is.EqualTo(new[] { "2026-01", "2026-02" }));
+            Assert.That(table.GetProperty("measures").EnumerateArray().Select(m => m.GetString()), Is.EqualTo(new[] { "sum_Amount", "count" }));
+
+            static decimal? Cell(JsonElement e) => e.ValueKind == JsonValueKind.Null ? null : e.GetDecimal();
+            var sum = table.GetProperty("cells").GetProperty("sum_Amount").EnumerateArray().Select(r => r.EnumerateArray().Select(Cell).ToArray()).ToArray();
+            Assert.That(sum, Is.EqualTo(new decimal?[][] { new decimal?[] { 100, null }, new decimal?[] { 50, 300 } }));
+            Assert.That(table.GetProperty("rowTotals").GetProperty("sum_Amount").EnumerateArray().Select(Cell), Is.EqualTo(new decimal?[] { 100, 350 }));
+            Assert.That(table.GetProperty("columnTotals").GetProperty("sum_Amount").EnumerateArray().Select(Cell), Is.EqualTo(new decimal?[] { 150, 300 }));
+            Assert.That(table.GetProperty("grandTotals").GetProperty("sum_Amount").GetDecimal(), Is.EqualTo(450m));
+            Assert.That(table.GetProperty("grandTotals").GetProperty("count").GetInt32(), Is.EqualTo(3));
+            Assert.That(table.GetProperty("totalCount").GetInt32(), Is.EqualTo(3));
+
+            //列なし = 行だけの表。セルは行ごとの値、合計は総計だけ
+            var rowsOnly = await InvokeAsync(tools, "cross_tab", new()
+            {
+                ["moduleName"] = "Order",
+                ["purpose"] = "p",
+                ["rows"] = new[] { new { Field = "Status" } },
+                ["measures"] = new object[] { new { Function = "count" } },
+                ["sort"] = new object[] { new { Target = "measure", Index = 0, Descending = true } },
+            });
+            Assert.That(rowsOnly.GetProperty("rows").EnumerateArray().Select(r => r.GetProperty("text").GetString()), Is.EqualTo(new[] { "完了", "進行中" }));
+            Assert.That(rowsOnly.GetProperty("columns").GetArrayLength(), Is.EqualTo(0));
+            Assert.That(rowsOnly.GetProperty("cells").GetProperty("count").EnumerateArray().Select(c => c.GetInt32()), Is.EqualTo(new[] { 2, 1 }));
+            Assert.That(rowsOnly.TryGetProperty("rowTotals", out _), Is.False);
+            Assert.That(rowsOnly.GetProperty("grandTotals").GetProperty("count").GetInt32(), Is.EqualTo(3));
+        }
+
+        [Test]
+        public async Task cross_tabも権限で拒否されセル数の上限を超えると表を作らない()
+        {
+            var denied = await InvokeAsync(Create().CreateTools(Context("1")).ToList(), "cross_tab", new()
+            {
+                ["moduleName"] = "Order",
+                ["purpose"] = "p",
+                ["rows"] = new[] { new { Field = "Status" } },
+                ["measures"] = new object[] { new { Function = "count" } },
+            });
+            Assert.That(denied.GetProperty("accessDenied").GetBoolean(), Is.True);
+
+            var tooBig = await InvokeAsync(Create(o => o.MaxCrossTabCells = 2).CreateTools(Context("2")).ToList(), "cross_tab", new()
+            {
+                ["moduleName"] = "Order",
+                ["purpose"] = "p",
+                ["rows"] = new[] { new { Field = "Status" } },
+                ["columns"] = new[] { new { Field = "OrderedOn", DateUnit = "month" } },
+                ["measures"] = new object[] { new { Function = "count" } },
+            });
+            Assert.That(tooBig.TryGetProperty("error", out _), Is.True);
+        }
+
+        //実際の Azure OpenAI で ModuleDataAccessAgent を通す (課金あり・ネットワーク要)。cross_tab / aggregate_records をモデルが使い、権限の範囲 (担当 A の 3 行) で正しい数字を答えることを見る
+        [Test, Explicit("実 Azure OpenAI を呼ぶ。AZURE_OPENAI_ENDPOINT / KEY / MODEL を設定して明示的に実行する")]
+        public async Task 実AIで状態と月のクロス集計を頼むとcross_tabで答える()
+        {
+            var endpoint = Environment.GetEnvironmentVariable("AZURE_OPENAI_ENDPOINT");
+            var key = Environment.GetEnvironmentVariable("AZURE_OPENAI_KEY");
+            var model = Environment.GetEnvironmentVariable("AZURE_OPENAI_MODEL");
+            if (string.IsNullOrEmpty(endpoint) || string.IsNullOrEmpty(key) || string.IsNullOrEmpty(model))
+                Assert.Ignore("AZURE_OPENAI_ENDPOINT / AZURE_OPENAI_KEY / AZURE_OPENAI_MODEL が未設定");
+            var client = new Azure.AI.OpenAI.AzureOpenAIClient(new Uri(endpoint!), new Azure.AzureKeyCredential(key!));
+            await _db.ExecuteAsync(Ds, "UPDATE AppUsers SET Rank = 30 WHERE Id = '2'", new());
+
+            var agent = new ModuleDataAccessAgent(() => client.GetChatClient(model).AsIChatClient(), OpenScope, () => _designData, null, new ModuleDataAccessOptions { StreamPartialReplies = false });
+            var progress = new Progress();
+            using var cts = new CancellationTokenSource(TimeSpan.FromMinutes(3));
+            var reply = await agent.ReplyAsync(
+                new AIChatAgentRequest { ConversationId = "real", Message = "受注 (Order) の金額を、状態を行・受注日の月を列にしたクロス集計表で見せてください。合計も付けて。", UserName = "2" },
+                progress, cts.Token);
+            TestContext.Out.WriteLine(string.Join(" | ", progress.Texts));
+            TestContext.Out.WriteLine(reply.Content);
+
+            //担当 A の 3 行: 進行中 1 月 100 / 完了 1 月 50・2 月 300 → 行計 100・350、総計 450
+            Assert.That(reply.Content, Does.Contain("<table"));
+            Assert.That(reply.Content, Does.Contain("350"));
+            Assert.That(reply.Content, Does.Contain("450"));
+            Assert.That(progress.Texts.Any(t => t.Contains("cross_tab")), Is.True, "cross_tab が使われた");
+
+            var follow = await agent.ReplyAsync(
+                new AIChatAgentRequest { ConversationId = "real", Message = "得意先ごとの受注件数を多い順に教えて。一言で。", UserName = "2" },
+                progress, cts.Token);
+            TestContext.Out.WriteLine(follow.Content);
+            Assert.That(follow.Content, Does.Contain("青空商事"));
         }
 
         [Test]
@@ -442,7 +637,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
             var reply = await agent.ReplyAsync(new AIChatAgentRequest { ConversationId = "c", Message = "受注は何件", UserName = "2" }, new Progress(), CancellationToken.None);
 
             Assert.That(reply.Content, Does.Contain("受注は 3 件です。"));
-            Assert.That(client.Options[0]!.Tools!.Select(t => t.Name), Is.EquivalentTo(new[] { "list_modules", "describe_module", "find_records", "aggregate_records", "render_chart" }));
+            Assert.That(client.Options[0]!.Tools!.Select(t => t.Name), Is.EquivalentTo(new[] { "list_modules", "describe_module", "find_records", "aggregate_records", "cross_tab", "render_chart" }));
             Assert.That(client.Calls[0][0].Text, Does.Contain("画面で見られるレコードと項目だけ"));
             //ツールの結果 (担当 A の 3 行) が次の問い合わせに渡っている
             var toolResult = client.Calls[1].SelectMany(m => m.Contents.OfType<FunctionResultContent>()).Single();

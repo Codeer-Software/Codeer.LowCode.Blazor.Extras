@@ -12,11 +12,14 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat.ModuleDataAccess
         /// <summary>1 回のツール結果として AI に返す文字数の上限 (トークンの歯止め。超えたら行を半分に減らして truncated=true)。</summary>
         public int MaxResultChars { get; set; } = 20000;
 
-        /// <summary>aggregate_records が集計のために読む行数の上限 (超えた分は読まずに truncated=true で知らせる)。</summary>
-        public int MaxAggregateRows { get; set; } = 10000;
-
-        /// <summary>aggregate_records が返すグループ数の上限 (最初の集計値の降順で先頭から)。</summary>
+        /// <summary>aggregate_records が返すグループ数の上限 (AI が指定する limit もこれで頭打ち。超えた分は並び順の先頭から切って limited=true で知らせる)。集計は DB 側で行う。</summary>
         public int MaxGroups { get; set; } = 100;
+
+        /// <summary>cross_tab の表のセル数 (行の種類 × 列の種類 × 値の数) の上限。超えたら表を作らずにエラーで知らせる。</summary>
+        public int MaxCrossTabCells { get; set; } = 2000;
+
+        /// <summary>年度の開始月 (1〜12)。日付を年・四半期でまとめるときの既定 (AI がグループごとに指定すればそちら)。1 なら暦年。</summary>
+        public int FiscalYearStartMonth { get; set; } = 1;
 
         /// <summary>システムプロンプトに追記する業務固有の説明 (用語、よく聞かれる集計の定義など)。文書として渡すなら <see cref="AIChatDocument"/> のほうが管理しやすい。</summary>
         public string AdditionalInstructions { get; set; } = string.Empty;

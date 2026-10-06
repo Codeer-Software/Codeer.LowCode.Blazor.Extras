@@ -1,3 +1,4 @@
+using Codeer.LowCode.Blazor.Aggregation;
 using Codeer.LowCode.Blazor.DesignLogic;
 using Codeer.LowCode.Blazor.Extras.Server.AI.Chat.DesignKnowledge;
 using Codeer.LowCode.Blazor.Repository;
@@ -192,11 +193,12 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat.ModuleDataAccess
             return module.Fields.Any(f => f.Name == path) ? path : null;
         }
 
-        static object? WithText(string? value, string? text)
-            => string.IsNullOrEmpty(text) || text == value ? value : new Dictionary<string, object?> { ["value"] = value, ["text"] = text };
+        /// <summary>値と表示名 ({ value, text })。表示名が無いか値と同じなら値だけ。</summary>
+        public static object? WithText(object? value, string? text)
+            => string.IsNullOrEmpty(text) || text == Convert.ToString(value, CultureInfo.InvariantCulture) ? value : new Dictionary<string, object?> { ["value"] = value, ["text"] = text };
 
-        //候補値つき SelectField の表示名 (サーバーは DisplayText を埋めないので設計から引く)
-        static string? CandidateText(DesignData? design, ModuleDesign? module, string fieldName, string? value)
+        /// <summary>候補値つき SelectField の表示名 (サーバーは DisplayText を埋めないので設計から引く)。無ければ null。</summary>
+        public static string? CandidateText(DesignData? design, ModuleDesign? module, string fieldName, string? value)
         {
             if (design == null || module == null || value == null) return null;
             var field = FindField(design, module, fieldName);
@@ -232,35 +234,69 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat.ModuleDataAccess
             _ => value,
         };
 
-        /// <summary>グループ化の鍵にする値。日付は単位 (year / month / day) で丸める。選択・リンクは表示名があればそれ。</summary>
-        public static string GroupKey(object? rowValue, FieldDataBase? field, string? dateUnit)
+        /// <summary>集計関数の名前 (count / countDistinct / sum / avg / min / max。大文字小文字は区別しない) を列挙に。分からなければ null。</summary>
+        public static AggregateFunction? ParseFunction(string? function)
         {
-            var raw = RawValue(field);
-            if (!string.IsNullOrEmpty(dateUnit) && raw != null)
+            var name = (function ?? string.Empty).Trim().Replace("_", string.Empty);
+            if (name.Length == 0) return AggregateFunction.Count;
+            if (string.Equals(name, "average", StringComparison.OrdinalIgnoreCase)) return AggregateFunction.Avg;
+            foreach (var f in Enum.GetValues<AggregateFunction>())
             {
-                var date = raw switch
+                if (string.Equals(f.ToString(), name, StringComparison.OrdinalIgnoreCase)) return f;
+            }
+            return null;
+        }
+
+        /// <summary>日付の単位 (year / quarter / month / week / day / hour) を列挙に。分からなければ null。</summary>
+        public static DateBucket? ParseBucket(string? unit)
+        {
+            var name = (unit ?? string.Empty).Trim();
+            foreach (var b in Enum.GetValues<DateBucket>())
+            {
+                if (string.Equals(b.ToString(), name, StringComparison.OrdinalIgnoreCase)) return b;
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// 集計結果の軸の鍵を AI に返す形に。日付の軸は { value: 期間の開始日, text: 単位に応じた見出し } (月 "2026-04"・四半期 "FY2026 Q1" 等)、
+        /// 選択・リンクは表示名があれば { value, text }、それ以外は値そのまま。空値は null。
+        /// </summary>
+        public static object? KeyToJson(AggregateKey key, AggregateGroup group, DesignData? design, ModuleDesign? module)
+        {
+            var raw = key.Value.GetValue();
+            if (raw == null) return null;
+            if (group is DateGroup dateGroup)
+            {
+                var start = raw switch
                 {
                     DateOnly d => d.ToDateTime(TimeOnly.MinValue),
                     DateTime d => d,
-                    DateTimeOffset d => d.LocalDateTime,
                     _ => (DateTime?)null,
                 };
-                if (date != null)
-                {
-                    return dateUnit.Trim().ToLowerInvariant() switch
-                    {
-                        "year" => date.Value.ToString("yyyy", CultureInfo.InvariantCulture),
-                        "month" => date.Value.ToString("yyyy-MM", CultureInfo.InvariantCulture),
-                        _ => date.Value.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
-                    };
-                }
+                if (start != null) return WithText(ToJsonValue(raw), PeriodText(start.Value, dateGroup.Bucket, dateGroup.FiscalYearStartMonth));
             }
-            if (rowValue is Dictionary<string, object?> withText)
+            var text = key.DisplayText;
+            if (string.IsNullOrEmpty(text) && design != null && module != null)
+                text = CandidateText(design, module, ToFieldName(group.Variable), Convert.ToString(raw, CultureInfo.InvariantCulture));
+            return WithText(ToJsonValue(raw), text);
+        }
+
+        /// <summary>期間の開始から見出し。年・四半期は年度の開始月が 1 以外なら "FY2026" / "FY2026 Q1" (年度は開始日の年)。</summary>
+        public static string PeriodText(DateTime start, DateBucket bucket, int fiscalYearStartMonth)
+        {
+            var fiscalStart = fiscalYearStartMonth is < 1 or > 12 ? 1 : fiscalYearStartMonth;
+            var fiscalYear = start.Month >= fiscalStart ? start.Year : start.Year - 1;
+            var yearText = fiscalStart == 1 ? start.Year.ToString(CultureInfo.InvariantCulture) : "FY" + fiscalYear.ToString(CultureInfo.InvariantCulture);
+            return bucket switch
             {
-                if (withText.TryGetValue("text", out var text) && text != null) return text.ToString() ?? string.Empty;
-                return Convert.ToString(raw, CultureInfo.InvariantCulture) ?? string.Empty;
-            }
-            return Convert.ToString(rowValue, CultureInfo.InvariantCulture) ?? string.Empty;
+                DateBucket.Year => yearText,
+                DateBucket.Quarter => $"{yearText} Q{(start.Month - fiscalStart + 12) % 12 / 3 + 1}",
+                DateBucket.Month => start.ToString("yyyy-MM", CultureInfo.InvariantCulture),
+                DateBucket.Week => start.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) + "~",
+                DateBucket.Day => start.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+                _ => start.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture),
+            };
         }
     }
 }

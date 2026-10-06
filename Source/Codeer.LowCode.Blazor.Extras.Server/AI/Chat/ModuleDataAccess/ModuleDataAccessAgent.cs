@@ -8,9 +8,9 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat.ModuleDataAccess
 {
     /// <summary>
     /// アプリの設計を読み、レコードを「実行ユーザーの権限で」読んで答える Agent。
-    /// 設計参照 (list_modules / describe_module / read_document)、レコード参照 (find_records / aggregate_records)、SVG グラフ (render_chart) のツールを持つ。
-    /// 行の読み出しは本体の ModuleDataIO (GetListAsync) を通るので、モジュールの閲覧権限 (UserRead)・行の条件 (DataRead)・項目の読み取り権限 (PermissionField)・
-    /// 論理削除・アプリアクセス条件が画面と同じに効く。SQL は書かせない。
+    /// 設計参照 (list_modules / describe_module / read_document)、レコード参照 (find_records / aggregate_records / cross_tab)、SVG グラフ (render_chart) のツールを持つ。
+    /// 行の読み出しは本体の ModuleDataIO (GetListAsync)、集計は本体の集計 API (AggregateAsync / CrossTabBuilder) を通るので、モジュールの閲覧権限 (UserRead)・行の条件 (DataRead)・
+    /// 項目の読み取り権限 (PermissionField)・論理削除・アプリアクセス条件が画面と同じに効く。SQL は書かせない。
     /// 会話の基盤 (モデル呼び出し・履歴・逐次表示・Markdown → HTML) はライブラリ内部の会話エンジンに委譲する。
     /// <para>
     /// 生 SQL で DB を読む <see cref="RawDataAccess.RawDataAccessAgent"/> との使い分け: 行単位の統制が要る (ユーザーごとに見える行が違う・列の読み取り権限がある) なら
