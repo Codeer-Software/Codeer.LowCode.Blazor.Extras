@@ -77,6 +77,8 @@ div.tag-editor > input.tag-input:not([type="checkbox"]):not([type="radio"]):not(
   left: 0;
   max-height: 16rem;
   overflow-y: auto;
+  /* 下に一覧があると、その固定ヘッダー (sticky, Bootstrap 1020) の後ろに回るので、モーダル (1050) より下で一覧より上に */
+  z-index: 1040;
 }
 
 /* ===== 閲覧 (一覧のセルにも置ける) ===== */
