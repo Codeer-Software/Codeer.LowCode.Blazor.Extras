@@ -209,6 +209,139 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
         }
 
         [Test]
+        public async Task 行数上限を超えたらすぐ返す_終わらないクエリでも([Values(true, false)] bool cancelAtRowLimit)
+        {
+            var tools = Create(o => o.CancelQueryAtRowLimit = cancelAtRowLimit).CreateTools(Context()).ToList();
+            var json = await InvokeAsync(tools, "execute_sql", new() { ["sql"] = "WITH RECURSIVE c(x) AS (SELECT 1 UNION ALL SELECT x + 1 FROM c) SELECT x FROM c", ["purpose"] = "" })
+                .WaitAsync(TimeSpan.FromSeconds(10));
+            using var doc = JsonDocument.Parse(json);
+            Assert.That(doc.RootElement.GetProperty("rowCount").GetInt32(), Is.EqualTo(10));
+            Assert.That(doc.RootElement.GetProperty("truncated").GetBoolean(), Is.True);
+        }
+
+        [Test]
+        public async Task ちょうど上限の行数なら続きなし()
+        {
+            var tools = Create().CreateTools(Context()).ToList();
+            var json = await InvokeAsync(tools, "execute_sql", new() { ["sql"] = "SELECT Id FROM Orders WHERE Id <= 10", ["purpose"] = "" });
+            using var doc = JsonDocument.Parse(json);
+            Assert.That(doc.RootElement.GetProperty("rowCount").GetInt32(), Is.EqualTo(10));
+            Assert.That(doc.RootElement.GetProperty("truncated").GetBoolean(), Is.False);
+        }
+
+        [Test]
+        public async Task 返事のSQL時間を使い切ったらDBへ行かずに断る()
+        {
+            var context = Context();
+            var budget = QueryTimeBudget.Of(context.Items, 1);
+            budget.Add(TimeSpan.FromSeconds(2));
+            var tools = Create(o => o.MaxQuerySecondsPerReply = 1).CreateTools(context).ToList();
+            var json = await InvokeAsync(tools, "execute_sql", new() { ["sql"] = "SELECT COUNT(*) AS N FROM Orders", ["purpose"] = "" });
+            Assert.That(ErrorOf(json), Does.Contain("使い切りました"));
+        }
+
+        [Test]
+        public async Task 実行したSQLの時間は返事の予算に足される()
+        {
+            var context = Context();
+            var tools = Create(o => o.MaxQuerySecondsPerReply = 45).CreateTools(context).ToList();
+            await InvokeAsync(tools, "execute_sql", new() { ["sql"] = "SELECT COUNT(*) AS N FROM Orders", ["purpose"] = "" });
+            var budget = (QueryTimeBudget)context.Items[QueryTimeBudget.ItemKey];
+            Assert.That(budget.Remaining, Is.LessThan(TimeSpan.FromSeconds(45)));
+        }
+
+        [Test]
+        public async Task 同時実行の上限に達していて空かなければ混雑を返す()
+        {
+            const int max = 7;  //他のテストと鍵 (データソース名 + 上限) が重ならない値
+            var gate = QueryGate.Get(Ds, max);
+            for (var i = 0; i < max; i++) await gate.WaitAsync();
+            try
+            {
+                var tools = Create(o => { o.MaxConcurrentQueries = max; o.CommandTimeoutSeconds = 1; }).CreateTools(Context()).ToList();
+                var json = await InvokeAsync(tools, "execute_sql", new() { ["sql"] = "SELECT 1 AS N", ["purpose"] = "" });
+                Assert.That(ErrorOf(json), Does.Contain("混み合っています"));
+            }
+            finally
+            {
+                gate.Release(max);
+            }
+            var ok = await InvokeAsync(Create(o => o.MaxConcurrentQueries = max).CreateTools(Context()).ToList(), "execute_sql", new() { ["sql"] = "SELECT 1 AS N", ["purpose"] = "" });
+            Assert.That(ok, Does.Contain("[1]"), "空けば通る");
+        }
+
+        [Test]
+        public async Task 上限を全部0にしても従来どおり動く()
+        {
+            var calls = 0;
+            var toolSet = Create(o =>
+            {
+                o.CommandTimeoutSeconds = 0;
+                o.MaxQuerySecondsPerReply = 0;
+                o.MaxConcurrentQueries = 0;
+                o.CancelQueryAtRowLimit = false;
+                o.LargeTableRows = 0;
+            });
+            toolSet.TableStatsReader = (_, _) => { calls++; return Task.FromResult(new Dictionary<string, DbSchemaReader.TableStats>()); };
+            var tools = toolSet.CreateTools(Context()).ToList();
+            var json = await InvokeAsync(tools, "execute_sql", new() { ["sql"] = "SELECT * FROM Orders ORDER BY Id", ["purpose"] = "" });
+            using var doc = JsonDocument.Parse(json);
+            Assert.That(doc.RootElement.GetProperty("rowCount").GetInt32(), Is.EqualTo(10));
+            Assert.That(await InvokeAsync(tools, "get_schema"), Does.Contain("- Orders (4 列)"));
+            var instructions = toolSet.GetInstructions(Context());
+            Assert.That(instructions, Does.Not.Contain("秒で打ち切られます"));
+            Assert.That(instructions, Does.Not.Contain("大きい表"));
+            Assert.That(calls, Is.EqualTo(0), "LargeTableRows = 0 なら統計を読まない");
+        }
+
+        static RawDataAccessToolSet WithStats(RawDataAccessToolSet toolSet)
+        {
+            toolSet.TableStatsReader = (_, _) => Task.FromResult(new Dictionary<string, DbSchemaReader.TableStats>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["Orders"] = new(1200000, new[] { "Customer", "Id" }),
+                ["Secrets"] = new(5, Array.Empty<string>()),
+            });
+            return toolSet;
+        }
+
+        [Test]
+        public async Task 表の行数と索引を目次と表指定とプロンプトに出す()
+        {
+            var toolSet = WithStats(Create(o => o.LargeTableRows = 1000));
+            var tools = toolSet.CreateTools(Context()).ToList();
+
+            var index = await InvokeAsync(tools, "get_schema");
+            Assert.That(index, Does.Contain("- Orders (4 列, 約 1,200,000 行)"));
+            Assert.That(index, Does.Contain("- Secrets (2 列, 約 5 行)"));
+
+            var detail = await InvokeAsync(tools, "get_schema", new() { ["tables"] = new[] { "Orders" } });
+            Assert.That(detail, Does.Contain("- Orders {約 1,200,000 行; 索引: Customer, Id}(Id INTEGER"));
+
+            var instructions = toolSet.GetInstructions(Context());
+            Assert.That(instructions, Does.Contain("大きい表"));
+            Assert.That(instructions, Does.Contain("  - AiDb: Orders 約 1,200,000 行 (索引: Customer, Id)"));
+            Assert.That(instructions, Does.Not.Contain("Secrets 約"), "しきい値未満の表はプロンプトに出さない");
+        }
+
+        [Test]
+        public void 除外した表は大きくてもプロンプトに出さない()
+        {
+            var toolSet = WithStats(Create(o => { o.LargeTableRows = 1000; o.ExcludedTables.Add("orders"); }));
+            Assert.That(toolSet.GetInstructions(Context()), Does.Not.Contain("大きい表"));
+        }
+
+        [Test]
+        public async Task 統計が読めなくてもスキーマとプロンプトは動く()
+        {
+            var toolSet = Create();
+            toolSet.TableStatsReader = (_, _) => throw new InvalidOperationException("permission denied");
+            var instructions = toolSet.GetInstructions(Context());
+            Assert.That(instructions, Does.Contain("AiDb = SQLite"));
+            Assert.That(instructions, Does.Not.Contain("大きい表"));
+            Assert.That(await InvokeAsync(toolSet.CreateTools(Context()).ToList(), "get_schema"), Does.Contain("- Orders (4 列)"));
+        }
+
+        [Test]
         public void データソースが空なら作れない()
         {
             Assert.Throws<ArgumentException>(() => new RawDataAccessToolSet(() => new DbAccessor(_dataSources), null, new RawDataAccessOptions()));

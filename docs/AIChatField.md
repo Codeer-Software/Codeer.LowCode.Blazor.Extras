@@ -165,11 +165,53 @@ AIChatField.EndPoint = "/api/ai_chat";
 - SQLite はユーザーが無いので接続文字列の `Mode=ReadOnly` で読み取り専用にする (表・列の限定はできない)
 - ログインユーザーごとの行制限 (モジュールの UserRead / DataRead 条件) は効かない。「誰がこのチャットを使えるか」は、フィールドを置くページやモジュールの UserReadCondition (と PermissionField) で絞る。サーバーは送信のたびに、リクエストの `ModuleName` / `FieldName` の AIChatField が今のユーザーに見えることを確かめてから受け付け、Agent 名と文書フォルダもそのデザインから取る ([サーバー API の権限チェック](ServerApiAuthorization.md))
 
-`execute_sql` 側の SELECT 判定 (1 文だけ・INSERT/UPDATE/DELETE 等の語を含まない) は補助で、書き込み拒否の本体は DB ユーザーの権限です。行数 (`MaxRows` 既定 200)、文字数 (`MaxResultChars` 既定 20000)、タイムアウト (`CommandTimeoutSeconds` 既定 30) の上限と、実行した SQL のログ (`RawDataAccessAgent` のコンストラクタの `ILoggerFactory` を設定したとき。ILogger の Information) はツール側が担います。
+`execute_sql` 側の SELECT 判定 (1 文だけ・INSERT/UPDATE/DELETE 等の語を含まない) は補助で、書き込み拒否の本体は DB ユーザーの権限です。行数 (`MaxRows` 既定 200)、文字数 (`MaxResultChars` 既定 20000)、時間と同時実行数の上限 ([DB の負荷を抑える](#db-の負荷を抑える))、実行した SQL のログ (`RawDataAccessAgent` のコンストラクタの `ILoggerFactory` を設定したとき。ILogger の Information) はツール側が担います。
 
 **監査ログ ([AuditLog](AuditLog.md)) との関係**: 送信 (`AIChat.Send`) は `DataRead` として「誰が・どの画面の AIChatField を・どの Agent で使ったか」が残ります (`Targets` にモジュールと `AIChat:フィールド名`、`Detail` に `Agent=`。発言は残しません)。`RawDataAccessAgent` が読んだ行は監査ログの対象外です。SQL は送信とは別のジョブで実行され、集計の SQL は読んだ行を特定する形になっていないので、行の Id では残せません。監査にどう答えるかは [監査基準への対応](#監査基準への対応-rawdataaccessagent-の利用方針) を見てください。`RawDataAccessAgent` は、行単位の統制を要しない分析用途向けです。
 
 **権限管理はライブラリではなく DB 側の設定と接続文字列で行ってください。** `RawDataAccessAgent` は「渡された接続で読めるものは読む」だけで、表や列の許可・不許可を判断する仕組みを持ちません。AI 用の DB ユーザー (またはビュー) を用意し、そのユーザーで接続するデータソースを appsettings に書く、が正式な手順です。
+
+### DB の負荷を抑える
+
+AI が書く SQL は、全件の集計や索引の効かない並べ替えになることがあります。`RawDataAccessAgent` は重い SQL を事前に見分けることはせず、**時間と本数に上限を付け**、表の大きさと索引を AI に伝えて軽い SQL へ誘導します。設定は `RawDataAccessOptions` で、テンプレートでは appsettings の `AIChat:RawDataAccess` にそのまま束縛されます。0 / false でその対策は無効です。待たせる・断る種類の上限 (合計時間・同時実行数) は既定で無効なので、必要になったら値を入れてください。
+
+| 設定 | 既定 | 内容 |
+|---|---|---|
+| `CommandTimeoutSeconds` | 30 | SQL 1 文のタイムアウト (秒)。超えると DB 側でもクエリが止まる |
+| `MaxQuerySecondsPerReply` | 0 (無効) | 1 回の返事で SQL の実行に使える合計時間 (秒)。使い切ると以後の SQL は DB へ行かずに断り、AI はここまでの結果で答える。例: 45 |
+| `MaxConcurrentQueries` | 0 (無効) | 同じデータソースへ同時に実行する SQL の本数 (プロセス全体)。超えた分は空くまで待ち (最大 `CommandTimeoutSeconds` 秒)、待ち切れたら「混み合っています」を返す。例: 2 |
+| `CancelQueryAtRowLimit` | true | `MaxRows` を超えたら DB にクエリの中止を送る。送らないとドライバは残りの行を最後まで読み捨てる (DB は全件を送り切る) |
+| `LargeTableRows` | 100000 | この行数以上の表を「大きい表」として、索引の先頭列と一緒にシステムプロンプトに挙げ、索引のある列で絞るか集計するよう促す。行数と索引は DB のカタログから読む (COUNT(*) はしない)。0 で読まない |
+
+```json
+"AIChat": {
+  "RawDataAccessDataSources": [ "Analytics" ],
+  "RawDataAccess": {
+    "CommandTimeoutSeconds": 30,
+    "MaxQuerySecondsPerReply": 0,
+    "MaxConcurrentQueries": 0,
+    "CancelQueryAtRowLimit": true,
+    "LargeTableRows": 100000
+  }
+}
+```
+
+効く範囲:
+
+- 行数で止まるのは、行をそのまま返すクエリ (行数制限の無い SELECT など) です。集計・索引の無い並べ替え・大きな JOIN は、1 行目が出る前に重い処理が終わっているので行数では止まりません。これらは時間 (1 文・1 返事) と本数の上限で抑えます。軽くはならず、長引かない・重ならない、という上限です
+- 行数と索引は DB の統計 (SQL Server `sys.partitions` / `sys.indexes`、PostgreSQL `pg_class` / `pg_index`、MySQL `information_schema`、Oracle `USER_TABLES` / `USER_IND_COLUMNS`) から読み、スキーマと同じ時間 (`SchemaCacheDuration`) キャッシュします。統計が古いと行数もずれます。AI 用 DB ユーザーで読めなければ「不明」として扱い、SQL の実行は止めません
+
+DB 側でやること (ライブラリでは代われないもの):
+
+- **AI 用のデータソースを読み取りレプリカに向ける。** 本番 DB の負荷をなくせるのはこれだけです (接続文字列を変えるだけ)
+- AI 用の DB ユーザーに DB 側のタイムアウトと接続数の上限を付ける (例: PostgreSQL `ALTER ROLE ai_reader SET statement_timeout = '15s'` / `ALTER ROLE ai_reader CONNECTION LIMIT 4`)
+- よく聞かれる重い集計は、集計済みの表やビュー (夜間に作る等) を AI に見せる
+
+割り切り:
+
+- SQLite は時間で止まりません (Microsoft.Data.Sqlite のタイムアウトはロック待ちだけ)。サンプル・小規模向けです
+- 同時実行の上限はプロセスごとです。スケールアウトすると実際の上限は「本数 × インスタンス数」になります
+- ビューは統計に行数が出ません。大きいビューは補足文書に「この表は大きいので期間で絞る」と書いてください
 
 ### AI に送られるデータ
 

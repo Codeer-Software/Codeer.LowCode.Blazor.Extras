@@ -7,6 +7,8 @@ using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Logging;
 using System.ComponentModel;
 using System.Data.Common;
+using System.Diagnostics;
+using System.Globalization;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
@@ -36,7 +38,13 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat.RawDataAccess
         readonly RawDataAccessOptions _options;
         readonly List<string> _dataSourceNames;
         readonly object _schemaLock = new();
-        Dictionary<string, List<DbSchemaReader.Column>>? _schemaCache;   //データソース名 → 列 (表・列・型)
+        Schema? _schemaCache;
+
+        //データソース名 → 列 (表・列・型) と、表 → 統計 (概算行数・索引の先頭列。読めなければ空)
+        sealed record Schema(Dictionary<string, List<DbSchemaReader.Column>> Columns, Dictionary<string, Dictionary<string, DbSchemaReader.TableStats>> Stats);
+
+        /// <summary>表の統計の読み方 (データソース名 → 表 → 統計)。テストで差し替える。null なら DB のカタログから読む。</summary>
+        internal Func<string, CancellationToken, Task<Dictionary<string, DbSchemaReader.TableStats>>>? TableStatsReader { get; set; }
 
         /// <summary>
         /// execute_sql の SQL を実行前に書き換えるフック (データソース名, SQL) → SQL。SELECT 判定より前に呼ぶ。
@@ -69,11 +77,55 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat.RawDataAccess
             sb.AppendLine("- get_schema は引数なしなら表名の目次だけ (小さい)、tables を指定するとその表の列だけを返します。全表の列を一度に取ろうとしないでください。名前を推測してはいけません。");
             sb.AppendLine("- execute_sql は読み取り専用の SELECT を 1 文だけ実行します。それ以外は拒否され、DB ユーザーも読み取り専用です。");
             sb.AppendLine($"- 結果は絞ってください (最大 {_options.MaxRows} 行まで返ります)。生の行を取るより、集計 (GROUP BY, SUM, COUNT) を優先してください。");
+            sb.AppendLine("- 集計でない SELECT (行をそのまま返すもの) には必ず行数制限を付け、必要な列だけを選んでください (SELECT * は避ける)。");
+            if (_options.CommandTimeoutSeconds > 0)
+                sb.AppendLine($"- 1 つの SQL は {_options.CommandTimeoutSeconds} 秒で打ち切られます。時間切れになったら同じ SQL を繰り返さず、条件で絞るか集計の範囲を狭めてください。");
+            AppendLargeTables(sb, context);
             sb.AppendLine("- 結果は Markdown の表で示し、続けて短い解釈を書いてください。数値はクエリ結果に基づくもの以外を書かないこと。");
             sb.AppendLine("- クエリが失敗したらエラーを読み、SQL を直して再試行してください (数回まで)。");
             if (!string.IsNullOrWhiteSpace(_options.AdditionalInstructions)) sb.AppendLine().Append(_options.AdditionalInstructions.Trim());
             return sb.ToString();
         }
+
+        const int MaxLargeTablesInPrompt = 30;
+        const int MaxIndexColumnsShown = 5;
+
+        //大きい表の一覧 (プロンプトは get_schema をなるべく呼ばないよう誘導しているので、目次だけでなくここにも出す)。
+        //読み込みに失敗したら節を省くだけで返事は止めない
+        void AppendLargeTables(StringBuilder sb, AIChatToolContext context)
+        {
+            if (_options.LargeTableRows <= 0) return;
+            Schema schema;
+            try
+            {
+                schema = LoadSchemaAsync(context.Logger, context.CancellationToken).GetAwaiter().GetResult();
+            }
+            catch (OperationCanceledException) { throw; }
+            catch (Exception e)
+            {
+                context.Logger?.LogWarning("AIChat RawDataAccess schema for prompt unavailable: {Message}", e.Message);
+                return;
+            }
+            var excluded = new HashSet<string>(_options.ExcludedTables, StringComparer.OrdinalIgnoreCase);
+            var large = schema.Stats
+                .SelectMany(ds => ds.Value.Select(t => (DataSource: ds.Key, Table: t.Key, Stats: t.Value)))
+                .Where(e => e.Stats.Rows >= _options.LargeTableRows && !excluded.Contains(e.Table) && !excluded.Contains(TableNameOnly(e.Table)))
+                .OrderByDescending(e => e.Stats.Rows)
+                .Take(MaxLargeTablesInPrompt)
+                .ToList();
+            if (large.Count == 0) return;
+            sb.AppendLine("- 大きい表 (必ず期間などの条件で絞るか、絞った上で集計してください。条件は索引のある列に、列を関数で包まず範囲で書きます):");
+            foreach (var e in large)
+            {
+                sb.Append("  - ").Append(e.DataSource).Append(": ").Append(e.Table).Append(' ').Append(RowsText(e.Stats.Rows!.Value));
+                if (e.Stats.IndexColumns.Count > 0) sb.Append(" (索引: ").Append(IndexText(e.Stats)).Append(')');
+                sb.AppendLine();
+            }
+        }
+
+        static string RowsText(long rows) => "約 " + rows.ToString("N0", CultureInfo.InvariantCulture) + " 行";
+
+        static string IndexText(DbSchemaReader.TableStats stats) => string.Join(", ", stats.IndexColumns.Take(MaxIndexColumnsShown));
 
         //"Main = PostgreSQL (…), Archive = SQLite (…)" のような一覧。DataSource の種別だけ見る (接続はしない)
         string Dialects()
@@ -124,14 +176,15 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat.RawDataAccess
                 sources = new List<string> { found };
             }
 
-            var schema = await LoadSchemaAsync(context.CancellationToken);
+            var schema = await LoadSchemaAsync(context.Logger, context.CancellationToken);
             var design = _design?.Invoke();
             var excluded = new HashSet<string>(_options.ExcludedTables, StringComparer.OrdinalIgnoreCase);
             var sb = new StringBuilder();
             var matched = 0;
             foreach (var name in sources)
             {
-                var byTable = schema[name].Where(c => !excluded.Contains(c.Table) && !excluded.Contains(TableNameOnly(c.Table))).GroupBy(c => c.Table).ToList();
+                var byTable = schema.Columns[name].Where(c => !excluded.Contains(c.Table) && !excluded.Contains(TableNameOnly(c.Table))).GroupBy(c => c.Table).ToList();
+                var stats = schema.Stats.TryGetValue(name, out var s) ? s : new Dictionary<string, DbSchemaReader.TableStats>();
                 var modules = ModuleInfoByTable(design, name);
                 sb.Append("## データソース ").Append(name).Append(" (").Append(Dialects().Split(", ").FirstOrDefault(d => d.StartsWith(name + " = ", StringComparison.OrdinalIgnoreCase))?[(name.Length + 3)..] ?? "").AppendLine(")");
                 if (wanted.Count == 0)
@@ -139,7 +192,9 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat.RawDataAccess
                     //目次: 表名 (列数) [モジュール]
                     foreach (var table in byTable)
                     {
-                        sb.Append("- ").Append(table.Key).Append(" (").Append(table.Count()).Append(" 列)");
+                        sb.Append("- ").Append(table.Key).Append(" (").Append(table.Count()).Append(" 列");
+                        if (stats.TryGetValue(table.Key, out var tableStats) && tableStats.Rows != null) sb.Append(", ").Append(RowsText(tableStats.Rows.Value));
+                        sb.Append(')');
                         if (modules.TryGetValue(TableNameOnly(table.Key), out var m)) sb.Append(" [モジュール ").Append(m.ModuleName).Append(']');
                         sb.AppendLine();
                     }
@@ -153,6 +208,13 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat.RawDataAccess
                     {
                         var info = modules.TryGetValue(TableNameOnly(table.Key), out var m) ? m : null;
                         sb.Append("- ").Append(table.Key);
+                        if (stats.TryGetValue(table.Key, out var tableStats) && (tableStats.Rows != null || tableStats.IndexColumns.Count > 0))
+                        {
+                            var parts = new List<string>();
+                            if (tableStats.Rows != null) parts.Add(RowsText(tableStats.Rows.Value));
+                            if (tableStats.IndexColumns.Count > 0) parts.Add("索引: " + IndexText(tableStats));
+                            sb.Append(" {").Append(string.Join("; ", parts)).Append('}');
+                        }
                         if (info != null) sb.Append(" [モジュール ").Append(info.ModuleName).Append(']');
                         sb.Append('(');
                         sb.Append(string.Join(", ", table.Select(c =>
@@ -167,20 +229,42 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat.RawDataAccess
             return sb.ToString();
         }
 
-        //全データソースの列情報 (10 分キャッシュ)。DB へ行くのはここだけ
-        async Task<Dictionary<string, List<DbSchemaReader.Column>>> LoadSchemaAsync(CancellationToken cancellationToken)
+        //全データソースの列情報と表の統計 (SchemaCacheDuration の間キャッシュ)。スキーマで DB へ行くのはここだけ
+        async Task<Schema> LoadSchemaAsync(ILogger? logger, CancellationToken cancellationToken)
         {
             lock (_schemaLock)
             {
                 if (_schemaCache != null && DateTime.UtcNow - _schemaLoaded < _options.SchemaCacheDuration) return _schemaCache;
             }
-            var result = new Dictionary<string, List<DbSchemaReader.Column>>(StringComparer.OrdinalIgnoreCase);
-            await using var db = _dbAccessorFactory();
-            foreach (var name in _dataSourceNames)
+            var columns = new Dictionary<string, List<DbSchemaReader.Column>>(StringComparer.OrdinalIgnoreCase);
+            await using (var db = _dbAccessorFactory())
             {
-                if (db.GetDataSource(name) == null) throw new InvalidOperationException($"Data source '{name}' is not defined.");
-                result[name] = await DbSchemaReader.ReadAsync(db, name, _options.CommandTimeoutSeconds, cancellationToken);
+                foreach (var name in _dataSourceNames)
+                {
+                    if (db.GetDataSource(name) == null) throw new InvalidOperationException($"Data source '{name}' is not defined.");
+                    columns[name] = await DbSchemaReader.ReadAsync(db, name, _options.CommandTimeoutSeconds, cancellationToken);
+                }
             }
+            var stats = new Dictionary<string, Dictionary<string, DbSchemaReader.TableStats>>(StringComparer.OrdinalIgnoreCase);
+            if (_options.LargeTableRows > 0)
+            {
+                foreach (var name in _dataSourceNames)
+                {
+                    try
+                    {
+                        stats[name] = TableStatsReader != null
+                            ? await TableStatsReader(name, cancellationToken)
+                            : await DbSchemaReader.ReadTableStatsAsync(_dbAccessorFactory, name, _options.CommandTimeoutSeconds,
+                                e => logger?.LogWarning("AIChat RawDataAccess table statistics unavailable on {DataSource}: {Message}", name, e.Message), cancellationToken);
+                    }
+                    catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
+                    catch (Exception e)
+                    {
+                        logger?.LogWarning("AIChat RawDataAccess table statistics unavailable on {DataSource}: {Message}", name, e.Message);
+                    }
+                }
+            }
+            var result = new Schema(columns, stats);
             lock (_schemaLock)
             {
                 _schemaCache = result;
@@ -254,38 +338,105 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat.RawDataAccess
                 return JsonSerializer.Serialize(new { error = rejection });
             }
 
+            //1 回の返事で SQL に使える時間。使い切ったら DB へ行かない (失敗の繰り返しで DB を使い続けない)
+            var budget = QueryTimeBudget.Of(context.Items, _options.MaxQuerySecondsPerReply);
+            if (budget.IsExhausted)
+            {
+                context.Logger?.LogWarning("AIChat RawDataAccess query time budget exhausted for {User} (conversation {Conversation})", context.Request.UserName, context.Request.ConversationId);
+                return JsonSerializer.Serialize(new { error = $"この返事で SQL に使える時間 ({budget.LimitSeconds} 秒) を使い切りました。これ以上 SQL を実行せず、ここまでの結果で答えてください。" });
+            }
+
             context.Progress.Report(string.IsNullOrWhiteSpace(purpose) ? Resources.AIChat_RunningQuery : purpose.Trim());
             context.Logger?.LogInformation("AIChat RawDataAccess SQL by {User} (conversation {Conversation}) on {DataSource}: {Sql}", context.Request.UserName, context.Request.ConversationId, dataSourceName, sqlForLog);
 
+            //同じデータソースへ同時に走る SQL の本数を絞る (待ち時間は予算に数えない)
+            using var slot = await QueryGate.EnterAsync(dataSourceName, _options.MaxConcurrentQueries, _options.CommandTimeoutSeconds, context.CancellationToken);
+            if (slot == null)
+            {
+                context.Logger?.LogWarning("AIChat RawDataAccess SQL gate wait timed out on {DataSource}", dataSourceName);
+                return JsonSerializer.Serialize(new { error = "データベースが混み合っています。少し待ってからもう一度試してください。" });
+            }
+
+            var timeout = budget.CommandTimeoutSeconds(_options.CommandTimeoutSeconds);
+            var stopwatch = Stopwatch.StartNew();
             try
             {
-                await using var db = _dbAccessorFactory();
-                var connection = db.GetConnection(dataSourceName);
-                using var command = connection.CreateCommand();
-                command.CommandText = sql;
-                command.CommandTimeout = _options.CommandTimeoutSeconds;
-                command.Transaction = db.GetTransaction(dataSourceName) as DbTransaction;
-                using var reader = await command.ExecuteReaderAsync(context.CancellationToken);
-
                 var columns = new List<string>();
-                for (var i = 0; i < reader.FieldCount; i++) columns.Add(reader.GetName(i));
                 var rows = new List<object?[]>();
                 var truncated = false;
-                while (await reader.ReadAsync(context.CancellationToken))
+                var canceled = false;
+                IDbAccessor? db = null;
+                DbCommand? command = null;
+                DbDataReader? reader = null;
+                try
                 {
-                    if (rows.Count >= _options.MaxRows) { truncated = true; break; }
-                    var row = new object?[reader.FieldCount];
-                    for (var i = 0; i < reader.FieldCount; i++) row[i] = ToJsonValue(reader.IsDBNull(i) ? null : reader.GetValue(i));
-                    rows.Add(row);
+                    db = _dbAccessorFactory();
+                    var connection = db.GetConnection(dataSourceName);
+                    command = connection.CreateCommand();
+                    command.CommandText = sql;
+                    command.CommandTimeout = timeout;
+                    command.Transaction = db.GetTransaction(dataSourceName) as DbTransaction;
+                    reader = await command.ExecuteReaderAsync(context.CancellationToken);
+
+                    for (var i = 0; i < reader.FieldCount; i++) columns.Add(reader.GetName(i));
+                    while (await reader.ReadAsync(context.CancellationToken))
+                    {
+                        if (rows.Count >= _options.MaxRows) { truncated = true; break; }
+                        var row = new object?[reader.FieldCount];
+                        for (var i = 0; i < reader.FieldCount; i++) row[i] = ToJsonValue(reader.IsDBNull(i) ? null : reader.GetValue(i));
+                        rows.Add(row);
+                    }
+                    //上限を超えたら DB にクエリの中止を送る (送らずに閉じると、ドライバは残りの行を最後まで読み捨てる = DB は全件を送り切る)
+                    if (truncated && _options.CancelQueryAtRowLimit)
+                    {
+                        canceled = true;
+                        try { command.Cancel(); } catch { }
+                    }
                 }
+                finally
+                {
+                    await CloseAsync(reader, command, db, canceled);
+                }
+                context.Logger?.LogInformation("AIChat RawDataAccess SQL done by {User} on {DataSource}: {ElapsedMs} ms, rows={Rows}, truncated={Truncated}",
+                    context.Request.UserName, dataSourceName, stopwatch.ElapsedMilliseconds, rows.Count, truncated);
                 return Serialize(dataSourceName, columns, rows, truncated);
             }
-            catch (OperationCanceledException) { throw; }
+            catch (OperationCanceledException) when (context.CancellationToken.IsCancellationRequested) { throw; }
             catch (Exception e)
             {
-                context.Logger?.LogWarning("AIChat RawDataAccess SQL failed: {Message}", e.Message);
-                return JsonSerializer.Serialize(new { error = e.Message });
+                var timedOut = timeout > 0 && stopwatch.Elapsed >= TimeSpan.FromSeconds(timeout) - TimeSpan.FromMilliseconds(500);
+                context.Logger?.LogWarning("AIChat RawDataAccess SQL failed on {DataSource}: {ElapsedMs} ms, timedOut={TimedOut}: {Message}", dataSourceName, stopwatch.ElapsedMilliseconds, timedOut, e.Message);
+                return JsonSerializer.Serialize(new
+                {
+                    error = timedOut
+                        ? $"{timeout} 秒で時間切れになりました。同じ SQL を繰り返さず、期間などの条件で絞るか、集計の範囲を狭めるか、行数制限を付けてください。(元のエラー: {e.Message})"
+                        : e.Message
+                });
             }
+            finally
+            {
+                budget.Add(stopwatch.Elapsed);
+            }
+        }
+
+        //中止を送った後の後始末はドライバが「中止された」例外を出すことがある。読めた行は結果として返すので、その場合だけ握りつぶす
+        static async Task CloseAsync(DbDataReader? reader, DbCommand? command, IDbAccessor? db, bool canceled)
+        {
+            try
+            {
+                if (reader != null) await reader.DisposeAsync();
+            }
+            catch when (canceled) { }
+            try
+            {
+                if (command != null) await command.DisposeAsync();
+            }
+            catch when (canceled) { }
+            try
+            {
+                if (db != null) await db.DisposeAsync();
+            }
+            catch when (canceled) { }
         }
 
         string? ResolveDataSource(string? requested, out string? error)
