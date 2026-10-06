@@ -7,7 +7,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\..\..\Codeer.LowCode.Blazor.Extras.Server\Codeer.LowCode.Blazor.Extras.Server.csproj" />
     <ProjectReference Include="..\Extras.Client\Extras.Client.csproj" />
-    <PackageReference Include="Codeer.LowCode.Blazor.DbAccess" Version="0.1.0" />
+    <PackageReference Include="Codeer.LowCode.Blazor.DbAccess" Version="0.2.0" />
     <PackageReference Include="Microsoft.Extensions.AI.OpenAI" Version="10.7.0" />
   </ItemGroup>
   <ItemGroup>

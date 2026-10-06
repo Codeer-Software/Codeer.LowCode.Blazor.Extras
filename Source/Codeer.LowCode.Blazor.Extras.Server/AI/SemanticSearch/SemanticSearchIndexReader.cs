@@ -1,6 +1,7 @@
 using Codeer.LowCode.Blazor.DataIO.Db;
 using Codeer.LowCode.Blazor.DesignLogic;
 using Codeer.LowCode.Blazor.Extras.Designs;
+using Codeer.LowCode.Blazor.Extras.SemanticSearch;
 using Codeer.LowCode.Blazor.Repository.Design;
 using Codeer.LowCode.Blazor.SystemSettings;
 using System.Globalization;
@@ -11,16 +12,12 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
     /// SemanticSearchField の索引 (書き込み専用列 = 通常の読み込み経路では SELECT されない) を DB のベクトル検索で読む。
     /// 書き込み専用列は ModuleDataIO では読めないので IDbAccessor で直接 SELECT する (LoginAccountStore がパスワード列を読むのと同じ割り切り)。
     /// 距離計算は DB (pgvector / SQL Server 2025) に任せ、距離順の上位だけを読む。論理削除された行は除く。
-    /// 対応 DB は <see cref="SupportsDbSearch"/>。それ以外の DB では意味検索は使えない (サーバーでの比較はしない)。
+    /// 対応 DB は <see cref="SemanticSearchVector.SupportsDbSearch"/>。それ以外の DB では意味検索は使えない (サーバーでの比較はしない)。
     /// </summary>
     internal static class SemanticSearchIndexReader
     {
         /// <summary>DB 側で距離順に読んだ 1 件 (Score はコサイン類似度 0〜1 に揃える)。</summary>
         public sealed record ScoredEntry(string Id, string Text, double Score);
-
-        /// <summary>この DB 種別でベクトル検索 (距離関数) が使えるか。PostgreSQL は pgvector 拡張、SQL Server は 2025 以降が前提 (無ければ実行時エラー)。</summary>
-        public static bool SupportsDbSearch(DataSourceType type)
-            => type is DataSourceType.PostgreSQL or DataSourceType.SQLServer;
 
         /// <summary>ベクトルが入っている行の Id (再索引の missingOnly が「まだ無い行」を決めるのに使う)。どの DB でも読める (テキスト列を見るだけ)。</summary>
         public static async Task<HashSet<string>> ReadIndexedIdsAsync(IDbAccessor db, ModuleDesign module, SemanticSearchFieldDesign field, CancellationToken cancellationToken)
@@ -48,7 +45,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
             var idColumn = module.Fields.OfType<IdFieldDesign>().FirstOrDefault()?.DbColumn;
             if (string.IsNullOrWhiteSpace(module.DbTable) || string.IsNullOrWhiteSpace(idColumn) || !field.HasColumns) return new();
             var type = DataSourceTypeOf(db, dataSourceName);
-            var sql = BuildSearchSql(type, module.DbTable, idColumn, field.DbColumnText, field.DbColumnVectorSearch, LogicalDeleteColumn(module), VectorLiteral(type, queryVector), top);
+            var sql = BuildSearchSql(type, module.DbTable, idColumn, field.DbColumnText, field.DbColumnVectorSearch, LogicalDeleteColumn(module), SemanticSearchVector.Literal(type, queryVector), top);
             cancellationToken.ThrowIfCancellationRequested();
             var rows = await db.QueryAsync(dataSourceName, sql, new());
             var result = new List<ScoredEntry>();
@@ -65,34 +62,15 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
 
         /// <summary>
         /// 距離順に上位 top 件を取る SELECT。列 semantic_score にコサイン類似度 (1 - コサイン距離) を出す。
-        /// PostgreSQL: pgvector の <c>&lt;=&gt;</c> (コサイン距離)。SQL Server: <c>VECTOR_DISTANCE('cosine', …)</c>。
+        /// 距離の式は <see cref="SemanticSearchVector.CosineDistance"/> (画面の検索欄・権限の効く検索と同じ)。
         /// </summary>
         public static string BuildSearchSql(DataSourceType type, string table, string idColumn, string textColumn, string vectorColumn, string? logicalDeleteColumn, string vectorLiteral, int top)
         {
             var q = Quote(type);
             var notDeleted = string.IsNullOrWhiteSpace(logicalDeleteColumn) ? "" : $" and ({q(logicalDeleteColumn)} is null or cast({q(logicalDeleteColumn)} as integer) = 0)";
-            return type switch
-            {
-                DataSourceType.PostgreSQL =>
-                    $"select {q(idColumn)}, {q(textColumn)}, 1 - ({q(vectorColumn)} <=> {vectorLiteral}) as semantic_score from {q(table)} " +
-                    $"where {q(vectorColumn)} is not null{notDeleted} order by {q(vectorColumn)} <=> {vectorLiteral} limit {top}",
-                DataSourceType.SQLServer =>
-                    $"select top ({top}) {q(idColumn)}, {q(textColumn)}, 1 - VECTOR_DISTANCE('cosine', {q(vectorColumn)}, {vectorLiteral}) as semantic_score from {q(table)} " +
-                    $"where {q(vectorColumn)} is not null{notDeleted} order by VECTOR_DISTANCE('cosine', {q(vectorColumn)}, {vectorLiteral})",
-                _ => throw new NotSupportedException($"SemanticSearch: {type} does not support vector search in the database."),
-            };
-        }
-
-        /// <summary>質問ベクトルを SQL に埋め込むリテラル (数値だけをサーバーが並べるので注入の余地はない)。execute_sql の {embed:…} の置換にも使う。</summary>
-        public static string VectorLiteral(DataSourceType type, float[] vector)
-        {
-            var text = SemanticSearchVector.Encode(vector);
-            return type switch
-            {
-                DataSourceType.PostgreSQL => $"'{text}'::vector",
-                DataSourceType.SQLServer => $"CAST('{text}' AS VECTOR({vector.Length}))",
-                _ => throw new NotSupportedException($"SemanticSearch: {type} does not support vector search in the database."),
-            };
+            var distance = SemanticSearchVector.CosineDistance(type, q(vectorColumn), vectorLiteral);
+            var select = $"{q(idColumn)}, {q(textColumn)}, 1 - {distance} as semantic_score from {q(table)} where {q(vectorColumn)} is not null{notDeleted} order by {distance}";
+            return type == DataSourceType.SQLServer ? $"select top ({top}) {select}" : $"select {select} limit {top}";
         }
 
         /// <summary>SQL の方言ごとの、ベクトル検索の書き方 (AI への説明用)。</summary>

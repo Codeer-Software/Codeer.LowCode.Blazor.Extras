@@ -2849,6 +2849,51 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
         }
         
         /// <summary>
+        ///   The field '{0}' cannot be searched by meaning with this condition (set the text, vector and vector search columns of SemanticSearchField). に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string SemanticSearch_ConditionNotSupported {
+            get {
+                return ResourceManager.GetString("SemanticSearch_ConditionNotSupported", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   The semantic search on '{0}' has no embedding vector. に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string SemanticSearch_VectorRequired {
+            get {
+                return ResourceManager.GetString("SemanticSearch_VectorRequired", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Semantic search is not available on {0} (PostgreSQL with pgvector or SQL Server 2025 is required). に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string SemanticSearch_DbNotSupported {
+            get {
+                return ResourceManager.GetString("SemanticSearch_DbNotSupported", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Search: max distance に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string SemanticSearchFieldSearchMaxDistance {
+            get {
+                return ResourceManager.GetString("SemanticSearchFieldSearchMaxDistance", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Search by meaning に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string SemanticSearch_SearchPlaceholder {
+            get {
+                return ResourceManager.GetString("SemanticSearch_SearchPlaceholder", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Set the text column, the vector column and the vector search column. に類似しているローカライズされた文字列を検索します。
         /// </summary>
         internal static string SemanticSearchCheck_ColumnsRequired {
@@ -2872,6 +2917,15 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
         internal static string SemanticSearchText_False {
             get {
                 return ResourceManager.GetString("SemanticSearchText_False", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   SemanticSearchCheck_SearchHasNoEffectFormat
+        /// </summary>
+        internal static string SemanticSearchCheck_SearchHasNoEffectFormat {
+            get {
+                return ResourceManager.GetString("SemanticSearchCheck_SearchHasNoEffectFormat", resourceCulture);
             }
         }
         
@@ -3124,15 +3178,6 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
         internal static string EditHistoryRestoreVersion {
             get {
                 return ResourceManager.GetString("EditHistoryRestoreVersion", resourceCulture);
-            }
-        }
-
-        /// <summary>
-        ///   Looks up a localized string similar to Apply the content of version {0} to the form? It is confirmed when you save..
-        /// </summary>
-        internal static string EditHistoryRestoreConfirmFormat {
-            get {
-                return ResourceManager.GetString("EditHistoryRestoreConfirmFormat", resourceCulture);
             }
         }
 
@@ -3765,6 +3810,24 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
         internal static string CrossTab_InvalidFunction {
             get {
                 return ResourceManager.GetString("CrossTab_InvalidFunction", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Could not aggregate. See the notification for the reason. に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string CrossTab_AggregateFailed {
+            get {
+                return ResourceManager.GetString("CrossTab_AggregateFailed", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Only modules that have a table can be aggregated (modules defined by a QueryField or without a table cannot be used): {0} に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string CrossTab_NotTableModule {
+            get {
+                return ResourceManager.GetString("CrossTab_NotTableModule", resourceCulture);
             }
         }
         

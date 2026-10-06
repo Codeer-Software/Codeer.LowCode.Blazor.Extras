@@ -33,6 +33,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
             public const int DateBucketRequiresDate = 3;
             public const int IndexOutOfRange = 4;
             public const int UnknownField = 5;
+            public const int NotTableModule = 6;
         }
 
         public CrossTabFieldDesign() : base(typeof(CrossTabFieldDesign).FullName!) { }
@@ -253,6 +254,11 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
                 context.GetScriptMethodAttribute(GetType(), nameof(OnCellClick))).AddTo(result);
             if (string.IsNullOrEmpty(SearchCondition.ModuleName)) return result;
 
+            //集計はテーブルを持つモジュールだけ (サーバーが拒否する)。元モジュールは設計でしか変わらないのでここで見る。モジュールが無いことは SearchCondition の確認が出す
+            if (context.DesignData.Modules.Find(SearchCondition.ModuleName) is { } module
+                && (module.Fields.OfType<QueryFieldDesign>().Any() || string.IsNullOrEmpty(module.DbTable)))
+                result.Add(Info(context, Codes.NotTableModule, string.Format(Resources.CrossTab_NotTableModule, SearchCondition.ModuleName), nameof(SearchCondition)));
+
             foreach (var variable in Setting.Rows.Concat(Setting.Columns).Select(g => g.Variable)
                 .Concat(Setting.Measures.Where(m => m.Function != AggregateFunction.Count).Select(m => m.Variable)))
                 context.CheckFieldRelativeVariableExistence(Name, nameof(Setting), SearchCondition.ModuleName, variable).AddTo(result);
@@ -261,10 +267,10 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
             return result;
         }
 
-        FieldDesignCheckInfo Info(DesignCheckContext context, int code, string message) => new()
+        FieldDesignCheckInfo Info(DesignCheckContext context, int code, string message, string member = nameof(Setting)) => new()
         {
             Code = DesignCheckCode.Create(typeof(CrossTabFieldDesign), code),
-            Location = new FieldDesignDataLocation { Module = context.OwnerModule, Field = Name, Member = nameof(Setting) },
+            Location = new FieldDesignDataLocation { Module = context.OwnerModule, Field = Name, Member = member },
             Message = message,
         };
 

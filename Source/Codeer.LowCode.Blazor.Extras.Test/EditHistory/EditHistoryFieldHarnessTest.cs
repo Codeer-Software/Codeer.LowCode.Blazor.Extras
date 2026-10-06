@@ -285,9 +285,6 @@ namespace Codeer.LowCode.Blazor.Extras.Test.EditHistory
             var (module, field) = await CreateOrderModuleAsync(services, _v2);
 
             await field.RestoreAsync(field.Versions[0]);  // v3 へ (行 12 が無い → 論理削除なので Id を保って復活)
-            //DummyUIService の ShowMessageBox は空文字を返すので RestoreAsync は中断する。復元本体を直接呼ぶ
-            var revived = new List<(string, string)>();
-            await EditHistoryRestorer.ApplyAsync(module, field.Versions[0].Snapshot!, (m, id) => revived.Add((m, id)));
 
             var items = module.GetField<ListField>("Items")!;
             Assert.That(items.Rows.Count, Is.EqualTo(2));
@@ -296,7 +293,8 @@ namespace Codeer.LowCode.Blazor.Extras.Test.EditHistory
             Assert.That(row.GetIdText(), Is.EqualTo("12"));
             Assert.That(row.GetField<TextField>("Name")!.Value, Is.EqualTo("Z"));
             Assert.That(row.IsModified, Is.True, "値は Update として送られる");
-            Assert.That(revived, Is.EqualTo(new[] { ("OrderItem", "12") }));
+            var undeletes = field.GetSubmitData().ExtendedData.OfType<EditHistoryUndeleteData>().ToList();
+            Assert.That(undeletes.Select(e => e.HistoryRowId), Is.EqualTo(new[] { "103" }), "戻した版の履歴行が保存に同梱される");
         }
 
         [Test]

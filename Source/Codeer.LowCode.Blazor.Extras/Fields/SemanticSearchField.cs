@@ -6,6 +6,7 @@ using Codeer.LowCode.Blazor.Extras.SemanticSearch;
 using Codeer.LowCode.Blazor.Extras.Services;
 using Codeer.LowCode.Blazor.OperatingModel;
 using Codeer.LowCode.Blazor.Repository.Data;
+using Codeer.LowCode.Blazor.Repository.Match;
 using Codeer.LowCode.Blazor.Script;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -21,8 +22,44 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
     /// スクリプトから参照するには、このフィールドがそのレイアウトの DataOnlyFields (またはレイアウト) に入っていること。
     /// </para>
     /// </summary>
-    public class SemanticSearchField(SemanticSearchFieldDesign design) : FieldBase<SemanticSearchFieldDesign>(design)
+    public class SemanticSearchField(SemanticSearchFieldDesign design) : FieldBase<SemanticSearchFieldDesign>(design), ISearchableField
     {
+        /// <summary>検索レイアウトの検索欄に入れた文章 (探したい内容)。空なら条件なし。</summary>
+        public string? SearchText { get; private set; }
+
+        /// <summary>検索欄の文章を設定する。</summary>
+        [ScriptMethodToProperty(nameof(SearchText))]
+        public async Task SetSearchTextAsync(string? text)
+        {
+            if (SearchText == text) return;
+            SearchText = text;
+            ClearError();
+            NotifyStateChanged();
+            await Task.CompletedTask;
+        }
+
+        /// <summary>
+        /// 検索欄の文章を意味検索の条件にする (文章だけ。埋め込みはサーバーの前処理が作る)。近い順に並べたいときは、一覧の並びに "フィールド名.Value" を入れておく
+        /// (文章が空のときは本体がその並びを飛ばす)。
+        /// </summary>
+        [ScriptHide]
+        public MatchConditionBase? GetMatchCondition()
+            => string.IsNullOrWhiteSpace(SearchText) ? null : new FieldMatchCondition
+            {
+                FieldName = Design.Name,
+                Children = [new SemanticMatchCondition { FieldName = Design.Name, Text = SearchText.Trim(), MaxDistance = Design.SearchMaxDistance }],
+            };
+
+        /// <summary>URL 等から戻した条件を検索欄に反映する。</summary>
+        [ScriptHide]
+        public async Task SetMatchConditionAsync(FieldMatchCondition condition)
+        {
+            if (condition.Children.FirstOrDefault() is SemanticMatchCondition semantic) await SetSearchTextAsync(semantic.Text);
+        }
+
+        [ScriptHide]
+        public async Task ClearMatchConditionAsync() => await SetSearchTextAsync(null);
+
         static readonly TimeSpan _fastInterval = TimeSpan.FromSeconds(1);
         static readonly TimeSpan _slowInterval = TimeSpan.FromMilliseconds(2500);
         static readonly TimeSpan _fastPeriod = TimeSpan.FromSeconds(10);

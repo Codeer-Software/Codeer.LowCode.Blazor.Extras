@@ -38,6 +38,7 @@ SQL の集計 (件数・合計) は従来どおり `execute_sql`、内容で探�
 | DbColumnVector | string | ○ | ベクトルを保存する DB カラム名 (書き込み専用。`[0.1,-0.2,…]` の JSON 配列テキスト) |
 | DbColumnVectorSearch | string | ○ | DB のベクトル検索で距離計算に使うベクトル型の列 (後述。PostgreSQL は `DbColumnVector` をキャストする生成列、SQL Server は `DbColumnVector` と同じ列) |
 | MaxTextLength | int | | 文章の最大文字数 (既定 8000。超えた分は切り捨て。埋め込みモデルの入力上限の歯止め) |
+| SearchMaxDistance | double? | | 検索レイアウトの検索欄で探すときのコサイン距離の上限。空なら距離では絞らない ([画面の検索欄から探す](#画面の検索欄から探す-検索レイアウトに置く)) |
 
 3 つのカラムはすべて必要です (欠けるとデザインチェック `SemanticSearchFieldDesign:1`)。実テーブルに存在するかもチェックされます。
 
@@ -200,6 +201,41 @@ where customer_id = 3 and status <> '9'
 order by search_vector_v <=> {embed:納期遅れで揉めたクレーム}
 limit 5
 ```
+
+### 権限つきの検索 (SemanticMatchCondition)
+
+上の `search_records` (RawDataAccessAgent) は AI 用の DB 接続で直接読むので、ログインユーザーごとの行の条件や項目の権限は効きません。
+権限を効かせたいときは、意味検索を本体の一覧検索 (`ModuleDataIO.GetListAsync`) の条件として使います。`SemanticMatchCondition` (Extras) を検索条件に置くと、
+SemanticSearchField が自分の列で WHERE と並びの SQL を作り、本体がいつもどおりモジュールの閲覧権限・行の条件 (DataRead)・論理削除を掛けます (本体の `FieldSqlMatchCondition` / `ISqlMatchConditionFieldDesign` の仕組み)。
+
+```csharp
+var vector = (await embeddingProvider.EmbedAsync(new[] { "納期遅れで揉めたクレーム" }))[0];   // 索引と同じ埋め込みモデル
+var condition = new SearchCondition("Inquiry")
+{
+    Condition = MultiMatchCondition.And(
+        new FieldValueMatchCondition { SearchTargetVariable = "Status.Value", Comparison = MatchComparison.NotEqual, Value = MultiTypeValue.Create("9") },
+        new SemanticMatchCondition { FieldName = "Search", Vector = vector }),   // MaxDistance で距離の上限も付けられる
+    LimitCount = 5,
+};
+condition.SortConditions.Add(new SortCondition { Variable = "Search.Value" });   // 近い順 (コサイン距離の昇順)
+var rows = await moduleDataIO.GetListAsync(condition, 0);
+```
+
+- 索引の項目 (SemanticSearchField) を読めないユーザー (PermissionField) は拒否されます。距離計算は DB なので、PostgreSQL (pgvector) / SQL Server 2025 のモジュールだけです (他の DB では例外)
+- この条件はサーバーで実行する一覧検索だけのものです。設計に保存する条件 (権限の条件・ListField / LinkField の条件) には置けません (デザインチェックが指摘します)
+- ベクトルは呼び出し側が作って入れるか、`Text` (文章) だけを入れてサーバーの前処理 (`SemanticSearchService.ConditionInterceptor`) に埋めさせます (画面の検索欄はこちら)
+- AI チャットでは `ModuleDataAccessAgent` に `semanticSearch` を渡すと、この条件で検索する `search_records` が付きます ([AIChatField](AIChatField.md))
+
+### 画面の検索欄から探す (検索レイアウトに置く)
+
+検索レイアウトに SemanticSearchField を置くと、文章の入力欄 (「内容で探す」) が出ます。文章を入れて検索すると、一覧はその内容に近い行に絞られます (権限つきの検索と同じ仕組みで、行の条件・項目の読み取り権限が効きます)。
+
+- **近い順に並べるには、一覧の並び (ListField の SearchCondition の SortConditions) に `Search.Value` を入れておきます** (例: `[Search.Value 昇順, Subject 昇順]`)。文章が空のときはこの並びは飛ばされるので、普段は次の並び (件名順) になります。列ヘッダでの並べ替えも普段どおり使えます
+- 距離の上限 `SearchMaxDistance` (コサイン距離。0 = 同じ向き〜2) を設定すると、遠い行は出ません。空なら全行 (索引のある行) が対象で、並びだけが変わります
+- 距離の上限が空で、一覧の並びにも `Search.Value` が無いと、文章を入れても一覧は変わりません。デザインチェックが指摘します (`SemanticSearchFieldDesign:3`)
+- 文章を埋め込みにするのはサーバーです。ホストの `CustomizedModuleDataIO` のコンストラクタで `AddInterceptor(SemanticSearchIndex.Service.ConditionInterceptor)` を登録してください (テンプレートは登録済み)。登録していないと「埋め込みベクトルがありません」のエラーになります
+- 集計 (CrossTabField・集計チャート) を表示先にした検索でも同じ条件で絞れますが、近い順の並びは集計には関係しません
+- メモリ内ページング (`IsInMemoryPaging`) の一覧では、列ヘッダで並べ替えるとメモリ上で並べ直すので近い順は失われます
 
 ### 4. 既存データに一括でベクトルを付ける (再索引)
 

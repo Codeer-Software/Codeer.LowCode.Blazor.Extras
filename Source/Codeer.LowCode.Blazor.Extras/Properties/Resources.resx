@@ -1338,6 +1338,9 @@ Recipients: {1}</value>
   <data name="SemanticSearchText_False" xml:space="preserve">
     <value>No</value>
   </data>
+  <data name="SemanticSearchCheck_SearchHasNoEffectFormat" xml:space="preserve">
+    <value>The search layout '{0}' has a semantic search box, but the list using it ({1}) does not sort by {2}.Value and SearchMaxDistance is empty, so entering text only narrows the list to indexed records and does not change the order. Add {2}.Value to the list's SortConditions, or set SearchMaxDistance.</value>
+  </data>
   <data name="SemanticSearchCheck_FieldsNotLoadedFormat" xml:space="preserve">
     <value>The detail layout '{0}' does not load the fields {1} used for the semantic search text, so a record saved from this layout gets an incomplete text. Place those fields, or this field (with SourceFields set), in the layout or in DataOnlyFields.</value>
   </data>
@@ -1450,13 +1453,10 @@ Recipients: {1}</value>
     <value>Show this version</value>
   </data>
   <data name="EditHistoryRestoreVersion" xml:space="preserve">
-    <value>Restore this version</value>
-  </data>
-  <data name="EditHistoryRestoreConfirmFormat" xml:space="preserve">
-    <value>Apply the content of version {0} to the form? It is confirmed when you save.</value>
+    <value>Replace the content being edited with this version</value>
   </data>
   <data name="EditHistoryRestoredFormat" xml:space="preserve">
-    <value>Version {0} has been applied. Save to confirm.</value>
+    <value>The content being edited has been replaced with version {0}. Save to confirm.</value>
   </data>
   <data name="EditHistoryRestore" xml:space="preserve">
     <value>Restore</value>
@@ -1561,7 +1561,7 @@ Recipients: {1}</value>
     <value>{0} changed: {1}</value>
   </data>
   <data name="EditHistoryRestoreNothingApplied" xml:space="preserve">
-    <value>Nothing in this version could be applied to the form. Fields without write permission, attachments and system fields are not restored.</value>
+    <value>Nothing could be replaced with this version. Fields without write permission, attachments and system fields are not replaced.</value>
   </data>
   <data name="EditHistoryCheck_ChildHasOwnHistoryFormat" xml:space="preserve">
     <value>The module '{1}' of the owned records '{0}' has its own EditHistoryField, but edits made through this module are recorded only in this module's version, not in the history of '{1}'. Put '{0}' in {2} (not recorded through this module) or in {3} (recorded per row in the history of '{1}').</value>
@@ -1661,6 +1661,12 @@ Recipients: {1}</value>
   </data>
   <data name="CrossTab_InvalidFunction" xml:space="preserve">
     <value>{0} cannot be applied to {1}.</value>
+  </data>
+  <data name="CrossTab_NotTableModule" xml:space="preserve">
+    <value>Only modules that have a table can be aggregated (modules defined by a QueryField or without a table cannot be used): {0}</value>
+  </data>
+  <data name="CrossTab_AggregateFailed" xml:space="preserve">
+    <value>Could not aggregate. See the notification for the reason.</value>
   </data>
   <data name="CrossTabCanCustomize" xml:space="preserve">
     <value>Allow users to customize the aggregation</value>
@@ -1862,5 +1868,20 @@ Recipients: {1}</value>
   </data>
   <data name="TagCheck_CandidateRowCount" xml:space="preserve">
     <value>The candidate rows must be 1 or more.</value>
+  </data>
+  <data name="SemanticSearch_ConditionNotSupported" xml:space="preserve">
+    <value>The field '{0}' cannot be searched by meaning with this condition (set the text, vector and vector search columns of SemanticSearchField).</value>
+  </data>
+  <data name="SemanticSearch_VectorRequired" xml:space="preserve">
+    <value>The semantic search on '{0}' has no embedding vector. Register SemanticSearchService.ConditionInterceptor on the server's ModuleDataIO (AddInterceptor) to search by text.</value>
+  </data>
+  <data name="SemanticSearch_DbNotSupported" xml:space="preserve">
+    <value>Semantic search is not available on {0} (PostgreSQL with pgvector or SQL Server 2025 is required).</value>
+  </data>
+  <data name="SemanticSearchFieldSearchMaxDistance" xml:space="preserve">
+    <value>Search: max distance</value>
+  </data>
+  <data name="SemanticSearch_SearchPlaceholder" xml:space="preserve">
+    <value>Search by meaning</value>
   </data>
 </root>

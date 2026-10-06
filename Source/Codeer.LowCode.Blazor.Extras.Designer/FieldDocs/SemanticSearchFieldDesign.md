@@ -15,7 +15,7 @@ AI チャット ([AIChatField](AIChatFieldDesign.md) の `RawDataAccessAgent`) �
 このフィールドを置くだけでは**ベクトルは付かない**。埋め込みモデルの用意と保存時の索引付けはホストアプリの責務で、Extras.Server の `Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch.SemanticSearchService` を 1 つ作って使う (索引付け・再索引 API・AI チャットの意味検索が同じ入口)。
 
 - 保存時: `ModuleDataIO` の派生 (通常 `CustomizedModuleDataIO.AddAsync` / `UpdateAsync`) で `await semanticSearch.ApplyAsync(data, isNewData)` を呼ぶ。送られてきた文章に埋め込みを付ける (新規で文章が無ければサーバーで組み立てる = 一括取込)。埋め込みモデル未設定・失敗のときは文章だけ保存 (ベクトル NULL・警告ログ)
-- AI チャット: `RawDataAccessAgent` のコンストラクタ `semanticSearch` に同じ `SemanticSearchService` を渡す。渡していて埋め込みプロバイダが設定されているときだけ `search_records` が付く (対象は 3 列が設定済みで、データソースが PostgreSQL / SQL Server のモジュール)
+- AI チャット: `RawDataAccessAgent` / `ModuleDataAccessAgent` のコンストラクタ `semanticSearch` に同じ `SemanticSearchService` を渡す。渡していて埋め込みプロバイダが設定されているときだけ `search_records` が付く (対象は 3 列が設定済みで、データソースが PostgreSQL / SQL Server のモジュール)。`ModuleDataAccessAgent` の `search_records` は本体の一覧検索の条件 (`SemanticMatchCondition`) として走るので、行の条件・項目の読み取り権限が効く (RawDataAccess のほうは AI 用 DB ユーザーの範囲)
 - 再索引 (既存データへの一括付与): 保存時の索引付けは新しく保存した行にしか効かないので、導入時に溜まっている既存データにはフィールドのスクリプト `Reindex()` で全行にまとめてベクトルを付ける (1 回。以後は保存時に追従)。ホストは同じ `SemanticSearchService` の `StartReindexAsync` / `GetReindexStatus` / `CancelReindex` を、AIChat と同じ形の Controller (POST / GET / DELETE `api/semantic_search/reindex`) から使う。クライアントは `SemanticSearchField.EndPoint` にその URL を設定する。デザイン側はフィールドのスクリプト `Reindex()` を ButtonField から呼ぶだけ
 - 埋め込みは Extras.Server の `IEmbeddingProvider` (メールの IMailSender と同じ作り)。実装は `AzureOpenAIEmbeddingProvider` と、Microsoft.Extensions.AI の生成器を包む `EmbeddingGeneratorProvider` (別プロバイダは IEmbeddingProvider を実装して対応表に足す)。テンプレートは appsettings の `SemanticSearch.EmbeddingProvider` の呼び名で対応表 (`EmbeddingProviderTable`) から選ぶ。空なら意味検索は無効 (文章だけ保存)。モデルを変えたら列の次元を合わせて作り直し、`Reindex()` で全行再索引
 
@@ -51,6 +51,7 @@ AI チャット ([AIChatField](AIChatFieldDesign.md) の `RawDataAccessAgent`) �
 | `DbColumnVector` | string | `""` | 埋め込みベクトル (`[0.1,-0.2,…]` の JSON 配列テキスト) を保存する DB カラム名。**書き込み専用・必須**。 |
 | `DbColumnVectorSearch` | string | `""` | DB のベクトル検索で距離計算に使うベクトル型の列。**必須**。PostgreSQL は `DbColumnVector` をキャストする生成列の名前、SQL Server は `DbColumnVector` と同じ列名 (VECTOR 型にする)。 |
 | `MaxTextLength` | int | `8000` | 文章の最大文字数 (埋め込みモデルの入力上限の歯止め)。 |
+| `SearchMaxDistance` | double? | `null` | 検索レイアウトの検索欄で探すときのコサイン距離の上限 (0〜2)。空なら距離では絞らない (並びだけ)。 |
 | `OnReindexCompleted` | string | `""` | スクリプトの `Reindex()` / `ReindexMissing()` で起こした再索引が終わった (成功・失敗・中断) ときに呼ぶスクリプト関数名。結果は `ReindexProcessed` / `ReindexError` で見る。 |
 
 3 つのカラムは**すべて必須** (欠けるとデザインチェック `SemanticSearchFieldDesign:1`)。実テーブルに存在するかも検証される。`SourceFields` の各名前が同じモジュールに存在するかも検証される。
@@ -105,12 +106,19 @@ AI チャットの `execute_sql` の SQL に `{embed:探したい内容}` と書
 
 > 既定状態は [../../Defaults/SemanticSearchFieldDesign.json](../../Defaults/SemanticSearchFieldDesign.json) を参照。
 
+### 検索レイアウトに置く (画面の検索欄)
+
+- 検索レイアウトに置くと文章の入力欄が出る。文章で一覧を絞れる (行の条件・項目の読み取り権限は一覧検索と同じに効く)
+- **近い順にしたいときは、一覧の並び (ListField の `SearchCondition.SortConditions`) の先頭に `{ "Variable": "Search.Value", "IsDescending": false }` を入れる**。文章が空のときはこの並びは飛ばされ、次の並びになる
+- 文章を埋め込みにするのはサーバー (ホストが `AddInterceptor(SemanticSearchIndex.Service.ConditionInterceptor)` を登録済みであること。テンプレートは登録済み)
+- `SearchMaxDistance` が空で、その検索レイアウトを使う一覧 (ページの一覧・SearchField の結果の一覧・LinkField の検索ダイアログ) の並びに `Search.Value` が無いと、文章を入れても索引のある行に絞られるだけで一覧は変わらない。デザインチェック `SemanticSearchFieldDesign:3` が指摘する (並びに入れるか、`SearchMaxDistance` を設定する)
+
 ### 注意
 
 - 意味検索できるのは PostgreSQL (pgvector) と SQL Server 2025 のデータソースだけ。SQLite / MySQL / Oracle のモジュールは検索対象にならない
 - 埋め込みモデルを変えたらベクトル列を作り直して全行の再索引が要る (次元が違うベクトルは入らない)
 - 文章は AI プロバイダに送られる。個人情報などを入れたくないときは `SourceFields` で絞る
-- 読める範囲と接続は `RawDataAccessOptions.DataSourceNames` で決まる (モジュールのデータソースが一覧に無ければ、AI 用の別名接続のうち同じ DB 種別のもので同じ表を引く)。行ごとの DataReadCondition は効かない。置くページの UserReadCondition で使える人を絞る
+- `RawDataAccessAgent` の `search_records` だけは AI 用の DB 接続で直接読む: 読める範囲と接続は `RawDataAccessOptions.DataSourceNames` で決まり (モジュールのデータソースが一覧に無ければ、AI 用の別名接続のうち同じ DB 種別のもので同じ表を引く)、行ごとの DataReadCondition・項目の読み取り権限は効かない。置くページの UserReadCondition で使える人を絞る。画面の検索欄と `ModuleDataAccessAgent` は一覧検索なので行の条件・項目の権限が効く
 
 ## Script
 

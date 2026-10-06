@@ -44,7 +44,7 @@
 | [PasswordHashField](docs/PasswordHashField.md) | パスワードを Submit 時にハッシュ + ソルトへ変換して DB に書き込む補助フィールド (サーバサイド実装が必要)。ログインユーザーモジュールでは LoginAccountContractField の PasswordField で代替できる |
 | [OrientationLockField](docs/OrientationLockField.md) | タッチ端末で画面の向き(横/縦)が指定と異なるとき、全画面オーバーレイで回転を促すフィールド |
 | [AITextAnalyzerField](docs/AITextAnalyzerField.md) | 帳票ファイルや自由テキストを AI で解析し、モジュールのフィールドへ自動入力する入力補助フィールド (Azure OpenAI + Document Intelligence を使用) |
-| [AIChatField](docs/AIChatField.md) | AI (サーバー側の Agent) とのチャット UI。送信→ポーリングで返事を受け取り HTML で表示する。Agent は名前で選び (`Agent` プロパティ)、標準で `RawDataAccessAgent` (Microsoft.Extensions.AI の IChatClient で会話し、DB を SQL で読んで集計・SVG グラフで答える) を用意 |
+| [AIChatField](docs/AIChatField.md) | AI (サーバー側の Agent) とのチャット UI。送信→ポーリングで返事を受け取り HTML で表示する。Agent は名前で選び (`Agent` プロパティ)、標準で `RawDataAccessAgent` (Microsoft.Extensions.AI の IChatClient で会話し、DB を SQL で読んで集計・SVG グラフで答える) と `ModuleDataAccessAgent` (ログインユーザーの権限でレコードを読み、本体の集計 API で集計・クロス集計) を用意 |
 | [SemanticSearchField](docs/SemanticSearchField.md) | 行を「内容の意味で探せる」ようにする補助フィールド (UI なし)。Submit 時に対象フィールドを「表示名: 値」の文章にして送り、サーバーが埋め込みベクトルを付けて書き込み専用の列に保存する。AIChatField の `RawDataAccessAgent` が `search_records` で「似た事例」を探し、AI の SQL の中でも `{embed:…}` で意味の近さを使える。距離計算は DB のベクトル検索 (PostgreSQL pgvector / SQL Server 2025) が行う = 対応 DB 限定 (サーバサイド実装が必要) |
 
 ### 一覧の見出しに置く部品
@@ -76,7 +76,7 @@ Codeer.LowCode.Blazor 本体が持つのは認可だけで、認証 (ログイ�
 | [MailSender](docs/MailSender.md) | 担当者本人のアカウント (Gmail / Microsoft 365 / SMTP) 名義で送る Windows アプリ (`Tools/MailSender` をビルドして使う)。Web のプレビュー HTML を開いて送信。トークンは本人の PC にだけ置く。Web アプリのシステム送信者用トークンの発行にも使う |
 | [承認フロー](docs/ApprovalFlow.md) | ApprovalFlowField を申請書に置くだけで申請・承認・却下・差し戻し・取り下げ・再申請・回覧。承認データは通常のモジュール。状態遷移はサーバーが検証。履歴だけを別の場所に出す ApprovalHistoryField。契約フィールド: ApprovalFlowContractField / ApprovalMemberContractField / ApprovalHistoryContractField |
 | [監査ログ](docs/AuditLog.md) | いつ・誰が・どこから・何に・何をして・どうなったかをサーバーが WebAPI ごとに記録する。フィールド不要で appsettings だけで有効化。DB / JSON Lines ファイルへ出力、失敗・権限拒否も記録、保持期限で自動削除、監査ログのテーブルはアプリ経路から追記専用 (サーバサイド実装が必要) |
-| [編集履歴](docs/EditHistory.md) | EditHistoryField をモジュールに置くと保存 (作成・更新・削除) ごとにレコード全体 (明細込み) のスナップショットが履歴モジュールへ記録される。詳細画面に版の一覧 (変更フィールドの 旧 → 新)・「この版を表示」・「この版に戻す」(フォームへ反映して保存で確定)・削除したレコードの復活。履歴は通常のモジュール = 閲覧権限は履歴モジュールの設定で、版の内容は読む人の権限に合わせて返される (サーバサイド実装が必要)。履歴モジュールに置く EditHistoryContractField (契約) / EditHistoryUndeleteButtonField (削除したレコードの復活ボタン) |
+| [編集履歴](docs/EditHistory.md) | EditHistoryField をモジュールに置くと保存 (作成・更新・削除) ごとにレコード全体 (明細込み) のスナップショットが履歴モジュールへ記録される。詳細画面に版の一覧 (変更フィールドの 旧 → 新)・「この版を表示」・「この版に置き換える」(フォームへ反映して保存で確定)・削除したレコードの復活。履歴は通常のモジュール = 閲覧権限は履歴モジュールの設定で、版の内容は読む人の権限に合わせて返される (サーバサイド実装が必要)。履歴モジュールに置く EditHistoryContractField (契約) / EditHistoryUndeleteButtonField (削除したレコードの復活ボタン) |
 
 いずれもデザイナの **Tools > メールのセットアップ / 承認フローのセットアップ / 編集履歴のセットアップ / 監査ログのセットアップ / タグのセットアップ** (または CLI の `mail-setup` / `approval-setup` / `edit-history-setup` / `audit-log-setup` / `tag-setup`) で
 必要なモジュール群 (監査ログは閲覧モジュールとテーブル作成 DDL) を生成できます。
@@ -110,7 +110,7 @@ Codeer.LowCode.Blazor 本体が持つのは認可だけで、認証 (ログイ�
 ## サーバーサービス (Codeer.LowCode.Blazor.Extras.Server)
 
 - AITextAnalyzeService — Azure Document Intelligence + Azure OpenAI による帳票・テキスト解析 (AITextAnalyzerField のサーバー側)
-- AI チャット — AIChatService (AIChatField の受け口。送信をバックグラウンドの Agent に渡し、ポーリングに状態を返す) と標準 Agent の RawDataAccessAgent (アプリの設計を読み、DB を SQL で読んで集計・グラフで答える)。独自の Agent は IAIChatAgent で追加。[AIChatField](docs/AIChatField.md)
+- AI チャット — AIChatService (AIChatField の受け口。送信をバックグラウンドの Agent に渡し、ポーリングに状態を返す) と標準 Agent の RawDataAccessAgent (アプリの設計を読み、DB を SQL で読んで集計・グラフで答える)・ModuleDataAccessAgent (ログインユーザーの権限で本体を通して読み、集計 API で集計・クロス集計)。独自の Agent は IAIChatAgent で追加。[AIChatField](docs/AIChatField.md)
 - 意味検索 — SemanticSearchService (SemanticSearchField のサーバー側。保存時に行の文章へ埋め込みベクトルを付け、再索引をジョブで実行し、AI チャットに search_records ツールを提供)。埋め込みモデルは IEmbeddingProvider (Azure OpenAI 実装を同梱。独自実装で差し替え可)。類似度の計算は DB 側 (PostgreSQL pgvector / SQL Server 2025)。[SemanticSearchField](docs/SemanticSearchField.md)
 - 認証 — LoginAccountStore (ID/パスワード照合・ユーザー行の解決) / 外部 IdP (OidcLoginProvider と Entra / Google / Cognito 実装) / TotpLogin・EmailOtpLogin (二要素認証)。[認証の全体像](docs/Authentication.md)
 - メール送信 — MailDispatcher (テンプレート解決・一斉送信・送信履歴) と SMTP / Microsoft Graph / SendGrid / Gmail API 送信。独自の送信手段は IMailSender で追加

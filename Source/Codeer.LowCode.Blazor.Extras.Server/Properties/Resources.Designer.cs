@@ -178,6 +178,24 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Properties {
         
         
         /// <summary>
+        ///   Aggregating… に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string AIChat_Aggregating {
+            get {
+                return ResourceManager.GetString("AIChat_Aggregating", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Reading records… に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string AIChat_ReadingRecords {
+            get {
+                return ResourceManager.GetString("AIChat_ReadingRecords", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Searching for similar records… に類似しているローカライズされた文字列を検索します。
         /// </summary>
         internal static string AIChat_SearchingRecords {
@@ -186,6 +204,15 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Properties {
             }
         }
 
+        /// <summary>
+        ///   Semantic search is not available because the embedding provider is not configured. に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string SemanticSearch_ProviderNotConfigured {
+            get {
+                return ResourceManager.GetString("SemanticSearch_ProviderNotConfigured", resourceCulture);
+            }
+        }
+        
         /// <summary>
         ///   Module '{0}' has no SemanticSearchField named '{1}'. に類似しているローカライズされた文字列を検索します。
         /// </summary>

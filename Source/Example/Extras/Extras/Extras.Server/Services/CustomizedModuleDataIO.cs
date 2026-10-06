@@ -25,6 +25,8 @@ namespace Extras.Server.Services
             AddInterceptor(new AuditIOInterceptor(designData, SystemConfig.Instance.AuditLog.Database));
             //編集履歴: EditHistoryField を置いたモジュールの保存ごとに履歴モジュールへスナップショットを書き、履歴モジュールを読むときは Snapshot を読む人の権限に落とす (結線はこの 1 行)
             AddInterceptor(new EditHistoryRecorder(designData));
+            //意味検索 (SemanticSearchField): 検索欄の文章を埋め込みにしてから検索する
+            AddInterceptor(SemanticSearchIndex.Service.ConditionInterceptor);
         }
 
 

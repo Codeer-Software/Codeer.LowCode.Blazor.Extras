@@ -192,7 +192,9 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             {
                 var totals = Design.ShowRowTotals || Design.ShowColumnTotals || Design.ShowGrandTotal || ValueDisplay != CrossTabValueDisplay.Value;
                 Table = await CrossTabBuilder.BuildAsync(condition, _rows.Count, Services.ModuleDataService.AggregateAsync, totals, MaxCellCount);
-                _tableCondition = condition;
+                //null = ホストの集計 API が失敗を返した (理由はホストが通知済み)
+                _tableCondition = Table == null ? null : condition;
+                if (Table == null) LoadError = Properties.Resources.CrossTab_AggregateFailed;
             }
             catch (Exception e)
             {

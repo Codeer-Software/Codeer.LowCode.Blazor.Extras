@@ -91,6 +91,7 @@ public class AggregateSort { public AggregateSortTarget Target; public int Index
 - 元モジュールの行の条件 (DataReadCondition)・モジュールの閲覧条件・項目の読み取り権限が効く。読めない項目を行・列・値・条件に使うと権限エラー (結果を黙って変えない)
 - リンク先の行の条件は効かない (一覧のリンク表示値と同じ)。隠したいなら親側の PermissionField で
 - 集計はホストの集計 API を通る。古いホスト (アプリテンプレート更新前) では「ホスト未対応」のエラーになる
+- SQLite では日付の列を DATE / DATETIME で宣言する。TEXT で宣言した列は日付の単位 (月・四半期・年など) でまとめられず、セルクリックの明細の絞り込みも効かない
 
 ## Script
 

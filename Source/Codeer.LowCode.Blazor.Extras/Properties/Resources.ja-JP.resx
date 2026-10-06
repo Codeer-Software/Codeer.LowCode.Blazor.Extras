@@ -1338,6 +1338,9 @@
   <data name="SemanticSearchText_False" xml:space="preserve">
     <value>いいえ</value>
   </data>
+  <data name="SemanticSearchCheck_SearchHasNoEffectFormat" xml:space="preserve">
+    <value>検索レイアウト '{0}' に意味検索の欄がありますが、この検索レイアウトを使う一覧 ({1}) の並びに {2}.Value が無く、距離の上限 (SearchMaxDistance) も空なので、文章を入れても一覧は索引のある行に絞られるだけで並びも変わりません。一覧の並び (SortConditions) に {2}.Value を入れるか、SearchMaxDistance を設定してください。</value>
+  </data>
   <data name="SemanticSearchCheck_FieldsNotLoadedFormat" xml:space="preserve">
     <value>詳細レイアウト '{0}' は意味検索の文章に使うフィールド {1} を読み込まないため、このレイアウトから保存した行の文章が欠けます。そのフィールドか、このフィールド (SourceFields を設定して) をレイアウトか DataOnlyFields に含めてください。</value>
   </data>
@@ -1450,16 +1453,13 @@
     <value>この版を表示</value>
   </data>
   <data name="EditHistoryRestoreVersion" xml:space="preserve">
-    <value>この版に戻す</value>
-  </data>
-  <data name="EditHistoryRestoreConfirmFormat" xml:space="preserve">
-    <value>版 {0} の内容をフォームに反映します。保存すると確定します。よろしいですか？</value>
+    <value>編集中の内容をこの版に置き換える</value>
   </data>
   <data name="EditHistoryRestoredFormat" xml:space="preserve">
-    <value>版 {0} の内容を反映しました。保存して確定してください。</value>
+    <value>編集中の内容を版 {0} に置き換えました。保存して確定してください。</value>
   </data>
   <data name="EditHistoryRestore" xml:space="preserve">
-    <value>戻す</value>
+    <value>復活する</value>
   </data>
   <data name="EditHistoryCancel" xml:space="preserve">
     <value>キャンセル</value>
@@ -1549,7 +1549,7 @@
     <value>編集履歴と退避 (削除テーブルへの移動) は併用できません。論理削除か物理削除にしてください。</value>
   </data>
   <data name="EditHistoryCheck_OwnedRecordsNotHeldFormat" xml:space="preserve">
-    <value>モジュール '{0}' の従属レコード '{1}' はランタイムで全件を持たない設定 (サーバーページングの一覧など) なので、'{2}' の編集履歴の「この版に戻す」で差し替えられません。全件を持つ設定 (一覧ならメモリ内ページングか件数制限なし) にしてください。</value>
+    <value>モジュール '{0}' の従属レコード '{1}' はランタイムで全件を持たない設定 (サーバーページングの一覧など) なので、'{2}' の編集履歴の「この版に置き換える」で差し替えられません。全件を持つ設定 (一覧ならメモリ内ページングか件数制限なし) にしてください。</value>
   </data>
   <data name="EditHistoryRecordRestored" xml:space="preserve">
     <value>レコードが復活しました</value>
@@ -1561,7 +1561,7 @@
     <value>変更 {0} 項目: {1}</value>
   </data>
   <data name="EditHistoryRestoreNothingApplied" xml:space="preserve">
-    <value>この版から反映できる項目がありませんでした。書き込み権限のない項目・添付ファイル・システム項目は対象外です。</value>
+    <value>この版に置き換えられる項目がありませんでした。書き込み権限のない項目・添付ファイル・システム項目は対象外です。</value>
   </data>
   <data name="EditHistoryCheck_ChildHasOwnHistoryFormat" xml:space="preserve">
     <value>従属レコード '{0}' のモジュール '{1}' は自分の EditHistoryField を持っていますが、このモジュール経由の編集はこのモジュールの版にだけ記録され、'{1}' の履歴には残りません。'{0}' を {2} (このモジュール経由では記録しない) か {3} ('{1}' の履歴に行ごとに記録する) に指定してください。</value>
@@ -1661,6 +1661,12 @@
   </data>
   <data name="CrossTab_InvalidFunction" xml:space="preserve">
     <value>{0} は {1} に使えません。</value>
+  </data>
+  <data name="CrossTab_NotTableModule" xml:space="preserve">
+    <value>集計できるのはテーブルを持つモジュールだけです (QueryField で定義したモジュール・テーブルの無いモジュールは使えません): {0}</value>
+  </data>
+  <data name="CrossTab_AggregateFailed" xml:space="preserve">
+    <value>集計できませんでした。理由は画面の通知を確認してください。</value>
   </data>
   <data name="CrossTabCanCustomize" xml:space="preserve">
     <value>利用者が集計を変更できる</value>
@@ -1862,5 +1868,20 @@
   </data>
   <data name="TagCheck_CandidateRowCount" xml:space="preserve">
     <value>候補の行数は 1 以上にしてください。</value>
+  </data>
+  <data name="SemanticSearch_ConditionNotSupported" xml:space="preserve">
+    <value>フィールド '{0}' はこの条件で意味検索できません (SemanticSearchField の文章・ベクトル・ベクトル検索の列を設定してください)。</value>
+  </data>
+  <data name="SemanticSearch_VectorRequired" xml:space="preserve">
+    <value>'{0}' の意味検索に埋め込みベクトルがありません。文章で探すには、サーバーの ModuleDataIO に SemanticSearchService.ConditionInterceptor を登録してください (AddInterceptor)。</value>
+  </data>
+  <data name="SemanticSearch_DbNotSupported" xml:space="preserve">
+    <value>{0} では意味検索を使えません (pgvector を入れた PostgreSQL か SQL Server 2025 が必要です)。</value>
+  </data>
+  <data name="SemanticSearchFieldSearchMaxDistance" xml:space="preserve">
+    <value>検索欄: 距離の上限</value>
+  </data>
+  <data name="SemanticSearch_SearchPlaceholder" xml:space="preserve">
+    <value>内容で探す</value>
   </data>
 </root>
