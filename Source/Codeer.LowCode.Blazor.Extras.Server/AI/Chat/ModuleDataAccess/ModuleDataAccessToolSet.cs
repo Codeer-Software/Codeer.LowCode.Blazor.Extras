@@ -246,7 +246,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat.ModuleDataAccess
             };
             //値の項目 + 子一覧 (ListField / ModuleField)。孫 (子一覧の中の子一覧) は読まない
             condition.SelectFields = SelectFields(design, module, Enumerable.Empty<string>())
-                .Concat(module.Fields.Where(f => f is ListFieldDesign or ModuleFieldDesign).Select(f => f.Name)).Distinct().ToList();
+                .Concat(module.Fields.Where(f => f is ListFieldDesignBase or ModuleFieldDesign).Select(f => f.Name)).Distinct().ToList();
 
             context.Progress.Report(string.IsNullOrWhiteSpace(purpose) ? Resources.AIChat_ReadingRecords : purpose.Trim());
             context.Logger?.LogInformation("AIChat ModuleDataAccess get_record by {User} (conversation {Conversation}): module={Module} id={Id}", context.Request.UserName, context.Request.ConversationId, module.Name, id);
@@ -258,20 +258,33 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat.ModuleDataAccess
                 if (data == null) return Error($"モジュール '{module.Name}' に Id '{id}' のレコードは無いか、今のユーザーには読めません。");
 
                 var children = new Dictionary<string, object?>();
+                var childLists = new List<Dictionary<string, object?>>();
+                //件数上限 (ページング) のある一覧は本体が親と一緒に読まない (画面もページで読む)。無いものとして返すと AI が「明細は無い」と誤るので、読み方を添える
+                foreach (var paged in module.Fields.OfType<ListFieldDesignBase>().Where(f => f.SearchCondition.LimitCount != null))
+                {
+                    children[paged.Name] = new Dictionary<string, object?>
+                    {
+                        ["module"] = paged.SearchCondition.ModuleName,
+                        ["rowCount"] = null,
+                        ["note"] = $"件数が多い一覧なのでここには含めていません。find_records でモジュール '{paged.SearchCondition.ModuleName}' をこのレコードの Id で絞って読んでください。",
+                    };
+                }
                 foreach (var (name, field) in data.Fields)
                 {
                     switch (field)
                     {
                         case ListFieldData list:
                         {
-                            var childModule = design.Modules.Find((module.Fields.FirstOrDefault(f => f.Name == name) as ListFieldDesign)?.SearchCondition.ModuleName ?? string.Empty);
-                            children[name] = new Dictionary<string, object?>
+                            var childModule = design.Modules.Find((module.Fields.FirstOrDefault(f => f.Name == name) as ListFieldDesignBase)?.SearchCondition.ModuleName ?? string.Empty);
+                            var entry = new Dictionary<string, object?>
                             {
                                 ["module"] = childModule?.Name,
                                 ["rowCount"] = list.Children.Count,
                                 ["truncated"] = list.Children.Count > _options.MaxRows,
                                 ["rows"] = list.Children.Take(_options.MaxRows).Select(c => ModuleDataConverter.ToRow(design, childModule, c)).ToList(),
                             };
+                            children[name] = entry;
+                            childLists.Add(entry);
                             break;
                         }
                         case ModuleFieldData child when !string.IsNullOrEmpty(child.Id):
@@ -287,13 +300,25 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat.ModuleDataAccess
                         }
                     }
                 }
-                return Serialize(new Dictionary<string, object?>
+                var payload = new Dictionary<string, object?>
                 {
                     ["module"] = module.Name,
                     ["id"] = id.Trim(),
                     ["row"] = ModuleDataConverter.ToRow(design, module, data),
                     ["children"] = children,
-                }, new List<Dictionary<string, object?>>());
+                };
+                //結果が大きすぎれば、いちばん行の多い子一覧から半分に減らす (他のツールと同じ歯止め)
+                while (true)
+                {
+                    var json = JsonSerializer.Serialize(payload);
+                    if (json.Length <= _options.MaxResultChars) return json;
+                    var largest = childLists.OrderByDescending(e => ((List<Dictionary<string, object?>>)e["rows"]!).Count).FirstOrDefault();
+                    if (largest == null) return json;
+                    var rows = (List<Dictionary<string, object?>>)largest["rows"]!;
+                    if (rows.Count == 0) return json;
+                    rows.RemoveRange(rows.Count / 2, rows.Count - rows.Count / 2);
+                    largest["truncated"] = true;
+                }
             });
         }
 

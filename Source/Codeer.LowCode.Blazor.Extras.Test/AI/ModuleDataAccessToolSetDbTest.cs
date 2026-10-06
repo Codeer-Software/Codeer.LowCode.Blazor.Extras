@@ -134,6 +134,16 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
                     SortConditions = { new SortCondition { Variable = "Id.Value" } },
                 },
             });
+            //件数上限つき (ページングで読む) 一覧。本体は親と一緒に読まない
+            order.Fields.Add(new ListFieldDesign
+            {
+                Name = "PagedLines",
+                SearchCondition = new SearchCondition("OrderLine")
+                {
+                    Condition = new FieldVariableMatchCondition { SearchTargetVariable = "Order.Value", Comparison = MatchComparison.Equal, Variable = "Id.Value" },
+                    LimitCount = 10,
+                },
+            });
             var permission = new PermissionFieldDesign { Name = "P", TargetFields = { "Amount" } };
             permission.ReadCondition.Condition = Match("CurrentUser.Rank.Value", MatchComparison.GreaterThanOrEqual, MultiTypeValue.Create(20));
             order.Fields.Add(permission);
@@ -629,6 +639,19 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
             Assert.That(lines.GetProperty("module").GetString(), Is.EqualTo("OrderLine"));
             Assert.That(lines.GetProperty("rowCount").GetInt32(), Is.EqualTo(2), lines.ToString());
             Assert.That(lines.GetProperty("rows").EnumerateArray().Select(r => r.TryGetProperty("Item", out var item) ? item.GetString() : null), Is.EqualTo(new[] { "天板", "脚" }), lines.ToString());
+            //件数上限つきの一覧は行を含めず、読み方だけ添える
+            var paged = record.GetProperty("children").GetProperty("PagedLines");
+            Assert.That(paged.GetProperty("rowCount").ValueKind, Is.EqualTo(JsonValueKind.Null));
+            Assert.That(paged.GetProperty("note").GetString(), Does.Contain("find_records"));
+            Assert.That(paged.TryGetProperty("rows", out _), Is.False);
+
+            //結果が大きすぎれば子一覧の行を半分に減らして truncated
+            var fullLength = record.GetRawText().Length;
+            var small = await InvokeAsync(Create(o => o.MaxResultChars = fullLength - 1).CreateTools(Context("2")).ToList(), "get_record", new() { ["moduleName"] = "Order", ["purpose"] = "p", ["id"] = "1" });
+            var trimmed = small.GetProperty("children").GetProperty("Lines");
+            Assert.That(trimmed.GetProperty("rows").GetArrayLength(), Is.EqualTo(1), small.ToString());
+            Assert.That(trimmed.GetProperty("truncated").GetBoolean(), Is.True);
+            Assert.That(trimmed.GetProperty("rowCount").GetInt32(), Is.EqualTo(2), "総数はそのまま");
 
             //担当 B の行 (4) は行の条件で読めない = 無いのと同じ
             var hidden = await InvokeAsync(tools, "get_record", new() { ["moduleName"] = "Order", ["purpose"] = "p", ["id"] = "4" });
