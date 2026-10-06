@@ -25,7 +25,7 @@
 | [CrossTabField](docs/CrossTabField.md) | クロス集計表。行の項目 × 列の項目 で件数・合計・平均などを集計して表示 (集計はサーバー側・権限は一覧と同じ) |
 | [RichTextField](docs/RichTextField.md) | 書式付きテキストエディタ。太字・色・リンクなどのHTMLフォーマットに対応 |
 | [MarkdownField](docs/MarkdownField.md) | Markdown エディタ / ビューア。Markdown をプレーンテキストのまま保存し、閲覧時は HTML に描画。ツールバーとプレビュー (タブ / 左右並び) 付き。生 HTML は無効化 (外部ライブラリ Markdig を使用) |
-| [TagField](docs/TagField.md) | タグ入力。チップ表示・× で外す・既存のタグを候補に出す。値は「, 」区切りの 1 文字列として保存 (既存のテキスト列をそのまま使える)。検索条件では「すべて含む / いずれかを含む」で絞り込める |
+| [TagField](docs/TagField.md) | タグ入力。チップ表示・× で外す・マスタのタグを候補に出す。タグはテーブルに持つ (タグのマスタ + タグを付けるモジュールごとのタグ付け。CLB の多対多の形)。検索条件では「すべて含む / いずれかを含む」で絞り込める。一覧の列にも置ける。Tools > タグのセットアップ (CLI `tag-setup`) でモジュールと DDL を生成。契約フィールド: TagContractField / TagLinkContractField |
 | [ColorPickerField](docs/ColorPickerField.md) | カラーピッカー。HTML5ネイティブカラーピッカーで色をHEX文字列として保存 |
 | [MarkerListField](docs/MarkerListField.md) | 画像上にマーカー(ピン)を配置・操作するフィールド |
 | [QrCodeField](docs/QrCodeField.md) | 文字列をQRコード画像として表示する表示専用フィールド (外部ライブラリ QRCoder を使用) |
@@ -78,7 +78,7 @@ Codeer.LowCode.Blazor 本体が持つのは認可だけで、認証 (ログイ�
 | [監査ログ](docs/AuditLog.md) | いつ・誰が・どこから・何に・何をして・どうなったかをサーバーが WebAPI ごとに記録する。フィールド不要で appsettings だけで有効化。DB / JSON Lines ファイルへ出力、失敗・権限拒否も記録、保持期限で自動削除、監査ログのテーブルはアプリ経路から追記専用 (サーバサイド実装が必要) |
 | [編集履歴](docs/EditHistory.md) | EditHistoryField をモジュールに置くと保存 (作成・更新・削除) ごとにレコード全体 (明細込み) のスナップショットが履歴モジュールへ記録される。詳細画面に版の一覧 (変更フィールドの 旧 → 新)・「この版を表示」・「この版に戻す」(フォームへ反映して保存で確定)・削除したレコードの復活。履歴は通常のモジュール = 閲覧権限は履歴モジュールの設定で、版の内容は読む人の権限に合わせて返される (サーバサイド実装が必要)。履歴モジュールに置く EditHistoryContractField (契約) / EditHistoryUndeleteButtonField (削除したレコードの復活ボタン) |
 
-いずれもデザイナの **Tools > メールのセットアップ / 承認フローのセットアップ / 編集履歴のセットアップ / 監査ログのセットアップ** (または CLI の `mail-setup` / `approval-setup` / `edit-history-setup` / `audit-log-setup`) で
+いずれもデザイナの **Tools > メールのセットアップ / 承認フローのセットアップ / 編集履歴のセットアップ / 監査ログのセットアップ / タグのセットアップ** (または CLI の `mail-setup` / `approval-setup` / `edit-history-setup` / `audit-log-setup` / `tag-setup`) で
 必要なモジュール群 (監査ログは閲覧モジュールとテーブル作成 DDL) を生成できます。
 
 ## スクリプトオブジェクト
@@ -212,9 +212,9 @@ ExtrasDesignerInitializer.Initialize(BlazorRuntime);
 ExtrasDesignerInitializer.Setup(DesignerEnvironment);
 ```
 
-セットアップメニューは承認フロー・メール履歴・編集履歴・監査ログに必要なモジュール群をテンプレートから生成し、
+セットアップメニューは承認フロー・メール履歴・編集履歴・監査ログ・タグに必要なモジュール群をテンプレートから生成し、
 テーブル作成 DDL の提示 (その場で実行可) と次にやることの案内まで行います
-(headless CLI の `approval-setup` / `mail-setup` / `edit-history-setup` / `audit-log-setup` verb からも同じ生成を実行できます)。
+(headless CLI の `approval-setup` / `mail-setup` / `edit-history-setup` / `audit-log-setup` / `tag-setup` verb からも同じ生成を実行できます)。
 
 ### 3. セットアップ完了
 

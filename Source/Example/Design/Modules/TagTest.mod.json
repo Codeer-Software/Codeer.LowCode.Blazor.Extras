@@ -1,13 +1,57 @@
 {
   "Name": "TagTest",
-  "DataSourceName": "",
-  "DbTable": "",
+  "DataSourceName": "SampleSQLite",
+  "DbTable": "tag_tests",
   "CanCreate": true,
   "CanUpdate": true,
   "CanDelete": true,
   "Fields": [
     {
-      "Text": "TagField 確認 (既定 / スペースでも確定 + 必須 / 閲覧のみ)",
+      "DbColumn": "id",
+      "Placeholder": "",
+      "IsManualInput": false,
+      "CompositeIdVariables": [],
+      "CompositeIdSeparator": "",
+      "IsUpdateProtected": false,
+      "IsSimpleSearchParameter": false,
+      "AllowEmptySearch": false,
+      "OnSearchDataChanged": "",
+      "DisplayName": "",
+      "IsRequired": false,
+      "OnDataChanged": "",
+      "Name": "Id",
+      "IgnoreModification": false,
+      "OnValidateInput": "",
+      "IsFocusSkip": false,
+      "NextFocusField": "",
+      "OnFocusMoving": "",
+      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.IdFieldDesign"
+    },
+    {
+      "DbColumn": "name",
+      "IsMultiline": false,
+      "IsAutoFitRows": false,
+      "Placeholder": "名前",
+      "TextEditEmptyType": "StringEmpty",
+      "ShouldTrimAfterEdit": false,
+      "AutoTab": false,
+      "IsUpdateProtected": false,
+      "IsSimpleSearchParameter": false,
+      "AllowEmptySearch": false,
+      "OnSearchDataChanged": "",
+      "DisplayName": "名前",
+      "IsRequired": false,
+      "OnDataChanged": "",
+      "Name": "Name",
+      "IgnoreModification": false,
+      "OnValidateInput": "",
+      "IsFocusSkip": false,
+      "NextFocusField": "",
+      "OnFocusMoving": "",
+      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.TextFieldDesign"
+    },
+    {
+      "Text": "TagField 確認 (タグはテーブルに保存 / 保存しない入力欄 / 閲覧のみ)",
       "Icon": "",
       "IsHtml": false,
       "Style": "H5",
@@ -22,7 +66,7 @@
       "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.LabelFieldDesign"
     },
     {
-      "Text": "既定。Enter・「,」・「、」で確定、× で外す。候補は DB の列から読むので、テーブルを持たないこの画面では出ない",
+      "Text": "タグ付け (TagTestTags) に保存する。Enter・「,」・「、」で確定、× で外す。候補はタグのマスタ (Tag) から。新しいタグは保存のときマスタに足す",
       "Icon": "",
       "IsHtml": false,
       "Style": "Default",
@@ -37,20 +81,59 @@
       "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.LabelFieldDesign"
     },
     {
-      "DbColumn": "",
+      "LayoutName": "",
+      "TagModuleName": "",
       "Placeholder": "タグを入力",
       "ConfirmOnSpace": false,
-      "TextEditEmptyType": "StringEmpty",
-      "CandidateModuleName": "",
-      "CandidateFieldName": "",
-      "SearchMatchDefaultValue": "All",
-      "IsUpdateProtected": false,
-      "IsSimpleSearchParameter": false,
-      "AllowEmptySearch": false,
-      "OnSearchDataChanged": "",
-      "DisplayName": "",
+      "AllowNewTags": true,
+      "CandidateRowCount": 1000,
       "IsRequired": false,
+      "IsSimpleSearchParameter": false,
+      "SearchMatchDefaultValue": "All",
+      "DisplayName": "",
+      "SearchCondition": {
+        "SelectFields": [],
+        "SortConditions": [
+          {
+            "Variable": "Id.Value",
+            "IsDescending": false
+          }
+        ],
+        "SortFieldVariable": "",
+        "SortDescending": false,
+        "ModuleName": "TagTestTags",
+        "Condition": {
+          "IsOrMatch": false,
+          "IsNot": false,
+          "Children": [
+            {
+              "SearchTargetVariable": "OwnerId.Value",
+              "Comparison": "Equal",
+              "Variable": "Id.Value",
+              "TypeFullName": "Codeer.LowCode.Blazor.Repository.Match.FieldVariableMatchCondition"
+            }
+          ],
+          "Name": "",
+          "TypeFullName": "Codeer.LowCode.Blazor.Repository.Match.MultiMatchCondition"
+        }
+      },
+      "IsInMemoryPaging": false,
+      "ConfirmBeforePageChange": true,
+      "PagerPosition": "Top",
+      "ReplaceMode": "None",
+      "DeleteTogether": true,
+      "CanCreate": true,
+      "CanUpdate": false,
+      "CanDelete": true,
+      "CanUserSort": true,
+      "CanSelect": false,
+      "UseIndexSort": false,
+      "ConfirmBeforeDelete": false,
       "OnDataChanged": "",
+      "OnSearchDataChanged": "",
+      "OnSelectedIndexChanged": "",
+      "OnSelectedIndexChanging": "",
+      "OnDoubleClickRow": "",
       "Name": "Tags",
       "IgnoreModification": false,
       "OnValidateInput": "",
@@ -60,7 +143,7 @@
       "TypeFullName": "Codeer.LowCode.Blazor.Extras.Designs.TagFieldDesign"
     },
     {
-      "Text": "ConfirmOnSpace = true。スペースでも確定。必須 (1 つ以上)",
+      "Text": "保存しない入力欄 (検索条件なし・TagModuleName = Tag)。ConfirmOnSpace = true でスペースでも確定。必須 (1 つ以上)",
       "Icon": "",
       "IsHtml": false,
       "Style": "Default",
@@ -75,20 +158,40 @@
       "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.LabelFieldDesign"
     },
     {
-      "DbColumn": "",
+      "LayoutName": "",
+      "TagModuleName": "Tag",
       "Placeholder": "",
       "ConfirmOnSpace": true,
-      "TextEditEmptyType": "StringEmpty",
-      "CandidateModuleName": "",
-      "CandidateFieldName": "",
-      "SearchMatchDefaultValue": "All",
-      "IsUpdateProtected": false,
-      "IsSimpleSearchParameter": false,
-      "AllowEmptySearch": false,
-      "OnSearchDataChanged": "",
-      "DisplayName": "",
+      "AllowNewTags": true,
+      "CandidateRowCount": 1000,
       "IsRequired": true,
+      "IsSimpleSearchParameter": false,
+      "SearchMatchDefaultValue": "All",
+      "DisplayName": "",
+      "SearchCondition": {
+        "SelectFields": [],
+        "SortConditions": [],
+        "SortFieldVariable": "",
+        "SortDescending": false,
+        "ModuleName": ""
+      },
+      "IsInMemoryPaging": false,
+      "ConfirmBeforePageChange": true,
+      "PagerPosition": "Top",
+      "ReplaceMode": "None",
+      "DeleteTogether": true,
+      "CanCreate": true,
+      "CanUpdate": false,
+      "CanDelete": true,
+      "CanUserSort": true,
+      "CanSelect": false,
+      "UseIndexSort": false,
+      "ConfirmBeforeDelete": false,
       "OnDataChanged": "",
+      "OnSearchDataChanged": "",
+      "OnSelectedIndexChanged": "",
+      "OnSelectedIndexChanging": "",
+      "OnDoubleClickRow": "",
       "Name": "TagsSpace",
       "IgnoreModification": false,
       "OnValidateInput": "",
@@ -98,7 +201,7 @@
       "TypeFullName": "Codeer.LowCode.Blazor.Extras.Designs.TagFieldDesign"
     },
     {
-      "Text": "閲覧のみ (ボタンで上のタグを転写し、件数と HasTag の結果を出す)",
+      "Text": "閲覧のみの入力欄 (ボタンで上のタグを転写し、件数と HasTag の結果を出す)",
       "Icon": "",
       "IsHtml": false,
       "Style": "Default",
@@ -113,20 +216,40 @@
       "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.LabelFieldDesign"
     },
     {
-      "DbColumn": "",
+      "LayoutName": "",
+      "TagModuleName": "Tag",
       "Placeholder": "",
       "ConfirmOnSpace": false,
-      "TextEditEmptyType": "StringEmpty",
-      "CandidateModuleName": "",
-      "CandidateFieldName": "",
-      "SearchMatchDefaultValue": "All",
-      "IsUpdateProtected": false,
-      "IsSimpleSearchParameter": false,
-      "AllowEmptySearch": false,
-      "OnSearchDataChanged": "",
-      "DisplayName": "",
+      "AllowNewTags": true,
+      "CandidateRowCount": 1000,
       "IsRequired": false,
+      "IsSimpleSearchParameter": false,
+      "SearchMatchDefaultValue": "All",
+      "DisplayName": "",
+      "SearchCondition": {
+        "SelectFields": [],
+        "SortConditions": [],
+        "SortFieldVariable": "",
+        "SortDescending": false,
+        "ModuleName": ""
+      },
+      "IsInMemoryPaging": false,
+      "ConfirmBeforePageChange": true,
+      "PagerPosition": "Top",
+      "ReplaceMode": "None",
+      "DeleteTogether": true,
+      "CanCreate": true,
+      "CanUpdate": false,
+      "CanDelete": true,
+      "CanUserSort": true,
+      "CanSelect": false,
+      "UseIndexSort": false,
+      "ConfirmBeforeDelete": false,
       "OnDataChanged": "",
+      "OnSearchDataChanged": "",
+      "OnSelectedIndexChanged": "",
+      "OnSelectedIndexChanging": "",
+      "OnDoubleClickRow": "",
       "Name": "TagsView",
       "IgnoreModification": false,
       "OnValidateInput": "",
@@ -201,7 +324,7 @@
       "BackgroundColor": "",
       "FontFamily": "",
       "Layout": {
-        "Name": "",
+        "Name": "ff761b86-8797-4251-a3f7-0f35dbac7f62",
         "Padding": {},
         "IsBordered": false,
         "UseBorderedShrinkWrap": false,
@@ -232,7 +355,44 @@
                   "ClassName": "",
                   "FontFamily": "",
                   "Color": "",
-                  "Name": "",
+                  "Name": "33a729e5-8f72-4154-af36-a4fe1a76f3cf",
+                  "BackgroundColor": "",
+                  "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.FieldLayoutDesign"
+                },
+                "IgnoreContentWidth": false,
+                "Padding": {},
+                "BackgroundColor": "",
+                "BorderStyle": {
+                  "LeftColor": "",
+                  "TopColor": "",
+                  "RightColor": "",
+                  "BottomColor": ""
+                },
+                "CanResize": false,
+                "AllowOverflow": false,
+                "Border": "None"
+              }
+            ]
+          },
+          {
+            "IsWrap": false,
+            "IsAutoFillWrap": false,
+            "Margin": {},
+            "GridRowType": "Normal",
+            "CanResize": false,
+            "BackgroundColor": "",
+            "KeepInFillAvailableGrid": false,
+            "IsProportionalScale": false,
+            "IsRowMarginRemoved": false,
+            "Columns": [
+              {
+                "Layout": {
+                  "FieldName": "Name",
+                  "ContextMenu": "",
+                  "ClassName": "",
+                  "FontFamily": "",
+                  "Color": "",
+                  "Name": "0df45da2-892d-4d8e-b0a3-8f488639308c",
                   "BackgroundColor": "",
                   "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.FieldLayoutDesign"
                 },
@@ -269,7 +429,7 @@
                   "ClassName": "",
                   "FontFamily": "",
                   "Color": "",
-                  "Name": "",
+                  "Name": "87e08bd5-7c57-46e3-8d49-07af919eb1a7",
                   "BackgroundColor": "",
                   "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.FieldLayoutDesign"
                 },
@@ -306,7 +466,7 @@
                   "ClassName": "",
                   "FontFamily": "",
                   "Color": "",
-                  "Name": "",
+                  "Name": "d41ffb8f-9c57-4f32-a5fd-8695e20f2372",
                   "BackgroundColor": "",
                   "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.FieldLayoutDesign"
                 },
@@ -343,7 +503,7 @@
                   "ClassName": "",
                   "FontFamily": "",
                   "Color": "",
-                  "Name": "",
+                  "Name": "af9ef818-e035-4e96-9a47-38e2285e02a1",
                   "BackgroundColor": "",
                   "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.FieldLayoutDesign"
                 },
@@ -380,7 +540,7 @@
                   "ClassName": "",
                   "FontFamily": "",
                   "Color": "",
-                  "Name": "",
+                  "Name": "9c57f4ef-7bd4-443b-84e4-02017fac1ca1",
                   "BackgroundColor": "",
                   "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.FieldLayoutDesign"
                 },
@@ -417,7 +577,7 @@
                   "ClassName": "",
                   "FontFamily": "",
                   "Color": "",
-                  "Name": "",
+                  "Name": "8f0ee3b9-1858-41c3-947d-5bad1302f721",
                   "BackgroundColor": "",
                   "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.FieldLayoutDesign"
                 },
@@ -454,7 +614,7 @@
                   "ClassName": "",
                   "FontFamily": "",
                   "Color": "",
-                  "Name": "",
+                  "Name": "1aecc511-1ab8-4f4e-b4c2-c0b1cd609738",
                   "BackgroundColor": "",
                   "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.FieldLayoutDesign"
                 },
@@ -478,7 +638,7 @@
                   "ClassName": "",
                   "FontFamily": "",
                   "Color": "",
-                  "Name": "",
+                  "Name": "2fa1a646-6706-47dd-9bc2-6d43819e8418",
                   "BackgroundColor": "",
                   "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.FieldLayoutDesign"
                 },
@@ -515,7 +675,7 @@
                   "ClassName": "",
                   "FontFamily": "",
                   "Color": "",
-                  "Name": "",
+                  "Name": "79bd2808-6091-47a8-a709-6ae17298bd6b",
                   "BackgroundColor": "",
                   "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.FieldLayoutDesign"
                 },
@@ -549,7 +709,44 @@
       "OnBeforeInitialization": "",
       "OnAfterInitialization": "",
       "OnFieldDataChanged": "",
-      "Elements": []
+      "Elements": [
+        [
+          {
+            "FieldName": "Name",
+            "ContextMenu": "",
+            "Label": "名前",
+            "IsMaxWidthFixed": false,
+            "ColumnSpan": 1,
+            "RowSpan": 1,
+            "TextWrap": "Unset",
+            "CanResize": false,
+            "CanUserSort": true,
+            "ClassName": "",
+            "FontFamily": "",
+            "Color": "",
+            "BackgroundColor": "",
+            "DetailLayoutName": "",
+            "ListElementComponent": ""
+          },
+          {
+            "FieldName": "Tags",
+            "ContextMenu": "",
+            "Label": "タグ",
+            "IsMaxWidthFixed": false,
+            "ColumnSpan": 1,
+            "RowSpan": 1,
+            "TextWrap": "Unset",
+            "CanResize": false,
+            "CanUserSort": true,
+            "ClassName": "",
+            "FontFamily": "",
+            "Color": "",
+            "BackgroundColor": "",
+            "DetailLayoutName": "",
+            "ListElementComponent": ""
+          }
+        ]
+      ]
     }
   },
   "SearchLayouts": {
@@ -560,7 +757,7 @@
       "IsFocusWrap": false,
       "Layout": {
         "Operator": "And",
-        "Name": "",
+        "Name": "85a30a30-9b95-4326-93e7-927ee6be117d",
         "Padding": {},
         "IsBordered": false,
         "UseBorderedShrinkWrap": false,
@@ -572,7 +769,82 @@
         "IsFillAvailable": false,
         "ScrollDirection": "Unset",
         "OnKeyDown": "",
-        "Rows": [],
+        "Rows": [
+          {
+            "IsWrap": false,
+            "IsAutoFillWrap": false,
+            "Margin": {},
+            "GridRowType": "Normal",
+            "CanResize": false,
+            "BackgroundColor": "",
+            "KeepInFillAvailableGrid": false,
+            "IsProportionalScale": false,
+            "IsRowMarginRemoved": false,
+            "Columns": [
+              {
+                "Layout": {
+                  "FieldName": "Name",
+                  "ContextMenu": "",
+                  "ClassName": "",
+                  "FontFamily": "",
+                  "Color": "",
+                  "Name": "9ac7d0b8-74c7-43fc-89ff-30ddaee86045",
+                  "BackgroundColor": "",
+                  "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.FieldLayoutDesign"
+                },
+                "IgnoreContentWidth": false,
+                "Padding": {},
+                "BackgroundColor": "",
+                "BorderStyle": {
+                  "LeftColor": "",
+                  "TopColor": "",
+                  "RightColor": "",
+                  "BottomColor": ""
+                },
+                "CanResize": false,
+                "AllowOverflow": false,
+                "Border": "None"
+              }
+            ]
+          },
+          {
+            "IsWrap": false,
+            "IsAutoFillWrap": false,
+            "Margin": {},
+            "GridRowType": "Normal",
+            "CanResize": false,
+            "BackgroundColor": "",
+            "KeepInFillAvailableGrid": false,
+            "IsProportionalScale": false,
+            "IsRowMarginRemoved": false,
+            "Columns": [
+              {
+                "Layout": {
+                  "FieldName": "Tags",
+                  "ContextMenu": "",
+                  "ClassName": "",
+                  "FontFamily": "",
+                  "Color": "",
+                  "Name": "d041d7d8-f159-4b57-9322-2c7299faabf6",
+                  "BackgroundColor": "",
+                  "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.FieldLayoutDesign"
+                },
+                "IgnoreContentWidth": false,
+                "Padding": {},
+                "BackgroundColor": "",
+                "BorderStyle": {
+                  "LeftColor": "",
+                  "TopColor": "",
+                  "RightColor": "",
+                  "BottomColor": ""
+                },
+                "CanResize": false,
+                "AllowOverflow": false,
+                "Border": "None"
+              }
+            ]
+          }
+        ],
         "BackgroundColor": "",
         "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.SearchGridLayoutDesign"
       }
@@ -597,6 +869,7 @@
       "ModuleName": ""
     },
     "IsInMemoryPaging": false,
+    "ConfirmBeforePageChange": true,
     "PagerPosition": "Bottom",
     "ReplaceMode": "None",
     "DeleteTogether": false,

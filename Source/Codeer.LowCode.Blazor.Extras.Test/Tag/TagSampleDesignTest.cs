@@ -37,15 +37,21 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Tag
 
             var fields = module!.Fields.OfType<TagFieldDesign>().ToList();
             Assert.That(fields.Select(e => e.Name), Is.EqualTo(new[] { "Tags", "TagsSpace", "TagsView" }));
+            //Tags はタグ付け (tag-setup が作った TagTestTags) に保存する。他の 2 つはマスタ (Tag) から候補を出すだけの入力欄
+            Assert.That(fields[0].SearchCondition.ModuleName, Is.EqualTo("TagTestTags"));
+            Assert.That(fields.Skip(1).Select(e => (e.SearchCondition.ModuleName, e.TagModuleName)), Is.All.EqualTo((string.Empty, "Tag")));
             Assert.That(fields.Single(e => e.Name == "TagsSpace").ConfirmOnSpace, Is.True);
             Assert.That(fields.Single(e => e.Name == "TagsSpace").IsRequired, Is.True);
             Assert.That(module.Fields.OfType<ButtonFieldDesign>().Single().OnClick, Is.EqualTo("Copy_OnClick"));
+            Assert.That(module.ListLayouts[""].Elements[0].Select(e => e.FieldName), Does.Contain("Tags"), "一覧の列にも置ける");
 
-            var context = new DesignCheckContext("TagTest", d, Utilities.CreateDataSource());
+            var noTables = new Dictionary<string, List<Codeer.LowCode.Blazor.DataIO.Db.Definition.DbTableDefinition>>();
             foreach (var field in fields)
             {
-                Assert.That(field.CheckDesign(context), Is.Empty, field.Name);
+                Assert.That(field.CheckDesign(new DesignCheckContext("TagTest", d, noTables)), Is.Empty, field.Name);
             }
+            Assert.That(d.Modules.Find("Tag")!.Fields.OfType<TagContractFieldDesign>().Single().CheckDesign(new DesignCheckContext("Tag", d, noTables)), Is.Empty);
+            Assert.That(d.Modules.Find("TagTestTags")!.Fields.OfType<TagLinkContractFieldDesign>().Single().CheckDesign(new DesignCheckContext("TagTestTags", d, noTables)), Is.Empty);
         }
     }
 }
