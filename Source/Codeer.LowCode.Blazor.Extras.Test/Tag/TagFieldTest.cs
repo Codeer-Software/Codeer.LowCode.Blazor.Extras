@@ -1,11 +1,9 @@
 using Codeer.LowCode.Blazor.DesignLogic;
 using Codeer.LowCode.Blazor.DesignLogic.Check;
-using Codeer.LowCode.Blazor.Extras.Data;
+using Codeer.LowCode.Blazor.DesignLogic.Refactor;
 using Codeer.LowCode.Blazor.Extras.Designs;
 using Codeer.LowCode.Blazor.Extras.Fields;
 using Codeer.LowCode.Blazor.Extras.Test.Harness;
-using Codeer.LowCode.Blazor.Json;
-using Codeer.LowCode.Blazor.OperatingModel;
 using Codeer.LowCode.Blazor.Repository;
 using Codeer.LowCode.Blazor.Repository.Data;
 using Codeer.LowCode.Blazor.Repository.Design;
@@ -14,269 +12,212 @@ using Codeer.LowCode.Blazor.Utils;
 
 namespace Codeer.LowCode.Blazor.Extras.Test.Tag
 {
-    /// <summary>TagField のランタイム (値・タグの操作・検証・検索条件・候補) とデザインチェック。</summary>
+    /// <summary>TagField の DB を使わない部分: 保存しない入力欄 (結び付きなし)、タグの区切り、デザインチェック (TagField と 2 つの契約)、リネーム追従。</summary>
     public class TagFieldTest
     {
-        static async Task<(TestServices Services, TagField Field)> CreateAsync(Action<TagFieldDesign>? customize = null)
-        {
-            var d = new DesignData();
-            var mod = new ModuleDesign { Name = "Contact", DataSourceName = "Main", DbTable = "contacts" };
-            mod.Fields.Add(new IdFieldDesign { Name = "Id" });
-            var tag = new TagFieldDesign { Name = "Tags", DbColumn = "tags" };
-            customize?.Invoke(tag);
-            mod.Fields.Add(tag);
-            d.AddModule(mod);
-            var services = new TestServices(d);
-            var module = await services.CreateModuleAsync("Contact");
-            return (services, (TagField)module.GetField("Tags")!);
-        }
+        static readonly Dictionary<string, List<Codeer.LowCode.Blazor.DataIO.Db.Definition.DbTableDefinition>> NoTables = new();
 
-        static ModuleData Row(string tags)
+        static ModuleData MasterRow(string id, string name)
         {
-            var row = new ModuleData { Name = "Contact" };
-            row.Fields["Tags"] = new TagFieldData { Value = tags };
+            var row = new ModuleData { Name = "Tag" };
+            row.Fields["Id"] = new IdFieldData { Value = id };
+            row.Fields["Name"] = new TextFieldData { Value = name };
             return row;
         }
 
-        [Test]
-        public async Task 値はタグをカンマ区切りで持ちTagsは区切ったもの()
+        //マスタの読み込みはハーネスが返す (展示会 / DXPO)
+        static async Task<(TestServices Services, TagField Field)> CreatePickerAsync(Action<TagFieldDesign>? customize = null)
         {
-            var (_, field) = await CreateAsync();
-            await field.SetValueAsync(" 展示会 ,DXPO2027、セミナー，展示会,, ");
-            Assert.That(field.Tags, Is.EqualTo(new[] { "展示会", "DXPO2027", "セミナー" }));
-
-            await field.SetTagsAsync(field.Tags);
-            Assert.That(field.Value, Is.EqualTo("展示会, DXPO2027, セミナー"));
+            var services = new TestServices(TagTestDesigns.Create(customizePicker: customize));
+            services.App.ListProvider = r => r.Condition.ModuleName == "Tag"
+                ? new Paging<ModuleData> { Items = [MasterRow("1", "展示会"), MasterRow("2", "DXPO")] }
+                : new Paging<ModuleData>();
+            var module = await services.CreateModuleAsync("Picker", ModuleLayoutType.Detail);
+            return (services, (TagField)module.GetField("Pick")!);
         }
 
+        static List<DesignCheckInfo> Check(DesignData d, string module, string field)
+            => d.Modules.Find(module)!.Fields.Single(e => e.Name == field).CheckDesign(new DesignCheckContext(module, d, NoTables));
+
+        #region 保存しない入力欄 (結び付きなし)
+
         [Test]
-        public async Task AddTagは末尾に足し同じタグは重ねない()
+        public async Task 入力欄はタグ名を持つだけで保存しない()
         {
-            var (_, field) = await CreateAsync();
-            await field.AddTagAsync("展示会");
-            await field.AddTagAsync("DXPO2027");
-            await field.AddTagAsync(" 展示会 ");
-            Assert.That(field.Value, Is.EqualTo("展示会, DXPO2027"));
+            var (services, field) = await CreatePickerAsync();
+            Assert.That(field.IsBound, Is.False);
+            await field.AddTagAsync("dxpo、新規 ,展示会");
+            Assert.That(field.Tags, Is.EqualTo(new[] { "DXPO", "新規", "展示会" }), "マスタにあればマスタの表記");
             Assert.That(field.IsModified, Is.True);
+            Assert.That(field.GetSubmitData().Add, Is.Empty);
+            Assert.That(services.App.ListRequests.All(e => e.Condition.ModuleName == "Tag"), Is.True, "タグ付けは読まない");
+
+            await field.RemoveTagAsync("新規");
+            Assert.That(field.HasTag("展示会"), Is.True);
+            Assert.That(field.Tags, Is.EqualTo(new[] { "DXPO", "展示会" }));
         }
 
         [Test]
-        public async Task 大文字小文字は区別せず先の表記を残す()
+        public async Task 入力欄でもAllowNewTagsがfalseならマスタのタグだけ()
         {
-            var (_, field) = await CreateAsync();
-            await field.AddTagAsync("DXPO");
-            await field.AddTagAsync("dxpo");
-            Assert.That(field.Value, Is.EqualTo("DXPO"));
-            Assert.That(field.HasTag("Dxpo"), Is.True);
-
-            await field.SetValueAsync("展示会, Expo, expo, EXPO");
-            Assert.That(field.Tags, Is.EqualTo(new[] { "展示会", "Expo" }));
-
-            await field.RemoveTagAsync("EXPO");
-            Assert.That(field.Tags, Is.EqualTo(new[] { "展示会" }));
-        }
-
-        [Test]
-        public async Task RemoveTagとHasTag_タグが無くなれば値は空文字()
-        {
-            var (_, field) = await CreateAsync();
-            await field.SetValueAsync("展示会, DXPO2027");
-            Assert.That(field.HasTag("DXPO2027"), Is.True);
-
-            await field.RemoveTagAsync("DXPO2027");
-            Assert.That(field.HasTag("DXPO2027"), Is.False);
-            await field.RemoveTagAsync("展示会");
-            Assert.That(field.Value, Is.EqualTo(string.Empty));
+            var (_, field) = await CreatePickerAsync(e => e.AllowNewTags = false);
+            await field.AddTagAsync("新規");
             Assert.That(field.Tags, Is.Empty);
+            Assert.That(field.IsValid, Is.False);
+            await field.AddTagAsync("展示会");
+            Assert.That(field.Tags, Is.EqualTo(new[] { "展示会" }));
+            Assert.That(field.IsValid, Is.True);
         }
 
         [Test]
-        public async Task TextEditEmptyTypeがNullならタグが無くなれば値はnull()
+        public async Task 候補はマスタを名前順に1回だけ読む()
         {
-            var (_, field) = await CreateAsync(d => d.TextEditEmptyType = TextEditEmptyType.Null);
-            await field.AddTagAsync("展示会");
-            await field.RemoveTagAsync("展示会");
-            Assert.That(field.Value, Is.Null);
+            var (services, field) = await CreatePickerAsync(e => e.CandidateRowCount = 300);
+            Assert.That(await field.GetCandidatesAsync(), Is.EqualTo(new[] { "展示会", "DXPO" }));
+            await field.GetCandidatesAsync();
+            var request = services.App.ListRequests.Single();
+            Assert.That(request.Condition.ModuleName, Is.EqualTo("Tag"));
+            Assert.That(request.Condition.LimitCount, Is.EqualTo(300));
+            Assert.That(request.Condition.SortConditions.Single().Variable, Is.EqualTo("Name.Value"));
+            Assert.That(request.Condition.SelectFields, Is.EquivalentTo(new[] { "Id", "Name" }));
+        }
+
+        [Test]
+        public async Task SetTagsは外したタグを外し無いタグを足す()
+        {
+            var (_, field) = await CreatePickerAsync();
+            await field.SetTagsAsync(["展示会", "DXPO"]);
+            await field.SetTagsAsync(["dxpo", "セミナー"]);
+            Assert.That(field.Tags, Is.EqualTo(new[] { "DXPO", "セミナー" }));
         }
 
         [Test]
         public async Task 必須の検証()
         {
-            var (_, field) = await CreateAsync(d => d.IsRequired = true);
+            var (_, field) = await CreatePickerAsync(e => e.IsRequired = true);
             Assert.That(await field.ValidateInput(), Is.False);
-            Assert.That(field.IsValid, Is.False);
-
             await field.AddTagAsync("展示会");
             Assert.That(await field.ValidateInput(), Is.True);
         }
 
         [Test]
-        public async Task 検索条件は選んだタグごとのLikeをすべて含むでまとめる()
-        {
-            var (_, field) = await CreateAsync();
-            Assert.That(field.GetMatchCondition(), Is.Null);
+        public void タグの区切りは読点と全角カンマも使え前後の空白と重複を落とす()
+            => Assert.That(TagField.Normalize([" 展示会 ,DXPO、セミナー，展示会,, ", "dxpo"]), Is.EqualTo(new[] { "展示会", "DXPO", "セミナー" }));
 
-            await field.SetSearchTagsAsync(["展示会", "DXPO2027"]);
-            var condition = (FieldMatchCondition)field.GetMatchCondition()!;
-            Assert.That(condition.FieldName, Is.EqualTo("Tags"));
-            Assert.That(condition.IsOrMatch, Is.False);
-            var children = condition.Children.Cast<FieldValueMatchCondition>().ToList();
-            Assert.That(children.Select(e => e.SearchTargetVariable), Is.All.EqualTo("Tags.Value"));
-            Assert.That(children.Select(e => e.Comparison), Is.All.EqualTo(MatchComparison.Like));
-            Assert.That(children.Select(e => ((StringValue)e.Value).Value), Is.EqualTo(new[] { "展示会", "DXPO2027" }));
+        #endregion
+
+        #region デザインチェック
+
+        [Test]
+        public void デザインチェック_セットアップの形なら指摘なし()
+        {
+            var d = TagTestDesigns.Create();
+            Assert.That(Check(d, "Contact", "Tags"), Is.Empty);
+            Assert.That(Check(d, "Picker", "Pick"), Is.Empty);
+            Assert.That(Check(d, "Tag", "TagContract"), Is.Empty);
+            Assert.That(Check(d, "ContactTags", "TagLinkContract"), Is.Empty);
         }
 
         [Test]
-        public async Task いずれかを含むはOR_既定はデザインで画面から切り替えられる()
+        public void デザインチェック_入力欄はマスタが必須でマスタは契約を持つこと()
         {
-            var (_, field) = await CreateAsync(d => d.SearchMatchDefaultValue = TagSearchMatch.Any);
-            await field.SetSearchTagsAsync(["展示会"]);
-            Assert.That(((FieldMatchCondition)field.GetMatchCondition()!).IsOrMatch, Is.True);
+            var d = TagTestDesigns.Create(customizePicker: e => e.TagModuleName = string.Empty);
+            var ret = Check(d, "Picker", "Pick");
+            Assert.That(ret, Has.Count.EqualTo(1));
+            ret[0].AssertFieldLocation("Picker", "Pick", "TagModuleName");
 
-            await field.SetSearchMatchAsync(TagSearchMatch.All);
-            Assert.That(((FieldMatchCondition)field.GetMatchCondition()!).IsOrMatch, Is.False);
+            d = TagTestDesigns.Create(customizePicker: e => e.TagModuleName = "Contact");
+            ret = Check(d, "Picker", "Pick");
+            Assert.That(ret, Has.Count.EqualTo(1));
+            ret[0].AssertFieldLocation("Picker", "Pick", "TagModuleName");
         }
 
         [Test]
-        public async Task タグを選んでいなければ一致に関係なく絞らない()
+        public void デザインチェック_検索条件のモジュールはタグ付けモジュールであること()
         {
-            var (_, field) = await CreateAsync(d => d.SearchMatchDefaultValue = TagSearchMatch.Any);
-            Assert.That(field.GetMatchCondition(), Is.Null);
-
-            await field.SetSearchTagsAsync(["展示会"]);
-            await field.SetSearchTagsAsync([]);
-            Assert.That(field.GetMatchCondition(), Is.Null);
+            var d = TagTestDesigns.Create(e => e.SearchCondition = new SearchCondition { ModuleName = "Tag" });
+            var ret = Check(d, "Contact", "Tags");
+            Assert.That(ret.Select(e => ((FieldDesignCheckInfo)e).Location.Member), Does.Contain("SearchCondition"));
         }
 
         [Test]
-        public async Task SetMatchConditionで条件から戻せる_ClearMatchConditionで空になる()
+        public void デザインチェック_このレコードへの結び付きが無ければ指摘()
         {
-            var (_, field) = await CreateAsync();
-            await field.SetSearchTagsAsync(["展示会", "DXPO2027"]);
-            await field.SetSearchMatchAsync(TagSearchMatch.Any);
-            var saved = (FieldMatchCondition)field.GetMatchCondition()!;
-
-            await field.ClearMatchConditionAsync();
-            Assert.That(field.GetMatchCondition(), Is.Null);
-            Assert.That(field.SearchMatch, Is.EqualTo(TagSearchMatch.All));
-
-            await field.SetMatchConditionAsync(saved);
-            Assert.That(field.SearchTags, Is.EqualTo(new[] { "展示会", "DXPO2027" }));
-            Assert.That(field.SearchMatch, Is.EqualTo(TagSearchMatch.Any));
+            var d = TagTestDesigns.Create(e => e.SearchCondition = new SearchCondition { ModuleName = "ContactTags" });
+            var ret = Check(d, "Contact", "Tags");
+            Assert.That(ret, Has.Count.EqualTo(1));
+            ret[0].AssertFieldLocation("Contact", "Tags", "SearchCondition");
+            Assert.That(ret[0].Message, Does.Contain("OwnerId.Value"));
         }
 
         [Test]
-        public async Task 検索の値が変わると画面へ知らせる()
+        public void デザインチェック_タグ付けの一覧がOwnerIdとTagを読まなければ指摘()
         {
-            var (_, field) = await CreateAsync();
-            var count = 0;
-            field.OnSearchDataChangedAsync = () => { count++; return Task.CompletedTask; };
-            await field.SetSearchTagsAsync(["展示会"]);
-            await field.SetSearchMatchAsync(TagSearchMatch.Any);
-            await field.ClearMatchConditionAsync();
-            Assert.That(count, Is.EqualTo(3));
+            var d = TagTestDesigns.Create();
+            d.Modules.Find("ContactTags")!.ListLayouts[""].DataOnlyFields.Remove("Tag");
+            var ret = Check(d, "Contact", "Tags");
+            Assert.That(ret, Has.Count.EqualTo(1));
+            Assert.That(ret[0].Message, Does.Contain("Tag"));
         }
 
         [Test]
-        public async Task 候補はタグの列だけを1回読み多く付いている順()
+        public void デザインチェック_マスタを書くならタグ付けのリンクの先と同じ()
         {
-            var (services, field) = await CreateAsync();
-            services.App.ListProvider = _ => new Paging<ModuleData> { Items = [Row("展示会, DXPO2027"), Row("展示会"), Row("セミナー, 展示会")] };
-            Assert.That(await field.GetCandidatesAsync(), Is.EqualTo(new[] { "展示会", "DXPO2027", "セミナー" }));
-
-            var request = services.App.ListRequests.Single();
-            Assert.That(request.Condition.ModuleName, Is.EqualTo("Contact"));
-            Assert.That(request.Condition.SelectFields, Does.Contain("Tags"));
-            Assert.That(request.Condition.LimitCount, Is.GreaterThan(0));
-
-            await field.GetCandidatesAsync();
-            Assert.That(services.App.ListRequests, Has.Count.EqualTo(1));
+            Assert.That(Check(TagTestDesigns.Create(e => e.TagModuleName = "Tag"), "Contact", "Tags"), Is.Empty);
+            var ret = Check(TagTestDesigns.Create(e => e.TagModuleName = "Picker"), "Contact", "Tags");
+            Assert.That(ret, Has.Count.EqualTo(1));
+            ret[0].AssertFieldLocation("Contact", "Tags", "TagModuleName");
         }
 
         [Test]
-        public async Task テーブルを持たない画面では指定したモジュールのタグを候補にする()
+        public void デザインチェック_候補の行数は1以上()
         {
-            var d = new DesignData();
-            var contact = new ModuleDesign { Name = "Contact", DataSourceName = "Main", DbTable = "contacts" };
-            contact.Fields.Add(new IdFieldDesign { Name = "Id" });
-            contact.Fields.Add(new TagFieldDesign { Name = "Tags", DbColumn = "tags" });
-            d.AddModule(contact);
-            var import = new ModuleDesign { Name = "Import" };
-            import.Fields.Add(new TagFieldDesign { Name = "NewTags", CandidateModuleName = "Contact", CandidateFieldName = "Tags" });
-            import.Fields.Add(new TagFieldDesign { Name = "Plain" });
-            d.AddModule(import);
-            var services = new TestServices(d);
-            var module = await services.CreateModuleAsync("Import");
-            services.App.ListProvider = _ => new Paging<ModuleData> { Items = [Row("展示会")] };
-
-            Assert.That(await ((TagField)module.GetField("NewTags")!).GetCandidatesAsync(), Is.EqualTo(new[] { "展示会" }));
-            Assert.That(services.App.ListRequests.Single().Condition.ModuleName, Is.EqualTo("Contact"));
-
-            //指定が無ければ自分のモジュール (テーブルが無いので問い合わせない)
-            Assert.That(await ((TagField)module.GetField("Plain")!).GetCandidatesAsync(), Is.Empty);
-            Assert.That(services.App.ListRequests, Has.Count.EqualTo(1));
+            var ret = Check(TagTestDesigns.Create(e => e.CandidateRowCount = 0), "Contact", "Tags");
+            Assert.That(ret, Has.Count.EqualTo(1));
+            ret[0].AssertFieldLocation("Contact", "Tags", "CandidateRowCount");
         }
 
         [Test]
-        public void デザインチェック_DB列があれば指摘なし()
+        public void デザインチェック_契約の役割の型とリンクの先()
         {
-            var (designData, module) = Utilities.CreateDesignData();
-            var field = new TagFieldDesign { Name = "Tags", DbColumn = "DbColumn" };
-            module.Fields.Add(field);
-            var ret = field.CheckDesign(new DesignCheckContext("mod", designData, Utilities.CreateDataSource()));
-            Assert.That(ret, Is.Empty);
+            var d = TagTestDesigns.Create();
+            var link = d.Modules.Find("ContactTags")!;
+            ((LinkFieldDesign)link.Fields.Single(e => e.Name == "Tag")).SearchCondition = new SearchCondition { ModuleName = "Contact" };
+            var ret = Check(d, "ContactTags", "TagLinkContract");
+            Assert.That(ret, Has.Count.EqualTo(1), string.Join(" | ", ret.Select(e => e.Message)));
+            ret[0].AssertFieldLocation("ContactTags", "TagLinkContract", "Tag");
+
+            d = TagTestDesigns.Create();
+            ((LinkFieldDesign)d.Modules.Find("ContactTags")!.Fields.Single(e => e.Name == "Tag")).DisplayTextVariable = "Id.Value";
+            ret = Check(d, "ContactTags", "TagLinkContract");
+            Assert.That(ret, Has.Count.EqualTo(1), "リンクの表示文字列はタグ名");
+            Assert.That(ret[0].Message, Does.Contain("Name.Value"));
+
+            d = TagTestDesigns.Create();
+            var contract = d.Modules.Find("ContactTags")!.Fields.OfType<TagLinkContractFieldDesign>().Single();
+            contract.OwnerId = "Tag";
+            ret = Check(d, "ContactTags", "TagLinkContract");
+            Assert.That(ret, Has.Count.EqualTo(1));
+            ret[0].AssertFieldLocation("ContactTags", "TagLinkContract", "OwnerId");
+
+            d = TagTestDesigns.Create();
+            d.Modules.Find("Tag")!.Fields.OfType<TagContractFieldDesign>().Single().TagName = "Id";
+            ret = Check(d, "Tag", "TagContract");
+            Assert.That(ret, Has.Count.EqualTo(1));
+            ret[0].AssertFieldLocation("Tag", "TagContract", "TagName");
         }
 
-        [Test]
-        public void デザインチェック_存在しないDB列は指摘()
-        {
-            var (designData, module) = Utilities.CreateDesignData();
-            var field = new TagFieldDesign { Name = "Tags", DbColumn = "NoSuchColumn" };
-            module.Fields.Add(field);
-            var ret = field.CheckDesign(new DesignCheckContext("mod", designData, Utilities.CreateDataSource()));
-            Assert.That(ret.Count, Is.EqualTo(1));
-            ret[0].AssertFieldLocation("mod", "Tags", "DbColumn");
-        }
+        #endregion
 
         [Test]
-        public void デザインチェック_存在しない候補のモジュールとフィールドは指摘()
+        public void マスタのモジュール名の変更に追従する()
         {
-            var (designData, module) = Utilities.CreateDesignData();
-            var noModule = new TagFieldDesign { Name = "Tags", DbColumn = "DbColumn", CandidateModuleName = "NoSuchModule" };
-            module.Fields.Add(noModule);
-            var ret = noModule.CheckDesign(new DesignCheckContext("mod", designData, Utilities.CreateDataSource()));
-            Assert.That(ret.Count, Is.GreaterThanOrEqualTo(1));
-            ret[0].AssertFieldLocation("mod", "Tags", "CandidateModuleName");
-
-            var noField = new TagFieldDesign { Name = "Tags2", DbColumn = "DbColumn", CandidateModuleName = "mod", CandidateFieldName = "NoSuchField" };
-            module.Fields.Add(noField);
-            ret = noField.CheckDesign(new DesignCheckContext("mod", designData, Utilities.CreateDataSource()));
-            Assert.That(ret.Count, Is.EqualTo(1));
-            ret[0].AssertFieldLocation("mod", "Tags2", "CandidateFieldName");
-        }
-
-        [Test]
-        public void 検索条件の検証は本体TextFieldと同じ規則()
-        {
-            var tag = new TagFieldDesign { Name = "Tags", DbColumn = "tags" };
-            var text = new TextFieldDesign { Name = "Tags", DbColumn = "tags" };
-            var conditions = new List<FieldValueMatchCondition>();
-            foreach (var comparison in Enum.GetValues<MatchComparison>())
-            {
-                conditions.Add(new FieldValueMatchCondition { SearchTargetVariable = "Tags.Value", Comparison = comparison, Value = new StringValue { Value = "展示会" } });
-                conditions.Add(new FieldValueMatchCondition { SearchTargetVariable = "Tags.Value", Comparison = comparison, Value = new StringValue { Value = string.Empty } });
-                conditions.Add(new FieldValueMatchCondition { SearchTargetVariable = "Tags.Value", Comparison = comparison, Value = new NullValue() });
-            }
-            foreach (var allowEmpty in new[] { false, true })
-            {
-                tag.AllowEmptySearch = allowEmpty;
-                text.AllowEmptySearch = allowEmpty;
-                foreach (var condition in conditions)
-                {
-                    Assert.That(string.IsNullOrEmpty(tag.ValidateSearchCondition(condition)), Is.EqualTo(string.IsNullOrEmpty(text.ValidateSearchCondition(condition))),
-                        $"AllowEmptySearch={allowEmpty} {condition.Comparison} {JsonConverterEx.SerializeObject(condition.Value)}");
-                }
-            }
+            var d = TagTestDesigns.Create();
+            var pick = (TagFieldDesign)d.Modules.Find("Picker")!.Fields.Single();
+            var result = pick.ChangeName(new RenameContext(d) { Type = RenameType.Module, Source = "Tag", Destination = "Label" });
+            Assert.That(result.RenameNeeded);
+            result.RenameAction();
+            Assert.That(pick.TagModuleName, Is.EqualTo("Label"));
         }
     }
 }

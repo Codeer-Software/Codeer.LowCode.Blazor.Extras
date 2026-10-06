@@ -29,7 +29,7 @@ namespace Codeer.LowCode.Blazor.Extras.SemanticSearch
                 if (fieldDesign == null || !row.Fields.TryGetValue(name, out var data) || data == null) continue;
                 var value = FormatValue(design, fieldDesign, data);
                 if (string.IsNullOrWhiteSpace(value)) continue;
-                var label = (fieldDesign as ValueFieldDesignBase)?.DisplayName;
+                var label = (fieldDesign as ValueFieldDesignBase)?.DisplayName ?? (fieldDesign as TagFieldDesign)?.DisplayName;
                 //改行は環境によらず LF (索引の文章はどの OS で作っても同じにする)
                 sb.Append(string.IsNullOrEmpty(label) ? name : label).Append(": ").Append(value.Trim()).Append('\n');
             }
@@ -59,6 +59,12 @@ namespace Codeer.LowCode.Blazor.Extras.SemanticSearch
         /// <summary>1 フィールドの値を人が読む文字列に。空なら null。</summary>
         public static string? FormatValue(DesignData? design, FieldDesignBase fieldDesign, FieldDataBase data)
         {
+            //タグはタグ付け行 (子の一覧) で持つ: タグ名を並べる
+            if (fieldDesign is TagFieldDesign tagField && data is ListFieldData tagRows)
+            {
+                var names = Tag.TagContracts.TagNames(design, tagField, tagRows);
+                return names.Count == 0 ? null : string.Join(", ", names);
+            }
             switch (data)
             {
                 case PasswordFieldData:

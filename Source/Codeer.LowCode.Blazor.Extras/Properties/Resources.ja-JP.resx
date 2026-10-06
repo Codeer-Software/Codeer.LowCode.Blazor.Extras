@@ -1788,8 +1788,8 @@
   <data name="TagField" xml:space="preserve">
     <value>タグ</value>
   </data>
-  <data name="TagFieldDbColumn" xml:space="preserve">
-    <value>DBカラム</value>
+  <data name="TagFieldTagModuleName" xml:space="preserve">
+    <value>タグのマスタ</value>
   </data>
   <data name="TagFieldPlaceholder" xml:space="preserve">
     <value>プレースホルダ</value>
@@ -1797,11 +1797,11 @@
   <data name="TagFieldConfirmOnSpace" xml:space="preserve">
     <value>スペースでも確定</value>
   </data>
-  <data name="TagFieldCandidateModuleName" xml:space="preserve">
-    <value>候補のモジュール</value>
+  <data name="TagFieldAllowNewTags" xml:space="preserve">
+    <value>新しいタグを作れる</value>
   </data>
-  <data name="TagFieldCandidateFieldName" xml:space="preserve">
-    <value>候補のフィールド</value>
+  <data name="TagFieldCandidateRowCount" xml:space="preserve">
+    <value>候補の行数</value>
   </data>
   <data name="TagFieldSearchMatchDefaultValue" xml:space="preserve">
     <value>検索の一致の既定</value>
@@ -1815,13 +1815,49 @@
   <data name="TagFieldRemove" xml:space="preserve">
     <value>外す</value>
   </data>
-  <data name="TagFieldEmptySearchNotAllowed" xml:space="preserve">
-    <value>検索条件でフィールド '{0}' の空検索が指定されていますが、このフィールドでは空検索が許可されていません。</value>
+  <data name="TagFieldUnknownTagFormat" xml:space="preserve">
+    <value>「{0}」は登録されていないタグです。</value>
   </data>
-  <data name="TagFieldSearchComparisonNotAvailable" xml:space="preserve">
-    <value>検索条件でフィールド '{0}' に比較 '{1}' が指定されていますが、使用できません。</value>
+  <data name="TagContractField" xml:space="preserve">
+    <value>タグ契約</value>
   </data>
-  <data name="TagFieldTextEditEmptyType" xml:space="preserve">
-    <value>空のときの値</value>
+  <data name="TagContractTagName" xml:space="preserve">
+    <value>TagName (タグ名・必須)</value>
+  </data>
+  <data name="TagLinkContractField" xml:space="preserve">
+    <value>タグ付け契約</value>
+  </data>
+  <data name="TagLinkContractOwnerId" xml:space="preserve">
+    <value>OwnerId (タグを付けたレコードの Id・必須)</value>
+  </data>
+  <data name="TagLinkContractTag" xml:space="preserve">
+    <value>Tag (タグのマスタへのリンク・必須)</value>
+  </data>
+  <data name="TagCheck_RoleTypeFormat" xml:space="preserve">
+    <value>役割 {0} のフィールド &apos;{1}&apos; は {2} フィールドでなければなりません。</value>
+  </data>
+  <data name="TagCheck_NotTagMasterFormat" xml:space="preserve">
+    <value>モジュール &apos;{0}&apos; に TagContractField がありません (タグのマスタではありません)。</value>
+  </data>
+  <data name="TagCheck_TagDisplayTextFormat" xml:space="preserve">
+    <value>リンク &apos;{0}&apos; はタグ名を表示する必要があります。表示文字列を &apos;{1}&apos; にしてください。</value>
+  </data>
+  <data name="TagCheck_NotLinkModuleFormat" xml:space="preserve">
+    <value>検索条件のモジュール &apos;{0}&apos; に TagLinkContractField がありません。タグ付けモジュール (タグのセットアップで作れます) を指定するか、保存しない入力欄ならモジュールを空にしてください。</value>
+  </data>
+  <data name="TagCheck_OwnerBindingMissingFormat" xml:space="preserve">
+    <value>検索条件で &apos;{1}&apos; の &apos;{0}.Value&apos; をこのレコードに結び付けてください (例: &apos;{0}.Value = Id.Value&apos;)。</value>
+  </data>
+  <data name="TagCheck_LinkLayoutFieldsMissingFormat" xml:space="preserve">
+    <value>&apos;{1}&apos; の一覧レイアウト &apos;{0}&apos; が {2} を読みません。レイアウトか DataOnlyFields に入れてください。</value>
+  </data>
+  <data name="TagCheck_TagModuleRequired" xml:space="preserve">
+    <value>タグのマスタを指定するか、検索条件にタグ付けモジュールを指定してください。</value>
+  </data>
+  <data name="TagCheck_TagModuleMismatchFormat" xml:space="preserve">
+    <value>タグのマスタ &apos;{0}&apos; が、&apos;{2}&apos; のリンクの先のマスタ &apos;{1}&apos; と違います。空にするか同じモジュールにしてください。</value>
+  </data>
+  <data name="TagCheck_CandidateRowCount" xml:space="preserve">
+    <value>候補の行数は 1 以上にしてください。</value>
   </data>
 </root>

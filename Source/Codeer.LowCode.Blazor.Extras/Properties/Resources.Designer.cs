@@ -4143,9 +4143,9 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
             }
         }
 
-        internal static string TagFieldDbColumn {
+        internal static string TagFieldTagModuleName {
             get {
-                return ResourceManager.GetString("TagFieldDbColumn", resourceCulture);
+                return ResourceManager.GetString("TagFieldTagModuleName", resourceCulture);
             }
         }
 
@@ -4161,15 +4161,15 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
             }
         }
 
-        internal static string TagFieldCandidateModuleName {
+        internal static string TagFieldAllowNewTags {
             get {
-                return ResourceManager.GetString("TagFieldCandidateModuleName", resourceCulture);
+                return ResourceManager.GetString("TagFieldAllowNewTags", resourceCulture);
             }
         }
 
-        internal static string TagFieldCandidateFieldName {
+        internal static string TagFieldCandidateRowCount {
             get {
-                return ResourceManager.GetString("TagFieldCandidateFieldName", resourceCulture);
+                return ResourceManager.GetString("TagFieldCandidateRowCount", resourceCulture);
             }
         }
 
@@ -4197,21 +4197,93 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
             }
         }
 
-        internal static string TagFieldEmptySearchNotAllowed {
+        internal static string TagFieldUnknownTagFormat {
             get {
-                return ResourceManager.GetString("TagFieldEmptySearchNotAllowed", resourceCulture);
+                return ResourceManager.GetString("TagFieldUnknownTagFormat", resourceCulture);
             }
         }
 
-        internal static string TagFieldSearchComparisonNotAvailable {
+        internal static string TagContractField {
             get {
-                return ResourceManager.GetString("TagFieldSearchComparisonNotAvailable", resourceCulture);
+                return ResourceManager.GetString("TagContractField", resourceCulture);
             }
         }
 
-        internal static string TagFieldTextEditEmptyType {
+        internal static string TagContractTagName {
             get {
-                return ResourceManager.GetString("TagFieldTextEditEmptyType", resourceCulture);
+                return ResourceManager.GetString("TagContractTagName", resourceCulture);
+            }
+        }
+
+        internal static string TagLinkContractField {
+            get {
+                return ResourceManager.GetString("TagLinkContractField", resourceCulture);
+            }
+        }
+
+        internal static string TagLinkContractOwnerId {
+            get {
+                return ResourceManager.GetString("TagLinkContractOwnerId", resourceCulture);
+            }
+        }
+
+        internal static string TagLinkContractTag {
+            get {
+                return ResourceManager.GetString("TagLinkContractTag", resourceCulture);
+            }
+        }
+
+        internal static string TagCheck_RoleTypeFormat {
+            get {
+                return ResourceManager.GetString("TagCheck_RoleTypeFormat", resourceCulture);
+            }
+        }
+
+        internal static string TagCheck_NotTagMasterFormat {
+            get {
+                return ResourceManager.GetString("TagCheck_NotTagMasterFormat", resourceCulture);
+            }
+        }
+
+        internal static string TagCheck_TagDisplayTextFormat {
+            get {
+                return ResourceManager.GetString("TagCheck_TagDisplayTextFormat", resourceCulture);
+            }
+        }
+
+        internal static string TagCheck_NotLinkModuleFormat {
+            get {
+                return ResourceManager.GetString("TagCheck_NotLinkModuleFormat", resourceCulture);
+            }
+        }
+
+        internal static string TagCheck_OwnerBindingMissingFormat {
+            get {
+                return ResourceManager.GetString("TagCheck_OwnerBindingMissingFormat", resourceCulture);
+            }
+        }
+
+        internal static string TagCheck_LinkLayoutFieldsMissingFormat {
+            get {
+                return ResourceManager.GetString("TagCheck_LinkLayoutFieldsMissingFormat", resourceCulture);
+            }
+        }
+
+        internal static string TagCheck_TagModuleRequired {
+            get {
+                return ResourceManager.GetString("TagCheck_TagModuleRequired", resourceCulture);
+            }
+        }
+
+        internal static string TagCheck_TagModuleMismatchFormat {
+            get {
+                return ResourceManager.GetString("TagCheck_TagModuleMismatchFormat", resourceCulture);
+            }
+        }
+
+        internal static string TagCheck_CandidateRowCount {
+            get {
+                return ResourceManager.GetString("TagCheck_CandidateRowCount", resourceCulture);
             }
         }
     }

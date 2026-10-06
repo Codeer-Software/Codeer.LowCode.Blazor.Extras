@@ -7,6 +7,7 @@ using Codeer.LowCode.Blazor.Extras.Designs;
 using Codeer.LowCode.Blazor.Extras.SemanticSearch;
 using Codeer.LowCode.Blazor.Extras.Server.AI.Embedding;
 using Codeer.LowCode.Blazor.Extras.Server.Properties;
+using Codeer.LowCode.Blazor.Extras.Tag;
 using Codeer.LowCode.Blazor.Repository.Data;
 using Codeer.LowCode.Blazor.Repository.Design;
 using Codeer.LowCode.Blazor.Repository.Match;
@@ -225,6 +226,10 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
                     && (indexed == null || !indexed.Contains(idData.Value!))).ToList();
                 if (rows.Count > 0)
                 {
+                    //一覧の読み込みは子の一覧を含まないので、文章に使う TagField のタグ付け行をページ分まとめて読む
+                    await TagContracts.FillTagRowsAsync(designData, module, rows, fields.SelectMany(f => SemanticSearchText.SourceFields(module, f)),
+                        async (c, p) => await moduleDataIO.GetListAsync(c, p));
+
                     //フィールドごとに、ページ分の文章をまとめて 1 回で埋め込む
                     var submits = rows.ToDictionary(row => row, row =>
                     {
