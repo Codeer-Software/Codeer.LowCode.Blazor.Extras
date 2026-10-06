@@ -166,11 +166,53 @@ AIChatField.EndPoint = "/api/ai_chat";
 - SQLite はユーザーが無いので接続文字列の `Mode=ReadOnly` で読み取り専用にする (表・列の限定はできない)
 - ログインユーザーごとの行制限 (モジュールの UserRead / DataRead 条件) は効かない。「誰がこのチャットを使えるか」は、フィールドを置くページやモジュールの UserReadCondition (と PermissionField) で絞る。サーバーは送信のたびに、リクエストの `ModuleName` / `FieldName` の AIChatField が今のユーザーに見えることを確かめてから受け付け、Agent 名と文書フォルダもそのデザインから取る ([サーバー API の権限チェック](ServerApiAuthorization.md))
 
-`execute_sql` 側の SELECT 判定 (1 文だけ・INSERT/UPDATE/DELETE 等の語を含まない) は補助で、書き込み拒否の本体は DB ユーザーの権限です。行数 (`MaxRows` 既定 200)、文字数 (`MaxResultChars` 既定 20000)、タイムアウト (`CommandTimeoutSeconds` 既定 30) の上限と、実行した SQL のログ (`RawDataAccessAgent` のコンストラクタの `ILoggerFactory` を設定したとき。ILogger の Information) はツール側が担います。
+`execute_sql` 側の SELECT 判定 (1 文だけ・INSERT/UPDATE/DELETE 等の語を含まない) は補助で、書き込み拒否の本体は DB ユーザーの権限です。行数 (`MaxRows` 既定 200)、文字数 (`MaxResultChars` 既定 20000)、時間と同時実行数の上限 ([DB の負荷を抑える](#db-の負荷を抑える))、実行した SQL のログ (`RawDataAccessAgent` のコンストラクタの `ILoggerFactory` を設定したとき。ILogger の Information) はツール側が担います。
 
-**監査ログ ([AuditLog](AuditLog.md)) との関係**: 送信 (`AIChat.Send`) は `DataRead` として「誰が・どの画面の AIChatField を・どの Agent で使ったか」が残ります (`Targets` にモジュールと `AIChat:フィールド名`、`Detail` に `Agent=`。発言は残しません)。`RawDataAccessAgent` が読んだ行は監査ログの対象外です。行制限が効かないことに加えて、SQL は送信とは別のジョブで実行されるので、読んだ行をモジュール・Id で監査ログに残せません。行単位の統制が要る環境では `RawDataAccessAgent` ではなく、実行ユーザーの `ModuleDataIO` 経由で行を読む [`ModuleDataAccessAgent`](#moduledataaccessagent-実行ユーザーの権限で読む-agent) を使ってください (行制限と列の読取権限が効く)。`RawDataAccessAgent` は、行単位の統制を要しない分析用途向けです。どちらの Agent も、ジョブの中で読んだ行はまだ監査ログに残りません (送信の行だけ)。
+**監査ログ ([AuditLog](AuditLog.md)) との関係**: 送信 (`AIChat.Send`) は `DataRead` として「誰が・どの画面の AIChatField を・どの Agent で使ったか」が残ります (`Targets` にモジュールと `AIChat:フィールド名`、`Detail` に `Agent=`。発言は残しません)。`RawDataAccessAgent` が読んだ行は監査ログの対象外です。SQL は送信とは別のジョブで実行され、集計の SQL は読んだ行を特定する形になっていないので、行の Id では残せません。監査にどう答えるかは [監査基準への対応](#監査基準への対応-rawdataaccessagent-の利用方針) を見てください。`RawDataAccessAgent` は、行単位の統制を要しない分析用途向けです。
 
 **権限管理はライブラリではなく DB 側の設定と接続文字列で行ってください。** `RawDataAccessAgent` は「渡された接続で読めるものは読む」だけで、表や列の許可・不許可を判断する仕組みを持ちません。AI 用の DB ユーザー (またはビュー) を用意し、そのユーザーで接続するデータソースを appsettings に書く、が正式な手順です。
+
+### DB の負荷を抑える
+
+AI が書く SQL は、全件の集計や索引の効かない並べ替えになることがあります。`RawDataAccessAgent` は重い SQL を事前に見分けることはせず、**時間と本数に上限を付け**、表の大きさと索引を AI に伝えて軽い SQL へ誘導します。設定は `RawDataAccessOptions` で、テンプレートでは appsettings の `AIChat:RawDataAccess` にそのまま束縛されます。0 / false でその対策は無効です。待たせる・断る種類の上限 (合計時間・同時実行数) は既定で無効なので、必要になったら値を入れてください。
+
+| 設定 | 既定 | 内容 |
+|---|---|---|
+| `CommandTimeoutSeconds` | 30 | SQL 1 文のタイムアウト (秒)。超えると DB 側でもクエリが止まる |
+| `MaxQuerySecondsPerReply` | 0 (無効) | 1 回の返事で SQL の実行に使える合計時間 (秒)。使い切ると以後の SQL は DB へ行かずに断り、AI はここまでの結果で答える。例: 45 |
+| `MaxConcurrentQueries` | 0 (無効) | 同じデータソースへ同時に実行する SQL の本数 (プロセス全体)。超えた分は空くまで待ち (最大 `CommandTimeoutSeconds` 秒)、待ち切れたら「混み合っています」を返す。例: 2 |
+| `CancelQueryAtRowLimit` | true | `MaxRows` を超えたら DB にクエリの中止を送る。送らないとドライバは残りの行を最後まで読み捨てる (DB は全件を送り切る) |
+| `LargeTableRows` | 100000 | この行数以上の表を「大きい表」として、索引の先頭列と一緒にシステムプロンプトに挙げ、索引のある列で絞るか集計するよう促す。行数と索引は DB のカタログから読む (COUNT(*) はしない)。0 で読まない |
+
+```json
+"AIChat": {
+  "RawDataAccessDataSources": [ "Analytics" ],
+  "RawDataAccess": {
+    "CommandTimeoutSeconds": 30,
+    "MaxQuerySecondsPerReply": 0,
+    "MaxConcurrentQueries": 0,
+    "CancelQueryAtRowLimit": true,
+    "LargeTableRows": 100000
+  }
+}
+```
+
+効く範囲:
+
+- 行数で止まるのは、行をそのまま返すクエリ (行数制限の無い SELECT など) です。集計・索引の無い並べ替え・大きな JOIN は、1 行目が出る前に重い処理が終わっているので行数では止まりません。これらは時間 (1 文・1 返事) と本数の上限で抑えます。軽くはならず、長引かない・重ならない、という上限です
+- 行数と索引は DB の統計 (SQL Server `sys.partitions` / `sys.indexes`、PostgreSQL `pg_class` / `pg_index`、MySQL `information_schema`、Oracle `USER_TABLES` / `USER_IND_COLUMNS`) から読み、スキーマと同じ時間 (`SchemaCacheDuration`) キャッシュします。統計が古いと行数もずれます。AI 用 DB ユーザーで読めなければ「不明」として扱い、SQL の実行は止めません
+
+DB 側でやること (ライブラリでは代われないもの):
+
+- **AI 用のデータソースを読み取りレプリカに向ける。** 本番 DB の負荷をなくせるのはこれだけです (接続文字列を変えるだけ)
+- AI 用の DB ユーザーに DB 側のタイムアウトと接続数の上限を付ける (例: PostgreSQL `ALTER ROLE ai_reader SET statement_timeout = '15s'` / `ALTER ROLE ai_reader CONNECTION LIMIT 4`)
+- よく聞かれる重い集計は、集計済みの表やビュー (夜間に作る等) を AI に見せる
+
+割り切り:
+
+- SQLite は時間で止まりません (Microsoft.Data.Sqlite のタイムアウトはロック待ちだけ)。サンプル・小規模向けです
+- 同時実行の上限はプロセスごとです。スケールアウトすると実際の上限は「本数 × インスタンス数」になります
+- ビューは統計に行数が出ません。大きいビューは補足文書に「この表は大きいので期間で絞る」と書いてください
 
 ### AI に送られるデータ
 
@@ -191,6 +233,36 @@ AIChatField.EndPoint = "/api/ai_chat";
 3. **送る先を変える。** どうしても外に出せない場合は、`IChatClient` を閉域 (Private Endpoint) の Azure OpenAI やローカルのモデル (Ollama 等) に差し替える。ライブラリは `IChatClient` 抽象しか知らないので Agent 側の変更は不要です
 
 行数や文字数の上限はトークンの節約のためのもので、漏えい防止の手段ではありません。プロンプトで「個人情報を列挙しない」と指示するのも振る舞いを整える程度の効果です。DB から読める時点でデータは送られているので、対策は必ず DB 側で行ってください。実行した SQL は実行ログ (ILogger) に全文残るので、「何が送られたか」は後から追えます (監査ログ (AuditLog) に残るのは「誰がどの Agent を使ったか」までで、SQL と読んだ行は残りません)。
+
+### 監査基準への対応 (RawDataAccessAgent の利用方針)
+
+上場企業の内部統制 (J-SOX の IT 全般統制) や ISMS が AI チャットに求める証跡は「誰が・いつ・何にアクセスしたか」です。`RawDataAccessAgent` はこれを機能ではなく**構成と運用**で満たします。
+考え方は「AI が読める範囲を DB ユーザーで固定し、利用の事実を監査ログに残し、行単位の説明責任があるデータは AI の範囲に入れない」の 3 点です。
+
+| 観点 | 満たし方 |
+|---|---|
+| 誰が・いつ | 監査ログ ([AuditLog](AuditLog.md)) の送信の行 (`AIChat.Send`、`DataRead`)。user_id・時刻・画面 (モジュールと `AIChat:フィールド名`)・`Agent=`・RequestId・デザインの版が残る |
+| 何に (範囲) | AI 用 DB ユーザーに GRANT した表・列・ビューの集合。設定として静的に示せる (BI ツールのアクセスログと同じ粒度: 何を見られる人が、いつ使ったか) |
+| 行単位の閲覧記録 | 個人情報 (個人情報保護法の安全管理措置・番号法・医療情報など、誰のデータを見たかまで問われるもの) は AI 用 DB ユーザーの範囲に入れない (ビューで列を除く / マスクする)。AI がそのデータに届かないので、行単位の記録を要する対象が無くなる |
+| 事故調査 | `RawDataAccessAgent` に `ILoggerFactory` を渡し、実行した SQL (ユーザー・会話 Id つき) をアプリの実行ログに出す。保全期間は監査ログに合わせる。これは調査用で、監査ログではない |
+| 証跡の保護 | 監査ログ側の規則 (追記専用の DB ユーザー・Strict・外部転送)。[AuditLog](AuditLog.md) の「上場企業の監査基準への対応」 |
+
+設定の手順 (チェックリスト):
+
+1. AI 用に読み取り専用の DB ユーザーを作る。見せてよい表・列だけに SELECT を GRANT し、ログイン情報 (パスワードハッシュ・TOTP)・変更履歴・一時ファイル・監査ログの表は GRANT しない
+2. 個人情報は**ビュー**で外す。直接識別子 (氏名・メール・電話・住所・各種番号) を除くかマスクする。組み合わせで個人が特定できる列 (部署 + 年齢 + 入社日など) にも注意する。担当者名のような業務上の名前をどう扱うかは組織の判断で決め、方針として書き残す
+3. そのユーザーで接続するデータソースを appsettings に追加し、`RawDataAccessOptions.DataSourceNames` に指定する。アプリ本体と同じ接続は渡さない (SQLite は `Mode=ReadOnly`)
+4. 「誰がこのチャットを使えるか」は、AIChatField を置くページ / モジュールの UserReadCondition と PermissionField で絞る
+5. 監査ログを有効にする (appsettings の `AuditLog`)。送信の行が残ることを確認する
+6. `RawDataAccessAgent` に `ILoggerFactory` を渡し、実行ログの保全期間を決める
+7. 「AI に送られるデータ」の節の説明と合わせて、利用者 (と監査人) に「AI が読める範囲」を文書で示す
+
+残さないもの (と理由):
+
+- **実行した SQL 文の監査ログ化**: 読める範囲が DB ユーザーで固定されているので、監査が問う「何に」は設定で答えられる。SQL 文を監査ログに入れると条件の値 (`WHERE name = '…'`) が証跡に残り、監査ログの「値は残さない」方針と衝突する。調査用途は実行ログで足りる
+- **読んだ行の Id**: AI が書く SQL は集計が中心で、読んだ行を特定する形になっていない。行単位の説明責任があるデータは 2 で AI の範囲から外す方針なので、記録する対象が無い
+
+ユーザーごとに見える行が違うデータ (担当者は自分の案件だけ、など) は DB ユーザーでは表現できないので、AI 用 DB ユーザーの範囲に入れません。
 
 ### 設計と補足文書を AI に渡す
 

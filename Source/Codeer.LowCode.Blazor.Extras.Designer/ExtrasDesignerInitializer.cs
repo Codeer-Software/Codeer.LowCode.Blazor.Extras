@@ -39,6 +39,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designer
             DesignerApp.ScriptRuntimeTypeManager.AddType<CalendarViewMode>();
             DesignerApp.ScriptRuntimeTypeManager.AddType<GanttViewMode>();
             DesignerApp.ScriptRuntimeTypeManager.AddType<Marker>();
+            DesignerApp.ScriptRuntimeTypeManager.AddType<CrossTabCell>();
 
             //Extras のスクリプトオブジェクト/サービス (スクリプト補完・script-catalog 用)。
             //デザイナでは実行されないため依存はダミーでよい。差し替えたいアプリは
@@ -62,6 +63,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designer
             //custom property controls.
             PropertyTypeManager.AddPropertyControl<TaskBoardStatuses, TaskBoardStatusesPropertyControl>();
             PropertyTypeManager.AddPropertyControl<MappingColumns, MappingColumnsPropertyControl>();
+            PropertyTypeManager.AddPropertyControl<CrossTabSetting, CrossTabSettingPropertyControl>();
 
             //AI 用フィールドドキュメント。.md は Extras 本体プロジェクトにあるが、WASM に配信しないため
             //このアセンブリに埋め込まれている (リンク EmbeddedResource)。FieldCatalog が

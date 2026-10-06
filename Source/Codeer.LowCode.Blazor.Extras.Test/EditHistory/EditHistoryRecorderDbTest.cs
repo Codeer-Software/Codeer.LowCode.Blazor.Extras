@@ -506,6 +506,25 @@ namespace Codeer.LowCode.Blazor.Extras.Test.EditHistory
         }
 
         [Test]
+        public async Task 復元を禁止した履歴フィールドのモジュールは復活できない()
+        {
+            _design = EditHistoryTestDesigns.Create(logicalDelete: true);
+            _design.Modules.Find("Order")!.Fields.OfType<Extras.Designs.EditHistoryFieldDesign>().Single().CanRestore = false;
+            await CreateOrderAsync();
+            AssertNoError(await CreateIO().SubmitWithTransactionAsync([new ModuleSubmitData
+            {
+                ModuleName = "Order", Id = "1", Delete = [new ModuleDeleteInfo { ModuleName = "Order", Id = "1" }],
+            }]));
+            var deleteRow = (await HistoriesAsync()).Single(e => (string)e["change_type"] == "Delete");
+            var submit = new ModuleSubmitData { ModuleName = "Order", Id = "1" };
+            submit.ExtendedData.Add(new EditHistoryUndeleteData { HistoryModuleName = "EditHistory", HistoryRowId = deleteRow["id"]!.ToString()!, RestoreWholeRecord = true });
+            var results = await CreateIO().SubmitWithTransactionAsync([submit]);
+            Assert.That(results.All(e => !string.IsNullOrEmpty(e.ExceptionMessage)), Is.True);
+            Assert.That((await _db.QueryAsync(Ds, "SELECT COUNT(*) AS c FROM orders WHERE is_deleted = 1", new())).Single()["c"], Is.EqualTo(1), "削除のまま");
+            Assert.That((await HistoriesAsync()).Select(e => e["change_type"]), Is.EqualTo(new[] { "Add", "Delete" }));
+        }
+
+        [Test]
         public async Task 論理削除の復活も最新の版が削除のときだけ()
         {
             _design = EditHistoryTestDesigns.Create(logicalDelete: true);

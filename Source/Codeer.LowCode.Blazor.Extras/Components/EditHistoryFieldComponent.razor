@@ -99,11 +99,6 @@ else
               <div class="edit-history-actions">
                 <button type="button" class="btn btn-sm btn-outline-secondary" data-system="edit-history-show"
                         disabled="@Field.IsBusy" @onclick="@(async () => await Field.ShowVersionAsync(version))">@R.EditHistoryShowVersion</button>
-                @if (Field.CanRestore && !version.IsDelete && version.Number != Field.TotalCount)
-                {
-                  <button type="button" class="btn btn-sm btn-outline-primary" data-system="edit-history-restore"
-                          disabled="@Field.IsBusy" @onclick="@(async () => await Field.RestoreAsync(version))">@R.EditHistoryRestoreVersion</button>
-                }
               </div>
             }
           </div>

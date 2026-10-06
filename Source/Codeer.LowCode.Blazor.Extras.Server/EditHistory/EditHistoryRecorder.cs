@@ -21,7 +21,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.EditHistory
     ///   (画面・API からの追加・更新は拒否する。古い版の削除はできる)。
     /// - 読み出し: 履歴モジュールの行の Snapshot を読む人の権限に落として返す (対象モジュールの読めない列・読めない子モジュールの従属レコード・
     ///   行の閲覧条件に合わない行。対象モジュール自体を読めない・行が条件に合わないなら空)。一覧・詳細・ダウンロードは全部ここを通る。
-    /// - 復活 / この版に戻す: 送信に同梱された削除の取り消しの依頼を、本体の保存の前に処理する (EditHistoryUndeleter)。
+    /// - 復活 / この版に置き換える: 送信に同梱された削除の取り消しの依頼を、本体の保存の前に処理する (EditHistoryUndeleter)。
     ///   戻せないものが 1 つでもあれば保存全体を失敗にする (部分反映はしない)。
     /// </summary>
     /// <remarks>
@@ -110,7 +110,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.EditHistory
                 return Fail(transactionData, $"The edit history module '{name}' is written only by the system. Versions cannot be added or changed.");
             }
 
-            //削除の取り消し (この版に戻す / 復活ボタン)。本体の前に戻しておけば、同じ Submit の Update と一緒に確定する
+            //削除の取り消し (この版に置き換える / 復活ボタン)。本体の前に戻しておけば、同じ Submit の Update と一緒に確定する
             var restores = new Dictionary<int, EditHistoryUndeleteResult>();
             for (var i = 0; i < transactionData.Count; i++)
             {

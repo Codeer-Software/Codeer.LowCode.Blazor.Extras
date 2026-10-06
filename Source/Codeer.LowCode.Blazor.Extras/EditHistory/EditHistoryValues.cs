@@ -44,7 +44,7 @@ namespace Codeer.LowCode.Blazor.Extras.EditHistory
                     return string.Empty;
                 case SelectFieldData select:
                     if (!string.IsNullOrEmpty(select.DisplayText)) return select.DisplayText;
-                    return EnumDisplayText(design, select.Value, designData) ?? select.Value ?? string.Empty;
+                    return EnumDisplayText(design, select.Value, designData) ?? CandidateDisplayText(design, select.Value) ?? select.Value ?? string.Empty;
                 case LinkFieldData link:
                     return !string.IsNullOrEmpty(link.DisplayText) ? link.DisplayText : link.Value ?? string.Empty;
                 case BooleanFieldData boolean:
@@ -71,6 +71,19 @@ namespace Codeer.LowCode.Blazor.Extras.EditHistory
             if (design is not SelectFieldDesign select || string.IsNullOrEmpty(select.EnumName) || designData == null || value == null) return null;
             var enumDesign = designData.Enums.FirstOrDefault(e => e.Name == select.EnumName);
             return enumDesign?.FindMemberByValue(value)?.GetDisplayText(enumDesign.ValueType);
+        }
+
+        //固定候補 ("表示,値" / 表示だけ) の Select: 本体の SelectField と同じ読み方で値から表示名を引く (候補に無い値は null)
+        static string? CandidateDisplayText(FieldDesignBase? design, string? value)
+        {
+            if (design is not SelectFieldDesign select || value == null) return null;
+            foreach (var candidate in select.Candidates)
+            {
+                var sp = candidate.Split(',').Select(e => e.Trim()).ToArray();
+                if (sp.Length == 2 && sp[1] == value) return sp[0];
+                if (sp.Length == 1 && sp[0] == value) return sp[0];
+            }
+            return null;
         }
 
         internal static string DisplayName(FieldDesignBase design)

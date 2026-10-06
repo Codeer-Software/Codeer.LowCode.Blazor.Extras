@@ -20,8 +20,22 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat.RawDataAccess
         /// <summary>1 回の SQL で AI に返す文字数の上限 (トークンの歯止め)。</summary>
         public int MaxResultChars { get; set; } = 20000;
 
-        /// <summary>SQL 1 文のタイムアウト (秒)。</summary>
+        /// <summary>SQL 1 文のタイムアウト (秒)。0 で無制限。</summary>
         public int CommandTimeoutSeconds { get; set; } = 30;
+
+        // ---- DB の負荷の上限 (0 / false で無効。待たせる・断る種類のものは既定で無効) ----
+
+        /// <summary><see cref="MaxRows"/> を超えたら DB にクエリの中止を送る (送らないと DB は残りの行を最後まで送り切る)。</summary>
+        public bool CancelQueryAtRowLimit { get; set; } = true;
+
+        /// <summary>1 回の返事で SQL の実行に使える合計時間 (秒)。使い切ったら以後の SQL は DB へ行かずに断る。0 で無制限 (既定)。</summary>
+        public int MaxQuerySecondsPerReply { get; set; }
+
+        /// <summary>同じデータソースへ同時に実行する SQL の本数 (プロセス全体)。超えた分は空くまで待つ。0 で無制限 (既定)。</summary>
+        public int MaxConcurrentQueries { get; set; }
+
+        /// <summary>この行数以上の表を「大きい表」として、索引の先頭列と一緒に AI に伝える (索引のある列で絞るか集計するよう促す)。0 で行数も索引も読まない。</summary>
+        public int LargeTableRows { get; set; } = 100000;
 
         /// <summary>スキーマ情報を再読込するまでの時間。</summary>
         public TimeSpan SchemaCacheDuration { get; set; } = TimeSpan.FromMinutes(10);

@@ -176,12 +176,12 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
             var (service, chat) = CreateService();
             var modules = _designData.Modules;
             //UserReadCondition 不成立
-            Assert.ThrowsAsync<LowCodeException>(async () => await service.AnalyzeTextAsync(CreateIO("1"), modules, "Item", "Analyze", "text"));
+            Assert.ThrowsAsync<LowCodeAccessDeniedException>(async () => await service.AnalyzeTextAsync(CreateIO("1"), modules, "Item", "Analyze", "text"));
             //PermissionField で隠された AITextAnalyzerField (モジュールは開けるがフィールドが見えない)
-            Assert.ThrowsAsync<LowCodeException>(async () => await service.AnalyzeTextAsync(CreateIO("2"), modules, "Item", "SecretAnalyze", "text"));
+            Assert.ThrowsAsync<LowCodeAccessDeniedException>(async () => await service.AnalyzeTextAsync(CreateIO("2"), modules, "Item", "SecretAnalyze", "text"));
             //停止ユーザー (AppAccessConditions 不成立)。DB 無しモジュールでも入口で弾かれる
-            Assert.ThrowsAsync<LowCodeException>(async () => await service.AnalyzeTextAsync(CreateIO("3"), modules, "Item", "Analyze", "text"));
-            Assert.ThrowsAsync<LowCodeException>(async () => await service.AnalyzeTextAsync(CreateIO("3"), modules, "Memo", "Analyze", "text"));
+            Assert.ThrowsAsync<LowCodeAccessDeniedException>(async () => await service.AnalyzeTextAsync(CreateIO("3"), modules, "Item", "Analyze", "text"));
+            Assert.ThrowsAsync<LowCodeAccessDeniedException>(async () => await service.AnalyzeTextAsync(CreateIO("3"), modules, "Memo", "Analyze", "text"));
             //AITextAnalyzerField ではないフィールド・存在しないフィールド・存在しないモジュール・未指定
             Assert.ThrowsAsync<LowCodeException>(async () => await service.AnalyzeTextAsync(CreateIO("2"), modules, "Item", "Title", "text"));
             Assert.ThrowsAsync<LowCodeException>(async () => await service.AnalyzeTextAsync(CreateIO("2"), modules, "Item", "Nope", "text"));
@@ -190,8 +190,8 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
 
             //ファイル解析も同じ入口 (ファイルの読み取りより前に止まる)
             using var stream = new MemoryStream(new byte[] { 1, 2, 3 });
-            Assert.ThrowsAsync<LowCodeException>(async () => await service.AnalyzeFileAsync(CreateIO("1"), modules, "Item", "Analyze", "a.pdf", stream));
-            Assert.ThrowsAsync<LowCodeException>(async () => await service.AnalyzeFileAsync(CreateIO("2"), modules, "Item", "SecretAnalyze", "a.pdf", stream));
+            Assert.ThrowsAsync<LowCodeAccessDeniedException>(async () => await service.AnalyzeFileAsync(CreateIO("1"), modules, "Item", "Analyze", "a.pdf", stream));
+            Assert.ThrowsAsync<LowCodeAccessDeniedException>(async () => await service.AnalyzeFileAsync(CreateIO("2"), modules, "Item", "SecretAnalyze", "a.pdf", stream));
 
             Assert.That(chat.Calls, Is.Empty, "拒否された解析はモデルを呼ばない");
         }

@@ -1,0 +1,341 @@
+@using System.Globalization
+@using Codeer.LowCode.Blazor.Aggregation
+@using Codeer.LowCode.Blazor.Components
+@using Codeer.LowCode.Blazor.Components.Dialog
+@using Codeer.LowCode.Blazor.Components.Dialog.BootstrapButtons
+@using Codeer.LowCode.Blazor.Components.Fields
+@using Codeer.LowCode.Blazor.Components.Interop
+@using Codeer.LowCode.Blazor.Json
+@using Microsoft.JSInterop
+@using Codeer.LowCode.Blazor.DesignLogic
+@using Codeer.LowCode.Blazor.Extras.Designs
+@using Codeer.LowCode.Blazor.Extras.Fields
+@using Codeer.LowCode.Blazor.Extras.Properties
+@using Codeer.LowCode.Blazor.OperatingModel
+@using Codeer.LowCode.Blazor.Repository
+@using Codeer.LowCode.Blazor.Repository.Design
+@using Codeer.LowCode.Blazor.Repository.Match
+@using Codeer.LowCode.Blazor.RequestInterfaces
+@using Codeer.LowCode.Blazor.Utils
+@inherits FieldComponentBase<CrossTabField>
+@inject Services Services
+@using Microsoft.AspNetCore.Components.Web
+@inject IJSRuntime JSRuntime
+
+<div @ref="Element" class="crosstab" style="@Field.GetOwnStyleString()">
+  @* カスタマイズできる表だけ右上にボタンを出す (エラーで表が出ないときも、自分の設定を直せるように表の外に置く) *@
+  @if (Field.CanCustomize) {
+    <div class="crosstab-toolbar">
+      <button type="button" class="btn btn-sm btn-outline-secondary" data-name="customize" @onclick="ShowCustomDialog">@Resources.CrossTab_Customize</button>
+    </div>
+  }
+  @if (string.IsNullOrEmpty(Field.ModuleName)) {
+    @if (Services.AppInfoService.IsDesignMode) {
+      <div class="text-muted small">@Resources.CrossTab_ScriptOnly</div>
+    }
+  } else {
+    @if (!string.IsNullOrEmpty(Field.LoadError)) {
+      <div class="text-danger small">@Field.LoadError</div>
+    } else if (Field.Table == null) {
+      @if (Field.IsLoading) { <div class="text-muted small">...</div> }
+    } else {
+      var table = Field.Table;
+      var measures = table.Measures;
+      var hasColumns = Field.ColumnGroups.Count > 0 || Services.AppInfoService.IsDesignMode && table.Columns.Any(c => c.Keys.Count > 0);
+      var showRowTotal = Field.Design.ShowRowTotals && table.HasTotals && hasColumns;
+      var showColumnTotal = Field.Design.ShowColumnTotals && table.HasTotals;
+      var showGrand = Field.Design.ShowGrandTotal && table.HasTotals && hasColumns;
+      <div class="crosstab-scroll">
+        <table class="table table-sm table-bordered crosstab-table">
+          <thead>
+            <tr>
+              <th class="crosstab-corner" rowspan="@(measures.Count > 1 ? 2 : 1)">@RowHeaderText()</th>
+              @foreach (var column in table.Columns) {
+                <th class="crosstab-col" colspan="@measures.Count">@(hasColumns ? ColumnText(column) : string.Empty)</th>
+              }
+              @if (showRowTotal) { <th class="crosstab-total" colspan="@measures.Count">@Resources.CrossTab_Total</th> }
+            </tr>
+            @if (measures.Count > 1) {
+              <tr>
+                @for (var c = 0; c < table.Columns.Count + (showRowTotal ? 1 : 0); c++) {
+                  @foreach (var measure in measures) { <th class="crosstab-measure">@MeasureText(measure)</th> }
+                }
+              </tr>
+            }
+          </thead>
+          <tbody>
+            @for (var r = 0; r < table.Rows.Count; r++) {
+              var rowIndex = r;
+              <tr>
+                <th class="crosstab-row">@RowText(table.Rows[rowIndex])</th>
+                @for (var c = 0; c < table.Columns.Count; c++) {
+                  var columnIndex = c;
+                  @for (var m = 0; m < measures.Count; m++) {
+                    var measureIndex = m;
+                    <td class="crosstab-cell @(HasClick ? "crosstab-clickable" : "")" @onclick="() => CellClicked(rowIndex, columnIndex, measureIndex)">@CellText(table, measureIndex, rowIndex, columnIndex)</td>
+                  }
+                }
+                @if (showRowTotal) {
+                  @for (var m = 0; m < measures.Count; m++) {
+                    var measureIndex = m;
+                    <td class="crosstab-cell crosstab-total @(HasClick ? "crosstab-clickable" : "")" @onclick="() => TotalClicked(rowIndex, null, measureIndex)">@TotalText(table, measureIndex, table.RowTotals[measureIndex][rowIndex], TotalKind.Row)</td>
+                  }
+                }
+              </tr>
+            }
+          </tbody>
+          @if (showColumnTotal) {
+            <tfoot>
+              <tr>
+                <th class="crosstab-total">@Resources.CrossTab_Total</th>
+                @for (var c = 0; c < table.Columns.Count; c++) {
+                  var columnIndex = c;
+                  @for (var m = 0; m < measures.Count; m++) {
+                    var measureIndex = m;
+                    <td class="crosstab-cell crosstab-total @(HasClick ? "crosstab-clickable" : "")" @onclick="() => TotalClicked(null, columnIndex, measureIndex)">@TotalText(table, measureIndex, table.ColumnTotals[measureIndex][columnIndex], TotalKind.Column)</td>
+                  }
+                }
+                @if (showGrand) {
+                  @for (var m = 0; m < measures.Count; m++) {
+                    var measureIndex = m;
+                    <td class="crosstab-cell crosstab-total crosstab-grand @(HasClick ? "crosstab-clickable" : "")" @onclick="() => TotalClicked(null, null, measureIndex)">@TotalText(table, measureIndex, table.GrandTotals[measureIndex], TotalKind.Grand)</td>
+                  }
+                }
+              </tr>
+            </tfoot>
+          }
+        </table>
+      </div>
+      @if (table.IsLimited) {
+        <div class="text-warning small">@string.Format(Field.RowGroups.Count == 0 && Field.ColumnGroups.Count > 0 ? Resources.CrossTab_LimitedColumns : Resources.CrossTab_Limited, table.ShownGroupCount, table.GroupCount, table.TotalCount)</div>
+      }
+    }
+  }
+  @if (Field.CanCustomize) {
+    <ComponentDialog @ref="_dialog" Title="@Resources.CrossTab_Customize"
+                     Buttons="@([new PrimaryButton("OK"), new SecondaryButton(Resources.CrossTab_ResetToDesign), new SecondaryButton(Resources.CrossTab_Cancel)])">
+      <CrossTabSettingEditor Value="_editing" Design="Field.Design" />
+    </ComponentDialog>
+  }
+</div>
+
+@code {
+  ComponentDialog? _dialog;
+  CrossTabUserSetting _editing = new();
+  LocalStorage? _localStorage;
+  bool _userSettingLoaded;
+
+  //保存先のキーは ListField のカラムカスタマイズと同じ「モジュール名.フィールド名」
+  string StorageKey => Field.Module.Design.Name + "." + Field.Design.Name;
+
+  protected override async Task OnParametersSetAsync()
+  {
+    await base.OnParametersSetAsync();
+    Field.SetStateChangedReceiver(StateHasChanged);
+    Field.SetShowCustomDialog(ShowCustomDialog);
+    await LoadUserSettingAsync();
+  }
+
+  //カスタマイズできる表だけ、ブラウザの保存内容を一度読んで今の設計に合わせてから集計する (Field は読むまで集計を待っている)
+  async Task LoadUserSettingAsync()
+  {
+    if (_userSettingLoaded || !Field.Design.CanCustomize || Services.AppInfoService.IsDesignMode) return;
+    _userSettingLoaded = true;
+    CrossTabUserSetting? saved = null;
+    try
+    {
+      _localStorage = await LocalStorage.CreateAsync(JSRuntime);
+      AddDisposable(_localStorage);
+      var json = await _localStorage.Get(StorageKey);
+      if (!string.IsNullOrEmpty(json)) saved = JsonConverterEx.DeserializeObject<CrossTabUserSetting>(json);
+    }
+    catch
+    {
+      //読めない保存内容は無かったものとして設計の設定で表示する
+      saved = null;
+    }
+    var setting = saved == null ? null : Field.Design.ReconcileSetting(saved.Setting, Services.AppInfoService.GetDesignData());
+    await Field.ApplyUserSettingAsync(setting, saved?.ValueDisplay);
+  }
+
+  async Task ShowCustomDialog()
+  {
+    if (_dialog == null || !Field.CanCustomize) return;
+    _editing = new CrossTabUserSetting { Setting = Field.CurrentSetting.JsonClone(), ValueDisplay = Field.ValueDisplay };
+    while (true)
+    {
+      StateHasChanged();
+      var result = await _dialog.ShowDialogAsync();
+      if (result == Resources.CrossTab_ResetToDesign)
+      {
+        await SaveUserSettingAsync(null);
+        return;
+      }
+      if (result != "OK") return;
+      var errors = Field.Design.ValidateSetting(_editing.Setting, Services.AppInfoService.GetDesignData(), includeUnknownField: true);
+      if (errors.Count == 0)
+      {
+        await SaveUserSettingAsync(_editing);
+        return;
+      }
+      //直せるよう編集中の内容のままダイアログを開き直す
+      _ = Services.UIService.NotifyError(string.Join(Environment.NewLine, errors.Select(x => x.Message).Distinct()));
+    }
+  }
+
+  //設計と同じ内容 (または「設計に戻す」) なら保存を消す
+  async Task SaveUserSettingAsync(CrossTabUserSetting? setting)
+  {
+    var design = new CrossTabUserSetting { Setting = Field.Design.Setting, ValueDisplay = Field.Design.ValueDisplay };
+    if (setting != null && JsonConverterEx.SerializeObject(setting) == JsonConverterEx.SerializeObject(design)) setting = null;
+    if (_localStorage != null)
+    {
+      if (setting == null) await _localStorage.Remove(StorageKey);
+      else await _localStorage.Set(StorageKey, JsonConverterEx.SerializeObject(setting));
+    }
+    await Field.ApplyUserSettingAsync(setting?.Setting, setting?.ValueDisplay);
+  }
+
+  bool HasClick => !string.IsNullOrEmpty(Field.Design.OnCellClick) && !Services.AppInfoService.IsDesignMode;
+
+  ModuleDesign? Module => Services.AppInfoService.GetDesignData().Modules.Find(Field.ModuleName);
+
+  string FieldText(string variable)
+  {
+    var module = Module;
+    var fieldName = new VariableName(variable).FieldName.FullName;
+    var field = module == null ? null : CrossTabFieldDesign.ResolveField(Services.AppInfoService.GetDesignData(), module, variable);
+    return field == null ? fieldName : Services.AppInfoService.Localize(CrossTabFieldDesign.DisplayTextOf(field));
+  }
+
+  string BucketText(DateBucket bucket) => bucket switch
+  {
+    DateBucket.Year => Resources.CrossTab_Year,
+    DateBucket.Quarter => Resources.CrossTab_Quarter,
+    DateBucket.Month => Resources.CrossTab_Month,
+    DateBucket.Week => Resources.CrossTab_Week,
+    DateBucket.Day => Resources.CrossTab_Day,
+    DateBucket.Hour => Resources.CrossTab_Hour,
+    _ => string.Empty,
+  };
+
+  string GroupText(AggregateGroup group)
+    => group is DateGroup d ? $"{FieldText(group.Variable)} ({BucketText(d.Bucket)})" : FieldText(group.Variable);
+
+  string RowHeaderText() => string.Join(" / ", Field.RowGroups.Select(GroupText));
+
+  string MeasureText(AggregateMeasure measure)
+  {
+    if (!string.IsNullOrEmpty(measure.Name)) return Services.AppInfoService.Localize(measure.Name);
+    var function = measure.Function switch
+    {
+      AggregateFunction.Count => Resources.CrossTab_Count,
+      AggregateFunction.CountDistinct => Resources.CrossTab_CountDistinct,
+      AggregateFunction.Sum => Resources.CrossTab_Sum,
+      AggregateFunction.Avg => Resources.CrossTab_Avg,
+      AggregateFunction.Min => Resources.CrossTab_Min,
+      AggregateFunction.Max => Resources.CrossTab_Max,
+      _ => measure.Function.ToString(),
+    };
+    return measure.Function == AggregateFunction.Count ? function : $"{FieldText(measure.Variable)} {function}";
+  }
+
+  //軸・値が指す元モジュールの項目 (見た目の設定を引き継ぐ。リンク越しも可。無ければ null)
+  FieldDesignBase? SourceField(string variable)
+  {
+    if (string.IsNullOrEmpty(variable)) return null;
+    var designData = Services.AppInfoService.GetDesignData();
+    var module = designData.Modules.Find(Field.ModuleName);
+    return module == null ? null : CrossTabFieldDesign.ResolveField(designData, module, variable);
+  }
+
+  string KeyText(AggregateKey key, AggregateGroup? group)
+    => CrossTabFormatter.Key(key, group, group == null ? null : SourceField(group.Variable),
+         Resources.CrossTab_Empty, Resources.CrossTab_True, Resources.CrossTab_False, CultureInfo.CurrentCulture);
+
+  string RowText(CrossTabAxisValue axis) => string.Join(" / ", axis.Keys.Select((k, i) => KeyText(k, Field.RowGroups.ElementAtOrDefault(i))));
+  string ColumnText(CrossTabAxisValue axis) => string.Join(" / ", axis.Keys.Select((k, i) => KeyText(k, Field.ColumnGroups.ElementAtOrDefault(i))));
+
+  //割合は足し上げられる値 (件数・合計) だけ。平均・最小・最大・重複を除いた件数は割合にすると意味が無いので値のまま
+  bool ShowsPercent(AggregateMeasure measure)
+    => Field.ValueDisplay != CrossTabValueDisplay.Value && measure.Function is AggregateFunction.Count or AggregateFunction.Sum;
+
+  string CellText(CrossTab table, int m, int r, int c)
+  {
+    var value = table.Cells[m][r][c];
+    if (!ShowsPercent(table.Measures[m]) || !table.HasTotals) return Format(value, table.Measures[m]);
+    var denominator = Field.ValueDisplay switch
+    {
+      CrossTabValueDisplay.PercentOfRow => table.RowTotals[m][r],
+      CrossTabValueDisplay.PercentOfColumn => table.ColumnTotals[m][c],
+      _ => table.GrandTotals[m],
+    };
+    return Percent(value, denominator);
+  }
+
+  enum TotalKind { Row, Column, Grand }
+
+  //合計セル。割合表示では「分母にした合計」のセルは 100% になる (行の合計に対する割合なら右端の合計列、列の合計に対する割合なら下端の合計行、総計はどの割合でも 100%)。それ以外の合計セルは総計に対する割合
+  string TotalText(CrossTab table, int m, MultiTypeValue value, TotalKind kind)
+  {
+    if (!ShowsPercent(table.Measures[m])) return Format(value, table.Measures[m]);
+    var isDenominator = kind == TotalKind.Grand
+      || kind == TotalKind.Row && Field.ValueDisplay == CrossTabValueDisplay.PercentOfRow
+      || kind == TotalKind.Column && Field.ValueDisplay == CrossTabValueDisplay.PercentOfColumn;
+    return isDenominator ? Percent(value, value) : Percent(value, table.GrandTotals[m]);
+  }
+
+  //値の書式 → 元の項目の書式 → 既定。件数は整数
+  string Format(MultiTypeValue value, AggregateMeasure measure)
+    => CrossTabFormatter.Measure(value, measure, SourceField(measure.Variable), CultureInfo.CurrentCulture);
+
+  static string Percent(MultiTypeValue value, MultiTypeValue denominator)
+  {
+    if (value.GetValue() is not decimal v || denominator.GetValue() is not decimal d || d == 0) return string.Empty;
+    return (v / d * 100).ToString("N1", CultureInfo.CurrentCulture) + "%";
+  }
+
+  async Task CellClicked(int r, int c, int m)
+  {
+    if (!HasClick || Field.Table == null) return;
+    var table = Field.Table;
+    await Field.InvokeCellClickAsync(new CrossTabCell
+    {
+      RowKeyValues = table.Rows[r].Keys.Select(k => k.Value.GetValue()).ToList(),
+      RowKeyTexts = table.Rows[r].Keys.Select((k, i) => KeyText(k, Field.RowGroups.ElementAtOrDefault(i))).ToList(),
+      ColumnKeyValues = table.Columns[c].Keys.Select(k => k.Value.GetValue()).ToList(),
+      ColumnKeyTexts = table.Columns[c].Keys.Select((k, i) => KeyText(k, Field.ColumnGroups.ElementAtOrDefault(i))).ToList(),
+      MeasureIndex = m,
+      Value = table.Cells[m][r][c].GetValue(),
+      ModuleName = Field.ModuleName,
+      Condition = Field.CreateCellCondition(r, c),
+      DetailError = Field.GetCellDetailError(r, c),
+      Services = Services,
+    });
+  }
+
+  async Task TotalClicked(int? r, int? c, int m)
+  {
+    if (!HasClick || Field.Table == null) return;
+    var table = Field.Table;
+    var cell = new CrossTabCell
+    {
+      MeasureIndex = m, IsRowTotal = r != null && c == null, IsColumnTotal = c != null && r == null,
+      ModuleName = Field.ModuleName, Condition = Field.CreateCellCondition(r, c), DetailError = Field.GetCellDetailError(r, c), Services = Services,
+    };
+    if (r != null)
+    {
+      cell.RowKeyValues = table.Rows[r.Value].Keys.Select(k => k.Value.GetValue()).ToList();
+      cell.RowKeyTexts = table.Rows[r.Value].Keys.Select((k, i) => KeyText(k, Field.RowGroups.ElementAtOrDefault(i))).ToList();
+      cell.Value = table.RowTotals[m][r.Value].GetValue();
+    }
+    if (c != null)
+    {
+      cell.ColumnKeyValues = table.Columns[c.Value].Keys.Select(k => k.Value.GetValue()).ToList();
+      cell.ColumnKeyTexts = table.Columns[c.Value].Keys.Select((k, i) => KeyText(k, Field.ColumnGroups.ElementAtOrDefault(i))).ToList();
+      cell.Value = table.ColumnTotals[m][c.Value].GetValue();
+    }
+    if (r == null && c == null) cell.Value = table.GrandTotals[m].GetValue();
+    await Field.InvokeCellClickAsync(cell);
+  }
+}

@@ -211,12 +211,12 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Mail
         {
             var (dispatcher, fake) = CreateDispatcher();
             //UserReadCondition 不成立
-            Assert.ThrowsAsync<LowCodeException>(async () => await dispatcher.SendAsync(CreateRequest("1"), CreateIO("1")));
+            Assert.ThrowsAsync<LowCodeAccessDeniedException>(async () => await dispatcher.SendAsync(CreateRequest("1"), CreateIO("1")));
             //PermissionField で隠された MailField (モジュールは開けるがフィールドが見えない)
-            Assert.ThrowsAsync<LowCodeException>(async () => await dispatcher.SendAsync(CreateRequest("1", fieldName: "SecretMail"), CreateIO("2")));
+            Assert.ThrowsAsync<LowCodeAccessDeniedException>(async () => await dispatcher.SendAsync(CreateRequest("1", fieldName: "SecretMail"), CreateIO("2")));
             //停止ユーザー (AppAccessConditions 不成立)。DB 無しモジュールでも入口で弾かれる
-            Assert.ThrowsAsync<LowCodeException>(async () => await dispatcher.SendAsync(CreateRequest("1"), CreateIO("3")));
-            Assert.ThrowsAsync<LowCodeException>(async () => await dispatcher.SendAsync(CreateRequest("", sourceModule: "Memo"), CreateIO("3")));
+            Assert.ThrowsAsync<LowCodeAccessDeniedException>(async () => await dispatcher.SendAsync(CreateRequest("1"), CreateIO("3")));
+            Assert.ThrowsAsync<LowCodeAccessDeniedException>(async () => await dispatcher.SendAsync(CreateRequest("", sourceModule: "Memo"), CreateIO("3")));
             //MailField ではないフィールド・存在しないフィールド・存在しないモジュール
             Assert.ThrowsAsync<LowCodeException>(async () => await dispatcher.SendAsync(CreateRequest("1", fieldName: "Title"), CreateIO("2")));
             Assert.ThrowsAsync<LowCodeException>(async () => await dispatcher.SendAsync(CreateRequest("1", fieldName: "Nope"), CreateIO("2")));
@@ -260,7 +260,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Mail
             Assert.That(json, Does.Contain("\"packageVersion\":1").And.Contain("\"attachmentFiles\"").And.Contain("\"contentBase64\""));
 
             //モジュールを開けないユーザーはプレビューも拒否。行は読まないので読めない行でも通る
-            Assert.ThrowsAsync<LowCodeException>(async () => await new MailPreviewBuilder(dispatcher, CreateIO("1"), _designData).BuildSingleAsync(request));
+            Assert.ThrowsAsync<LowCodeAccessDeniedException>(async () => await new MailPreviewBuilder(dispatcher, CreateIO("1"), _designData).BuildSingleAsync(request));
             request.SourceId = "2";
             Assert.That((await new MailPreviewBuilder(dispatcher, CreateIO("2"), _designData).BuildSingleAsync(request)).Kind, Is.EqualTo("single"));
         }

@@ -1,3 +1,4 @@
+using Codeer.LowCode.Blazor.Components.Dialog;
 using Codeer.LowCode.Blazor.Components.Dialog.BootstrapButtons;
 using Codeer.LowCode.Blazor.DataIO;
 using Codeer.LowCode.Blazor.DesignLogic;
@@ -37,9 +38,11 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         internal const string ChangedRowClassName = "edit-history-changed-row";
         /// <summary>版表示ダイアログの中身のモジュールに付けるクラス。ダイアログの幅を一定にする CSS の目印。</summary>
         internal const string VersionDialogClassName = "edit-history-version-dialog";
+        /// <summary>「この版を表示」のダイアログの、編集中の内容をその版に置き換えるボタンに付けるクラス。</summary>
+        internal const string RestoreButtonClassName = "edit-history-restore";
 
         readonly List<EditHistoryVersion> _versions = new();
-        //「この版に戻す」で Id を保って戻した論理削除の行がある版 (履歴行の Id)。保存に同梱し、サーバーがその版のスナップショットから行を戻す
+        //「この版に置き換える」で Id を保って戻した論理削除の行がある版 (履歴行の Id)。保存に同梱し、サーバーがその版のスナップショットから行を戻す
         readonly List<string> _pendingUndeleteVersions = new();
         int _pageIndex;
         //版番号の基準にする件数 (最初のページを読んだときの総数。「さらに表示」の間に版が増えても番号がずれないように固定する)
@@ -150,8 +153,8 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         /// <summary>履歴を読める状態か (デザインモード・未保存のレコードでは読まない)。</summary>
         internal bool IsAvailable => !Services.AppInfoService.IsDesignMode && !Module.IsNewData;
 
-        /// <summary>復元 (フォームへの反映) ができるか。表示専用・未保存では不可。</summary>
-        internal bool CanRestore => !Module.IsViewOnly && !Module.IsNewData;
+        /// <summary>復元 (フォームへの反映) ができるか。設計で禁止・表示専用・未保存では不可。</summary>
+        internal bool CanRestore => Design.CanRestore && !Module.IsViewOnly && !Module.IsNewData;
 
         ModuleDesign? HistoryModule => Services.AppInfoService.GetDesignData().Modules.Find(Design.HistoryModuleName);
 
@@ -358,8 +361,20 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             module.DialogTitle = string.Format(R.EditHistoryVersionFormat, version.Number);
             module.ClassName = VersionDialogClassName;
             ApplyHighlights(module, version.Changes);
-            await module.ShowDialogAsync(new SecondaryOutlineButton(R.EditHistoryClose));
+            //見た内容をそのまま編集中のレコードへ持ってくる操作は、このダイアログから (内容を見てから押す。確認は出さない)
+            if (!CanRestoreVersion(version))
+            {
+                await module.ShowDialogAsync(new SecondaryOutlineButton(R.EditHistoryClose));
+                return;
+            }
+            var answer = await module.ShowDialogAsync(
+                new DialogButton("btn btn-primary " + RestoreButtonClassName, R.EditHistoryRestoreVersion), new SecondaryOutlineButton(R.EditHistoryClose));
+            if (answer == R.EditHistoryRestoreVersion) await RestoreAsync(version);
         }
+
+        /// <summary>その版の内容で編集中のレコードを置き換えられるか。最新の版 (今の内容) と削除の版は対象外。</summary>
+        internal bool CanRestoreVersion(EditHistoryVersion version)
+            => CanRestore && version.Snapshot != null && !version.IsDelete && version.Number != TotalCount;
 
         //値フィールドはセル単位で強調。従属レコード (一覧・Gantt・埋め込みモジュール等) の行は ShowOwnedRecordsAsync に渡した OwnedRecordRow が持つ
         static void ApplyHighlights(Module module, List<EditHistoryChange> changes)
@@ -386,12 +401,6 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         {
             var snapshot = version.Snapshot;
             if (snapshot == null || !CanRestore) return;
-
-            var answer = await Services.UIService.ShowMessageBox(
-                R.EditHistoryRestoreVersion,
-                string.Format(R.EditHistoryRestoreConfirmFormat, version.Number),
-                [new PrimaryButton(R.EditHistoryRestore, true), new SecondaryOutlineButton(R.EditHistoryCancel)]);
-            if (answer != R.EditHistoryRestore) return;
 
             var applied = await EditHistoryRestorer.ApplyAsync(Module, snapshot, (_, _) => AddPendingUndelete(version.Id));
             if (applied == 0)

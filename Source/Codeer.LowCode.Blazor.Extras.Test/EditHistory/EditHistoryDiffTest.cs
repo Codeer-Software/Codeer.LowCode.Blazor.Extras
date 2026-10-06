@@ -178,6 +178,34 @@ namespace Codeer.LowCode.Blazor.Extras.Test.EditHistory
         }
 
         [Test]
+        public void 固定候補の選択は表示名で差分が出る_候補に無い値はそのまま()
+        {
+            var design = EditHistoryTestDesigns.Create();
+            var order = design.Modules.Find("Order")!;
+            order.Fields.Add(new SelectFieldDesign { Name = "Status", DisplayName = "状態", DbColumn = "status", Candidates = ["見積中,Quote", "受注, Ordered", "出荷済,Shipped"] });
+            order.Fields.Add(new SelectFieldDesign { Name = "Rank", DisplayName = "ランク", DbColumn = "rank", Candidates = ["A", "B"] });
+            var before = Order("1", "A", 1); before.Fields["Status"] = new SelectFieldData { Value = "Quote" }; before.Fields["Rank"] = new SelectFieldData { Value = "A" };
+            var after = Order("1", "A", 1); after.Fields["Status"] = new SelectFieldData { Value = "Ordered" }; after.Fields["Rank"] = new SelectFieldData { Value = "Z" };
+
+            var changes = EditHistoryDiff.Compute(design, order, before, after, (_, _) => true);
+            Assert.That(changes.Select(e => (e.DisplayName, e.Before, e.After)),
+                Is.EqualTo(new[] { ("状態", "見積中", "受注"), ("ランク", "A", "Z") }), "候補から外した古い値 (Z) は値のまま");
+        }
+
+        [Test]
+        public void 明細の行の中の固定候補も表示名で出る()
+        {
+            var design = EditHistoryTestDesigns.Create();
+            design.Modules.Find("OrderItem")!.Fields.Add(new SelectFieldDesign { Name = "Unit", DisplayName = "単位", DbColumn = "unit", Candidates = ["個,pcs", "箱,box"] });
+            var row1 = Item("10", "X", 1); row1.Fields["Unit"] = new SelectFieldData { Value = "pcs" };
+            var row2 = Item("10", "X", 1); row2.Fields["Unit"] = new SelectFieldData { Value = "box" };
+
+            var changes = EditHistoryDiff.Compute(design, design.Modules.Find("Order")!, Order("1", "A", 1, row1), Order("1", "A", 1, row2), (_, _) => true);
+            var unit = changes.Single(e => e.FieldName == "Items").Rows.Single().Changes.Single();
+            Assert.That((unit.Before, unit.After), Is.EqualTo(("個", "箱")));
+        }
+
+        [Test]
         public void 閲覧権限のない項目は差分に出ない()
         {
             var before = Order("1", "A", 100);

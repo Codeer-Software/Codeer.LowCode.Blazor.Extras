@@ -45,12 +45,14 @@ namespace Extras.Server.AI
             //IChatClient は Extras.Server の AzureOpenAIClients が AISettings (Azure OpenAI) から作る。別プロバイダ (OpenAI / Ollama …) ならここで自分で作って渡す。設定が欠けていれば null = AI Agent は使えない
             var chatClientFactory = AzureOpenAIClients.ChatClientFactory(config.AISettings);
             if (chatClientFactory == null) return null;
+            var options = config.AIChat.RawDataAccess;
+            options.DataSourceNames = config.AIChat.RawDataAccessDataSources;
             return new RawDataAccessAgent(
                 chatClientFactory,
                 () => new DbAccessor(config.DataSources),
                 () => DesignerService.GetDesignData(),
                 folder => DesignDataFileManager.GetResourceTexts(config.DesignFileDirectory, folder, ".md", ".txt").Select(e => new AIChatDocument(e.Name, e.Text)).ToList(),
-                new RawDataAccessOptions { DataSourceNames = config.AIChat.RawDataAccessDataSources },
+                options,
                 //SemanticSearchField を置いたモジュールを search_records (意味検索) で探せるようにする (埋め込みプロバイダ未設定ならツールは付かない)
                 semanticSearch: SemanticSearchIndex.Service);
         }

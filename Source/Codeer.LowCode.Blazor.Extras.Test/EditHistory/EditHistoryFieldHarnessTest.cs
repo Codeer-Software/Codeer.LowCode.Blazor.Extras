@@ -59,10 +59,12 @@ namespace Codeer.LowCode.Blazor.Extras.Test.EditHistory
             HistoryRow("101", "Add", _v1, new DateTime(2026, 9, 1)),
         ];
 
-        static TestServices CreateServices(int pageSize = 20, bool logicalDelete = false)
+        static TestServices CreateServices(int pageSize = 20, bool logicalDelete = false, bool canRestore = true)
         {
             var design = EditHistoryTestDesigns.Create(logicalDelete: logicalDelete);
-            ((Extras.Designs.EditHistoryFieldDesign)design.Modules.Find("Order")!.Fields.First(e => e.Name == "History")).PageSize = pageSize;
+            var history = (Extras.Designs.EditHistoryFieldDesign)design.Modules.Find("Order")!.Fields.First(e => e.Name == "History");
+            history.PageSize = pageSize;
+            history.CanRestore = canRestore;
             var services = new TestServices(design);
             services.App.CurrentUserData = new ModuleData { Name = "AppUser" };
             services.App.ListProvider = request =>
@@ -247,6 +249,20 @@ namespace Codeer.LowCode.Blazor.Extras.Test.EditHistory
         }
 
         [Test]
+        public async Task 復元を禁止すると版に戻せない_表示はできる()
+        {
+            var services = CreateServices(canRestore: false);
+            var (module, field) = await CreateOrderModuleAsync(services, _v3);
+            Assert.That(field.Versions.Count, Is.EqualTo(3), "版の一覧は出る");
+            Assert.That(field.CanRestore, Is.False);
+
+            await field.RestoreAsync(field.Versions[2]);
+
+            Assert.That(module.GetField<TextField>("Title")!.Value, Is.EqualTo("B"), "フォームは変わらない");
+            Assert.That(module.IsModified, Is.False);
+        }
+
+        [Test]
         public async Task 復元で消えていた明細行は新しい行として追加される()
         {
             var services = CreateServices();
@@ -269,9 +285,6 @@ namespace Codeer.LowCode.Blazor.Extras.Test.EditHistory
             var (module, field) = await CreateOrderModuleAsync(services, _v2);
 
             await field.RestoreAsync(field.Versions[0]);  // v3 へ (行 12 が無い → 論理削除なので Id を保って復活)
-            //DummyUIService の ShowMessageBox は空文字を返すので RestoreAsync は中断する。復元本体を直接呼ぶ
-            var revived = new List<(string, string)>();
-            await EditHistoryRestorer.ApplyAsync(module, field.Versions[0].Snapshot!, (m, id) => revived.Add((m, id)));
 
             var items = module.GetField<ListField>("Items")!;
             Assert.That(items.Rows.Count, Is.EqualTo(2));
@@ -280,7 +293,8 @@ namespace Codeer.LowCode.Blazor.Extras.Test.EditHistory
             Assert.That(row.GetIdText(), Is.EqualTo("12"));
             Assert.That(row.GetField<TextField>("Name")!.Value, Is.EqualTo("Z"));
             Assert.That(row.IsModified, Is.True, "値は Update として送られる");
-            Assert.That(revived, Is.EqualTo(new[] { ("OrderItem", "12") }));
+            var undeletes = field.GetSubmitData().ExtendedData.OfType<EditHistoryUndeleteData>().ToList();
+            Assert.That(undeletes.Select(e => e.HistoryRowId), Is.EqualTo(new[] { "103" }), "戻した版の履歴行が保存に同梱される");
         }
 
         [Test]

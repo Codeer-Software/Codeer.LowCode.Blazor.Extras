@@ -472,7 +472,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Approval
                     Value = MultiTypeValue.Create("2"),
                 },
             };
-            Assert.ThrowsAsync<LowCodeException>(async () => await ExecuteAsync("2", ApprovalAction.Approve.ToDesignValue(), submit.FlowId));
+            Assert.ThrowsAsync<LowCodeAccessDeniedException>(async () => await ExecuteAsync("2", ApprovalAction.Approve.ToDesignValue(), submit.FlowId));
             Assert.That(S((await GetMembersAsync(submit.FlowId, 1))[0], "Status"), Is.EqualTo(ApprovalMemberStatus.Waiting.ToDesignValue()));
 
             //条件を戻せば承認できる (拒否の原因が権限だったことの確認)
@@ -491,7 +491,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Approval
             var permission = new PermissionFieldDesign { Name = "P", TargetFields = { "Approval" } };
             permission.ReadCondition.Condition = Eq("CurrentUser.Id.Value", "3");
             request.Fields.Add(permission);
-            Assert.ThrowsAsync<LowCodeException>(async () => await ExecuteAsync("2", ApprovalAction.Approve.ToDesignValue(), submit.FlowId));
+            Assert.ThrowsAsync<LowCodeAccessDeniedException>(async () => await ExecuteAsync("2", ApprovalAction.Approve.ToDesignValue(), submit.FlowId));
 
             request.Fields.Remove(permission);
             var ok = await ExecuteAsync("2", ApprovalAction.Approve.ToDesignValue(), submit.FlowId);
@@ -578,7 +578,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Approval
         {
             //申請: 申請者に見えない
             restrict("1");
-            Assert.ThrowsAsync<LowCodeException>(async () => await CreateEngine("1").ExecuteAsync(SubmitCommand()));
+            Assert.ThrowsAsync<LowCodeAccessDeniedException>(async () => await CreateEngine("1").ExecuteAsync(SubmitCommand()));
             Assert.That(await CountAsync("ApprovalFlows"), Is.EqualTo(0));
             Assert.That(await CountAsync("Requests"), Is.EqualTo(0), "申請書も保存されない (入口で止まる)");
             clear();
@@ -589,7 +589,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Approval
             restrict("2");
             foreach (var action in new[] { ApprovalAction.Approve, ApprovalAction.Reject, ApprovalAction.Return })
             {
-                Assert.ThrowsAsync<LowCodeException>(async () => await ExecuteAsync("2", action.ToDesignValue(), submit.FlowId, comment: "x"), action.ToString());
+                Assert.ThrowsAsync<LowCodeAccessDeniedException>(async () => await ExecuteAsync("2", action.ToDesignValue(), submit.FlowId, comment: "x"), action.ToString());
             }
             Assert.That(await GetMemberStatusAsync(submit.FlowId, 0), Is.EqualTo(ApprovalMemberStatus.Waiting.ToDesignValue()));
             Assert.That(await GetFlowValueAsync(submit.FlowId, "Status"), Is.EqualTo(ApprovalFlowStatus.InProgress.ToDesignValue()));
@@ -597,7 +597,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Approval
 
             //取り下げ: 申請者に見えない
             restrict("1");
-            Assert.ThrowsAsync<LowCodeException>(async () => await ExecuteAsync("1", ApprovalAction.Withdraw.ToDesignValue(), submit.FlowId));
+            Assert.ThrowsAsync<LowCodeAccessDeniedException>(async () => await ExecuteAsync("1", ApprovalAction.Withdraw.ToDesignValue(), submit.FlowId));
             Assert.That(await GetFlowValueAsync(submit.FlowId, "Status"), Is.EqualTo(ApprovalFlowStatus.InProgress.ToDesignValue()));
             clear();
 
@@ -605,7 +605,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Approval
             var returned = await ExecuteAsync("2", ApprovalAction.Return.ToDesignValue(), submit.FlowId, comment: "修正して");
             Assert.That(returned.IsSuccess, Is.True, returned.ErrorMessage);
             restrict("1");
-            Assert.ThrowsAsync<LowCodeException>(async () => await CreateEngine("1").ExecuteAsync(await ResubmitCommandAsync(submit.FlowId, submit.TargetId, route: CreateRouteWithConfirmation())));
+            Assert.ThrowsAsync<LowCodeAccessDeniedException>(async () => await CreateEngine("1").ExecuteAsync(await ResubmitCommandAsync(submit.FlowId, submit.TargetId, route: CreateRouteWithConfirmation())));
             Assert.That(await GetFlowValueAsync(submit.FlowId, "AttemptNo"), Is.EqualTo("1"));
             clear();
             var resubmit = await CreateEngine("1").ExecuteAsync(await ResubmitCommandAsync(submit.FlowId, submit.TargetId, route: CreateRouteWithConfirmation()));
@@ -616,7 +616,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Approval
             Assert.That((await ExecuteAsync("3", ApprovalAction.Approve.ToDesignValue(), submit.FlowId)).IsSuccess, Is.True);
             Assert.That(await GetFlowValueAsync(submit.FlowId, "Status"), Is.EqualTo(ApprovalFlowStatus.Completed.ToDesignValue()));
             restrict("4");
-            Assert.ThrowsAsync<LowCodeException>(async () => await ExecuteAsync("4", ApprovalAction.Confirm.ToDesignValue(), submit.FlowId));
+            Assert.ThrowsAsync<LowCodeAccessDeniedException>(async () => await ExecuteAsync("4", ApprovalAction.Confirm.ToDesignValue(), submit.FlowId));
             clear();
             var confirm = await ExecuteAsync("4", ApprovalAction.Confirm.ToDesignValue(), submit.FlowId);
             Assert.That(confirm.IsSuccess, Is.True, confirm.ErrorMessage);
@@ -653,14 +653,14 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Approval
             await _db.ExecuteAsync(Ds, "UPDATE AppUsers SET IsActive = 0 WHERE Id = '2'", new());
             foreach (var action in new[] { ApprovalAction.Approve, ApprovalAction.Reject, ApprovalAction.Return })
             {
-                Assert.ThrowsAsync<LowCodeException>(async () => await ExecuteAsync("2", action.ToDesignValue(), submit.FlowId, comment: "x"), action.ToString());
+                Assert.ThrowsAsync<LowCodeAccessDeniedException>(async () => await ExecuteAsync("2", action.ToDesignValue(), submit.FlowId, comment: "x"), action.ToString());
             }
             Assert.That(await GetMemberStatusAsync(submit.FlowId, 0), Is.EqualTo(ApprovalMemberStatus.Waiting.ToDesignValue()));
 
             //申請者 1 を停止: 取り下げも新規申請もできない
             await _db.ExecuteAsync(Ds, "UPDATE AppUsers SET IsActive = 0 WHERE Id = '1'", new());
-            Assert.ThrowsAsync<LowCodeException>(async () => await ExecuteAsync("1", ApprovalAction.Withdraw.ToDesignValue(), submit.FlowId));
-            Assert.ThrowsAsync<LowCodeException>(async () => await CreateEngine("1").ExecuteAsync(SubmitCommand()));
+            Assert.ThrowsAsync<LowCodeAccessDeniedException>(async () => await ExecuteAsync("1", ApprovalAction.Withdraw.ToDesignValue(), submit.FlowId));
+            Assert.ThrowsAsync<LowCodeAccessDeniedException>(async () => await CreateEngine("1").ExecuteAsync(SubmitCommand()));
             Assert.That(await CountAsync("ApprovalFlows"), Is.EqualTo(1));
 
             //有効なユーザーは従来どおり (承認者 3 はまだ順番ではないので失敗結果、例外ではない)

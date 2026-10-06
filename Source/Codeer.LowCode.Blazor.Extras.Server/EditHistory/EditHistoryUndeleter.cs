@@ -12,7 +12,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.EditHistory
     /// <summary>削除の取り消し (復活) の結果。</summary>
     sealed class EditHistoryUndeleteResult
     {
-        /// <summary>レコード全体を戻したか (復活ボタン)。false は「この版に戻す」の行の取り消し。</summary>
+        /// <summary>レコード全体を戻したか (復活ボタン)。false は「この版に置き換える」の行の取り消し。</summary>
         public bool IsWholeRecord { get; init; }
         /// <summary>新しい Id で作り直したか (自動採番の物理削除)。</summary>
         public bool IsRecreated { get; init; }
@@ -25,7 +25,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.EditHistory
     /// - 復活ボタン: 削除の版からレコード全体を戻す。戻せるのはそのレコードの最新の版が削除で、今そのレコードが無いときだけ。
     ///   論理削除は Id を保って取り消し (親と一緒に消えた従属レコードも)、物理削除は作り直す (自動採番は新しい Id・手入力 Id は元の Id)。
     ///   新しい Id で作り直したときは、履歴を持つモジュールの旧 Id の版を新しい Id に付け替えて履歴を繋ぐ (履歴の行を書き換える唯一の箇所)。
-    /// - この版に戻す: 版の従属レコードのうち「今は削除中で、その人に見えている」行だけを Id を保って取り消す。
+    /// - この版に置き換える: 版の従属レコードのうち「今は削除中で、その人に見えている」行だけを Id を保って取り消す。
     /// 権限は削除と同じ (CanDelete と UserRead / UserWrite 条件、行の条件)。戻せなければ例外 (= 保存失敗)。
     /// </summary>
     sealed class EditHistoryUndeleter(DesignData designData)
@@ -48,10 +48,12 @@ namespace Codeer.LowCode.Blazor.Extras.Server.EditHistory
             var module = designData.Modules.Find(targetModuleName)
                 ?? throw new InvalidOperationException($"Module '{targetModuleName}' does not exist.");
             var field = EditHistoryContracts.Field(module);
+            if (field?.CanRestore == false)
+                throw new InvalidOperationException($"Restoring from the edit history is disabled for '{module.Name}'.");
 
             if (!request.RestoreWholeRecord)
             {
-                //この版に戻す: 版の従属レコードのうち「今は削除中で、その人に見えている (差分に出ている)」論理削除の行を Id を保って取り消す
+                //この版に置き換える: 版の従属レコードのうち「今は削除中で、その人に見えている (差分に出ている)」論理削除の行を Id を保って取り消す
                 //(レコード自身と行の値はフォームの保存が持つ)。見えていない行は触らない。戻せない行 (削除権限が無い等) があれば例外 = 保存失敗
                 var visible = snapshot.JsonClone();
                 if (await io.RemoveUnreadableAsync(visible)) await UndeleteDeletedRowsAsync(io, module, field, visible, string.Empty, together: false);
@@ -84,7 +86,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.EditHistory
 
         //版の従属レコード (含める宣言の先。子・孫も) のうち、今は削除中 (通常の読み出しで見つからない) の行を戻す。
         //論理削除モジュールの行は Id を保って取り消す。together = 親と一緒に消えた行の取り消し (子の CanDelete だけ見る。物理削除モジュールの行は作り直す)。
-        //together でなければ (この版に戻す) その人の権限で取り消す (物理削除モジュールの行はフォームが新しい行として送る)
+        //together でなければ (この版に置き換える) その人の権限で取り消す (物理削除モジュールの行はフォームが新しい行として送る)
         async Task UndeleteDeletedRowsAsync(ModuleDataIOInternalAccess io, ModuleDesign design, EditHistoryFieldDesign? field, ModuleData data, string prefix, bool together)
         {
             var recreated = new Dictionary<string, Dictionary<string, string>>();

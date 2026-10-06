@@ -13,7 +13,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
     /// <summary>
     /// 編集履歴フィールド。モジュールに 1 つ置くと、そのモジュールのレコードの保存 (作成・更新・削除) ごとに
     /// レコード全体 (従属レコード込み) のスナップショットが履歴モジュールへ記録される (サーバーの EditHistoryRecorder)。
-    /// 詳細画面では版の一覧 (変更されたフィールドの 旧 → 新) と「この版を表示」「この版に戻す」を提供する。
+    /// 詳細画面では版の一覧 (変更されたフィールドの 旧 → 新) と「この版を表示」「この版に置き換える」を提供する。
     /// 「戻す」は過去の内容を編集中のフォームへ反映するだけで、ユーザーが保存して確定する
     /// (権限・検証・楽観ロック・復元自体の履歴記録が全部通常の保存経路で済む)。
     /// 履歴モジュールのフィールド名は、そのモジュールに置いた EditHistoryContractField の役割で解決する。
@@ -62,6 +62,13 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         /// </summary>
         [Designer(Index = 7, DisplayName = "$EditHistoryIndividuallyRecordedOwnedRecords")]
         public List<string> IndividuallyRecordedOwnedRecords { get; set; } = [];
+
+        /// <summary>
+        /// 履歴からデータを戻せるか (「この版に置き換える」と、履歴モジュールの復活ボタンでの削除の取り消し)。
+        /// false なら履歴は見るだけ (版の一覧・差分・「この版を表示」は出る)。
+        /// </summary>
+        [Designer(Index = 8, DisplayName = "$EditHistoryCanRestore")]
+        public bool CanRestore { get; set; } = true;
 
         public override string GetWebComponentTypeFullName() => typeof(EditHistoryFieldComponent).FullName!;
 
@@ -189,7 +196,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
                     Message = string.Format(Properties.Resources.EditHistoryCheck_IndividualRowModuleNoHistoryFormat, path, child.Name, nameof(EditHistoryFieldDesign)),
                 });
             }
-            //「この版に戻す」は従属レコードを版の全件で差し替える (本体の IOwnedRecordsField は持っている行に対して行う) ので、
+            //「この版に置き換える」は従属レコードを版の全件で差し替える (本体の IOwnedRecordsField は持っている行に対して行う) ので、
             //全件を持たない宣言 (サーバーページングの一覧等。宣言の HoldsAllRecords) は親の版に含められない。含めるものだけ見る (除外・行ごとは対象外)。
             //同じ一覧に複数の経路で辿り着いても 1 回だけ
             var reported = new HashSet<(string, string)>();

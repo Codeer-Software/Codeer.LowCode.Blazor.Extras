@@ -73,8 +73,8 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         }
 
         /// <summary>
-        /// 削除の版で、それがそのレコードの最新の版で、対象モジュールがあり、このユーザーがそのモジュールで削除 (= 復活) できるときだけ出す。
-        /// 行の条件はサーバーが見る。
+        /// 削除の版で、それがそのレコードの最新の版で、対象モジュールがあり、その EditHistoryField が復元を禁止しておらず、
+        /// このユーザーがそのモジュールで削除 (= 復活) できるときだけ出す。行の条件はサーバーが見る。
         /// </summary>
         internal bool CanUndelete
         {
@@ -83,7 +83,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
                 if (Services.AppInfoService.IsDesignMode || Module.IsNewData || !IsEnabled || !_isLatestVersion) return false;
                 if (GetText(Names.ChangeType) != EditHistoryChangeType.Delete.ToString()) return false;
                 var target = Services.AppInfoService.GetDesignData().Modules.Find(GetText(Names.ModuleName));
-                return target != null && target.CanUndeleteByUser(Services);
+                return target != null && EditHistoryContracts.Field(target)?.CanRestore != false && target.CanUndeleteByUser(Services);
             }
         }
 

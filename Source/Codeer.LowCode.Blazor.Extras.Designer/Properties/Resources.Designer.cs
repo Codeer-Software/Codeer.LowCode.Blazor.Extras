@@ -146,5 +146,86 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Properties
 
         public static string SetupTableName => GetString("SetupTableName");
 
+        public static string CrossTabSetting_Rows => GetString("CrossTabSetting_Rows");
+
+        public static string CrossTabSetting_Columns => GetString("CrossTabSetting_Columns");
+
+        public static string CrossTabSetting_Measures => GetString("CrossTabSetting_Measures");
+
+        public static string CrossTabSetting_Having => GetString("CrossTabSetting_Having");
+
+        public static string CrossTabSetting_Sort => GetString("CrossTabSetting_Sort");
+
+        public static string CrossTabSetting_Limit => GetString("CrossTabSetting_Limit");
+
+        public static string CrossTabSetting_Add => GetString("CrossTabSetting_Add");
+
+        public static string CrossTabSetting_Descending => GetString("CrossTabSetting_Descending");
+
+        public static string CrossTabSetting_Field => GetString("CrossTabSetting_Field");
+
+        public static string CrossTabSetting_DateUnit => GetString("CrossTabSetting_DateUnit");
+
+        public static string CrossTabSetting_Function => GetString("CrossTabSetting_Function");
+
+        public static string CrossTabSetting_Caption => GetString("CrossTabSetting_Caption");
+
+        public static string CrossTabSetting_Target => GetString("CrossTabSetting_Target");
+
+        public static string CrossTabSetting_Comparison => GetString("CrossTabSetting_Comparison");
+
+        public static string CrossTabSetting_CompareValue => GetString("CrossTabSetting_CompareValue");
+
+        public static string CrossTabSetting_SortBy => GetString("CrossTabSetting_SortBy");
+
+        public static string CrossTabSetting_Order => GetString("CrossTabSetting_Order");
+
+        public static string CrossTabSetting_Enum_Count => GetString("CrossTabSetting_Enum_Count");
+
+        public static string CrossTabSetting_Enum_CountDistinct => GetString("CrossTabSetting_Enum_CountDistinct");
+
+        public static string CrossTabSetting_Enum_Sum => GetString("CrossTabSetting_Enum_Sum");
+
+        public static string CrossTabSetting_Enum_Avg => GetString("CrossTabSetting_Enum_Avg");
+
+        public static string CrossTabSetting_Enum_Min => GetString("CrossTabSetting_Enum_Min");
+
+        public static string CrossTabSetting_Enum_Max => GetString("CrossTabSetting_Enum_Max");
+
+        public static string CrossTabSetting_Enum_None => GetString("CrossTabSetting_Enum_None");
+
+        public static string CrossTabSetting_Enum_Year => GetString("CrossTabSetting_Enum_Year");
+
+        public static string CrossTabSetting_Enum_Quarter => GetString("CrossTabSetting_Enum_Quarter");
+
+        public static string CrossTabSetting_Enum_Month => GetString("CrossTabSetting_Enum_Month");
+
+        public static string CrossTabSetting_Enum_Week => GetString("CrossTabSetting_Enum_Week");
+
+        public static string CrossTabSetting_Enum_Day => GetString("CrossTabSetting_Enum_Day");
+
+        public static string CrossTabSetting_Enum_Hour => GetString("CrossTabSetting_Enum_Hour");
+
+        public static string CrossTabSetting_Enum_Group => GetString("CrossTabSetting_Enum_Group");
+
+        public static string CrossTabSetting_Enum_Measure => GetString("CrossTabSetting_Enum_Measure");
+
+        public static string CrossTabSetting_Enum_Equal => GetString("CrossTabSetting_Enum_Equal");
+
+        public static string CrossTabSetting_Enum_NotEqual => GetString("CrossTabSetting_Enum_NotEqual");
+
+        public static string CrossTabSetting_Enum_LessThan => GetString("CrossTabSetting_Enum_LessThan");
+
+        public static string CrossTabSetting_Enum_LessThanOrEqual => GetString("CrossTabSetting_Enum_LessThanOrEqual");
+
+        public static string CrossTabSetting_Enum_GreaterThan => GetString("CrossTabSetting_Enum_GreaterThan");
+
+        public static string CrossTabSetting_Enum_GreaterThanOrEqual => GetString("CrossTabSetting_Enum_GreaterThanOrEqual");
+
+        public static string CrossTabSetting_FiscalYearStartMonth => GetString("CrossTabSetting_FiscalYearStartMonth");
+
+        public static string CrossTabSetting_Format => GetString("CrossTabSetting_Format");
+
+        public static string CrossTabSetting_FormatHint => GetString("CrossTabSetting_FormatHint");
     }
 }
