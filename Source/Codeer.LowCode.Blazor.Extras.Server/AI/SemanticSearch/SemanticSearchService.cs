@@ -133,6 +133,14 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
             _jobs.Clear();
         }
 
+        IModuleDataIOInterceptor? _conditionInterceptor;
+
+        /// <summary>
+        /// 画面の検索欄 (検索レイアウトに置いた SemanticSearchField) で文章から探すための前処理。ホストの ModuleDataIO に登録する
+        /// (<c>AddInterceptor(SemanticSearchIndex.Service.ConditionInterceptor)</c>)。一覧検索・集計の前に、文章だけの意味検索の条件へ埋め込みベクトルを入れる。
+        /// </summary>
+        public IModuleDataIOInterceptor ConditionInterceptor => _conditionInterceptor ??= new SemanticSearchConditionInterceptor(this);
+
         /// <summary>埋め込みプロバイダ (未設定・作成失敗なら null。失敗は警告ログ)。意味検索ツールが使う。</summary>
         internal IEmbeddingProvider? GetProvider()
         {

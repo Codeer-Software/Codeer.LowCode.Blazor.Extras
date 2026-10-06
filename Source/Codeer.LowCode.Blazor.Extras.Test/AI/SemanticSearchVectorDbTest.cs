@@ -3,6 +3,7 @@ using Codeer.LowCode.Blazor.DataIO.Db;
 using Codeer.LowCode.Blazor.DbAccess;
 using Codeer.LowCode.Blazor.DesignLogic;
 using Codeer.LowCode.Blazor.Extras.Designs;
+using Codeer.LowCode.Blazor.Extras.SemanticSearch;
 using Codeer.LowCode.Blazor.Extras.Server.AI.Chat;
 using Codeer.LowCode.Blazor.Extras.Server.AI.Chat.ChatClient;
 using Codeer.LowCode.Blazor.Extras.Server.AI.Chat.ModuleDataAccess;
@@ -10,6 +11,7 @@ using Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch;
 using Codeer.LowCode.Blazor.Extras.Server.FileManagement;
 using Codeer.LowCode.Blazor.Repository.Data;
 using Codeer.LowCode.Blazor.Repository.Design;
+using Codeer.LowCode.Blazor.Repository.Match;
 using Codeer.LowCode.Blazor.SystemSettings;
 using Microsoft.Extensions.AI;
 using System.Text.Json;
@@ -162,6 +164,22 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
                         Assert.That(mdaRoot.TryGetProperty("error", out var mdaError) ? mdaError.GetString() : null, Is.Null);
                         var mdaIds = mdaRoot.GetProperty("rows").EnumerateArray().Select(r => r.GetProperty("Id").GetString()).ToList();
                         Assert.That(mdaIds, Is.EqualTo(ids), "search_records (生 SQL) と同じ行が同じ順に出る");
+                    }
+
+                    //画面の検索欄と同じ形 (文章だけの条件 + 一覧の並びに意味検索): 前処理 (ConditionInterceptor) が埋め込みを入れ、同じ行が同じ順に出る
+                    await using (var screenDb = new DbAccessor(dataSources))
+                    {
+                        var io = new ModuleDataIO(design, this, screenDb, new TemporaryFileManager(screenDb, [], new List<IFileStorage>()));
+                        io.AddInterceptor(indexer.ConditionInterceptor);
+                        var screen = new SearchCondition("Inquiry")
+                        {
+                            Condition = new FieldMatchCondition { FieldName = "Search", Children = [new SemanticMatchCondition { FieldName = "Search", Text = "納期が遅れている注文" }] },
+                            LimitCount = 2,
+                        };
+                        screen.SortConditions.Add(new SortCondition { Variable = "Search.Value" });
+                        screen.SortConditions.Add(new SortCondition { Variable = "Id.Value", IsDescending = true });
+                        var page = await io.GetListAsync(screen, 0);
+                        Assert.That(page.Items.Select(e => Convert.ToString((e.Fields["Id"] as IdFieldData)?.Value)), Is.EqualTo(ids));
                     }
 
                     //上位 1 件を論理削除すると検索から消える

@@ -63,4 +63,7 @@
   <data name="SemanticSearchField_NotFound" xml:space="preserve">
     <value>モジュール '{0}' に SemanticSearchField '{1}' がありません。</value>
   </data>
+  <data name="SemanticSearch_ProviderNotConfigured" xml:space="preserve">
+    <value>埋め込みプロバイダが設定されていないため、意味検索を使えません。</value>
+  </data>
 </root>

@@ -55,6 +55,12 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         [Designer(Index = 6, DisplayName = "$SemanticSearchFieldMaxTextLength")]
         public int MaxTextLength { get; set; } = 8000;
 
+        /// <summary>
+        /// 検索レイアウトの検索欄で探すときのコサイン距離の上限 (0 = 同じ向き〜2)。これより遠い行は出さない。空なら距離では絞らない (全行を近い順に並べられるだけ)。
+        /// </summary>
+        [Designer(Index = 8, DisplayName = "$SemanticSearchFieldSearchMaxDistance")]
+        public double? SearchMaxDistance { get; set; }
+
         /// <summary>スクリプトの Reindex / ReindexMissing で起こした再索引が終わった (成功・失敗・中断) ときに呼ぶスクリプト。結果は ReindexProcessed / ReindexError で見る。</summary>
         [Designer(Index = 7, DisplayName = "$SemanticSearchFieldOnReindexCompleted", CandidateType = CandidateType.ScriptEvent), ScriptMethod]
         public string OnReindexCompleted { get; set; } = string.Empty;
@@ -63,7 +69,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         internal bool HasColumns => !string.IsNullOrWhiteSpace(DbColumnText) && !string.IsNullOrWhiteSpace(DbColumnVector) && !string.IsNullOrWhiteSpace(DbColumnVectorSearch);
 
         public override string GetWebComponentTypeFullName() => typeof(SemanticSearchFieldComponent).FullName!;
-        public override string GetSearchWebComponentTypeFullName() => string.Empty;
+        public override string GetSearchWebComponentTypeFullName() => typeof(SemanticSearchSearchComponent).FullName!;
         public override string GetSearchControlTypeFullName() => string.Empty;
         public override FieldBase CreateField() => new SemanticSearchField(this);
         public override FieldDataBase? CreateData() => new SemanticSearchFieldData();

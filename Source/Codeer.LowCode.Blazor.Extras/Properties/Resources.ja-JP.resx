@@ -1792,9 +1792,15 @@
     <value>フィールド '{0}' はこの条件で意味検索できません (SemanticSearchField の文章・ベクトル・ベクトル検索の列を設定してください)。</value>
   </data>
   <data name="SemanticSearch_VectorRequired" xml:space="preserve">
-    <value>'{0}' の意味検索に埋め込みベクトルがありません。</value>
+    <value>'{0}' の意味検索に埋め込みベクトルがありません。文章で探すには、サーバーの ModuleDataIO に SemanticSearchService.ConditionInterceptor を登録してください (AddInterceptor)。</value>
   </data>
   <data name="SemanticSearch_DbNotSupported" xml:space="preserve">
     <value>{0} では意味検索を使えません (pgvector を入れた PostgreSQL か SQL Server 2025 が必要です)。</value>
+  </data>
+  <data name="SemanticSearchFieldSearchMaxDistance" xml:space="preserve">
+    <value>検索欄: 距離の上限</value>
+  </data>
+  <data name="SemanticSearch_SearchPlaceholder" xml:space="preserve">
+    <value>内容で探す</value>
   </data>
 </root>

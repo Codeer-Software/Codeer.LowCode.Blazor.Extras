@@ -2876,6 +2876,24 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
         }
         
         /// <summary>
+        ///   Search: max distance に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string SemanticSearchFieldSearchMaxDistance {
+            get {
+                return ResourceManager.GetString("SemanticSearchFieldSearchMaxDistance", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Search by meaning に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string SemanticSearch_SearchPlaceholder {
+            get {
+                return ResourceManager.GetString("SemanticSearch_SearchPlaceholder", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Set the text column, the vector column and the vector search column. に類似しているローカライズされた文字列を検索します。
         /// </summary>
         internal static string SemanticSearchCheck_ColumnsRequired {

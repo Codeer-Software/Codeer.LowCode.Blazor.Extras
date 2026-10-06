@@ -63,4 +63,7 @@
   <data name="SemanticSearchField_NotFound" xml:space="preserve">
     <value>Module '{0}' has no SemanticSearchField named '{1}'.</value>
   </data>
+  <data name="SemanticSearch_ProviderNotConfigured" xml:space="preserve">
+    <value>Semantic search is not available because the embedding provider is not configured.</value>
+  </data>
 </root>

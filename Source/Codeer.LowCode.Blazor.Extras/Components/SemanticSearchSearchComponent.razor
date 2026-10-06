@@ -1,0 +1,17 @@
+@using Microsoft.AspNetCore.Components.Web
+@using Codeer.LowCode.Blazor.Components
+@using Codeer.LowCode.Blazor.Components.Fields
+@using Codeer.LowCode.Blazor.Extras.Fields
+@using Codeer.LowCode.Blazor.Extras.Properties
+@inherits FieldComponentBase<SemanticSearchField>
+
+@* 検索レイアウトの検索欄: 探したい内容を文章で入れる (埋め込みはサーバーが作る) *@
+<input type="text" class="form-control @(Field.GetValidationClassName())" placeholder="@Resources.SemanticSearch_SearchPlaceholder"
+       @bind:get="Field.SearchText" @bind:set="OnChange" @ref="Element" id="@WebElementId" disabled="@(Field.IsEnabled == false)" style="@Field.GetOwnStyleString()" data-role="semantic-search-text" />
+
+@code {
+  private async Task OnChange(string? value)
+  {
+    await Field.SetSearchTextAsync(value);
+  }
+}
