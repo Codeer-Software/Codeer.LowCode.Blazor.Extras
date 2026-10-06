@@ -45,10 +45,12 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
 
         public TagFieldDesign() : base(typeof(TagFieldDesign).FullName!)
         {
-            //タグ付け行はレコードの一部: レコードを消せば一緒に消す (マスタへの FK があるので残すと消せない)。行の追加・削除は確認なし
+            //タグ付け行はレコードの一部: レコードを消せば一緒に消す (マスタへの FK があるので残すと消せない)。行の追加・削除は確認なし。
+            //CanUpdate が false だと本体の一覧は閲覧のみ (IsViewOnly) になるので true (タグ付け行そのものを書き換えることはない)
             DeleteTogether = true;
             ConfirmBeforeDelete = false;
             CanCreate = true;
+            CanUpdate = true;
             CanDelete = true;
         }
 
