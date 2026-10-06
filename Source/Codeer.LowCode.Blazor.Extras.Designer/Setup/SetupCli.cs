@@ -34,6 +34,13 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
     ///   (監査ログのテーブルを閲覧するモジュールと、テーブル作成 DDL (日時のインデックス込み) を生成するだけ。
     ///    記録の有効化はホストの appsettings。--table / --data-source は appsettings の AuditLog.Database と同じにする)
     ///
+    /// tag-setup:
+    ///   &lt;designer.exe&gt; tag-setup "&lt;projectDir&gt;" --target &lt;Module&gt; [--field Tags | --no-field] [--link-name &lt;Module&gt;Tags]
+    ///     [--link-table &lt;table&gt;] [--owner-column &lt;column&gt;] [--master-name Tag] [--master-table tags] [--data-source &lt;name&gt;]
+    ///     [--no-pageframe] [--ddl-out "&lt;path.sql&gt;"]
+    ///   (タグのマスタ (共有・既にあれば使う) とタグ付けモジュールを生成し、対象モジュールに TagField を足す (同名の結び付きなしの TagField は結び付ける)。
+    ///    画面への配置はデザイナで行う。--no-field = TagField を足さない)
+    ///
     /// --user-name-field の既定は UserModuleFields.DefaultDisplayNameField (Name があればそれ、無ければログインアカウント契約の DisplayName の役割)。
     /// DDL は実行しない (--ddl-out へ書き出し、適用は sql verb またはユーザーが行う)。
     /// 終了コード: 0 = 成功 / 2 = 失敗。
@@ -44,6 +51,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
         internal const string MailVerb = "mail-setup";
         internal const string EditHistoryVerb = "edit-history-setup";
         internal const string AuditLogVerb = "audit-log-setup";
+        internal const string TagVerb = "tag-setup";
 
         internal static void Register()
         {
@@ -51,6 +59,36 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
             HeadlessCliVerbs.Register(MailVerb, RunMail);
             HeadlessCliVerbs.Register(EditHistoryVerb, RunEditHistory);
             HeadlessCliVerbs.Register(AuditLogVerb, RunAuditLog);
+            HeadlessCliVerbs.Register(TagVerb, RunTag);
+        }
+
+        static int RunTag(string[] args)
+        {
+            var named = args.Length < 2 ? new Dictionary<string, string>() : ParseNamed(args);
+            if (args.Length < 2 || !named.TryGetValue("--target", out var target))
+            {
+                Console.Error.WriteLine($"usage: {TagVerb} \"<projectDir>\" --target <Module> [--field Tags | --no-field] [--link-name <Module>Tags] [--master-name Tag] ...");
+                return 2;
+            }
+            var projectDir = Path.GetFullPath(args[1]);
+            var designData = LoadDesignData(projectDir);
+            var (dataSourceName, dataSourceType) = ResolveDataSource(projectDir, named.GetValueOrDefault("--data-source"));
+
+            var options = new TagSetupOptions
+            {
+                TargetModuleName = target,
+                FieldName = args.Contains("--no-field") ? string.Empty : named.GetValueOrDefault("--field", "Tags"),
+                LinkModuleName = named.GetValueOrDefault("--link-name", string.Empty),
+                LinkTableName = named.GetValueOrDefault("--link-table", string.Empty),
+                OwnerColumnName = named.GetValueOrDefault("--owner-column", string.Empty),
+                MasterModuleName = named.GetValueOrDefault("--master-name", "Tag"),
+                MasterTableName = named.GetValueOrDefault("--master-table", string.Empty),
+                DataSourceName = dataSourceName,
+                AddPageFrameLink = !args.Contains("--no-pageframe"),
+            };
+
+            var result = TagSetupService.Run(designData, projectDir, options, dataSourceType);
+            return Report(result, named.GetValueOrDefault("--ddl-out"));
         }
 
         static int RunApproval(string[] args)
