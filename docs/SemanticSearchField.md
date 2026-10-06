@@ -201,6 +201,30 @@ order by search_vector_v <=> {embed:納期遅れで揉めたクレーム}
 limit 5
 ```
 
+### 権限つきの検索 (SemanticMatchCondition)
+
+上の `search_records` (RawDataAccessAgent) は AI 用の DB 接続で直接読むので、ログインユーザーごとの行の条件や項目の権限は効きません。
+権限を効かせたいときは、意味検索を本体の一覧検索 (`ModuleDataIO.GetListAsync`) の条件として使います。`SemanticMatchCondition` (Extras) を検索条件に置くと、
+SemanticSearchField が自分の列で WHERE と並びの SQL を作り、本体がいつもどおりモジュールの閲覧権限・行の条件 (DataRead)・論理削除を掛けます (本体の `FieldSqlMatchCondition` / `ISqlMatchConditionFieldDesign` の仕組み)。
+
+```csharp
+var vector = (await embeddingProvider.EmbedAsync(new[] { "納期遅れで揉めたクレーム" }))[0];   // 索引と同じ埋め込みモデル
+var condition = new SearchCondition("Inquiry")
+{
+    Condition = MultiMatchCondition.And(
+        new FieldValueMatchCondition { SearchTargetVariable = "Status.Value", Comparison = MatchComparison.NotEqual, Value = MultiTypeValue.Create("9") },
+        new SemanticMatchCondition { FieldName = "Search", Vector = vector }),   // MaxDistance で距離の上限も付けられる
+    LimitCount = 5,
+};
+condition.SortConditions.Add(new SortCondition { Variable = "Search.Value" });   // 近い順 (コサイン距離の昇順)
+var rows = await moduleDataIO.GetListAsync(condition, 0);
+```
+
+- 索引の項目 (SemanticSearchField) を読めないユーザー (PermissionField) は拒否されます。距離計算は DB なので、PostgreSQL (pgvector) / SQL Server 2025 のモジュールだけです (他の DB では例外)
+- この条件はサーバーで実行する一覧検索だけのものです。設計に保存する条件 (権限の条件・ListField / LinkField の条件) には置けません (デザインチェックが指摘します)
+- ベクトルは呼び出し側が作って入れます (画面やスクリプトから文章だけで検索する仕組みはまだありません)
+- AI チャットでは `ModuleDataAccessAgent` に `semanticSearch` を渡すと、この条件で検索する `search_records` が付きます ([AIChatField](AIChatField.md))
+
 ### 4. 既存データに一括でベクトルを付ける (再索引)
 
 保存時の索引付け (2.) が効くのは、フィールドを置いた後に保存した行だけです。すでに溜まっている行には何も付いていないので、導入時に 1 回、**フィールドのスクリプト**の `Reindex()` で全行の文章とベクトルをまとめて作ります。以後は保存時の索引付けが追従するので、繰り返し実行する必要はありません。

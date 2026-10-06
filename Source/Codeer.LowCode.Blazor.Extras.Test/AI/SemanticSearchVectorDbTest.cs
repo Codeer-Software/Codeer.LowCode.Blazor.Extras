@@ -5,6 +5,7 @@ using Codeer.LowCode.Blazor.DesignLogic;
 using Codeer.LowCode.Blazor.Extras.Designs;
 using Codeer.LowCode.Blazor.Extras.Server.AI.Chat;
 using Codeer.LowCode.Blazor.Extras.Server.AI.Chat.ChatClient;
+using Codeer.LowCode.Blazor.Extras.Server.AI.Chat.ModuleDataAccess;
 using Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch;
 using Codeer.LowCode.Blazor.Extras.Server.FileManagement;
 using Codeer.LowCode.Blazor.Repository.Data;
@@ -147,6 +148,21 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
                     Assert.That(results[0].GetProperty("score").GetDouble(), Is.InRange(0, 1.0001), "semantic_score = 1 - コサイン距離");
                     Assert.That(results[0].GetProperty("url").GetString(), Is.EqualTo("/Main/inquiries/" + ids[0]));
                     Assert.That(progress.Texts, Is.Not.Empty);
+
+                    //同じ質問を ModuleDataAccess (権限の効く Agent) の search_records で: 本体の一覧検索の条件 (SemanticMatchCondition) として DB の距離で並ぶ
+                    var mda = new ModuleDataAccessToolSet(
+                        _ => Task.FromResult(new ModuleDataAccessScope(new ModuleDataIO(design, this, new DbAccessor(dataSources), new TemporaryFileManager(new DbAccessor(dataSources), [], new List<IFileStorage>())))),
+                        () => design, new ModuleDataAccessOptions(), () => embedding);
+                    var mdaTools = mda.CreateTools(Context(progress)).ToList();
+                    var mdaSearch = mdaTools.OfType<AIFunction>().Single(t => t.Name == "search_records");
+                    var mdaResult = await mdaSearch.InvokeAsync(new AIFunctionArguments(new Dictionary<string, object?> { ["moduleName"] = "Inquiry", ["purpose"] = "p", ["query"] = "納期が遅れている注文", ["top"] = 2 }));
+                    using (var mdaDoc = JsonDocument.Parse(mdaResult is JsonElement me ? me.GetString() ?? me.ToString() : mdaResult?.ToString() ?? string.Empty))
+                    {
+                        var mdaRoot = mdaDoc.RootElement;
+                        Assert.That(mdaRoot.TryGetProperty("error", out var mdaError) ? mdaError.GetString() : null, Is.Null);
+                        var mdaIds = mdaRoot.GetProperty("rows").EnumerateArray().Select(r => r.GetProperty("Id").GetString()).ToList();
+                        Assert.That(mdaIds, Is.EqualTo(ids), "search_records (生 SQL) と同じ行が同じ順に出る");
+                    }
 
                     //上位 1 件を論理削除すると検索から消える
                     await using var db = new DbAccessor(dataSources);

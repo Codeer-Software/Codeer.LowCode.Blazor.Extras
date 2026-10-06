@@ -16,7 +16,7 @@
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>
 		<PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
-		<PackageReleaseNotes>ModuleDataAccessAgent: an AI chat agent that reads records through the user's ModuleDataIO, so module/row/field permissions apply. AIChat RawDataAccess: query load limits (cancel at row limit, time budget, concurrency limit, large-table hints).</PackageReleaseNotes>
+		<PackageReleaseNotes>ModuleDataAccessAgent (AI chat that reads with the user's permissions). AIChat RawDataAccess query load limits.</PackageReleaseNotes>
 		<PackageId>Codeer.LowCode.Blazor.Extras.Server</PackageId>
 		<!-- NU5104: Azure.AI.OpenAI has no stable release built for the OpenAI 2.9+ line yet, so the prerelease dependency is intentional -->
 		<NoWarn>$(NoWarn);NU5104</NoWarn>

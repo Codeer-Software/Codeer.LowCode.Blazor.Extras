@@ -73,7 +73,9 @@ namespace Extras.Server.AI
                 },
                 () => DesignerService.GetDesignData(),
                 folder => DesignDataFileManager.GetResourceTexts(config.DesignFileDirectory, folder, ".md", ".txt").Select(e => new AIChatDocument(e.Name, e.Text)).ToList(),
-                config.AIChat.ModuleDataAccess);
+                config.AIChat.ModuleDataAccess,
+                //SemanticSearchField を置いたモジュールを search_records (意味検索) で探せるようにする。権限は一覧検索と同じに効く
+                semanticSearch: SemanticSearchIndex.Service);
         }
     }
 }

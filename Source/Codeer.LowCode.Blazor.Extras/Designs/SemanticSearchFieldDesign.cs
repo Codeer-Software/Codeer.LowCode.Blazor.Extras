@@ -1,3 +1,4 @@
+using Codeer.LowCode.Blazor.DataIO.Db;
 using Codeer.LowCode.Blazor.DesignLogic;
 using Codeer.LowCode.Blazor.DesignLogic.Check;
 using Codeer.LowCode.Blazor.DesignLogic.Location;
@@ -8,6 +9,9 @@ using Codeer.LowCode.Blazor.Extras.SemanticSearch;
 using Codeer.LowCode.Blazor.OperatingModel;
 using Codeer.LowCode.Blazor.Repository.Data;
 using Codeer.LowCode.Blazor.Repository.Design;
+using Codeer.LowCode.Blazor.Repository.Match;
+using Codeer.LowCode.Blazor.SystemSettings;
+using System.Globalization;
 
 namespace Codeer.LowCode.Blazor.Extras.Designs
 {
@@ -21,7 +25,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
     [ToolboxIcon(PackIconMaterialKind = "TextSearch")]
     [Designer(DisplayName = "$SemanticSearchField")]
     [IgnoreBaseProperties(nameof(IgnoreModification), nameof(OnValidateInput), nameof(IsFocusSkip), nameof(OnFocusMoving), nameof(NextFocusField))]
-    public class SemanticSearchFieldDesign() : FieldDesignBase(typeof(SemanticSearchFieldDesign).FullName!), IDataDependentField
+    public class SemanticSearchFieldDesign() : FieldDesignBase(typeof(SemanticSearchFieldDesign).FullName!), IDataDependentField, ISqlMatchConditionFieldDesign
     {
         /// <summary>デザインチェック指摘の番号。DesignCheckCode.Create で発行クラス名と結合して "クラス名:番号" になる。番号は固定(追加は末尾・欠番は再利用しない)。</summary>
         private const int CodeColumnsRequired = 1;
@@ -124,5 +128,42 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         /// SourceFields が空 (= 入力フィールド全部) のときはここでは列挙できない (モジュール定義が無い) ので何も足さない。
         /// </summary>
         public List<string> GetDependencyFields() => SourceFields.ToList();
+
+        /// <summary>
+        /// 意味検索の条件 (<see cref="SemanticMatchCondition"/>) を WHERE にする: 索引のある行 (+ 距離の上限)。距離計算は DB (pgvector / SQL Server 2025)。
+        /// 本体の一覧検索がこの断片を自分の WHERE に入れるので、行の条件・論理削除・権限はそのまま効く。
+        /// </summary>
+        public string CreateWhere(FieldSqlMatchCondition condition, SqlConditionContext context)
+        {
+            var semantic = ToSemantic(condition);
+            var where = $"{context.Column(DbColumnVectorSearch)} is not null";
+            if (semantic.MaxDistance != null) where += $" and {Distance(semantic, context)} <= {context.AddParameter(semantic.MaxDistance.Value)}";
+            return where;
+        }
+
+        /// <summary>近い順 (コサイン距離の昇順) に並べる式。</summary>
+        public string? CreateOrderBy(FieldSqlMatchCondition condition, SqlConditionContext context)
+            => Distance(ToSemantic(condition), context);
+
+        SemanticMatchCondition ToSemantic(FieldSqlMatchCondition condition)
+        {
+            if (condition is not SemanticMatchCondition semantic || !HasColumns)
+                throw LowCodeException.Create(Properties.Resources.SemanticSearch_ConditionNotSupported, Name);
+            if (semantic.Vector.Length == 0) throw LowCodeException.Create(Properties.Resources.SemanticSearch_VectorRequired, Name);
+            return semantic;
+        }
+
+        //コサイン距離の式。ベクトルは数値だけを並べたリテラル (利用者の文字列は入らない)
+        string Distance(SemanticMatchCondition condition, SqlConditionContext context)
+        {
+            var vector = "[" + string.Join(",", condition.Vector.Select(e => e.ToString("R", CultureInfo.InvariantCulture))) + "]";
+            var column = context.Column(DbColumnVectorSearch);
+            return context.DataSourceType switch
+            {
+                DataSourceType.PostgreSQL => $"({column} <=> '{vector}'::vector)",
+                DataSourceType.SQLServer => $"VECTOR_DISTANCE('cosine', {column}, CAST('{vector}' AS VECTOR({condition.Vector.Length})))",
+                _ => throw LowCodeException.Create(Properties.Resources.SemanticSearch_DbNotSupported, context.DataSourceType.ToString()),
+            };
+        }
     }
 }

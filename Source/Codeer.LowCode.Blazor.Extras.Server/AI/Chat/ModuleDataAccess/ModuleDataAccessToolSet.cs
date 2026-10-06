@@ -1,7 +1,10 @@
 using Codeer.LowCode.Blazor.Aggregation;
 using Codeer.LowCode.Blazor.DataIO;
 using Codeer.LowCode.Blazor.DesignLogic;
+using Codeer.LowCode.Blazor.Extras.Designs;
+using Codeer.LowCode.Blazor.Extras.SemanticSearch;
 using Codeer.LowCode.Blazor.Extras.Server.AI.Chat.ChatClient;
+using Codeer.LowCode.Blazor.Extras.Server.AI.Embedding;
 using Codeer.LowCode.Blazor.Extras.Server.AI.Chat.RawDataAccess;
 using Codeer.LowCode.Blazor.Extras.Server.Properties;
 using Codeer.LowCode.Blazor.Repository;
@@ -34,15 +37,28 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat.ModuleDataAccess
         readonly Func<string, Task<ModuleDataAccessScope>> _openScope;
         readonly Func<DesignData?> _design;
         readonly ModuleDataAccessOptions _options;
+        readonly Func<IEmbeddingProvider?>? _embeddingProvider;
 
         /// <param name="openScope">ユーザー Id → そのユーザーの権限を持つ ModuleDataIO (ツール呼び出しごとに開いて閉じる)</param>
         /// <param name="design">デザイン定義 (ホットリロードで変わるので都度取る)。項目の型と候補値の解決に使う</param>
-        public ModuleDataAccessToolSet(Func<string, Task<ModuleDataAccessScope>> openScope, Func<DesignData?> design, ModuleDataAccessOptions options)
+        /// <param name="embeddingProvider">意味検索 (search_records) の質問を埋め込むプロバイダ (索引付けと同じもの)。null か、返すものが null なら意味検索は付かない</param>
+        public ModuleDataAccessToolSet(Func<string, Task<ModuleDataAccessScope>> openScope, Func<DesignData?> design, ModuleDataAccessOptions options,
+            Func<IEmbeddingProvider?>? embeddingProvider = null)
         {
             _openScope = openScope;
             _design = design;
             _options = options;
+            _embeddingProvider = embeddingProvider;
         }
+
+        //意味検索できるモジュール: 表を持ち、文章・ベクトル・ベクトル検索の列が揃った SemanticSearchField があるもの (DB がベクトル検索に対応するかは実行時に分かる)
+        static List<(ModuleDesign Module, SemanticSearchFieldDesign Field)> SemanticModules(DesignData design)
+            => design.Modules.GetModuleNames().Select(design.Modules.Find)
+                .Where(m => m != null && !string.IsNullOrEmpty(m.DbTable))
+                .SelectMany(m => m!.Fields.OfType<SemanticSearchFieldDesign>().Where(f => f.HasColumns).Take(1).Select(f => (m!, f)))
+                .ToList();
+
+        IEmbeddingProvider? Provider() => _embeddingProvider?.Invoke();
 
         /// <summary>
         /// 絞り込み条件 1 つ。項目の比較 (Field / Comparison / Value) か、条件のグループ (All = すべて満たす / Any = どれかを満たす) のどちらか。
@@ -127,6 +143,12 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat.ModuleDataAccess
             sb.AppendLine($"- 行と列の 2 方向で見たい表 (担当者 × 月など) は cross_tab で求めてください。行と列の見出し・セル・行ごとの合計・列ごとの合計・総計が揃って返るので、そのまま Markdown の表にします (合計は DB で別に集計した正しい値です。セルを足して作らないこと)。表のセル数の上限は {_options.MaxCrossTabCells} です。");
             sb.AppendLine($"- find_records は 1 回に最大 {_options.MaxRows} 行です。fields で必要な項目だけに絞ると結果が小さくなります。続きは page を進めて取ります (totalCount と pageCount が返ります)。");
             sb.AppendLine($"- aggregate_records は 1 回に最大 {_options.MaxGroups} グループです (limited=true なら続きがあります。並びを指定して必要な分だけ取ってください)。");
+            var design = _design();
+            var semantic = design == null || Provider() == null ? new() : SemanticModules(design);
+            if (semantic.Count > 0)
+            {
+                sb.AppendLine($"- 次のモジュールは search_records で内容の意味で探せます (似ている順。filters で普通の条件と組み合わせられます): {string.Join(", ", semantic.Select(e => e.Module.Name))}。「似た事例」「〜のような問い合わせ」のように内容で探す質問は Like ではなく search_records を使ってください。結果は近い順に並んでいますが、本当に関係があるかは中身を読んで判断してください。");
+            }
             sb.AppendLine("- 1 件の内容を子一覧 (明細など) ごと見たいときは get_record (モジュール名と Id) を使います。find_records は子一覧を返しません。");
             if (_options.CommandTimeoutSeconds > 0)
                 sb.AppendLine($"- 1 回の読み取りは {_options.CommandTimeoutSeconds} 秒で打ち切られます。時間切れになったら同じ指定を繰り返さず、条件で絞るか、日付の単位を大きくしてください。");
@@ -157,6 +179,21 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat.ModuleDataAccess
                     => GetRecordAsync(moduleName, purpose, id, context),
                 "get_record",
                 "Id で 1 件のレコードを、今のユーザーの権限で子一覧 (ListField / ModuleField) ごと読んで返す。結果は row (項目名 → 値) と children (子一覧名 → { module, rowCount, rows })。");
+            var design = _design();
+            if (design != null && Provider() != null && SemanticModules(design).Count > 0)
+            {
+                yield return AIFunctionFactory.Create(
+                    ([Description("探すモジュール名 (意味検索できるモジュールの一覧にある名前)。")] string moduleName,
+                     [Description("このツール呼び出しで何を調べるかを一文で (ユーザーに進捗として表示される)。")] string purpose,
+                     [Description("探したい内容 (自然文でよい。ユーザーの言葉をそのまま、または要点を補って)。")] string query,
+                     [Description("返す件数 (既定 5。上限あり)。")] int top = 5,
+                     [Description("一緒に掛ける絞り込み条件 (すべて満たす行)。find_records と同じ書き方。省略可。")] Filter[]? filters = null,
+                     [Description("true なら filters のどれかを満たす行 (OR)。")] bool matchAny = false,
+                     [Description("返す項目名 (省略で全項目。Id は常に返る)。")] string[]? fields = null)
+                        => SearchRecordsAsync(moduleName, purpose, query, top, filters, matchAny, fields, context),
+                    "search_records",
+                    "モジュールの行を、今のユーザーの権限で内容の意味で探し、似ている順に返す (DB のベクトル検索)。結果は rows (find_records と同じ形) を近い順に。");
+            }
             yield return AIFunctionFactory.Create(
                 ([Description("モジュール名 (list_modules の名前)。")] string moduleName,
                  [Description("このツール呼び出しで何を調べるかを一文で (ユーザーに進捗として表示される)。")] string purpose,
@@ -225,6 +262,63 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat.ModuleDataAccess
                     ["totalCount"] = result.TotalCount,
                     ["pageCount"] = result.PageCount,
                     ["page"] = page,
+                    ["rowCount"] = rows.Count,
+                    ["truncated"] = false,
+                    ["rows"] = rows,
+                }, rows);
+            });
+        }
+
+        async Task<string> SearchRecordsAsync(string moduleName, string purpose, string query, int top, Filter[]? filters, bool matchAny, string[]? fields, AIChatToolContext context)
+        {
+            var design = _design();
+            var provider = Provider();
+            var semantic = design == null || provider == null ? new() : SemanticModules(design);
+            var target = semantic.FirstOrDefault(e => string.Equals(e.Module.Name, (moduleName ?? string.Empty).Trim(), StringComparison.OrdinalIgnoreCase));
+            if (design == null || provider == null || target.Module == null)
+                return Error($"モジュール '{moduleName}' は意味検索できません。使えるのは: {string.Join(", ", semantic.Select(e => e.Module.Name))}");
+            if (string.IsNullOrWhiteSpace(query)) return Error("query が空です。");
+            var module = target.Module;
+
+            SearchCondition condition;
+            try
+            {
+                condition = BuildCondition(design, module, filters, matchAny);
+            }
+            catch (Exception e) when (e is not OperationCanceledException)
+            {
+                return Error(e.Message);
+            }
+            condition.SelectFields = SelectFields(design, module, (fields ?? Array.Empty<string>()).Where(f => !string.IsNullOrWhiteSpace(f)));
+            condition.LimitCount = Math.Clamp(top, 1, _options.MaxRows);
+            //近い順 (距離の昇順)。並べる式は SemanticSearchField が作る
+            condition.SortConditions.Add(new SortCondition { Variable = ModuleDataConverter.ToVariable(target.Field.Name) });
+
+            context.Progress.Report(string.IsNullOrWhiteSpace(purpose) ? Resources.AIChat_SearchingRecords : purpose.Trim());
+            context.Logger?.LogInformation("AIChat ModuleDataAccess search_records by {User} (conversation {Conversation}): module={Module} query={Query} filters={Filters}",
+                context.Request.UserName, context.Request.ConversationId, module.Name, query, filters?.Length ?? 0);
+
+            float[] vector;
+            try
+            {
+                vector = (await provider.EmbedAsync(new[] { query }, context.CancellationToken))[0];
+            }
+            catch (OperationCanceledException) { throw; }
+            catch (Exception e)
+            {
+                context.Logger?.LogWarning("AIChat ModuleDataAccess search_records embedding failed: {Message}", e.Message);
+                return Error(e.Message);
+            }
+            var semanticCondition = new SemanticMatchCondition { FieldName = target.Field.Name, Vector = vector };
+            condition.Condition = condition.Condition == null ? semanticCondition : MultiMatchCondition.And(condition.Condition, semanticCondition);
+
+            return await ReadAsync(module, "search_records", context, async scope =>
+            {
+                var result = await scope.ModuleDataIO.GetListAsync(condition, 0);
+                var rows = result.Items.Select(e => ModuleDataConverter.ToRow(design, module, e)).ToList();
+                return Serialize(new Dictionary<string, object?>
+                {
+                    ["module"] = module.Name,
                     ["rowCount"] = rows.Count,
                     ["truncated"] = false,
                     ["rows"] = rows,

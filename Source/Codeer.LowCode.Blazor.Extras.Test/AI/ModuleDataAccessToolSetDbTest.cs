@@ -3,10 +3,12 @@ using Codeer.LowCode.Blazor.DataIO;
 using Codeer.LowCode.Blazor.DataIO.Db;
 using Codeer.LowCode.Blazor.DbAccess;
 using Codeer.LowCode.Blazor.DesignLogic;
+using Codeer.LowCode.Blazor.Extras.Designs;
 using Codeer.LowCode.Blazor.Extras.Server.AI.Chat;
 using Codeer.LowCode.Blazor.Extras.Server.AI.Chat.ChatClient;
 using Codeer.LowCode.Blazor.Extras.Server.AI.Chat.ModuleDataAccess;
 using Codeer.LowCode.Blazor.Extras.Server.AI.Chat.RawDataAccess;
+using Codeer.LowCode.Blazor.Extras.Server.AI.Embedding;
 using Codeer.LowCode.Blazor.Extras.Server.FileManagement;
 using Codeer.LowCode.Blazor.Repository;
 using Codeer.LowCode.Blazor.Repository.Design;
@@ -706,6 +708,54 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
             {
                 gate.Release(max);
             }
+        }
+
+        //Order に意味検索の索引 (SemanticSearchField) を足す。SQLite はベクトル検索できないので、ここで見るのは配線と権限 (距離の計算は SemanticSearchVectorDbTest の実 DB)
+        void AddSemanticSearchField(Action<SemanticSearchFieldDesign>? configure = null)
+        {
+            var field = new SemanticSearchFieldDesign { Name = "Search", DbColumnText = "search_text", DbColumnVector = "search_vector", DbColumnVectorSearch = "search_vector_v" };
+            configure?.Invoke(field);
+            _designData.Modules.Find("Order")!.Fields.Add(field);
+        }
+
+        ModuleDataAccessToolSet CreateWithEmbedding(IEmbeddingProvider? provider)
+            => new(OpenScope, () => _designData, new ModuleDataAccessOptions(), () => provider);
+
+        [Test]
+        public async Task 意味検索は索引のあるモジュールと埋め込みがあるときだけ付き本体の一覧検索として走る()
+        {
+            //索引なし・埋め込みなしでは付かない
+            Assert.That(CreateWithEmbedding(new FakeEmbeddingProvider()).CreateTools(Context("2")).Select(t => t.Name), Does.Not.Contain("search_records"));
+            AddSemanticSearchField();
+            Assert.That(CreateWithEmbedding(null).CreateTools(Context("2")).Select(t => t.Name), Does.Not.Contain("search_records"));
+
+            var toolSet = CreateWithEmbedding(new FakeEmbeddingProvider());
+            Assert.That(toolSet.CreateTools(Context("2")).Select(t => t.Name), Does.Contain("search_records"));
+            Assert.That(toolSet.GetInstructions(Context("2")), Does.Contain("search_records").And.Contain("Order"));
+
+            //本体の一覧検索 → SemanticSearchField が SQL を作る。SQLite はベクトル検索できないのでその理由が返る (= 配線は通っている)
+            var result = await InvokeAsync(toolSet.CreateTools(Context("2")).ToList(), "search_records", new() { ["moduleName"] = "Order", ["purpose"] = "p", ["query"] = "机" });
+            Assert.That(ErrorOf(result), Does.Contain("SQLite"));
+
+            //意味検索できないモジュール
+            var notSearchable = await InvokeAsync(toolSet.CreateTools(Context("2")).ToList(), "search_records", new() { ["moduleName"] = "Customer", ["purpose"] = "p", ["query"] = "机" });
+            Assert.That(ErrorOf(notSearchable), Does.Contain("意味検索できません"));
+        }
+
+        [Test]
+        public async Task 意味検索もモジュールと索引の項目の読み取り権限で拒否される()
+        {
+            //Order を読めない人 (Rank 1)
+            AddSemanticSearchField();
+            var denied = await InvokeAsync(CreateWithEmbedding(new FakeEmbeddingProvider()).CreateTools(Context("1")).ToList(), "search_records", new() { ["moduleName"] = "Order", ["purpose"] = "p", ["query"] = "机" });
+            Assert.That(denied.GetProperty("accessDenied").GetBoolean(), Is.True);
+
+            //索引の項目 (Search) を読めない人 (Rank 10。Search は Rank 20 以上だけ)
+            var permission = new PermissionFieldDesign { Name = "SearchPermission", TargetFields = { "Search" } };
+            permission.ReadCondition.Condition = Match("CurrentUser.Rank.Value", MatchComparison.GreaterThanOrEqual, MultiTypeValue.Create(20));
+            _designData.Modules.Find("Order")!.Fields.Add(permission);
+            var fieldDenied = await InvokeAsync(CreateWithEmbedding(new FakeEmbeddingProvider()).CreateTools(Context("2")).ToList(), "search_records", new() { ["moduleName"] = "Order", ["purpose"] = "p", ["query"] = "机" });
+            Assert.That(fieldDenied.GetProperty("accessDenied").GetBoolean(), Is.True);
         }
 
         //実際の Azure OpenAI で ModuleDataAccessAgent を通す (課金あり・ネットワーク要)。cross_tab / aggregate_records をモデルが使い、権限の範囲 (担当 A の 3 行) で正しい数字を答えることを見る

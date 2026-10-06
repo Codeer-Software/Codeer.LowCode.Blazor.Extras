@@ -2849,6 +2849,33 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
         }
         
         /// <summary>
+        ///   The field '{0}' cannot be searched by meaning with this condition (set the text, vector and vector search columns of SemanticSearchField). に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string SemanticSearch_ConditionNotSupported {
+            get {
+                return ResourceManager.GetString("SemanticSearch_ConditionNotSupported", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   The semantic search on '{0}' has no embedding vector. に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string SemanticSearch_VectorRequired {
+            get {
+                return ResourceManager.GetString("SemanticSearch_VectorRequired", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Semantic search is not available on {0} (PostgreSQL with pgvector or SQL Server 2025 is required). に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string SemanticSearch_DbNotSupported {
+            get {
+                return ResourceManager.GetString("SemanticSearch_DbNotSupported", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Set the text column, the vector column and the vector search column. に類似しているローカライズされた文字列を検索します。
         /// </summary>
         internal static string SemanticSearchCheck_ColumnsRequired {

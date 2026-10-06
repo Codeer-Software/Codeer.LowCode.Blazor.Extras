@@ -1788,4 +1788,13 @@ Recipients: {1}</value>
   <data name="CrossTab_Format_C0" xml:space="preserve">
     <value>Currency</value>
   </data>
+  <data name="SemanticSearch_ConditionNotSupported" xml:space="preserve">
+    <value>The field '{0}' cannot be searched by meaning with this condition (set the text, vector and vector search columns of SemanticSearchField).</value>
+  </data>
+  <data name="SemanticSearch_VectorRequired" xml:space="preserve">
+    <value>The semantic search on '{0}' has no embedding vector.</value>
+  </data>
+  <data name="SemanticSearch_DbNotSupported" xml:space="preserve">
+    <value>Semantic search is not available on {0} (PostgreSQL with pgvector or SQL Server 2025 is required).</value>
+  </data>
 </root>

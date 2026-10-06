@@ -1788,4 +1788,13 @@
   <data name="CrossTab_Format_C0" xml:space="preserve">
     <value>通貨</value>
   </data>
+  <data name="SemanticSearch_ConditionNotSupported" xml:space="preserve">
+    <value>フィールド '{0}' はこの条件で意味検索できません (SemanticSearchField の文章・ベクトル・ベクトル検索の列を設定してください)。</value>
+  </data>
+  <data name="SemanticSearch_VectorRequired" xml:space="preserve">
+    <value>'{0}' の意味検索に埋め込みベクトルがありません。</value>
+  </data>
+  <data name="SemanticSearch_DbNotSupported" xml:space="preserve">
+    <value>{0} では意味検索を使えません (pgvector を入れた PostgreSQL か SQL Server 2025 が必要です)。</value>
+  </data>
 </root>
