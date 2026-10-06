@@ -46,8 +46,14 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Tag
         {
             var (services, field) = await CreatePickerAsync();
             Assert.That(field.IsBound, Is.False);
+            await field.AddTagAsync("dxpo");
+            Assert.That(services.App.ListRequests, Is.Empty, "新しいタグを入れてよい入力欄は、足すだけでは問い合わせない (一覧の行の表示用に並ぶため)");
+            Assert.That(field.Tags, Is.EqualTo(new[] { "dxpo" }));
+            await field.RemoveTagAsync("DXPO");
+
+            await field.GetCandidatesAsync();
             await field.AddTagAsync("dxpo、新規 ,展示会");
-            Assert.That(field.Tags, Is.EqualTo(new[] { "DXPO", "新規", "展示会" }), "マスタにあればマスタの表記");
+            Assert.That(field.Tags, Is.EqualTo(new[] { "DXPO", "新規", "展示会" }), "候補を読んでいればマスタの表記");
             Assert.That(field.IsModified, Is.True);
             Assert.That(field.GetSubmitData().Add, Is.Empty);
             Assert.That(services.App.ListRequests.All(e => e.Condition.ModuleName == "Tag"), Is.True, "タグ付けは読まない");

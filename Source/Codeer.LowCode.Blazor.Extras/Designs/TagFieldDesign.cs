@@ -66,7 +66,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         [Designer(Index = 5, DisplayName = "$TagFieldConfirmOnSpace")]
         public bool ConfirmOnSpace { get; set; }
 
-        /// <summary>マスタに無いタグを入力できる (保存のときマスタに行を足す)。false ならマスタにあるタグだけ。</summary>
+        /// <summary>マスタに無いタグを入力できる (足した時点でマスタに行を作る)。false ならマスタにあるタグだけ。</summary>
         [Designer(Index = 6, DisplayName = "$TagFieldAllowNewTags")]
         public bool AllowNewTags { get; set; } = true;
 

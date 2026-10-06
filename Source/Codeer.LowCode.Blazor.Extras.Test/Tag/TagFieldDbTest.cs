@@ -112,24 +112,47 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Tag
         }
 
         [Test]
-        public async Task 新しいタグはマスタの行も同じ保存で作る()
+        public async Task 新しいタグは足したときにマスタに作りタグ付けは保存で書く()
         {
             var client = Client();
             var module = await client.OpenAsync("Contact", "4");
             var field = Tags(module);
-            await field.AddTagAsync("新規A, 新規B");
-            await field.RemoveTagAsync("新規B");
-            Assert.That(field.Tags, Is.EqualTo(new[] { "新規A" }));
+            await field.AddTagAsync("新規A");
+            Assert.That(await MasterAsync(), Is.EqualTo("展示会,DXPO,セミナー,100%達成,新規A"), "マスタは足したとき");
+            Assert.That(await LinksAsync(), Does.Not.Contain("D:"), "タグ付けは保存まで書かない");
+            Assert.That(await field.GetCandidatesAsync(), Does.Contain("新規A"), "候補にも入る");
 
             Assert.That(await module.SubmitAsync(), Is.True, string.Join(" | ", client.Logger.ErrorList));
-            Assert.That(client.SubmitCalls, Has.Count.EqualTo(1), "1 回の保存 (1 トランザクション)");
-            Assert.That(await MasterAsync(), Is.EqualTo("展示会,DXPO,セミナー,100%達成,新規A"), "外した新しいタグは作らない");
             Assert.That(await LinksAsync(), Does.Contain("D:新規A"));
+            Assert.That(Tags(await client.OpenAsync("Contact", "4")).Tags, Is.EqualTo(new[] { "新規A" }));
+        }
 
-            //保存後: チップは実 Id のタグを指し、候補にも入る
-            var reopened = Tags(await client.OpenAsync("Contact", "4"));
-            Assert.That(reopened.Tags, Is.EqualTo(new[] { "新規A" }));
-            Assert.That(await Tags(module).GetCandidatesAsync(), Does.Contain("新規A"));
+        [Test]
+        public async Task 同じ新しいタグを複数のレコードに足してもマスタは1行()
+        {
+            //取り込み・一括でタグを付ける画面: 何人もに同じ新しいタグを足して保存する
+            var client = Client();
+            var c = await client.OpenAsync("Contact", "3");
+            var d = await client.OpenAsync("Contact", "4");
+            await Tags(c).AddTagAsync("新規");
+            await Tags(d).AddTagAsync("新規");
+            Assert.That(await c.SubmitAsync(), Is.True, string.Join(" | ", client.Logger.ErrorList));
+            Assert.That(await d.SubmitAsync(), Is.True, string.Join(" | ", client.Logger.ErrorList));
+            Assert.That(await MasterAsync(), Is.EqualTo("展示会,DXPO,セミナー,100%達成,新規"));
+            Assert.That(await LinksAsync(), Does.Contain("C:セミナー C:新規 D:新規"));
+        }
+
+        [Test]
+        public async Task 別の人が先に同じ名前のタグを作っていればそれを使う()
+        {
+            var client = Client();
+            var module = await client.OpenAsync("Contact", "4");
+            var field = Tags(module);
+            await field.GetCandidatesAsync();   //候補を読んだ後に
+            await _db.ExecuteAsync(Ds, "INSERT INTO tags (name) VALUES ('後から')", new());   //別の人が作った
+            await field.AddTagAsync("後から");
+            Assert.That(await module.SubmitAsync(), Is.True, string.Join(" | ", client.Logger.ErrorList));
+            Assert.That(await MasterAsync(), Is.EqualTo("展示会,DXPO,セミナー,100%達成,後から"));
         }
 
         [Test]

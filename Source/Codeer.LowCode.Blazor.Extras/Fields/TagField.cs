@@ -15,8 +15,9 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
 {
     /// <summary>
     /// タグのフィールド。結び付きあり (検索条件 = タグ付けモジュール) なら本体の一覧と同じくタグ付け行を子として読み・保存し、
-    /// タグ 1 つ = 行 1 つ (リンクの表示文字列がタグ名)。新しいタグはマスタの行として本体の保存に載せる (仮 Id で同じトランザクション)。
-    /// 結び付きなしならタグ名をメモリに持つだけ (保存しない。候補はマスタ)。
+    /// タグ 1 つ = 行 1 つ (リンクの表示文字列がタグ名)。マスタに無いタグは、足したときにマスタに行を作る
+    /// (レコードの保存に載せると、同じ新しいタグを足した複数のレコードを一緒に保存したときにマスタの行が重なるため)。
+    /// 結び付きなしならタグ名をメモリに持つだけ (保存しない。候補はマスタ。マスタには書かない)。
     /// タグの同一判定は大文字小文字を区別しない (先に入っていた表記を残す)。
     /// </summary>
     public class TagField : ListField, ISearchableField
@@ -28,7 +29,6 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         static readonly StringComparer _tagComparer = StringComparer.OrdinalIgnoreCase;
 
         readonly List<string> _unboundTags = new();
-        readonly List<ModuleData> _stagedTags = new();
         bool _unboundModified;
         //このレコードのタグ付け行を読んだか (詳細・新規・一覧の行のまとめ読み・LoadTags)
         bool _rowsLoaded;
@@ -124,21 +124,24 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         async Task<bool> AddOneAsync(string name)
         {
             if (name.Length == 0 || HasTag(name)) return false;
-            var entry = await FindTagAsync(name);
             if (!IsBound)
             {
-                if (entry == null && !Design.AllowNewTags) return RejectUnknown(name);
-                _unboundTags.Add(entry?.Name ?? name);
+                //マスタに無いタグも入れてよいなら問い合わせない (読んである候補があれば表記だけ寄せる)。一覧の行の表示用にたくさん並ぶため
+                var known = Design.AllowNewTags ? FindLoadedTag(name) : await FindTagAsync(name);
+                if (known == null && !Design.AllowNewTags) return RejectUnknown(name);
+                _unboundTags.Add(known?.Name ?? name);
                 _unboundModified = true;
                 return true;
             }
 
             var binding = Binding;
             if (binding == null) return false;
+            var entry = await FindTagAsync(name);
             if (entry == null)
             {
                 if (!Design.AllowNewTags) return RejectUnknown(name);
-                entry = StageNewTag(binding, name);
+                entry = await CreateTagAsync(binding, name);
+                if (entry == null) return false;
             }
             var row = new ModuleData { Name = binding.LinkModule };
             row.Fields[binding.TagLinkField] = new LinkFieldData { Value = entry.Id, DisplayText = entry.Name };
@@ -157,23 +160,30 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             var row = Rows.FirstOrDefault(e => _tagComparer.Equals(TagNameOf(e), name));
             if (row == null) return false;
             await DeleteRowAsync(row);
-            //誰も指さなくなった新しいタグは保存しない
-            var used = Rows.Select(TagIdOf).ToHashSet();
-            _stagedTags.RemoveAll(e => !used.Contains(IdOf(e)));
             return true;
         }
 
-        //マスタに無いタグ: マスタの行を仮 Id で用意し、本体の保存に載せる (GetSubmitData)
-        TagEntry StageNewTag(TagBinding binding, string name)
+        //マスタに無いタグ: マスタに行を作る (ほかのレコード・ほかの人が同時に作っていたら、そちらを使う)
+        async Task<TagEntry?> CreateTagAsync(TagBinding binding, string name)
         {
-            var staged = _stagedTags.FirstOrDefault(e => _tagComparer.Equals(NameOf(e, binding), name));
-            if (staged != null) return new TagEntry(IdOf(staged), NameOf(staged, binding));
+            if (Services.AppInfoService.IsDesignMode) return null;
             var id = TemporaryIdPrefix + Guid.NewGuid();
             var data = new ModuleData { Name = binding.MasterModule };
             data.Fields[SystemFieldNames.Id] = new IdFieldData { Value = id };
             data.Fields[binding.MasterNameField] = new TextFieldData { Value = name };
-            _stagedTags.Add(data);
-            return new TagEntry(id, name);
+            var result = (await Services.ModuleDataService.SubmitAsync(new List<ModuleSubmitData> { new() { ModuleName = binding.MasterModule, Add = { data } } }))?.FirstOrDefault();
+            if (result != null && string.IsNullOrEmpty(result.ExceptionMessage) && result.TemporaryIdMap.TryGetValue(id, out var realId))
+            {
+                var created = new TagEntry(realId, name);
+                if (_master is { IsCompletedSuccessfully: true }) _master.Result.Add(created);
+                return created;
+            }
+            //一意インデックスで止まった = 先に誰かが作った
+            var existing = await FindTagAsync(name);
+            if (existing != null) return existing;
+            SetError(result?.ExceptionMessage ?? string.Format(Properties.Resources.TagFieldUnknownTagFormat, name));
+            NotifyStateChanged();
+            return null;
         }
 
         bool RejectUnknown(string name)
@@ -193,8 +203,6 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
 
         string TagNameOf(Module row) => Binding == null ? string.Empty : row.GetField<LinkField>(Binding.TagLinkField)?.DisplayText ?? string.Empty;
 
-        string TagIdOf(Module row) => Binding == null ? string.Empty : row.GetField<LinkField>(Binding.TagLinkField)?.Value ?? string.Empty;
-
         static string IdOf(ModuleData data) => (data.Fields.GetValueOrDefault(SystemFieldNames.Id) as IdFieldData)?.Value ?? string.Empty;
 
         static string NameOf(ModuleData data, TagBinding binding) => (data.Fields.GetValueOrDefault(binding.MasterNameField) as TextFieldData)?.Value ?? string.Empty;
@@ -207,9 +215,6 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         [ScriptHide]
         public override async Task InitializeDataAsync(FieldDataBase? fieldDataBase)
         {
-            //保存の後は読み直しで来る: 足したタグはマスタに入ったので候補を読み直す
-            if (_stagedTags.Count > 0) _master = null;
-            _stagedTags.Clear();
             _unboundTags.Clear();
             _unboundModified = false;
             //結び付きなしは読むものが無い (本体の一覧はモジュール名が空のまま問い合わせてしまう)
@@ -233,24 +238,13 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         }
 
         [ScriptHide]
-        public override FieldSubmitData GetSubmitData()
-        {
-            if (!IsBound) return new();
-            var data = base.GetSubmitData();
-            //新しいタグのマスタ行はタグ付け行より先に (保存は順に書き、後の行の仮 Id を実 Id に置き換える)
-            if (_stagedTags.Count > 0 && data.Add.Count > 0) data.Add.InsertRange(0, _stagedTags);
-            return data;
-        }
+        public override FieldSubmitData GetSubmitData() => IsBound ? base.GetSubmitData() : new();
 
         [ScriptHide]
         public override void AcceptChanges(SubmitAcceptInfo info)
         {
             if (IsBound) base.AcceptChanges(info);
             _unboundModified = false;
-            if (_stagedTags.Count == 0) return;
-            //足したタグはマスタに入った: 候補を読み直す
-            _stagedTags.Clear();
-            _master = null;
         }
 
         [ScriptHide]
@@ -305,6 +299,10 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
 
         //名前でタグを引く: 読んである候補 → マスタに直接 (候補は行数で切っているので、そこに無くてもマスタにはあり得る)。
         //DB の = は照合順序しだいで大文字小文字を区別する (SQLite・PostgreSQL) ので、見つからなければ部分一致で引いて手元で比べる
+        //読んである候補からだけ引く (問い合わせない)
+        TagEntry? FindLoadedTag(string name)
+            => _master is { IsCompletedSuccessfully: true } ? _master.Result.FirstOrDefault(e => _tagComparer.Equals(e.Name, name)) : null;
+
         async Task<TagEntry?> FindTagAsync(string name)
         {
             var hit = (await GetMasterAsync()).FirstOrDefault(e => _tagComparer.Equals(e.Name, name));
@@ -426,7 +424,9 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             if (!any && (unknown || ids.Count > 1))
             {
                 var owners = unknown ? new List<string>() : await OwnersHavingAllAsync(binding, ids);
-                group.Children.Add(new FieldValueMatchCondition { SearchTargetVariable = binding.OwnerKeyVariable, Comparison = MatchComparison.In, Value = MultiTypeValue.Create(owners) });
+                //親の検索レイアウトに LinkFieldNames で置いたとき (名前が "社員.タグ") は、レコードの Id も同じパスの下 ("社員.Id.Value")
+                var prefix = Design.Name.Contains('.') ? Design.Name[..(Design.Name.LastIndexOf('.') + 1)] : string.Empty;
+                group.Children.Add(new FieldValueMatchCondition { SearchTargetVariable = prefix + binding.OwnerKeyVariable, Comparison = MatchComparison.In, Value = MultiTypeValue.Create(owners) });
             }
             _searchCondition = group;
         }
