@@ -77,7 +77,13 @@ div.tag-editor > input.tag-input:not([type="checkbox"]):not([type="radio"]):not(
   left: 0;
   max-height: 16rem;
   overflow-y: auto;
-  /* 下に一覧があると、その固定ヘッダー (sticky, Bootstrap 1020) の後ろに回るので、モーダル (1050) より下で一覧より上に */
+  z-index: 1040;
+}
+
+/* 検索欄 (input-group) の中では Bootstrap が .form-control に position: relative + z-index を付けるので、入力欄が自分の重なり順の層になり、
+   中の候補は下の一覧の固定ヘッダー (sticky, z-index 2) の後ろに回る。候補が開いている間 (フォーカス中) は入力欄ごと前に出す */
+.input-group > .form-control.tag-editor:focus-within,
+.form-control.tag-editor:focus-within {
   z-index: 1040;
 }
 
