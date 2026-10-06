@@ -173,20 +173,6 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Tag
         }
 
         [Test]
-        public async Task 候補の行数を超えるタグも入力すればマスタから引き重複を作らない()
-        {
-            _design = TagTestDesigns.Create(e => e.CandidateRowCount = 1);
-            var client = Client();
-            var module = await client.OpenAsync("Contact", "4");
-            var field = Tags(module);
-            Assert.That(await field.GetCandidatesAsync(), Has.Count.EqualTo(1));
-            await field.AddTagAsync("セミナー");
-            Assert.That(await module.SubmitAsync(), Is.True, string.Join(" | ", client.Logger.ErrorList));
-            Assert.That(await MasterAsync(), Is.EqualTo("展示会,DXPO,セミナー,100%達成"));
-            Assert.That(await LinksAsync(), Does.Contain("D:セミナー"));
-        }
-
-        [Test]
         public async Task 新規レコードのタグはそのレコードのIdで保存する()
         {
             var client = Client();
@@ -229,12 +215,12 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Tag
             await _db.ExecuteAsync(Ds, "DROP TABLE tags", new());
             await _db.ExecuteAsync(Ds, "ALTER TABLE tags2 RENAME TO tags", new());
             DbAccessor.ClearTableDefinitionCache();
-            _design = TagTestDesigns.Create(e => e.CandidateRowCount = 1);
+            _design = TagTestDesigns.Create();
 
             var client = Client();
             var module = await client.OpenAsync("Contact", "4");
             await Tags(module).AddTagAsync("dxpo");
-            Assert.That(Tags(module).Tags, Is.EqualTo(new[] { "DXPO" }), "部分一致で引いて手元で比べる");
+            Assert.That(Tags(module).Tags, Is.EqualTo(new[] { "DXPO" }), "マスタと手元で大文字小文字を区別せずに比べる");
             Assert.That(await module.SubmitAsync(), Is.True, string.Join(" | ", client.Logger.ErrorList));
             Assert.That(await MasterAsync(), Is.EqualTo("展示会,DXPO,セミナー,100%達成"), "重複を作らない");
         }

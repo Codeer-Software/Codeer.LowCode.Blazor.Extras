@@ -41,7 +41,6 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         private const int CodeTagModuleRequired = 4;
         private const int CodeTagModuleNotMaster = 5;
         private const int CodeTagModuleMismatch = 6;
-        private const int CodeCandidateRowCount = 7;
 
         public TagFieldDesign() : base(typeof(TagFieldDesign).FullName!)
         {
@@ -71,10 +70,6 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         /// <summary>マスタに無いタグを入力できる (足した時点でマスタに行を作る)。false ならマスタにあるタグだけ。</summary>
         [Designer(Index = 6, DisplayName = "$TagFieldAllowNewTags")]
         public bool AllowNewTags { get; set; } = true;
-
-        /// <summary>候補に読むマスタの行数 (名前順)。これを超えるタグは候補に出ないが、入力すればマスタから引く。</summary>
-        [Designer(Index = 7, DisplayName = "$TagFieldCandidateRowCount")]
-        public int CandidateRowCount { get; set; } = 1000;
 
         [Designer(Index = 70, DisplayName = "$IsRequired")]
         public bool IsRequired { get; set; }
@@ -110,7 +105,6 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
             //モジュール・変数・レイアウトの存在は基底 (一覧) が見る
             var result = base.CheckDesign(context);
             context.CheckFieldName(Name).AddTo(result);
-            if (CandidateRowCount < 1) result.Add(Error(context, CodeCandidateRowCount, nameof(CandidateRowCount), Properties.Resources.TagCheck_CandidateRowCount));
             if (!string.IsNullOrEmpty(TagModuleName)) context.CheckFieldModuleExistence(Name, nameof(TagModuleName), TagModuleName).AddTo(result);
 
             var linkModuleName = SearchCondition?.ModuleName ?? string.Empty;

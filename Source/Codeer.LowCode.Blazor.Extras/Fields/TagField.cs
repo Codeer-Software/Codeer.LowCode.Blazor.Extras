@@ -284,7 +284,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
 
         internal sealed record TagEntry(string Id, string Name);
 
-        /// <summary>候補のタグ (マスタの名前順、CandidateRowCount 行まで)。最初に呼ばれたときに 1 回だけ読む。</summary>
+        /// <summary>候補のタグ (マスタ全部、名前順)。最初に呼ばれたときに 1 回だけ読む。</summary>
         [ScriptHide]
         public async Task<List<string>> GetCandidatesAsync() => (await GetMasterAsync()).Select(e => e.Name).ToList();
 
@@ -294,7 +294,8 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         {
             var binding = Binding;
             if (binding == null || Services.AppInfoService.IsDesignMode || !CanReadMaster(binding)) return new();
-            return await QueryMasterAsync(binding, null, Design.CandidateRowCount);
+            //マスタはタグの一覧 (数十〜数百行) なので全部読む。行数の上限は設けない (石川さん 10-06)
+            return await QueryMasterAsync(binding, null, null);
         }
 
         //読んである候補からだけ引く (問い合わせない)
@@ -336,18 +337,27 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         bool CanReadMaster(TagBinding binding)
             => Services.AppInfoService.GetDesignData().Modules.Find(binding.MasterModule)?.HasUserReadPermission(Services) == true;
 
-        async Task<List<TagEntry>> QueryMasterAsync(TagBinding binding, MatchConditionBase? condition, int limit)
+        //limit = null は全部 (1000 行ずつ最後のページまで読む)
+        async Task<List<TagEntry>> QueryMasterAsync(TagBinding binding, MatchConditionBase? condition, int? limit)
         {
             var search = new SearchCondition
             {
                 ModuleName = binding.MasterModule,
                 Condition = condition == null ? new MultiMatchCondition() : MultiMatchCondition.And(condition),
-                LimitCount = limit,
                 SortConditions = new List<SortCondition> { new() { Variable = $"{binding.MasterNameField}.Value" } },
                 SelectFields = new List<string> { SystemFieldNames.Id, binding.MasterNameField },
             };
-            var page = (await Services.ModuleDataService.GetListAsync(new List<GetListRequest> { new() { Condition = search, PageIndex = 0 } })).FirstOrDefault();
-            return (page?.Items ?? new())
+            List<ModuleData> rows;
+            if (limit == null)
+            {
+                rows = await TagContracts.ReadAllAsync((c, page) => TagListBatchLoader.ReadPageAsync(Services, c, page), search);
+            }
+            else
+            {
+                search.LimitCount = limit;
+                rows = (await TagListBatchLoader.ReadPageAsync(Services, search, 0))?.Items ?? new();
+            }
+            return rows
                 .Select(e => new TagEntry(IdOf(e), NameOf(e, binding)))
                 .Where(e => e.Id.Length > 0 && e.Name.Length > 0)
                 .ToList();

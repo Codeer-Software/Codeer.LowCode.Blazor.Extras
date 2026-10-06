@@ -1806,9 +1806,6 @@ Recipients: {1}</value>
   <data name="TagFieldAllowNewTags" xml:space="preserve">
     <value>Allow New Tags</value>
   </data>
-  <data name="TagFieldCandidateRowCount" xml:space="preserve">
-    <value>Candidate Rows</value>
-  </data>
   <data name="TagFieldSearchMatchDefaultValue" xml:space="preserve">
     <value>Default Search Match</value>
   </data>
@@ -1865,9 +1862,6 @@ Recipients: {1}</value>
   </data>
   <data name="TagCheck_TagModuleMismatchFormat" xml:space="preserve">
     <value>The tag master &apos;{0}&apos; differs from &apos;{1}&apos;, the master that &apos;{2}&apos; links to. Leave it empty or set the same module.</value>
-  </data>
-  <data name="TagCheck_CandidateRowCount" xml:space="preserve">
-    <value>The candidate rows must be 1 or more.</value>
   </data>
   <data name="SemanticSearch_ConditionNotSupported" xml:space="preserve">
     <value>The field '{0}' cannot be searched by meaning with this condition (set the text, vector and vector search columns of SemanticSearchField).</value>

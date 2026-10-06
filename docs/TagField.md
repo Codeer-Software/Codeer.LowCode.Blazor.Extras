@@ -55,7 +55,6 @@ tag_tests (タグを付けるモジュール)   tag_test_tags (タグ付け)    
 | Placeholder | プレースホルダ | string | タグが無いときの入力欄のプレースホルダ |
 | ConfirmOnSpace | スペースでも確定 | bool | スペースでもタグを確定する。既定 false (日本語のタグにはスペースが入ることがあるため) |
 | AllowNewTags | 新しいタグを作れる | bool | 既定 true。false ならマスタにあるタグだけ入力できる (無いタグはエラー表示) |
-| CandidateRowCount | 候補の行数 | int | 候補に読むマスタの行数 (名前順)。既定 1000。これを超えるタグも、入力すればマスタから引く (重複は作らない) |
 | IsRequired | 必須 | bool | 1 つ以上のタグ |
 | IsSimpleSearchParameter | 簡易検索パラメータ | bool | 検索欄に一致の選択を出さない |
 | SearchMatchDefaultValue | 検索の一致の既定 | enum | `All` = すべて含む (既定) / `Any` = いずれかを含む。画面で切り替えられる |

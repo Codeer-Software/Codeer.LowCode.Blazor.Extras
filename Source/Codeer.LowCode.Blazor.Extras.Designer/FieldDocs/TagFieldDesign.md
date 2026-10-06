@@ -32,7 +32,6 @@
 | `Placeholder` | string | `""` | タグが 1 つも無いときの入力欄のプレースホルダ。 |
 | `ConfirmOnSpace` | bool | `false` | スペース (全角含む) でもタグを確定する。 |
 | `AllowNewTags` | bool | `true` | マスタに無いタグを入力できる (足した時点でマスタに作る)。 |
-| `CandidateRowCount` | int | `1000` | 候補に読むマスタの行数 (名前順)。これを超えるタグも入力すればマスタから引く。 |
 | `IsRequired` | bool | `false` | 1 つ以上のタグが必要。 |
 | `IsSimpleSearchParameter` | bool | `false` | 検索欄に一致の選択を出さない。 |
 | `SearchMatchDefaultValue` | enum | `All` | 検索の一致の既定。`All` = すべて含む、`Any` = いずれかを含む。 |
@@ -69,7 +68,6 @@
 | `TagFieldDesign:4` | 保存しない入力欄で TagModuleName が空 |
 | `TagFieldDesign:5` | TagModuleName のモジュールに TagContractField が無い |
 | `TagFieldDesign:6` | TagModuleName がタグ付けのリンクの先と違う |
-| `TagFieldDesign:7` | CandidateRowCount が 1 未満 |
 
 ### 配置の注意
 

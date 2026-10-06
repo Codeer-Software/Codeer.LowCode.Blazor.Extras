@@ -4230,12 +4230,6 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
             }
         }
 
-        internal static string TagFieldCandidateRowCount {
-            get {
-                return ResourceManager.GetString("TagFieldCandidateRowCount", resourceCulture);
-            }
-        }
-
         internal static string TagFieldSearchMatchDefaultValue {
             get {
                 return ResourceManager.GetString("TagFieldSearchMatchDefaultValue", resourceCulture);
@@ -4347,12 +4341,6 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
         internal static string TagCheck_TagModuleMismatchFormat {
             get {
                 return ResourceManager.GetString("TagCheck_TagModuleMismatchFormat", resourceCulture);
-            }
-        }
-
-        internal static string TagCheck_CandidateRowCount {
-            get {
-                return ResourceManager.GetString("TagCheck_CandidateRowCount", resourceCulture);
             }
         }
     }

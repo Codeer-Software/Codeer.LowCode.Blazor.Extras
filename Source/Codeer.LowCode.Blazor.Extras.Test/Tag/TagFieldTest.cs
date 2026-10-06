@@ -78,12 +78,11 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Tag
         [Test]
         public async Task 候補はマスタを名前順に1回だけ読む()
         {
-            var (services, field) = await CreatePickerAsync(e => e.CandidateRowCount = 300);
+            var (services, field) = await CreatePickerAsync();
             Assert.That(await field.GetCandidatesAsync(), Is.EqualTo(new[] { "展示会", "DXPO" }));
             await field.GetCandidatesAsync();
             var request = services.App.ListRequests.Single();
             Assert.That(request.Condition.ModuleName, Is.EqualTo("Tag"));
-            Assert.That(request.Condition.LimitCount, Is.EqualTo(300));
             Assert.That(request.Condition.SortConditions.Single().Variable, Is.EqualTo("Name.Value"));
             Assert.That(request.Condition.SelectFields, Is.EquivalentTo(new[] { "Id", "Name" }));
         }
@@ -173,14 +172,6 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Tag
             var ret = Check(TagTestDesigns.Create(e => e.TagModuleName = "Picker"), "Contact", "Tags");
             Assert.That(ret, Has.Count.EqualTo(1));
             ret[0].AssertFieldLocation("Contact", "Tags", "TagModuleName");
-        }
-
-        [Test]
-        public void デザインチェック_候補の行数は1以上()
-        {
-            var ret = Check(TagTestDesigns.Create(e => e.CandidateRowCount = 0), "Contact", "Tags");
-            Assert.That(ret, Has.Count.EqualTo(1));
-            ret[0].AssertFieldLocation("Contact", "Tags", "CandidateRowCount");
         }
 
         [Test]

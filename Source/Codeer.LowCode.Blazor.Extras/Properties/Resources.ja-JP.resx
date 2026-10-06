@@ -1806,9 +1806,6 @@
   <data name="TagFieldAllowNewTags" xml:space="preserve">
     <value>新しいタグを作れる</value>
   </data>
-  <data name="TagFieldCandidateRowCount" xml:space="preserve">
-    <value>候補の行数</value>
-  </data>
   <data name="TagFieldSearchMatchDefaultValue" xml:space="preserve">
     <value>検索の一致の既定</value>
   </data>
@@ -1865,9 +1862,6 @@
   </data>
   <data name="TagCheck_TagModuleMismatchFormat" xml:space="preserve">
     <value>タグのマスタ &apos;{0}&apos; が、&apos;{2}&apos; のリンクの先のマスタ &apos;{1}&apos; と違います。空にするか同じモジュールにしてください。</value>
-  </data>
-  <data name="TagCheck_CandidateRowCount" xml:space="preserve">
-    <value>候補の行数は 1 以上にしてください。</value>
   </data>
   <data name="SemanticSearch_ConditionNotSupported" xml:space="preserve">
     <value>フィールド '{0}' はこの条件で意味検索できません (SemanticSearchField の文章・ベクトル・ベクトル検索の列を設定してください)。</value>
