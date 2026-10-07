@@ -251,11 +251,5 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Properties
                 return ResourceManager.GetString("SetupTagLinkModule", resourceCulture);
             }
         }
-
-        internal static string SetupTagMasterModule {
-            get {
-                return ResourceManager.GetString("SetupTagMasterModule", resourceCulture);
-            }
-        }
     }
 }

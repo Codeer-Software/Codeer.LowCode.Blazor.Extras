@@ -282,7 +282,4 @@
   <data name="SetupTagLinkModule" xml:space="preserve">
     <value>タグ付けモジュール</value>
   </data>
-  <data name="SetupTagMasterModule" xml:space="preserve">
-    <value>タグのマスタ (共有)</value>
-  </data>
 </root>

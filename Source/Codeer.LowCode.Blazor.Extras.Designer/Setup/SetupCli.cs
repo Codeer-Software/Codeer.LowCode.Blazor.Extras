@@ -36,9 +36,8 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
     ///
     /// tag-setup:
     ///   &lt;designer.exe&gt; tag-setup "&lt;projectDir&gt;" --target &lt;Module&gt; [--field Tags | --no-field] [--link-name &lt;Module&gt;Tags]
-    ///     [--link-table &lt;table&gt;] [--owner-column &lt;column&gt;] [--master-name Tag] [--master-table tags] [--data-source &lt;name&gt;]
-    ///     [--no-pageframe] [--ddl-out "&lt;path.sql&gt;"]
-    ///   (タグのマスタ (共有・既にあれば使う) とタグ付けモジュールを生成し、対象モジュールに TagField を足す (同名の結び付きなしの TagField は結び付ける)。
+    ///     [--link-table &lt;table&gt;] [--owner-column owner_id] [--data-source &lt;name&gt;] [--ddl-out "&lt;path.sql&gt;"]
+    ///   (タグ付けモジュール (OwnerId + タグ名) を生成し、対象モジュールに TagField を足す (同名の結び付きなしの TagField・TagInputField は結び付ける)。
     ///    画面への配置はデザイナで行う。--no-field = TagField を足さない)
     ///
     /// --user-name-field の既定は UserModuleFields.DefaultDisplayNameField (Name があればそれ、無ければログインアカウント契約の DisplayName の役割)。
@@ -67,7 +66,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
             var named = args.Length < 2 ? new Dictionary<string, string>() : ParseNamed(args);
             if (args.Length < 2 || !named.TryGetValue("--target", out var target))
             {
-                Console.Error.WriteLine($"usage: {TagVerb} \"<projectDir>\" --target <Module> [--field Tags | --no-field] [--link-name <Module>Tags] [--master-name Tag] ...");
+                Console.Error.WriteLine($"usage: {TagVerb} \"<projectDir>\" --target <Module> [--field Tags | --no-field] [--link-name <Module>Tags] [--link-table <table>] [--owner-column owner_id] ...");
                 return 2;
             }
             var projectDir = Path.GetFullPath(args[1]);
@@ -81,10 +80,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
                 LinkModuleName = named.GetValueOrDefault("--link-name", string.Empty),
                 LinkTableName = named.GetValueOrDefault("--link-table", string.Empty),
                 OwnerColumnName = named.GetValueOrDefault("--owner-column", string.Empty),
-                MasterModuleName = named.GetValueOrDefault("--master-name", "Tag"),
-                MasterTableName = named.GetValueOrDefault("--master-table", string.Empty),
                 DataSourceName = dataSourceName,
-                AddPageFrameLink = !args.Contains("--no-pageframe"),
             };
 
             var result = TagSetupService.Run(designData, projectDir, options, dataSourceType);

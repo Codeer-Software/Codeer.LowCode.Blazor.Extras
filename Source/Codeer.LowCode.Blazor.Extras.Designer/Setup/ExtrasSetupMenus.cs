@@ -19,7 +19,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
             AddTagSetup(env);
         }
 
-        /// <summary>Tools &gt; タグのセットアップ。タグのマスタ (共有) とタグ付けモジュールの生成、対象モジュールへの TagField の追加。</summary>
+        /// <summary>Tools &gt; タグのセットアップ。タグ付けモジュールの生成と、対象モジュールへの TagField の追加。</summary>
         public static void AddTagSetup(DesignerEnvironment env)
             => env.AddMainMenu(() => RunTagSetup(env), "Tools", Properties.Resources.SetupMenuTag);
 

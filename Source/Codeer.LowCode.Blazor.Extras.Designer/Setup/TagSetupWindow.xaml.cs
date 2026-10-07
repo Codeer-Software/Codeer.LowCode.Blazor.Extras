@@ -18,12 +18,9 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
             _labelTarget.Text = Properties.Resources.SetupTagTarget;
             _labelFieldName.Text = Properties.Resources.SetupTagFieldName;
             _labelLinkModule.Text = Properties.Resources.SetupTagLinkModule;
-            _labelMasterModule.Text = Properties.Resources.SetupTagMasterModule;
             _labelDataSource.Text = Properties.Resources.SetupDataSource;
-            _checkPageFrame.Content = Properties.Resources.SetupPageFrame;
 
             _textFieldName.Text = "Tags";
-            _textMasterModule.Text = "Tag";
 
             //タグを付けられるのはテーブルを持つモジュール
             foreach (var name in designData.Modules.GetModuleNames().Where(e => !string.IsNullOrEmpty(designData.Modules.Find(e)?.DbTable)))
@@ -54,16 +51,13 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
         void OkClick(object sender, RoutedEventArgs e)
         {
             if (_comboTarget.SelectedItem == null || _comboDataSource.SelectedItem == null) return;
-            if (string.IsNullOrWhiteSpace(_textLinkModule.Text) || string.IsNullOrWhiteSpace(_textMasterModule.Text)) return;
 
             _result = new TagSetupOptions
             {
                 TargetModuleName = (string)_comboTarget.SelectedItem,
                 FieldName = _textFieldName.Text.Trim(),
                 LinkModuleName = _textLinkModule.Text.Trim(),
-                MasterModuleName = _textMasterModule.Text.Trim(),
                 DataSourceName = (string)_comboDataSource.SelectedItem,
-                AddPageFrameLink = _checkPageFrame.IsChecked == true,
             };
             Close();
         }

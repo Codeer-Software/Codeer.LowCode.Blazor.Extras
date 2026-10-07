@@ -112,7 +112,7 @@
         /// <summary>タグを付けるモジュール (テーブルと Id フィールドを持つこと)。</summary>
         public string TargetModuleName { get; set; } = string.Empty;
 
-        /// <summary>タグを付けるモジュールに置く TagField の名前。同名の TagField が結び付きなしで既にあれば結び付ける。空 = 置かない。</summary>
+        /// <summary>タグを付けるモジュールに置く TagField の名前。同名の TagField (結び付きなし) / TagInputField が既にあれば結び付ける。空 = 置かない。</summary>
         public string FieldName { get; set; } = "Tags";
 
         /// <summary>タグ付けモジュール名 (既定 = 対象モジュール名 + Tags)。</summary>
@@ -121,20 +121,11 @@
         /// <summary>タグ付けのテーブル名 (既定 = タグ付けモジュール名の snake_case 複数形)。</summary>
         public string LinkTableName { get; set; } = string.Empty;
 
-        /// <summary>タグ付けの、タグを付けたレコードの Id の列名 (既定 = 対象モジュール名の snake_case + _id)。</summary>
+        /// <summary>タグ付けの、タグを付けたレコードの Id の列名 (既定 = owner_id)。</summary>
         public string OwnerColumnName { get; set; } = string.Empty;
 
-        /// <summary>タグのマスタのモジュール名 (アプリで共有。既にあれば使う)。</summary>
-        public string MasterModuleName { get; set; } = "Tag";
-
-        /// <summary>マスタのテーブル名 (既定 = マスタのモジュール名の snake_case 複数形)。</summary>
-        public string MasterTableName { get; set; } = string.Empty;
-
-        /// <summary>データソース名 (マスタとタグ付けの両方)。</summary>
+        /// <summary>タグ付けのデータソース名。</summary>
         public string DataSourceName { get; set; } = string.Empty;
-
-        /// <summary>マスタ (タグの一覧・名前の変更・削除) のページリンクを PageFrame に追加するか。</summary>
-        public bool AddPageFrameLink { get; set; } = true;
     }
 
     /// <summary>セットアップの実行結果。</summary>
