@@ -89,6 +89,8 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
         /// <summary>
         /// 本体の DDL (CREATE TABLE。1 要素 1 行) の列を直す: OwnerId は Id の型 (本体は IdField の列を Id と同じ型で作る) で NOT NULL、
         /// タグ名は長さ NameLength で NOT NULL (インデックスを張れる長さ。SQLite は長さを持たないので型のまま)。
+        /// タグの同一判定は完全一致 (大文字小文字を区別する) なので、既定の照合順序が区別しない SQL Server / MySQL には区別する照合順序を付ける
+        /// (PostgreSQL / SQLite / Oracle は既定で区別する)。候補の Like も同じ照合順序で区別する (仕様どおり)。
         /// SQLite は後から外部キーを足せないので、OwnerId の列に外部キーを書く。
         /// </summary>
         internal static List<string> FixLinkColumns(List<string> ddl, string ownerColumn, string nameColumn,
@@ -97,8 +99,10 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
             var ownerType = ColumnType(ddl, ownerColumn);
             var nameType = type switch
             {
-                DataSourceType.SQLServer => $"NVARCHAR({NameLength})",
-                DataSourceType.MySQL or DataSourceType.PostgreSQL => $"VARCHAR({NameLength})",
+                //_CS_AS_KS_WS: 大文字小文字・アクセント・かな・幅を全部区別する (= 完全一致)
+                DataSourceType.SQLServer => $"NVARCHAR({NameLength}) COLLATE Latin1_General_CS_AS_KS_WS",
+                DataSourceType.MySQL => $"VARCHAR({NameLength}) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin",
+                DataSourceType.PostgreSQL => $"VARCHAR({NameLength})",
                 DataSourceType.Oracle => $"VARCHAR2({NameLength})",
                 _ => ColumnType(ddl, nameColumn) ?? "TEXT",
             };

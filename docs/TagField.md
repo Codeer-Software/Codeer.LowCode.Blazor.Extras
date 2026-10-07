@@ -67,7 +67,7 @@ tag_tests (タグを付けるモジュール)      tag_test_tags (タグ付け�
 
 1. タグ付けモジュール (既定 `<Module>Tags`: `Id` / `OwnerId` / `Name` + `TagLinkContractField`)
 2. タグを付けるモジュールに TagField (既定 `Tags`)。同名の TagField が結び付きなしで既にあれば、それを結び付ける
-3. DDL: テーブル、(owner_id, name) の一意インデックス、name のインデックス、レコードへの外部キー (削除は連鎖)
+3. DDL: テーブル、(owner_id, name) の一意インデックス、name のインデックス、レコードへの外部キー (削除は連鎖)。既定の照合順序が大文字小文字を区別しない SQL Server / MySQL では、name の列に区別する照合順序を付ける (完全一致を DB でも成り立たせる。候補の Like も区別する)
 
 **冪等**: 既存のモジュールは作らず、結び付き済みの TagField は触らない。DDL は自動実行されない (結果画面の実行ボタン、または `--ddl-out` のファイルを実行する)。
 画面への配置はデザイナで行う (TagField を詳細・一覧・検索のレイアウトに置く)。

@@ -67,8 +67,9 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Setup
             //長さはタグ名の最大の長さ (TagField.MaxTagLength) と同じ
             var expected = new Dictionary<DataSourceType, string>
             {
-                [DataSourceType.SQLServer] = $"name NVARCHAR({TagField.MaxTagLength}) NOT NULL",
-                [DataSourceType.MySQL] = $"name VARCHAR({TagField.MaxTagLength}) NOT NULL",
+                //既定の照合順序が大文字小文字を区別しない DB には、区別する照合順序を付ける (完全一致)
+                [DataSourceType.SQLServer] = $"name NVARCHAR({TagField.MaxTagLength}) COLLATE Latin1_General_CS_AS_KS_WS NOT NULL",
+                [DataSourceType.MySQL] = $"name VARCHAR({TagField.MaxTagLength}) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL",
                 [DataSourceType.Oracle] = $"name VARCHAR2({TagField.MaxTagLength}) NOT NULL",
                 [DataSourceType.PostgreSQL] = $"name VARCHAR({TagField.MaxTagLength}) NOT NULL",
             };
@@ -82,7 +83,8 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Setup
                 Assert.That(ddl, Does.Contain("CREATE UNIQUE INDEX ux_request_tags_owner_id_name ON request_tags (owner_id, name);"), type.ToString());
                 Assert.That(ddl, Does.Contain("CREATE INDEX ix_request_tags_name ON request_tags (name);"), type.ToString());
                 Assert.That(ddl, Does.Contain("ALTER TABLE request_tags ADD CONSTRAINT fk_request_tags_owner_id FOREIGN KEY (owner_id) REFERENCES requests (id) ON DELETE CASCADE;"), type.ToString());
-                Assert.That(ddl.Any(e => e.Contains("COLLATE") || e.Contains("citext", StringComparison.OrdinalIgnoreCase) || e.Contains("UPPER(") || e.Contains("lower(")), Is.False, type + ": 大文字小文字の扱いは足さない");
+                Assert.That(ddl.Any(e => e.Contains("citext", StringComparison.OrdinalIgnoreCase) || e.Contains("UPPER(") || e.Contains("lower(")), Is.False, type + ": 式インデックス・拡張は使わない");
+                Assert.That(ddl.Any(e => e.Contains("COLLATE")), Is.EqualTo(type is DataSourceType.SQLServer or DataSourceType.MySQL), type + ": 照合順序は既定が区別しない DB だけ");
             }
         }
 

@@ -48,7 +48,7 @@
 ```
 
 - タグ付けの一覧レイアウト (`""`) は `OwnerId` とタグ名を読むこと (レイアウトに無いフィールドは値が空で届く)
-- テーブル: (owner_id, name) の一意インデックス、name のインデックス、レコードへの外部キー (ON DELETE CASCADE。ふだん消すのは本体の DeleteTogether で、外部キーは SQL で直接消したときの保険)
+- テーブル: (owner_id, name) の一意インデックス、name のインデックス (SQL Server / MySQL は name に大文字小文字を区別する照合順序)、レコードへの外部キー (ON DELETE CASCADE。ふだん消すのは本体の DeleteTogether で、外部キーは SQL で直接消したときの保険)
 
 ### 設計チェック
 
