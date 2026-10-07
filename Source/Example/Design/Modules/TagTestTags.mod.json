@@ -28,7 +28,7 @@
       "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.IdFieldDesign"
     },
     {
-      "DbColumn": "tag_test_id",
+      "DbColumn": "owner_id",
       "Placeholder": "",
       "IsManualInput": false,
       "CompositeIdVariables": [],
@@ -49,37 +49,31 @@
       "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.IdFieldDesign"
     },
     {
-      "SearchCondition": {
-        "SelectFields": [],
-        "SortConditions": [],
-        "SortFieldVariable": "",
-        "SortDescending": false,
-        "ModuleName": "Tag"
-      },
-      "ValueVariable": "Id.Value",
-      "DisplayTextVariable": "Name.Value",
-      "DbColumn": "tag_id",
-      "ListLayoutName": "",
-      "SearchLayoutName": "",
-      "OnSearchButtonClicked": "",
+      "DbColumn": "name",
+      "IsMultiline": false,
+      "IsAutoFitRows": false,
+      "Placeholder": "",
+      "TextEditEmptyType": "StringEmpty",
+      "ShouldTrimAfterEdit": false,
+      "AutoTab": false,
       "IsUpdateProtected": false,
       "IsSimpleSearchParameter": false,
       "AllowEmptySearch": false,
       "OnSearchDataChanged": "",
-      "DisplayName": "",
-      "IsRequired": false,
+      "DisplayName": "タグ名",
+      "IsRequired": true,
       "OnDataChanged": "",
-      "Name": "Tag",
+      "Name": "Name",
       "IgnoreModification": false,
       "OnValidateInput": "",
       "IsFocusSkip": false,
       "NextFocusField": "",
       "OnFocusMoving": "",
-      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.LinkFieldDesign"
+      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.TextFieldDesign"
     },
     {
       "OwnerId": "OwnerId",
-      "Tag": "Tag",
+      "TagName": "Name",
       "Name": "TagLinkContract",
       "IgnoreModification": false,
       "OnValidateInput": "",
@@ -209,7 +203,7 @@
       "HeaderTitle": "",
       "DataOnlyFields": [
         "OwnerId",
-        "Tag"
+        "Name"
       ],
       "FocusControlMode": "Inherit",
       "IsFocusWrap": false,

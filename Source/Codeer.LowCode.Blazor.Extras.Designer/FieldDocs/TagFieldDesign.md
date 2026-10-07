@@ -4,22 +4,23 @@
 
 **外部ライブラリ:** `Codeer.LowCode.Blazor.Extras`
 
-タグを入力・表示・検索するフィールド。タグはテーブルに持つ (CLB の多対多の形): タグのマスタ (`TagContractField`) と、タグを付けるモジュールごとのタグ付けモジュール (`TagLinkContractField`)。
-`ListFieldDesignBase` を継承する一覧フィールドで、タグ付けモジュールを子の一覧として持つ。読み込み・保存 (レコードの保存に一緒に載る)・子のパスでの検索は本体の一覧と同じ。画面ではチップ (× で外せる) で表示する。
+タグを入力・表示・検索して保存するフィールド。タグはタグ付けモジュール (`TagLinkContractField`。タグを付けるモジュールごとに 1 つ) の行に持つ: 1 行 = このレコードに付いたタグ 1 つ (OwnerId + タグ名)。タグのマスタは無い。
+`ListFieldDesignBase` を継承する一覧フィールドで、タグ付けモジュールを子の一覧として持つ。読み込み・保存 (レコードの保存に一緒に載る)・削除の連鎖・権限・編集履歴は本体の一覧と同じ。画面ではチップ (× で外せる) で表示する。
+保存しない入力欄 (取り込み画面などで「付けるタグ」を選ぶ欄) は `TagInputFieldDesign`。
 
 モジュールとテーブルは手で作らず **タグのセットアップ** で生成する:
 
 - デザイナ: メニュー Tools > タグのセットアップ
-- CLI (headless): `<designer.exe> tag-setup "<projectDir>" --target <Module> [--field Tags | --no-field] [--link-name <Module>Tags] [--master-name Tag] [--data-source <name>] [--no-pageframe] [--ddl-out <path.sql>]`
+- CLI (headless): `<designer.exe> tag-setup "<projectDir>" --target <Module> [--field Tags | --no-field] [--link-name <Module>Tags] [--link-table <table>] [--owner-column owner_id] [--data-source <name>] [--ddl-out <path.sql>]`
 
-生成内容: マスタ (既にあれば使う) + タグ付けモジュール + 対象モジュールの TagField (検索条件を入れる。同名の結び付きなしの TagField があれば結び付ける) + DDL。画面への配置はデザイナで行う。
+生成内容: タグ付けモジュール + 対象モジュールの TagField (検索条件を入れる。同名の結び付きなしの TagField / TagInputField があれば結び付けた TagField にする) + DDL。画面への配置はデザイナで行う。
 
 - 入力は Enter・「,」・「、」で確定 (`ConfirmOnSpace` でスペースも)。IME の変換中のキーは無視する。入力欄の外へフォーカスが移ったときも、打ちかけの文字をタグにする
-- 候補: マスタのうち打った文字を含むものを最大 10 件 (名前順)。付いているタグは出さない
-- マスタに無いタグは、足した時点でマスタに行を作る (タグ付けはレコードの保存で書く。同じ新しいタグを複数のレコードに足して一緒に保存しても重ならない)。`AllowNewTags = false` ならマスタにあるタグだけ
-- 検索: 選んだタグを「すべて含む / いずれかを含む」で組み合わせる。タグは丸ごと一致、大文字小文字は区別しない
+- 足し外しは何も書かない。レコードの保存で一緒に書く (保存せずにやめれば何も残らない)
+- 候補: 打った文字を含むタグを、よく使われている順に最大 10 件。サーバーの集計 (タグ名でグループ化・件数の多い順・上位 20 件・部分一致) を 1 回引く。付いているタグは出さない
+- 表記: 大文字小文字を区別しない。新しく足すタグは、既に使われている表記があればそれに寄せる
+- 検索: 選んだタグを「すべて含む (`ContainsAll`) / いずれかを含む (`In`)」で組み合わせる。どちらも SQL で判定する。タグは丸ごと一致
 - 一覧レイアウトにも置ける (ページの行の分をまとめて 1 回で読む)
-- 検索条件が空なら保存しない入力欄 (候補は `TagModuleName` のマスタ)
 
 ### プロパティ
 
@@ -27,53 +28,48 @@
 
 | プロパティ | 型 | デフォルト | 説明 |
 |---|---|---|---|
-| `SearchCondition` | SearchCondition | 空 | タグ付けモジュール + `FieldVariableMatchCondition` (`OwnerId.Value` = `Id.Value`) + 並び (`Id` 昇順)。セットアップが入れる。空なら保存しない入力欄。 |
-| `TagModuleName` | string | `""` | タグのマスタ。保存しない入力欄では必須。結び付きありでは空でよい (書くならタグ付けのリンクの先と同じ)。 |
+| `SearchCondition` | SearchCondition | 空 | タグ付けモジュール + `FieldVariableMatchCondition` (`OwnerId.Value` = `Id.Value`) + 並び (`Id` 昇順)。セットアップが入れる。 |
 | `Placeholder` | string | `""` | タグが 1 つも無いときの入力欄のプレースホルダ。 |
 | `ConfirmOnSpace` | bool | `false` | スペース (全角含む) でもタグを確定する。 |
-| `AllowNewTags` | bool | `true` | マスタに無いタグを入力できる (足した時点でマスタに作る)。 |
+| `AllowNewTags` | bool | `true` | 候補に無いタグを入力できる。false なら候補にあるタグだけ。 |
+| `CandidateSource` | enum | `TagRows` | 候補の出どころ。`TagRows` = このフィールドのタグ付けのタグ / `Module` = `CandidateModuleName` の `CandidateFieldName` (TextField か TagField) / `Values` = `CandidateValues`。 |
+| `CandidateModuleName` / `CandidateFieldName` | string | `""` | `Module` のときの候補の列。 |
+| `CandidateValues` | string | `""` | `Values` のときの決まったタグ (1 行 1 つ、書いた順)。 |
 | `IsRequired` | bool | `false` | 1 つ以上のタグが必要。 |
 | `IsSimpleSearchParameter` | bool | `false` | 検索欄に一致の選択を出さない。 |
 | `SearchMatchDefaultValue` | enum | `All` | 検索の一致の既定。`All` = すべて含む、`Any` = いずれかを含む。 |
-| `PartialMatch` | bool | `false` | 検索で打った文字を含むタグ全部を対象にする (「展示会」で「展示会2026」も)。打った文字ごとにマスタを 1 回引いて Id にしてから探す。 |
 | `DisplayName` / `OnDataChanged` / `OnSearchDataChanged` | | | 一覧フィールド共通。 |
 
 ### 必要なモジュール構成 (セットアップの生成物)
 
 ```json
-{ "Name": "Tag", "DbTable": "tags", "Fields": [
-  { "Name": "Id", "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.IdFieldDesign", "DbColumn": "id" },
-  { "Name": "Name", "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.TextFieldDesign", "DbColumn": "name", "IsRequired": true },
-  { "Name": "TagContract", "TypeFullName": "Codeer.LowCode.Blazor.Extras.Designs.TagContractFieldDesign", "TagName": "Name" } ] }
-
 { "Name": "ContactTags", "DbTable": "contact_tags", "Fields": [
   { "Name": "Id", "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.IdFieldDesign", "DbColumn": "id" },
-  { "Name": "OwnerId", "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.IdFieldDesign", "DbColumn": "contact_id", "IsManualInput": false },
-  { "Name": "Tag", "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.LinkFieldDesign", "DbColumn": "tag_id",
-    "SearchCondition": { "ModuleName": "Tag" }, "ValueVariable": "Id.Value", "DisplayTextVariable": "Name.Value" },
-  { "Name": "TagLinkContract", "TypeFullName": "Codeer.LowCode.Blazor.Extras.Designs.TagLinkContractFieldDesign" } ],
-  "ListLayouts": { "": { "DataOnlyFields": [ "OwnerId", "Tag" ] } } }
+  { "Name": "OwnerId", "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.IdFieldDesign", "DbColumn": "owner_id", "IsManualInput": false },
+  { "Name": "Name", "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.TextFieldDesign", "DbColumn": "name", "IsRequired": true },
+  { "Name": "TagLinkContract", "TypeFullName": "Codeer.LowCode.Blazor.Extras.Designs.TagLinkContractFieldDesign", "OwnerId": "OwnerId", "TagName": "Name" } ],
+  "ListLayouts": { "": { "DataOnlyFields": [ "OwnerId", "Name" ] } } }
 ```
 
-- タグ付けの一覧レイアウト (`""`) は `OwnerId` と `Tag` を読むこと (レイアウトに無いフィールドは値が空で届く)
-- タグ付けの `Tag` の表示文字列はマスタのタグ名 (`DisplayTextVariable = "Name.Value"`)。TagField はこれをタグ名として使う
+- タグ付けの一覧レイアウト (`""`) は `OwnerId` とタグ名を読むこと (レイアウトに無いフィールドは値が空で届く)
+- テーブル: (owner_id, name) の一意インデックス (大文字小文字を区別しない)、name のインデックス、レコードへの外部キー (削除は連鎖)
 
 ### 設計チェック
 
 | コード | 内容 |
 |---|---|
-| `TagFieldDesign:1` | 検索条件のモジュールに TagLinkContractField が無い |
+| `TagFieldDesign:1` | 検索条件のモジュールが空か、TagLinkContractField が無い |
 | `TagFieldDesign:2` | 検索条件にこのレコードへの結び付き (`OwnerId.Value = Id.Value`) が無い |
-| `TagFieldDesign:3` | タグ付けの一覧レイアウトが OwnerId / Tag を読まない |
-| `TagFieldDesign:4` | 保存しない入力欄で TagModuleName が空 |
-| `TagFieldDesign:5` | TagModuleName のモジュールに TagContractField が無い |
-| `TagFieldDesign:6` | TagModuleName がタグ付けのリンクの先と違う |
+| `TagFieldDesign:3` | タグ付けの一覧レイアウトが OwnerId / タグ名を読まない |
+| `TagFieldDesign:4` | `CandidateSource = Module` で候補のモジュール・フィールドが空 |
+| `TagFieldDesign:5` | 候補のフィールドが TextField でも TagField でもない |
+| `TagFieldDesign:6` | `CandidateSource = Values` で決まったタグが 1 つも無い |
 
 ### 配置の注意
 
 - 一括ダウンロード / 一括更新 (BulkFileTransfer) はタグを扱わない (レコードの列ではないため)
 - 意味検索 (SemanticSearchField) の `SourceFields` に入れると、タグ名を並べた行が文章に入る
-- 外部キーは削除を制限する (使われているタグはマスタから消せない)。タグを付けたレコードを消すとタグ付け行も一緒に消える
+- PostgreSQL では検索と表記寄せの比較が大文字小文字を区別する
 
 ## Script
 
@@ -95,7 +91,7 @@
 ### 使用例
 
 ```csharp
-// 登録する人全員に、入力欄 (保存しない TagField) で選んだタグを足す
+// 登録する人全員に、入力欄 (TagInputField) で選んだタグを足す
 void Register_OnClick()
 {
     foreach (var person in People.Rows)
