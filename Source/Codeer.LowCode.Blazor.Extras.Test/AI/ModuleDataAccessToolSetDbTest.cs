@@ -270,6 +270,15 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
             //fields で絞っても Id は返る
             Assert.That(byStatus.GetProperty("rows").EnumerateArray().First().TryGetProperty("Id", out _), Is.True);
 
+            //無い項目 (表示名で頼んだ等) は黙って落とさず、項目名を確かめるよう返す (落とすと AI は「値が無い」と受け取る)
+            var unknown = await InvokeAsync(tools, "find_records", new()
+            {
+                ["moduleName"] = "Order",
+                ["purpose"] = "p",
+                ["fields"] = new[] { "件名" },
+            });
+            Assert.That(ErrorOf(unknown), Does.Contain("件名").And.Contain("describe_module"));
+
             //日付の比較 (文字列 → DateOnly) と記号の比較名
             var byDate = await InvokeAsync(tools, "find_records", new()
             {

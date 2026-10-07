@@ -117,7 +117,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
             var list = new ListFieldDesign();
             list.SearchCondition.ModuleName = "Note";
             var frame = new PageFrameDesign { Name = "Main", IsApplicationRoot = true };
-            frame.Left.Links.Add(new PageLink { Title = "Note", Module = "Note", ModulePageType = ModulePageType.List, ListPageDesign = new ListPageDesign { ListFieldDesign = list } });
+            frame.Left.Links.Add(new PageLink { Title = "Note", Module = "Note", ModulePageType = ModulePageType.Auto, ListPageDesign = new ListPageDesign { ListFieldDesign = list } });
             ((IEditablePageFrameDesign)design.PageFrames).Add(frame);
             module.SearchLayouts[""] = new SearchLayoutDesign { Layout = Grid("Title") };
             Assert.That(Check(), Is.Empty);

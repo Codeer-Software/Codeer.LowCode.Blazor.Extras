@@ -166,7 +166,8 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
                 if (frame == null) continue;
                 var pages = frame.Header.Links.Concat(frame.Left.Links).Concat(frame.Right.Links).Cast<ModulePageDesign>()
                     .Concat(frame.OtherPageModuleDesigns).Append(frame.TopPageModuleDesign).OfType<ModulePageDesign>();
-                foreach (var page in pages.Where(e => e.Module == moduleName && e.ModulePageType == ModulePageType.List))
+                //一覧を出すページ (詳細だけのページ以外。Auto / ListToDetail も Id 無しで開くと一覧)
+                foreach (var page in pages.Where(e => e.Module == moduleName && e.ModulePageType != ModulePageType.Detail))
                 {
                     if (page.ListPageDesign.ListFieldDesign is ListFieldDesignBase list)
                         yield return (page.ListPageDesign.SearchLayoutName, $"PageFrame {frameName}", Sorts(list.SearchCondition));
