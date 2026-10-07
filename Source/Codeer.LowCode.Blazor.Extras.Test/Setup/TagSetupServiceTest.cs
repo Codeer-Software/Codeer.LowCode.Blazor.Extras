@@ -67,7 +67,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Setup
                 [DataSourceType.SQLServer] = ("name NVARCHAR(200) NOT NULL", "(owner_id, name)"),
                 [DataSourceType.MySQL] = ("name VARCHAR(200) NOT NULL", "(owner_id, name)"),
                 [DataSourceType.Oracle] = ("name VARCHAR2(200) NOT NULL", "(owner_id, UPPER(name))"),
-                [DataSourceType.PostgreSQL] = ("NOT NULL", "(owner_id, lower(name))"),
+                [DataSourceType.PostgreSQL] = ("name CITEXT NOT NULL", "(owner_id, name)"),
             };
             foreach (var (type, (name, unique)) in expected)
             {
@@ -75,6 +75,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Setup
                 CreateFixture();
                 var ddl = TagSetupService.Run(Load(), ProjectDir, Options(), type).Ddl;
                 TestContext.Out.WriteLine(string.Join("\n", ddl));
+                Assert.That(ddl[0] == "CREATE EXTENSION IF NOT EXISTS citext;", Is.EqualTo(type == DataSourceType.PostgreSQL), type + ": citext extension first");
                 Assert.That(ddl.Select(e => e.Trim()).Any(e => e.StartsWith("name ") && e.Contains(name)), Is.True, type.ToString());
                 Assert.That(ddl, Does.Contain($"CREATE UNIQUE INDEX ux_request_tags_owner_id_name ON request_tags {unique};"), type.ToString());
                 Assert.That(ddl, Does.Contain("ALTER TABLE request_tags ADD CONSTRAINT fk_request_tags_owner_id FOREIGN KEY (owner_id) REFERENCES requests (id) ON DELETE CASCADE;"), type.ToString());

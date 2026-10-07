@@ -45,7 +45,7 @@ tag_tests (タグを付けるモジュール)      tag_test_tags (タグ付け�
 **冪等**: 既存のモジュールは作らず、結び付き済みの TagField は触らない。DDL は自動実行されない (結果画面の実行ボタン、または `--ddl-out` のファイルを実行する)。
 画面への配置はデザイナで行う (TagField を詳細・一覧・検索のレイアウトに置く)。
 
-大文字小文字を区別しない一意インデックスの書き方は DB ごとに違います: SQL Server・MySQL は既定の照合順序のまま、SQLite は列に `COLLATE NOCASE`、PostgreSQL は `lower(name)`、Oracle は `UPPER(name)` の式インデックス。
+大文字小文字を区別しない一意インデックスの書き方は DB ごとに違います: SQL Server・MySQL は既定の照合順序のまま、SQLite は列に `COLLATE NOCASE`、PostgreSQL はタグ名の列を `citext` (拡張。比較・LIKE も大文字小文字を区別しない)、Oracle は `UPPER(name)` の式インデックス。
 
 ## デザイナー設定プロパティ (TagField)
 
@@ -99,7 +99,6 @@ void Register_OnClick()
 ## 配置の注意
 
 - 一括ダウンロード / 一括更新 (BulkFileTransfer) はタグを扱いません (タグはレコードの列ではないため)
-- PostgreSQL では、検索と表記寄せの比較が大文字小文字を区別します (同じレコードの中の重複と一意インデックスは区別しない)
 - タグに色・説明・並び順を持たせたい、複数のモジュールでタグの一覧を共有したい場合は、タグ名で引く別のモジュールを足してください (外部キーでは縛りません)
 
 ## CSS カスタマイズ

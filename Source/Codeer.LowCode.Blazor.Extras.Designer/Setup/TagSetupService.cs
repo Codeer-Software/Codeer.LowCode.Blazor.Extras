@@ -89,7 +89,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
         /// <summary>
         /// 本体の DDL (CREATE TABLE。1 要素 1 行) の列を直す: OwnerId は Id の型 (本体は IdField の列を Id と同じ型で作る) で NOT NULL、
         /// タグ名はインデックスを張れる長さで NOT NULL (SQLite は大文字小文字を区別しない照合順序も)。
-        /// SQLite は後から外部キーを足せないので、OwnerId の列に外部キーを書く。
+        /// SQLite は後から外部キーを足せないので、OwnerId の列に外部キーを書く。PostgreSQL はタグ名を citext にする (拡張を有効にする行を先頭に足す)。
         /// </summary>
         internal static List<string> FixLinkColumns(List<string> ddl, string ownerColumn, string nameColumn,
             string ownerTable, string ownerIdColumn, DataSourceType type)
@@ -100,8 +100,11 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
                 DataSourceType.SQLServer => $"NVARCHAR({NameLength})",
                 DataSourceType.MySQL => $"VARCHAR({NameLength})",
                 DataSourceType.Oracle => $"VARCHAR2({NameLength})",
+                //citext: 比較・LIKE・インデックスが大文字小文字を区別しない (SQL Server の照合順序と同じ振る舞い)。拡張を先に有効にする
+                DataSourceType.PostgreSQL => "CITEXT",
                 _ => ColumnType(ddl, nameColumn) ?? "TEXT",
             };
+            if (type == DataSourceType.PostgreSQL) ddl = ddl.Prepend("CREATE EXTENSION IF NOT EXISTS citext;").ToList();
             var ownerDefinition = ownerType == null ? null
                 : type == DataSourceType.SQLite ? $"{ownerType} NOT NULL REFERENCES {ownerTable} ({ownerIdColumn}) ON DELETE CASCADE"
                 : $"{ownerType} NOT NULL";
@@ -127,17 +130,12 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
         /// <summary>
         /// 同じタグを二重に付けない一意インデックス (レコードで引くインデックスを兼ねる。大文字小文字を区別しない)、タグ名で引くインデックス (検索・候補)、
         /// レコードへの外部キー (レコードを消せば一緒に消える。SQLite は CREATE TABLE に書いたので無し)。
-        /// 大文字小文字: SQL Server・MySQL は既定の照合順序、SQLite は列の COLLATE NOCASE、PostgreSQL は lower()、Oracle は UPPER() の式インデックス。
+        /// 大文字小文字: SQL Server・MySQL は既定の照合順序、SQLite は列の COLLATE NOCASE、PostgreSQL は列の citext、Oracle は UPPER() の式インデックス。
         /// </summary>
         internal static List<string> LinkIndexDdl(string table, string ownerColumn, string nameColumn,
             string ownerTable, string ownerIdColumn, DataSourceType type)
         {
-            var unique = type switch
-            {
-                DataSourceType.PostgreSQL => $"lower({nameColumn})",
-                DataSourceType.Oracle => $"UPPER({nameColumn})",
-                _ => nameColumn,
-            };
+            var unique = type == DataSourceType.Oracle ? $"UPPER({nameColumn})" : nameColumn;
             var ddl = new List<string>
             {
                 $"CREATE UNIQUE INDEX ux_{table}_{ownerColumn}_{nameColumn} ON {table} ({ownerColumn}, {unique});",

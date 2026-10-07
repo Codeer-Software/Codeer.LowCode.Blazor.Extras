@@ -69,7 +69,6 @@
 
 - 一括ダウンロード / 一括更新 (BulkFileTransfer) はタグを扱わない (レコードの列ではないため)
 - 意味検索 (SemanticSearchField) の `SourceFields` に入れると、タグ名を並べた行が文章に入る
-- PostgreSQL では検索と表記寄せの比較が大文字小文字を区別する
 
 ## Script
 
