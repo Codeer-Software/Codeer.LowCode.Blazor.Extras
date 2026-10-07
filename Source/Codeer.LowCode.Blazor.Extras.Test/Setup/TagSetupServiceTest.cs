@@ -38,7 +38,9 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Setup
             var link = d.Modules.Find("RequestTags")!;
             Assert.That(link.DbTable, Is.EqualTo("request_tags"));
             Assert.That(((IdFieldDesign)link.Fields.Single(e => e.Name == "OwnerId")).DbColumn, Is.EqualTo("owner_id"));
-            Assert.That(((TextFieldDesign)link.Fields.Single(e => e.Name == "Name")).DbColumn, Is.EqualTo("name"));
+            var name = (TextFieldDesign)link.Fields.Single(e => e.Name == "Name");
+            Assert.That(name.DbColumn, Is.EqualTo("name"));
+            Assert.That(name.MaxLength, Is.EqualTo(TagField.MaxTagLength), "入力欄・DDL と同じ長さ");
             Assert.That(link.Fields.OfType<LinkFieldDesign>(), Is.Empty);
 
             var field = d.Modules.Find("Request")!.Fields.OfType<TagFieldDesign>().Single();
@@ -57,28 +59,30 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Setup
             TestContext.Out.WriteLine(string.Join("\n", sqlite));
             Assert.That(sqlite.Count(e => e.StartsWith("CREATE TABLE")), Is.EqualTo(1));
             Assert.That(sqlite.Select(e => e.Trim()), Does.Contain("owner_id INTEGER NOT NULL REFERENCES requests (id) ON DELETE CASCADE,"), "SQLite は列に外部キー");
-            Assert.That(sqlite.Select(e => e.Trim()), Does.Contain("name TEXT NOT NULL COLLATE NOCASE"));
+            Assert.That(sqlite.Select(e => e.Trim()), Does.Contain("name TEXT NOT NULL"), "照合順序は付けない (完全一致)");
             Assert.That(sqlite, Does.Contain("CREATE UNIQUE INDEX ux_request_tags_owner_id_name ON request_tags (owner_id, name);"));
             Assert.That(sqlite, Does.Contain("CREATE INDEX ix_request_tags_name ON request_tags (name);"));
             Assert.That(sqlite.Any(e => e.Contains("ADD CONSTRAINT")), Is.False);
 
-            var expected = new Dictionary<DataSourceType, (string Name, string Unique)>
+            //長さはタグ名の最大の長さ (TagField.MaxTagLength) と同じ
+            var expected = new Dictionary<DataSourceType, string>
             {
-                [DataSourceType.SQLServer] = ("name NVARCHAR(200) NOT NULL", "(owner_id, name)"),
-                [DataSourceType.MySQL] = ("name VARCHAR(200) NOT NULL", "(owner_id, name)"),
-                [DataSourceType.Oracle] = ("name VARCHAR2(200) NOT NULL", "(owner_id, UPPER(name))"),
-                [DataSourceType.PostgreSQL] = ("name CITEXT NOT NULL", "(owner_id, name)"),
+                [DataSourceType.SQLServer] = $"name NVARCHAR({TagField.MaxTagLength}) NOT NULL",
+                [DataSourceType.MySQL] = $"name VARCHAR({TagField.MaxTagLength}) NOT NULL",
+                [DataSourceType.Oracle] = $"name VARCHAR2({TagField.MaxTagLength}) NOT NULL",
+                [DataSourceType.PostgreSQL] = $"name VARCHAR({TagField.MaxTagLength}) NOT NULL",
             };
-            foreach (var (type, (name, unique)) in expected)
+            foreach (var (type, name) in expected)
             {
                 SetUpProjectDir();
                 CreateFixture();
                 var ddl = TagSetupService.Run(Load(), ProjectDir, Options(), type).Ddl;
                 TestContext.Out.WriteLine(string.Join("\n", ddl));
-                Assert.That(ddl[0] == "CREATE EXTENSION IF NOT EXISTS citext;", Is.EqualTo(type == DataSourceType.PostgreSQL), type + ": citext extension first");
-                Assert.That(ddl.Select(e => e.Trim()).Any(e => e.StartsWith("name ") && e.Contains(name)), Is.True, type.ToString());
-                Assert.That(ddl, Does.Contain($"CREATE UNIQUE INDEX ux_request_tags_owner_id_name ON request_tags {unique};"), type.ToString());
+                Assert.That(ddl.Select(e => e.Trim().TrimEnd(',')), Does.Contain(name), type.ToString());
+                Assert.That(ddl, Does.Contain("CREATE UNIQUE INDEX ux_request_tags_owner_id_name ON request_tags (owner_id, name);"), type.ToString());
+                Assert.That(ddl, Does.Contain("CREATE INDEX ix_request_tags_name ON request_tags (name);"), type.ToString());
                 Assert.That(ddl, Does.Contain("ALTER TABLE request_tags ADD CONSTRAINT fk_request_tags_owner_id FOREIGN KEY (owner_id) REFERENCES requests (id) ON DELETE CASCADE;"), type.ToString());
+                Assert.That(ddl.Any(e => e.Contains("COLLATE") || e.Contains("citext", StringComparison.OrdinalIgnoreCase) || e.Contains("UPPER(") || e.Contains("lower(")), Is.False, type + ": 大文字小文字の扱いは足さない");
             }
         }
 
@@ -104,13 +108,13 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Setup
         }
 
         [Test]
-        public void 同名のTagInputFieldはTagFieldに置き換えフォルダ分けのモジュールはその場で保存する()
+        public void 結び付きなしの同名TagFieldは結び付けフォルダ分けのモジュールはその場で保存する()
         {
             CreateFixture();
-            //保存しない入力欄だった頃のフィールドが、Modules のサブフォルダにある
+            //結び付きの無い TagField (検索条件が空) が、Modules のサブフォルダにある
             var contact = new ModuleDesign { Name = "Contact", DataSourceName = "Main", DbTable = "contacts" };
             contact.Fields.Add(new IdFieldDesign { Name = "Id", DbColumn = "id" });
-            contact.Fields.Add(new TagInputFieldDesign { Name = "タグ", DisplayName = "タグ", Placeholder = "タグを入力", ConfirmOnSpace = true });
+            contact.Fields.Add(new TagFieldDesign { Name = "タグ", DisplayName = "タグ", Placeholder = "タグを入力", ConfirmOnSpace = true });
             Directory.CreateDirectory(Path.Combine(ProjectDir, "Modules", "SFA"));
             WriteFile(Path.Combine("Modules", "SFA", "Contact.mod.json"), JsonConverterEx.SerializeObject(contact));
 
@@ -123,7 +127,6 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Setup
             Assert.That(File.Exists(Path.Combine(ProjectDir, "Modules", "Contact.mod.json")), Is.False);
             var d = Load();
             var fields = d.Modules.Find("Contact")!.Fields;
-            Assert.That(fields.OfType<TagInputFieldDesign>(), Is.Empty);
             var field = fields.OfType<TagFieldDesign>().Single();
             Assert.That((field.Name, field.Placeholder, field.ConfirmOnSpace, field.SearchCondition.ModuleName), Is.EqualTo(("タグ", "タグを入力", true, "ContactTag")));
             Assert.That(fields.Select(e => e.Name), Is.EqualTo(new[] { "Id", "タグ" }), "同じ位置");
@@ -180,10 +183,10 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Setup
 
                 var reopened = (TagField)(await client.OpenAsync("Request", "1")).GetField("Tags")!;
                 Assert.That(reopened.Tags, Is.EqualTo(new[] { "展示会", "DXPO" }));
-                Assert.That(await reopened.GetCandidatesAsync("dx"), Is.EqualTo(new[] { "DXPO" }));
+                Assert.That(await reopened.GetCandidatesAsync("DX"), Is.EqualTo(new[] { "DXPO" }));
 
-                //同じレコードに同じ名前 (大文字小文字違い) をもう 1 行作ろうとしても一意インデックスが止める
-                Assert.ThrowsAsync<SqliteException>(async () => await db.ExecuteAsync("Main", "INSERT INTO request_tags (owner_id, name) VALUES (1, 'dxpo')", new()));
+                //同じレコードに同じタグをもう 1 行作ろうとしても一意インデックスが止める
+                Assert.ThrowsAsync<SqliteException>(async () => await db.ExecuteAsync("Main", "INSERT INTO request_tags (owner_id, name) VALUES (1, 'DXPO')", new()));
 
                 //レコードを DB で直接消しても外部キーでタグ付けが消える
                 await db.ExecuteAsync("Main", "DELETE FROM requests WHERE id = 1", new());

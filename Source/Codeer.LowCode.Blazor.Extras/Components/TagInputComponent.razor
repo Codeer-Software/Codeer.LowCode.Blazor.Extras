@@ -5,7 +5,7 @@
 @implements IAsyncDisposable
 @inject IJSRuntime JSRuntime
 
-@* タグの入力欄 (チップ + 入力 + 候補)。TagField の編集 (TagFieldComponent)・検索 (TagFieldSearchComponent) と TagInputField (TagInputFieldComponent) で共通 *@
+@* TagField の入力欄 (チップ + 入力 + 候補)。編集 (TagFieldComponent) と検索 (TagFieldSearchComponent) で共通 *@
 @if (IsViewOnly)
 {
   <div class="tag-view" id="@InputId" style="@Style" data-role="view">
@@ -29,7 +29,7 @@ else
         }
       </span>
     }
-    <input type="text" class="tag-input" id="@InputId" @ref="_input" data-role="input" data-consumes-enter autocomplete="off"
+    <input type="text" class="tag-input" id="@InputId" @ref="_input" data-role="input" data-consumes-enter autocomplete="off" maxlength="@TagField.MaxTagLength"
            placeholder="@(Tags.Count == 0 ? Placeholder : string.Empty)" disabled="@IsDisabled"
            @onfocus="OpenAsync" @onblur="Close" />
     @if (_open && _matches.Count > 0)
@@ -50,7 +50,7 @@ else
   //候補に出す数 (プロパティにはしない)
   const int MaxMatches = 10;
   //打つのが止まってから候補を問い合わせるまでの時間
-  const int QueryDelayMilliseconds = 150;
+  const int QueryDelayMilliseconds = 200;
 
   ElementReference _input;
   IJSObjectReference? _jsModule;
@@ -202,7 +202,9 @@ else
     StateHasChanged();
   }
 
-  //打っている文字を含む候補 (付いているタグは除く。問い合わせの結果を、届くまでは前の結果を、今の文字で絞る)。何も打っていなければ出さない
+  //打っている文字を含む候補 (付いているタグは除く。問い合わせの結果を、届くまでは前の結果を、今の文字で絞る)。何も打っていなければ出さない。
+  //含むかの判定はサーバーの Like (多くの DB で大文字小文字を区別しない) より厳しくしない (厳しくすると、サーバーが返した候補を手元で落としてしまう)。
+  //タグの同一判定 (付いているかどうか) は完全一致
   void Filter()
   {
     var text = _text.Trim();

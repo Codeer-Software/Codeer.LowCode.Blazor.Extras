@@ -1842,52 +1842,13 @@ Recipients: {1}</value>
   <data name="SemanticSearch_SearchPlaceholder" xml:space="preserve">
     <value>Search by meaning</value>
   </data>
-  <data name="TagFieldAllowNewTags" xml:space="preserve">
-    <value>Allow Tags Not in Candidates</value>
-  </data>
-  <data name="TagFieldUnknownTagFormat" xml:space="preserve">
-    <value>The tag &apos;{0}&apos; is not one of the candidates.</value>
-  </data>
-  <data name="TagCheck_NotLinkModuleFormat" xml:space="preserve">
-    <value>The module &apos;{0}&apos; of the search condition has no TagLinkContractField. Set a tag link module (Tag Setup creates one). For an input that does not save, use TagInputField.</value>
-  </data>
   <data name="TagLinkContractTagName" xml:space="preserve">
     <value>TagName (tag name, required)</value>
   </data>
-  <data name="TagFieldCandidateSource" xml:space="preserve">
-    <value>Candidate Source</value>
+  <data name="TagCheck_NotLinkModuleFormat" xml:space="preserve">
+    <value>The module &apos;{0}&apos; of the search condition has no TagLinkContractField. Set a tag link module (Tag Setup creates one).</value>
   </data>
-  <data name="TagFieldCandidateModuleName" xml:space="preserve">
-    <value>Candidate Module</value>
-  </data>
-  <data name="TagFieldCandidateFieldName" xml:space="preserve">
-    <value>Candidate Field</value>
-  </data>
-  <data name="TagFieldCandidateValues" xml:space="preserve">
-    <value>Candidate Values (one per line)</value>
-  </data>
-  <data name="TagCandidateSource_TagRows" xml:space="preserve">
-    <value>Tags in use (this field)</value>
-  </data>
-  <data name="TagCandidateSource_Module" xml:space="preserve">
-    <value>Values of a module field</value>
-  </data>
-  <data name="TagCandidateSource_Values" xml:space="preserve">
-    <value>Fixed values</value>
-  </data>
-  <data name="TagCheck_CandidateModuleRequired" xml:space="preserve">
-    <value>Set the candidate module and field.</value>
-  </data>
-  <data name="TagCheck_CandidateFieldTypeFormat" xml:space="preserve">
-    <value>The candidate field &apos;{0}.{1}&apos; must be a TextField or a TagField.</value>
-  </data>
-  <data name="TagCheck_CandidateValuesRequired" xml:space="preserve">
-    <value>Write at least one candidate value.</value>
-  </data>
-  <data name="TagCheck_TagRowsNeedsTagField" xml:space="preserve">
-    <value>TagInputField has no tag link module of its own. Use Module or Values as the candidate source.</value>
-  </data>
-  <data name="TagInputField" xml:space="preserve">
-    <value>Tag Input</value>
+  <data name="TagFieldTooLongFormat" xml:space="preserve">
+    <value>The tag &apos;{0}…&apos; is too long. A tag is at most {1} characters.</value>
   </data>
 </root>

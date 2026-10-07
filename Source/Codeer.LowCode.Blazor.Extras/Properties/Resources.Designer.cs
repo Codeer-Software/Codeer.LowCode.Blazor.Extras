@@ -4282,15 +4282,12 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
             }
         }
 
-        internal static string TagFieldAllowNewTags {
-            get {
-                return ResourceManager.GetString("TagFieldAllowNewTags", resourceCulture);
-            }
-        }
 
-        internal static string TagFieldUnknownTagFormat {
+
+
+        internal static string TagLinkContractTagName {
             get {
-                return ResourceManager.GetString("TagFieldUnknownTagFormat", resourceCulture);
+                return ResourceManager.GetString("TagLinkContractTagName", resourceCulture);
             }
         }
 
@@ -4300,81 +4297,9 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
             }
         }
 
-        internal static string TagLinkContractTagName {
+        internal static string TagFieldTooLongFormat {
             get {
-                return ResourceManager.GetString("TagLinkContractTagName", resourceCulture);
-            }
-        }
-
-        internal static string TagFieldCandidateSource {
-            get {
-                return ResourceManager.GetString("TagFieldCandidateSource", resourceCulture);
-            }
-        }
-
-        internal static string TagFieldCandidateModuleName {
-            get {
-                return ResourceManager.GetString("TagFieldCandidateModuleName", resourceCulture);
-            }
-        }
-
-        internal static string TagFieldCandidateFieldName {
-            get {
-                return ResourceManager.GetString("TagFieldCandidateFieldName", resourceCulture);
-            }
-        }
-
-        internal static string TagFieldCandidateValues {
-            get {
-                return ResourceManager.GetString("TagFieldCandidateValues", resourceCulture);
-            }
-        }
-
-        internal static string TagCandidateSource_TagRows {
-            get {
-                return ResourceManager.GetString("TagCandidateSource_TagRows", resourceCulture);
-            }
-        }
-
-        internal static string TagCandidateSource_Module {
-            get {
-                return ResourceManager.GetString("TagCandidateSource_Module", resourceCulture);
-            }
-        }
-
-        internal static string TagCandidateSource_Values {
-            get {
-                return ResourceManager.GetString("TagCandidateSource_Values", resourceCulture);
-            }
-        }
-
-        internal static string TagCheck_CandidateModuleRequired {
-            get {
-                return ResourceManager.GetString("TagCheck_CandidateModuleRequired", resourceCulture);
-            }
-        }
-
-        internal static string TagCheck_CandidateFieldTypeFormat {
-            get {
-                return ResourceManager.GetString("TagCheck_CandidateFieldTypeFormat", resourceCulture);
-            }
-        }
-
-        internal static string TagCheck_CandidateValuesRequired {
-            get {
-                return ResourceManager.GetString("TagCheck_CandidateValuesRequired", resourceCulture);
-            }
-        }
-
-        internal static string TagCheck_TagRowsNeedsTagField {
-            get {
-                return ResourceManager.GetString("TagCheck_TagRowsNeedsTagField", resourceCulture);
-            }
-        }
-
-        internal static string TagInputField {
-            get {
-                return ResourceManager.GetString("TagInputField", resourceCulture);
+                return ResourceManager.GetString("TagFieldTooLongFormat", resourceCulture);
             }
         }
     }

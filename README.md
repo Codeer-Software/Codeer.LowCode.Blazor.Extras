@@ -25,7 +25,7 @@
 | [CrossTabField](docs/CrossTabField.md) | クロス集計表。行の項目 × 列の項目 で件数・合計・平均などを集計して表示 (集計はサーバー側・権限は一覧と同じ) |
 | [RichTextField](docs/RichTextField.md) | 書式付きテキストエディタ。太字・色・リンクなどのHTMLフォーマットに対応 |
 | [MarkdownField](docs/MarkdownField.md) | Markdown エディタ / ビューア。Markdown をプレーンテキストのまま保存し、閲覧時は HTML に描画。ツールバーとプレビュー (タブ / 左右並び) 付き。生 HTML は無効化 (外部ライブラリ Markdig を使用) |
-| [TagField](docs/TagField.md) | タグ入力。チップ表示・× で外す・よく使われているタグを候補に出す (サーバーで集計)。タグはタグを付けるモジュールごとのタグ付けのテーブルに持つ (タグを付けたレコードの Id + タグ名。マスタは無い)。レコードの保存で一緒に保存。検索条件では「すべて含む / いずれかを含む」で絞り込める (SQL で判定)。一覧の列にも置ける。Tools > タグのセットアップ (CLI `tag-setup`) でモジュールと DDL を生成。保存しない入力欄は TagInputField。契約フィールド: TagLinkContractField |
+| [TagField](docs/TagField.md) | タグ入力。チップ表示・× で外す・打った文字を含むタグをよく使われている順に候補に出す (サーバーで集計)。タグはタグを付けるモジュールごとのタグ付けのテーブルに持つ (タグを付けたレコードの Id + タグ名。マスタは無い)。レコードの保存で一緒に保存。検索条件では「すべて含む / いずれかを含む」で絞り込める (SQL で判定)。一覧の列にも置ける。Tools > タグのセットアップ (CLI `tag-setup`) でモジュールと DDL を生成。契約フィールド: TagLinkContractField |
 | [ColorPickerField](docs/ColorPickerField.md) | カラーピッカー。HTML5ネイティブカラーピッカーで色をHEX文字列として保存 |
 | [MarkerListField](docs/MarkerListField.md) | 画像上にマーカー(ピン)を配置・操作するフィールド |
 | [QrCodeField](docs/QrCodeField.md) | 文字列をQRコード画像として表示する表示専用フィールド (外部ライブラリ QRCoder を使用) |

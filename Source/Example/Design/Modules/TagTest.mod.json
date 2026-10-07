@@ -51,7 +51,7 @@
       "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.TextFieldDesign"
     },
     {
-      "Text": "TagField 確認 (タグはタグ付けのテーブルに保存 / 保存しない入力欄 (TagInputField) / 閲覧のみ)",
+      "Text": "TagField 確認 (タグはタグ付けのテーブルに保存 / 一覧の列 / 検索)",
       "Icon": "",
       "IsHtml": false,
       "Style": "H5",
@@ -84,11 +84,6 @@
       "LayoutName": "",
       "Placeholder": "タグを入力",
       "ConfirmOnSpace": false,
-      "AllowNewTags": true,
-      "CandidateSource": "TagRows",
-      "CandidateModuleName": "",
-      "CandidateFieldName": "",
-      "CandidateValues": "",
       "IsRequired": false,
       "IsSimpleSearchParameter": false,
       "SearchMatchDefaultValue": "All",
@@ -145,75 +140,7 @@
       "TypeFullName": "Codeer.LowCode.Blazor.Extras.Designs.TagFieldDesign"
     },
     {
-      "Text": "保存しない入力欄 (TagInputField。候補は TagTest.Tags のタグ)。ConfirmOnSpace = true でスペースでも確定。必須 (1 つ以上)",
-      "Icon": "",
-      "IsHtml": false,
-      "Style": "Default",
-      "RelativeField": "",
-      "OnClick": "",
-      "Name": "L2",
-      "IgnoreModification": false,
-      "OnValidateInput": "",
-      "IsFocusSkip": false,
-      "NextFocusField": "",
-      "OnFocusMoving": "",
-      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.LabelFieldDesign"
-    },
-    {
-      "Placeholder": "",
-      "ConfirmOnSpace": true,
-      "AllowNewTags": true,
-      "CandidateSource": "Module",
-      "CandidateModuleName": "TagTest",
-      "CandidateFieldName": "Tags",
-      "CandidateValues": "",
-      "DisplayName": "",
-      "IsRequired": true,
-      "OnDataChanged": "",
-      "Name": "TagsSpace",
-      "IgnoreModification": false,
-      "OnValidateInput": "",
-      "IsFocusSkip": false,
-      "NextFocusField": "",
-      "OnFocusMoving": "",
-      "TypeFullName": "Codeer.LowCode.Blazor.Extras.Designs.TagInputFieldDesign"
-    },
-    {
-      "Text": "閲覧のみの入力欄 (TagInputField。ボタンで上のタグを転写し、件数と HasTag の結果を出す)",
-      "Icon": "",
-      "IsHtml": false,
-      "Style": "Default",
-      "RelativeField": "",
-      "OnClick": "",
-      "Name": "L3",
-      "IgnoreModification": false,
-      "OnValidateInput": "",
-      "IsFocusSkip": false,
-      "NextFocusField": "",
-      "OnFocusMoving": "",
-      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.LabelFieldDesign"
-    },
-    {
-      "Placeholder": "",
-      "ConfirmOnSpace": false,
-      "AllowNewTags": true,
-      "CandidateSource": "Module",
-      "CandidateModuleName": "TagTest",
-      "CandidateFieldName": "Tags",
-      "CandidateValues": "",
-      "DisplayName": "",
-      "IsRequired": false,
-      "OnDataChanged": "",
-      "Name": "TagsView",
-      "IgnoreModification": false,
-      "OnValidateInput": "",
-      "IsFocusSkip": false,
-      "NextFocusField": "",
-      "OnFocusMoving": "",
-      "TypeFullName": "Codeer.LowCode.Blazor.Extras.Designs.TagInputFieldDesign"
-    },
-    {
-      "Text": "Tags を閲覧側に転写",
+      "Text": "件数と HasTag を出す",
       "ImageResourcePath": "",
       "ImageResourceSet": {
         "Default": "",
@@ -224,10 +151,10 @@
       },
       "Icon": "",
       "Variant": "Primary",
-      "OnClick": "Copy_OnClick",
+      "OnClick": "Check_OnClick",
       "ShowTextInToolTip": false,
       "IsHtml": false,
-      "Name": "Copy",
+      "Name": "Check",
       "IgnoreModification": false,
       "OnValidateInput": "",
       "IsFocusSkip": false,
@@ -266,7 +193,7 @@
   "DetailLayouts": {
     "": {
       "OnBeforeInitialization": "",
-      "OnAfterInitialization": "DetailLayoutDesign_OnAfterInitialization",
+      "OnAfterInitialization": "",
       "OnLocationChanging": "",
       "OnFieldDataChanged": "",
       "FocusControlMode": "Inherit",
@@ -452,142 +379,7 @@
             "Columns": [
               {
                 "Layout": {
-                  "FieldName": "L2",
-                  "ContextMenu": "",
-                  "ClassName": "",
-                  "FontFamily": "",
-                  "Color": "",
-                  "Name": "af9ef818-e035-4e96-9a47-38e2285e02a1",
-                  "BackgroundColor": "",
-                  "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.FieldLayoutDesign"
-                },
-                "IgnoreContentWidth": false,
-                "Padding": {},
-                "BackgroundColor": "",
-                "BorderStyle": {
-                  "LeftColor": "",
-                  "TopColor": "",
-                  "RightColor": "",
-                  "BottomColor": ""
-                },
-                "CanResize": false,
-                "AllowOverflow": false,
-                "Border": "None"
-              }
-            ]
-          },
-          {
-            "IsWrap": false,
-            "IsAutoFillWrap": false,
-            "Margin": {},
-            "GridRowType": "Normal",
-            "CanResize": false,
-            "BackgroundColor": "",
-            "KeepInFillAvailableGrid": false,
-            "IsProportionalScale": false,
-            "IsRowMarginRemoved": false,
-            "Columns": [
-              {
-                "Layout": {
-                  "FieldName": "TagsSpace",
-                  "ContextMenu": "",
-                  "ClassName": "",
-                  "FontFamily": "",
-                  "Color": "",
-                  "Name": "9c57f4ef-7bd4-443b-84e4-02017fac1ca1",
-                  "BackgroundColor": "",
-                  "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.FieldLayoutDesign"
-                },
-                "IgnoreContentWidth": false,
-                "Padding": {},
-                "BackgroundColor": "",
-                "BorderStyle": {
-                  "LeftColor": "",
-                  "TopColor": "",
-                  "RightColor": "",
-                  "BottomColor": ""
-                },
-                "CanResize": false,
-                "AllowOverflow": false,
-                "Border": "None"
-              }
-            ]
-          },
-          {
-            "IsWrap": false,
-            "IsAutoFillWrap": false,
-            "Margin": {},
-            "GridRowType": "Normal",
-            "CanResize": false,
-            "BackgroundColor": "",
-            "KeepInFillAvailableGrid": false,
-            "IsProportionalScale": false,
-            "IsRowMarginRemoved": false,
-            "Columns": [
-              {
-                "Layout": {
-                  "FieldName": "L3",
-                  "ContextMenu": "",
-                  "ClassName": "",
-                  "FontFamily": "",
-                  "Color": "",
-                  "Name": "8f0ee3b9-1858-41c3-947d-5bad1302f721",
-                  "BackgroundColor": "",
-                  "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.FieldLayoutDesign"
-                },
-                "IgnoreContentWidth": false,
-                "Padding": {},
-                "BackgroundColor": "",
-                "BorderStyle": {
-                  "LeftColor": "",
-                  "TopColor": "",
-                  "RightColor": "",
-                  "BottomColor": ""
-                },
-                "CanResize": false,
-                "AllowOverflow": false,
-                "Border": "None"
-              }
-            ]
-          },
-          {
-            "IsWrap": false,
-            "IsAutoFillWrap": false,
-            "Margin": {},
-            "GridRowType": "Normal",
-            "CanResize": false,
-            "BackgroundColor": "",
-            "KeepInFillAvailableGrid": false,
-            "IsProportionalScale": false,
-            "IsRowMarginRemoved": false,
-            "Columns": [
-              {
-                "Layout": {
-                  "FieldName": "TagsView",
-                  "ContextMenu": "",
-                  "ClassName": "",
-                  "FontFamily": "",
-                  "Color": "",
-                  "Name": "1aecc511-1ab8-4f4e-b4c2-c0b1cd609738",
-                  "BackgroundColor": "",
-                  "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.FieldLayoutDesign"
-                },
-                "IgnoreContentWidth": false,
-                "Padding": {},
-                "BackgroundColor": "",
-                "BorderStyle": {
-                  "LeftColor": "",
-                  "TopColor": "",
-                  "RightColor": "",
-                  "BottomColor": ""
-                },
-                "CanResize": false,
-                "AllowOverflow": false,
-                "Border": "None"
-              },
-              {
-                "Layout": {
-                  "FieldName": "Copy",
+                  "FieldName": "Check",
                   "ContextMenu": "",
                   "ClassName": "",
                   "FontFamily": "",

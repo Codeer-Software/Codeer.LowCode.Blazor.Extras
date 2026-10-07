@@ -7,7 +7,7 @@ CREATE TABLE tag_tests (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT);
 CREATE TABLE tag_test_tags (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   owner_id INTEGER NOT NULL REFERENCES tag_tests (id) ON DELETE CASCADE,
-  name TEXT NOT NULL COLLATE NOCASE
+  name TEXT NOT NULL
 );
 CREATE UNIQUE INDEX ux_tag_test_tags_owner_id_name ON tag_test_tags (owner_id, name);
 CREATE INDEX ix_tag_test_tags_name ON tag_test_tags (name);

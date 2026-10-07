@@ -112,7 +112,7 @@
         /// <summary>タグを付けるモジュール (テーブルと Id フィールドを持つこと)。</summary>
         public string TargetModuleName { get; set; } = string.Empty;
 
-        /// <summary>タグを付けるモジュールに置く TagField の名前。同名の TagField (結び付きなし) / TagInputField が既にあれば結び付ける。空 = 置かない。</summary>
+        /// <summary>タグを付けるモジュールに置く TagField の名前。同名の TagField が結び付きなしで既にあれば結び付ける。空 = 置かない。</summary>
         public string FieldName { get; set; } = "Tags";
 
         /// <summary>タグ付けモジュール名 (既定 = 対象モジュール名 + Tags)。</summary>

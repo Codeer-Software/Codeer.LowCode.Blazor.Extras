@@ -1842,52 +1842,13 @@
   <data name="SemanticSearch_SearchPlaceholder" xml:space="preserve">
     <value>内容で探す</value>
   </data>
-  <data name="TagFieldAllowNewTags" xml:space="preserve">
-    <value>候補に無いタグも入れられる</value>
-  </data>
-  <data name="TagFieldUnknownTagFormat" xml:space="preserve">
-    <value>「{0}」は候補に無いタグです。</value>
-  </data>
-  <data name="TagCheck_NotLinkModuleFormat" xml:space="preserve">
-    <value>検索条件のモジュール &apos;{0}&apos; に TagLinkContractField がありません。タグ付けモジュール (タグのセットアップで作れます) を指定してください。保存しない入力欄には TagInputField を使います。</value>
-  </data>
   <data name="TagLinkContractTagName" xml:space="preserve">
     <value>TagName (タグ名・必須)</value>
   </data>
-  <data name="TagFieldCandidateSource" xml:space="preserve">
-    <value>候補の出どころ</value>
+  <data name="TagCheck_NotLinkModuleFormat" xml:space="preserve">
+    <value>検索条件のモジュール &apos;{0}&apos; に TagLinkContractField がありません。タグ付けモジュール (タグのセットアップで作れます) を指定してください。</value>
   </data>
-  <data name="TagFieldCandidateModuleName" xml:space="preserve">
-    <value>候補のモジュール</value>
-  </data>
-  <data name="TagFieldCandidateFieldName" xml:space="preserve">
-    <value>候補のフィールド</value>
-  </data>
-  <data name="TagFieldCandidateValues" xml:space="preserve">
-    <value>決まったタグ (1 行 1 つ)</value>
-  </data>
-  <data name="TagCandidateSource_TagRows" xml:space="preserve">
-    <value>使われているタグ (このフィールド)</value>
-  </data>
-  <data name="TagCandidateSource_Module" xml:space="preserve">
-    <value>モジュールの列の値</value>
-  </data>
-  <data name="TagCandidateSource_Values" xml:space="preserve">
-    <value>決まったタグ</value>
-  </data>
-  <data name="TagCheck_CandidateModuleRequired" xml:space="preserve">
-    <value>候補のモジュールとフィールドを指定してください。</value>
-  </data>
-  <data name="TagCheck_CandidateFieldTypeFormat" xml:space="preserve">
-    <value>候補のフィールド &apos;{0}.{1}&apos; は TextField か TagField でなければなりません。</value>
-  </data>
-  <data name="TagCheck_CandidateValuesRequired" xml:space="preserve">
-    <value>決まったタグを 1 つ以上書いてください。</value>
-  </data>
-  <data name="TagCheck_TagRowsNeedsTagField" xml:space="preserve">
-    <value>TagInputField は自分のタグ付けモジュールを持ちません。候補の出どころは Module か Values にしてください。</value>
-  </data>
-  <data name="TagInputField" xml:space="preserve">
-    <value>タグ入力</value>
+  <data name="TagFieldTooLongFormat" xml:space="preserve">
+    <value>「{0}…」は長すぎます。タグは {1} 文字までです。</value>
   </data>
 </root>

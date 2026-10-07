@@ -37,7 +37,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
     /// tag-setup:
     ///   &lt;designer.exe&gt; tag-setup "&lt;projectDir&gt;" --target &lt;Module&gt; [--field Tags | --no-field] [--link-name &lt;Module&gt;Tags]
     ///     [--link-table &lt;table&gt;] [--owner-column owner_id] [--data-source &lt;name&gt;] [--ddl-out "&lt;path.sql&gt;"]
-    ///   (タグ付けモジュール (OwnerId + タグ名) を生成し、対象モジュールに TagField を足す (同名の結び付きなしの TagField・TagInputField は結び付ける)。
+    ///   (タグ付けモジュール (OwnerId + タグ名) を生成し、対象モジュールに TagField を足す (同名の結び付きなしの TagField は結び付ける)。
     ///    画面への配置はデザイナで行う。--no-field = TagField を足さない)
     ///
     /// --user-name-field の既定は UserModuleFields.DefaultDisplayNameField (Name があればそれ、無ければログインアカウント契約の DisplayName の役割)。

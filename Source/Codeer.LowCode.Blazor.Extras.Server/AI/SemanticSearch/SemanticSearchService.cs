@@ -7,7 +7,6 @@ using Codeer.LowCode.Blazor.Extras.Designs;
 using Codeer.LowCode.Blazor.Extras.SemanticSearch;
 using Codeer.LowCode.Blazor.Extras.Server.AI.Embedding;
 using Codeer.LowCode.Blazor.Extras.Server.Properties;
-using Codeer.LowCode.Blazor.Extras.Tag;
 using Codeer.LowCode.Blazor.Repository.Data;
 using Codeer.LowCode.Blazor.Repository.Design;
 using Codeer.LowCode.Blazor.Repository.Match;
@@ -202,6 +201,9 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
             if (fields.Count == 0) throw new ArgumentException($"Module '{moduleName}' has no SemanticSearchField with the text, vector and vector-search columns set.", nameof(moduleName));
             var idField = module.Fields.OfType<IdFieldDesign>().FirstOrDefault() ?? throw new ArgumentException($"Module '{moduleName}' has no IdField.", nameof(moduleName));
             var rowsPerPage = pageSize ?? ReindexPageSize;
+            //読む列 = 文章にするフィールド + Id。一覧のフィールド (TagField など) を名前で指定すると、本体が子の一覧をページの行の分まとめて同梱する
+            //(SelectFields が空だと列だけが読まれ、子の一覧は付いてこない)
+            var selectFields = fields.SelectMany(f => SemanticSearchText.SourceFields(module, f)).Append(idField.Name).Distinct().ToList();
 
             //missingOnly: どのフィールドかでベクトルが無い行 = 対象。索引済み (全フィールドにベクトルあり) の Id を先に集めて飛ばす
             HashSet<string>? indexed = null;
@@ -221,7 +223,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
             for (var pageIndex = 0; ; pageIndex++)
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                var condition = new SearchCondition(moduleName) { LimitCount = rowsPerPage };
+                var condition = new SearchCondition(moduleName) { LimitCount = rowsPerPage, SelectFields = selectFields.ToList() };
                 condition.SortConditions.Add(new SortCondition { Variable = $"{idField.Name}.Value" });
                 var page = await moduleDataIO.GetListAsync(condition, pageIndex);
                 if (pageIndex == 0)
@@ -234,10 +236,6 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
                     && (indexed == null || !indexed.Contains(idData.Value!))).ToList();
                 if (rows.Count > 0)
                 {
-                    //一覧の読み込みは子の一覧を含まないので、文章に使う TagField のタグ付け行をページ分まとめて読む
-                    await TagContracts.FillTagRowsAsync(designData, module, rows, fields.SelectMany(f => SemanticSearchText.SourceFields(module, f)),
-                        async (c, p) => await moduleDataIO.GetListAsync(c, p));
-
                     //フィールドごとに、ページ分の文章をまとめて 1 回で埋め込む
                     var submits = rows.ToDictionary(row => row, row =>
                     {

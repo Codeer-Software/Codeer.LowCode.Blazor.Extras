@@ -1,6 +1,5 @@
 using Codeer.LowCode.Blazor.DesignLogic.Check;
 using Codeer.LowCode.Blazor.DesignLogic.Location;
-using Codeer.LowCode.Blazor.DesignLogic.Refactor;
 using Codeer.LowCode.Blazor.Extras.Components;
 using Codeer.LowCode.Blazor.Extras.Fields;
 using Codeer.LowCode.Blazor.Extras.Tag;
@@ -24,7 +23,6 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
     /// 1 行 = このレコードに付いたタグ 1 つ (OwnerId + タグ名)。タグのマスタは無い。
     /// このフィールドはタグ付けモジュールを子の一覧として持つ一覧フィールドで、検索条件 (SearchCondition) でタグ付けモジュールと
     /// 「OwnerId.Value = Id.Value」の結び付きを指定する (タグのセットアップが作る)。読み込み・保存・削除の連鎖・権限・編集履歴は本体の一覧と同じ。
-    /// 保存しない入力欄 (取り込み画面など) は <see cref="TagInputFieldDesign"/>。
     /// </summary>
     [ToolboxIcon(PackIconMaterialKind = "TagMultiple")]
     [Designer(DisplayName = "$TagField")]
@@ -32,21 +30,18 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         nameof(DeleteTogether), nameof(CanCreate), nameof(CanUpdate), nameof(CanDelete), nameof(CanUserSort), nameof(CanSelect),
         nameof(UseIndexSort), nameof(ConfirmBeforeDelete), nameof(OnSelectedIndexChanged), nameof(OnSelectedIndexChanging),
         nameof(OnDoubleClickRow), nameof(IgnoreModification))]
-    public class TagFieldDesign : ListFieldDesignBase, ITagCandidateDesign
+    public class TagFieldDesign : ListFieldDesignBase
     {
         /// <summary>デザインチェック指摘の番号。DesignCheckCode.Create で発行クラス名と結合して "クラス名:番号" になる。番号は固定(追加は末尾・欠番は再利用しない)。</summary>
         private const int CodeNotLinkModule = 1;
         private const int CodeOwnerBindingMissing = 2;
         private const int CodeLinkLayoutFieldsMissing = 3;
-        private const int CodeCandidateModuleRequired = 4;
-        private const int CodeCandidateFieldType = 5;
-        private const int CodeCandidateValuesRequired = 6;
 
         public TagFieldDesign() : base(typeof(TagFieldDesign).FullName!)
         {
             //タグ付け行はレコードの一部: レコードを消せば一緒に消す。行の追加・削除は確認なし。
             //CanUpdate: 本体の一覧は CanUpdate が false だと閲覧のみ (IsViewOnly) になり入力欄が出ないので true
-            //(タグ付け行そのものを書き換えることはない)。本体側の口 C (行を足す・消すだけの一覧の閲覧判定) ができたら外す
+            //(タグ付け行そのものを書き換えることはない)
             DeleteTogether = true;
             ConfirmBeforeDelete = false;
             CanCreate = true;
@@ -63,26 +58,6 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         /// <summary>スペースでもタグを確定する。既定は Enter と「,」「、」だけ (日本語のタグにはスペースが入ることがあるため)。</summary>
         [Designer(Index = 4, DisplayName = "$TagFieldConfirmOnSpace")]
         public bool ConfirmOnSpace { get; set; }
-
-        /// <summary>候補に無いタグを入力できる。false なら候補にあるタグだけ (足すときに確かめる)。</summary>
-        [Designer(Index = 5, DisplayName = "$TagFieldAllowNewTags")]
-        public bool AllowNewTags { get; set; } = true;
-
-        /// <summary>候補の出どころ。既定はこのフィールドのタグ付けモジュール (よく使われているタグから)。</summary>
-        [Designer(Index = 6, DisplayName = "$TagFieldCandidateSource")]
-        public TagCandidateSource CandidateSource { get; set; } = TagCandidateSource.TagRows;
-
-        /// <summary>CandidateSource = Module のときの、候補を読むモジュール。</summary>
-        [Designer(Index = 7, CandidateType = CandidateType.Module, DisplayName = "$TagFieldCandidateModuleName")]
-        public string CandidateModuleName { get; set; } = string.Empty;
-
-        /// <summary>CandidateSource = Module のときの、候補を読むフィールド (TextField か TagField)。</summary>
-        [Designer(Index = 8, CandidateType = CandidateType.Field, DisplayName = "$TagFieldCandidateFieldName"), ModuleMember(Member = nameof(CandidateModuleName))]
-        public string CandidateFieldName { get; set; } = string.Empty;
-
-        /// <summary>CandidateSource = Values のときの決まったタグ (1 行 1 つ。並びのまま出す)。</summary>
-        [Designer(Index = 9, CandidateType = CandidateType.MultilineString, DisplayName = "$TagFieldCandidateValues")]
-        public string CandidateValues { get; set; } = string.Empty;
 
         [Designer(Index = 70, DisplayName = "$IsRequired")]
         public bool IsRequired { get; set; }
@@ -111,7 +86,6 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
             //モジュール・変数・レイアウトの存在は基底 (一覧) が見る
             var result = base.CheckDesign(context);
             context.CheckFieldName(Name).AddTo(result);
-            TagCandidateChecks.Check(context, result, this, typeof(TagFieldDesign), CodeCandidateModuleRequired, CodeCandidateFieldType, CodeCandidateValuesRequired);
 
             var linkModuleName = SearchCondition?.ModuleName ?? string.Empty;
             var linkModule = context.DesignData.Modules.Find(linkModuleName);
@@ -150,10 +124,5 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
             Location = new FieldDesignDataLocation { Module = context.OwnerModule, Field = Name, Member = member },
             Message = message,
         };
-
-        public override RenameResult ChangeName(RenameContext context) => context.Builder(base.ChangeName(context))
-            .AddModule(CandidateModuleName, x => CandidateModuleName = x)
-            .AddField(CandidateModuleName, CandidateFieldName, x => CandidateFieldName = x)
-            .Build();
     }
 }

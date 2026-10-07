@@ -1,6 +1,7 @@
 using Codeer.LowCode.Blazor.DataIO.Db.Definition;
 using Codeer.LowCode.Blazor.DesignLogic;
 using Codeer.LowCode.Blazor.Extras.Designs;
+using Codeer.LowCode.Blazor.Extras.Fields;
 using Codeer.LowCode.Blazor.Json;
 using Codeer.LowCode.Blazor.Repository;
 using Codeer.LowCode.Blazor.Repository.Design;
@@ -12,17 +13,16 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
 {
     /// <summary>
     /// タグのセットアップ。タグを付けるモジュールに、タグ付けモジュール (TagLinkContractField。1 行 = レコードに付いたタグ 1 つ = OwnerId + タグ名) を作り、
-    /// タグを付けるモジュールに TagField を足す (同名の TagField が結び付きなしであれば結び付ける。同名の TagInputField は TagField に置き換える)。
+    /// タグを付けるモジュールに TagField を足す (同名の TagField が結び付きなしであれば結び付ける)。
     /// 画面への配置はデザイナで行う。タグのマスタは作らない。
     /// - 冪等: 同名のモジュールがあれば作らない。TagField が結び付き済みなら触らない。
-    /// - DDL は雛形として返す (実行は呼び出し側でユーザーの確認を挟む): テーブル (タグ名は NOT NULL・インデックスを張れる長さ)、
-    ///   (レコード, タグ名) の一意インデックス (大文字小文字を区別しない。DB ごとの書き方)、タグ名のインデックス、
-    ///   レコードへの外部キー (レコードを消せばタグ付けも消える。SQLite は CREATE TABLE の列に書く)。
+    /// - DDL は雛形として返す (実行は呼び出し側でユーザーの確認を挟む): テーブル (タグ名は NOT NULL・長さ = TagField.MaxTagLength)、
+    ///   (レコード, タグ名) の一意インデックス、タグ名のインデックス、レコードへの外部キー (SQL で直接消したときの保険。SQLite は CREATE TABLE の列に書く)。
     /// </summary>
     public static class TagSetupService
     {
-        /// <summary>タグ名の列の長さ (インデックスを張れる長さ)。</summary>
-        internal const int NameLength = 200;
+        /// <summary>タグ名の列の長さ (入力欄・タグ付けモジュールの Name の MaxLength と同じ値)。</summary>
+        internal const int NameLength = TagField.MaxTagLength;
 
         public static SetupResult Run(DesignData designData, string designDir, TagSetupOptions options,
             DataSourceType dataSourceType, List<DbTableDefinition>? existingTables = null)
@@ -88,8 +88,8 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
 
         /// <summary>
         /// 本体の DDL (CREATE TABLE。1 要素 1 行) の列を直す: OwnerId は Id の型 (本体は IdField の列を Id と同じ型で作る) で NOT NULL、
-        /// タグ名はインデックスを張れる長さで NOT NULL (SQLite は大文字小文字を区別しない照合順序も)。
-        /// SQLite は後から外部キーを足せないので、OwnerId の列に外部キーを書く。PostgreSQL はタグ名を citext にする (拡張を有効にする行を先頭に足す)。
+        /// タグ名は長さ NameLength で NOT NULL (インデックスを張れる長さ。SQLite は長さを持たないので型のまま)。
+        /// SQLite は後から外部キーを足せないので、OwnerId の列に外部キーを書く。
         /// </summary>
         internal static List<string> FixLinkColumns(List<string> ddl, string ownerColumn, string nameColumn,
             string ownerTable, string ownerIdColumn, DataSourceType type)
@@ -98,17 +98,14 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
             var nameType = type switch
             {
                 DataSourceType.SQLServer => $"NVARCHAR({NameLength})",
-                DataSourceType.MySQL => $"VARCHAR({NameLength})",
+                DataSourceType.MySQL or DataSourceType.PostgreSQL => $"VARCHAR({NameLength})",
                 DataSourceType.Oracle => $"VARCHAR2({NameLength})",
-                //citext: 比較・LIKE・インデックスが大文字小文字を区別しない (SQL Server の照合順序と同じ振る舞い)。拡張を先に有効にする
-                DataSourceType.PostgreSQL => "CITEXT",
                 _ => ColumnType(ddl, nameColumn) ?? "TEXT",
             };
-            if (type == DataSourceType.PostgreSQL) ddl = ddl.Prepend("CREATE EXTENSION IF NOT EXISTS citext;").ToList();
             var ownerDefinition = ownerType == null ? null
                 : type == DataSourceType.SQLite ? $"{ownerType} NOT NULL REFERENCES {ownerTable} ({ownerIdColumn}) ON DELETE CASCADE"
                 : $"{ownerType} NOT NULL";
-            var nameDefinition = type == DataSourceType.SQLite ? $"{nameType} NOT NULL COLLATE NOCASE" : $"{nameType} NOT NULL";
+            var nameDefinition = $"{nameType} NOT NULL";
             return ddl.Select(line =>
             {
                 var trimmed = line.TrimStart();
@@ -128,17 +125,15 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
         }
 
         /// <summary>
-        /// 同じタグを二重に付けない一意インデックス (レコードで引くインデックスを兼ねる。大文字小文字を区別しない)、タグ名で引くインデックス (検索・候補)、
-        /// レコードへの外部キー (レコードを消せば一緒に消える。SQLite は CREATE TABLE に書いたので無し)。
-        /// 大文字小文字: SQL Server・MySQL は既定の照合順序、SQLite は列の COLLATE NOCASE、PostgreSQL は列の citext、Oracle は UPPER() の式インデックス。
+        /// 同じタグを二重に付けない一意インデックス (レコードで引くインデックスを兼ねる)、タグ名で引くインデックス (検索・候補)、
+        /// レコードへの外部キー (レコードを SQL で直接消したときの保険。ふだんは本体の DeleteTogether が消す。SQLite は CREATE TABLE に書いたので無し)。
         /// </summary>
         internal static List<string> LinkIndexDdl(string table, string ownerColumn, string nameColumn,
             string ownerTable, string ownerIdColumn, DataSourceType type)
         {
-            var unique = type == DataSourceType.Oracle ? $"UPPER({nameColumn})" : nameColumn;
             var ddl = new List<string>
             {
-                $"CREATE UNIQUE INDEX ux_{table}_{ownerColumn}_{nameColumn} ON {table} ({ownerColumn}, {unique});",
+                $"CREATE UNIQUE INDEX ux_{table}_{ownerColumn}_{nameColumn} ON {table} ({ownerColumn}, {nameColumn});",
                 $"CREATE INDEX ix_{table}_{nameColumn} ON {table} ({nameColumn});",
             };
             if (type != DataSourceType.SQLite)
@@ -146,38 +141,25 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
             return ddl;
         }
 
-        //TagField を足す。同名の TagField が結び付きなしで既にあれば結び付け、同名の TagInputField は TagField に置き換える (入力欄だった頃の設定は引き継ぐ)
+        //TagField を足す。同名の TagField が結び付きなしで既にあれば結び付ける
         static void PlaceField(string designDir, ModuleDesign target, TagSetupOptions options, SetupResult result)
         {
             var existing = target.Fields.FirstOrDefault(e => e.Name == options.FieldName);
-            if (existing is TagFieldDesign bound && !string.IsNullOrEmpty(bound.SearchCondition?.ModuleName))
-            {
-                result.Notes.Add($"'{target.Name}.{options.FieldName}' は既にタグ付けモジュール '{bound.SearchCondition!.ModuleName}' と結び付いています (変更していません)。");
-                return;
-            }
-            if (existing != null && existing is not TagFieldDesign && existing is not TagInputFieldDesign)
+            if (existing != null && existing is not TagFieldDesign)
             {
                 result.Notes.Add($"'{target.Name}' に別の種類のフィールド '{options.FieldName}' があるため、TagField は足していません。");
                 return;
             }
-
-            var field = existing as TagFieldDesign;
+            var field = (TagFieldDesign?)existing;
+            if (field != null && !string.IsNullOrEmpty(field.SearchCondition?.ModuleName))
+            {
+                result.Notes.Add($"'{target.Name}.{options.FieldName}' は既にタグ付けモジュール '{field.SearchCondition!.ModuleName}' と結び付いています (変更していません)。");
+                return;
+            }
             if (field == null)
             {
                 field = new TagFieldDesign { Name = options.FieldName, DisplayName = "タグ" };
-                if (existing is TagInputFieldDesign input)
-                {
-                    field.DisplayName = string.IsNullOrEmpty(input.DisplayName) ? field.DisplayName : input.DisplayName;
-                    field.Placeholder = input.Placeholder;
-                    field.ConfirmOnSpace = input.ConfirmOnSpace;
-                    field.AllowNewTags = input.AllowNewTags;
-                    field.IsRequired = input.IsRequired;
-                    target.Fields[target.Fields.IndexOf(input)] = field;
-                }
-                else
-                {
-                    target.Fields.Add(field);
-                }
+                target.Fields.Add(field);
             }
             field.SearchCondition = TagModuleFactory.LinkCondition(options.LinkModuleName);
             Save(designDir, target);
@@ -209,9 +191,9 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
             return $"""
                 タグのモジュールを生成しました。次の手順で仕上げてください:
                 1. DDL を実行してテーブルを作る ({options.LinkTableName})
-                2. {options.TargetModuleName} の詳細・一覧・検索のレイアウトに {field} を置く (一覧の列にも置けます。ページの行の分をまとめて 1 回で読みます)
-                候補は {options.LinkModuleName} に付いているタグから、よく使われている順に出ます。
-                保存しない入力欄 (取り込み画面など) には TagInputField を置き、候補を {options.TargetModuleName}.{field} にします。
+                2. {options.TargetModuleName} の詳細・一覧・検索のレイアウトに {field} を置く (一覧の列にも置けます。ページの行の分は一覧の読み込みに同梱されます)
+                候補は {options.LinkModuleName} に付いているタグから、よく使われている順に出ます。候補は {options.LinkModuleName} の読み取り条件に従います
+                ({options.TargetModuleName} の行の条件は効きません。見せたくないタグがあるなら {options.LinkModuleName} に読み取り条件を書いてください)。
                 """;
         }
     }
@@ -228,7 +210,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
             module.Fields.Add(new IdFieldDesign { Name = SystemFieldNames.Id, DbColumn = "id" });
             //本体の保存で CLB が入れる (TagField の検索条件の OwnerId.Value = Id.Value)
             module.Fields.Add(new IdFieldDesign { Name = "OwnerId", DbColumn = ownerColumn, IsManualInput = false });
-            module.Fields.Add(new TextFieldDesign { Name = "Name", DisplayName = "タグ名", DbColumn = NameColumn, IsRequired = true });
+            module.Fields.Add(new TextFieldDesign { Name = "Name", DisplayName = "タグ名", DbColumn = NameColumn, IsRequired = true, MaxLength = TagField.MaxTagLength });
             module.Fields.Add(new TagLinkContractFieldDesign { Name = "TagLinkContract" });
             //タグ付けの行は TagField が読む: OwnerId と Name を読ませる (レイアウトに無いフィールドは値が空で届く)
             module.ListLayouts[string.Empty] = new ListLayoutDesign { DataOnlyFields = { "OwnerId", "Name" } };

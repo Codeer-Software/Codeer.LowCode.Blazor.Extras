@@ -69,11 +69,4 @@ namespace Codeer.LowCode.Blazor.Extras.SeleniumDrivers
         public TagFieldSearchDriver(IWebElement element) : base(element) { }
         public static implicit operator TagFieldSearchDriver(ElementFinder finder) => finder.Find<TagFieldSearchDriver>();
     }
-
-    /// <summary>TagInputField (保存しない入力欄)。入力部品は TagField と同じなので操作も同じ。</summary>
-    public class TagInputFieldDriver : TagFieldDriver
-    {
-        public TagInputFieldDriver(IWebElement element) : base(element) { }
-        public static implicit operator TagInputFieldDriver(ElementFinder finder) => finder.Find<TagInputFieldDriver>();
-    }
 }

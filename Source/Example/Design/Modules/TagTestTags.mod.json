@@ -53,6 +53,7 @@
       "IsMultiline": false,
       "IsAutoFitRows": false,
       "Placeholder": "",
+      "MaxLength": 200,
       "TextEditEmptyType": "StringEmpty",
       "ShouldTrimAfterEdit": false,
       "AutoTab": false,

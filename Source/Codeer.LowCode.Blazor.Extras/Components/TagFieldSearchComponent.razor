@@ -10,12 +10,12 @@
   <TagInputComponent Tags="@Field.SearchTags"
                      TagsChanged="@(tags => Field.SetSearchTagsAsync(tags))"
                      GetCandidatesAsync="@Field.GetCandidatesAsync"
-                     Placeholder="@Field.Design.Placeholder"
-                     ConfirmOnSpace="@Field.Design.ConfirmOnSpace"
+                     Placeholder="@Field.TagDesign.Placeholder"
+                     ConfirmOnSpace="@Field.TagDesign.ConfirmOnSpace"
                      IsDisabled="@(Field.IsEnabled == false)"
                      IsDesignMode="@Field.Services.AppInfoService.IsDesignMode"
                      InputId="@WebElementId" />
-  @if (!Field.Design.IsSimpleSearchParameter)
+  @if (!Field.TagDesign.IsSimpleSearchParameter)
   {
     <select class="form-select w-auto" style="flex: unset" value="@Field.SearchMatch.ToString()" data-role="match" @onchange="OnMatchChangedAsync">
       <option value="@nameof(TagSearchMatch.All)">@Resources.TagSearchMatch_All</option>
