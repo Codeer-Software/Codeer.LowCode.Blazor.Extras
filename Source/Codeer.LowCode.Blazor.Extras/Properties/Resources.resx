@@ -1794,23 +1794,14 @@ Recipients: {1}</value>
   <data name="TagField" xml:space="preserve">
     <value>Tag</value>
   </data>
-  <data name="TagFieldTagModuleName" xml:space="preserve">
-    <value>Tag Master Module</value>
-  </data>
   <data name="TagFieldPlaceholder" xml:space="preserve">
     <value>Placeholder</value>
   </data>
   <data name="TagFieldConfirmOnSpace" xml:space="preserve">
     <value>Confirm a Tag with Space</value>
   </data>
-  <data name="TagFieldAllowNewTags" xml:space="preserve">
-    <value>Allow New Tags</value>
-  </data>
   <data name="TagFieldSearchMatchDefaultValue" xml:space="preserve">
     <value>Default Search Match</value>
-  </data>
-  <data name="TagFieldPartialMatch" xml:space="preserve">
-    <value>Partial Match in Search</value>
   </data>
   <data name="TagSearchMatch_All" xml:space="preserve">
     <value>Contains all</value>
@@ -1821,47 +1812,20 @@ Recipients: {1}</value>
   <data name="TagFieldRemove" xml:space="preserve">
     <value>Remove</value>
   </data>
-  <data name="TagFieldUnknownTagFormat" xml:space="preserve">
-    <value>The tag &apos;{0}&apos; is not registered.</value>
-  </data>
-  <data name="TagContractField" xml:space="preserve">
-    <value>Tag Contract</value>
-  </data>
-  <data name="TagContractTagName" xml:space="preserve">
-    <value>TagName (tag name, required)</value>
-  </data>
   <data name="TagLinkContractField" xml:space="preserve">
     <value>Tag Link Contract</value>
   </data>
   <data name="TagLinkContractOwnerId" xml:space="preserve">
     <value>OwnerId (Id of the tagged record, required)</value>
   </data>
-  <data name="TagLinkContractTag" xml:space="preserve">
-    <value>Tag (link to the tag master, required)</value>
-  </data>
   <data name="TagCheck_RoleTypeFormat" xml:space="preserve">
     <value>The field &apos;{1}&apos; of the role {0} must be a {2} field.</value>
-  </data>
-  <data name="TagCheck_NotTagMasterFormat" xml:space="preserve">
-    <value>The module &apos;{0}&apos; has no TagContractField, so it is not a tag master.</value>
-  </data>
-  <data name="TagCheck_TagDisplayTextFormat" xml:space="preserve">
-    <value>The link &apos;{0}&apos; must show the tag name: set its display text to &apos;{1}&apos;.</value>
-  </data>
-  <data name="TagCheck_NotLinkModuleFormat" xml:space="preserve">
-    <value>The module &apos;{0}&apos; of the search condition has no TagLinkContractField. Set a tag link module (Tag Setup creates one), or leave the module empty for an input without saving.</value>
   </data>
   <data name="TagCheck_OwnerBindingMissingFormat" xml:space="preserve">
     <value>The search condition must bind &apos;{0}.Value&apos; of &apos;{1}&apos; to this record (for example &apos;{0}.Value = Id.Value&apos;).</value>
   </data>
   <data name="TagCheck_LinkLayoutFieldsMissingFormat" xml:space="preserve">
     <value>The list layout &apos;{0}&apos; of &apos;{1}&apos; does not load {2}. Put them in the layout or in its DataOnlyFields.</value>
-  </data>
-  <data name="TagCheck_TagModuleRequired" xml:space="preserve">
-    <value>Set the tag master module, or a tag link module in the search condition.</value>
-  </data>
-  <data name="TagCheck_TagModuleMismatchFormat" xml:space="preserve">
-    <value>The tag master &apos;{0}&apos; differs from &apos;{1}&apos;, the master that &apos;{2}&apos; links to. Leave it empty or set the same module.</value>
   </data>
   <data name="SemanticSearch_ConditionNotSupported" xml:space="preserve">
     <value>The field '{0}' cannot be searched by meaning with this condition (set the text, vector and vector search columns of SemanticSearchField).</value>
@@ -1877,5 +1841,53 @@ Recipients: {1}</value>
   </data>
   <data name="SemanticSearch_SearchPlaceholder" xml:space="preserve">
     <value>Search by meaning</value>
+  </data>
+  <data name="TagFieldAllowNewTags" xml:space="preserve">
+    <value>Allow Tags Not in Candidates</value>
+  </data>
+  <data name="TagFieldUnknownTagFormat" xml:space="preserve">
+    <value>The tag &apos;{0}&apos; is not one of the candidates.</value>
+  </data>
+  <data name="TagCheck_NotLinkModuleFormat" xml:space="preserve">
+    <value>The module &apos;{0}&apos; of the search condition has no TagLinkContractField. Set a tag link module (Tag Setup creates one). For an input that does not save, use TagInputField.</value>
+  </data>
+  <data name="TagLinkContractTagName" xml:space="preserve">
+    <value>TagName (tag name, required)</value>
+  </data>
+  <data name="TagFieldCandidateSource" xml:space="preserve">
+    <value>Candidate Source</value>
+  </data>
+  <data name="TagFieldCandidateModuleName" xml:space="preserve">
+    <value>Candidate Module</value>
+  </data>
+  <data name="TagFieldCandidateFieldName" xml:space="preserve">
+    <value>Candidate Field</value>
+  </data>
+  <data name="TagFieldCandidateValues" xml:space="preserve">
+    <value>Candidate Values (one per line)</value>
+  </data>
+  <data name="TagCandidateSource_TagRows" xml:space="preserve">
+    <value>Tags in use (this field)</value>
+  </data>
+  <data name="TagCandidateSource_Module" xml:space="preserve">
+    <value>Values of a module field</value>
+  </data>
+  <data name="TagCandidateSource_Values" xml:space="preserve">
+    <value>Fixed values</value>
+  </data>
+  <data name="TagCheck_CandidateModuleRequired" xml:space="preserve">
+    <value>Set the candidate module and field.</value>
+  </data>
+  <data name="TagCheck_CandidateFieldTypeFormat" xml:space="preserve">
+    <value>The candidate field &apos;{0}.{1}&apos; must be a TextField or a TagField.</value>
+  </data>
+  <data name="TagCheck_CandidateValuesRequired" xml:space="preserve">
+    <value>Write at least one candidate value.</value>
+  </data>
+  <data name="TagCheck_TagRowsNeedsTagField" xml:space="preserve">
+    <value>TagInputField has no tag link module of its own. Use Module or Values as the candidate source.</value>
+  </data>
+  <data name="TagInputField" xml:space="preserve">
+    <value>Tag Input</value>
   </data>
 </root>

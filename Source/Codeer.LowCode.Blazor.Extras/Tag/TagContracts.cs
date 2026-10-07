@@ -8,64 +8,37 @@ using Codeer.LowCode.Blazor.Repository.Match;
 
 namespace Codeer.LowCode.Blazor.Extras.Tag
 {
-    /// <summary>
-    /// TagField の結び付き。タグ付けモジュール (TagLinkContractField) とタグのマスタ (TagContractField) の役割を、実際のフィールド名に解決したもの。
-    /// 結び付きなし (<see cref="IsBound"/> = false) は保存しない入力欄 (マスタから候補を出すだけ)。
-    /// </summary>
+    /// <summary>TagField の結び付き。タグ付けモジュール (TagLinkContractField) の役割を、実際のフィールド名に解決したもの。</summary>
     internal sealed class TagBinding
     {
-        /// <summary>タグ付けモジュール (結び付きなしなら空)。</summary>
+        /// <summary>タグ付けモジュール。</summary>
         public string LinkModule { get; init; } = string.Empty;
         /// <summary>タグ付けモジュールの、タグを付けたレコードの Id のフィールド。</summary>
         public string OwnerIdField { get; init; } = string.Empty;
-        /// <summary>タグ付けモジュールの、タグへのリンクのフィールド。</summary>
-        public string TagLinkField { get; init; } = string.Empty;
+        /// <summary>タグ付けモジュールの、タグ名のフィールド。</summary>
+        public string TagNameField { get; init; } = string.Empty;
         /// <summary>タグを付けるレコードの側の、OwnerId に入る値の変数 (通常 "Id.Value")。</summary>
         public string OwnerKeyVariable { get; init; } = string.Empty;
-        /// <summary>タグのマスタ。</summary>
-        public string MasterModule { get; init; } = string.Empty;
-        /// <summary>マスタのタグ名のフィールド。</summary>
-        public string MasterNameField { get; init; } = string.Empty;
-
-        public bool IsBound => !string.IsNullOrEmpty(LinkModule);
     }
 
     internal static class TagContracts
     {
-        /// <summary>
-        /// TagField の設定から結び付きを解決する。欠けていれば null (デザインチェックが指摘する不備)。
-        /// 検索条件のモジュールがタグ付けモジュール = 結び付きあり。空ならマスタ (TagModuleName) だけの入力欄。
-        /// </summary>
+        /// <summary>TagField の設定から結び付きを解決する。欠けていれば null (デザインチェックが指摘する不備)。</summary>
         internal static TagBinding? Resolve(DesignData design, TagFieldDesign field)
         {
             var linkModuleName = field.SearchCondition?.ModuleName ?? string.Empty;
-            if (string.IsNullOrEmpty(linkModuleName))
-            {
-                var master = MasterContract(design.Modules.Find(field.TagModuleName));
-                return master == null ? null : new TagBinding { MasterModule = field.TagModuleName, MasterNameField = master.TagName };
-            }
-
-            var linkModule = design.Modules.Find(linkModuleName);
-            var link = LinkContract(linkModule);
-            if (linkModule == null || link == null) return null;
-            if (linkModule.Fields.FirstOrDefault(e => e.Name == link.Tag) is not LinkFieldDesign tagLink) return null;
-            var masterName = tagLink.SearchCondition.ModuleName;
-            var masterContract = MasterContract(design.Modules.Find(masterName));
+            var link = LinkContract(design.Modules.Find(linkModuleName));
+            if (link == null) return null;
             var ownerKey = OwnerKeyVariable(field.SearchCondition!, link.OwnerId);
-            if (masterContract == null || string.IsNullOrEmpty(ownerKey)) return null;
+            if (string.IsNullOrEmpty(ownerKey) || string.IsNullOrEmpty(link.TagName)) return null;
             return new TagBinding
             {
                 LinkModule = linkModuleName,
                 OwnerIdField = link.OwnerId,
-                TagLinkField = link.Tag,
+                TagNameField = link.TagName,
                 OwnerKeyVariable = ownerKey,
-                MasterModule = masterName,
-                MasterNameField = masterContract.TagName,
             };
         }
-
-        internal static TagContractFieldDesign? MasterContract(ModuleDesign? module)
-            => module?.Fields.OfType<TagContractFieldDesign>().FirstOrDefault();
 
         internal static TagLinkContractFieldDesign? LinkContract(ModuleDesign? module)
             => module?.Fields.OfType<TagLinkContractFieldDesign>().FirstOrDefault();
@@ -99,7 +72,7 @@ namespace Codeer.LowCode.Blazor.Extras.Tag
                     Value = MultiTypeValue.Create(ownerIds.Distinct().ToList()),
                 }),
                 SortConditions = field.SearchCondition?.SortConditions?.ToList() ?? new(),
-                SelectFields = new List<string> { SystemFieldNames.Id, binding.OwnerIdField, binding.TagLinkField },
+                SelectFields = new List<string> { SystemFieldNames.Id, binding.OwnerIdField, binding.TagNameField },
             };
 
         /// <summary>条件に合う行を全部読む (LimitCount をページの大きさにして、最後のページまで)。クライアントとサーバーで読み方 (read) だけが違う。</summary>
@@ -116,8 +89,9 @@ namespace Codeer.LowCode.Blazor.Extras.Tag
         }
 
         /// <summary>
-        /// 行たち (同じモジュール) に、結び付きありの TagField のタグ付け行を入れる (一覧の読み込みは子の一覧を含まないため。サーバーの再索引で使う)。
+        /// 行たち (同じモジュール) に、TagField のタグ付け行を入れる (一覧の読み込みは子の一覧を含まないため。サーバーの再索引で使う)。
         /// fieldNames に無い TagField は触らない。
+        /// 本体側の口 B (一覧のページの行の子の一覧をまとめて読む) ができたら、そちらに置き換える。
         /// </summary>
         internal static async Task FillTagRowsAsync(DesignData design, ModuleDesign module, IReadOnlyList<ModuleData> rows, IEnumerable<string> fieldNames,
             Func<SearchCondition, int, Task<Paging<ModuleData>?>> read)
@@ -126,7 +100,7 @@ namespace Codeer.LowCode.Blazor.Extras.Tag
             foreach (var field in module.Fields.OfType<TagFieldDesign>().Where(e => names.Contains(e.Name)))
             {
                 var binding = Resolve(design, field);
-                if (binding == null || !binding.IsBound) continue;
+                if (binding == null) continue;
                 var keyField = FieldOfVariable(binding.OwnerKeyVariable);
                 string KeyOf(ModuleData row) => (row.Fields.GetValueOrDefault(keyField) as ValueFieldDataBase<string>)?.Value ?? string.Empty;
                 var owners = rows.Select(KeyOf).Where(e => e.Length > 0).Distinct().ToList();
@@ -144,14 +118,14 @@ namespace Codeer.LowCode.Blazor.Extras.Tag
             return data.GetModules()
                 .Select(row => binding != null
                     ? TagName(row, binding)
-                    : row.Fields.Values.OfType<LinkFieldData>().FirstOrDefault()?.DisplayText ?? string.Empty)
+                    : row.Fields.Values.OfType<TextFieldData>().FirstOrDefault()?.Value ?? string.Empty)
                 .Where(e => !string.IsNullOrEmpty(e))
                 .ToList();
         }
 
-        /// <summary>タグ付け行のタグ名 (リンクの表示文字列。無ければ空)。</summary>
+        /// <summary>タグ付け行のタグ名 (無ければ空)。</summary>
         internal static string TagName(ModuleData linkRow, TagBinding binding)
-            => (linkRow.Fields.GetValueOrDefault(binding.TagLinkField) as LinkFieldData)?.DisplayText ?? string.Empty;
+            => (linkRow.Fields.GetValueOrDefault(binding.TagNameField) as TextFieldData)?.Value ?? string.Empty;
 
         /// <summary>タグ付け行の、タグを付けたレコードの Id。</summary>
         internal static string OwnerId(ModuleData linkRow, TagBinding binding)

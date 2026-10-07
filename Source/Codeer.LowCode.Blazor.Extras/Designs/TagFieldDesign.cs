@@ -20,11 +20,11 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
     }
 
     /// <summary>
-    /// タグを入力・表示するフィールド。タグはテーブルに持つ (CLB の多対多の形):
-    /// タグのマスタ (TagContractField) を 1 つと、タグを付けるモジュールごとのタグ付けモジュール (TagLinkContractField)。
+    /// タグを入力・表示して保存するフィールド。タグはタグ付けモジュール (TagLinkContractField。タグを付けるモジュールごとに 1 つ) の行に持つ:
+    /// 1 行 = このレコードに付いたタグ 1 つ (OwnerId + タグ名)。タグのマスタは無い。
     /// このフィールドはタグ付けモジュールを子の一覧として持つ一覧フィールドで、検索条件 (SearchCondition) でタグ付けモジュールと
-    /// 「OwnerId.Value = Id.Value」の結び付きを指定する (タグのセットアップが作る)。読み込み・保存・子のパスでの検索は本体の一覧と同じ。
-    /// 検索条件のモジュールが空なら保存しない入力欄になり、候補は TagModuleName のマスタから出す (取り込み画面・一括でタグを付ける画面用)。
+    /// 「OwnerId.Value = Id.Value」の結び付きを指定する (タグのセットアップが作る)。読み込み・保存・削除の連鎖・権限・編集履歴は本体の一覧と同じ。
+    /// 保存しない入力欄 (取り込み画面など) は <see cref="TagInputFieldDesign"/>。
     /// </summary>
     [ToolboxIcon(PackIconMaterialKind = "TagMultiple")]
     [Designer(DisplayName = "$TagField")]
@@ -32,20 +32,21 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         nameof(DeleteTogether), nameof(CanCreate), nameof(CanUpdate), nameof(CanDelete), nameof(CanUserSort), nameof(CanSelect),
         nameof(UseIndexSort), nameof(ConfirmBeforeDelete), nameof(OnSelectedIndexChanged), nameof(OnSelectedIndexChanging),
         nameof(OnDoubleClickRow), nameof(IgnoreModification))]
-    public class TagFieldDesign : ListFieldDesignBase
+    public class TagFieldDesign : ListFieldDesignBase, ITagCandidateDesign
     {
         /// <summary>デザインチェック指摘の番号。DesignCheckCode.Create で発行クラス名と結合して "クラス名:番号" になる。番号は固定(追加は末尾・欠番は再利用しない)。</summary>
         private const int CodeNotLinkModule = 1;
         private const int CodeOwnerBindingMissing = 2;
         private const int CodeLinkLayoutFieldsMissing = 3;
-        private const int CodeTagModuleRequired = 4;
-        private const int CodeTagModuleNotMaster = 5;
-        private const int CodeTagModuleMismatch = 6;
+        private const int CodeCandidateModuleRequired = 4;
+        private const int CodeCandidateFieldType = 5;
+        private const int CodeCandidateValuesRequired = 6;
 
         public TagFieldDesign() : base(typeof(TagFieldDesign).FullName!)
         {
-            //タグ付け行はレコードの一部: レコードを消せば一緒に消す (マスタへの FK があるので残すと消せない)。行の追加・削除は確認なし。
-            //CanUpdate が false だと本体の一覧は閲覧のみ (IsViewOnly) になるので true (タグ付け行そのものを書き換えることはない)
+            //タグ付け行はレコードの一部: レコードを消せば一緒に消す。行の追加・削除は確認なし。
+            //CanUpdate: 本体の一覧は CanUpdate が false だと閲覧のみ (IsViewOnly) になり入力欄が出ないので true
+            //(タグ付け行そのものを書き換えることはない)。本体側の口 C (行を足す・消すだけの一覧の閲覧判定) ができたら外す
             DeleteTogether = true;
             ConfirmBeforeDelete = false;
             CanCreate = true;
@@ -53,23 +54,35 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
             CanDelete = true;
         }
 
-        /// <summary>タグ付けモジュールの行を読むときの一覧レイアウト (タグ付けモジュールの既定の一覧。OwnerId と Tag を DataOnlyFields に入れる)。</summary>
+        /// <summary>タグ付けモジュールの行を読むときの一覧レイアウト (タグ付けモジュールの既定の一覧。OwnerId とタグ名を DataOnlyFields に入れる)。</summary>
         public override string LayoutName { get; set; } = string.Empty;
 
-        /// <summary>タグのマスタ (TagContractField を置いたモジュール)。結び付きありなら空でよい (タグ付けモジュールのリンクの先)。結び付きなしでは必須。</summary>
-        [Designer(Index = 3, CandidateType = CandidateType.Module, DisplayName = "$TagFieldTagModuleName")]
-        public string TagModuleName { get; set; } = string.Empty;
-
-        [Designer(Index = 4, DisplayName = "$TagFieldPlaceholder")]
+        [Designer(Index = 3, DisplayName = "$TagFieldPlaceholder")]
         public string Placeholder { get; set; } = string.Empty;
 
         /// <summary>スペースでもタグを確定する。既定は Enter と「,」「、」だけ (日本語のタグにはスペースが入ることがあるため)。</summary>
-        [Designer(Index = 5, DisplayName = "$TagFieldConfirmOnSpace")]
+        [Designer(Index = 4, DisplayName = "$TagFieldConfirmOnSpace")]
         public bool ConfirmOnSpace { get; set; }
 
-        /// <summary>マスタに無いタグを入力できる (足した時点でマスタに行を作る)。false ならマスタにあるタグだけ。</summary>
-        [Designer(Index = 6, DisplayName = "$TagFieldAllowNewTags")]
+        /// <summary>候補に無いタグを入力できる。false なら候補にあるタグだけ (足すときに確かめる)。</summary>
+        [Designer(Index = 5, DisplayName = "$TagFieldAllowNewTags")]
         public bool AllowNewTags { get; set; } = true;
+
+        /// <summary>候補の出どころ。既定はこのフィールドのタグ付けモジュール (よく使われているタグから)。</summary>
+        [Designer(Index = 6, DisplayName = "$TagFieldCandidateSource")]
+        public TagCandidateSource CandidateSource { get; set; } = TagCandidateSource.TagRows;
+
+        /// <summary>CandidateSource = Module のときの、候補を読むモジュール。</summary>
+        [Designer(Index = 7, CandidateType = CandidateType.Module, DisplayName = "$TagFieldCandidateModuleName")]
+        public string CandidateModuleName { get; set; } = string.Empty;
+
+        /// <summary>CandidateSource = Module のときの、候補を読むフィールド (TextField か TagField)。</summary>
+        [Designer(Index = 8, CandidateType = CandidateType.Field, DisplayName = "$TagFieldCandidateFieldName"), ModuleMember(Member = nameof(CandidateModuleName))]
+        public string CandidateFieldName { get; set; } = string.Empty;
+
+        /// <summary>CandidateSource = Values のときの決まったタグ (1 行 1 つ。並びのまま出す)。</summary>
+        [Designer(Index = 9, CandidateType = CandidateType.MultilineString, DisplayName = "$TagFieldCandidateValues")]
+        public string CandidateValues { get; set; } = string.Empty;
 
         [Designer(Index = 70, DisplayName = "$IsRequired")]
         public bool IsRequired { get; set; }
@@ -81,13 +94,6 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         /// <summary>検索画面の一致の既定 (画面で切り替えられる)。</summary>
         [Designer(Index = 1, DisplayName = "$TagFieldSearchMatchDefaultValue", Category = "$SearchSettings")]
         public TagSearchMatch SearchMatchDefaultValue { get; set; } = TagSearchMatch.All;
-
-        /// <summary>
-        /// 検索で打った文字を含むタグをすべて対象にする (「展示会」で「展示会2026」も)。既定は丸ごと一致。
-        /// 打った文字ごとにマスタを 1 回引いてタグ Id にしてから探すので、タグが付いている人の数には影響されない。
-        /// </summary>
-        [Designer(Index = 2, DisplayName = "$TagFieldPartialMatch", Category = "$SearchSettings")]
-        public bool PartialMatch { get; set; }
 
         public override string GetWebComponentTypeFullName() => typeof(TagFieldComponent).FullName!;
 
@@ -105,21 +111,17 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
             //モジュール・変数・レイアウトの存在は基底 (一覧) が見る
             var result = base.CheckDesign(context);
             context.CheckFieldName(Name).AddTo(result);
-            if (!string.IsNullOrEmpty(TagModuleName)) context.CheckFieldModuleExistence(Name, nameof(TagModuleName), TagModuleName).AddTo(result);
+            TagCandidateChecks.Check(context, result, this, typeof(TagFieldDesign), CodeCandidateModuleRequired, CodeCandidateFieldType, CodeCandidateValuesRequired);
 
             var linkModuleName = SearchCondition?.ModuleName ?? string.Empty;
-            if (string.IsNullOrEmpty(linkModuleName))
+            var linkModule = context.DesignData.Modules.Find(linkModuleName);
+            if (linkModule == null)
             {
-                //結び付きなし: マスタが必須
-                if (string.IsNullOrEmpty(TagModuleName))
-                    result.Add(Error(context, CodeTagModuleRequired, nameof(TagModuleName), Properties.Resources.TagCheck_TagModuleRequired));
-                else
-                    CheckMaster(context, result, TagModuleName, nameof(TagModuleName));
+                //空・不在 (不在は基底も指摘する)
+                if (string.IsNullOrEmpty(linkModuleName))
+                    result.Add(Error(context, CodeNotLinkModule, nameof(SearchCondition), string.Format(Properties.Resources.TagCheck_NotLinkModuleFormat, linkModuleName)));
                 return result;
             }
-
-            var linkModule = context.DesignData.Modules.Find(linkModuleName);
-            if (linkModule == null) return result; //不在は基底が指摘する
             var link = TagContracts.LinkContract(linkModule);
             if (link == null)
             {
@@ -131,27 +133,15 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
             if (string.IsNullOrEmpty(TagContracts.OwnerKeyVariable(SearchCondition!, link.OwnerId)))
                 result.Add(Error(context, CodeOwnerBindingMissing, nameof(SearchCondition), string.Format(Properties.Resources.TagCheck_OwnerBindingMissingFormat, link.OwnerId, linkModuleName)));
 
-            //行の OwnerId と Tag が読まれること (レイアウトに無いフィールドは値が空で届く)
+            //行の OwnerId とタグ名が読まれること (レイアウトに無いフィールドは値が空で届く)
             if (linkModule.ListLayouts.TryGetValue(LayoutName, out var layout))
             {
                 var loaded = layout.Elements.SelectMany(e => e).Select(e => e.FieldName).Concat(layout.DataOnlyFields).ToHashSet();
-                var missing = new[] { link.OwnerId, link.Tag }.Where(e => !string.IsNullOrEmpty(e) && !loaded.Contains(e)).ToList();
+                var missing = new[] { link.OwnerId, link.TagName }.Where(e => !string.IsNullOrEmpty(e) && !loaded.Contains(e)).ToList();
                 if (missing.Count > 0)
                     result.Add(Error(context, CodeLinkLayoutFieldsMissing, nameof(SearchCondition), string.Format(Properties.Resources.TagCheck_LinkLayoutFieldsMissingFormat, LayoutName, linkModuleName, string.Join(", ", missing))));
             }
-
-            //マスタ: タグ付けモジュールのリンクの先 (TagModuleName を書くなら同じもの)
-            var master = (linkModule.Fields.FirstOrDefault(e => e.Name == link.Tag) as LinkFieldDesign)?.SearchCondition.ModuleName ?? string.Empty;
-            if (!string.IsNullOrEmpty(TagModuleName) && !string.IsNullOrEmpty(master) && TagModuleName != master)
-                result.Add(Error(context, CodeTagModuleMismatch, nameof(TagModuleName), string.Format(Properties.Resources.TagCheck_TagModuleMismatchFormat, TagModuleName, master, linkModuleName)));
             return result;
-        }
-
-        void CheckMaster(DesignCheckContext context, List<DesignCheckInfo> result, string moduleName, string member)
-        {
-            var module = context.DesignData.Modules.Find(moduleName);
-            if (module == null || TagContracts.MasterContract(module) != null) return;
-            result.Add(Error(context, CodeTagModuleNotMaster, member, string.Format(Properties.Resources.TagCheck_NotTagMasterFormat, moduleName)));
         }
 
         FieldDesignCheckInfo Error(DesignCheckContext context, int code, string member, string message) => new()
@@ -162,7 +152,8 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         };
 
         public override RenameResult ChangeName(RenameContext context) => context.Builder(base.ChangeName(context))
-            .AddModule(TagModuleName, x => TagModuleName = x)
+            .AddModule(CandidateModuleName, x => CandidateModuleName = x)
+            .AddField(CandidateModuleName, CandidateFieldName, x => CandidateFieldName = x)
             .Build();
     }
 }

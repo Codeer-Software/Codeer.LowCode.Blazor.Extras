@@ -5,7 +5,7 @@
 @implements IAsyncDisposable
 @inject IJSRuntime JSRuntime
 
-@* TagField の入力欄 (チップ + 入力 + 候補)。編集 (TagFieldComponent) と検索 (TagFieldSearchComponent) で共通 *@
+@* タグの入力欄 (チップ + 入力 + 候補)。TagField の編集 (TagFieldComponent)・検索 (TagFieldSearchComponent) と TagInputField (TagInputFieldComponent) で共通 *@
 @if (IsViewOnly)
 {
   <div class="tag-view" id="@InputId" style="@Style" data-role="view">
@@ -49,11 +49,17 @@ else
 @code {
   //候補に出す数 (プロパティにはしない)
   const int MaxMatches = 10;
+  //打つのが止まってから候補を問い合わせるまでの時間
+  const int QueryDelayMilliseconds = 150;
 
   ElementReference _input;
   IJSObjectReference? _jsModule;
   DotNetObjectReference<TagInputComponent>? _dotNetRef;
-  List<string>? _candidates;
+  //最後に問い合わせた候補 (よく使われている順) と、そのときの文字
+  List<string> _candidates = new();
+  string _candidatesText = string.Empty;
+  //問い合わせの番号 (後から打った文字の結果だけを使う)
+  int _queryVersion;
   List<string> _matches = new();
   string _text = string.Empty;
   int _active = -1;
@@ -61,7 +67,8 @@ else
 
   [Parameter] public List<string> Tags { get; set; } = new();
   [Parameter] public EventCallback<List<string>> TagsChanged { get; set; }
-  [Parameter] public Func<Task<List<string>>>? GetCandidatesAsync { get; set; }
+  /// <summary>打った文字を含む候補 (よく使われている順。サーバーで絞る)。</summary>
+  [Parameter] public Func<string, Task<List<string>>>? GetCandidatesAsync { get; set; }
   [Parameter] public string Placeholder { get; set; } = string.Empty;
   [Parameter] public bool ConfirmOnSpace { get; set; }
   [Parameter] public bool IsViewOnly { get; set; }
@@ -133,6 +140,7 @@ else
       Filter();
     }
     StateHasChanged();
+    await RefreshCandidatesAsync();
   }
 
   //箱の外へフォーカスが移った時。打ちかけの文字もタグにする (空欄・ウィンドウの切り替えでは JS が送らない)
@@ -153,6 +161,7 @@ else
     _active = -1;
     if (_jsModule != null) await _jsModule.InvokeVoidAsync("setText", _input, rest);
     Filter();
+    if (rest.Trim().Length > 0) await RefreshCandidatesAsync();
   }
 
   async Task RemoveAsync(string tag) => await ChangeAsync(Tags.Where(e => !TagField.SameTag(e, tag)));
@@ -161,9 +170,9 @@ else
 
   async Task OpenAsync()
   {
-    if (_candidates == null && GetCandidatesAsync != null) _candidates = await GetCandidatesAsync();
     _open = true;
     Filter();
+    if (_text.Trim() != _candidatesText) await RefreshCandidatesAsync();
   }
 
   void Close()
@@ -172,11 +181,32 @@ else
     _active = -1;
   }
 
-  //打っている文字を含む候補 (付いているタグは除く)。何も打っていなければ出さない
+  //打っている文字の候補を問い合わせる。打つのが止まるまで待ち、後から打った文字があればその結果だけを使う
+  async Task RefreshCandidatesAsync()
+  {
+    var version = ++_queryVersion;
+    var text = _text.Trim();
+    if (text.Length == 0 || GetCandidatesAsync == null || IsDesignMode)
+    {
+      _candidates = new();
+      _candidatesText = text;
+      return;
+    }
+    await Task.Delay(QueryDelayMilliseconds);
+    if (version != _queryVersion) return;
+    var found = await GetCandidatesAsync(text);
+    if (version != _queryVersion) return;
+    _candidates = found;
+    _candidatesText = text;
+    Filter();
+    StateHasChanged();
+  }
+
+  //打っている文字を含む候補 (付いているタグは除く。問い合わせの結果を、届くまでは前の結果を、今の文字で絞る)。何も打っていなければ出さない
   void Filter()
   {
     var text = _text.Trim();
-    _matches = text.Length == 0 || _candidates == null
+    _matches = text.Length == 0
       ? new()
       : _candidates.Where(e => !Tags.Any(t => TagField.SameTag(t, e)) && e.Contains(text, StringComparison.OrdinalIgnoreCase)).Take(MaxMatches).ToList();
     if (_matches.Count <= _active) _active = -1;

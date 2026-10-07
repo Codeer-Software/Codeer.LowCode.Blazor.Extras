@@ -12,6 +12,7 @@ namespace Codeer.LowCode.Blazor.Extras.Tag
     /// 本体は一覧の行では子の一覧を読まない (行ごとに問い合わせが出るため)。行の TagField は初期化で登録だけして返り、
     /// 同じ流れで作られた行が揃ったところで「OwnerId In (行の Id)」を 1 回問い合わせて各行に配る。
     /// 待つのは次の実行の機会まで (Task.Yield)。行の作成の合間に本当に非同期の待ちがあれば何回かに分かれるが、結果は同じ。
+    /// 本体側の口 B (一覧のページの行の子の一覧をまとめて 1 回で読む) ができるまでの回避策。口ができたらこのクラスごと置き換える。
     /// </summary>
     internal static class TagListBatchLoader
     {

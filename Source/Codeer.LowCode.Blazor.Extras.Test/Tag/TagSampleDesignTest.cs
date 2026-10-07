@@ -35,22 +35,24 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Tag
             var module = d.Modules.Find("TagTest");
             Assert.That(module, Is.Not.Null);
 
-            var fields = module!.Fields.OfType<TagFieldDesign>().ToList();
-            Assert.That(fields.Select(e => e.Name), Is.EqualTo(new[] { "Tags", "TagsSpace", "TagsView" }));
-            //Tags はタグ付け (tag-setup が作った TagTestTags) に保存する。他の 2 つはマスタ (Tag) から候補を出すだけの入力欄
-            Assert.That(fields[0].SearchCondition.ModuleName, Is.EqualTo("TagTestTags"));
-            Assert.That(fields.Skip(1).Select(e => (e.SearchCondition.ModuleName, e.TagModuleName)), Is.All.EqualTo((string.Empty, "Tag")));
-            Assert.That(fields.Single(e => e.Name == "TagsSpace").ConfirmOnSpace, Is.True);
-            Assert.That(fields.Single(e => e.Name == "TagsSpace").IsRequired, Is.True);
+            //Tags はタグ付け (tag-setup が作った TagTestTags) に保存する。他の 2 つは Tags のタグから候補を出すだけの入力欄
+            var tags = module!.Fields.OfType<TagFieldDesign>().Single();
+            Assert.That(tags.Name, Is.EqualTo("Tags"));
+            Assert.That(tags.SearchCondition.ModuleName, Is.EqualTo("TagTestTags"));
+            var inputs = module.Fields.OfType<TagInputFieldDesign>().ToList();
+            Assert.That(inputs.Select(e => e.Name), Is.EqualTo(new[] { "TagsSpace", "TagsView" }));
+            Assert.That(inputs.Select(e => (e.CandidateSource, e.CandidateModuleName, e.CandidateFieldName)), Is.All.EqualTo((TagCandidateSource.Module, "TagTest", "Tags")));
+            Assert.That(inputs[0].ConfirmOnSpace, Is.True);
+            Assert.That(inputs[0].IsRequired, Is.True);
             Assert.That(module.Fields.OfType<ButtonFieldDesign>().Single().OnClick, Is.EqualTo("Copy_OnClick"));
             Assert.That(module.ListLayouts[""].Elements[0].Select(e => e.FieldName), Does.Contain("Tags"), "一覧の列にも置ける");
+            Assert.That(d.Modules.Find("Tag"), Is.Null, "タグのマスタは無い");
 
             var noTables = new Dictionary<string, List<Codeer.LowCode.Blazor.DataIO.Db.Definition.DbTableDefinition>>();
-            foreach (var field in fields)
+            foreach (var field in inputs.Cast<FieldDesignBase>().Prepend(tags))
             {
                 Assert.That(field.CheckDesign(new DesignCheckContext("TagTest", d, noTables)), Is.Empty, field.Name);
             }
-            Assert.That(d.Modules.Find("Tag")!.Fields.OfType<TagContractFieldDesign>().Single().CheckDesign(new DesignCheckContext("Tag", d, noTables)), Is.Empty);
             Assert.That(d.Modules.Find("TagTestTags")!.Fields.OfType<TagLinkContractFieldDesign>().Single().CheckDesign(new DesignCheckContext("TagTestTags", d, noTables)), Is.Empty);
         }
     }

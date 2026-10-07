@@ -73,7 +73,16 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Harness
         public async Task<Module> CreateNewAsync(string moduleName, ModuleLayoutType layoutType = ModuleLayoutType.Detail)
             => await ModuleCreationService.CreateModuleAsync(Core, new ModuleData { Name = moduleName }, layoutType);
 
-        public Task<List<AggregateResult>> AggregateAsync(List<AggregateCondition> conditions) => throw new NotImplementedException();
+        /// <summary>集計 (TagField の候補)。呼ばれた条件は AggregateCalls に残す。</summary>
+        public List<List<AggregateCondition>> AggregateCalls { get; } = new();
+
+        public async Task<List<AggregateResult>> AggregateAsync(List<AggregateCondition> conditions)
+        {
+            lock (AggregateCalls) AggregateCalls.Add(conditions);
+            var result = new List<AggregateResult>();
+            foreach (var c in conditions) result.Add(await _createIO().AggregateAsync(c));
+            return result;
+        }
         public Task<Codeer.LowCode.Blazor.DataIO.FileInfo?> UploadFile(string moduleName, string fieldName, string fileName, StreamContent content) => throw new NotImplementedException();
         public Task<MemoryStream?> DownloadFile(string moduleName, string fieldName, string id) => throw new NotImplementedException();
         public Task<MemoryStream?> GetListFileAsync(SearchCondition condition) => throw new NotImplementedException();

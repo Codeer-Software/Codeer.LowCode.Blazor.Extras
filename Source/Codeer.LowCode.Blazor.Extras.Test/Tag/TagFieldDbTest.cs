@@ -9,6 +9,7 @@ using Codeer.LowCode.Blazor.Extras.Server.FileManagement;
 using Codeer.LowCode.Blazor.Extras.Tag;
 using Codeer.LowCode.Blazor.Extras.Test.Harness;
 using Codeer.LowCode.Blazor.OperatingModel;
+using Codeer.LowCode.Blazor.Repository;
 using Codeer.LowCode.Blazor.Repository.Data;
 using Codeer.LowCode.Blazor.Repository.Design;
 using Codeer.LowCode.Blazor.Repository.Match;
@@ -20,8 +21,8 @@ using Microsoft.Data.Sqlite;
 namespace Codeer.LowCode.Blazor.Extras.Test.Tag
 {
     /// <summary>
-    /// TagField を実 DB (SQLite) で: タグ付け行の読み込み・保存 (本体の保存に載る。新しいタグはマスタの行も同じトランザクション)、
-    /// 検索 (いずれか = 子のパス、すべて = 全部持つレコードの Id)、一覧の行のまとめ読み、意味検索の文章、一括ダウンロード。
+    /// TagField を実 DB (SQLite) で: タグ付け行の読み込み・保存 (本体の保存に載る。保存までは何も書かない)、候補 (集計・よく使われている順)、
+    /// 検索 (いずれか = In、すべて = ContainsAll。どちらも SQL)、一覧の行のまとめ読み、意味検索の文章、一括ダウンロード。
     /// データ: A = 展示会, DXPO / B = 展示会 / C = セミナー / D = なし。
     /// </summary>
     public class TagFieldDbTest : IAuthenticationContext
@@ -59,14 +60,8 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Tag
 
         async Task<string> LinksAsync()
         {
-            var rows = await _db.QueryAsync(Ds, "SELECT c.name AS c, t.name AS t FROM contact_tags l JOIN contacts c ON c.id = l.contact_id JOIN tags t ON t.id = l.tag_id ORDER BY c.name, l.id", new());
+            var rows = await _db.QueryAsync(Ds, "SELECT c.name AS c, l.name AS t FROM contact_tags l JOIN contacts c ON c.id = l.owner_id ORDER BY c.name, l.id", new());
             return string.Join(" ", rows.Select(r => $"{r["c"]}:{r["t"]}"));
-        }
-
-        async Task<string> MasterAsync()
-        {
-            var rows = await _db.QueryAsync(Ds, "SELECT name FROM tags ORDER BY id", new());
-            return string.Join(",", rows.Select(r => r["name"]));
         }
 
         #region 読み込み・保存
@@ -90,15 +85,27 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Tag
             await field.RemoveTagAsync("展示会");
             Assert.That(field.Tags, Is.EqualTo(new[] { "セミナー" }));
             Assert.That(field.IsModified, Is.True);
-            Assert.That(await LinksAsync(), Does.Contain("B:展示会"), "保存までは DB は変わらない");
+            Assert.That(client.SubmitCalls, Is.Empty, "足し外しでは何も書かない");
 
             Assert.That(await module.SubmitAsync(), Is.True, string.Join(" | ", client.Logger.ErrorList));
+            Assert.That(client.SubmitCalls, Has.Count.EqualTo(1), "レコードの保存 1 回 (1 つのトランザクション)");
             Assert.That(await LinksAsync(), Is.EqualTo("A:展示会 A:DXPO B:セミナー C:セミナー"));
-            Assert.That(await MasterAsync(), Is.EqualTo("展示会,DXPO,セミナー,100%達成"), "マスタは増えない");
         }
 
         [Test]
-        public async Task 大文字小文字違いはマスタの表記に寄せ重ねない()
+        public async Task 保存せずにやめれば何も残らない()
+        {
+            var client = Client();
+            var module = await client.OpenAsync("Contact", "4");
+            await Tags(module).AddTagAsync("打ち間違い");
+            Assert.That(client.SubmitCalls, Is.Empty);
+            Assert.That(await LinksAsync(), Is.EqualTo("A:展示会 A:DXPO B:展示会 C:セミナー"));
+            var other = Tags(await client.OpenAsync("Contact", "3"));
+            Assert.That(await other.GetCandidatesAsync("打ち"), Is.Empty, "候補にも出ない");
+        }
+
+        [Test]
+        public async Task 大文字小文字違いは使われている表記に寄せ重ねない()
         {
             var client = Client();
             var module = await client.OpenAsync("Contact", "2");
@@ -108,27 +115,23 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Tag
             Assert.That(field.Tags, Is.EqualTo(new[] { "展示会", "DXPO" }));
             Assert.That(field.HasTag("Dxpo"), Is.True);
             Assert.That(await module.SubmitAsync(), Is.True);
-            Assert.That(await MasterAsync(), Is.EqualTo("展示会,DXPO,セミナー,100%達成"));
+            Assert.That(await LinksAsync(), Is.EqualTo("A:展示会 A:DXPO B:展示会 B:DXPO C:セミナー"));
         }
 
         [Test]
-        public async Task 新しいタグは足したときにマスタに作りタグ付けは保存で書く()
+        public async Task 新しいタグは保存で書き候補に出る()
         {
             var client = Client();
             var module = await client.OpenAsync("Contact", "4");
-            var field = Tags(module);
-            await field.AddTagAsync("新規A");
-            Assert.That(await MasterAsync(), Is.EqualTo("展示会,DXPO,セミナー,100%達成,新規A"), "マスタは足したとき");
-            Assert.That(await LinksAsync(), Does.Not.Contain("D:"), "タグ付けは保存まで書かない");
-            Assert.That(await field.GetCandidatesAsync(), Does.Contain("新規A"), "候補にも入る");
-
+            await Tags(module).AddTagAsync("新規A");
             Assert.That(await module.SubmitAsync(), Is.True, string.Join(" | ", client.Logger.ErrorList));
             Assert.That(await LinksAsync(), Does.Contain("D:新規A"));
             Assert.That(Tags(await client.OpenAsync("Contact", "4")).Tags, Is.EqualTo(new[] { "新規A" }));
+            Assert.That(await Tags(await client.OpenAsync("Contact", "3")).GetCandidatesAsync("新規"), Is.EqualTo(new[] { "新規A" }));
         }
 
         [Test]
-        public async Task 同じ新しいタグを複数のレコードに足してもマスタは1行()
+        public async Task 同じ新しいタグを複数のレコードに足して保存できる()
         {
             //取り込み・一括でタグを付ける画面: 何人もに同じ新しいタグを足して保存する
             var client = Client();
@@ -138,25 +141,11 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Tag
             await Tags(d).AddTagAsync("新規");
             Assert.That(await c.SubmitAsync(), Is.True, string.Join(" | ", client.Logger.ErrorList));
             Assert.That(await d.SubmitAsync(), Is.True, string.Join(" | ", client.Logger.ErrorList));
-            Assert.That(await MasterAsync(), Is.EqualTo("展示会,DXPO,セミナー,100%達成,新規"));
             Assert.That(await LinksAsync(), Does.Contain("C:セミナー C:新規 D:新規"));
         }
 
         [Test]
-        public async Task 別の人が先に同じ名前のタグを作っていればそれを使う()
-        {
-            var client = Client();
-            var module = await client.OpenAsync("Contact", "4");
-            var field = Tags(module);
-            await field.GetCandidatesAsync();   //候補を読んだ後に
-            await _db.ExecuteAsync(Ds, "INSERT INTO tags (name) VALUES ('後から')", new());   //別の人が作った
-            await field.AddTagAsync("後から");
-            Assert.That(await module.SubmitAsync(), Is.True, string.Join(" | ", client.Logger.ErrorList));
-            Assert.That(await MasterAsync(), Is.EqualTo("展示会,DXPO,セミナー,100%達成,後から"));
-        }
-
-        [Test]
-        public async Task AllowNewTagsがfalseならマスタに無いタグは入らない()
+        public async Task AllowNewTagsがfalseなら候補に無いタグは入らない()
         {
             _design = TagTestDesigns.Create(e => e.AllowNewTags = false);
             var client = Client();
@@ -167,9 +156,26 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Tag
             Assert.That(field.IsValid, Is.False);
             Assert.That(field.ErrorText, Does.Contain("新規"));
 
-            await field.AddTagAsync("展示会");
-            Assert.That(field.Tags, Is.EqualTo(new[] { "展示会" }));
+            await field.AddTagAsync("dxpo");
+            Assert.That(field.Tags, Is.EqualTo(new[] { "DXPO" }));
             Assert.That(field.IsValid, Is.True, "足せたらエラーは消える");
+        }
+
+        [Test]
+        public async Task 決まったタグだけの設定()
+        {
+            _design = TagTestDesigns.Create(e =>
+            {
+                e.CandidateSource = TagCandidateSource.Values;
+                e.CandidateValues = "高\n中\n低";
+                e.AllowNewTags = false;
+            });
+            var client = Client();
+            var module = await client.OpenAsync("Contact", "4");
+            await Tags(module).AddTagAsync("中, 展示会");
+            Assert.That(Tags(module).Tags, Is.EqualTo(new[] { "中" }), "使われているタグでも、決まったタグでなければ入らない");
+            Assert.That(await module.SubmitAsync(), Is.True);
+            Assert.That(await LinksAsync(), Does.Contain("D:中"));
         }
 
         [Test]
@@ -184,45 +190,19 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Tag
         }
 
         [Test]
-        public async Task レコードを消せばタグ付け行も消えマスタは残る()
+        public async Task レコードを消せばタグ付け行も消える()
         {
             var io = CreateIO();
             var results = await io.SubmitWithTransactionAsync([new ModuleSubmitData { ModuleName = "Contact", Id = "1", Delete = { new() { Id = "1", ModuleName = "Contact" } } }]);
             Assert.That(results.Select(e => e.ExceptionMessage).Where(e => !string.IsNullOrEmpty(e)), Is.Empty);
             Assert.That(await LinksAsync(), Is.EqualTo("B:展示会 C:セミナー"));
-            Assert.That(await MasterAsync(), Is.EqualTo("展示会,DXPO,セミナー,100%達成"));
         }
 
         [Test]
-        public async Task 使われているタグはマスタから消せず使われていなければ消せる()
+        public void 同じレコードに大文字小文字違いの同じタグは一意インデックスで入らない()
         {
-            //このテストの DB は外部キーを強制している (Foreign Keys=True)。上の削除・保存のテストはその下で通っている
-            var io = CreateIO();
-            var inUse = await io.SubmitWithTransactionAsync([new ModuleSubmitData { ModuleName = "Tag", Id = "1", Delete = { new() { Id = "1", ModuleName = "Tag" } } }]);
-            Assert.That(inUse.Any(e => !string.IsNullOrEmpty(e.ExceptionMessage)), Is.True, "展示会は A と B に付いている");
-            var unused = await CreateIO().SubmitWithTransactionAsync([new ModuleSubmitData { ModuleName = "Tag", Id = "4", Delete = { new() { Id = "4", ModuleName = "Tag" } } }]);
-            Assert.That(unused.Select(e => e.ExceptionMessage).Where(e => !string.IsNullOrEmpty(e)), Is.Empty);
-            Assert.That(await MasterAsync(), Is.EqualTo("展示会,DXPO,セミナー"));
-        }
-
-        [Test]
-        public async Task マスタの照合が大文字小文字を区別するDBでも既存のタグを引く()
-        {
-            //マスタの name を大文字小文字を区別する列に作り直す (PostgreSQL・既定の SQLite と同じ)。候補は 1 行だけ読む
-            await _db.ExecuteAsync(Ds, "PRAGMA foreign_keys = OFF", new());
-            await _db.ExecuteAsync(Ds, "CREATE TABLE tags2 (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL)", new());
-            await _db.ExecuteAsync(Ds, "INSERT INTO tags2 (id, name) SELECT id, name FROM tags", new());
-            await _db.ExecuteAsync(Ds, "DROP TABLE tags", new());
-            await _db.ExecuteAsync(Ds, "ALTER TABLE tags2 RENAME TO tags", new());
-            DbAccessor.ClearTableDefinitionCache();
-            _design = TagTestDesigns.Create();
-
-            var client = Client();
-            var module = await client.OpenAsync("Contact", "4");
-            await Tags(module).AddTagAsync("dxpo");
-            Assert.That(Tags(module).Tags, Is.EqualTo(new[] { "DXPO" }), "マスタと手元で大文字小文字を区別せずに比べる");
-            Assert.That(await module.SubmitAsync(), Is.True, string.Join(" | ", client.Logger.ErrorList));
-            Assert.That(await MasterAsync(), Is.EqualTo("展示会,DXPO,セミナー,100%達成"), "重複を作らない");
+            //フィールドは同じレコードの中で重ねない。一意インデックスはその歯止め (スクリプトの直接の書き込みなど)
+            Assert.ThrowsAsync<SqliteException>(async () => await _db.ExecuteAsync(Ds, "INSERT INTO contact_tags (owner_id, name) VALUES (1, 'dxpo')", new()));
         }
 
         [Test]
@@ -230,7 +210,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Tag
         {
             //ModuleSearcher で読んだレコードと同じ: レイアウトなしで作る (本体は子の一覧を読まない)
             var client = Client();
-            var page = await CreateIO().GetListAsync(new SearchCondition { ModuleName = "Contact", Condition = MultiMatchCondition.And(new FieldValueMatchCondition { SearchTargetVariable = "Id.Value", Comparison = MatchComparison.Equal, Value = new Codeer.LowCode.Blazor.Repository.StringValue { Value = "1" } }) }, 0);
+            var page = await CreateIO().GetListAsync(new SearchCondition { ModuleName = "Contact", Condition = MultiMatchCondition.And(new FieldValueMatchCondition { SearchTargetVariable = "Id.Value", Comparison = MatchComparison.Equal, Value = new StringValue { Value = "1" } }) }, 0);
             var module = await ModuleCreationService.CreateModuleAsync(client.Core, page.Items.Single(), ModuleLayoutType.None);
             var field = Tags(module);
             Assert.That(field.Tags, Is.Empty, "まだ読んでいない");
@@ -253,6 +233,40 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Tag
             Assert.That(await Tags(module).ValidateInput(), Is.False);
             await Tags(module).AddTagAsync("展示会");
             Assert.That(await Tags(module).ValidateInput(), Is.True);
+        }
+
+        #endregion
+
+        #region 候補
+
+        [Test]
+        public async Task 候補はよく使われている順で打った文字を含むもの()
+        {
+            var client = Client();
+            var field = Tags(await client.OpenAsync("Contact", "4"));
+            Assert.That(await field.GetCandidatesAsync(""), Is.EqualTo(new[] { "展示会", "DXPO", "セミナー" }), "件数の多い順、同じ件数は名前順");
+            Assert.That(await field.GetCandidatesAsync("示"), Is.EqualTo(new[] { "展示会" }));
+            Assert.That(await field.GetCandidatesAsync("dx"), Is.EqualTo(new[] { "DXPO" }));
+            Assert.That(client.AggregateCalls, Has.Count.EqualTo(3), "1 回の問い合わせで 1 回分");
+            Assert.That(client.ListCalls.SelectMany(e => e).Any(e => e.Condition.ModuleName == "ContactTags" && e.Condition.Condition is MultiMatchCondition { Children.Count: 0 }), Is.False, "全件は読まない");
+        }
+
+        [Test]
+        public async Task 候補の打った文字の記号は文字のまま()
+        {
+            await _db.ExecuteAsync(Ds, "INSERT INTO contact_tags (owner_id, name) VALUES (4, '100%達成'), (4, '100X達成'), (4, 'a_b'), (4, 'aXb')", new());
+            var field = Tags(await Client().OpenAsync("Contact", "3"));
+            Assert.That(await field.GetCandidatesAsync("100%"), Is.EqualTo(new[] { "100%達成" }));
+            Assert.That(await field.GetCandidatesAsync("a_b"), Is.EqualTo(new[] { "a_b" }));
+        }
+
+        [Test]
+        public async Task 入力欄の候補は指定したTagFieldのタグ付けから()
+        {
+            var client = Client();
+            var picker = (TagInputField)(await client.CreateNewAsync("Picker")).GetField("Pick")!;
+            Assert.That(await picker.GetCandidatesAsync(""), Is.EqualTo(new[] { "展示会", "DXPO", "セミナー" }));
+            Assert.That(client.AggregateCalls.Single().Single().ModuleName, Is.EqualTo("ContactTags"));
         }
 
         #endregion
@@ -285,15 +299,42 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Tag
         }
 
         [Test]
+        public async Task すべて含むは3つ以上でもSQLで判定する()
+        {
+            await _db.ExecuteAsync(Ds, "INSERT INTO contact_tags (owner_id, name) VALUES (1, 'VIP'), (2, 'DXPO')", new());
+            Assert.That(await NamesAsync(f => f.SetSearchTagsAsync(["展示会", "DXPO"])), Is.EqualTo(new[] { "A", "B" }));
+            Assert.That(await NamesAsync(f => f.SetSearchTagsAsync(["展示会", "DXPO", "VIP"]), f =>
+            {
+                var value = (FieldValueMatchCondition)((FieldMatchCondition)f.GetMatchCondition()!).Children.Single();
+                Assert.That(value.Comparison, Is.EqualTo(MatchComparison.ContainsAll));
+                Assert.That(value.SearchTargetVariable, Is.EqualTo("Tags.Name.Value"));
+                Assert.That(((ListValue<string>)value.Value!).Value, Is.EqualTo(new[] { "展示会", "DXPO", "VIP" }), "条件はタグ名 (レコードの Id の一覧ではない)");
+            }), Is.EqualTo(new[] { "A" }));
+        }
+
+        [Test]
+        public async Task 条件を作った後に付いたタグも検索に出る()
+        {
+            var client = Client();
+            var search = Tags(await client.CreateNewAsync("Contact", ModuleLayoutType.Search));
+            await search.SetSearchTagsAsync(["展示会", "DXPO"]);
+            var condition = search.GetMatchCondition()!;
+            await _db.ExecuteAsync(Ds, "INSERT INTO contact_tags (owner_id, name) VALUES (2, 'DXPO')", new());
+            var page = await CreateIO().GetListAsync(new SearchCondition { ModuleName = "Contact", Condition = MultiMatchCondition.And(condition) }, 0);
+            Assert.That(page.Items.Select(e => ((TextFieldData)e.Fields["Name"]).Value).OrderBy(e => e), Is.EqualTo(new[] { "A", "B" }));
+        }
+
+        [Test]
         public async Task タグは丸ごと一致で大文字小文字は区別しない()
         {
             Assert.That(await NamesAsync(f => f.SetSearchTagsAsync(["展示"])), Is.Empty, "部分一致はしない");
             Assert.That(await NamesAsync(f => f.SetSearchTagsAsync(["dxpo"])), Is.EqualTo(new[] { "A" }));
+            Assert.That(await NamesAsync(f => f.SetSearchTagsAsync(["dxpo", "展示会"])), Is.EqualTo(new[] { "A" }));
             Assert.That(await NamesAsync(f => f.SetSearchTagsAsync(["100%達成"])), Is.Empty, "% は文字のまま (誰にも付いていない)");
         }
 
         [Test]
-        public async Task マスタに無いタグはどのレコードにも合わない()
+        public async Task 付いていないタグはどのレコードにも合わない()
         {
             Assert.That(await NamesAsync(f => f.SetSearchTagsAsync(["無いタグ"])), Is.Empty);
             Assert.That(await NamesAsync(f => f.SetSearchTagsAsync(["展示会", "無いタグ"])), Is.Empty, "すべて含む");
@@ -302,25 +343,6 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Tag
                 await f.SetSearchTagsAsync(["展示会", "無いタグ"]);
                 await f.SetSearchMatchAsync(TagSearchMatch.Any);
             }), Is.EqualTo(new[] { "A", "B" }), "いずれか: 無いタグは足しにならない");
-        }
-
-        [Test]
-        public async Task 部分一致の設定では打った文字を含むタグ全部が対象()
-        {
-            //タグ: 展示会 / DXPO / セミナー / 100%達成 + 展示会2026 (E に付ける)。A = 展示会, DXPO / B = 展示会 / E = 展示会2026, DXPO
-            await _db.ExecuteAsync(Ds, "INSERT INTO tags (name) VALUES ('展示会2026')", new());
-            await _db.ExecuteAsync(Ds, "INSERT INTO contacts (name) VALUES ('E')", new());
-            await _db.ExecuteAsync(Ds, "INSERT INTO contact_tags (contact_id, tag_id) VALUES (5, 5), (5, 2)", new());
-            _design = TagTestDesigns.Create(e => e.PartialMatch = true);
-
-            Assert.That(await NamesAsync(f => f.SetSearchTagsAsync(["展示"])), Is.EqualTo(new[] { "A", "B", "E" }), "展示会 と 展示会2026 のどちらか");
-            Assert.That(await NamesAsync(f => f.SetSearchTagsAsync(["展示", "dxpo"])), Is.EqualTo(new[] { "A", "E" }), "すべて含む: 展示会系のどれか AND DXPO");
-            Assert.That(await NamesAsync(async f =>
-            {
-                await f.SetSearchTagsAsync(["2026", "セミナー"]);
-                await f.SetSearchMatchAsync(TagSearchMatch.Any);
-            }), Is.EqualTo(new[] { "C", "E" }));
-            Assert.That(await NamesAsync(f => f.SetSearchTagsAsync(["展示", "無い"])), Is.Empty, "どれにも合わない文字があれば すべて含む は 0 件");
         }
 
         [Test]
@@ -336,9 +358,11 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Tag
             var condition = (FieldMatchCondition)source.GetMatchCondition()!;
 
             var restored = Tags(await client.CreateNewAsync("Contact", ModuleLayoutType.Search));
+            var calls = client.ListCalls.Count + client.AggregateCalls.Count;
             await ((ISearchableField)restored).SetMatchConditionAsync(condition);
             Assert.That(restored.SearchTags, Is.EqualTo(new[] { "展示会", "DXPO" }));
             Assert.That(restored.SearchMatch, Is.EqualTo(TagSearchMatch.All));
+            Assert.That(client.ListCalls.Count + client.AggregateCalls.Count, Is.EqualTo(calls), "復元は問い合わせない (条件にタグ名がある)");
 
             await source.SetSearchMatchAsync(TagSearchMatch.Any);
             await ((ISearchableField)restored).SetMatchConditionAsync((FieldMatchCondition)source.GetMatchCondition()!);

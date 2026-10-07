@@ -7,47 +7,39 @@ using Codeer.LowCode.Blazor.Repository;
 using Codeer.LowCode.Blazor.Repository.Data;
 using Codeer.LowCode.Blazor.Repository.Design;
 using Codeer.LowCode.Blazor.Repository.Match;
-using Codeer.LowCode.Blazor.RequestInterfaces;
 using Codeer.LowCode.Blazor.Script;
 using Codeer.LowCode.Blazor.Utils;
 
 namespace Codeer.LowCode.Blazor.Extras.Fields
 {
     /// <summary>
-    /// タグのフィールド。結び付きあり (検索条件 = タグ付けモジュール) なら本体の一覧と同じくタグ付け行を子として読み・保存し、
-    /// タグ 1 つ = 行 1 つ (リンクの表示文字列がタグ名)。マスタに無いタグは、足したときにマスタに行を作る
-    /// (レコードの保存に載せると、同じ新しいタグを足した複数のレコードを一緒に保存したときにマスタの行が重なるため)。
-    /// 結び付きなしならタグ名をメモリに持つだけ (保存しない。候補はマスタ。マスタには書かない)。
-    /// タグの同一判定は大文字小文字を区別しない (先に入っていた表記を残す)。
+    /// タグのフィールド。タグ付けモジュールの行を本体の一覧と同じく子として読み・保存する (タグ 1 つ = 行 1 つ、行はタグ名を持つ)。
+    /// 何も書かずに足し外しし、レコードの保存で一緒に保存する (1 つのトランザクション・レコードの書き込み権限)。
+    /// タグの同一判定は大文字小文字を区別しない (同じレコードの中は先の表記を残す。新しく足すタグは、既に使われている表記があればそれに寄せる)。
     /// </summary>
     public class TagField : ListField, ISearchableField
     {
-        //本体が保存前の行に振る仮 Id の形 (保存で実 Id に置き換わる)
-        const string TemporaryIdPrefix = "@temporary:";
-
         static readonly char[] _separators = [',', '、', '，'];
         static readonly StringComparer _tagComparer = StringComparer.OrdinalIgnoreCase;
 
-        readonly List<string> _unboundTags = new();
-        bool _unboundModified;
         //このレコードのタグ付け行を読んだか (詳細・新規・一覧の行のまとめ読み・LoadTags)
         bool _rowsLoaded;
         TagBinding? _binding;
         bool _bindingResolved;
-        Task<List<TagEntry>>? _master;
+        readonly TagCandidateProvider _candidates;
 
         List<string> _searchTags = new();
         TagSearchMatch? _searchMatch;
         MatchConditionBase? _searchCondition;
 
-        public TagField(TagFieldDesign design) : base(design) { }
+        public TagField(TagFieldDesign design) : base(design)
+        {
+            _candidates = TagCandidateProvider.Create(() => Services, design, () => Binding);
+        }
 
+        //本体側の口 C (ListField の Design・検索まわりを virtual に) ができるまで、同名で隠す。口ができたら override にする
         [ScriptHide]
         public new TagFieldDesign Design => (TagFieldDesign)base.Design;
-
-        /// <summary>タグ付けモジュールと結び付いているか (false = 保存しない入力欄)。</summary>
-        [ScriptHide]
-        public bool IsBound => !string.IsNullOrEmpty(Design.SearchCondition?.ModuleName);
 
         internal TagBinding? Binding
         {
@@ -66,7 +58,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         internal Task? ListLoad { get; private set; }
 
         /// <summary>付いているタグ (付けた順)。</summary>
-        public List<string> Tags => IsBound ? Rows.Select(TagNameOf).Where(e => e.Length > 0).ToList() : _unboundTags.ToList();
+        public List<string> Tags => Rows.Select(TagNameOf).Where(e => e.Length > 0).ToList();
 
         /// <summary>検索で選んだタグ。</summary>
         public List<string> SearchTags => _searchTags.ToList();
@@ -77,14 +69,14 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         /// <summary>そのタグが付いているか (大文字小文字は区別しない)。</summary>
         public bool HasTag(string tag) => Tags.Contains(tag.Trim(), _tagComparer);
 
-        /// <summary>タグを足す (同じタグは重ねない。区切りを含めば分けて足す)。マスタに無いタグは AllowNewTags なら保存のときマスタに足す。</summary>
+        /// <summary>タグを足す (同じタグは重ねない。区切りを含めば分けて足す)。保存はレコードの保存で。</summary>
         [ScriptName("AddTag")]
         public async Task AddTagAsync(string tag)
         {
             await LoadTagsAsync();
             var changed = false;
             foreach (var name in Normalize(new[] { tag })) changed |= await AddOneAsync(name);
-            if (changed) await AfterTagsChangedAsync();
+            if (changed) AfterTagsChanged();
         }
 
         /// <summary>タグを外す。</summary>
@@ -92,7 +84,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         public async Task RemoveTagAsync(string tag)
         {
             await LoadTagsAsync();
-            if (await RemoveOneAsync(tag.Trim())) await AfterTagsChangedAsync();
+            if (await RemoveOneAsync(tag.Trim())) AfterTagsChanged();
         }
 
         /// <summary>
@@ -102,7 +94,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         [ScriptName("LoadTags")]
         public async Task LoadTagsAsync()
         {
-            if (_rowsLoaded || !IsBound || Binding == null) return;
+            if (_rowsLoaded || Binding == null) return;
             _rowsLoaded = true;
             if (Module.IsNewData) return;
             AllowLoad = true;
@@ -118,72 +110,28 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             var changed = false;
             foreach (var current in Tags.Where(e => !wanted.Contains(e, _tagComparer)).ToList()) changed |= await RemoveOneAsync(current);
             foreach (var name in wanted) changed |= await AddOneAsync(name);
-            if (changed) await AfterTagsChangedAsync();
+            if (changed) AfterTagsChanged();
         }
 
         async Task<bool> AddOneAsync(string name)
         {
-            if (name.Length == 0 || HasTag(name)) return false;
-            if (!IsBound)
-            {
-                //マスタに無いタグも入れてよいなら問い合わせない (読んである候補があれば表記だけ寄せる)。一覧の行の表示用にたくさん並ぶため
-                var known = Design.AllowNewTags ? FindLoadedTag(name) : await FindTagAsync(name);
-                if (known == null && !Design.AllowNewTags) return RejectUnknown(name);
-                _unboundTags.Add(known?.Name ?? name);
-                _unboundModified = true;
-                return true;
-            }
-
             var binding = Binding;
-            if (binding == null) return false;
-            var entry = await FindTagAsync(name);
-            if (entry == null)
-            {
-                if (!Design.AllowNewTags) return RejectUnknown(name);
-                entry = await CreateTagAsync(binding, name);
-                if (entry == null) return false;
-            }
+            if (binding == null || name.Length == 0 || HasTag(name)) return false;
+            //既に使われている表記に寄せる (無ければ打ったまま)。決まったタグだけなら、候補に無いタグは足さない
+            var spelling = await _candidates.FindSpellingAsync(name, query: true);
+            if (spelling == null && !Design.AllowNewTags) return RejectUnknown(name);
             var row = new ModuleData { Name = binding.LinkModule };
-            row.Fields[binding.TagLinkField] = new LinkFieldData { Value = entry.Id, DisplayText = entry.Name };
+            row.Fields[binding.TagNameField] = new TextFieldData { Value = spelling ?? name };
             await AddRowAsync(row);
             return true;
         }
 
         async Task<bool> RemoveOneAsync(string name)
         {
-            if (!IsBound)
-            {
-                if (_unboundTags.RemoveAll(e => _tagComparer.Equals(e, name)) == 0) return false;
-                _unboundModified = true;
-                return true;
-            }
             var row = Rows.FirstOrDefault(e => _tagComparer.Equals(TagNameOf(e), name));
             if (row == null) return false;
             await DeleteRowAsync(row);
             return true;
-        }
-
-        //マスタに無いタグ: マスタに行を作る (ほかのレコード・ほかの人が同時に作っていたら、そちらを使う)
-        async Task<TagEntry?> CreateTagAsync(TagBinding binding, string name)
-        {
-            if (Services.AppInfoService.IsDesignMode) return null;
-            var id = TemporaryIdPrefix + Guid.NewGuid();
-            var data = new ModuleData { Name = binding.MasterModule };
-            data.Fields[SystemFieldNames.Id] = new IdFieldData { Value = id };
-            data.Fields[binding.MasterNameField] = new TextFieldData { Value = name };
-            var result = (await Services.ModuleDataService.SubmitAsync(new List<ModuleSubmitData> { new() { ModuleName = binding.MasterModule, Add = { data } } }))?.FirstOrDefault();
-            if (result != null && string.IsNullOrEmpty(result.ExceptionMessage) && result.TemporaryIdMap.TryGetValue(id, out var realId))
-            {
-                var created = new TagEntry(realId, name);
-                if (_master is { IsCompletedSuccessfully: true }) _master.Result.Add(created);
-                return created;
-            }
-            //一意インデックスで止まった = 先に誰かが作った
-            var existing = await FindTagAsync(name);
-            if (existing != null) return existing;
-            SetError(result?.ExceptionMessage ?? string.Format(Properties.Resources.TagFieldUnknownTagFormat, name));
-            NotifyStateChanged();
-            return null;
         }
 
         bool RejectUnknown(string name)
@@ -193,58 +141,29 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             return false;
         }
 
-        async Task AfterTagsChangedAsync()
+        //変更通知 (OnDataChanged) は本体の一覧が行の追加・削除で出す
+        void AfterTagsChanged()
         {
             ClearError();
-            //結び付きありの変更通知 (OnDataChanged) は本体の一覧が行の追加・削除で出す
-            if (!IsBound) await Module.ExecuteScriptAsync(Design.OnDataChanged);
             NotifyStateChanged();
         }
 
-        string TagNameOf(Module row) => Binding == null ? string.Empty : row.GetField<LinkField>(Binding.TagLinkField)?.DisplayText ?? string.Empty;
-
-        static string IdOf(ModuleData data) => (data.Fields.GetValueOrDefault(SystemFieldNames.Id) as IdFieldData)?.Value ?? string.Empty;
-
-        static string NameOf(ModuleData data, TagBinding binding) => (data.Fields.GetValueOrDefault(binding.MasterNameField) as TextFieldData)?.Value ?? string.Empty;
+        string TagNameOf(Module row) => Binding == null ? string.Empty : row.GetField<TextField>(Binding.TagNameField)?.Value ?? string.Empty;
 
         #region 読み込み・保存
 
         [ScriptHide]
-        public override bool IsModified => IsBound ? base.IsModified : _unboundModified;
-
-        [ScriptHide]
         public override async Task InitializeDataAsync(FieldDataBase? fieldDataBase)
         {
-            _unboundTags.Clear();
-            _unboundModified = false;
-            //結び付きなしは読むものが無い (本体の一覧はモジュール名が空のまま問い合わせてしまう)
-            if (!IsBound) return;
-            //一覧の行: 本体の一覧は行ごとに問い合わせる。それを止め、ページの行をまとめて 1 回で読む
-            var inListRow = ModuleLayoutType == ModuleLayoutType.List && !Services.AppInfoService.IsDesignMode && Binding != null;
+            //結び付きが無い (デザインの不備。デザインチェックが指摘する) なら読まない (本体の一覧はモジュール名が空のまま問い合わせてしまう)
+            if (Binding == null) return;
+            //一覧の行: 本体の一覧は行ごとに問い合わせる。それを止め、ページの行をまとめて 1 回で読む (本体側の口 B ができるまで)
+            var inListRow = ModuleLayoutType == ModuleLayoutType.List && !Services.AppInfoService.IsDesignMode;
             if (inListRow) AllowLoad = false;
             await base.InitializeDataAsync(fieldDataBase);
             //本体の一覧が読むのは詳細だけ (スクリプトの ModuleSearcher で読んだレコードは読まない → LoadTags)
             _rowsLoaded = ModuleLayoutType == ModuleLayoutType.Detail || Module.IsNewData;
             if (inListRow) ListLoad = TagListBatchLoader.Register(this);
-        }
-
-        [ScriptHide]
-        public override FieldDataBase? GetData() => IsBound ? base.GetData() : new ListFieldData();
-
-        [ScriptHide]
-        public override async Task SetDataAsync(FieldDataBase? fieldDataBase)
-        {
-            if (IsBound) await base.SetDataAsync(fieldDataBase);
-        }
-
-        [ScriptHide]
-        public override FieldSubmitData GetSubmitData() => IsBound ? base.GetSubmitData() : new();
-
-        [ScriptHide]
-        public override void AcceptChanges(SubmitAcceptInfo info)
-        {
-            if (IsBound) base.AcceptChanges(info);
-            _unboundModified = false;
         }
 
         [ScriptHide]
@@ -255,7 +174,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
                 SetError(Properties.Resources.InputError);
                 return false;
             }
-            return !IsBound || await base.ValidateInput();
+            return await base.ValidateInput();
         }
 
         /// <summary>一覧の行のまとめ読みの結果を受け取る (TagListBatchLoader から)。</summary>
@@ -280,90 +199,9 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
 
         #endregion
 
-        #region 候補 (マスタ)
-
-        internal sealed record TagEntry(string Id, string Name);
-
-        /// <summary>候補のタグ (マスタ全部、名前順)。最初に呼ばれたときに 1 回だけ読む。</summary>
+        /// <summary>打った文字を含む候補 (よく使われている順。サーバーで絞る)。</summary>
         [ScriptHide]
-        public async Task<List<string>> GetCandidatesAsync() => (await GetMasterAsync()).Select(e => e.Name).ToList();
-
-        Task<List<TagEntry>> GetMasterAsync() => _master ??= ReadMasterAsync();
-
-        async Task<List<TagEntry>> ReadMasterAsync()
-        {
-            var binding = Binding;
-            if (binding == null || Services.AppInfoService.IsDesignMode || !CanReadMaster(binding)) return new();
-            //マスタはタグの一覧 (数十〜数百行) なので全部読む。行数の上限は設けない (石川さん 10-06)
-            return await QueryMasterAsync(binding, null, null);
-        }
-
-        //読んである候補からだけ引く (問い合わせない)
-        TagEntry? FindLoadedTag(string name)
-            => _master is { IsCompletedSuccessfully: true } ? _master.Result.FirstOrDefault(e => _tagComparer.Equals(e.Name, name)) : null;
-
-        //名前でタグを引く: 読んである候補 → マスタに直接 (候補はまだ読んでいないことも、行数で切れていることもある。候補のためだけに大きく読まない)。
-        //DB の = は照合順序しだいで大文字小文字を区別する (SQLite・PostgreSQL) ので、見つからなければ部分一致で引いて手元で比べる
-        async Task<TagEntry?> FindTagAsync(string name)
-        {
-            var hit = FindLoadedTag(name);
-            if (hit != null) return hit;
-            var binding = Binding;
-            if (binding == null || Services.AppInfoService.IsDesignMode || !CanReadMaster(binding)) return null;
-            foreach (var comparison in new[] { MatchComparison.Equal, MatchComparison.Like })
-            {
-                var condition = new FieldValueMatchCondition { SearchTargetVariable = $"{binding.MasterNameField}.Value", Comparison = comparison, Value = new StringValue { Value = name } };
-                hit = (await QueryMasterAsync(binding, condition, 1000)).FirstOrDefault(e => _tagComparer.Equals(e.Name, name));
-                if (hit != null) return hit;
-            }
-            return null;
-        }
-
-        //Id でタグを引く (検索条件の復元)。読んである候補に無いものだけマスタに問い合わせる
-        async Task<List<TagEntry>> FindTagsByIdAsync(List<string> ids)
-        {
-            var master = await GetMasterAsync();
-            var found = master.Where(e => ids.Contains(e.Id)).ToList();
-            var missing = ids.Where(id => found.All(e => e.Id != id)).ToList();
-            var binding = Binding;
-            if (missing.Count > 0 && binding != null && !Services.AppInfoService.IsDesignMode && CanReadMaster(binding))
-            {
-                var condition = new FieldValueMatchCondition { SearchTargetVariable = $"{SystemFieldNames.Id}.Value", Comparison = MatchComparison.In, Value = MultiTypeValue.Create(missing) };
-                found.AddRange(await QueryMasterAsync(binding, condition, missing.Count));
-            }
-            return ids.Select(id => found.FirstOrDefault(e => e.Id == id)).OfType<TagEntry>().ToList();
-        }
-
-        bool CanReadMaster(TagBinding binding)
-            => Services.AppInfoService.GetDesignData().Modules.Find(binding.MasterModule)?.HasUserReadPermission(Services) == true;
-
-        //limit = null は全部 (1000 行ずつ最後のページまで読む)
-        async Task<List<TagEntry>> QueryMasterAsync(TagBinding binding, MatchConditionBase? condition, int? limit)
-        {
-            var search = new SearchCondition
-            {
-                ModuleName = binding.MasterModule,
-                Condition = condition == null ? new MultiMatchCondition() : MultiMatchCondition.And(condition),
-                SortConditions = new List<SortCondition> { new() { Variable = $"{binding.MasterNameField}.Value" } },
-                SelectFields = new List<string> { SystemFieldNames.Id, binding.MasterNameField },
-            };
-            List<ModuleData> rows;
-            if (limit == null)
-            {
-                rows = await TagContracts.ReadAllAsync((c, page) => TagListBatchLoader.ReadPageAsync(Services, c, page), search);
-            }
-            else
-            {
-                search.LimitCount = limit;
-                rows = (await TagListBatchLoader.ReadPageAsync(Services, search, 0))?.Items ?? new();
-            }
-            return rows
-                .Select(e => new TagEntry(IdOf(e), NameOf(e, binding)))
-                .Where(e => e.Id.Length > 0 && e.Name.Length > 0)
-                .ToList();
-        }
-
-        #endregion
+        public Task<List<string>> GetCandidatesAsync(string text) => _candidates.SuggestAsync(text);
 
         #region 検索
 
@@ -371,7 +209,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         public async Task SetSearchTagsAsync(List<string> tags)
         {
             _searchTags = Normalize(tags);
-            await RebuildSearchConditionAsync();
+            RebuildSearchCondition();
             await AfterSearchParameterChangedAsync();
         }
 
@@ -379,27 +217,28 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         public async Task SetSearchMatchAsync(TagSearchMatch match)
         {
             _searchMatch = match;
-            await RebuildSearchConditionAsync();
+            RebuildSearchCondition();
             await AfterSearchParameterChangedAsync();
         }
 
         /// <summary>
-        /// 選んだタグの条件 (タグを選んでいなければ絞らない)。いずれか = 子のパスでタグ Id の In。
-        /// すべて = それに加えて、全部のタグを持つレコードの Id の In (子は 1 回しか結合されないので、AND を子のパスでは書けない)。
-        /// タグ Id は条件に残す (画面に戻ったとき条件からタグを復元する)。マスタに無いタグはどのレコードにも合わない。
+        /// 選んだタグの条件 (タグを選んでいなければ絞らない)。子のパスのタグ名に対して、いずれか = In、すべて = ContainsAll (本体が SQL で判定する)。
+        /// 条件にはタグ名が入る (画面に戻ったとき・URL から、条件からタグを復元する)。
+        /// 本体側の口 C (ListField の検索まわりを virtual に) ができるまで、ListField の同名のメソッドを隠す。口ができたら override にする。
         /// </summary>
         public new MatchConditionBase? GetMatchCondition() => _searchCondition;
 
         public new async Task SetMatchConditionAsync(FieldMatchCondition condition)
         {
             var binding = Binding;
-            var tagIds = binding == null ? new List<string>() : condition.Children.OfType<FieldValueMatchCondition>()
+            var mine = binding == null ? new List<FieldValueMatchCondition>() : condition.Children.OfType<FieldValueMatchCondition>()
                 .Where(e => e.SearchTargetVariable == TagPathVariable(binding))
-                .SelectMany(e => (e.Value as ListValue<string>)?.Value ?? new List<string>())
                 .ToList();
-            _searchTags = (await FindTagsByIdAsync(tagIds)).Select(e => e.Name).ToList();
-            _searchMatch = condition.IsOrMatch ? TagSearchMatch.Any : TagSearchMatch.All;
-            await RebuildSearchConditionAsync();
+            _searchTags = Normalize(mine.SelectMany(e => (e.Value as ListValue<string>)?.Value ?? new List<string>()));
+            _searchMatch = mine.Any(e => e.Comparison == MatchComparison.ContainsAll) ? TagSearchMatch.All
+                : mine.Count > 0 ? TagSearchMatch.Any
+                : null;
+            RebuildSearchCondition();
             await AfterSearchParameterChangedAsync();
         }
 
@@ -411,71 +250,23 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             await AfterSearchParameterChangedAsync();
         }
 
-        string TagPathVariable(TagBinding binding) => $"{Design.Name}.{binding.TagLinkField}.Value";
+        //親の検索レイアウトに LinkFieldNames で置いたとき (名前が "社員.タグ") も、子のパスは名前の下
+        string TagPathVariable(TagBinding binding) => $"{Design.Name}.{binding.TagNameField}.Value";
 
-        async Task RebuildSearchConditionAsync()
+        void RebuildSearchCondition()
         {
             _searchCondition = null;
             var binding = Binding;
-            if (_searchTags.Count == 0 || binding == null || !binding.IsBound) return;
-
-            //打ったタグごとのタグ Id (部分一致なら、その文字を含むタグ全部)。どれかが 0 件なら「すべて含む」は誰にも合わない
-            var terms = new List<List<string>>();
-            var unknown = false;
-            foreach (var name in _searchTags)
-            {
-                var found = Design.PartialMatch
-                    ? (await FindTagsLikeAsync(binding, name)).Select(e => e.Id).Distinct().ToList()
-                    : (await FindTagAsync(name)) is { } one ? new List<string> { one.Id } : new List<string>();
-                if (found.Count == 0) unknown = true;
-                else terms.Add(found);
-            }
-            var ids = terms.SelectMany(e => e).Distinct().ToList();
-
+            if (_searchTags.Count == 0 || binding == null) return;
             var any = SearchMatch == TagSearchMatch.Any;
             var group = new FieldMatchCondition { FieldName = Design.Name, IsOrMatch = any };
-            group.Children.Add(new FieldValueMatchCondition { SearchTargetVariable = TagPathVariable(binding), Comparison = MatchComparison.In, Value = MultiTypeValue.Create(ids) });
-            if (!any && (unknown || terms.Count > 1))
+            group.Children.Add(new FieldValueMatchCondition
             {
-                var owners = unknown ? new List<string>() : await OwnersHavingAllAsync(binding, terms);
-                //親の検索レイアウトに LinkFieldNames で置いたとき (名前が "社員.タグ") は、レコードの Id も同じパスの下 ("社員.Id.Value")
-                var prefix = Design.Name.Contains('.') ? Design.Name[..(Design.Name.LastIndexOf('.') + 1)] : string.Empty;
-                group.Children.Add(new FieldValueMatchCondition { SearchTargetVariable = prefix + binding.OwnerKeyVariable, Comparison = MatchComparison.In, Value = MultiTypeValue.Create(owners) });
-            }
+                SearchTargetVariable = TagPathVariable(binding),
+                Comparison = any ? MatchComparison.In : MatchComparison.ContainsAll,
+                Value = MultiTypeValue.Create(_searchTags.ToList()),
+            });
             _searchCondition = group;
-        }
-
-        //選んだタグのタグ付け行を読み、打ったタグごとにそのどれかが付いているレコード (= 全部を持つレコード) の OwnerId を返す。
-        //丸ごと一致ならタグごとに 1 つの Id、部分一致ならその文字を含むタグ Id の組
-        async Task<List<string>> OwnersHavingAllAsync(TagBinding binding, List<List<string>> terms)
-        {
-            var all = terms.SelectMany(e => e).Distinct().ToList();
-            var condition = new SearchCondition
-            {
-                ModuleName = binding.LinkModule,
-                Condition = MultiMatchCondition.And(new FieldValueMatchCondition { SearchTargetVariable = $"{binding.TagLinkField}.Value", Comparison = MatchComparison.In, Value = MultiTypeValue.Create(all) }),
-                SortConditions = new List<SortCondition> { new() { Variable = $"{SystemFieldNames.Id}.Value" } },
-                SelectFields = new List<string> { SystemFieldNames.Id, binding.OwnerIdField, binding.TagLinkField },
-            };
-            var rows = await TagContracts.ReadAllAsync((c, page) => TagListBatchLoader.ReadPageAsync(Services, c, page), condition, 5000);
-            return rows
-                .GroupBy(e => TagContracts.OwnerId(e, binding))
-                .Where(g =>
-                {
-                    if (g.Key.Length == 0) return false;
-                    var mine = g.Select(e => (e.Fields.GetValueOrDefault(binding.TagLinkField) as LinkFieldData)?.Value ?? string.Empty).ToHashSet();
-                    return terms.All(term => term.Any(mine.Contains));
-                })
-                .Select(g => g.Key)
-                .ToList();
-        }
-
-        //打った文字を含むタグ (部分一致の検索用。マスタに 1 回問い合わせる。大文字小文字は手元で区別しない)
-        async Task<List<TagEntry>> FindTagsLikeAsync(TagBinding binding, string text)
-        {
-            if (Services.AppInfoService.IsDesignMode || !CanReadMaster(binding)) return new();
-            var condition = new FieldValueMatchCondition { SearchTargetVariable = $"{binding.MasterNameField}.Value", Comparison = MatchComparison.Like, Value = new StringValue { Value = text } };
-            return (await QueryMasterAsync(binding, condition, 1000)).Where(e => e.Name.Contains(text, StringComparison.OrdinalIgnoreCase)).ToList();
         }
 
         async Task AfterSearchParameterChangedAsync()
