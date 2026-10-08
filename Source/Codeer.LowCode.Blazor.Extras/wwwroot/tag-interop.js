@@ -9,9 +9,11 @@ export function initialize(input, dotNetRef, separators) {
   if (!input || handlers.has(input)) return;
   const editor = input.closest('.tag-editor');
   if (!editor) return;
+  // separators は区切りの文字 (TagField.Separators)。キーは 1 文字ずつ完全一致で見る (空のキー名が文字列の includes に合ってしまうのを避ける)
+  const separatorKeys = Array.from(separators);
   const onKeyDown = (e) => {
     if (e.isComposing || e.keyCode === 229) return;
-    const confirm = e.key === 'Enter' || separators.includes(e.key);
+    const confirm = e.key === 'Enter' || separatorKeys.includes(e.key);
     if (confirm || e.key === 'ArrowDown' || e.key === 'ArrowUp') {
       e.preventDefault();
     } else if (e.key !== 'Escape' && !(e.key === 'Backspace' && input.value === '')) {
