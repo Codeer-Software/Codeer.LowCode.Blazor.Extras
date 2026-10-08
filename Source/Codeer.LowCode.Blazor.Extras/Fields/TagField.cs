@@ -195,9 +195,10 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             _loaded = false;
             var data = fieldDataBase as ListFieldData;
             var rows = data?.GetModules() ?? new();
-            //未保存のレコードは DB に行が無いので読まない (後からデータを入れられて保存済みになったら、書く前に読む)
+            //未保存のレコードは DB に行が無い = 手元の行が全部 (読んだのと同じ)。保存しても手元の行がそのまま DB の行になるので、読み直さない
             if (Module.IsNewData)
             {
+                _loaded = true;
                 if (rows.Count > 0) await AddAsNewAsync(data!);
                 return;
             }
@@ -209,10 +210,10 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             if (ModuleLayoutType == ModuleLayoutType.Detail && AllowLoad && !Services.AppInfoService.IsDesignMode && this.IsInLayout()) await LoadAsync();
         }
 
-        //書く前に今のタグ付け行を知る: 読んでいない保存済みのレコードだけ 1 回読む (知らずに足すと同じタグの行が二重になる)
+        //書く前に今のタグ付け行を知る: 読んでいなければ 1 回読む (知らずに足すと同じタグの行が二重になる)。「読んだか」は手元の行が DB の行と同じ集合かの印で、保存は変えない
         async Task EnsureLoadedAsync()
         {
-            if (_loaded || Module.IsNewData || !AllowLoad || Services.AppInfoService.IsDesignMode) return;
+            if (_loaded || !AllowLoad || Services.AppInfoService.IsDesignMode) return;
             await LoadAsync();
         }
 
@@ -246,11 +247,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
 
         [ScriptHide]
         public override void AcceptChanges(SubmitAcceptInfo info)
-        {
-            //保存した行 = DB の行なので、以後は読まなくてよい (新規レコードを保存した後の足し外しも)
-            _modules.AcceptChanges(info);
-            _loaded = true;
-        }
+            => _modules.AcceptChanges(info);
 
         /// <summary>タグ付け行 (意味検索の文章など、レコードのデータからタグ名を読む側のため)。</summary>
         [ScriptHide]
@@ -276,11 +273,6 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         [ScriptHide]
         public override async Task<bool> ValidateInput()
         {
-            if (Design.IsRequired && Tags.Count == 0)
-            {
-                SetError(Properties.Resources.InputError);
-                return false;
-            }
             if (!await _modules.ValidateInput()) return false;
             return await base.ValidateInput();
         }

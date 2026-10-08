@@ -218,6 +218,27 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Tag
         }
 
         [Test]
+        public async Task タグ付け行を読んでいないレコードはほかのフィールドを保存しても読んだ扱いにならない()
+        {
+            //Select 無しで読んだレコードの名前だけ直して保存 → そのあと足す。保存は「読んだか」を変えないので、足す前に 1 回読んで二重にならない
+            var client = Client();
+            var row = (await CreateIO().GetListAsync(new SearchCondition { ModuleName = "Contact" }, 0)).Items.Single(e => NameOf(e) == "A");
+            var module = await ModuleCreationService.CreateModuleAsync(client.Core, row, ModuleLayoutType.None);
+            int TagReads() => client.ListCalls.SelectMany(e => e).Count(e => e.Condition.ModuleName == "ContactTags");
+
+            await module.GetField<TextField>("Name")!.SetValueAsync("A1");
+            Assert.That(await module.SubmitAsync(), Is.True, string.Join(" | ", client.Logger.ErrorList));
+            Assert.That(TagReads(), Is.EqualTo(0), "名前の保存ではタグ付け行を読まない");
+            Assert.That(await LinksAsync(), Does.StartWith("A1:展示会 A1:DXPO B:"), "タグは触っていない");
+
+            await Tags(module).AddTagAsync("展示会, VIP");
+            Assert.That(TagReads(), Is.EqualTo(1), "足す前に 1 回読む (保存を挟んでも)");
+            Assert.That(Tags(module).Tags, Is.EqualTo(new[] { "展示会", "DXPO", "VIP" }));
+            Assert.That(await module.SubmitAsync(), Is.True, string.Join(" | ", client.Logger.ErrorList));
+            Assert.That(await LinksAsync(), Does.StartWith("A1:展示会 A1:DXPO A1:VIP B:"), "二重にならない");
+        }
+
+        [Test]
         public async Task タグ付け行を読んでいないレコードは足し外しの前に1回読み二重にならない()
         {
             //ModuleSearcher で Select(e => e.Tags) を付けずに読んだレコードと同じ: タグ付け行は同梱されない
@@ -235,16 +256,6 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Tag
 
             Assert.That(await module.SubmitAsync(), Is.True, string.Join(" | ", client.Logger.ErrorList));
             Assert.That(await LinksAsync(), Does.StartWith("A:展示会 A:VIP B:"), "二重にならず、一意インデックスのエラーにもならない");
-        }
-
-        [Test]
-        public async Task 必須ならタグが1つも無いと保存できない()
-        {
-            _design = TagTestDesigns.Create(e => e.IsRequired = true);
-            var module = await Client().OpenAsync("Contact", "4");
-            Assert.That(await Tags(module).ValidateInput(), Is.False);
-            await Tags(module).AddTagAsync("展示会");
-            Assert.That(await Tags(module).ValidateInput(), Is.True);
         }
 
         #endregion

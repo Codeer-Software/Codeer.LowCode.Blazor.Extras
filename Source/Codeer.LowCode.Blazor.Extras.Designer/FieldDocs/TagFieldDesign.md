@@ -33,7 +33,6 @@
 | `DisplayName` | string | `""` | 表示名。 |
 | `Placeholder` | string | `""` | タグが 1 つも無いときの入力欄のプレースホルダ。 |
 | `ConfirmOnSpace` | bool | `false` | スペース (全角含む) でもタグを確定する。 |
-| `IsRequired` | bool | `false` | 1 つ以上のタグが必要。 |
 | `IsSimpleSearchParameter` | bool | `false` | 検索欄に一致の選択を出さない。 |
 | `SearchMatchDefaultValue` | enum | `All` | 検索の一致の既定。`All` = すべて含む、`Any` = いずれかを含む。 |
 | `OnDataChanged` | string | `""` | タグが変わったときのスクリプトイベント名。 |

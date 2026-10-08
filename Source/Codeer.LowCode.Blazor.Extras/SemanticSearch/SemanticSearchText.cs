@@ -59,12 +59,8 @@ namespace Codeer.LowCode.Blazor.Extras.SemanticSearch
         /// <summary>1 フィールドの値を人が読む文字列に。空なら null。</summary>
         public static string? FormatValue(DesignData? design, FieldDesignBase fieldDesign, FieldDataBase data)
         {
-            //タグはタグ付け行 (従属レコード) で持つ: タグ名を並べる
-            if (fieldDesign is TagFieldDesign tagField && data is ListFieldData tagRows)
-            {
-                var names = Tag.TagContracts.TagNames(design, tagField, tagRows);
-                return names.Count == 0 ? null : string.Join(", ", names);
-            }
+            //自分で文章にするフィールド (子レコードを持つ TagField など) はフィールドに聞く。本体のデータ型はこちらで受ける
+            if (fieldDesign is ISemanticSearchTextSource source) return source.GetSemanticText(design, data);
             switch (data)
             {
                 case PasswordFieldData:

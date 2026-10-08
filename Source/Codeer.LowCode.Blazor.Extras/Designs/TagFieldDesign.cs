@@ -4,6 +4,7 @@ using Codeer.LowCode.Blazor.DesignLogic.Location;
 using Codeer.LowCode.Blazor.DesignLogic.Refactor;
 using Codeer.LowCode.Blazor.Extras.Components;
 using Codeer.LowCode.Blazor.Extras.Fields;
+using Codeer.LowCode.Blazor.Extras.SemanticSearch;
 using Codeer.LowCode.Blazor.Extras.Tag;
 using Codeer.LowCode.Blazor.OperatingModel;
 using Codeer.LowCode.Blazor.Repository.Data;
@@ -29,7 +30,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
     /// </summary>
     [ToolboxIcon(PackIconMaterialKind = "TagMultiple")]
     [Designer(DisplayName = "$TagField")]
-    public class TagFieldDesign() : FieldDesignBase(typeof(TagFieldDesign).FullName!), IDisplayName, IRequired, IChildRecordsFieldDesign, IOwnedRecordsFieldDesign
+    public class TagFieldDesign() : FieldDesignBase(typeof(TagFieldDesign).FullName!), IDisplayName, IChildRecordsFieldDesign, IOwnedRecordsFieldDesign, ISemanticSearchTextSource
     {
         /// <summary>デザインチェック指摘の番号。DesignCheckCode.Create で発行クラス名と結合して "クラス名:番号" になる。番号は固定(追加は末尾・欠番は再利用しない)。</summary>
         private const int CodeNotLinkModule = 1;
@@ -47,9 +48,6 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         /// <summary>スペースでもタグを確定する。既定は Enter と「,」「、」だけ (日本語のタグにはスペースが入ることがあるため)。</summary>
         [Designer(Index = 5, DisplayName = "$TagFieldConfirmOnSpace")]
         public bool ConfirmOnSpace { get; set; }
-
-        [Designer(Index = 70, DisplayName = "$IsRequired")]
-        public bool IsRequired { get; set; }
 
         /// <summary>検索欄に一致 (すべて含む / いずれかを含む) の選択を出さない (既定の一致で検索する)。</summary>
         [Designer(Index = 0, DisplayName = "$IsSimpleSearchParameter", Category = "$SearchSettings")]
@@ -89,6 +87,14 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
             var condition = GetChildRecordsCondition(modules);
             if (condition == null) yield break;
             yield return new OwnedRecordsDesign { Name = Name, Condition = condition, HoldsAllRecords = true };
+        }
+
+        //意味検索の文章: 付いているタグ名を「, 」で並べる (無ければ null = 文章に入れない)
+        public string? GetSemanticText(DesignData? design, FieldDataBase data)
+        {
+            if (data is not ListFieldData rows) return null;
+            var names = TagContracts.TagNames(design, this, rows);
+            return names.Count == 0 ? null : string.Join(", ", names);
         }
 
         public override string GetWebComponentTypeFullName() => typeof(TagFieldComponent).FullName!;

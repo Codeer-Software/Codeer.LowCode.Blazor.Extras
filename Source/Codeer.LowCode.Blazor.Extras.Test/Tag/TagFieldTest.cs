@@ -119,15 +119,6 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Tag
         }
 
         [Test]
-        public async Task 必須の検証()
-        {
-            var (_, field) = await CreateAsync(e => e.IsRequired = true);
-            Assert.That(await field.ValidateInput(), Is.False);
-            await field.AddTagAsync("展示会");
-            Assert.That(await field.ValidateInput(), Is.True);
-        }
-
-        [Test]
         public void タグの区切りは読点と全角カンマも使え前後の空白と完全一致の重複を落とす()
             => Assert.That(TagField.Normalize([" 展示会 ,DXPO、セミナー，展示会,, ", "dxpo"]), Is.EqualTo(new[] { "展示会", "DXPO", "セミナー", "dxpo" }));
 
