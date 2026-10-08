@@ -209,11 +209,23 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         [ScriptHide]
         public override FieldDataBase? GetData() => new ListFieldData { Children = _modules.Items.Select(e => e.GetData()).ToList() };
 
-        /// <summary>未保存のレコード (コピーなど) に渡されたタグは新しい行として持つ。保存済みのレコードの行は読み込みで持つので、ここでは変えない。</summary>
+        /// <summary>
+        /// 渡されたタグ付け行に差し替える (一覧の行の読み直しなど)。未保存のレコード (コピーなど) に渡された行はこのレコードの行ではないので、タグ名だけを新しい行にする。
+        /// 行のデータが無ければ (同梱されていない) 変えない。
+        /// </summary>
         [ScriptHide]
         public override async Task SetDataAsync(FieldDataBase? fieldDataBase)
         {
-            if (Module.IsNewData && fieldDataBase is ListFieldData data && data.GetModules().Count > 0) await AddAsNewAsync(data);
+            if (fieldDataBase is not ListFieldData data) return;
+            if (Module.IsNewData)
+            {
+                if (data.GetModules().Count > 0) await AddAsNewAsync(data);
+                return;
+            }
+            var modules = new List<Module>();
+            foreach (var row in data.GetModules()) modules.Add(await ModuleCreationService.CreateModuleAsync(Services, row, ModuleLayoutType.None));
+            _modules.ApplyLoaded(modules);
+            NotifyStateChanged();
         }
 
         [ScriptHide]

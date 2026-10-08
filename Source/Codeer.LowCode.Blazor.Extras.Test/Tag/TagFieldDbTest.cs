@@ -435,6 +435,25 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Tag
         }
 
         [Test]
+        public async Task 読み直したデータを入れるとタグ付け行が差し替わる()
+        {
+            //一覧の行の読み直し (本体の SetDataAsync) と同じ: 同梱されたタグ付け行で置き換わる。同梱が無ければ変えない
+            var client = Client();
+            var module = await client.OpenAsync("Contact", "1");
+            await _db.ExecuteAsync(Ds, "DELETE FROM contact_tags WHERE owner_id = 1 AND name = 'DXPO'", new());
+            await _db.ExecuteAsync(Ds, "INSERT INTO contact_tags (owner_id, name) VALUES (1, 'VIP')", new());
+
+            var fresh = (await CreateIO().GetListAsync(ContactsWithTags(), 0)).Items.Single(e => NameOf(e) == "A");
+            await module.SetDataAsync(fresh);
+            Assert.That(Tags(module).Tags, Is.EqualTo(new[] { "展示会", "VIP" }));
+            Assert.That(module.IsModified, Is.False, "読み直しは変更ではない");
+
+            var withoutTags = (await CreateIO().GetListAsync(new SearchCondition { ModuleName = "Contact" }, 0)).Items.Single(e => NameOf(e) == "A");
+            await module.SetDataAsync(withoutTags);
+            Assert.That(Tags(module).Tags, Is.EqualTo(new[] { "展示会", "VIP" }), "タグ付け行が同梱されていなければ変えない");
+        }
+
+        [Test]
         public async Task 詳細の中の一覧の行にもタグが出て行から足し外しして保存できる()
         {
             //会社の詳細に社員の一覧 (列にタグ)。X: p1 = 展示会 / p2 = なし
