@@ -11,6 +11,8 @@ using Codeer.LowCode.Blazor.Repository.Match;
 using Codeer.LowCode.Blazor.SystemSettings;
 using Microsoft.Data.Sqlite;
 
+using Codeer.LowCode.Blazor.Extras.Test.Harness;
+
 namespace Codeer.LowCode.Blazor.Extras.Test.EditHistory
 {
     /// <summary>
@@ -48,8 +50,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.EditHistory
         public async Task TearDown()
         {
             await _db.DisposeAsync();
-            SqliteConnection.ClearAllPools();
-            if (File.Exists(_dbFile)) File.Delete(_dbFile);
+            SqliteTestDb.Delete(_dbFile);
         }
 
         //テンプレートの CustomizedModuleDataIO と同じ結線 (インターセプタを 1 つ登録)

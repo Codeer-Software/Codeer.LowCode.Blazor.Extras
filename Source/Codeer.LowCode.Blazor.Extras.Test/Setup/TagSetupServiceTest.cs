@@ -250,8 +250,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Setup
             finally
             {
                 await db.DisposeAsync();
-                SqliteConnection.ClearAllPools();
-                if (File.Exists(dbFile)) File.Delete(dbFile);
+                SqliteTestDb.Delete(dbFile);
             }
         }
     }

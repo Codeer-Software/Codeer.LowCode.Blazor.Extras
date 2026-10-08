@@ -13,6 +13,8 @@ using Codeer.LowCode.Blazor.Repository.Design;
 using Codeer.LowCode.Blazor.SystemSettings;
 using Microsoft.Data.Sqlite;
 
+using Codeer.LowCode.Blazor.Extras.Test.Harness;
+
 namespace Codeer.LowCode.Blazor.Extras.Test.AI
 {
     /// <summary>
@@ -77,8 +79,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
         [TearDown]
         public void TearDown()
         {
-            SqliteConnection.ClearAllPools();
-            if (File.Exists(_dbFile)) File.Delete(_dbFile);
+            SqliteTestDb.Delete(_dbFile);
         }
 
         SemanticSearchService Service(int? pageSize = null) => new(() => _embedding, () => _design) { ReindexPageSize = pageSize ?? 100 };

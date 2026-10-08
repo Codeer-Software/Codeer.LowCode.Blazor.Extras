@@ -12,6 +12,8 @@ using Codeer.LowCode.Blazor.SystemSettings;
 using Excel.Report.PDF;
 using Microsoft.Data.Sqlite;
 
+using Codeer.LowCode.Blazor.Extras.Test.Harness;
+
 namespace Codeer.LowCode.Blazor.Extras.Test.BulkFile
 {
     /// <summary>
@@ -63,8 +65,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.BulkFile
         public async Task TearDown()
         {
             await _db.DisposeAsync();
-            SqliteConnection.ClearAllPools();
-            if (File.Exists(_dbFile)) File.Delete(_dbFile);
+            SqliteTestDb.Delete(_dbFile);
         }
 
         ModuleDataIO CreateIO(DesignData design) => new(design, this, _db, new TemporaryFileManager(_db, [], new List<IFileStorage>()));

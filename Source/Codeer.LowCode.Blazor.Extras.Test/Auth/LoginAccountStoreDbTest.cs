@@ -7,6 +7,8 @@ using Codeer.LowCode.Blazor.Repository.Design;
 using Codeer.LowCode.Blazor.SystemSettings;
 using Microsoft.Data.Sqlite;
 
+using Codeer.LowCode.Blazor.Extras.Test.Harness;
+
 namespace Codeer.LowCode.Blazor.Extras.Test.Auth
 {
     /// <summary>LoginAccountStore: ユーザーモジュールのデザイン (IdField + LoginAccountContractField の役割 + PasswordHashField) から表・列を引いて照合・解決する。</summary>
@@ -52,8 +54,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Auth
         public async Task TearDown()
         {
             await _db.DisposeAsync();
-            SqliteConnection.ClearAllPools();
-            if (File.Exists(_dbFile)) File.Delete(_dbFile);
+            SqliteTestDb.Delete(_dbFile);
         }
 
         async Task InsertAsync(string userName, string? email, string? name, int? isActive, string? password)

@@ -47,8 +47,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Tag
         public async Task TearDown()
         {
             await _db.DisposeAsync();
-            SqliteConnection.ClearAllPools();
-            if (File.Exists(_dbFile)) File.Delete(_dbFile);
+            SqliteTestDb.Delete(_dbFile);
         }
 
         ModuleDataIO CreateIO() => new(_design, this, _db, new TemporaryFileManager(_db, [], new List<IFileStorage>()));

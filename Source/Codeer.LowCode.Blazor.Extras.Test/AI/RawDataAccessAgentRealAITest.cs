@@ -8,6 +8,8 @@ using Codeer.LowCode.Blazor.Extras.Server.AI.Chat.RawDataAccess;
 using Codeer.LowCode.Blazor.SystemSettings;
 using Microsoft.Extensions.AI;
 
+using Codeer.LowCode.Blazor.Extras.Test.Harness;
+
 namespace Codeer.LowCode.Blazor.Extras.Test.AI
 {
     /// <summary>
@@ -58,8 +60,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
         [TearDown]
         public void TearDown()
         {
-            Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
-            if (File.Exists(_dbFile)) File.Delete(_dbFile);
+            SqliteTestDb.Delete(_dbFile);
         }
 
         [Test]

@@ -181,8 +181,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
             }
             finally
             {
-                Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
-                if (File.Exists(file)) File.Delete(file);
+                SqliteTestDb.Delete(file);
             }
         }
     }
