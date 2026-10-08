@@ -156,6 +156,13 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Tag
             await Tags(module).AddTagAsync("DXPO, 新規");
             Assert.That(await module.SubmitAsync(), Is.True, string.Join(" | ", client.Logger.ErrorList));
             Assert.That(await LinksAsync(), Does.Contain("E:DXPO E:新規"));
+
+            //保存した後の足し外し: 保存した行が今の行なので読み直さず、二重にもならない
+            var reads = client.ListCalls.SelectMany(e => e).Count(e => e.Condition.ModuleName == "ContactTags");
+            await Tags(module).AddTagAsync("DXPO, VIP");
+            Assert.That(client.ListCalls.SelectMany(e => e).Count(e => e.Condition.ModuleName == "ContactTags"), Is.EqualTo(reads), "読み直さない");
+            Assert.That(await module.SubmitAsync(), Is.True, string.Join(" | ", client.Logger.ErrorList));
+            Assert.That(await LinksAsync(), Does.Contain("E:DXPO E:新規 E:VIP"));
         }
 
         [Test]

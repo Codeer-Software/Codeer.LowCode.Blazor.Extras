@@ -246,7 +246,11 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
 
         [ScriptHide]
         public override void AcceptChanges(SubmitAcceptInfo info)
-            => _modules.AcceptChanges(info);
+        {
+            //保存した行 = DB の行なので、以後は読まなくてよい (新規レコードを保存した後の足し外しも)
+            _modules.AcceptChanges(info);
+            _loaded = true;
+        }
 
         /// <summary>タグ付け行 (意味検索の文章など、レコードのデータからタグ名を読む側のため)。</summary>
         [ScriptHide]
