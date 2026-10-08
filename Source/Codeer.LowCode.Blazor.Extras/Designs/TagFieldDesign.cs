@@ -29,7 +29,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
     /// </summary>
     [ToolboxIcon(PackIconMaterialKind = "TagMultiple")]
     [Designer(DisplayName = "$TagField")]
-    public class TagFieldDesign() : FieldDesignBase(typeof(TagFieldDesign).FullName!), IDisplayName, IChildRecordsFieldDesign, IOwnedRecordsFieldDesign
+    public class TagFieldDesign() : FieldDesignBase(typeof(TagFieldDesign).FullName!), IDisplayName, IRequired, IChildRecordsFieldDesign, IOwnedRecordsFieldDesign
     {
         /// <summary>デザインチェック指摘の番号。DesignCheckCode.Create で発行クラス名と結合して "クラス名:番号" になる。番号は固定(追加は末尾・欠番は再利用しない)。</summary>
         private const int CodeNotLinkModule = 1;
@@ -64,12 +64,12 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
 
         /// <summary>
         /// このレコードのタグ付け行: タグ付けモジュールの「OwnerId.Value = Id.Value」を付けた順 (Id) に、Id・OwnerId・タグ名を読む。
-        /// 役割の名前は契約から読む。タグ付けモジュールが無い・契約が無いときは空の条件 (デザインチェックが指摘する)。
+        /// 役割の名前は契約から読む。タグ付けモジュールが無い・契約が無いときは null (結び付きが決まらない = 子レコードを持たない。デザインチェックが指摘する)。
         /// </summary>
-        public SearchCondition GetChildRecordsCondition(IModuleDesigns modules)
+        public SearchCondition? GetChildRecordsCondition(IModuleDesigns modules)
         {
             var link = TagContracts.LinkContract(modules.Find(TagModuleName));
-            if (link == null) return new();
+            if (link == null) return null;
             return new SearchCondition(TagModuleName)
             {
                 Condition = MultiMatchCondition.And(new FieldVariableMatchCondition
@@ -87,7 +87,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         public IEnumerable<OwnedRecordsDesign> GetOwnedRecords(IModuleDesigns modules)
         {
             var condition = GetChildRecordsCondition(modules);
-            if (string.IsNullOrEmpty(condition.ModuleName)) yield break;
+            if (condition == null) yield break;
             yield return new OwnedRecordsDesign { Name = Name, Condition = condition, HoldsAllRecords = true };
         }
 
@@ -105,7 +105,6 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         public override List<DesignCheckInfo> CheckDesign(DesignCheckContext context)
         {
             var result = base.CheckDesign(context);
-            context.CheckFieldName(Name).AddTo(result);
             context.CheckFieldModuleExistence(Name, nameof(TagModuleName), TagModuleName).AddTo(result);
             context.CheckFieldFunctionExistence(Name, nameof(OnDataChanged), OnDataChanged, null).AddTo(result);
 

@@ -211,6 +211,26 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Tag
         }
 
         [Test]
+        public async Task タグ付け行を読んでいないレコードは足し外しの前に1回読み二重にならない()
+        {
+            //ModuleSearcher で Select(e => e.Tags) を付けずに読んだレコードと同じ: タグ付け行は同梱されない
+            var client = Client();
+            var row = (await CreateIO().GetListAsync(new SearchCondition { ModuleName = "Contact" }, 0)).Items.Single(e => NameOf(e) == "A");
+            var module = await ModuleCreationService.CreateModuleAsync(client.Core, row, ModuleLayoutType.None);
+            int TagReads() => client.ListCalls.SelectMany(e => e).Count(e => e.Condition.ModuleName == "ContactTags");
+            Assert.That(TagReads(), Is.EqualTo(0), "表示のためには読まない");
+
+            await Tags(module).AddTagAsync("展示会, VIP");
+            Assert.That(TagReads(), Is.EqualTo(1), "足す前に 1 回読む");
+            Assert.That(Tags(module).Tags, Is.EqualTo(new[] { "展示会", "DXPO", "VIP" }), "付いている 展示会 は重ねない");
+            await Tags(module).RemoveTagAsync("DXPO");
+            Assert.That(TagReads(), Is.EqualTo(1), "読むのは 1 回だけ");
+
+            Assert.That(await module.SubmitAsync(), Is.True, string.Join(" | ", client.Logger.ErrorList));
+            Assert.That(await LinksAsync(), Does.StartWith("A:展示会 A:VIP B:"), "二重にならず、一意インデックスのエラーにもならない");
+        }
+
+        [Test]
         public async Task 必須ならタグが1つも無いと保存できない()
         {
             _design = TagTestDesigns.Create(e => e.IsRequired = true);

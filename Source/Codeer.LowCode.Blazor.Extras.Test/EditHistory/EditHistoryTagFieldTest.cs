@@ -69,12 +69,20 @@ namespace Codeer.LowCode.Blazor.Extras.Test.EditHistory
             var design = TagTestDesigns.Create();
             var services = new TestServices(design);
             //DB: 展示会 (11), DXPO (12)
-            services.App.ListProvider = request => request.Condition.ModuleName == "ContactTags"
-                ? new Paging<ModuleData> { TotalCount = 2, Items = [TagRow("11", "展示会"), TagRow("12", "DXPO")] }
-                : new Paging<ModuleData>();
+            var reads = 0;
+            services.App.ListProvider = request =>
+            {
+                if (request.Condition.ModuleName != "ContactTags") return new Paging<ModuleData>();
+                reads++;
+                return new Paging<ModuleData> { TotalCount = 2, Items = [TagRow("11", "展示会"), TagRow("12", "DXPO")] };
+            };
 
-            var module = await ModuleCreationService.CreateModuleAsync(services.Core, Contact(), ModuleLayoutType.None);
+            //タグ付け行を同梱せずに読んだレコード (今のタグは復元の前に 1 回読む)
+            var current = Contact();
+            current.Fields.Remove("Tags");
+            var module = await ModuleCreationService.CreateModuleAsync(services.Core, current, ModuleLayoutType.None);
             var tags = module.GetField<TagField>("Tags")!;
+            Assert.That(reads, Is.EqualTo(0), "表示のためには読まない");
 
             //版: 展示会 (11), セミナー (13: 今は無い)
             var snapshot = Contact(TagRow("11", "展示会"), TagRow("13", "セミナー"));
@@ -82,6 +90,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.EditHistory
             var applied = await EditHistoryRestorer.ApplyAsync(module, snapshot, null);
             Assert.That(applied, Is.EqualTo(1), "タグの宣言 1 つを差し替えた");
             Assert.That(tags.Tags, Is.EqualTo(new[] { "展示会", "セミナー" }));
+            Assert.That(reads, Is.EqualTo(1), "復元の前に今のタグ付け行を 1 回読む");
 
             var submit = tags.GetSubmitData();
             Assert.That(submit.Delete.Select(e => e.Id), Is.EqualTo(new[] { "12" }), "版に無いタグは削除");

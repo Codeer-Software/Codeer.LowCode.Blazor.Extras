@@ -62,6 +62,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Setup
             //3 列のテーブルを組む (SQLite は外部キーを列に書く。照合順序は付けない = 既定で完全一致)
             Assert.That(sqlite, Is.EqualTo(new[]
             {
+                "-- SQLite は接続文字列に Foreign Keys=True を付ける。無いと外部キーが効かず、レコードを消してもタグ付け行が残る",
                 "CREATE TABLE request_tags (",
                 "  id INTEGER PRIMARY KEY AUTOINCREMENT,",
                 "  owner_id INTEGER NOT NULL REFERENCES requests (id) ON DELETE CASCADE,",

@@ -180,8 +180,8 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Tag
             Assert.That(Check(d, "Contact", "Tags"), Is.Empty);
 
             var noContract = TagTestDesigns.Create(e => e.TagModuleName = "Contact");
-            Assert.That(noContract.Modules.Find("Contact")!.Fields.OfType<TagFieldDesign>().Single().GetChildRecordsCondition(noContract.Modules).ModuleName,
-                Is.Empty, "契約が無ければ空の条件");
+            Assert.That(noContract.Modules.Find("Contact")!.Fields.OfType<TagFieldDesign>().Single().GetChildRecordsCondition(noContract.Modules),
+                Is.Null, "契約が無ければ null (子レコードを持たない)");
         }
 
         [Test]

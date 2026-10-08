@@ -29,7 +29,7 @@ namespace Codeer.LowCode.Blazor.Extras.SemanticSearch
                 if (fieldDesign == null || !row.Fields.TryGetValue(name, out var data) || data == null) continue;
                 var value = FormatValue(design, fieldDesign, data);
                 if (string.IsNullOrWhiteSpace(value)) continue;
-                var label = (fieldDesign as ValueFieldDesignBase)?.DisplayName ?? (fieldDesign as TagFieldDesign)?.DisplayName;
+                var label = (fieldDesign as IDisplayName)?.DisplayName;
                 //改行は環境によらず LF (索引の文章はどの OS で作っても同じにする)
                 sb.Append(string.IsNullOrEmpty(label) ? name : label).Append(": ").Append(value.Trim()).Append('\n');
             }

@@ -50,6 +50,7 @@
 
 - タグ付けモジュールに一覧レイアウトは要らない (TagField が結び付きで読む列を決める)
 - テーブル: (owner_id, name) の一意インデックス、name のインデックス (SQL Server / MySQL は name に大文字小文字を区別する照合順序)、レコードへの外部キー (ON DELETE CASCADE。論理削除のレコードのタグ行は残る)
+- SQLite は接続文字列に `Foreign Keys=True` を付ける。無いと外部キーが効かずタグ付け行が残る
 
 ### 設計チェック
 
@@ -77,7 +78,7 @@
 | `SearchTags` | 検索レイアウトで選んでいるタグ (`List<string>`、get / set) |
 | `SearchMatch` | 検索の一致 (`TagSearchMatch.All` / `TagSearchMatch.Any`、get / set) |
 
-タグの変更はレコードを保存したときに書かれる。スクリプトの `ModuleSearcher` で読んだレコードのタグを使うときは `Select` で TagField を指定する (指定しないとタグ付け行は読まれない)。
+タグの変更はレコードを保存したときに書かれる。スクリプトの `ModuleSearcher` で読んだレコードのタグを読む (`Tags` / `HasTag`) ときは `Select` で TagField を指定する (指定しないとタグ付け行は読まれない)。足し外しは、読んでいなければその前に 1 回読むので `Select` が無くても二重にならない。
 
 ### 使用例
 

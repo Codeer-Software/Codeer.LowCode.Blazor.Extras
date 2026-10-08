@@ -30,21 +30,29 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
 
         private readonly ModuleCollection _modules = new();
 
+        //このレコードのタグ付け行を読んだか (同梱された・読み込んだ・渡された行に差し替えた)。保存済みのレコードで読んでいなければ、書く前に 1 回読む
+        bool _loaded;
+
+        //タグ付けモジュールの契約と結び付き (最初に使うときに 1 回解決する。フィールドの間、デザインは変わらない)
+        (TagLinkContractFieldDesign? Link, SearchCondition? Condition)? _binding;
+
         List<string> _searchTags = new();
         TagSearchMatch? _searchMatch;
         MatchConditionBase? _searchCondition;
 
         //IOwnedRecordsField: 行の出し入れと、与えられた行の表示。行の突き合わせ・内容の反映は本体 (Module.ApplyRecordAsync) が行う
 
+        //全件を持っている (HoldsAllRecords) ので、読んであれば今の行を返す
         async Task<IReadOnlyList<Module>> IOwnedRecordsField.LoadOwnedRecordsAsync(string name)
         {
             if (name != Design.Name) return [];
-            _modules.ApplyLoaded(await this.GetChildModulesAsync(Condition, ModuleLayoutType.None));
+            await EnsureLoadedAsync();
             return _modules.Items;
         }
 
+        //宣言 (GetOwnedRecords) は結び付きがあるときだけなので、ここでは結び付きがある
         async Task<Module> IOwnedRecordsField.AddOwnedRecordAsync(string name, string? id)
-            => await OwnedRecordModules.AddAsync(this, _modules, Condition, string.Empty, id, ModuleLayoutType.None);
+            => await OwnedRecordModules.AddAsync(this, _modules, Condition!, string.Empty, id, ModuleLayoutType.None);
 
         Task IOwnedRecordsField.RemoveOwnedRecordAsync(string name, Module record)
         {
@@ -64,6 +72,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         {
             if (name != Design.Name) return;
             _modules.ApplyLoaded(await OwnedRecordModules.CreateForShowAsync(this, string.Empty, rows, ModuleLayoutType.None));
+            _loaded = true;
             NotifyStateChanged();
         }
 
@@ -81,13 +90,18 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         public TagSearchMatch SearchMatch => _searchMatch ?? Design.SearchMatchDefaultValue;
 
         /// <summary>そのタグが付いているか (完全一致)。</summary>
-        public bool HasTag(string tag) => Tags.Contains(tag.Trim(), StringComparer.Ordinal);
+        public bool HasTag(string tag)
+        {
+            var name = tag.Trim();
+            return _modules.Items.Any(e => SameTag(TagNameOf(e), name));
+        }
 
         /// <summary>タグを足す (同じタグは重ねない。区切りを含めば分けて足す)。保存はレコードの保存で。</summary>
         [ScriptName("AddTag")]
         public async Task AddTagAsync(string tag)
         {
             ClearError();
+            await EnsureLoadedAsync();
             var changed = false;
             foreach (var name in Normalize(new[] { tag })) changed |= await AddOneAsync(name);
             await AfterTagsChangedAsync(changed);
@@ -98,6 +112,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         public async Task RemoveTagAsync(string tag)
         {
             ClearError();
+            await EnsureLoadedAsync();
             await AfterTagsChangedAsync(RemoveOne(tag.Trim()));
         }
 
@@ -106,6 +121,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         public async Task SetTagsAsync(List<string> tags)
         {
             ClearError();
+            await EnsureLoadedAsync();
             var wanted = Normalize(tags);
             var changed = false;
             foreach (var current in Tags.Where(e => !wanted.Contains(e, StringComparer.Ordinal)).ToList()) changed |= RemoveOne(current);
@@ -116,14 +132,14 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         //足せなかったタグのエラーは、同じ呼び出しでほかのタグが足せても残す (次の足し外しで消える)
         async Task<bool> AddOneAsync(string name)
         {
-            var link = Link;
-            if (link == null || name.Length == 0 || HasTag(name)) return false;
+            var (link, condition) = Binding;
+            if (link == null || condition == null || name.Length == 0 || HasTag(name)) return false;
             if (name.Length > MaxTagLength)
             {
                 SetError(string.Format(Properties.Resources.TagFieldTooLongFormat, name[..20], MaxTagLength));
                 return false;
             }
-            var row = await OwnedRecordModules.AddAsync(this, _modules, Condition, string.Empty, null, ModuleLayoutType.None);
+            var row = await OwnedRecordModules.AddAsync(this, _modules, condition, string.Empty, null, ModuleLayoutType.None);
             await row.GetField<TextField>(link.TagName)!.SetValueAsync(name);
             return true;
         }
@@ -148,10 +164,16 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             await Module.ExecuteScriptAsync(Design.OnDataChanged);
         }
 
-        //このレコードのタグ付け行の条件 (デザインがタグ付けモジュールの契約から組み立てる)
-        SearchCondition Condition => Design.GetChildRecordsCondition(Services.AppInfoService.GetDesignData().Modules);
+        //契約と、このレコードのタグ付け行の条件 (デザインがタグ付けモジュールの契約から組み立てる)。契約が無ければどちらも null
+        (TagLinkContractFieldDesign? Link, SearchCondition? Condition) Binding
+            => _binding ??= ResolveBinding(Services.AppInfoService.GetDesignData().Modules);
 
-        TagLinkContractFieldDesign? Link => TagContracts.LinkContract(Services.AppInfoService.GetDesignData().Modules.Find(Design.TagModuleName));
+        (TagLinkContractFieldDesign? Link, SearchCondition? Condition) ResolveBinding(IModuleDesigns modules)
+            => (TagContracts.LinkContract(modules.Find(Design.TagModuleName)), Design.GetChildRecordsCondition(modules));
+
+        TagLinkContractFieldDesign? Link => Binding.Link;
+
+        SearchCondition? Condition => Binding.Condition;
 
         string TagNameOf(Module row)
         {
@@ -162,7 +184,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         #region 読み込み・保存
 
         /// <summary>
-        /// 一覧の行・スクリプトで読んだレコード: 一覧の読み込みに同梱された行を使う (無ければ読まない。行ごとの問い合わせは出さない)。
+        /// 一覧の行・スクリプトで読んだレコード: 一覧の読み込みに同梱された行を使う (無ければ表示のためには読まない。行ごとの問い合わせは出さない)。
         /// 詳細: このレコードのタグ付け行を 1 回読む。
         /// 未保存のレコード (コピーなど) に渡された行は、このレコードの行ではない (未保存の親に紐づく子は無い): タグを新しい行として足す。
         /// </summary>
@@ -170,36 +192,57 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         public override async Task InitializeDataAsync(FieldDataBase? fieldDataBase)
         {
             _modules.ApplyLoaded([]);
+            _loaded = false;
             var data = fieldDataBase as ListFieldData;
             var rows = data?.GetModules() ?? new();
-            if (rows.Count > 0 && Module.IsNewData)
+            //未保存のレコードは DB に行が無いので読まない (後からデータを入れられて保存済みになったら、書く前に読む)
+            if (Module.IsNewData)
             {
-                await AddAsNewAsync(data!);
+                if (rows.Count > 0) await AddAsNewAsync(data!);
                 return;
             }
-            if (rows.Count > 0 || ModuleLayoutType != ModuleLayoutType.Detail)
+            if (rows.Count > 0 || (data != null && ModuleLayoutType != ModuleLayoutType.Detail))
             {
-                var modules = new List<Module>();
-                foreach (var row in rows) modules.Add(await ModuleCreationService.CreateModuleAsync(Services, row, ModuleLayoutType.None));
-                _modules.ApplyLoaded(modules);
+                await ApplyRowsAsync(rows);
                 return;
             }
-            //タグ付けモジュールが無い・契約が無い (デザインチェックが指摘する) なら読まない
-            if (!AllowLoad || Link == null || Services.AppInfoService.IsDesignMode || !this.IsInLayout() || this.IsBoundToUnsavedRecord(Condition)) return;
-            _modules.ApplyLoaded(await this.GetChildModulesAsync(Condition, ModuleLayoutType.None));
+            if (ModuleLayoutType == ModuleLayoutType.Detail && AllowLoad && !Services.AppInfoService.IsDesignMode && this.IsInLayout()) await LoadAsync();
+        }
+
+        //書く前に今のタグ付け行を知る: 読んでいない保存済みのレコードだけ 1 回読む (知らずに足すと同じタグの行が二重になる)
+        async Task EnsureLoadedAsync()
+        {
+            if (_loaded || Module.IsNewData || !AllowLoad || Services.AppInfoService.IsDesignMode) return;
+            await LoadAsync();
+        }
+
+        //このレコードのタグ付け行を読む (タグ付けモジュールが無い・契約が無いときは読むものが無い)
+        async Task LoadAsync()
+        {
+            _loaded = true;
+            if (Condition is { } condition) _modules.ApplyLoaded(await this.GetChildModulesAsync(condition, ModuleLayoutType.None));
+        }
+
+        async Task ApplyRowsAsync(IEnumerable<ModuleData> rows)
+        {
+            var modules = new List<Module>();
+            foreach (var row in rows) modules.Add(await ModuleCreationService.CreateModuleAsync(Services, row, ModuleLayoutType.None));
+            _modules.ApplyLoaded(modules);
+            _loaded = true;
         }
 
         //渡された行のタグ名を、このレコードの新しいタグ付け行にする (付いていた行は捨てる)
         async Task AddAsNewAsync(ListFieldData data)
         {
             _modules.ApplyLoaded([]);
+            _loaded = true;
             foreach (var name in Normalize(TagContracts.TagNames(Services.AppInfoService.GetDesignData(), Design, data))) await AddOneAsync(name);
             NotifyStateChanged();
         }
 
         [ScriptHide]
         public override FieldSubmitData GetSubmitData()
-            => _modules.GetSubmitData(this, Condition);
+            => Condition is { } condition ? _modules.GetSubmitData(this, condition) : new();
 
         [ScriptHide]
         public override void AcceptChanges(SubmitAcceptInfo info)
@@ -222,9 +265,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
                 if (data.GetModules().Count > 0) await AddAsNewAsync(data);
                 return;
             }
-            var modules = new List<Module>();
-            foreach (var row in data.GetModules()) modules.Add(await ModuleCreationService.CreateModuleAsync(Services, row, ModuleLayoutType.None));
-            _modules.ApplyLoaded(modules);
+            await ApplyRowsAsync(data.GetModules());
             NotifyStateChanged();
         }
 
