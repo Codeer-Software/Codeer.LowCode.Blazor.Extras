@@ -1,18 +1,33 @@
+# TagField (タグ)
+
+タグを入力・表示・検索して保存するフィールド。タグはタグ付けモジュール (`TagLinkContractField`。タグを付けるモジュールごとに 1 つ) の行に持つ: 1 行 = このレコードに付いたタグ 1 つ (OwnerId + タグ名)。タグのマスタは無い。
+タグ付けモジュールを従属レコードとして持つ素のフィールド (Calendar / Gantt / TaskBoard / MarkerList と同じ形)。設定はタグ付けモジュール名 1 つで、結び付き (`OwnerId.Value = Id.Value`・並び `Id`・読む列) はタグ付けモジュールの契約から組み立てて本体に渡す (JSON には出ない)。画面ではチップ (× で外せる) で表示する。
+
+## セットアップ (タグ付けモジュールの自動生成)
+
+動作にはタグ付けモジュール (TagLinkContractField を置いたモジュール。タグを付けるモジュールごとに 1 つ) とそのテーブルが必要。手で作らず**セットアップコマンドで生成する**:
+
+- デザイナ: メニュー Tools > タグのセットアップ (タグを付けるモジュールを選ぶだけ)
+- CLI (headless): `<designer.exe> tag-setup "<projectDir>" --target <Module> [--ddl-out <path.sql>]`
+
+対象モジュール `<Module>` から決まるもの: フィールド名 `Tags`、タグ付けモジュール名 `<Module>Tags`、テーブル名 (モジュール名の snake_case 複数形)、列 `owner_id` / `name`、データソース (対象と同じ)。対象はテーブルを持つモジュールに限る (Query モジュール不可)。
+
+生成内容:
+
+1. タグ付けモジュール `<Module>Tags` (`Id` / `OwnerId` / `Name` + `TagLinkContractField`)。一覧レイアウトは要らない
+2. 対象モジュールに TagField `Tags` (`TagModuleName` = `<Module>Tags`)。同名の TagField が結び付きなしで既にあれば、それに入れる
+3. DDL: テーブル (3 列)、(owner_id, name) の一意インデックス、name のインデックス、レコードへの外部キー (ON DELETE CASCADE)。`owner_id` の型は対象の Id 列に合わせる (DB にあればその型、無ければ手入力の Id は文字列・それ以外は整数)。SQL Server / MySQL では name に大文字小文字を区別する照合順序を付ける
+
+- 冪等: `<Module>Tags` が既にあれば作らない (ただし TagLinkContractField が無ければ結び付けずにエラーで止める)。結び付き済みの TagField は触らない
+- DDL は流れない: `--ddl-out` で出したファイルを確認し、`sql` CLI (AllowCliSqlAccess のデータソース) またはユーザーが実行する。文字列の Id のモジュールでは `owner_id` の長さを対象の Id 列に合わせてから実行する
+- その後の手順: 対象モジュールの詳細・一覧・検索のレイアウトに `Tags` を置く (セットアップは置かない)。SQLite は接続文字列に `Foreign Keys=True` を付ける
+- タグを付けるモジュールが複数あれば、モジュールごとに実行する (タグ付けモジュールは共有しない)
+
 ## Design
 
 **TypeFullName:** `Codeer.LowCode.Blazor.Extras.Designs.TagFieldDesign`
 
 **外部ライブラリ:** `Codeer.LowCode.Blazor.Extras`
-
-タグを入力・表示・検索して保存するフィールド。タグはタグ付けモジュール (`TagLinkContractField`。タグを付けるモジュールごとに 1 つ) の行に持つ: 1 行 = このレコードに付いたタグ 1 つ (OwnerId + タグ名)。タグのマスタは無い。
-タグ付けモジュールを従属レコードとして持つ素のフィールド (Calendar / Gantt / TaskBoard / MarkerList と同じ形)。設定はタグ付けモジュール名 1 つで、結び付き (`OwnerId.Value = Id.Value`・並び `Id`・読む列) はタグ付けモジュールの契約から組み立てて本体に渡す (JSON には出ない)。画面ではチップ (× で外せる) で表示する。
-
-モジュールとテーブルは手で作らず **タグのセットアップ** で生成する:
-
-- デザイナ: メニュー Tools > タグのセットアップ (タグを付けるモジュールを選ぶだけ)
-- CLI (headless): `<designer.exe> tag-setup "<projectDir>" --target <Module> [--ddl-out <path.sql>]`
-
-生成内容: タグ付けモジュール `<Module>Tags` + 対象モジュールの TagField `Tags` (`TagModuleName` を入れる。同名の結び付きなしの TagField があれば結び付ける) + DDL。画面への配置はデザイナで行う。
 
 - タグの確定は Enter かスペース (半角・全角)。打った文字にスペースが入っていれば (貼り付けなど) そこで分ける。タグにスペースは入らない。「,」「、」「，」は区切らない (タグの一部)。区切りの集合は `TagField.Separators` の 1 か所。IME の変換中のキーは無視する。入力欄の外へフォーカスが移ったときも、打ちかけの文字をタグにする。入力欄が空のときの Backspace は右端のチップを外す
 - タグ名は 200 文字まで (入力欄・タグ付けモジュールの `Name` の MaxLength・DDL の列の長さが同じ値 `TagField.MaxTagLength`)。長すぎるタグは足さずにエラーを出す (同じ操作でほかのタグが足されても残る)
