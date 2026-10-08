@@ -6,7 +6,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
 {
     /// <summary>
     /// タグ付け (タグを付けるモジュール 1 つにつき 1 つ。1 行 = あるレコードに付いたタグ 1 つ) の契約。
-    /// 行はタグを付けたレコードの Id とタグ名だけを持つ (タグのマスタは持たない)。TagField はこのモジュールを子の一覧として持つ。
+    /// 行はタグを付けたレコードの Id とタグ名だけを持つ (タグのマスタは持たない)。TagField (TagModuleName) はこの役割で結び付きと読む列を決める。
     /// </summary>
     [Designer(DisplayName = "$TagLinkContractField")]
     [ToolboxIcon(PackIconMaterialKind = "TagArrowRight")]

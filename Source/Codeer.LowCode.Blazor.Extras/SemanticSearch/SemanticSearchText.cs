@@ -59,7 +59,7 @@ namespace Codeer.LowCode.Blazor.Extras.SemanticSearch
         /// <summary>1 フィールドの値を人が読む文字列に。空なら null。</summary>
         public static string? FormatValue(DesignData? design, FieldDesignBase fieldDesign, FieldDataBase data)
         {
-            //タグはタグ付け行 (子の一覧) で持つ: タグ名を並べる
+            //タグはタグ付け行 (従属レコード) で持つ: タグ名を並べる
             if (fieldDesign is TagFieldDesign tagField && data is ListFieldData tagRows)
             {
                 var names = Tag.TagContracts.TagNames(design, tagField, tagRows);

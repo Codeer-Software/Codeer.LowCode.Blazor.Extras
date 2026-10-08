@@ -5,36 +5,38 @@
 **外部ライブラリ:** `Codeer.LowCode.Blazor.Extras`
 
 タグを入力・表示・検索して保存するフィールド。タグはタグ付けモジュール (`TagLinkContractField`。タグを付けるモジュールごとに 1 つ) の行に持つ: 1 行 = このレコードに付いたタグ 1 つ (OwnerId + タグ名)。タグのマスタは無い。
-`ListFieldDesignBase` を継承する一覧フィールドで、タグ付けモジュールを子の一覧として持つ。読み込み・保存 (レコードの保存に一緒に載る)・削除の連鎖・権限・編集履歴は本体の一覧と同じ。画面ではチップ (× で外せる) で表示する。
+タグ付けモジュールを従属レコードとして持つ素のフィールド (Calendar / Gantt / TaskBoard / MarkerList と同じ形)。設定はタグ付けモジュール名 1 つで、結び付き (`OwnerId.Value = Id.Value`・並び `Id`・読む列) はタグ付けモジュールの契約から組み立てて本体に渡す (JSON には出ない)。画面ではチップ (× で外せる) で表示する。
 
 モジュールとテーブルは手で作らず **タグのセットアップ** で生成する:
 
-- デザイナ: メニュー Tools > タグのセットアップ
-- CLI (headless): `<designer.exe> tag-setup "<projectDir>" --target <Module> [--field Tags | --no-field] [--link-name <Module>Tags] [--link-table <table>] [--owner-column owner_id] [--data-source <name>] [--ddl-out <path.sql>]`
+- デザイナ: メニュー Tools > タグのセットアップ (タグを付けるモジュールを選ぶだけ)
+- CLI (headless): `<designer.exe> tag-setup "<projectDir>" --target <Module> [--ddl-out <path.sql>]`
 
-生成内容: タグ付けモジュール + 対象モジュールの TagField (検索条件を入れる。同名の結び付きなしの TagField があれば結び付ける) + DDL。画面への配置はデザイナで行う。
+生成内容: タグ付けモジュール `<Module>Tags` + 対象モジュールの TagField `Tags` (`TagModuleName` を入れる。同名の結び付きなしの TagField があれば結び付ける) + DDL。画面への配置はデザイナで行う。
 
 - 入力は Enter・「,」・「、」で確定 (`ConfirmOnSpace` でスペースも)。IME の変換中のキーは無視する。入力欄の外へフォーカスが移ったときも、打ちかけの文字をタグにする。入力欄が空のときの Backspace は右端のチップを外す
-- タグ名は 200 文字まで (入力欄・タグ付けモジュールの `Name` の MaxLength・DDL の列の長さが同じ値 `TagField.MaxTagLength`)
+- タグ名は 200 文字まで (入力欄・タグ付けモジュールの `Name` の MaxLength・DDL の列の長さが同じ値 `TagField.MaxTagLength`)。長すぎるタグは足さずにエラーを出す (同じ操作でほかのタグが足されても残る)
 - 同一判定は完全一致 (大文字小文字を区別する)。前後の空白は落とす
-- 足し外しは何も書かない。レコードの保存で一緒に書く (保存せずにやめれば何も残らない)
+- 足し外しは何も書かない。レコードの保存で一緒に書く (保存せずにやめれば何も残らない)。レコードを消したときのタグの削除は DDL の外部キー (ON DELETE CASCADE)
 - 候補: 打った文字を含むタグを、よく使われている順 (同じ件数なら名前順) に最大 10 件。タグ付けモジュールを本体の集計で 1 回引く。付いているタグは出さない。効くのはタグ付けモジュールの読み取り条件で、タグを付けるモジュール (親) の行の条件は効かない
 - 検索: 選んだタグを「すべて含む (`ContainsAll`) / いずれかを含む (`In`)」で組み合わせる。どちらも SQL で判定する。タグは丸ごとの完全一致。親の検索に子のタグを置いたとき (`LinkFieldNames` で 社員.タグ など) の「すべて含む」は、親の子の行のタグを合わせて判定する
 - 一覧レイアウトにも置ける (ページの行の分は一覧の読み込みに同梱される)
+- レコードをコピーすると、タグもコピーされる (新しい行として保存する)
 
 ### プロパティ
 
-> 共通プロパティ（Name, OnValidateInput）は [_FieldCommon.md](_FieldCommon.md) を参照。一覧フィールドの表示用の設定 (ページング・行の追加削除ボタン等) は出ない。
+> 共通プロパティ（Name, OnValidateInput）は [_FieldCommon.md](_FieldCommon.md) を参照。
 
 | プロパティ | 型 | デフォルト | 説明 |
 |---|---|---|---|
-| `SearchCondition` | SearchCondition | 空 | タグ付けモジュール + `FieldVariableMatchCondition` (`OwnerId.Value` = `Id.Value`) + 並び (`Id` 昇順)。セットアップが入れる。 |
+| `TagModuleName` | string | `""` | タグ付けモジュール (`TagLinkContractField` を置いたモジュール)。セットアップが入れる。 |
+| `DisplayName` | string | `""` | 表示名。 |
 | `Placeholder` | string | `""` | タグが 1 つも無いときの入力欄のプレースホルダ。 |
 | `ConfirmOnSpace` | bool | `false` | スペース (全角含む) でもタグを確定する。 |
 | `IsRequired` | bool | `false` | 1 つ以上のタグが必要。 |
 | `IsSimpleSearchParameter` | bool | `false` | 検索欄に一致の選択を出さない。 |
 | `SearchMatchDefaultValue` | enum | `All` | 検索の一致の既定。`All` = すべて含む、`Any` = いずれかを含む。 |
-| `DisplayName` / `OnDataChanged` / `OnSearchDataChanged` | | | 一覧フィールド共通。 |
+| `OnDataChanged` | string | `""` | タグが変わったときのスクリプトイベント名。 |
 
 ### 必要なモジュール構成 (セットアップの生成物)
 
@@ -43,20 +45,17 @@
   { "Name": "Id", "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.IdFieldDesign", "DbColumn": "id" },
   { "Name": "OwnerId", "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.IdFieldDesign", "DbColumn": "owner_id", "IsManualInput": false },
   { "Name": "Name", "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.TextFieldDesign", "DbColumn": "name", "IsRequired": true, "MaxLength": 200 },
-  { "Name": "TagLinkContract", "TypeFullName": "Codeer.LowCode.Blazor.Extras.Designs.TagLinkContractFieldDesign", "OwnerId": "OwnerId", "TagName": "Name" } ],
-  "ListLayouts": { "": { "DataOnlyFields": [ "OwnerId", "Name" ] } } }
+  { "Name": "TagLinkContract", "TypeFullName": "Codeer.LowCode.Blazor.Extras.Designs.TagLinkContractFieldDesign", "OwnerId": "OwnerId", "TagName": "Name" } ] }
 ```
 
-- タグ付けの一覧レイアウト (`""`) は `OwnerId` とタグ名を読むこと (レイアウトに無いフィールドは値が空で届く)
-- テーブル: (owner_id, name) の一意インデックス、name のインデックス (SQL Server / MySQL は name に大文字小文字を区別する照合順序)、レコードへの外部キー (ON DELETE CASCADE。ふだん消すのは本体の DeleteTogether で、外部キーは SQL で直接消したときの保険)
+- タグ付けモジュールに一覧レイアウトは要らない (TagField が結び付きで読む列を決める)
+- テーブル: (owner_id, name) の一意インデックス、name のインデックス (SQL Server / MySQL は name に大文字小文字を区別する照合順序)、レコードへの外部キー (ON DELETE CASCADE。論理削除のレコードのタグ行は残る)
 
 ### 設計チェック
 
 | コード | 内容 |
 |---|---|
-| `TagFieldDesign:1` | 検索条件のモジュールが空か、TagLinkContractField が無い |
-| `TagFieldDesign:2` | 検索条件にこのレコードへの結び付き (`OwnerId.Value = Id.Value`) が無い |
-| `TagFieldDesign:3` | タグ付けの一覧レイアウトが OwnerId / タグ名を読まない |
+| `TagFieldDesign:1` | `TagModuleName` が空か、そのモジュールに TagLinkContractField が無い (モジュールが無いときは本体のチェックも出る) |
 
 ### 配置の注意
 
@@ -78,7 +77,7 @@
 | `SearchTags` | 検索レイアウトで選んでいるタグ (`List<string>`、get / set) |
 | `SearchMatch` | 検索の一致 (`TagSearchMatch.All` / `TagSearchMatch.Any`、get / set) |
 
-タグの変更はレコードを保存したときに書かれる。スクリプトの `ModuleSearcher` で読んだレコードのタグを使うときは `Select` で TagField を指定する (指定しないと子の一覧は読まれない)。
+タグの変更はレコードを保存したときに書かれる。スクリプトの `ModuleSearcher` で読んだレコードのタグを使うときは `Select` で TagField を指定する (指定しないとタグ付け行は読まれない)。
 
 ### 使用例
 
