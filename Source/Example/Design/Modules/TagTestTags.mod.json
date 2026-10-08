@@ -202,10 +202,7 @@
   "ListLayouts": {
     "": {
       "HeaderTitle": "",
-      "DataOnlyFields": [
-        "OwnerId",
-        "Name"
-      ],
+      "DataOnlyFields": [],
       "FocusControlMode": "Inherit",
       "IsFocusWrap": false,
       "OnBeforeInitialization": "",

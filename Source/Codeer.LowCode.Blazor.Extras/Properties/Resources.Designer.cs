@@ -4270,17 +4270,7 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
 
 
 
-        internal static string TagCheck_OwnerBindingMissingFormat {
-            get {
-                return ResourceManager.GetString("TagCheck_OwnerBindingMissingFormat", resourceCulture);
-            }
-        }
 
-        internal static string TagCheck_LinkLayoutFieldsMissingFormat {
-            get {
-                return ResourceManager.GetString("TagCheck_LinkLayoutFieldsMissingFormat", resourceCulture);
-            }
-        }
 
 
 
@@ -4300,6 +4290,12 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
         internal static string TagFieldTooLongFormat {
             get {
                 return ResourceManager.GetString("TagFieldTooLongFormat", resourceCulture);
+            }
+        }
+
+        internal static string TagFieldTagModuleName {
+            get {
+                return ResourceManager.GetString("TagFieldTagModuleName", resourceCulture);
             }
         }
     }

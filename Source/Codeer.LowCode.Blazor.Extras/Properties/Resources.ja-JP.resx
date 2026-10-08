@@ -1821,12 +1821,6 @@
   <data name="TagCheck_RoleTypeFormat" xml:space="preserve">
     <value>役割 {0} のフィールド &apos;{1}&apos; は {2} フィールドでなければなりません。</value>
   </data>
-  <data name="TagCheck_OwnerBindingMissingFormat" xml:space="preserve">
-    <value>検索条件で &apos;{1}&apos; の &apos;{0}.Value&apos; をこのレコードに結び付けてください (例: &apos;{0}.Value = Id.Value&apos;)。</value>
-  </data>
-  <data name="TagCheck_LinkLayoutFieldsMissingFormat" xml:space="preserve">
-    <value>&apos;{1}&apos; の一覧レイアウト &apos;{0}&apos; が {2} を読みません。レイアウトか DataOnlyFields に入れてください。</value>
-  </data>
   <data name="SemanticSearch_ConditionNotSupported" xml:space="preserve">
     <value>フィールド '{0}' はこの条件で意味検索できません (SemanticSearchField の文章・ベクトル・ベクトル検索の列を設定してください)。</value>
   </data>
@@ -1846,9 +1840,12 @@
     <value>TagName (タグ名・必須)</value>
   </data>
   <data name="TagCheck_NotLinkModuleFormat" xml:space="preserve">
-    <value>検索条件のモジュール &apos;{0}&apos; に TagLinkContractField がありません。タグ付けモジュール (タグのセットアップで作れます) を指定してください。</value>
+    <value>タグ付けモジュール &apos;{0}&apos; に TagLinkContractField がありません。タグ付けモジュール (タグのセットアップで作れます) を指定してください。</value>
   </data>
   <data name="TagFieldTooLongFormat" xml:space="preserve">
     <value>「{0}…」は長すぎます。タグは {1} 文字までです。</value>
+  </data>
+  <data name="TagFieldTagModuleName" xml:space="preserve">
+    <value>タグ付けモジュール</value>
   </data>
 </root>

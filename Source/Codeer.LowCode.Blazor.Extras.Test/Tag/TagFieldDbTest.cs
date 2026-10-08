@@ -159,6 +159,21 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Tag
         }
 
         [Test]
+        public async Task レコードをコピーするとタグもコピーされ元のタグ付け行には触らない()
+        {
+            var client = Client();
+            var module = await client.OpenAsync("Contact", "1");
+            await module.CopyModuleAsync();
+            Assert.That(module.IsNewData, Is.True, string.Join(" | ", client.Logger.ErrorList));
+            Assert.That(Tags(module).Tags, Is.EqualTo(new[] { "展示会", "DXPO" }));
+
+            await module.GetField<TextField>("Name")!.SetValueAsync("A2");
+            await Tags(module).RemoveTagAsync("DXPO");
+            Assert.That(await module.SubmitAsync(), Is.True, string.Join(" | ", client.Logger.ErrorList));
+            Assert.That(await LinksAsync(), Is.EqualTo("A:展示会 A:DXPO A2:展示会 B:展示会 C:セミナー"), "コピーのタグは新しい行。元のレコードのタグは消えない");
+        }
+
+        [Test]
         public async Task レコードを消せばタグ付け行も消える()
         {
             var io = CreateIO();
@@ -417,6 +432,28 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Tag
             Assert.That(rows.Select(e => string.Join("+", Tags(e).Tags)), Is.EqualTo(new[] { "展示会+DXPO", "展示会", "セミナー", "" }));
             Assert.That(rows.Any(e => e.IsModified), Is.False);
             Assert.That(client.Logger.ErrorList, Is.Empty);
+        }
+
+        [Test]
+        public async Task 詳細の中の一覧の行にもタグが出て行から足し外しして保存できる()
+        {
+            //会社の詳細に社員の一覧 (列にタグ)。X: p1 = 展示会 / p2 = なし
+            TagTestDesigns.AddCompany(_design);
+            await _db.ExecuteAsync(Ds, "INSERT INTO companies (name) VALUES ('X')", new());
+            await _db.ExecuteAsync(Ds, "INSERT INTO contacts (name, company_id) VALUES ('p1', 1), ('p2', 1)", new());
+            await _db.ExecuteAsync(Ds, "INSERT INTO contact_tags (owner_id, name) SELECT id, '展示会' FROM contacts WHERE name = 'p1'", new());
+            _design.Modules.Find("Company")!.DetailLayouts[""] = new DetailLayoutDesign { DataOnlyFields = { "Name", "People" } };
+
+            var client = Client();
+            var company = await client.OpenAsync("Company", "1");
+            var people = company.GetField<ListField>("People")!;
+            var rows = people.Rows.OrderBy(e => e.GetField<TextField>("Name")!.Value).ToList();
+            Assert.That(rows.Select(e => string.Join("+", Tags(e).Tags)), Is.EqualTo(new[] { "展示会", "" }), string.Join(" | ", client.Logger.ErrorList));
+
+            await Tags(rows[1]).AddTagAsync("DXPO");
+            await Tags(rows[0]).RemoveTagAsync("展示会");
+            Assert.That(await company.SubmitAsync(), Is.True, string.Join(" | ", client.Logger.ErrorList));
+            Assert.That(await LinksAsync(), Does.Contain("p2:DXPO").And.Not.Contain("p1:"));
         }
 
         [Test]

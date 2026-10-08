@@ -276,10 +276,4 @@
   <data name="SetupTagTarget" xml:space="preserve">
     <value>Module to Tag</value>
   </data>
-  <data name="SetupTagFieldName" xml:space="preserve">
-    <value>TagField Name (empty = do not add)</value>
-  </data>
-  <data name="SetupTagLinkModule" xml:space="preserve">
-    <value>Tag Link Module</value>
-  </data>
 </root>

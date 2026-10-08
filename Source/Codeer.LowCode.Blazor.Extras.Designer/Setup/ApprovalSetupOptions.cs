@@ -106,26 +106,11 @@
         public bool AddPageFrameLink { get; set; } = true;
     }
 
-    /// <summary>タグのセットアップのオプション。空の名前はタグを付けるモジュールから決める (TagSetupService.Normalize)。</summary>
+    /// <summary>タグのセットアップのオプション。名前・テーブル名・データソースはタグを付けるモジュールから決める。</summary>
     public class TagSetupOptions
     {
         /// <summary>タグを付けるモジュール (テーブルと Id フィールドを持つこと)。</summary>
         public string TargetModuleName { get; set; } = string.Empty;
-
-        /// <summary>タグを付けるモジュールに置く TagField の名前。同名の TagField が結び付きなしで既にあれば結び付ける。空 = 置かない。</summary>
-        public string FieldName { get; set; } = "Tags";
-
-        /// <summary>タグ付けモジュール名 (既定 = 対象モジュール名 + Tags)。</summary>
-        public string LinkModuleName { get; set; } = string.Empty;
-
-        /// <summary>タグ付けのテーブル名 (既定 = タグ付けモジュール名の snake_case 複数形)。</summary>
-        public string LinkTableName { get; set; } = string.Empty;
-
-        /// <summary>タグ付けの、タグを付けたレコードの Id の列名 (既定 = owner_id)。</summary>
-        public string OwnerColumnName { get; set; } = string.Empty;
-
-        /// <summary>タグ付けのデータソース名。</summary>
-        public string DataSourceName { get; set; } = string.Empty;
     }
 
     /// <summary>セットアップの実行結果。</summary>

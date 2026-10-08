@@ -38,7 +38,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Tag
             //Tags はタグ付け (tag-setup が作った TagTestTags) に保存する。TagField は 1 つだけ
             var tags = module!.Fields.OfType<TagFieldDesign>().Single();
             Assert.That(tags.Name, Is.EqualTo("Tags"));
-            Assert.That(tags.SearchCondition.ModuleName, Is.EqualTo("TagTestTags"));
+            Assert.That(tags.TagModuleName, Is.EqualTo("TagTestTags"));
             Assert.That(module.Fields.OfType<ButtonFieldDesign>().Single().OnClick, Is.EqualTo("Check_OnClick"));
             Assert.That(module.ListLayouts[""].Elements[0].Select(e => e.FieldName), Does.Contain("Tags"), "一覧の列にも置ける");
             Assert.That(d.Modules.Find("Tag"), Is.Null, "タグのマスタは無い");

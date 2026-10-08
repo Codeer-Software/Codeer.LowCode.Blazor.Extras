@@ -4,43 +4,27 @@ using System.Windows;
 
 namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
 {
-    /// <summary>タグのセットアップのオプション入力ダイアログ。</summary>
+    /// <summary>タグのセットアップのオプション入力ダイアログ (タグを付けるモジュールを選ぶだけ)。</summary>
     public partial class TagSetupWindow : MetroWindow
     {
         TagSetupOptions? _result;
-        string _autoLinkName = string.Empty;
 
-        TagSetupWindow(DesignData designData, List<string> dataSourceNames)
+        TagSetupWindow(DesignData designData)
         {
             InitializeComponent();
 
             Title = Properties.Resources.SetupMenuTag;
             _labelTarget.Text = Properties.Resources.SetupTagTarget;
-            _labelFieldName.Text = Properties.Resources.SetupTagFieldName;
-            _labelLinkModule.Text = Properties.Resources.SetupTagLinkModule;
-            _labelDataSource.Text = Properties.Resources.SetupDataSource;
-
-            _textFieldName.Text = "Tags";
 
             //タグを付けられるのはテーブルを持つモジュール
             foreach (var name in designData.Modules.GetModuleNames().Where(e => !string.IsNullOrEmpty(designData.Modules.Find(e)?.DbTable)))
                 _comboTarget.Items.Add(name);
-            //タグ付けモジュール名は対象 + Tags (手で変えたらそのまま)
-            _comboTarget.SelectionChanged += (_, _) =>
-            {
-                var next = (string?)_comboTarget.SelectedItem + "Tags";
-                if (string.IsNullOrEmpty(_textLinkModule.Text) || _textLinkModule.Text == _autoLinkName) _textLinkModule.Text = next;
-                _autoLinkName = next;
-            };
             if (_comboTarget.Items.Count > 0) _comboTarget.SelectedIndex = 0;
-
-            foreach (var name in dataSourceNames) _comboDataSource.Items.Add(name);
-            if (_comboDataSource.Items.Count > 0) _comboDataSource.SelectedIndex = 0;
         }
 
-        internal static TagSetupOptions? ShowDialog(DesignData designData, List<string> dataSourceNames)
+        internal static TagSetupOptions? ShowDialog(DesignData designData)
         {
-            var window = new TagSetupWindow(designData, dataSourceNames)
+            var window = new TagSetupWindow(designData)
             {
                 Owner = Application.Current.MainWindow,
             };
@@ -50,14 +34,11 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
 
         void OkClick(object sender, RoutedEventArgs e)
         {
-            if (_comboTarget.SelectedItem == null || _comboDataSource.SelectedItem == null) return;
+            if (_comboTarget.SelectedItem == null) return;
 
             _result = new TagSetupOptions
             {
                 TargetModuleName = (string)_comboTarget.SelectedItem,
-                FieldName = _textFieldName.Text.Trim(),
-                LinkModuleName = _textLinkModule.Text.Trim(),
-                DataSourceName = (string)_comboDataSource.SelectedItem,
             };
             Close();
         }

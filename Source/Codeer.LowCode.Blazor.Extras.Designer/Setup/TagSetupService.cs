@@ -5,24 +5,23 @@ using Codeer.LowCode.Blazor.Extras.Fields;
 using Codeer.LowCode.Blazor.Json;
 using Codeer.LowCode.Blazor.Repository;
 using Codeer.LowCode.Blazor.Repository.Design;
-using Codeer.LowCode.Blazor.Repository.Match;
 using Codeer.LowCode.Blazor.SystemSettings;
 using System.IO;
 
 namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
 {
     /// <summary>
-    /// タグのセットアップ。タグを付けるモジュールに、タグ付けモジュール (TagLinkContractField。1 行 = レコードに付いたタグ 1 つ = OwnerId + タグ名) を作り、
-    /// タグを付けるモジュールに TagField を足す (同名の TagField が結び付きなしであれば結び付ける)。
-    /// 画面への配置はデザイナで行う。タグのマスタは作らない。
-    /// - 冪等: 同名のモジュールがあれば作らない。TagField が結び付き済みなら触らない。
-    /// - DDL は雛形として返す (実行は呼び出し側でユーザーの確認を挟む): テーブル (タグ名は NOT NULL・長さ = TagField.MaxTagLength)、
-    ///   (レコード, タグ名) の一意インデックス、タグ名のインデックス、レコードへの外部キー (SQL で直接消したときの保険。SQLite は CREATE TABLE の列に書く)。
+    /// タグのセットアップ。タグを付けるモジュール &lt;Module&gt; に、タグ付けモジュール &lt;Module&gt;Tags (TagLinkContractField。1 行 = レコードに付いたタグ 1 つ = OwnerId + タグ名) を作り、
+    /// タグを付けるモジュールに TagField Tags を足す (同名の TagField が結び付きなしであれば結び付ける)。
+    /// 名前・テーブル名・列名・データソースは対象モジュールから決める。画面への配置はデザイナで行う。タグのマスタは作らない。
+    /// - 冪等: 同名のモジュールがあれば作らない (TagLinkContractField が無ければ結び付けずに止める)。TagField が結び付き済みなら触らない。
+    /// - DDL は雛形として返す (実行は呼び出し側でユーザーの確認を挟む): 3 列のテーブル、(レコード, タグ名) の一意インデックス、タグ名のインデックス、
+    ///   レコードへの外部キー (削除は連鎖。SQLite は CREATE TABLE の列に書く)。
     /// </summary>
     public static class TagSetupService
     {
-        /// <summary>タグ名の列の長さ (入力欄・タグ付けモジュールの Name の MaxLength と同じ値)。</summary>
-        internal const int NameLength = TagField.MaxTagLength;
+        internal const string FieldName = "Tags";
+        internal const string OwnerColumn = "owner_id";
 
         public static SetupResult Run(DesignData designData, string designDir, TagSetupOptions options,
             DataSourceType dataSourceType, List<DbTableDefinition>? existingTables = null)
@@ -33,50 +32,36 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
                 throw new InvalidOperationException($"Module '{target.Name}' has no table. Tags can be saved only on a module with a table.");
             var targetId = target.Fields.OfType<IdFieldDesign>().FirstOrDefault(e => e.Name == SystemFieldNames.Id)
                 ?? throw new InvalidOperationException($"Module '{target.Name}' has no Id field.");
-            options = Normalize(options);
 
+            var linkName = target.Name + "Tags";
             var result = new SetupResult();
 
             //タグ付け
-            if (designData.Modules.Find(options.LinkModuleName) != null || ModuleFileExists(designDir, options.LinkModuleName))
+            var existing = designData.Modules.Find(linkName);
+            if (existing != null || ModuleFileExists(designDir, linkName))
             {
-                result.SkippedModules.Add(options.LinkModuleName);
+                if (existing != null && existing.Fields.OfType<TagLinkContractFieldDesign>().FirstOrDefault() == null)
+                    throw new InvalidOperationException($"Module '{linkName}' already exists and has no TagLinkContractField. Rename it or add the contract.");
+                result.SkippedModules.Add(linkName);
             }
             else
             {
-                var link = TagModuleFactory.CreateLink(options.LinkModuleName, options.LinkTableName, options.OwnerColumnName, options.DataSourceName);
+                var link = TagModuleFactory.CreateLink(linkName, TableName(linkName), target.DataSourceName);
                 Save(designDir, link);
                 ((IEditableModuleDesign)designData.Modules).Add(link);
                 result.CreatedModules.Add(link.Name);
-                var ddl = link.CreateDDL(dataSourceType, existingTables);
-                if (ddl.Any(e => e.StartsWith("CREATE TABLE")))
-                {
-                    ddl = FixLinkColumns(ddl, options.OwnerColumnName, TagModuleFactory.NameColumn, target.DbTable, targetId.DbColumn, dataSourceType);
-                    ddl.AddRange(LinkIndexDdl(link.DbTable, options.OwnerColumnName, TagModuleFactory.NameColumn, target.DbTable, targetId.DbColumn, dataSourceType));
-                }
-                result.Ddl.AddRange(ddl);
+                var ownerType = OwnerColumnType(dataSourceType, target, targetId, existingTables);
+                result.Ddl.AddRange(TagTableDdl.Create(dataSourceType, link.DbTable, target.DbTable, targetId.DbColumn, ownerType));
+                //文字列の Id は列の長さが分からない (外部キーは同じ長さが要る DB がある)
+                if (dataSourceType != DataSourceType.SQLite && ownerType == TagTableDdl.TextIdType(dataSourceType))
+                    result.Notes.Add($"{link.DbTable}.{OwnerColumn} の型 ({ownerType}) を {target.DbTable}.{targetId.DbColumn} と同じ長さにしてから DDL を実行してください。");
             }
 
             //タグを付けるモジュールの TagField
-            if (!string.IsNullOrEmpty(options.FieldName)) PlaceField(designDir, target, options, result);
+            PlaceField(designDir, target, linkName, result);
 
-            result.Notes.Add(CreateNextStepsNote(options));
+            result.Notes.Add(CreateNextStepsNote(target.Name, linkName, TableName(linkName)));
             return result;
-        }
-
-        /// <summary>空の名前を対象モジュールから決める。</summary>
-        public static TagSetupOptions Normalize(TagSetupOptions options)
-        {
-            var linkModule = string.IsNullOrEmpty(options.LinkModuleName) ? options.TargetModuleName + "Tags" : options.LinkModuleName;
-            return new TagSetupOptions
-            {
-                TargetModuleName = options.TargetModuleName,
-                FieldName = options.FieldName,
-                LinkModuleName = linkModule,
-                LinkTableName = string.IsNullOrEmpty(options.LinkTableName) ? TableName(linkModule) : options.LinkTableName,
-                OwnerColumnName = string.IsNullOrEmpty(options.OwnerColumnName) ? "owner_id" : options.OwnerColumnName,
-                DataSourceName = options.DataSourceName,
-            };
         }
 
         //既に複数形の名前 (RequestTags) はそのまま
@@ -87,87 +72,45 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
         }
 
         /// <summary>
-        /// 本体の DDL (CREATE TABLE。1 要素 1 行) の列を直す: OwnerId は Id の型 (本体は IdField の列を Id と同じ型で作る) で NOT NULL、
-        /// タグ名は長さ NameLength で NOT NULL (インデックスを張れる長さ。SQLite は長さを持たないので型のまま)。
-        /// タグの同一判定は完全一致 (大文字小文字を区別する) なので、既定の照合順序が区別しない SQL Server / MySQL には区別する照合順序を付ける
-        /// (PostgreSQL / SQLite / Oracle は既定で区別する)。候補の Like も同じ照合順序で区別する (仕様どおり)。
-        /// SQLite は後から外部キーを足せないので、OwnerId の列に外部キーを書く。
+        /// owner_id の型 = 対象の Id 列の型 (外部キーのため)。DB にテーブルがあればその型 (文字列の型は長さが取れないので既定の長さ)、
+        /// 無ければ対象の Id が手入力なら文字列、そうでなければ整数。
         /// </summary>
-        internal static List<string> FixLinkColumns(List<string> ddl, string ownerColumn, string nameColumn,
-            string ownerTable, string ownerIdColumn, DataSourceType type)
+        internal static string OwnerColumnType(DataSourceType type, ModuleDesign target, IdFieldDesign targetId, List<DbTableDefinition>? existingTables)
         {
-            var ownerType = ColumnType(ddl, ownerColumn);
-            var nameType = type switch
-            {
-                //_CS_AS_KS_WS: 大文字小文字・アクセント・かな・幅を全部区別する (= 完全一致)
-                DataSourceType.SQLServer => $"NVARCHAR({NameLength}) COLLATE Latin1_General_CS_AS_KS_WS",
-                DataSourceType.MySQL => $"VARCHAR({NameLength}) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin",
-                DataSourceType.PostgreSQL => $"VARCHAR({NameLength})",
-                DataSourceType.Oracle => $"VARCHAR2({NameLength})",
-                _ => ColumnType(ddl, nameColumn) ?? "TEXT",
-            };
-            var ownerDefinition = ownerType == null ? null
-                : type == DataSourceType.SQLite ? $"{ownerType} NOT NULL REFERENCES {ownerTable} ({ownerIdColumn}) ON DELETE CASCADE"
-                : $"{ownerType} NOT NULL";
-            var nameDefinition = $"{nameType} NOT NULL";
-            return ddl.Select(line =>
-            {
-                var trimmed = line.TrimStart();
-                var indent = line[..(line.Length - trimmed.Length)];
-                var comma = trimmed.EndsWith(',') ? "," : string.Empty;
-                if (ownerDefinition != null && trimmed.StartsWith(ownerColumn + " ", StringComparison.Ordinal)) return $"{indent}{ownerColumn} {ownerDefinition}{comma}";
-                if (trimmed.StartsWith(nameColumn + " ", StringComparison.Ordinal)) return $"{indent}{nameColumn} {nameDefinition}{comma}";
-                return line;
-            }).ToList();
+            var raw = existingTables?
+                .FirstOrDefault(e => string.Equals(e.Name, target.DbTable, StringComparison.OrdinalIgnoreCase))?.Columns
+                .FirstOrDefault(e => string.Equals(e.Name, targetId.DbColumn, StringComparison.OrdinalIgnoreCase))?.RawDbTypeName;
+            if (!string.IsNullOrEmpty(raw))
+                return IsTextType(raw) ? TagTableDdl.TextIdType(type) : raw.ToUpperInvariant();
+            return targetId.IsManualInput ? TagTableDdl.TextIdType(type) : TagTableDdl.IntegerIdType(type);
         }
 
-        //CREATE TABLE の列の型 (NOT NULL などを除く)
-        static string? ColumnType(List<string> ddl, string column)
-        {
-            var line = ddl.FirstOrDefault(e => e.TrimStart().StartsWith(column + " ", StringComparison.Ordinal));
-            return line?.Trim().TrimEnd(',')[(column.Length + 1)..].Replace(" NOT NULL", string.Empty).Replace(" NULL", string.Empty).Trim();
-        }
-
-        /// <summary>
-        /// 同じタグを二重に付けない一意インデックス (レコードで引くインデックスを兼ねる)、タグ名で引くインデックス (検索・候補)、
-        /// レコードへの外部キー (レコードを SQL で直接消したときの保険。ふだんは本体の DeleteTogether が消す。SQLite は CREATE TABLE に書いたので無し)。
-        /// </summary>
-        internal static List<string> LinkIndexDdl(string table, string ownerColumn, string nameColumn,
-            string ownerTable, string ownerIdColumn, DataSourceType type)
-        {
-            var ddl = new List<string>
-            {
-                $"CREATE UNIQUE INDEX ux_{table}_{ownerColumn}_{nameColumn} ON {table} ({ownerColumn}, {nameColumn});",
-                $"CREATE INDEX ix_{table}_{nameColumn} ON {table} ({nameColumn});",
-            };
-            if (type != DataSourceType.SQLite)
-                ddl.Add($"ALTER TABLE {table} ADD CONSTRAINT fk_{table}_{ownerColumn} FOREIGN KEY ({ownerColumn}) REFERENCES {ownerTable} ({ownerIdColumn}) ON DELETE CASCADE;");
-            return ddl;
-        }
+        static bool IsTextType(string raw)
+            => raw.Contains("char", StringComparison.OrdinalIgnoreCase) || raw.Contains("text", StringComparison.OrdinalIgnoreCase);
 
         //TagField を足す。同名の TagField が結び付きなしで既にあれば結び付ける
-        static void PlaceField(string designDir, ModuleDesign target, TagSetupOptions options, SetupResult result)
+        static void PlaceField(string designDir, ModuleDesign target, string linkName, SetupResult result)
         {
-            var existing = target.Fields.FirstOrDefault(e => e.Name == options.FieldName);
+            var existing = target.Fields.FirstOrDefault(e => e.Name == FieldName);
             if (existing != null && existing is not TagFieldDesign)
             {
-                result.Notes.Add($"'{target.Name}' に別の種類のフィールド '{options.FieldName}' があるため、TagField は足していません。");
+                result.Notes.Add($"'{target.Name}' に別の種類のフィールド '{FieldName}' があるため、TagField は足していません。");
                 return;
             }
             var field = (TagFieldDesign?)existing;
-            if (field != null && !string.IsNullOrEmpty(field.SearchCondition?.ModuleName))
+            if (field != null && !string.IsNullOrEmpty(field.TagModuleName))
             {
-                result.Notes.Add($"'{target.Name}.{options.FieldName}' は既にタグ付けモジュール '{field.SearchCondition!.ModuleName}' と結び付いています (変更していません)。");
+                result.Notes.Add($"'{target.Name}.{FieldName}' は既にタグ付けモジュール '{field.TagModuleName}' と結び付いています (変更していません)。");
                 return;
             }
             if (field == null)
             {
-                field = new TagFieldDesign { Name = options.FieldName, DisplayName = "タグ" };
+                field = new TagFieldDesign { Name = FieldName, DisplayName = "タグ" };
                 target.Fields.Add(field);
             }
-            field.SearchCondition = TagModuleFactory.LinkCondition(options.LinkModuleName);
+            field.TagModuleName = linkName;
             Save(designDir, target);
-            result.Notes.Add($"'{target.Name}' に TagField '{options.FieldName}' を結び付けました。");
+            result.Notes.Add($"'{target.Name}' に TagField '{FieldName}' を結び付けました。");
         }
 
         static bool ModuleFileExists(string designDir, string moduleName)
@@ -189,48 +132,95 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
             else File.WriteAllText(path, json, new System.Text.UTF8Encoding(true));
         }
 
-        static string CreateNextStepsNote(TagSetupOptions options)
-        {
-            var field = string.IsNullOrEmpty(options.FieldName) ? "TagField (検索条件 = " + options.LinkModuleName + ")" : options.FieldName;
-            return $"""
-                タグのモジュールを生成しました。次の手順で仕上げてください:
-                1. DDL を実行してテーブルを作る ({options.LinkTableName})
-                2. {options.TargetModuleName} の詳細・一覧・検索のレイアウトに {field} を置く (一覧の列にも置けます。ページの行の分は一覧の読み込みに同梱されます)
-                候補は {options.LinkModuleName} に付いているタグから、よく使われている順に出ます。候補は {options.LinkModuleName} の読み取り条件に従います
-                ({options.TargetModuleName} の行の条件は効きません。見せたくないタグがあるなら {options.LinkModuleName} に読み取り条件を書いてください)。
-                """;
-        }
+        static string CreateNextStepsNote(string target, string linkName, string table) => $"""
+            タグのモジュールを生成しました。次の手順で仕上げてください:
+            1. DDL を実行してテーブルを作る ({table})
+            2. {target} の詳細・一覧・検索のレイアウトに {FieldName} を置く (一覧の列にも置けます。ページの行の分は一覧の読み込みに同梱されます)
+            候補は {linkName} に付いているタグから、よく使われている順に出ます。候補は {linkName} の読み取り条件に従います
+            ({target} の行の条件は効きません。見せたくないタグがあるなら {linkName} に読み取り条件を書いてください)。
+            """;
     }
 
     /// <summary>タグ付けのモジュールを作る (フィールド構成は契約の既定の役割と同じ)。</summary>
     internal static class TagModuleFactory
     {
-        /// <summary>タグ名の列名。</summary>
-        internal const string NameColumn = "name";
-
-        internal static ModuleDesign CreateLink(string moduleName, string table, string ownerColumn, string dataSourceName)
+        internal static ModuleDesign CreateLink(string moduleName, string table, string dataSourceName)
         {
             var module = new ModuleDesign { Name = moduleName, DataSourceName = dataSourceName, DbTable = table, CanCreate = true, CanUpdate = true, CanDelete = true };
             module.Fields.Add(new IdFieldDesign { Name = SystemFieldNames.Id, DbColumn = "id" });
-            //本体の保存で CLB が入れる (TagField の検索条件の OwnerId.Value = Id.Value)
-            module.Fields.Add(new IdFieldDesign { Name = "OwnerId", DbColumn = ownerColumn, IsManualInput = false });
-            module.Fields.Add(new TextFieldDesign { Name = "Name", DisplayName = "タグ名", DbColumn = NameColumn, IsRequired = true, MaxLength = TagField.MaxTagLength });
+            //本体の保存で CLB が入れる (TagField の結び付きの OwnerId.Value = Id.Value)
+            module.Fields.Add(new IdFieldDesign { Name = "OwnerId", DbColumn = TagSetupService.OwnerColumn, IsManualInput = false });
+            module.Fields.Add(new TextFieldDesign { Name = "Name", DisplayName = "タグ名", DbColumn = TagTableDdl.NameColumn, IsRequired = true, MaxLength = TagField.MaxTagLength });
             module.Fields.Add(new TagLinkContractFieldDesign { Name = "TagLinkContract" });
-            //タグ付けの行は TagField が読む: OwnerId と Name を読ませる (レイアウトに無いフィールドは値が空で届く)
-            module.ListLayouts[string.Empty] = new ListLayoutDesign { DataOnlyFields = { "OwnerId", "Name" } };
             return module;
         }
+    }
 
-        /// <summary>TagField の検索条件: このレコードのタグ付け行を、付けた順に。</summary>
-        internal static SearchCondition LinkCondition(string linkModuleName) => new(linkModuleName)
+    /// <summary>
+    /// タグ付けのテーブルの DDL (id・owner_id・name の 3 列)。
+    /// タグの同一判定は完全一致 (大文字小文字を区別する) なので、既定の照合順序が区別しない SQL Server / MySQL の name には区別する照合順序を付ける
+    /// (PostgreSQL / SQLite / Oracle は既定で区別する)。候補の Like も同じ照合順序で区別する。
+    /// </summary>
+    internal static class TagTableDdl
+    {
+        internal const string NameColumn = "name";
+
+        internal static List<string> Create(DataSourceType type, string table, string ownerTable, string ownerIdColumn, string ownerType)
         {
-            Condition = MultiMatchCondition.And(new FieldVariableMatchCondition
+            var owner = type == DataSourceType.SQLite
+                ? $"{ownerType} NOT NULL REFERENCES {ownerTable} ({ownerIdColumn}) ON DELETE CASCADE"
+                : $"{ownerType} NOT NULL";
+            var ddl = new List<string>
             {
-                SearchTargetVariable = "OwnerId.Value",
-                Comparison = MatchComparison.Equal,
-                Variable = "Id.Value",
-            }),
-            SortConditions = [new SortCondition { Variable = "Id.Value" }],
+                $"CREATE TABLE {table} (",
+                $"  id {IdType(type)},",
+                $"  {TagSetupService.OwnerColumn} {owner},",
+                $"  {NameColumn} {NameType(type)} NOT NULL",
+                ");",
+                //同じタグを二重に付けない (レコードで引くインデックスを兼ねる)・タグ名で引く (検索・候補)
+                $"CREATE UNIQUE INDEX ux_{table}_{TagSetupService.OwnerColumn}_{NameColumn} ON {table} ({TagSetupService.OwnerColumn}, {NameColumn});",
+                $"CREATE INDEX ix_{table}_{NameColumn} ON {table} ({NameColumn});",
+            };
+            //レコードを消せばタグも消える (SQLite は列に書いた)
+            if (type != DataSourceType.SQLite)
+                ddl.Add($"ALTER TABLE {table} ADD CONSTRAINT fk_{table}_{TagSetupService.OwnerColumn} FOREIGN KEY ({TagSetupService.OwnerColumn}) REFERENCES {ownerTable} ({ownerIdColumn}) ON DELETE CASCADE;");
+            return ddl;
+        }
+
+        static string IdType(DataSourceType type) => type switch
+        {
+            DataSourceType.SQLServer => "BIGINT IDENTITY(1,1) PRIMARY KEY",
+            DataSourceType.PostgreSQL => "BIGSERIAL PRIMARY KEY",
+            DataSourceType.MySQL => "BIGINT AUTO_INCREMENT PRIMARY KEY",
+            DataSourceType.Oracle => "NUMBER GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY",
+            _ => "INTEGER PRIMARY KEY AUTOINCREMENT",
+        };
+
+        //_CS_AS_KS_WS: 大文字小文字・アクセント・かな・幅を全部区別する (= 完全一致)
+        static string NameType(DataSourceType type) => type switch
+        {
+            DataSourceType.SQLServer => $"NVARCHAR({TagField.MaxTagLength}) COLLATE Latin1_General_CS_AS_KS_WS",
+            DataSourceType.MySQL => $"VARCHAR({TagField.MaxTagLength}) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin",
+            DataSourceType.PostgreSQL => $"VARCHAR({TagField.MaxTagLength})",
+            DataSourceType.Oracle => $"VARCHAR2({TagField.MaxTagLength})",
+            _ => "TEXT",
+        };
+
+        /// <summary>整数の Id を指す列の型 (SetupDbMapping の外部キーの Id と同じ)。</summary>
+        internal static string IntegerIdType(DataSourceType type) => type switch
+        {
+            DataSourceType.SQLServer or DataSourceType.PostgreSQL or DataSourceType.MySQL => "BIGINT",
+            DataSourceType.Oracle => "NUMBER",
+            _ => "INTEGER",
+        };
+
+        /// <summary>文字列の Id を指す列の型 (一意インデックス (owner_id, name) に収まる長さ)。</summary>
+        internal static string TextIdType(DataSourceType type) => type switch
+        {
+            DataSourceType.SQLServer => "NVARCHAR(450)",
+            DataSourceType.MySQL or DataSourceType.PostgreSQL => "VARCHAR(255)",
+            DataSourceType.Oracle => "VARCHAR2(255)",
+            _ => "TEXT",
         };
     }
 }

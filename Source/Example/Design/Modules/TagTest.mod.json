@@ -81,56 +81,14 @@
       "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.LabelFieldDesign"
     },
     {
-      "LayoutName": "",
+      "DisplayName": "",
+      "TagModuleName": "TagTestTags",
       "Placeholder": "タグを入力",
       "ConfirmOnSpace": false,
       "IsRequired": false,
       "IsSimpleSearchParameter": false,
       "SearchMatchDefaultValue": "All",
-      "DisplayName": "",
-      "SearchCondition": {
-        "SelectFields": [],
-        "SortConditions": [
-          {
-            "Variable": "Id.Value",
-            "IsDescending": false
-          }
-        ],
-        "SortFieldVariable": "",
-        "SortDescending": false,
-        "ModuleName": "TagTestTags",
-        "Condition": {
-          "IsOrMatch": false,
-          "IsNot": false,
-          "Children": [
-            {
-              "SearchTargetVariable": "OwnerId.Value",
-              "Comparison": "Equal",
-              "Variable": "Id.Value",
-              "TypeFullName": "Codeer.LowCode.Blazor.Repository.Match.FieldVariableMatchCondition"
-            }
-          ],
-          "Name": "",
-          "TypeFullName": "Codeer.LowCode.Blazor.Repository.Match.MultiMatchCondition"
-        }
-      },
-      "IsInMemoryPaging": false,
-      "ConfirmBeforePageChange": true,
-      "PagerPosition": "Top",
-      "ReplaceMode": "None",
-      "DeleteTogether": true,
-      "CanCreate": true,
-      "CanUpdate": true,
-      "CanDelete": true,
-      "CanUserSort": true,
-      "CanSelect": false,
-      "UseIndexSort": false,
-      "ConfirmBeforeDelete": false,
       "OnDataChanged": "",
-      "OnSearchDataChanged": "",
-      "OnSelectedIndexChanged": "",
-      "OnSelectedIndexChanging": "",
-      "OnDoubleClickRow": "",
       "Name": "Tags",
       "IgnoreModification": false,
       "OnValidateInput": "",

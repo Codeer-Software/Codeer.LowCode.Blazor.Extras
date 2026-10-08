@@ -10,12 +10,12 @@
   <TagInputComponent Tags="@Field.SearchTags"
                      TagsChanged="@(tags => Field.SetSearchTagsAsync(tags))"
                      GetCandidatesAsync="@Field.GetCandidatesAsync"
-                     Placeholder="@Field.TagDesign.Placeholder"
-                     ConfirmOnSpace="@Field.TagDesign.ConfirmOnSpace"
+                     Placeholder="@Field.Design.Placeholder"
+                     ConfirmOnSpace="@Field.Design.ConfirmOnSpace"
                      IsDisabled="@(Field.IsEnabled == false)"
                      IsDesignMode="@Field.Services.AppInfoService.IsDesignMode"
                      InputId="@WebElementId" />
-  @if (!Field.TagDesign.IsSimpleSearchParameter)
+  @if (!Field.Design.IsSimpleSearchParameter)
   {
     <select class="form-select w-auto" style="flex: unset" value="@Field.SearchMatch.ToString()" data-role="match" @onchange="OnMatchChangedAsync">
       <option value="@nameof(TagSearchMatch.All)">@Resources.TagSearchMatch_All</option>
@@ -25,12 +25,6 @@
 </div>
 
 @code {
-  protected override async Task OnParametersSetAsync()
-  {
-    await base.OnParametersSetAsync();
-    Field.OnSearchDataChangedAsync = () => InvokeAsync(StateHasChanged);
-  }
-
   async Task OnMatchChangedAsync(ChangeEventArgs e)
   {
     if (Enum.TryParse<TagSearchMatch>(e.Value?.ToString(), out var match)) await Field.SetSearchMatchAsync(match);

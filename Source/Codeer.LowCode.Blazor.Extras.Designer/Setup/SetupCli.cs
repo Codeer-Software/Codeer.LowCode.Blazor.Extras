@@ -35,10 +35,9 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
     ///    記録の有効化はホストの appsettings。--table / --data-source は appsettings の AuditLog.Database と同じにする)
     ///
     /// tag-setup:
-    ///   &lt;designer.exe&gt; tag-setup "&lt;projectDir&gt;" --target &lt;Module&gt; [--field Tags | --no-field] [--link-name &lt;Module&gt;Tags]
-    ///     [--link-table &lt;table&gt;] [--owner-column owner_id] [--data-source &lt;name&gt;] [--ddl-out "&lt;path.sql&gt;"]
-    ///   (タグ付けモジュール (OwnerId + タグ名) を生成し、対象モジュールに TagField を足す (同名の結び付きなしの TagField は結び付ける)。
-    ///    画面への配置はデザイナで行う。--no-field = TagField を足さない)
+    ///   &lt;designer.exe&gt; tag-setup "&lt;projectDir&gt;" --target &lt;Module&gt; [--ddl-out "&lt;path.sql&gt;"]
+    ///   (タグ付けモジュール &lt;Module&gt;Tags (OwnerId + タグ名) を生成し、対象モジュールに TagField Tags を足す (同名の結び付きなしの TagField は結び付ける)。
+    ///    データソースは対象モジュールと同じ。画面への配置はデザイナで行う)
     ///
     /// --user-name-field の既定は UserModuleFields.DefaultDisplayNameField (Name があればそれ、無ければログインアカウント契約の DisplayName の役割)。
     /// DDL は実行しない (--ddl-out へ書き出し、適用は sql verb またはユーザーが行う)。
@@ -66,24 +65,16 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
             var named = args.Length < 2 ? new Dictionary<string, string>() : ParseNamed(args);
             if (args.Length < 2 || !named.TryGetValue("--target", out var target))
             {
-                Console.Error.WriteLine($"usage: {TagVerb} \"<projectDir>\" --target <Module> [--field Tags | --no-field] [--link-name <Module>Tags] [--link-table <table>] [--owner-column owner_id] ...");
+                Console.Error.WriteLine($"usage: {TagVerb} \"<projectDir>\" --target <Module> [--ddl-out <path.sql>]");
                 return 2;
             }
             var projectDir = Path.GetFullPath(args[1]);
             var designData = LoadDesignData(projectDir);
-            var (dataSourceName, dataSourceType) = ResolveDataSource(projectDir, named.GetValueOrDefault("--data-source"));
+            //データソースは対象モジュールと同じ (空なら既定)
+            var targetDataSource = designData.Modules.Find(target)?.DataSourceName;
+            var (_, dataSourceType) = ResolveDataSource(projectDir, string.IsNullOrEmpty(targetDataSource) ? null : targetDataSource);
 
-            var options = new TagSetupOptions
-            {
-                TargetModuleName = target,
-                FieldName = args.Contains("--no-field") ? string.Empty : named.GetValueOrDefault("--field", "Tags"),
-                LinkModuleName = named.GetValueOrDefault("--link-name", string.Empty),
-                LinkTableName = named.GetValueOrDefault("--link-table", string.Empty),
-                OwnerColumnName = named.GetValueOrDefault("--owner-column", string.Empty),
-                DataSourceName = dataSourceName,
-            };
-
-            var result = TagSetupService.Run(designData, projectDir, options, dataSourceType);
+            var result = TagSetupService.Run(designData, projectDir, new TagSetupOptions { TargetModuleName = target }, dataSourceType);
             return Report(result, named.GetValueOrDefault("--ddl-out"));
         }
 

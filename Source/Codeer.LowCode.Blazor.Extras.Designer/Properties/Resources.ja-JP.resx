@@ -276,10 +276,4 @@
   <data name="SetupTagTarget" xml:space="preserve">
     <value>タグを付けるモジュール</value>
   </data>
-  <data name="SetupTagFieldName" xml:space="preserve">
-    <value>TagField の名前 (空 = 足さない)</value>
-  </data>
-  <data name="SetupTagLinkModule" xml:space="preserve">
-    <value>タグ付けモジュール</value>
-  </data>
 </root>

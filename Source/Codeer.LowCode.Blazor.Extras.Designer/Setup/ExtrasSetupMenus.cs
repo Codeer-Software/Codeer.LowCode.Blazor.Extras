@@ -31,10 +31,12 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
                 var designData = env.GetDesignData();
                 var dataSources = env.GetDesignerSettings().DataSources;
 
-                var options = TagSetupWindow.ShowDialog(designData, dataSources.Select(e => e.Name).ToList());
+                var options = TagSetupWindow.ShowDialog(designData);
                 if (options == null) return;
 
-                var dataSource = dataSources.First(e => e.Name == options.DataSourceName);
+                //データソースはタグを付けるモジュールと同じ (空なら既定)
+                var targetDataSource = designData.Modules.Find(options.TargetModuleName)?.DataSourceName;
+                var dataSource = string.IsNullOrEmpty(targetDataSource) ? dataSources.First() : dataSources.First(e => e.Name == targetDataSource);
                 var result = TagSetupService.Run(designData, env.CurrentFileDirectory, options,
                     dataSource.DataSourceType, env.GetDbInfo(dataSource.Name));
 

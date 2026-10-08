@@ -47,8 +47,6 @@ else
 }
 
 @code {
-  //候補に出す数 (プロパティにはしない)
-  const int MaxMatches = 10;
   //打つのが止まってから候補を問い合わせるまでの時間
   const int QueryDelayMilliseconds = 200;
 
@@ -125,7 +123,8 @@ else
     StateHasChanged();
   }
 
-  //入力のたび (IME 変換中は除く)。区切りが入っていれば (変換で入った「、」・貼り付け) 最後の区切りまでをタグにする
+  //入力のたび (IME 変換中は除く)。区切りが入っていれば (変換で入った「、」・貼り付け) 最後の区切りまでをタグにする。
+  //候補の問い合わせは文字が変わるごとに 1 回 (区切りで確定したときは AddAsync が残りの文字で問い合わせる)
   [JSInvokable]
   public async Task OnText(string text)
   {
@@ -133,12 +132,10 @@ else
     if (0 <= last)
     {
       await AddAsync(text[..last], text[(last + 1)..]);
+      StateHasChanged();
+      return;
     }
-    else
-    {
-      _text = text;
-      Filter();
-    }
+    SetText(text);
     StateHasChanged();
     await RefreshCandidatesAsync();
   }
@@ -157,11 +154,18 @@ else
     if (ConfirmOnSpace) text = text.Replace(' ', ',').Replace('　', ',');
     var tags = TagField.Normalize(new[] { text });
     if (0 < tags.Count) await ChangeAsync(Tags.Concat(tags));
-    _text = rest;
+    SetText(rest);
     _active = -1;
     if (_jsModule != null) await _jsModule.InvokeVoidAsync("setText", _input, rest);
-    Filter();
     if (rest.Trim().Length > 0) await RefreshCandidatesAsync();
+  }
+
+  //打っている文字を変える。文字が変われば前の文字の候補は捨てる
+  void SetText(string text)
+  {
+    _text = text;
+    if (_text.Trim() != _candidatesText) _candidates = new();
+    Filter();
   }
 
   async Task RemoveAsync(string tag) => await ChangeAsync(Tags.Where(e => !TagField.SameTag(e, tag)));
@@ -202,15 +206,12 @@ else
     StateHasChanged();
   }
 
-  //打っている文字を含む候補 (付いているタグは除く。問い合わせの結果を、届くまでは前の結果を、今の文字で絞る)。何も打っていなければ出さない。
-  //含むかの判定はサーバーの Like (多くの DB で大文字小文字を区別しない) より厳しくしない (厳しくすると、サーバーが返した候補を手元で落としてしまう)。
-  //タグの同一判定 (付いているかどうか) は完全一致
+  //出す候補 = サーバーが打った文字で絞った候補から、付いているタグ (完全一致) を除いたもの。手元では絞り直さない。何も打っていなければ出さない
   void Filter()
   {
-    var text = _text.Trim();
-    _matches = text.Length == 0
+    _matches = _text.Trim().Length == 0
       ? new()
-      : _candidates.Where(e => !Tags.Any(t => TagField.SameTag(t, e)) && e.Contains(text, StringComparison.OrdinalIgnoreCase)).Take(MaxMatches).ToList();
+      : _candidates.Where(e => !Tags.Any(t => TagField.SameTag(t, e))).ToList();
     if (_matches.Count <= _active) _active = -1;
   }
 

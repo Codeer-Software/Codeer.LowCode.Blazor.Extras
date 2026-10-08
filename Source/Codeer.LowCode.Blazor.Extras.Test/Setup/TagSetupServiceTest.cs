@@ -21,7 +21,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Setup
 
         public Task<string> GetCurrentUserIdAsync() => Task.FromResult("1");
 
-        static TagSetupOptions Options(string target = "Request") => new() { TargetModuleName = target, DataSourceName = "Main" };
+        static TagSetupOptions Options(string target = "Request") => new() { TargetModuleName = target };
 
         static List<DesignCheckInfo> Check(DesignData d, string module, string field)
             => d.Modules.Find(module)!.Fields.Single(e => e.Name == field).CheckDesign(new DesignCheckContext(module, d, NoTables));
@@ -45,7 +45,9 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Setup
 
             var field = d.Modules.Find("Request")!.Fields.OfType<TagFieldDesign>().Single();
             Assert.That(field.Name, Is.EqualTo("Tags"));
-            Assert.That(field.SearchCondition.ModuleName, Is.EqualTo("RequestTags"));
+            Assert.That(field.TagModuleName, Is.EqualTo("RequestTags"));
+            Assert.That(link.DataSourceName, Is.EqualTo("Main"), "データソースは対象と同じ");
+            Assert.That(!link.ListLayouts.TryGetValue("", out var layout) || layout.DataOnlyFields.Count == 0, Is.True, "一覧レイアウトの規約は無い");
 
             Assert.That(Check(d, "Request", "Tags"), Is.Empty);
             Assert.That(Check(d, "RequestTags", "TagLinkContract"), Is.Empty);
@@ -57,12 +59,17 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Setup
             CreateFixture();
             var sqlite = TagSetupService.Run(Load(), ProjectDir, Options(), DataSourceType.SQLite).Ddl;
             TestContext.Out.WriteLine(string.Join("\n", sqlite));
-            Assert.That(sqlite.Count(e => e.StartsWith("CREATE TABLE")), Is.EqualTo(1));
-            Assert.That(sqlite.Select(e => e.Trim()), Does.Contain("owner_id INTEGER NOT NULL REFERENCES requests (id) ON DELETE CASCADE,"), "SQLite は列に外部キー");
-            Assert.That(sqlite.Select(e => e.Trim()), Does.Contain("name TEXT NOT NULL"), "照合順序は付けない (完全一致)");
-            Assert.That(sqlite, Does.Contain("CREATE UNIQUE INDEX ux_request_tags_owner_id_name ON request_tags (owner_id, name);"));
-            Assert.That(sqlite, Does.Contain("CREATE INDEX ix_request_tags_name ON request_tags (name);"));
-            Assert.That(sqlite.Any(e => e.Contains("ADD CONSTRAINT")), Is.False);
+            //3 列のテーブルを組む (SQLite は外部キーを列に書く。照合順序は付けない = 既定で完全一致)
+            Assert.That(sqlite, Is.EqualTo(new[]
+            {
+                "CREATE TABLE request_tags (",
+                "  id INTEGER PRIMARY KEY AUTOINCREMENT,",
+                "  owner_id INTEGER NOT NULL REFERENCES requests (id) ON DELETE CASCADE,",
+                "  name TEXT NOT NULL",
+                ");",
+                "CREATE UNIQUE INDEX ux_request_tags_owner_id_name ON request_tags (owner_id, name);",
+                "CREATE INDEX ix_request_tags_name ON request_tags (name);",
+            }));
 
             //長さはタグ名の最大の長さ (TagField.MaxTagLength) と同じ
             var expected = new Dictionary<DataSourceType, string>
@@ -113,27 +120,36 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Setup
         public void 結び付きなしの同名TagFieldは結び付けフォルダ分けのモジュールはその場で保存する()
         {
             CreateFixture();
-            //結び付きの無い TagField (検索条件が空) が、Modules のサブフォルダにある
+            //結び付きの無い TagField (タグ付けモジュール名が空) が、Modules のサブフォルダにある
             var contact = new ModuleDesign { Name = "Contact", DataSourceName = "Main", DbTable = "contacts" };
             contact.Fields.Add(new IdFieldDesign { Name = "Id", DbColumn = "id" });
-            contact.Fields.Add(new TagFieldDesign { Name = "タグ", DisplayName = "タグ", Placeholder = "タグを入力", ConfirmOnSpace = true });
+            contact.Fields.Add(new TagFieldDesign { Name = "Tags", DisplayName = "タグ", Placeholder = "タグを入力", ConfirmOnSpace = true });
             Directory.CreateDirectory(Path.Combine(ProjectDir, "Modules", "SFA"));
             WriteFile(Path.Combine("Modules", "SFA", "Contact.mod.json"), JsonConverterEx.SerializeObject(contact));
 
-            var options = Options("Contact");
-            options.FieldName = "タグ";
-            options.LinkModuleName = "ContactTag";
-            options.LinkTableName = "contact_tags";
-            TagSetupService.Run(Load(), ProjectDir, options, DataSourceType.SQLite);
+            TagSetupService.Run(Load(), ProjectDir, Options("Contact"), DataSourceType.SQLite);
 
             Assert.That(File.Exists(Path.Combine(ProjectDir, "Modules", "Contact.mod.json")), Is.False);
             var d = Load();
             var fields = d.Modules.Find("Contact")!.Fields;
             var field = fields.OfType<TagFieldDesign>().Single();
-            Assert.That((field.Name, field.Placeholder, field.ConfirmOnSpace, field.SearchCondition.ModuleName), Is.EqualTo(("タグ", "タグを入力", true, "ContactTag")));
-            Assert.That(fields.Select(e => e.Name), Is.EqualTo(new[] { "Id", "タグ" }), "同じ位置");
-            Assert.That(d.Modules.Find("ContactTag")!.DbTable, Is.EqualTo("contact_tags"));
-            Assert.That(Check(d, "Contact", "タグ"), Is.Empty);
+            Assert.That((field.Name, field.Placeholder, field.ConfirmOnSpace, field.TagModuleName), Is.EqualTo(("Tags", "タグを入力", true, "ContactTags")));
+            Assert.That(fields.Select(e => e.Name), Is.EqualTo(new[] { "Id", "Tags" }), "同じ位置");
+            Assert.That(d.Modules.Find("ContactTags")!.DbTable, Is.EqualTo("contact_tags"));
+            Assert.That(Check(d, "Contact", "Tags"), Is.Empty);
+        }
+
+        [Test]
+        public void 同名のモジュールに契約が無ければ結び付けずに止める()
+        {
+            CreateFixture();
+            var other = new ModuleDesign { Name = "RequestTags", DataSourceName = "Main", DbTable = "request_tags" };
+            other.Fields.Add(new IdFieldDesign { Name = "Id", DbColumn = "id" });
+            SaveModule(other);
+
+            var ex = Assert.Throws<InvalidOperationException>(() => TagSetupService.Run(Load(), ProjectDir, Options(), DataSourceType.SQLite));
+            Assert.That(ex!.Message, Does.Contain("RequestTags"));
+            Assert.That(Load().Modules.Find("Request")!.Fields.OfType<TagFieldDesign>(), Is.Empty, "TagField も足さない");
         }
 
         [Test]
@@ -145,6 +161,42 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Setup
                 CreateFixture();
                 var ddl = TagSetupService.Run(Load(), ProjectDir, Options(), type).Ddl.Select(e => e.Trim()).ToList();
                 Assert.That(ddl.Any(e => e.StartsWith($"owner_id {idType} NOT NULL")), Is.True, type + ": " + string.Join(" / ", ddl));
+            }
+
+            //DB にテーブルがあれば、その Id 列の型
+            SetUpProjectDir();
+            CreateFixture();
+            var tables = new List<DbTableDefinition> { new() { Name = "requests", Columns = { new() { Name = "id", RawDbTypeName = "int" }, new() { Name = "title", RawDbTypeName = "nvarchar" } } } };
+            var fromDb = TagSetupService.Run(Load(), ProjectDir, Options(), DataSourceType.SQLServer, tables).Ddl.Select(e => e.Trim());
+            Assert.That(fromDb, Does.Contain("owner_id INT NOT NULL,"));
+        }
+
+        [Test]
+        public void 手入力のIdのモジュールにはOwnerIdを文字列の列で作る()
+        {
+            CreateFixture();
+            var code = new ModuleDesign { Name = "Product", DataSourceName = "Main", DbTable = "products" };
+            code.Fields.Add(new IdFieldDesign { Name = "Id", DbColumn = "code", IsManualInput = true });
+            SaveModule(code);
+
+            var sqlite = TagSetupService.Run(Load(), ProjectDir, Options("Product"), DataSourceType.SQLite);
+            Assert.That(sqlite.Ddl.Select(e => e.Trim()), Does.Contain("owner_id TEXT NOT NULL REFERENCES products (code) ON DELETE CASCADE,"));
+
+            foreach (var (type, textType) in new[] { (DataSourceType.SQLServer, "NVARCHAR(450)"), (DataSourceType.PostgreSQL, "VARCHAR(255)"), (DataSourceType.MySQL, "VARCHAR(255)"), (DataSourceType.Oracle, "VARCHAR2(255)") })
+            {
+                SetUpProjectDir();
+                CreateFixture();
+                SaveModule(code);
+                var result = TagSetupService.Run(Load(), ProjectDir, Options("Product"), type);
+                Assert.That(result.Ddl.Select(e => e.Trim()), Does.Contain($"owner_id {textType} NOT NULL,"), type.ToString());
+                Assert.That(result.Notes.Any(e => e.Contains("products.code")), Is.True, type + ": 長さは分からないので知らせる");
+
+                //DB にテーブルがあっても、文字列の型は長さが取れない (DATA_TYPE だけ) ので同じ
+                SetUpProjectDir();
+                CreateFixture();
+                SaveModule(code);
+                var tables = new List<DbTableDefinition> { new() { Name = "products", Columns = { new() { Name = "code", RawDbTypeName = "nvarchar" } } } };
+                Assert.That(TagSetupService.Run(Load(), ProjectDir, Options("Product"), type, tables).Ddl.Select(e => e.Trim()), Does.Contain($"owner_id {textType} NOT NULL,"), type + " (DB)");
             }
         }
 

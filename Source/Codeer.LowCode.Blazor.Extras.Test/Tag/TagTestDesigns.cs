@@ -25,14 +25,13 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Tag
             link.Fields.Add(new IdFieldDesign { Name = "OwnerId", DbColumn = "owner_id", IsManualInput = false });
             link.Fields.Add(new TextFieldDesign { Name = "Name", DisplayName = "タグ名", DbColumn = "name", IsRequired = true, MaxLength = TagField.MaxTagLength });
             link.Fields.Add(new TagLinkContractFieldDesign { Name = "TagLinkContract" });
-            link.ListLayouts[""] = new ListLayoutDesign { DataOnlyFields = { "OwnerId", "Name" } };
             d.AddModule(link);
 
             var contact = new ModuleDesign { Name = "Contact", DataSourceName = Ds, DbTable = "contacts", CanCreate = true, CanUpdate = true, CanDelete = true };
             contact.Fields.Add(new IdFieldDesign { Name = "Id", DbColumn = "id" });
             contact.Fields.Add(new TextFieldDesign { Name = "Name", DisplayName = "名前", DbColumn = "name" });
             contact.Fields.Add(new IdFieldDesign { Name = "CompanyId", DbColumn = "company_id", IsManualInput = true });
-            var tags = new TagFieldDesign { Name = "Tags", DisplayName = "タグ", SearchCondition = LinkCondition() };
+            var tags = new TagFieldDesign { Name = "Tags", DisplayName = "タグ", TagModuleName = "ContactTags" };
             customize?.Invoke(tags);
             contact.Fields.Add(tags);
             contact.DetailLayouts[""] = new DetailLayoutDesign { DataOnlyFields = { "Name", "Tags" } };
@@ -87,14 +86,6 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Tag
                 try { Directory.Delete(zipDir, true); } catch { }
             }
         }
-
-        //タグのセットアップが TagField に入れる検索条件: このレコードのタグ付け行を、付けた順に
-        internal static SearchCondition LinkCondition() => new()
-        {
-            ModuleName = "ContactTags",
-            Condition = MultiMatchCondition.And(new FieldVariableMatchCondition { SearchTargetVariable = "OwnerId.Value", Variable = "Id.Value", Comparison = MatchComparison.Equal }),
-            SortConditions = new List<SortCondition> { new() { Variable = "Id.Value" } },
-        };
 
         /// <summary>SQLite のテーブル (タグのセットアップの DDL と同じ形) と、最初のデータ。</summary>
         internal static async Task CreateTablesAsync(DbAccessor db)

@@ -102,6 +102,23 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Tag
         }
 
         [Test]
+        public async Task 長すぎるタグのエラーは同じ呼び出しでほかのタグが足せても残る()
+        {
+            var (_, field) = await CreateAsync();
+            await field.SetTagsAsync(["展示会", new string('い', TagField.MaxTagLength + 1)]);
+            Assert.That(field.Tags, Is.EqualTo(new[] { "展示会" }), "足せるタグは足す");
+            Assert.That(field.IsValid, Is.False, "長すぎるタグを黙って落とさない");
+            Assert.That(field.ErrorText, Does.Contain("200"));
+
+            await field.AddTagAsync($"DXPO, {new string('う', TagField.MaxTagLength + 1)}");
+            Assert.That(field.Tags, Is.EqualTo(new[] { "展示会", "DXPO" }));
+            Assert.That(field.IsValid, Is.False, "区切りで分けて足すときも");
+
+            await field.RemoveTagAsync("DXPO");
+            Assert.That(field.IsValid, Is.True, "次の足し外しで消える");
+        }
+
+        [Test]
         public async Task 必須の検証()
         {
             var (_, field) = await CreateAsync(e => e.IsRequired = true);
@@ -125,32 +142,43 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Tag
         }
 
         [Test]
-        public void デザインチェック_検索条件のモジュールはタグ付けモジュールであること()
+        public void デザインチェック_タグ付けモジュールは契約のあるモジュールであること()
         {
-            var ret = Check(TagTestDesigns.Create(e => e.SearchCondition = new SearchCondition { ModuleName = "Contact" }), "Contact", "Tags");
-            Assert.That(ret.Select(e => ((FieldDesignCheckInfo)e).Location.Member), Does.Contain("SearchCondition"));
-            ret = Check(TagTestDesigns.Create(e => e.SearchCondition = new SearchCondition()), "Contact", "Tags");
-            Assert.That(ret.Select(e => ((FieldDesignCheckInfo)e).Location.Member), Does.Contain("SearchCondition"), "空も指摘");
-        }
-
-        [Test]
-        public void デザインチェック_このレコードへの結び付きが無ければ指摘()
-        {
-            var d = TagTestDesigns.Create(e => e.SearchCondition = new SearchCondition { ModuleName = "ContactTags" });
-            var ret = Check(d, "Contact", "Tags");
+            var ret = Check(TagTestDesigns.Create(e => e.TagModuleName = "Contact"), "Contact", "Tags");
             Assert.That(ret, Has.Count.EqualTo(1));
-            ret[0].AssertFieldLocation("Contact", "Tags", "SearchCondition");
-            Assert.That(ret[0].Message, Does.Contain("OwnerId.Value"));
+            ret[0].AssertFieldLocation("Contact", "Tags", "TagModuleName");
+            Assert.That(ret[0].Code, Is.EqualTo("TagFieldDesign:1"));
+
+            ret = Check(TagTestDesigns.Create(e => e.TagModuleName = ""), "Contact", "Tags");
+            Assert.That(ret.Select(e => ((FieldDesignCheckInfo)e).Location.Member), Does.Contain("TagModuleName"), "空も指摘");
+
+            ret = Check(TagTestDesigns.Create(e => e.TagModuleName = "NoSuchModule"), "Contact", "Tags");
+            Assert.That(ret.Select(e => ((FieldDesignCheckInfo)e).Location.Member), Does.Contain("TagModuleName"), "無いモジュールも指摘");
         }
 
         [Test]
-        public void デザインチェック_タグ付けの一覧がOwnerIdとタグ名を読まなければ指摘()
+        public void 結び付きは契約の役割の名前で組み立てる()
         {
+            //タグ付けモジュールのフィールド名を変えても、契約の役割を合わせれば結び付く
             var d = TagTestDesigns.Create();
-            d.Modules.Find("ContactTags")!.ListLayouts[""].DataOnlyFields.Remove("Name");
-            var ret = Check(d, "Contact", "Tags");
-            Assert.That(ret, Has.Count.EqualTo(1));
-            Assert.That(ret[0].Message, Does.Contain("Name"));
+            var link = d.Modules.Find("ContactTags")!;
+            link.Fields.Single(e => e.Name == "OwnerId").Name = "ContactId";
+            link.Fields.Single(e => e.Name == "Name").Name = "Tag";
+            var contract = link.Fields.OfType<TagLinkContractFieldDesign>().Single();
+            contract.OwnerId = "ContactId";
+            contract.TagName = "Tag";
+
+            var condition = d.Modules.Find("Contact")!.Fields.OfType<TagFieldDesign>().Single().GetChildRecordsCondition(d.Modules);
+            Assert.That(condition.ModuleName, Is.EqualTo("ContactTags"));
+            var bind = (FieldVariableMatchCondition)((MultiMatchCondition)condition.Condition).Children.Single();
+            Assert.That((bind.SearchTargetVariable, bind.Comparison, bind.Variable), Is.EqualTo(("ContactId.Value", MatchComparison.Equal, "Id.Value")));
+            Assert.That(condition.SortConditions.Single().Variable, Is.EqualTo("Id.Value"), "付けた順");
+            Assert.That(condition.SelectFields, Is.EqualTo(new[] { "Id", "ContactId", "Tag" }), "同梱で読む列");
+            Assert.That(Check(d, "Contact", "Tags"), Is.Empty);
+
+            var noContract = TagTestDesigns.Create(e => e.TagModuleName = "Contact");
+            Assert.That(noContract.Modules.Find("Contact")!.Fields.OfType<TagFieldDesign>().Single().GetChildRecordsCondition(noContract.Modules).ModuleName,
+                Is.Empty, "契約が無ければ空の条件");
         }
 
         [Test]

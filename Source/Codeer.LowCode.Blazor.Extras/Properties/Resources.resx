@@ -1821,12 +1821,6 @@ Recipients: {1}</value>
   <data name="TagCheck_RoleTypeFormat" xml:space="preserve">
     <value>The field &apos;{1}&apos; of the role {0} must be a {2} field.</value>
   </data>
-  <data name="TagCheck_OwnerBindingMissingFormat" xml:space="preserve">
-    <value>The search condition must bind &apos;{0}.Value&apos; of &apos;{1}&apos; to this record (for example &apos;{0}.Value = Id.Value&apos;).</value>
-  </data>
-  <data name="TagCheck_LinkLayoutFieldsMissingFormat" xml:space="preserve">
-    <value>The list layout &apos;{0}&apos; of &apos;{1}&apos; does not load {2}. Put them in the layout or in its DataOnlyFields.</value>
-  </data>
   <data name="SemanticSearch_ConditionNotSupported" xml:space="preserve">
     <value>The field '{0}' cannot be searched by meaning with this condition (set the text, vector and vector search columns of SemanticSearchField).</value>
   </data>
@@ -1846,9 +1840,12 @@ Recipients: {1}</value>
     <value>TagName (tag name, required)</value>
   </data>
   <data name="TagCheck_NotLinkModuleFormat" xml:space="preserve">
-    <value>The module &apos;{0}&apos; of the search condition has no TagLinkContractField. Set a tag link module (Tag Setup creates one).</value>
+    <value>The tag module &apos;{0}&apos; has no TagLinkContractField. Set a tag link module (Tag Setup creates one).</value>
   </data>
   <data name="TagFieldTooLongFormat" xml:space="preserve">
     <value>The tag &apos;{0}…&apos; is too long. A tag is at most {1} characters.</value>
+  </data>
+  <data name="TagFieldTagModuleName" xml:space="preserve">
+    <value>Tag Module</value>
   </data>
 </root>
