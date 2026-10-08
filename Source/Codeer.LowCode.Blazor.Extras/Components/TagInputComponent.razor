@@ -157,7 +157,8 @@ else
     SetText(rest);
     _active = -1;
     if (_jsModule != null) await _jsModule.InvokeVoidAsync("setText", _input, rest);
-    if (rest.Trim().Length > 0) await RefreshCandidatesAsync();
+    //残りの文字の候補 (残りが空なら問い合わせず、問い合わせ中の結果も使わない)
+    await RefreshCandidatesAsync();
   }
 
   //打っている文字を変える。文字が変われば前の文字の候補は捨てる

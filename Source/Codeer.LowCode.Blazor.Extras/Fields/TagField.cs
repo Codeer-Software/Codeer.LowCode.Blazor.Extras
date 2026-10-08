@@ -184,7 +184,8 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
                 _modules.ApplyLoaded(modules);
                 return;
             }
-            if (!AllowLoad || Services.AppInfoService.IsDesignMode || !this.IsInLayout() || this.IsBoundToUnsavedRecord(Condition)) return;
+            //タグ付けモジュールが無い・契約が無い (デザインチェックが指摘する) なら読まない
+            if (!AllowLoad || Link == null || Services.AppInfoService.IsDesignMode || !this.IsInLayout() || this.IsBoundToUnsavedRecord(Condition)) return;
             _modules.ApplyLoaded(await this.GetChildModulesAsync(Condition, ModuleLayoutType.None));
         }
 

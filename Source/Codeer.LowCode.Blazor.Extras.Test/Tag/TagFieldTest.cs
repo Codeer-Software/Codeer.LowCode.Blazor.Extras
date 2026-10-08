@@ -150,10 +150,13 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Tag
             Assert.That(ret[0].Code, Is.EqualTo("TagFieldDesign:1"));
 
             ret = Check(TagTestDesigns.Create(e => e.TagModuleName = ""), "Contact", "Tags");
-            Assert.That(ret.Select(e => ((FieldDesignCheckInfo)e).Location.Member), Does.Contain("TagModuleName"), "空も指摘");
+            Assert.That(ret.Select(e => e.Code), Is.EqualTo(new[] { "TagFieldDesign:1" }), "空も指摘");
+            ret[0].AssertFieldLocation("Contact", "Tags", "TagModuleName");
 
+            //無いモジュールは本体のチェックが指摘する (重ねて出さない)
             ret = Check(TagTestDesigns.Create(e => e.TagModuleName = "NoSuchModule"), "Contact", "Tags");
-            Assert.That(ret.Select(e => ((FieldDesignCheckInfo)e).Location.Member), Does.Contain("TagModuleName"), "無いモジュールも指摘");
+            Assert.That(ret, Has.Count.EqualTo(1));
+            ret[0].AssertFieldLocation("Contact", "Tags", "TagModuleName");
         }
 
         [Test]
