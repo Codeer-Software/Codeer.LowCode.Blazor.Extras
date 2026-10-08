@@ -87,12 +87,13 @@ namespace Codeer.LowCode.Blazor.Extras.Test.EditHistory
         [Test]
         public void 依存関係モジュールがあればタスクと依存関係の2つを宣言する()
         {
-            var gantt = (GanttFieldDesign)CreateDesign().Modules.Find("Project")!.Fields.First(e => e.Name == "Gantt");
-            Assert.That(gantt.GetOwnedRecords().Select(e => (e.Name, e.Condition.ModuleName)),
+            var d = CreateDesign();
+            var gantt = (GanttFieldDesign)d.Modules.Find("Project")!.Fields.First(e => e.Name == "Gantt");
+            Assert.That(gantt.GetOwnedRecords(d.Modules).Select(e => (e.Name, e.Condition.ModuleName)),
                 Is.EqualTo(new[] { ("Gantt", "ProjectTask"), ("Gantt:Dependencies", "TaskDependency") }));
 
             gantt.DependenciesModule = new SearchCondition();
-            Assert.That(gantt.GetOwnedRecords().Select(e => e.Name), Is.EqualTo(new[] { "Gantt" }), "依存関係モジュールが無ければタスクだけ");
+            Assert.That(gantt.GetOwnedRecords(d.Modules).Select(e => e.Name), Is.EqualTo(new[] { "Gantt" }), "依存関係モジュールが無ければタスクだけ");
         }
 
         [Test]

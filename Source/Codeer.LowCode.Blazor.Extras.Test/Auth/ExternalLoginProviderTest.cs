@@ -211,5 +211,17 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Auth
             Assert.That(ExternalLoginService.SanitizeReturnUrl("/\\evil.com"), Is.EqualTo("/"));
             Assert.That(ExternalLoginService.SanitizeReturnUrl("https://evil.com"), Is.EqualTo("/"));
         }
+
+        [Test]
+        public void SanitizeReturnUrl_EscapesForLocationHeader()
+        {
+            Assert.That(ExternalLoginService.SanitizeReturnUrl("/経理/請求書?x=1&y=あ"), Is.EqualTo("/%E7%B5%8C%E7%90%86/%E8%AB%8B%E6%B1%82%E6%9B%B8?x=1&y=%E3%81%82"));
+            Assert.That(ExternalLoginService.SanitizeReturnUrl("/%E7%B5%8C%E7%90%86"), Is.EqualTo("/%E7%B5%8C%E7%90%86"), "符号化済みは二重符号化しない");
+            Assert.That(ExternalLoginService.SanitizeReturnUrl("/\r\nX-Test:1"), Is.EqualTo("/"));
+            Assert.That(ExternalLoginService.SanitizeReturnUrl("/a\u007Fb"), Is.EqualTo("/"));
+            Assert.That(ExternalLoginService.SanitizeReturnUrl("/a\tb"), Is.EqualTo("/"));
+            Assert.That(ExternalLoginService.SanitizeReturnUrl("/page#frag"), Is.EqualTo("/page#frag"), "index.html は location.hash も戻り先に含める");
+            Assert.That(ExternalLoginService.SanitizeReturnUrl("/a b"), Is.EqualTo("/a b"));
+        }
     }
 }

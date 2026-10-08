@@ -277,7 +277,7 @@ public CustomizedModuleDataIO(DesignData designData, IAuthenticationContext auth
 
 別モジュールのレコードを自分で読み書きする独自フィールドは、本体 (Codeer.LowCode.Blazor 1.3.37) のインターフェースを実装すると、子レコードが親の版に入る。Extras を参照する必要はない。
 
-**デザイン: `IOwnedRecordsFieldDesign.GetOwnedRecords()`** — 子レコードが版に記録され、差分に出る。
+**デザイン: `IOwnedRecordsFieldDesign.GetOwnedRecords(IModuleDesigns modules)`** — 子レコードが版に記録され、差分に出る。引数は全モジュールのデザイン (core 1.3.45 から)。結び付きが相手のモジュールの設計で決まるフィールドはこれを見て条件を組み立てる。自分の設定だけで決まるフィールドは使わなくてよい。
 
 | 宣言 (`OwnedRecordsDesign`) の項目 | 内容 |
 |---|---|

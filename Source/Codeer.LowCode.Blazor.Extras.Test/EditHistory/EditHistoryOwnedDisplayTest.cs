@@ -149,11 +149,11 @@ namespace Codeer.LowCode.Blazor.Extras.Test.EditHistory
             var order = d.Modules.Find("Order")!;
             var related = (ListFieldDesign)order.Fields.Single(e => e.Name == "Related");
             Assert.That(related.DeleteTogether, Is.False);
-            Assert.That(related.GetOwnedRecords(), Is.Empty, "参照するだけ (Can* 全部 false) の一覧は親の保存に乗らない");
+            Assert.That(related.GetOwnedRecords(d.Modules), Is.Empty, "参照するだけ (Can* 全部 false) の一覧は親の保存に乗らない");
 
             related.CanUpdate = true;
-            Assert.That(related.GetOwnedRecords().Select(e => e.Name), Is.EqualTo(new[] { "Related" }), "行を編集できる一覧は DeleteTogether でなくても親の版に入る");
-            Assert.That(EditHistoryContracts.OwnedRecords(order).Select(e => e.Owned.Name), Is.EquivalentTo(new[] { "Items", "Related" }));
+            Assert.That(related.GetOwnedRecords(d.Modules).Select(e => e.Name), Is.EqualTo(new[] { "Related" }), "行を編集できる一覧は DeleteTogether でなくても親の版に入る");
+            Assert.That(EditHistoryContracts.OwnedRecords(d.Modules, order).Select(e => e.Owned.Name), Is.EquivalentTo(new[] { "Items", "Related" }));
         }
 
         [Test]

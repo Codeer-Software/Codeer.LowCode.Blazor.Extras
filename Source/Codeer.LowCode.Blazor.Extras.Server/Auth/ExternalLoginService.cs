@@ -6,6 +6,7 @@ using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Options;
 using System.Security.Claims;
 using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 
 namespace Codeer.LowCode.Blazor.Extras.Server.Auth
@@ -153,8 +154,27 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Auth
             => $"{_options.MobileCallbackUrl}{(_options.MobileCallbackUrl.Contains('?') ? "&" : "?")}{key}={Uri.EscapeDataString(value)}";
 
         //open redirect 防止でアプリ内相対パスのみ許可
+        //Location ヘッダに入るので制御文字は不可・非 ASCII (日本語のページ名等) は UTF-8 で符号化する (符号化済みの %XX はそのまま)
         internal static string SanitizeReturnUrl(string? url)
-            => string.IsNullOrEmpty(url) || !url.StartsWith('/') || url.StartsWith("//") || url.StartsWith("/\\") ? "/" : url;
+        {
+            if (string.IsNullOrEmpty(url) || !url.StartsWith('/') || url.StartsWith("//") || url.StartsWith("/\\")) return "/";
+            if (url.Any(char.IsControl)) return "/";
+            if (Ascii.IsValid(url)) return url;
+
+            var sb = new StringBuilder(url.Length);
+            Span<byte> utf8 = stackalloc byte[4];
+            foreach (var rune in url.EnumerateRunes())
+            {
+                if (rune.IsAscii)
+                {
+                    sb.Append((char)rune.Value);
+                    continue;
+                }
+                var length = rune.EncodeToUtf8(utf8);
+                for (var i = 0; i < length; i++) sb.Append('%').Append(utf8[i].ToString("X2"));
+            }
+            return sb.ToString();
+        }
 
         static string Base64Url(byte[] bytes)
             => Convert.ToBase64String(bytes).TrimEnd('=').Replace('+', '-').Replace('/', '_');

@@ -135,7 +135,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.EditHistory
                 copy.Fields.Remove(key);
 
             //親が子を参照する宣言 (埋め込みモジュール): 子を先に用意し、自分の参照を子の Id にする
-            foreach (var (_, owned) in EditHistoryContracts.OwnedRecords(design))
+            foreach (var (_, owned) in EditHistoryContracts.OwnedRecords(designData.Modules, design))
             {
                 var path = EditHistoryPolicy.Path(prefix, owned.Name);
                 var binding = GetBinding(owned);
@@ -177,9 +177,9 @@ namespace Codeer.LowCode.Blazor.Extras.Server.EditHistory
         }
 
         //従属レコードの宣言を、指される側 (References の値) が先に来る順に並べる
-        static List<OwnedRecordsDesign> OrderByReferences(ModuleDesign design)
+        List<OwnedRecordsDesign> OrderByReferences(ModuleDesign design)
         {
-            var rest = EditHistoryContracts.OwnedRecords(design).Select(e => e.Owned).ToList();
+            var rest = EditHistoryContracts.OwnedRecords(designData.Modules, design).Select(e => e.Owned).ToList();
             var sorted = new List<OwnedRecordsDesign>();
             while (rest.Count != 0)
             {

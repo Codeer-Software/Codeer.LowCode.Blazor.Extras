@@ -76,8 +76,8 @@ namespace Codeer.LowCode.Blazor.Extras.EditHistory
             => string.IsNullOrEmpty(fieldName) ? string.Empty : (row.Fields.GetValueOrDefault(fieldName) as ValueFieldDataBase<string>)?.Value ?? string.Empty;
 
         /// <summary>モジュールの従属レコードの宣言 (IOwnedRecordsFieldDesign) を、宣言したフィールドと組で列挙する。</summary>
-        internal static IEnumerable<(FieldDesignBase Field, OwnedRecordsDesign Owned)> OwnedRecords(ModuleDesign design)
-            => design.Fields.OfType<IOwnedRecordsFieldDesign>().SelectMany(e => e.GetOwnedRecords().Select(o => ((FieldDesignBase)e, o)));
+        internal static IEnumerable<(FieldDesignBase Field, OwnedRecordsDesign Owned)> OwnedRecords(IModuleDesigns modules, ModuleDesign design)
+            => design.Fields.OfType<IOwnedRecordsFieldDesign>().SelectMany(e => e.GetOwnedRecords(modules).Select(o => ((FieldDesignBase)e, o)));
 
         /// <summary>
         /// スナップショット・差分・復元の対象外にするフィールドか。
