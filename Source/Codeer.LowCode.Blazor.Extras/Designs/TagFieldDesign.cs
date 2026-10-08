@@ -29,7 +29,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
     /// </summary>
     [ToolboxIcon(PackIconMaterialKind = "TagMultiple")]
     [Designer(DisplayName = "$TagField")]
-    public class TagFieldDesign() : FieldDesignBase(typeof(TagFieldDesign).FullName!), IDisplayName, IChildRecordsFieldDesign
+    public class TagFieldDesign() : FieldDesignBase(typeof(TagFieldDesign).FullName!), IDisplayName, IChildRecordsFieldDesign, IOwnedRecordsFieldDesign
     {
         /// <summary>デザインチェック指摘の番号。DesignCheckCode.Create で発行クラス名と結合して "クラス名:番号" になる。番号は固定(追加は末尾・欠番は再利用しない)。</summary>
         private const int CodeNotLinkModule = 1;
@@ -81,6 +81,14 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
                 SortConditions = [new SortCondition { Variable = $"{SystemFieldNames.Id}.Value" }],
                 SelectFields = [SystemFieldNames.Id, link.OwnerId, link.TagName],
             };
+        }
+
+        //従属レコードの宣言: タグ付け行はレコードの一部 (編集履歴の版に入り、復元で戻る)。契約が無ければ宣言しない
+        public IEnumerable<OwnedRecordsDesign> GetOwnedRecords(IModuleDesigns modules)
+        {
+            var condition = GetChildRecordsCondition(modules);
+            if (string.IsNullOrEmpty(condition.ModuleName)) yield break;
+            yield return new OwnedRecordsDesign { Name = Name, Condition = condition, HoldsAllRecords = true };
         }
 
         public override string GetWebComponentTypeFullName() => typeof(TagFieldComponent).FullName!;
