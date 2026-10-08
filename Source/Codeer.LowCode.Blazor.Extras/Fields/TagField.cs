@@ -26,8 +26,8 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         //候補の数 (設定にはしない)
         const int CandidateLimit = 10;
 
-        /// <summary>区切りの集合 (ここ 1 か所。Normalize・入力欄・キー入力が使う)。確定は Enter、区切りはカンマ系だけ。スペースはタグの一部。</summary>
-        public static readonly char[] Separators = [',', '、', '，'];
+        /// <summary>区切りの集合 (ここ 1 か所。Normalize・入力欄・キー入力が使う)。確定は Enter かスペース (半角・全角)。カンマはタグの一部。</summary>
+        public static readonly char[] Separators = [' ', '　'];
 
         private readonly ModuleCollection _modules = new();
 

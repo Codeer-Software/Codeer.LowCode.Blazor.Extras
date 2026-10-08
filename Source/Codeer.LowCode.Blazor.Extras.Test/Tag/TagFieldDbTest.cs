@@ -152,13 +152,13 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Tag
             var client = Client();
             var module = await client.CreateNewAsync("Contact");
             await module.GetField<TextField>("Name")!.SetValueAsync("E");
-            await Tags(module).AddTagAsync("DXPO, 新規");
+            await Tags(module).AddTagAsync("DXPO 新規");
             Assert.That(await module.SubmitAsync(), Is.True, string.Join(" | ", client.Logger.ErrorList));
             Assert.That(await LinksAsync(), Does.Contain("E:DXPO E:新規"));
 
             //保存した後の足し外し: 保存した行が今の行なので読み直さず、二重にもならない
             var reads = client.ListCalls.SelectMany(e => e).Count(e => e.Condition.ModuleName == "ContactTags");
-            await Tags(module).AddTagAsync("DXPO, VIP");
+            await Tags(module).AddTagAsync("DXPO VIP");
             Assert.That(client.ListCalls.SelectMany(e => e).Count(e => e.Condition.ModuleName == "ContactTags"), Is.EqualTo(reads), "読み直さない");
             Assert.That(await module.SubmitAsync(), Is.True, string.Join(" | ", client.Logger.ErrorList));
             Assert.That(await LinksAsync(), Does.Contain("E:DXPO E:新規 E:VIP"));
@@ -206,7 +206,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Tag
             var module = await ModuleCreationService.CreateModuleAsync(client.Core, withTags, ModuleLayoutType.None);
             Assert.That(Tags(module).Tags, Is.EqualTo(new[] { "展示会", "DXPO" }), "Select(e => e.Tags) で同梱される");
 
-            await Tags(module).AddTagAsync("展示会, セミナー");
+            await Tags(module).AddTagAsync("展示会 セミナー");
             Assert.That(Tags(module).Tags, Is.EqualTo(new[] { "展示会", "DXPO", "セミナー" }), "付いているタグは重ねない");
             Assert.That(await module.SubmitAsync(), Is.True, string.Join(" | ", client.Logger.ErrorList));
             Assert.That(await LinksAsync(), Does.StartWith("A:展示会 A:DXPO A:セミナー B:"));
@@ -230,7 +230,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Tag
             Assert.That(TagReads(), Is.EqualTo(0), "名前の保存ではタグ付け行を読まない");
             Assert.That(await LinksAsync(), Does.StartWith("A1:展示会 A1:DXPO B:"), "タグは触っていない");
 
-            await Tags(module).AddTagAsync("展示会, VIP");
+            await Tags(module).AddTagAsync("展示会 VIP");
             Assert.That(TagReads(), Is.EqualTo(1), "足す前に 1 回読む (保存を挟んでも)");
             Assert.That(Tags(module).Tags, Is.EqualTo(new[] { "展示会", "DXPO", "VIP" }));
             Assert.That(await module.SubmitAsync(), Is.True, string.Join(" | ", client.Logger.ErrorList));
@@ -247,7 +247,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Tag
             int TagReads() => client.ListCalls.SelectMany(e => e).Count(e => e.Condition.ModuleName == "ContactTags");
             Assert.That(TagReads(), Is.EqualTo(0), "表示のためには読まない");
 
-            await Tags(module).AddTagAsync("展示会, VIP");
+            await Tags(module).AddTagAsync("展示会 VIP");
             Assert.That(TagReads(), Is.EqualTo(1), "足す前に 1 回読む");
             Assert.That(Tags(module).Tags, Is.EqualTo(new[] { "展示会", "DXPO", "VIP" }), "付いている 展示会 は重ねない");
             await Tags(module).RemoveTagAsync("DXPO");

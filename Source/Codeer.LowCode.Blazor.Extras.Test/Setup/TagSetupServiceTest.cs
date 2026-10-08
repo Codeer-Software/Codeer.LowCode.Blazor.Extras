@@ -233,7 +233,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Setup
                 var client = new DbClientServices(design, () => new ModuleDataIO(design, this, db, new TemporaryFileManager(db, [], new List<IFileStorage>())));
                 var module = await client.OpenAsync("Request", "1");
                 var tags = (TagField)module.GetField("Tags")!;
-                await tags.AddTagAsync("展示会, DXPO");
+                await tags.AddTagAsync("展示会 DXPO");
                 Assert.That(await module.SubmitAsync(), Is.True, string.Join(" | ", client.Logger.ErrorList));
 
                 var reopened = (TagField)(await client.OpenAsync("Request", "1")).GetField("Tags")!;

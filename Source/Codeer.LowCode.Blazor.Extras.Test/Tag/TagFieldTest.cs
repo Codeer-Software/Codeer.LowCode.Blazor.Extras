@@ -63,7 +63,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Tag
         public async Task タグを足しても問い合わせない()
         {
             var (services, field) = await CreateAsync();
-            await field.AddTagAsync("展示会, dxpo");
+            await field.AddTagAsync("展示会 dxpo");
             Assert.That(field.Tags, Is.EqualTo(new[] { "展示会", "dxpo" }), "打ったまま (表記を寄せない)");
             Assert.That(services.App.AggregateRequests, Is.Empty);
         }
@@ -110,7 +110,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Tag
             Assert.That(field.IsValid, Is.False, "長すぎるタグを黙って落とさない");
             Assert.That(field.ErrorText, Does.Contain("200"));
 
-            await field.AddTagAsync($"DXPO, {new string('う', TagField.MaxTagLength + 1)}");
+            await field.AddTagAsync($"DXPO {new string('う', TagField.MaxTagLength + 1)}");
             Assert.That(field.Tags, Is.EqualTo(new[] { "展示会", "DXPO" }));
             Assert.That(field.IsValid, Is.False, "区切りで分けて足すときも");
 
@@ -119,14 +119,14 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Tag
         }
 
         [Test]
-        public void タグの区切りは読点と全角カンマも使え前後の空白と完全一致の重複を落とす()
-            => Assert.That(TagField.Normalize([" 展示会 ,DXPO、セミナー，展示会,, ", "dxpo"]), Is.EqualTo(new[] { "展示会", "DXPO", "セミナー", "dxpo" }));
+        public void タグの区切りはスペースで半角も全角も使え前後の空白と完全一致の重複を落とす()
+            => Assert.That(TagField.Normalize([" 展示会 DXPO　セミナー 展示会  ", "dxpo"]), Is.EqualTo(new[] { "展示会", "DXPO", "セミナー", "dxpo" }));
 
         [Test]
-        public void スペースでは区切らずタグの一部になる()
+        public void カンマは区切りではなくタグの一部になる()
         {
-            Assert.That(TagField.Separators, Is.EqualTo(new[] { ',', '、', '，' }), "区切りの集合は 1 か所");
-            Assert.That(TagField.Normalize(["東京 支社, machine learning"]), Is.EqualTo(new[] { "東京 支社", "machine learning" }));
+            Assert.That(TagField.Separators, Is.EqualTo(new[] { ' ', '　' }), "区切りの集合は 1 か所");
+            Assert.That(TagField.Normalize(["a,b、c，d 100%"]), Is.EqualTo(new[] { "a,b、c，d", "100%" }));
         }
 
         #region デザインチェック
