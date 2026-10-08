@@ -1797,9 +1797,6 @@ Recipients: {1}</value>
   <data name="TagFieldPlaceholder" xml:space="preserve">
     <value>Placeholder</value>
   </data>
-  <data name="TagFieldConfirmOnSpace" xml:space="preserve">
-    <value>Confirm a Tag with Space</value>
-  </data>
   <data name="TagFieldSearchMatchDefaultValue" xml:space="preserve">
     <value>Default Search Match</value>
   </data>

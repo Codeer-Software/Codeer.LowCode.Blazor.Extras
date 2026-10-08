@@ -1,17 +1,17 @@
 // TagField の入力欄の補助。
-// - Enter・「,」(デザインの ConfirmOnSpace ならスペースも) で確定、候補の上下、Esc、空欄での Backspace を .NET に送る
+// - Enter・区切りの文字 (TagField.Separators。.NET が渡す) で確定、候補の上下、Esc、空欄での Backspace を .NET に送る
 // - IME 変換中のキーは送らない (変換を確定する Enter も)。変換で入った「、」などの区切りは、確定後の入力で .NET が分ける
 // - 箱の外へフォーカスが移ったら、打ちかけの文字もタグにする。箱の中 (チップ・×・候補・余白) を押してもフォーカスは入力欄のまま
 
 const handlers = new WeakMap();
 
-export function initialize(input, dotNetRef, confirmOnSpace) {
+export function initialize(input, dotNetRef, separators) {
   if (!input || handlers.has(input)) return;
   const editor = input.closest('.tag-editor');
   if (!editor) return;
   const onKeyDown = (e) => {
     if (e.isComposing || e.keyCode === 229) return;
-    const confirm = e.key === 'Enter' || e.key === ',' || (confirmOnSpace && e.key === ' ');
+    const confirm = e.key === 'Enter' || separators.includes(e.key);
     if (confirm || e.key === 'ArrowDown' || e.key === 'ArrowUp') {
       e.preventDefault();
     } else if (e.key !== 'Escape' && !(e.key === 'Backspace' && input.value === '')) {

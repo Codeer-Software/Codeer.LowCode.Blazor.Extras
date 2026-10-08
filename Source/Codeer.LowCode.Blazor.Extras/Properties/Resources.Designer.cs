@@ -4213,12 +4213,6 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
             }
         }
 
-        internal static string TagFieldConfirmOnSpace {
-            get {
-                return ResourceManager.GetString("TagFieldConfirmOnSpace", resourceCulture);
-            }
-        }
-
 
         internal static string TagFieldSearchMatchDefaultValue {
             get {

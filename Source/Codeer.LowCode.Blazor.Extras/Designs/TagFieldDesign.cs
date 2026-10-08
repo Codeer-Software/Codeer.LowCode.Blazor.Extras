@@ -45,10 +45,6 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         [Designer(Index = 4, DisplayName = "$TagFieldPlaceholder")]
         public string Placeholder { get; set; } = string.Empty;
 
-        /// <summary>スペースでもタグを確定する。既定は Enter と「,」「、」だけ (日本語のタグにはスペースが入ることがあるため)。</summary>
-        [Designer(Index = 5, DisplayName = "$TagFieldConfirmOnSpace")]
-        public bool ConfirmOnSpace { get; set; }
-
         /// <summary>検索欄に一致 (すべて含む / いずれかを含む) の選択を出さない (既定の一致で検索する)。</summary>
         [Designer(Index = 0, DisplayName = "$IsSimpleSearchParameter", Category = "$SearchSettings")]
         public bool IsSimpleSearchParameter { get; set; }

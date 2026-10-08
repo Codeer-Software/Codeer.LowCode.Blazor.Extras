@@ -84,8 +84,6 @@
       "DisplayName": "",
       "TagModuleName": "TagTestTags",
       "Placeholder": "タグを入力",
-      "ConfirmOnSpace": false,
-      "IsRequired": false,
       "IsSimpleSearchParameter": false,
       "SearchMatchDefaultValue": "All",
       "OnDataChanged": "",

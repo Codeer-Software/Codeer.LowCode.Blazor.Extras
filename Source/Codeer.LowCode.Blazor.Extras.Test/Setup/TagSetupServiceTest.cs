@@ -124,7 +124,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Setup
             //結び付きの無い TagField (タグ付けモジュール名が空) が、Modules のサブフォルダにある
             var contact = new ModuleDesign { Name = "Contact", DataSourceName = "Main", DbTable = "contacts" };
             contact.Fields.Add(new IdFieldDesign { Name = "Id", DbColumn = "id" });
-            contact.Fields.Add(new TagFieldDesign { Name = "Tags", DisplayName = "タグ", Placeholder = "タグを入力", ConfirmOnSpace = true });
+            contact.Fields.Add(new TagFieldDesign { Name = "Tags", DisplayName = "タグ", Placeholder = "タグを入力" });
             Directory.CreateDirectory(Path.Combine(ProjectDir, "Modules", "SFA"));
             WriteFile(Path.Combine("Modules", "SFA", "Contact.mod.json"), JsonConverterEx.SerializeObject(contact));
 
@@ -134,7 +134,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Setup
             var d = Load();
             var fields = d.Modules.Find("Contact")!.Fields;
             var field = fields.OfType<TagFieldDesign>().Single();
-            Assert.That((field.Name, field.Placeholder, field.ConfirmOnSpace, field.TagModuleName), Is.EqualTo(("Tags", "タグを入力", true, "ContactTags")));
+            Assert.That((field.Name, field.Placeholder, field.TagModuleName), Is.EqualTo(("Tags", "タグを入力", "ContactTags")));
             Assert.That(fields.Select(e => e.Name), Is.EqualTo(new[] { "Id", "Tags" }), "同じ位置");
             Assert.That(d.Modules.Find("ContactTags")!.DbTable, Is.EqualTo("contact_tags"));
             Assert.That(Check(d, "Contact", "Tags"), Is.Empty);

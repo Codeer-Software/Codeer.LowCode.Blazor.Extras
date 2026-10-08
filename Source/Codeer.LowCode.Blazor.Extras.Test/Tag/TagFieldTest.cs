@@ -122,6 +122,13 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Tag
         public void タグの区切りは読点と全角カンマも使え前後の空白と完全一致の重複を落とす()
             => Assert.That(TagField.Normalize([" 展示会 ,DXPO、セミナー，展示会,, ", "dxpo"]), Is.EqualTo(new[] { "展示会", "DXPO", "セミナー", "dxpo" }));
 
+        [Test]
+        public void スペースでは区切らずタグの一部になる()
+        {
+            Assert.That(TagField.Separators, Is.EqualTo(new[] { ',', '、', '，' }), "区切りの集合は 1 か所");
+            Assert.That(TagField.Normalize(["東京 支社, machine learning"]), Is.EqualTo(new[] { "東京 支社", "machine learning" }));
+        }
+
         #region デザインチェック
 
         [Test]

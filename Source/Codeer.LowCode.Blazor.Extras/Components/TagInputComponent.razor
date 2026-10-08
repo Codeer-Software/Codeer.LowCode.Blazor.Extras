@@ -68,15 +68,12 @@ else
   /// <summary>打った文字を含む候補 (よく使われている順。サーバーで絞る)。</summary>
   [Parameter] public Func<string, Task<List<string>>>? GetCandidatesAsync { get; set; }
   [Parameter] public string Placeholder { get; set; } = string.Empty;
-  [Parameter] public bool ConfirmOnSpace { get; set; }
   [Parameter] public bool IsViewOnly { get; set; }
   [Parameter] public bool IsDisabled { get; set; }
   [Parameter] public bool IsInvalid { get; set; }
   [Parameter] public bool IsDesignMode { get; set; }
   [Parameter] public string InputId { get; set; } = string.Empty;
   [Parameter] public string? Style { get; set; }
-
-  char[] Separators => ConfirmOnSpace ? [',', '、', '，', ' ', '　'] : [',', '、', '，'];
 
   protected override void OnParametersSet() => Filter();
 
@@ -91,7 +88,7 @@ else
       _dotNetRef = DotNetObjectReference.Create(this);
     }
     //閲覧から編集に切り替わると入力欄が作り直されるので毎描画で呼ぶ (JS 側は二重登録しない)
-    await _jsModule.InvokeVoidAsync("initialize", _input, _dotNetRef, ConfirmOnSpace);
+    await _jsModule.InvokeVoidAsync("initialize", _input, _dotNetRef, new string(TagField.Separators));
   }
 
   public async Task FocusAsync()
@@ -99,7 +96,7 @@ else
     if (_jsModule != null) await _jsModule.InvokeVoidAsync("focus", _input);
   }
 
-  //確定 (Enter・「,」・設定でスペース)、候補の上下、閉じる、空欄での Backspace。IME 変換中のキーは JS が送らない
+  //確定 (Enter・区切りの文字)、候補の上下、閉じる、空欄での Backspace。IME 変換中のキーは JS が送らない
   [JSInvokable]
   public async Task OnKey(string key, string text)
   {
@@ -128,7 +125,7 @@ else
   [JSInvokable]
   public async Task OnText(string text)
   {
-    var last = text.LastIndexOfAny(Separators);
+    var last = text.LastIndexOfAny(TagField.Separators);
     if (0 <= last)
     {
       await AddAsync(text[..last], text[(last + 1)..]);
@@ -151,7 +148,6 @@ else
   //text をタグにして足し、入力欄を rest にする
   async Task AddAsync(string text, string rest = "")
   {
-    if (ConfirmOnSpace) text = text.Replace(' ', ',').Replace('　', ',');
     var tags = TagField.Normalize(new[] { text });
     if (0 < tags.Count) await ChangeAsync(Tags.Concat(tags));
     SetText(rest);

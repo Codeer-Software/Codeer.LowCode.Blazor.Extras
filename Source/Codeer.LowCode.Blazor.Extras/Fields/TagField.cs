@@ -26,7 +26,8 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         //候補の数 (設定にはしない)
         const int CandidateLimit = 10;
 
-        static readonly char[] _separators = [',', '、', '，'];
+        /// <summary>区切りの集合 (ここ 1 か所。Normalize・入力欄・キー入力が使う)。確定は Enter、区切りはカンマ系だけ。スペースはタグの一部。</summary>
+        public static readonly char[] Separators = [',', '、', '，'];
 
         private readonly ModuleCollection _modules = new();
 
@@ -403,7 +404,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
 
         /// <summary>区切って前後の空白・空のタグ・重複を落とす (順序は保つ。重複は完全一致で判定し、先のものを残す)。</summary>
         internal static List<string> Normalize(IEnumerable<string?> texts)
-            => texts.SelectMany(e => (e ?? string.Empty).Split(_separators))
+            => texts.SelectMany(e => (e ?? string.Empty).Split(Separators))
                 .Select(e => e.Trim())
                 .Where(e => e.Length > 0)
                 .Distinct(StringComparer.Ordinal)

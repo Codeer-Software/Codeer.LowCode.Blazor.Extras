@@ -14,7 +14,7 @@
 
 生成内容: タグ付けモジュール `<Module>Tags` + 対象モジュールの TagField `Tags` (`TagModuleName` を入れる。同名の結び付きなしの TagField があれば結び付ける) + DDL。画面への配置はデザイナで行う。
 
-- 入力は Enter・「,」・「、」で確定 (`ConfirmOnSpace` でスペースも)。IME の変換中のキーは無視する。入力欄の外へフォーカスが移ったときも、打ちかけの文字をタグにする。入力欄が空のときの Backspace は右端のチップを外す
+- タグの確定は Enter。打った文字に「,」「、」「，」が入っていれば (貼り付け・変換で複数が一度に入ったとき) そこで分ける。スペースでは区切らない (日本語のタグにはスペースが入ることがある)。区切りの集合は `TagField.Separators` の 1 か所。IME の変換中のキーは無視する。入力欄の外へフォーカスが移ったときも、打ちかけの文字をタグにする。入力欄が空のときの Backspace は右端のチップを外す
 - タグ名は 200 文字まで (入力欄・タグ付けモジュールの `Name` の MaxLength・DDL の列の長さが同じ値 `TagField.MaxTagLength`)。長すぎるタグは足さずにエラーを出す (同じ操作でほかのタグが足されても残る)
 - 同一判定は完全一致 (大文字小文字を区別する)。前後の空白は落とす
 - 足し外しは何も書かない。レコードの保存で一緒に書く (保存せずにやめれば何も残らない)。レコードを消したときのタグの削除は DDL の外部キー (ON DELETE CASCADE)
@@ -32,7 +32,6 @@
 | `TagModuleName` | string | `""` | タグ付けモジュール (`TagLinkContractField` を置いたモジュール)。セットアップが入れる。 |
 | `DisplayName` | string | `""` | 表示名。 |
 | `Placeholder` | string | `""` | タグが 1 つも無いときの入力欄のプレースホルダ。 |
-| `ConfirmOnSpace` | bool | `false` | スペース (全角含む) でもタグを確定する。 |
 | `IsSimpleSearchParameter` | bool | `false` | 検索欄に一致の選択を出さない。 |
 | `SearchMatchDefaultValue` | enum | `All` | 検索の一致の既定。`All` = すべて含む、`Any` = いずれかを含む。 |
 | `OnDataChanged` | string | `""` | タグが変わったときのスクリプトイベント名。 |

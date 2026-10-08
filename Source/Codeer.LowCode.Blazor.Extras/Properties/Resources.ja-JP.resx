@@ -1797,9 +1797,6 @@
   <data name="TagFieldPlaceholder" xml:space="preserve">
     <value>プレースホルダ</value>
   </data>
-  <data name="TagFieldConfirmOnSpace" xml:space="preserve">
-    <value>スペースでも確定</value>
-  </data>
   <data name="TagFieldSearchMatchDefaultValue" xml:space="preserve">
     <value>検索の一致の既定</value>
   </data>
