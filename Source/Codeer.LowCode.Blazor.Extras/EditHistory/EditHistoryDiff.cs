@@ -37,7 +37,7 @@ namespace Codeer.LowCode.Blazor.Extras.EditHistory
                 //従属レコード (宣言したフィールド: 明細の一覧・ガントチャート等) は行の追加・削除・変更で比べる
                 if (fieldDesign is IOwnedRecordsFieldDesign owner)
                 {
-                    foreach (var owned in owner.GetOwnedRecords())
+                    foreach (var owned in owner.GetOwnedRecords(designData.Modules))
                     {
                         var childDesign = designData.Modules.Find(owned.Condition.ModuleName);
                         if (childDesign == null) continue;

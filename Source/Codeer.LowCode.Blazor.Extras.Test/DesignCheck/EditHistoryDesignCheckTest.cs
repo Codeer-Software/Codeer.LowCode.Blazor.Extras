@@ -91,11 +91,11 @@ namespace Codeer.LowCode.Blazor.Extras.Test.DesignCheck
         [Test]
         public void 拡張フィールドと埋め込みモジュールの宣言は全件を持つ()
         {
-            Assert.That(new GanttFieldDesign { Name = "G" }.GetOwnedRecords().Single().HoldsAllRecords, Is.True);
-            Assert.That(new CalendarFieldDesign { Name = "C" }.GetOwnedRecords().Single().HoldsAllRecords, Is.True);
-            Assert.That(new TaskBoardFieldDesign { Name = "T" }.GetOwnedRecords().Single().HoldsAllRecords, Is.True);
-            Assert.That(new MarkerListFieldDesign { Name = "M" }.GetOwnedRecords().Single().HoldsAllRecords, Is.True);
-            Assert.That(new ModuleFieldDesign { Name = "E", DbColumn = "e", ModuleName = "X" }.GetOwnedRecords().Single().HoldsAllRecords, Is.True);
+            Assert.That(new GanttFieldDesign { Name = "G" }.GetOwnedRecords(new DesignData().Modules).Single().HoldsAllRecords, Is.True);
+            Assert.That(new CalendarFieldDesign { Name = "C" }.GetOwnedRecords(new DesignData().Modules).Single().HoldsAllRecords, Is.True);
+            Assert.That(new TaskBoardFieldDesign { Name = "T" }.GetOwnedRecords(new DesignData().Modules).Single().HoldsAllRecords, Is.True);
+            Assert.That(new MarkerListFieldDesign { Name = "M" }.GetOwnedRecords(new DesignData().Modules).Single().HoldsAllRecords, Is.True);
+            Assert.That(new ModuleFieldDesign { Name = "E", DbColumn = "e", ModuleName = "X" }.GetOwnedRecords(new DesignData().Modules).Single().HoldsAllRecords, Is.True);
         }
 
         [Test]

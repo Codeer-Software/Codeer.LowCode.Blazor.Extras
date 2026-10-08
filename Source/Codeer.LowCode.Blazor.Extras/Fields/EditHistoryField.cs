@@ -349,7 +349,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             var module = await this.CreateModuleForShowAsync(snapshot, Design.LayoutName,
                 (declared, rows) => OwnedRecordsDisplay.Build(rows, version.Changes.FirstOrDefault(e => e.IsList && e.FieldName == declared.Name)));
             //含めない従属レコード (除外・行ごと) は版に無いので、版表示では出さない
-            foreach (var (fieldDesign, owned) in EditHistoryContracts.OwnedRecords(Module.Design))
+            foreach (var (fieldDesign, owned) in EditHistoryContracts.OwnedRecords(Services.AppInfoService.GetDesignData().Modules, Module.Design))
             {
                 if (owned.Name == fieldDesign.Name && !EditHistoryPolicy.IsIncluded(Design, owned.Name) && module.GetField(fieldDesign.Name) is { } notIncluded) notIncluded.IsVisible = false;
             }

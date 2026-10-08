@@ -38,7 +38,7 @@ namespace Codeer.LowCode.Blazor.Extras.EditHistory
                 var empty = field.CreateData();
                 if (empty != null) data.Fields[field.Name] = empty;
             }
-            foreach (var (_, owned) in EditHistoryContracts.OwnedRecords(design))
+            foreach (var (_, owned) in EditHistoryContracts.OwnedRecords(designData.Modules, design))
             {
                 foreach (var row in data.GetOwnedRows(owned.Name) ?? []) FillNulls(designData, row);
             }

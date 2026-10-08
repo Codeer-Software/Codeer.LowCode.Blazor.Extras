@@ -395,7 +395,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.EditHistory
         //従属レコードの行を (宣言のパス, 行のモジュール, 行) で列挙する (子・孫も)
         IEnumerable<(string Path, ModuleDesign RowDesign, ModuleData Row)> OwnedRows(ModuleDesign design, ModuleData data, string prefix)
         {
-            foreach (var (_, owned) in EditHistoryContracts.OwnedRecords(design))
+            foreach (var (_, owned) in EditHistoryContracts.OwnedRecords(_designData.Modules, design))
             {
                 var path = EditHistoryPolicy.Path(prefix, owned.Name);
                 var child = _designData.Modules.Find(owned.Condition.ModuleName);

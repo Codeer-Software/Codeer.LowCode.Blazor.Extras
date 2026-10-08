@@ -42,7 +42,7 @@ namespace Codeer.LowCode.Blazor.Extras.EditHistory
             DesignData designData, ModuleDesign module, EditHistoryFieldDesign? field, bool descendIntoNotIncluded, string prefix, HashSet<string> visiting,
             List<string> declared, HashSet<string> expanded)
         {
-            foreach (var (f, owned) in EditHistoryContracts.OwnedRecords(module))
+            foreach (var (f, owned) in EditHistoryContracts.OwnedRecords(designData.Modules, module))
             {
                 var path = Path(prefix, owned.Name);
                 var child = designData.Modules.Find(owned.Condition.ModuleName);
@@ -91,7 +91,7 @@ namespace Codeer.LowCode.Blazor.Extras.EditHistory
         //スナップショットは木 (記録側が同じレコードを二度入れない) なので構造どおりに辿る (自己参照の従属も深さのまま)
         static void StripCore(DesignData designData, EditHistoryFieldDesign field, ModuleDesign design, ModuleData data, string prefix)
         {
-            foreach (var (_, owned) in EditHistoryContracts.OwnedRecords(design))
+            foreach (var (_, owned) in EditHistoryContracts.OwnedRecords(designData.Modules, design))
             {
                 var path = Path(prefix, owned.Name);
                 if (!IsIncluded(field, path))
