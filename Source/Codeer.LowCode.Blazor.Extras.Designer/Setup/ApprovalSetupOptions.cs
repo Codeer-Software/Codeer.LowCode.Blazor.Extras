@@ -106,6 +106,13 @@
         public bool AddPageFrameLink { get; set; } = true;
     }
 
+    /// <summary>タグのセットアップのオプション。名前・テーブル名・データソースはタグを付けるモジュールから決める。</summary>
+    public class TagSetupOptions
+    {
+        /// <summary>タグを付けるモジュール (テーブルと Id フィールドを持つこと)。</summary>
+        public string TargetModuleName { get; set; } = string.Empty;
+    }
+
     /// <summary>セットアップの実行結果。</summary>
     public class SetupResult
     {

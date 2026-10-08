@@ -13,6 +13,8 @@ using Codeer.LowCode.Blazor.Repository.Design;
 using Codeer.LowCode.Blazor.SystemSettings;
 using Microsoft.Data.Sqlite;
 
+using Codeer.LowCode.Blazor.Extras.Test.Harness;
+
 namespace Codeer.LowCode.Blazor.Extras.Test.Auth
 {
     /// <summary>
@@ -86,8 +88,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Auth
         public async Task TearDown()
         {
             await _db.DisposeAsync();
-            SqliteConnection.ClearAllPools();
-            if (File.Exists(_dbFile)) File.Delete(_dbFile);
+            SqliteTestDb.Delete(_dbFile);
         }
 
         HostIO CreateIO() => new(_design, this, _db);

@@ -142,7 +142,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Harness
         public void ReplaceToList(string app, string pageFrame, string module) { }
         public Task Logout() => throw new NotImplementedException();
         public void NavigateTo(string url) => throw new NotImplementedException();
-        public void ReplaceTo(string url) => throw new NotImplementedException();
+        public void ReplaceTo(string url) { }
         public Dictionary<string, List<string>> GetQueryParameters() => new();
     }
 

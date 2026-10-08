@@ -1,0 +1,95 @@
+/* ===== 編集 (form-control の枠の中にチップと入力欄) ===== */
+.tag-editor {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem;
+  position: relative;
+  height: auto;
+  min-height: calc(1.5em + 0.75rem + 2px);
+  cursor: text;
+}
+
+.tag-editor:focus-within {
+  border-color: var(--bs-primary-border-subtle, #86b7fe);
+  box-shadow: 0 0 0 0.25rem var(--bs-focus-ring-color, rgba(13, 110, 253, 0.25));
+}
+
+.tag-editor.tag-disabled {
+  background: var(--bs-secondary-bg, #e9ecef);
+  cursor: default;
+}
+
+.tag-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  max-width: 100%;
+  padding: 0 0.5rem;
+  border: 1px solid var(--bs-border-color, #dee2e6);
+  border-radius: 1rem;
+  background: var(--bs-tertiary-bg, #f8f9fa);
+  color: var(--bs-body-color, #212529);
+  font-size: 0.875em;
+  line-height: 1.6;
+}
+
+.tag-chip-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tag-chip-remove {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--bs-secondary-color, #6c757d);
+  line-height: 1;
+  cursor: pointer;
+}
+
+.tag-chip-remove:hover {
+  color: var(--bs-body-color, #212529);
+}
+
+.tag-input,
+.tag-input:focus {
+  flex: 1 1 6rem;
+  min-width: 6rem;
+  padding: 0;
+  border: 0;
+  outline: 0;
+  box-shadow: none;
+  background: transparent;
+  color: inherit;
+}
+
+/* 一覧のセル (本体の td.form-control-style-inline) では、本体が input:focus に内側のリングを高い詳細度で付ける。
+   枠とリングは .tag-editor が持つので入力欄では消す。本体のセレクタと同じ :not 列を付けて詳細度で上回らせる (!important は使わない) */
+div.tag-editor > input.tag-input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):focus {
+  outline: 0;
+  box-shadow: none;
+}
+
+.tag-candidates {
+  top: 100%;
+  left: 0;
+  max-height: 16rem;
+  overflow-y: auto;
+  z-index: 1040;
+}
+
+/* 検索欄 (input-group) の中では Bootstrap が .form-control に position: relative + z-index を付けるので、入力欄が自分の重なり順の層になり、
+   中の候補は下の一覧の固定ヘッダー (sticky, z-index 2) の後ろに回る。候補が開いている間 (フォーカス中) は入力欄ごと前に出す */
+.input-group > .form-control.tag-editor:focus-within,
+.form-control.tag-editor:focus-within {
+  z-index: 1040;
+}
+
+/* ===== 閲覧 (一覧のセルにも置ける) ===== */
+.tag-view {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}

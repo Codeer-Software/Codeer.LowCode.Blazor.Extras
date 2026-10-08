@@ -4199,5 +4199,98 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
                 return ResourceManager.GetString("CrossTab_Format_C0", resourceCulture);
             }
         }
+
+        internal static string TagField {
+            get {
+                return ResourceManager.GetString("TagField", resourceCulture);
+            }
+        }
+
+
+        internal static string TagFieldPlaceholder {
+            get {
+                return ResourceManager.GetString("TagFieldPlaceholder", resourceCulture);
+            }
+        }
+
+
+        internal static string TagFieldSearchMatchDefaultValue {
+            get {
+                return ResourceManager.GetString("TagFieldSearchMatchDefaultValue", resourceCulture);
+            }
+        }
+
+
+        internal static string TagSearchMatch_All {
+            get {
+                return ResourceManager.GetString("TagSearchMatch_All", resourceCulture);
+            }
+        }
+
+        internal static string TagSearchMatch_Any {
+            get {
+                return ResourceManager.GetString("TagSearchMatch_Any", resourceCulture);
+            }
+        }
+
+        internal static string TagFieldRemove {
+            get {
+                return ResourceManager.GetString("TagFieldRemove", resourceCulture);
+            }
+        }
+
+
+
+
+        internal static string TagLinkContractField {
+            get {
+                return ResourceManager.GetString("TagLinkContractField", resourceCulture);
+            }
+        }
+
+        internal static string TagLinkContractOwnerId {
+            get {
+                return ResourceManager.GetString("TagLinkContractOwnerId", resourceCulture);
+            }
+        }
+
+
+        internal static string TagCheck_RoleTypeFormat {
+            get {
+                return ResourceManager.GetString("TagCheck_RoleTypeFormat", resourceCulture);
+            }
+        }
+
+
+
+
+
+
+
+
+
+        internal static string TagLinkContractTagName {
+            get {
+                return ResourceManager.GetString("TagLinkContractTagName", resourceCulture);
+            }
+        }
+
+        internal static string TagCheck_NotLinkModuleFormat {
+            get {
+                return ResourceManager.GetString("TagCheck_NotLinkModuleFormat", resourceCulture);
+            }
+        }
+
+        internal static string TagFieldTooLongFormat {
+            get {
+                return ResourceManager.GetString("TagFieldTooLongFormat", resourceCulture);
+            }
+        }
+
+        internal static string TagFieldTagModuleName {
+            get {
+                return ResourceManager.GetString("TagFieldTagModuleName", resourceCulture);
+            }
+        }
     }
 }

@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <root>
   <resheader name="resmimetype">
     <value>text/microsoft-resx</value>
@@ -269,5 +269,11 @@
   </data>
   <data name="CrossTabSetting_FormatHint" xml:space="preserve">
     <value>Display format (.NET numeric format). Pick from the list or type one such as N1 / P0 / C0. Empty = the field's format.</value>
+  </data>
+  <data name="SetupMenuTag" xml:space="preserve">
+    <value>Tag Setup</value>
+  </data>
+  <data name="SetupTagTarget" xml:space="preserve">
+    <value>Module to Tag</value>
   </data>
 </root>

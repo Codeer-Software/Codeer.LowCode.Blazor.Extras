@@ -1791,6 +1791,33 @@ Recipients: {1}</value>
   <data name="CrossTab_Format_C0" xml:space="preserve">
     <value>Currency</value>
   </data>
+  <data name="TagField" xml:space="preserve">
+    <value>Tag</value>
+  </data>
+  <data name="TagFieldPlaceholder" xml:space="preserve">
+    <value>Placeholder</value>
+  </data>
+  <data name="TagFieldSearchMatchDefaultValue" xml:space="preserve">
+    <value>Default Search Match</value>
+  </data>
+  <data name="TagSearchMatch_All" xml:space="preserve">
+    <value>Contains all</value>
+  </data>
+  <data name="TagSearchMatch_Any" xml:space="preserve">
+    <value>Contains any</value>
+  </data>
+  <data name="TagFieldRemove" xml:space="preserve">
+    <value>Remove</value>
+  </data>
+  <data name="TagLinkContractField" xml:space="preserve">
+    <value>Tag Link Contract</value>
+  </data>
+  <data name="TagLinkContractOwnerId" xml:space="preserve">
+    <value>OwnerId (Id of the tagged record, required)</value>
+  </data>
+  <data name="TagCheck_RoleTypeFormat" xml:space="preserve">
+    <value>The field &apos;{1}&apos; of the role {0} must be a {2} field.</value>
+  </data>
   <data name="SemanticSearch_ConditionNotSupported" xml:space="preserve">
     <value>The field '{0}' cannot be searched by meaning with this condition (set the text, vector and vector search columns of SemanticSearchField).</value>
   </data>
@@ -1805,5 +1832,17 @@ Recipients: {1}</value>
   </data>
   <data name="SemanticSearch_SearchPlaceholder" xml:space="preserve">
     <value>Search by meaning</value>
+  </data>
+  <data name="TagLinkContractTagName" xml:space="preserve">
+    <value>TagName (tag name, required)</value>
+  </data>
+  <data name="TagCheck_NotLinkModuleFormat" xml:space="preserve">
+    <value>The tag module &apos;{0}&apos; has no TagLinkContractField. Set a tag link module (Tag Setup creates one).</value>
+  </data>
+  <data name="TagFieldTooLongFormat" xml:space="preserve">
+    <value>The tag &apos;{0}…&apos; is too long. A tag is at most {1} characters.</value>
+  </data>
+  <data name="TagFieldTagModuleName" xml:space="preserve">
+    <value>Tag Module</value>
   </data>
 </root>

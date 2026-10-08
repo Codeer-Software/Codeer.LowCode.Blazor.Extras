@@ -9,6 +9,8 @@ using Codeer.LowCode.Blazor.SystemSettings;
 using Microsoft.Extensions.AI;
 using System.Text.Json;
 
+using Codeer.LowCode.Blazor.Extras.Test.Harness;
+
 namespace Codeer.LowCode.Blazor.Extras.Test.AI
 {
     /// <summary>RawDataAccessToolSet: SQLite の実 DB でスキーマ取得と SELECT 実行、行数上限、SELECT 以外の拒否。</summary>
@@ -40,8 +42,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
         [TearDown]
         public void TearDown()
         {
-            Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
-            if (File.Exists(_dbFile)) File.Delete(_dbFile);
+            SqliteTestDb.Delete(_dbFile);
         }
 
         RawDataAccessToolSet Create(Action<RawDataAccessOptions>? configure = null, DesignData? design = null)
@@ -203,8 +204,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
             }
             finally
             {
-                Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
-                if (File.Exists(second)) File.Delete(second);
+                SqliteTestDb.Delete(second);
             }
         }
 

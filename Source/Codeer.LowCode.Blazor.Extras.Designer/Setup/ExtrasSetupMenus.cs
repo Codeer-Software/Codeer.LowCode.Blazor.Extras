@@ -16,6 +16,36 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
             AddMailSetup(env);
             AddEditHistorySetup(env);
             AddAuditLogSetup(env);
+            AddTagSetup(env);
+        }
+
+        /// <summary>Tools &gt; タグのセットアップ。タグ付けモジュールの生成と、対象モジュールへの TagField の追加。</summary>
+        public static void AddTagSetup(DesignerEnvironment env)
+            => env.AddMainMenu(() => RunTagSetup(env), "Tools", Properties.Resources.SetupMenuTag);
+
+        static void RunTagSetup(DesignerEnvironment env)
+        {
+            if (string.IsNullOrEmpty(env.CurrentFileDirectory)) return;
+            try
+            {
+                var designData = env.GetDesignData();
+                var dataSources = env.GetDesignerSettings().DataSources;
+
+                var options = TagSetupWindow.ShowDialog(designData);
+                if (options == null) return;
+
+                //データソースはタグを付けるモジュールと同じ (空なら既定)
+                var targetDataSource = designData.Modules.Find(options.TargetModuleName)?.DataSourceName;
+                var dataSource = string.IsNullOrEmpty(targetDataSource) ? dataSources.First() : dataSources.First(e => e.Name == targetDataSource);
+                var result = TagSetupService.Run(designData, env.CurrentFileDirectory, options,
+                    dataSource.DataSourceType, env.GetDbInfo(dataSource.Name));
+
+                SetupResultWindow.ShowResult(env, dataSource, result);
+            }
+            catch (Exception ex)
+            {
+                MessageWindow.Show(ex.Message, "Error");
+            }
         }
 
         /// <summary>Tools &gt; 承認フローのセットアップ。承認モジュール群 (フロー系 + 経路マスタ) の生成。</summary>

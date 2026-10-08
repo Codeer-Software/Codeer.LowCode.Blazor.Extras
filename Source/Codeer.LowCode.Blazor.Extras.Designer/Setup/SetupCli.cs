@@ -34,6 +34,11 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
     ///   (監査ログのテーブルを閲覧するモジュールと、テーブル作成 DDL (日時のインデックス込み) を生成するだけ。
     ///    記録の有効化はホストの appsettings。--table / --data-source は appsettings の AuditLog.Database と同じにする)
     ///
+    /// tag-setup:
+    ///   &lt;designer.exe&gt; tag-setup "&lt;projectDir&gt;" --target &lt;Module&gt; [--ddl-out "&lt;path.sql&gt;"]
+    ///   (タグ付けモジュール &lt;Module&gt;Tags (OwnerId + タグ名) を生成し、対象モジュールに TagField Tags を足す (同名の結び付きなしの TagField は結び付ける)。
+    ///    データソースは対象モジュールと同じ。画面への配置はデザイナで行う)
+    ///
     /// --user-name-field の既定は UserModuleFields.DefaultDisplayNameField (Name があればそれ、無ければログインアカウント契約の DisplayName の役割)。
     /// DDL は実行しない (--ddl-out へ書き出し、適用は sql verb またはユーザーが行う)。
     /// 終了コード: 0 = 成功 / 2 = 失敗。
@@ -44,6 +49,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
         internal const string MailVerb = "mail-setup";
         internal const string EditHistoryVerb = "edit-history-setup";
         internal const string AuditLogVerb = "audit-log-setup";
+        internal const string TagVerb = "tag-setup";
 
         internal static void Register()
         {
@@ -51,6 +57,25 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
             HeadlessCliVerbs.Register(MailVerb, RunMail);
             HeadlessCliVerbs.Register(EditHistoryVerb, RunEditHistory);
             HeadlessCliVerbs.Register(AuditLogVerb, RunAuditLog);
+            HeadlessCliVerbs.Register(TagVerb, RunTag);
+        }
+
+        static int RunTag(string[] args)
+        {
+            var named = args.Length < 2 ? new Dictionary<string, string>() : ParseNamed(args);
+            if (args.Length < 2 || !named.TryGetValue("--target", out var target))
+            {
+                Console.Error.WriteLine($"usage: {TagVerb} \"<projectDir>\" --target <Module> [--ddl-out <path.sql>]");
+                return 2;
+            }
+            var projectDir = Path.GetFullPath(args[1]);
+            var designData = LoadDesignData(projectDir);
+            //データソースは対象モジュールと同じ (空なら既定)
+            var targetDataSource = designData.Modules.Find(target)?.DataSourceName;
+            var (_, dataSourceType) = ResolveDataSource(projectDir, string.IsNullOrEmpty(targetDataSource) ? null : targetDataSource);
+
+            var result = TagSetupService.Run(designData, projectDir, new TagSetupOptions { TargetModuleName = target }, dataSourceType);
+            return Report(result, named.GetValueOrDefault("--ddl-out"));
         }
 
         static int RunApproval(string[] args)

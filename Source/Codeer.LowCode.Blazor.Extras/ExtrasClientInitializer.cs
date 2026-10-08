@@ -18,6 +18,7 @@ namespace Codeer.LowCode.Blazor.Extras
             app.GetScriptRuntimeTypeManager().AddType<GanttViewMode>();
             //クロス集計のセル (OnCellClick の引数)
             app.GetScriptRuntimeTypeManager().AddType<CrossTabCell>();
+            app.GetScriptRuntimeTypeManager().AddType<TagSearchMatch>();
         }
 
         /// <summary>

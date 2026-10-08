@@ -227,5 +227,17 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Properties
         public static string CrossTabSetting_Format => GetString("CrossTabSetting_Format");
 
         public static string CrossTabSetting_FormatHint => GetString("CrossTabSetting_FormatHint");
+
+        internal static string SetupMenuTag {
+            get {
+                return ResourceManager.GetString("SetupMenuTag", resourceCulture);
+            }
+        }
+
+        internal static string SetupTagTarget {
+            get {
+                return ResourceManager.GetString("SetupTagTarget", resourceCulture);
+            }
+        }
     }
 }

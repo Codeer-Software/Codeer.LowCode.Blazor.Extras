@@ -15,6 +15,8 @@ using Microsoft.Data.Sqlite;
 using System.Security.Cryptography;
 using System.Text;
 
+using Codeer.LowCode.Blazor.Extras.Test.Harness;
+
 namespace Codeer.LowCode.Blazor.Extras.Test.AuditLog
 {
     /// <summary>
@@ -73,8 +75,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AuditLog
             ModuleDataIO.BulkAddThreshold = _bulkAddThreshold;
             await _db.DisposeAsync();
             await _ioDb.DisposeAsync();
-            SqliteConnection.ClearAllPools();
-            if (File.Exists(_dbFile)) File.Delete(_dbFile);
+            SqliteTestDb.Delete(_dbFile);
         }
 
         //ホストの CustomizedModuleDataIO と同じ結線

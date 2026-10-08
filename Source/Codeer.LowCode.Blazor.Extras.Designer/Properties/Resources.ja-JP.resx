@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <root>
   <resheader name="resmimetype">
     <value>text/microsoft-resx</value>
@@ -269,5 +269,11 @@
   </data>
   <data name="CrossTabSetting_FormatHint" xml:space="preserve">
     <value>表示の書式 (.NET の数値の書式)。候補から選ぶか N1 / P0 / C0 などを入力。空なら元の項目の書式</value>
+  </data>
+  <data name="SetupMenuTag" xml:space="preserve">
+    <value>タグのセットアップ</value>
+  </data>
+  <data name="SetupTagTarget" xml:space="preserve">
+    <value>タグを付けるモジュール</value>
   </data>
 </root>

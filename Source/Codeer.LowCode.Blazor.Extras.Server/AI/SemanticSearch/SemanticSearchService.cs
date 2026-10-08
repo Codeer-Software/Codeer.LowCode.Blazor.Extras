@@ -201,6 +201,9 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
             if (fields.Count == 0) throw new ArgumentException($"Module '{moduleName}' has no SemanticSearchField with the text, vector and vector-search columns set.", nameof(moduleName));
             var idField = module.Fields.OfType<IdFieldDesign>().FirstOrDefault() ?? throw new ArgumentException($"Module '{moduleName}' has no IdField.", nameof(moduleName));
             var rowsPerPage = pageSize ?? ReindexPageSize;
+            //読む列 = 文章にするフィールド + Id。子のレコードを持つフィールド (TagField など) を名前で指定すると、本体が子の行をページの行の分まとめて同梱する
+            //(SelectFields が空だと列だけが読まれ、子の行は付いてこない)
+            var selectFields = fields.SelectMany(f => SemanticSearchText.SourceFields(module, f)).Append(idField.Name).Distinct().ToList();
 
             //missingOnly: どのフィールドかでベクトルが無い行 = 対象。索引済み (全フィールドにベクトルあり) の Id を先に集めて飛ばす
             HashSet<string>? indexed = null;
@@ -220,7 +223,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
             for (var pageIndex = 0; ; pageIndex++)
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                var condition = new SearchCondition(moduleName) { LimitCount = rowsPerPage };
+                var condition = new SearchCondition(moduleName) { LimitCount = rowsPerPage, SelectFields = selectFields.ToList() };
                 condition.SortConditions.Add(new SortCondition { Variable = $"{idField.Name}.Value" });
                 var page = await moduleDataIO.GetListAsync(condition, pageIndex);
                 if (pageIndex == 0)

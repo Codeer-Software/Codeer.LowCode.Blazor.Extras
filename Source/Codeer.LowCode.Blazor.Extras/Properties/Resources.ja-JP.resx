@@ -1791,6 +1791,33 @@
   <data name="CrossTab_Format_C0" xml:space="preserve">
     <value>通貨</value>
   </data>
+  <data name="TagField" xml:space="preserve">
+    <value>タグ</value>
+  </data>
+  <data name="TagFieldPlaceholder" xml:space="preserve">
+    <value>プレースホルダ</value>
+  </data>
+  <data name="TagFieldSearchMatchDefaultValue" xml:space="preserve">
+    <value>検索の一致の既定</value>
+  </data>
+  <data name="TagSearchMatch_All" xml:space="preserve">
+    <value>すべて含む</value>
+  </data>
+  <data name="TagSearchMatch_Any" xml:space="preserve">
+    <value>いずれかを含む</value>
+  </data>
+  <data name="TagFieldRemove" xml:space="preserve">
+    <value>外す</value>
+  </data>
+  <data name="TagLinkContractField" xml:space="preserve">
+    <value>タグ付け契約</value>
+  </data>
+  <data name="TagLinkContractOwnerId" xml:space="preserve">
+    <value>OwnerId (タグを付けたレコードの Id・必須)</value>
+  </data>
+  <data name="TagCheck_RoleTypeFormat" xml:space="preserve">
+    <value>役割 {0} のフィールド &apos;{1}&apos; は {2} フィールドでなければなりません。</value>
+  </data>
   <data name="SemanticSearch_ConditionNotSupported" xml:space="preserve">
     <value>フィールド '{0}' はこの条件で意味検索できません (SemanticSearchField の文章・ベクトル・ベクトル検索の列を設定してください)。</value>
   </data>
@@ -1805,5 +1832,17 @@
   </data>
   <data name="SemanticSearch_SearchPlaceholder" xml:space="preserve">
     <value>内容で探す</value>
+  </data>
+  <data name="TagLinkContractTagName" xml:space="preserve">
+    <value>TagName (タグ名・必須)</value>
+  </data>
+  <data name="TagCheck_NotLinkModuleFormat" xml:space="preserve">
+    <value>タグ付けモジュール &apos;{0}&apos; に TagLinkContractField がありません。タグ付けモジュール (タグのセットアップで作れます) を指定してください。</value>
+  </data>
+  <data name="TagFieldTooLongFormat" xml:space="preserve">
+    <value>「{0}…」は長すぎます。タグは {1} 文字までです。</value>
+  </data>
+  <data name="TagFieldTagModuleName" xml:space="preserve">
+    <value>タグ付けモジュール</value>
   </data>
 </root>

@@ -13,6 +13,8 @@ using Codeer.LowCode.Blazor.Repository.Match;
 using Codeer.LowCode.Blazor.SystemSettings;
 using Microsoft.Extensions.AI;
 
+using Codeer.LowCode.Blazor.Extras.Test.Harness;
+
 namespace Codeer.LowCode.Blazor.Extras.Test.AI
 {
     /// <summary>
@@ -63,8 +65,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
         public void TearDown()
         {
             _db.Dispose();
-            Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
-            try { File.Delete(_dbFile); } catch { }
+            SqliteTestDb.Delete(_dbFile);
         }
 
         #region ハーネス
