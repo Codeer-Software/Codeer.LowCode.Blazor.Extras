@@ -1,4 +1,5 @@
 using Codeer.LowCode.Blazor;
+using Codeer.LowCode.Blazor.Aggregation;
 using Codeer.LowCode.Blazor.DataIO;
 using Codeer.LowCode.Blazor.Repository.Data;
 using Codeer.LowCode.Blazor.Repository.Match;
@@ -70,6 +71,18 @@ namespace Extras.Server.Controllers
             var data = MessagePackSerializer.Typeless.Deserialize(memory) as List<ModuleSubmitData>;
             //監査ログ: 行ごとの対象 (Add / Update / Delete) と採番 Id、結果のエラーは保存の合流点 (CustomizedModuleDataIO の AuditIOInterceptor) が記録する
             return await _dataService.ModuleDataIO.SubmitWithTransactionAsync(data!);
+        }
+
+        [HttpPost("aggregate"), Audit(AuditCategory.DataRead)]
+        public async Task<IActionResult> AggregateAsync(List<AggregateCondition> conditions)
+        {
+            var results = await _dataService.ModuleDataIO.AggregateAsync(conditions);
+            foreach (var moduleName in conditions.Select(e => e.ModuleName).Distinct())
+            {
+                _audit.AddTarget(moduleName, null, "Aggregate");
+            }
+            _audit.AddNote("Rows", (results.FirstOrDefault()?.TotalCount ?? 0).ToString());
+            return File(new MemoryStream(MessagePackSerializer.Typeless.Serialize(results)), "application/octet-stream");
         }
 
         [HttpPost("list_file"), Audit(AuditCategory.Export)]
