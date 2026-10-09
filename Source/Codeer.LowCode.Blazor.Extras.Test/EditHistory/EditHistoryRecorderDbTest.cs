@@ -360,7 +360,9 @@ namespace Codeer.LowCode.Blazor.Extras.Test.EditHistory
             {
                 Name = "AfterUpdate", Timing = Repository.Design.ExecuteSqlTiming.Update, WithStandardIO = Repository.Design.ExecuteSqlWithStandardIO.After,
             };
+#pragma warning disable CS0612 // テストはデザインをコードで組むので SQL は SqlText で入れる (SetSqlText は本体の internal)
             sql.ExecuteSqlSetting.SqlText = "INSERT INTO side_logs (order_id, memo) VALUES (1, 'updated')";
+#pragma warning restore CS0612
             _design.Modules.Find("Order")!.Fields.Add(sql);
             await CreateOrderAsync();
 
@@ -394,7 +396,9 @@ namespace Codeer.LowCode.Blazor.Extras.Test.EditHistory
         public async Task ExecuteSqlのStandalone送信はレコードが変わったときだけ記録する()
         {
             var sql = new Repository.Design.ExecuteSqlFieldDesign { Name = "Sql", Timing = Repository.Design.ExecuteSqlTiming.Standalone };
+#pragma warning disable CS0612 // テストはデザインをコードで組むので SQL は SqlText で入れる (SetSqlText は本体の internal)
             sql.ExecuteSqlSetting.SqlText = "UPDATE orders SET title = 'SQLで更新' WHERE id = 1";
+#pragma warning restore CS0612
             _design.Modules.Find("Order")!.Fields.Add(sql);
             await CreateOrderAsync();
 
