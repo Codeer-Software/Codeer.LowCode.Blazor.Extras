@@ -50,7 +50,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Tag
             Assert.That(condition.SortConditions[0].IsDescending, Is.True);
             Assert.That(condition.SortConditions[1].Target, Is.EqualTo(AggregateSortTarget.Group), "同じ件数は名前順");
             Assert.That(condition.LimitCount, Is.EqualTo(10));
-            var like = (FieldValueMatchCondition)((MultiMatchCondition)condition.Condition).Children.Single();
+            var like = (FieldValueMatchCondition)((MultiMatchCondition)condition.Condition!).Children.Single();
             Assert.That(like.SearchTargetVariable, Is.EqualTo("Name.Value"));
             Assert.That(like.Comparison, Is.EqualTo(MatchComparison.Like));
             Assert.That(((StringValue)like.Value!).Value, Is.EqualTo("展"));
@@ -169,9 +169,9 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Tag
             contract.OwnerId = "ContactId";
             contract.TagName = "Tag";
 
-            var condition = d.Modules.Find("Contact")!.Fields.OfType<TagFieldDesign>().Single().GetChildRecordsCondition(d.Modules);
+            var condition = d.Modules.Find("Contact")!.Fields.OfType<TagFieldDesign>().Single().GetChildRecordsCondition(d.Modules)!;
             Assert.That(condition.ModuleName, Is.EqualTo("ContactTags"));
-            var bind = (FieldVariableMatchCondition)((MultiMatchCondition)condition.Condition).Children.Single();
+            var bind = (FieldVariableMatchCondition)((MultiMatchCondition)condition.Condition!).Children.Single();
             Assert.That((bind.SearchTargetVariable, bind.Comparison, bind.Variable), Is.EqualTo(("ContactId.Value", MatchComparison.Equal, "Id.Value")));
             Assert.That(condition.SortConditions.Single().Variable, Is.EqualTo("Id.Value"), "付けた順");
             Assert.That(condition.SelectFields, Is.EqualTo(new[] { "Id", "ContactId", "Tag" }), "同梱で読む列");
