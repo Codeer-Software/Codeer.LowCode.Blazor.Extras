@@ -180,7 +180,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
                 _reindexCancellation = null;
                 NotifyStateChanged();
             }
-            await Module.ExecuteScriptAsync(Design.OnReindexCompleted);
+            await Module!.ExecuteScriptAsync(Design.OnReindexCompleted);
         }
 
         async Task<SemanticSearchReindexStatusResponse> RunReindexAsync(SemanticSearchReindexRequest request, CancellationToken token)

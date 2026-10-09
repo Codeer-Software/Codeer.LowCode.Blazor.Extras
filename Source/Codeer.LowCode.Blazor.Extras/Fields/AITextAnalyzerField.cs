@@ -67,7 +67,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             if (!Design.IsAllowedFileName(Module?.Design, fileName))
                 throw LowCodeException.Create(Properties.Resources.FileExtensionNotAllowed, FileExtensionFilter.ToDisplayText(Design.GetAllowedExtensions(Module?.Design)));
 
-            var file = Module.GetField<FileField>(Design.FileField);
+            var file = Module!.GetField<FileField>(Design.FileField);
             if (file != null)
             {
                 await file.SetFileAsync(fileName, content);

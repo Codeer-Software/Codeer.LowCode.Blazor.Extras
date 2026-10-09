@@ -80,7 +80,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.EditHistory
             await EditHistoryRestorer.ApplyAsync(module, Snapshot(Customer("5", "A社", null)), null);
 
             Assert.That(field.ChildModule!.GetIdText(), Is.EqualTo("5"));
-            Assert.That(field.ChildModule.GetField<TextField>("Name")!.Value, Is.EqualTo("A社"));
+            Assert.That(field.ChildModule!.GetField<TextField>("Name")!.Value, Is.EqualTo("A社"));
             var order = module.GetSubmitData().Update.Single(e => e.Name == "Order");
             Assert.That(((ModuleFieldData)order.Fields["Customer"]).Id, Is.EqualTo("5"), "親の参照 (FK) が版の子に戻る");
         }
