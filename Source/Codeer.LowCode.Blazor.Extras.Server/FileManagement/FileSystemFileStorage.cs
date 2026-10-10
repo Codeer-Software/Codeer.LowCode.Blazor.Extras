@@ -33,6 +33,14 @@ namespace Codeer.LowCode.Blazor.Extras.Server.FileManagement
             await File.WriteAllBytesAsync(path, content.ToArray());
         }
 
+        //読みながらファイルへ書く (アップロードの本文をメモリに置かない)
+        public async Task WriteAsync(Guid file, Stream content)
+        {
+            Directory.CreateDirectory(_settings.Directory);
+            await using var fileStream = new FileStream(PathOf(file), FileMode.Create, FileAccess.Write, FileShare.None, 4096, FileOptions.Asynchronous);
+            await content.CopyToAsync(fileStream);
+        }
+
         public Task DeleteAsync(Guid file)
         {
             File.Delete(PathOf(file));

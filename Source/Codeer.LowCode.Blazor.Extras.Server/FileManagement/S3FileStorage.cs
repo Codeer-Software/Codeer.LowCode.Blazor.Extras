@@ -3,6 +3,7 @@ using Amazon.Runtime;
 using Amazon.Runtime.CredentialManagement;
 using Amazon.S3;
 using Amazon.S3.Model;
+using Amazon.S3.Transfer;
 
 namespace Codeer.LowCode.Blazor.Extras.Server.FileManagement
 {
@@ -110,6 +111,20 @@ namespace Codeer.LowCode.Blazor.Extras.Server.FileManagement
             using var client = CreateClient();
             content.Position = 0;
             await client.PutObjectAsync(new PutObjectRequest
+            {
+                BucketName = _settings.BucketName,
+                Key = KeyOf(_settings, file),
+                InputStream = content,
+                AutoCloseStream = false,
+            });
+        }
+
+        //TransferUtility がマルチパートで送る (戻れない Stream でも全部をメモリに置かない)
+        public async Task WriteAsync(Guid file, Stream content)
+        {
+            using var client = CreateClient();
+            using var transfer = new TransferUtility(client);
+            await transfer.UploadAsync(new TransferUtilityUploadRequest
             {
                 BucketName = _settings.BucketName,
                 Key = KeyOf(_settings, file),

@@ -69,13 +69,10 @@ namespace Codeer.LowCode.Blazor.Extras.Server.FileManagement
                 FileGuid = Guid.NewGuid(),
             };
 
-            using (var memoryStream = new MemoryStream())
-            {
-                await stream.CopyToAsync(memoryStream);
-                memoryStream.Position = 0;
-                data.FileSize = memoryStream.Length;
-                await WriteTempFile(info.DataSourceName, info.StorageName, data.FileGuid.Value, memoryStream);
-            }
+            //本文を読みながら置き場所へ書く (全部をメモリに置かない。大きさは流しながら数える)
+            var counting = new CountingReadStream(stream);
+            await WriteTempFile(info.DataSourceName, info.StorageName, data.FileGuid.Value, counting);
+            data.FileSize = counting.BytesRead;
             await DeleteTmpFiles(info.DataSourceName, info.StorageName);
             return data;
         }
@@ -88,10 +85,10 @@ namespace Codeer.LowCode.Blazor.Extras.Server.FileManagement
             await RemoveTmpFiles(dataSourceName, oldFiles);
         }
 
-        async Task WriteTempFile(string dataSourceName, string? storageName, Guid guid, MemoryStream memoryStream)
+        async Task WriteTempFile(string dataSourceName, string? storageName, Guid guid, Stream content)
         {
             await ToTemporaryFile(dataSourceName, guid);
-            await StorageAccess.WriteFile(_fileStorages, storageName, guid, memoryStream);
+            await StorageAccess.WriteFile(_fileStorages, storageName, guid, content);
         }
 
         async Task<Guid[]> GetOldTemporaryFiles(string dataSourceName)

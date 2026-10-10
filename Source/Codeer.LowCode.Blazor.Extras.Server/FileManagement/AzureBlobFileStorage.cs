@@ -64,6 +64,9 @@ namespace Codeer.LowCode.Blazor.Extras.Server.FileManagement
 
         public async Task WriteAsync(Guid file, MemoryStream content) => await _container.GetBlobClient($"{file}").UploadAsync(content, true);
 
+        //SDK がブロックに分けて送る (戻れない Stream でも全部をメモリに置かない)
+        public async Task WriteAsync(Guid file, Stream content) => await _container.GetBlobClient($"{file}").UploadAsync(content, true);
+
         public async Task DeleteAsync(Guid file) => await _container.GetBlobClient($"{file}").DeleteIfExistsAsync();
     }
 }

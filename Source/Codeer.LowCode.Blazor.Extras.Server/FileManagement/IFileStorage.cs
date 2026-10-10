@@ -19,6 +19,19 @@ namespace Codeer.LowCode.Blazor.Extras.Server.FileManagement
         /// 既定は <see cref="ReadAsync"/> (全部読んでから返す) なので、独自の置き場所は必要なときだけ部分読みで実装する (位置指定でしか読めない置き場所は <see cref="RangeReadStream"/>)。
         /// </summary>
         async Task<Stream> OpenReadAsync(Guid file) => await ReadAsync(file);
+
+        /// <summary>
+        /// 読みながら書く (全部をメモリに置かない)。アップロードの本文のように、長さが分からず戻れない Stream も受ける
+        /// (<see cref="StorageAccess.WriteFile(IEnumerable{IFileStorage}, string?, Guid, Stream)"/>)。
+        /// 既定は <see cref="WriteAsync(Guid, MemoryStream)"/> (全部読んでから書く) なので、独自の置き場所は必要なときだけ実装する。
+        /// </summary>
+        async Task WriteAsync(Guid file, Stream content)
+        {
+            using var memory = new MemoryStream();
+            await content.CopyToAsync(memory);
+            memory.Position = 0;
+            await WriteAsync(file, memory);
+        }
     }
 
     public static class FileStorageExtensions

@@ -25,6 +25,10 @@ namespace Codeer.LowCode.Blazor.Extras.Server.FileManagement
         public static async Task WriteFile(IEnumerable<IFileStorage> storages, string? storageName, Guid guid, MemoryStream memoryStream)
             => await storages.Find(storageName).WriteAsync(guid, memoryStream);
 
+        /// <summary>読みながら書く (全部をメモリに置かない)。アップロードの本文をそのまま渡せる。</summary>
+        public static async Task WriteFile(IEnumerable<IFileStorage> storages, string? storageName, Guid guid, Stream content)
+            => await storages.Find(storageName).WriteAsync(guid, content);
+
         public static Task<MemoryStream> ReadFileAsync(FileStorage[] storages, FileLocation file)
             => ReadFileAsync(storages.ToFileStorages(), file);
 
@@ -36,5 +40,8 @@ namespace Codeer.LowCode.Blazor.Extras.Server.FileManagement
 
         public static Task WriteFile(FileStorage[] storages, string? storageName, Guid guid, MemoryStream memoryStream)
             => WriteFile(storages.ToFileStorages(), storageName, guid, memoryStream);
+
+        public static Task WriteFile(FileStorage[] storages, string? storageName, Guid guid, Stream content)
+            => WriteFile(storages.ToFileStorages(), storageName, guid, content);
     }
 }
