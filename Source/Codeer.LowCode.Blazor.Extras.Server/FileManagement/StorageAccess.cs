@@ -8,6 +8,10 @@ namespace Codeer.LowCode.Blazor.Extras.Server.FileManagement
         public static async Task<MemoryStream> ReadFileAsync(IEnumerable<IFileStorage> storages, FileLocation file)
             => await storages.Find(file.StorageName).ReadAsync(file.Guid);
 
+        /// <summary>読みながら返す Stream (全部をメモリに置かない。読み終えた側が閉じる)。応答の Range 処理 (動画のシーク・途中からの再生) 向け。</summary>
+        public static async Task<Stream> OpenReadAsync(IEnumerable<IFileStorage> storages, FileLocation file)
+            => await storages.Find(file.StorageName).OpenReadAsync(file.Guid);
+
         public static async Task DeleteFiles(IEnumerable<IFileStorage> storages, string storageName, Guid[] files)
         {
             var storage = storages.Find(storageName);
@@ -23,6 +27,9 @@ namespace Codeer.LowCode.Blazor.Extras.Server.FileManagement
 
         public static Task<MemoryStream> ReadFileAsync(FileStorage[] storages, FileLocation file)
             => ReadFileAsync(storages.ToFileStorages(), file);
+
+        public static Task<Stream> OpenReadAsync(FileStorage[] storages, FileLocation file)
+            => OpenReadAsync(storages.ToFileStorages(), file);
 
         public static Task DeleteFiles(FileStorage[] storages, string storageName, Guid[] files)
             => DeleteFiles(storages.ToFileStorages(), storageName, files);

@@ -68,6 +68,33 @@ namespace Codeer.LowCode.Blazor.Extras.Server.FileManagement
             return credentials == null ? new AmazonS3Client(config) : new AmazonS3Client(credentials, config);
         }
 
+        //S3 は位置を指定した GetObject (ByteRange) でしか部分を読めないので、RangeReadStream でシーク可能に見せる。
+        //クライアントは Stream と同じ寿命 (読み終えた側が Stream を閉じたときに閉じる)
+        public async Task<Stream> OpenReadAsync(Guid file)
+        {
+            var client = CreateClient();
+            try
+            {
+                var key = KeyOf(_settings, file);
+                var length = (await client.GetObjectMetadataAsync(_settings.BucketName, key)).ContentLength;
+                return new RangeReadStream(length, async position =>
+                {
+                    var response = await client.GetObjectAsync(new GetObjectRequest
+                    {
+                        BucketName = _settings.BucketName,
+                        Key = key,
+                        ByteRange = new ByteRange(position, length - 1),
+                    });
+                    return response.ResponseStream;
+                }, client);
+            }
+            catch
+            {
+                client.Dispose();
+                throw;
+            }
+        }
+
         public async Task<MemoryStream> ReadAsync(Guid file)
         {
             using var client = CreateClient();
