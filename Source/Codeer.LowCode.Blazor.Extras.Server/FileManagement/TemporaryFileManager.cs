@@ -71,7 +71,18 @@ namespace Codeer.LowCode.Blazor.Extras.Server.FileManagement
 
             //本文を読みながら置き場所へ書く (全部をメモリに置かない。大きさは流しながら数える)
             var counting = new CountingReadStream(stream);
-            await WriteTempFile(info.DataSourceName, info.StorageName, data.FileGuid.Value, counting);
+            await ToTemporaryFile(info.DataSourceName, data.FileGuid.Value);
+            try
+            {
+                await StorageAccess.WriteFile(_fileStorages, info.StorageName, data.FileGuid.Value, counting);
+            }
+            catch
+            {
+                //途中で切れた・上限超え・置き場所の障害: 一時行と途中までの実体を残さない (消せなくても 1 日後の掃除に拾われる)
+                await StorageAccess.DeleteFiles(_fileStorages, info.StorageName, [data.FileGuid.Value]);
+                try { await RemoveTmpFiles(info.DataSourceName, [data.FileGuid.Value]); } catch { }
+                throw;
+            }
             data.FileSize = counting.BytesRead;
             await DeleteTmpFiles(info.DataSourceName, info.StorageName);
             return data;
@@ -83,12 +94,6 @@ namespace Codeer.LowCode.Blazor.Extras.Server.FileManagement
             var oldFiles = (await GetOldTemporaryFiles(dataSourceName)).Take(10).ToArray();
             await StorageAccess.DeleteFiles(_fileStorages, storageName, oldFiles);
             await RemoveTmpFiles(dataSourceName, oldFiles);
-        }
-
-        async Task WriteTempFile(string dataSourceName, string? storageName, Guid guid, Stream content)
-        {
-            await ToTemporaryFile(dataSourceName, guid);
-            await StorageAccess.WriteFile(_fileStorages, storageName, guid, content);
         }
 
         async Task<Guid[]> GetOldTemporaryFiles(string dataSourceName)
