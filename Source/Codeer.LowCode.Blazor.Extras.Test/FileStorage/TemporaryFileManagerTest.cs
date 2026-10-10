@@ -69,6 +69,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.FileStorage
             {
                 if (failAt >= 0 && _position >= failAt) throw new IOException("connection reset");
                 var n = Math.Min(count, data.Length - _position);
+                if (failAt >= 0) n = Math.Min(n, failAt - _position);
                 Array.Copy(data, _position, buffer, offset, n);
                 _position += n;
                 return n;
