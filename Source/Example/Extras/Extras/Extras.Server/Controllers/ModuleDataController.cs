@@ -7,6 +7,7 @@ using Codeer.LowCode.Blazor.RequestInterfaces;
 using Codeer.LowCode.Blazor.Utils;
 using Excel.Report.PDF;
 using MessagePack;
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Mvc;
 using Extras.Client.Shared.Services;
 using Extras.Server.Services;
@@ -146,6 +147,9 @@ namespace Extras.Server.Controllers
         {
             _audit.AddTarget(moduleName ?? string.Empty, null, $"Upload:{fieldName}");
             var info = _dataService.ModuleDataIO.FileFieldDataIO.GetFileSaveInfo(moduleName ?? string.Empty, fieldName ?? string.Empty);
+            //本文の上限はフィールドの設定 (MaxAllowedSize、無ければ既定) で決まる。本文を読む前に入れる
+            var bodySize = HttpContext.Features.Get<IHttpMaxRequestBodySizeFeature>();
+            if (bodySize != null && !bodySize.IsReadOnly) bodySize.MaxRequestBodySize = info.MaxAllowedSize;
             return await _dataService.TemporaryFileManager.AddFileAsync(info, fileName, Request.Body);
         }
     }
