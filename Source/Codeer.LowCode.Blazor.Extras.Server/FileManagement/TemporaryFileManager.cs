@@ -69,13 +69,24 @@ namespace Codeer.LowCode.Blazor.Extras.Server.FileManagement
                 FileGuid = Guid.NewGuid(),
             };
 
-            using (var memoryStream = new MemoryStream())
+            //本文を読みながら置き場所へ書く (全部をメモリに置かない。大きさは流しながら数える)
+            var storage = _fileStorages.Find(info.StorageName);
+            var counting = new CountingReadStream(stream);
+            await ToTemporaryFile(info.DataSourceName, data.FileGuid.Value);
+            try
             {
-                await stream.CopyToAsync(memoryStream);
-                memoryStream.Position = 0;
-                data.FileSize = memoryStream.Length;
-                await WriteTempFile(info.DataSourceName, info.StorageName, data.FileGuid.Value, memoryStream);
+                await storage.WriteAsync(data.FileGuid.Value, counting);
             }
+            catch
+            {
+                //途中で切れた・上限超え・置き場所の障害: 途中までの実体と一時行を残さない。
+                //行は実体を消せたときだけ消す (実体が残るなら行も残し、1 日後の掃除に拾わせる。行の無い実体は掃除されない)
+                var deleted = false;
+                try { await storage.DeleteAsync(data.FileGuid.Value); deleted = true; } catch { }
+                if (deleted) try { await RemoveTmpFiles(info.DataSourceName, [data.FileGuid.Value]); } catch { }
+                throw;
+            }
+            data.FileSize = counting.BytesRead;
             await DeleteTmpFiles(info.DataSourceName, info.StorageName);
             return data;
         }
@@ -86,12 +97,6 @@ namespace Codeer.LowCode.Blazor.Extras.Server.FileManagement
             var oldFiles = (await GetOldTemporaryFiles(dataSourceName)).Take(10).ToArray();
             await StorageAccess.DeleteFiles(_fileStorages, storageName, oldFiles);
             await RemoveTmpFiles(dataSourceName, oldFiles);
-        }
-
-        async Task WriteTempFile(string dataSourceName, string? storageName, Guid guid, MemoryStream memoryStream)
-        {
-            await ToTemporaryFile(dataSourceName, guid);
-            await StorageAccess.WriteFile(_fileStorages, storageName, guid, memoryStream);
         }
 
         async Task<Guid[]> GetOldTemporaryFiles(string dataSourceName)

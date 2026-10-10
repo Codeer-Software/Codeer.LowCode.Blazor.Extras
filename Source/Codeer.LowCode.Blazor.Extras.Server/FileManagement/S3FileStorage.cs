@@ -3,6 +3,7 @@ using Amazon.Runtime;
 using Amazon.Runtime.CredentialManagement;
 using Amazon.S3;
 using Amazon.S3.Model;
+using Amazon.S3.Transfer;
 
 namespace Codeer.LowCode.Blazor.Extras.Server.FileManagement
 {
@@ -68,6 +69,33 @@ namespace Codeer.LowCode.Blazor.Extras.Server.FileManagement
             return credentials == null ? new AmazonS3Client(config) : new AmazonS3Client(credentials, config);
         }
 
+        //S3 は位置を指定した GetObject (ByteRange) でしか部分を読めないので、RangeReadStream でシーク可能に見せる。
+        //クライアントは Stream と同じ寿命 (読み終えた側が Stream を閉じたときに閉じる)
+        public async Task<Stream> OpenReadAsync(Guid file)
+        {
+            var client = CreateClient();
+            try
+            {
+                var key = KeyOf(_settings, file);
+                var length = (await client.GetObjectMetadataAsync(_settings.BucketName, key)).ContentLength;
+                return new RangeReadStream(length, async position =>
+                {
+                    var response = await client.GetObjectAsync(new GetObjectRequest
+                    {
+                        BucketName = _settings.BucketName,
+                        Key = key,
+                        ByteRange = new ByteRange(position, length - 1),
+                    });
+                    return response.ResponseStream;
+                }, client);
+            }
+            catch
+            {
+                client.Dispose();
+                throw;
+            }
+        }
+
         public async Task<MemoryStream> ReadAsync(Guid file)
         {
             using var client = CreateClient();
@@ -83,6 +111,20 @@ namespace Codeer.LowCode.Blazor.Extras.Server.FileManagement
             using var client = CreateClient();
             content.Position = 0;
             await client.PutObjectAsync(new PutObjectRequest
+            {
+                BucketName = _settings.BucketName,
+                Key = KeyOf(_settings, file),
+                InputStream = content,
+                AutoCloseStream = false,
+            });
+        }
+
+        //TransferUtility がマルチパートで送る (戻れない Stream でも全部をメモリに置かない)
+        public async Task WriteAsync(Guid file, Stream content)
+        {
+            using var client = CreateClient();
+            using var transfer = new TransferUtility(client);
+            await transfer.UploadAsync(new TransferUtilityUploadRequest
             {
                 BucketName = _settings.BucketName,
                 Key = KeyOf(_settings, file),

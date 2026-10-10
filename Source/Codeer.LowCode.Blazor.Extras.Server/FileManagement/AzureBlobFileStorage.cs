@@ -59,7 +59,13 @@ namespace Codeer.LowCode.Blazor.Extras.Server.FileManagement
             return memoryStream;
         }
 
+        //SDK の読み取りストリーム (シーク可能。読まれた範囲だけを Range で取る)
+        public async Task<Stream> OpenReadAsync(Guid file) => await _container.GetBlobClient($"{file}").OpenReadAsync();
+
         public async Task WriteAsync(Guid file, MemoryStream content) => await _container.GetBlobClient($"{file}").UploadAsync(content, true);
+
+        //SDK がブロックに分けて送る (戻れない Stream でも全部をメモリに置かない)
+        public async Task WriteAsync(Guid file, Stream content) => await _container.GetBlobClient($"{file}").UploadAsync(content, true);
 
         public async Task DeleteAsync(Guid file) => await _container.GetBlobClient($"{file}").DeleteIfExistsAsync();
     }

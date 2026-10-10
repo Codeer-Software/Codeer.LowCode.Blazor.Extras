@@ -119,7 +119,7 @@ create index "ix_audit_log_occurred_at" on "audit_log" ("occurred_at_utc");
 | `Authentication` | ログイン (ID/パスワード・外部 IdP への遷移と IdP からの戻り・モバイルのチケット交換)、ログアウト、認証アプリの解除。ログイン失敗と二要素認証のコード不一致は `Denied`。成立した行だけ `user_id` が入る (二要素待ち・IdP への遷移は `Success` でも空) |
 | `DataRead` | 一覧・詳細の取得 (誰が・どのモジュールを・何件。`AddRead(..., recordIds: true)` なら返した行ごとに `Read` と Id)、メールのプレビュー (一斉送信のプレビューは描いた宛先の行ごとに `Read`。送らずに宛先の値を見る操作なので参照として残す)、AI チャットの送信 (`AIChat.Send`。対象は AIChatField のモジュールと `AIChat:フィールド名`、`Detail` に `Agent=Agent 名`。発言と Agent が読んだ行は残さない) |
 | `DataWrite` | 保存・一括取込・スクリプトの一括保存 (行ごとに Add / Update / Delete と件数)、アップロード、承認フローの操作 |
-| `Export` | 一括ファイル出力 (出した行ごとに Export と件数)、Excel → PDF、添付ファイルのダウンロード (レコードとフィールド名)、メール送信・一斉送信 (送信元のレコード・件数・一斉送信は宛先の行)。画面に表示するだけの参照 (DataRead) と違い、ファイルとして持ち出す操作は既定で記録される |
+| `Export` | 一括ファイル出力 (出した行ごとに Export と件数)、Excel → PDF、添付ファイルのダウンロード (レコードとフィールド名。動画の再生も同じ API なので、再生欄を開いた・シークした要求ごとに 1 行残り、要求された範囲が Detail の `Range=` に入る)、メール送信・一斉送信 (送信元のレコード・件数・一斉送信は宛先の行)。画面に表示するだけの参照 (DataRead) と違い、ファイルとして持ち出す操作は既定で記録される |
 | `Admin` | 意味検索の再索引 |
 | `System` | アプリの起動 (有効な設定を Detail に残す)・停止、デザインの版の切替 (`Design.Loaded`)、初期管理者の作成 (`Account.InitialUserCreated`。ユーザーが 0 件のときテンプレートが作る admin。作った行の Id が対象) |
 | `Other` | `[Audit]` を付けていない API (設計の取得、リソース、TOTP 状態、AI チャットのポーリング・中断など)。失敗と拒否だけが残る |
@@ -161,6 +161,7 @@ create index "ix_audit_log_occurred_at" on "audit_log" ("occurred_at_utc");
 - HTTP 401 / 403 → `Denied` (認可ミドルウェアの拒否も含む)
 - その他の 4xx / 5xx → `Failure`
 - 200 でも業務として失敗したもの (保存結果の `ExceptionMessage`、承認の `ErrorMessage`、ログインのコード不一致) はコントローラが `Failure` / `Denied` に上書きする
+- ファイルを読みながら返す応答 (添付のダウンロード・動画の再生) は、送り始めた時点で結果が決まる (ストレージから開けなければ `Failure`。送っている途中で切れても `Success` のまま)
 
 何を記録するかは appsettings ではなく **ホストのコード** (コントローラの `[Audit]`) で決まります。分類を宣言したアクションは成功も失敗も記録し、
 宣言の無いアクション (`Other`) は失敗と拒否だけが残ります。参照 (`DataRead`) も常に残り、既定は「誰が・どのモジュールを・何件読んだか」(`Targets` にモジュール名、

@@ -35,6 +35,76 @@ namespace Codeer.LowCode.Blazor.Extras.Test.FileStorage
         }
 
         [Test]
+        public async Task FileSystemは読みながら返すStreamを開ける()
+        {
+            var guid = Guid.NewGuid();
+            var storages = Storages();
+            await StorageAccess.WriteFile(storages, "Local", guid, new MemoryStream([1, 2, 3, 4]));
+
+            await using var s = await StorageAccess.OpenReadAsync(storages, new FileLocation { StorageName = "Local", Guid = guid });
+            Assert.That(s, Is.Not.InstanceOf<MemoryStream>(), "全部をメモリに置かない");
+            Assert.That(s.CanSeek, Is.True);
+            s.Seek(2, SeekOrigin.Begin);
+            var buffer = new byte[2];
+            Assert.That(await s.ReadAsync(buffer), Is.EqualTo(2));
+            Assert.That(buffer, Is.EqualTo(new byte[] { 3, 4 }));
+        }
+
+        [Test]
+        public async Task 独自ストレージのOpenReadは既定でReadAsyncに落ちる()
+        {
+            var mem = new InMemory();
+            var guid = Guid.NewGuid();
+            mem.Files[guid] = [5, 6];
+            await using var s = await StorageAccess.OpenReadAsync([mem], new FileLocation { StorageName = "Mem", Guid = guid });
+            Assert.That(s.CanSeek, Is.True);
+            var buffer = new byte[2];
+            Assert.That(await s.ReadAsync(buffer), Is.EqualTo(2));
+            Assert.That(buffer, Is.EqualTo(new byte[] { 5, 6 }));
+        }
+
+        //アップロードの本文 (長さ不明・戻れない Stream) をそのまま置き場所へ流せる
+        [Test]
+        public async Task FileSystemは戻れないStreamを読みながら書ける()
+        {
+            var guid = Guid.NewGuid();
+            var storages = Storages();
+            await StorageAccess.WriteFile(storages, "Local", guid, new ForwardOnly([1, 2, 3, 4, 5]));
+            Assert.That(await File.ReadAllBytesAsync(Path.Combine(_dir, guid.ToString())), Is.EqualTo(new byte[] { 1, 2, 3, 4, 5 }));
+        }
+
+        [Test]
+        public async Task 独自ストレージのStream書き込みは既定でMemoryStream版に落ちる()
+        {
+            var mem = new InMemory();
+            var guid = Guid.NewGuid();
+            await StorageAccess.WriteFile([mem], "Mem", guid, new ForwardOnly([8, 9]));
+            Assert.That(mem.Files[guid], Is.EqualTo(new byte[] { 8, 9 }));
+        }
+
+        //前にも戻れず長さも分からない Stream (Request.Body の性質)
+        class ForwardOnly(byte[] data) : Stream
+        {
+            int _position;
+            public override bool CanRead => true;
+            public override bool CanSeek => false;
+            public override bool CanWrite => false;
+            public override long Length => throw new NotSupportedException();
+            public override long Position { get => throw new NotSupportedException(); set => throw new NotSupportedException(); }
+            public override int Read(byte[] buffer, int offset, int count)
+            {
+                var n = Math.Min(count, data.Length - _position);
+                Array.Copy(data, _position, buffer, offset, n);
+                _position += n;
+                return n;
+            }
+            public override void Flush() { }
+            public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+            public override void SetLength(long value) => throw new NotSupportedException();
+            public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+        }
+
+        [Test]
         public void 未知のストレージ名は例外()
         {
             Assert.ThrowsAsync<LowCodeException>(() => StorageAccess.WriteFile(Storages(), "Nope", Guid.NewGuid(), new MemoryStream()));
