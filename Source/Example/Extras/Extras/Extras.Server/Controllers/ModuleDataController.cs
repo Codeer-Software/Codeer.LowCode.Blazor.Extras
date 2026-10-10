@@ -146,7 +146,7 @@ namespace Extras.Server.Controllers
         public async Task<Codeer.LowCode.Blazor.DataIO.FileInfo> UploadFileAsync(string? moduleName, string? fieldName, string? fileName)
         {
             _audit.AddTarget(moduleName ?? string.Empty, null, $"Upload:{fieldName}");
-            var info = _dataService.ModuleDataIO.FileFieldDataIO.GetFileSaveInfo(moduleName ?? string.Empty, fieldName ?? string.Empty);
+            var info = await _dataService.ModuleDataIO.FileFieldDataIO.GetFileSaveInfoAsync(moduleName ?? string.Empty, fieldName ?? string.Empty);
             //本文の上限はフィールドの設定 (MaxAllowedSize、無ければ既定) で決まる。本文を読む前に入れる
             var bodySize = HttpContext.Features.Get<IHttpMaxRequestBodySizeFeature>();
             if (bodySize != null && !bodySize.IsReadOnly) bodySize.MaxRequestBodySize = info.MaxAllowedSize;
