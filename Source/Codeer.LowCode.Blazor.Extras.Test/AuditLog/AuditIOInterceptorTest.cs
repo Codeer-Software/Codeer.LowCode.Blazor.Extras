@@ -97,7 +97,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AuditLog
         }
 
         [Test]
-        public async Task AccessDeniedSavesAreRecordedAsDeniedWithTheirTargets()
+        public void AccessDeniedSavesAreRecordedAsDeniedWithTheirTargets()
         {
             //本体の権限拒否は型のままインターセプタまで上がる。拒否として対象ごと残し、例外はそのまま上げる (本体が ExceptionMessage にする)
             var audit = new AuditContext();

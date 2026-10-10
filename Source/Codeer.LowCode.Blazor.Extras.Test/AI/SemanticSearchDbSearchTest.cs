@@ -92,7 +92,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
         }
 
         [Test]
-        public async Task 対応しないデータソースではembedを拒否する()
+        public void 対応しないデータソースではembedを拒否する()
         {
             var embedding = new FakeEmbeddingProvider();
             var design = CreateDesign("Main", "search_vector_v");
