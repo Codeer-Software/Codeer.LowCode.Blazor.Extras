@@ -58,7 +58,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.EditHistory
             var changes = EditHistoryDiff.Compute(design, design.Modules.Find("Contact")!, before, after, (_, _) => true);
             var change = changes.Single();
             Assert.That((change.FieldName, change.DisplayName, change.IsList, change.AddedCount, change.RemovedCount), Is.EqualTo(("Tags", "タグ", true, 1, 1)));
-            Assert.That(change.Rows.Select(e => (e.Kind, ((TextFieldData)e.Row.Fields["Name"]).Value)),
+            Assert.That(change.Rows.Select(e => (e.Kind, ((TextFieldData)e.Row!.Fields["Name"]).Value)),
                 Is.EquivalentTo(new[] { (EditHistoryRowChangeKind.Added, "セミナー"), (EditHistoryRowChangeKind.Removed, "DXPO") }));
             Assert.That(change.Rows.SelectMany(e => e.Changes).Select(e => e.FieldName), Does.Not.Contain("OwnerId"), "親へのリンクは行の値として出さない");
         }
