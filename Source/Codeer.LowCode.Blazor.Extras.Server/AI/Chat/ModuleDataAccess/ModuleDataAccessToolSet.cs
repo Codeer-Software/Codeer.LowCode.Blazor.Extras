@@ -329,9 +329,8 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat.ModuleDataAccess
                 context.Logger?.LogWarning("AIChat ModuleDataAccess search_records embedding failed: {Message}", e.Message);
                 return Error(e.Message);
             }
-            //ベクトルの条件を先頭に置く: 並び ("Field.Value") は条件の木で最初に見つかる同じ項目の条件から式を作るので、filters のキーワード条件 (並べられない) より先に
             var semanticCondition = new SemanticMatchCondition { FieldName = target.Field.Name, Vector = vector };
-            condition.Condition = condition.Condition == null ? semanticCondition : MultiMatchCondition.And(semanticCondition, condition.Condition);
+            condition.Condition = condition.Condition == null ? semanticCondition : MultiMatchCondition.And(condition.Condition, semanticCondition);
 
             return await ReadAsync(module, "search_records", context, async scope =>
             {

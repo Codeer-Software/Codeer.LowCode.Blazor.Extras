@@ -2966,6 +2966,15 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
         }
         
         /// <summary>
+        ///   The fields {0} used for the semantic search text have a PermissionField read condition, but this field ({1}) does not. The text column contains the values of the source fields, so anyone who can read {1} can find the values of {0} by keyword search. Give {1} the same or a stricter read condition. に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string SemanticSearchCheck_SourceFieldsRestrictedFormat {
+            get {
+                return ResourceManager.GetString("SemanticSearchCheck_SourceFieldsRestrictedFormat", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   DB Column (DB vector search) に類似しているローカライズされた文字列を検索します。
         /// </summary>
         internal static string SemanticSearchFieldDbColumnVectorSearch {

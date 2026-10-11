@@ -29,6 +29,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         private const int CodeColumnsRequired = 1;
         private const int CodeFieldsNotLoaded = 2;
         private const int CodeSearchHasNoEffect = 3;
+        private const int CodeSourceFieldsRestricted = 4;
 
         /// <summary>文章にするフィールド (同じモジュール)。空なら DB 列を持つ入力フィールド全部 (Id・論理削除・楽観ロック・パスワード・作成/更新の記録は除く)。</summary>
         [Designer(Index = 2, CandidateType = CandidateType.Field, DisplayName = "$SemanticSearchFieldSourceFields")]
@@ -102,8 +103,34 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
                 context.GetScriptMethodAttribute(GetType(), nameof(OnReindexCompleted))).AddTo(result);
             result.AddRange(CheckSourceFieldsLoaded(context));
             result.AddRange(CheckSearchHasEffect(context));
+            result.AddRange(CheckSourceFieldsReadRestriction(context));
             return result;
         }
+
+        /// <summary>
+        /// 文章の列は対象フィールドの値を全部含むので、このフィールドを読める人はキーワード検索 (部分一致を重ねる) で対象フィールドの値を言い当てられる。
+        /// 対象フィールドに PermissionField の読み取り条件があるのに、このフィールド自身には無い構成を指摘する (このフィールドにも同じかそれより厳しい読み取り条件を付ける)。
+        /// 厳しさの比較まではしない (有無だけ)。
+        /// </summary>
+        IEnumerable<DesignCheckInfo> CheckSourceFieldsReadRestriction(DesignCheckContext context)
+        {
+            var module = context.GetModuleDesign();
+            if (module == null || !HasColumns) yield break;
+            var rules = module.Fields.OfType<PermissionFieldDesign>().Where(p => p.ReadCondition.Condition != null).ToList();
+            if (rules.Count == 0 || rules.Any(p => Targets(p, Name))) yield break;
+            var restricted = SemanticSearchText.SourceFields(module, this).Where(s => rules.Any(p => Targets(p, s))).ToList();
+            if (restricted.Count == 0) yield break;
+            yield return new FieldDesignCheckInfo
+            {
+                Code = DesignCheckCode.Create(typeof(SemanticSearchFieldDesign), CodeSourceFieldsRestricted),
+                Location = new FieldDesignDataLocation { Module = context.OwnerModule, Field = Name, Member = nameof(SourceFields) },
+                Message = string.Format(Properties.Resources.SemanticSearchCheck_SourceFieldsRestrictedFormat, string.Join(", ", restricted), Name),
+            };
+        }
+
+        //PermissionField の対象にそのフィールドが入るか (除外モードは「指定した名前以外のすべて」。本体の実効対象の決め方と同じ)
+        static bool Targets(PermissionFieldDesign rule, string fieldName)
+            => rule.IsExcludeMode ? !rule.TargetFields.Contains(fieldName) : rule.TargetFields.Contains(fieldName);
 
         /// <summary>
         /// 文章にするフィールドの値は、レイアウトに置いていなくてもフロントに来ていなければならない (文章はクライアントが組み立てるので、
@@ -220,14 +247,9 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
                 parts.Add($"{context.Column(DbColumnVectorSearch)} is not null");
                 if (semantic.MaxDistance != null) parts.Add($"{Distance(semantic, context)} <= {context.AddParameter(semantic.MaxDistance.Value)}");
             }
-            var terms = SemanticSearchKeywords.Split(semantic.Keywords);
-            if (terms.Count > 0)
-            {
-                //エスケープ文字は自前のパラメータで渡す (本体の escape パラメータは本体自身の Like 条件があるときしか SQL の引数に足されない)
-                var escape = context.AddParameter(SemanticSearchKeywords.EscapeChar);
-                foreach (var term in terms)
-                    parts.Add($"{context.Column(DbColumnText)} like {context.AddParameter(SemanticSearchKeywords.LikePattern(term, context.DataSourceType))} escape {escape}");
-            }
+            //語ごとの部分一致 (パターン・エスケープは本体の Like と同じ)
+            foreach (var term in SemanticSearchKeywords.Split(semantic.Keywords))
+                parts.Add(context.Like(DbColumnText, term));
             return parts.Count == 1 ? parts[0] : $"({string.Join(" and ", parts)})";
         }
 
