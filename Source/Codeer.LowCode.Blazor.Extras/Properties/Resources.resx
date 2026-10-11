@@ -1549,7 +1549,7 @@ Recipients: {1}</value>
     <value>Edit history cannot be used together with the delete archive (move to a delete table). Use logical delete or physical delete.</value>
   </data>
   <data name="EditHistoryCheck_OwnedRecordsNotHeldFormat" xml:space="preserve">
-    <value>The owned records '{1}' of module '{0}' are not held in full at runtime (for example a list with server-side paging), so "restore this version" of the edit history of '{2}' cannot replace them. Use a setting that holds all records (for a list: in-memory paging or no row limit).</value>
+    <value>The owned records '{1}' of module '{0}' are not held in full at runtime (for example a list with server-side paging), so "replace with this version" of the edit history of '{2}' cannot replace them. Use a setting that holds all records (for a list: in-memory paging or no row limit).</value>
   </data>
   <data name="EditHistoryRecordRestored" xml:space="preserve">
     <value>Record restored.</value>
