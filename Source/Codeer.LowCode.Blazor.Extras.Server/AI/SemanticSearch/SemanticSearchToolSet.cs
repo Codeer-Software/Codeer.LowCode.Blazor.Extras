@@ -65,6 +65,9 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
             }
             sb.AppendLine("- 「似た事例は」「〜のような問い合わせ」「〜について書かれた記録」のように内容や意味で探す質問は、SQL の LIKE ではなく search_records を使ってください。件数や合計などの集計は SQL です。");
             sb.AppendLine("- search_records の結果には Id・詳細ページの URL・文章が付きます。行を挙げるときは URL で Markdown リンクを付け、score が低いものは「近いものは見つからなかった」と正直に伝えてください。");
+            //語そのもの (品番・人名) で探すときは文章の列に LIKE (全項目とリンクの表示名を含む 1 列なので、項目を当てずっぽうに選んだり JOIN を書いたりしなくてよい)
+            sb.AppendLine("- 品番・人名・番号のように語そのもので探すときは、意味検索ではなく execute_sql で文章の列に LIKE を掛けてください。文章の列は文章にした全項目 (リンク先の表示名も) を「表示名: 値」で含む 1 列なので、どの項目に入っているか分からなくても横断して当たります (語ごとに LIKE を AND): "
+                + string.Join("、", targets.Select(t => $"{t.Module.Name} = 表 {t.Module.DbTable} の列 {t.Field.DbColumnText}")) + "。");
 
             //同じ表は execute_sql の中でも距離計算できる ({embed:…} を質問の埋め込みに置き換える)
             sb.AppendLine("- これらの表はベクトル型の列を持ち、execute_sql の SQL の中でも意味の近さで絞り込み・並べ替えができます。SQL に `{embed:探したい内容}` と書くと、実行前にその内容の埋め込みベクトルに置き換わります (自分で数値を書かないこと)。WHERE や JOIN・集計と組み合わせたいときはこちら、単に似た記録を挙げるだけなら search_records を使ってください:");

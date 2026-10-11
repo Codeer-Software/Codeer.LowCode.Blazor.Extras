@@ -38,27 +38,58 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             await Task.CompletedTask;
         }
 
+        /// <summary>検索レイアウトのキーワード欄に入れた語 (空白区切り・すべて含む行に絞る)。空なら条件なし。</summary>
+        public string? KeywordText { get; private set; }
+
+        /// <summary>キーワード欄の語を設定する。</summary>
+        [ScriptMethodToProperty(nameof(KeywordText))]
+        public async Task SetKeywordTextAsync(string? text)
+        {
+            if (KeywordText == text) return;
+            KeywordText = text;
+            ClearError();
+            NotifyStateChanged();
+            await Task.CompletedTask;
+        }
+
         /// <summary>
-        /// 検索欄の文章を意味検索の条件にする (文章だけ。埋め込みはサーバーの前処理が作る)。近い順に並べたいときは、一覧の並びに "フィールド名.Value" を入れておく
-        /// (文章が空のときは本体がその並びを飛ばす)。
+        /// 検索欄の文章とキーワードを 1 つの意味検索の条件にする (文章は文章だけ。埋め込みはサーバーの前処理が作る)。近い順に並べたいときは、一覧の並びに "フィールド名.Value" を入れておく
+        /// (文章が空のときは本体がその並びを飛ばす)。キーワードは文章の列が語をすべて含む行に絞る (埋め込み不要)。
         /// </summary>
         [ScriptHide]
         public MatchConditionBase? GetMatchCondition()
-            => string.IsNullOrWhiteSpace(SearchText) ? null : new FieldMatchCondition
+        {
+            var text = string.IsNullOrWhiteSpace(SearchText) ? null : SearchText.Trim();
+            var keywords = SemanticSearchKeywords.Split(KeywordText);
+            if (text == null && keywords.Count == 0) return null;
+            return new FieldMatchCondition
             {
                 FieldName = Design.Name,
-                Children = [new SemanticMatchCondition { FieldName = Design.Name, Text = SearchText.Trim(), MaxDistance = Design.SearchMaxDistance }],
+                Children = [new SemanticMatchCondition
+                {
+                    FieldName = Design.Name,
+                    Text = text ?? string.Empty,
+                    MaxDistance = text == null ? null : Design.SearchMaxDistance,
+                    Keywords = string.Join(' ', keywords),
+                }],
             };
+        }
 
         /// <summary>URL 等から戻した条件を検索欄に反映する。</summary>
         [ScriptHide]
         public async Task SetMatchConditionAsync(FieldMatchCondition condition)
         {
-            if (condition.Children.FirstOrDefault() is SemanticMatchCondition semantic) await SetSearchTextAsync(semantic.Text);
+            if (condition.Children.FirstOrDefault() is not SemanticMatchCondition semantic) return;
+            await SetSearchTextAsync(string.IsNullOrWhiteSpace(semantic.Text) ? null : semantic.Text);
+            await SetKeywordTextAsync(string.IsNullOrWhiteSpace(semantic.Keywords) ? null : semantic.Keywords);
         }
 
         [ScriptHide]
-        public async Task ClearMatchConditionAsync() => await SetSearchTextAsync(null);
+        public async Task ClearMatchConditionAsync()
+        {
+            await SetSearchTextAsync(null);
+            await SetKeywordTextAsync(null);
+        }
 
         static readonly TimeSpan _fastInterval = TimeSpan.FromSeconds(1);
         static readonly TimeSpan _slowInterval = TimeSpan.FromMilliseconds(2500);

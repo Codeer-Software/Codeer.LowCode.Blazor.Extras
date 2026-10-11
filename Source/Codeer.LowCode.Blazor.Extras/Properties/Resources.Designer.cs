@@ -2876,6 +2876,33 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
         }
         
         /// <summary>
+        ///   Keyword search box に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string SemanticSearchFieldKeywordSearch {
+            get {
+                return ResourceManager.GetString("SemanticSearchFieldKeywordSearch", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Keywords (space separated, all must match) に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string SemanticSearch_KeywordPlaceholder {
+            get {
+                return ResourceManager.GetString("SemanticSearch_KeywordPlaceholder", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Semantic search condition for {0} has neither text nor keywords. に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string SemanticSearch_ConditionEmpty {
+            get {
+                return ResourceManager.GetString("SemanticSearch_ConditionEmpty", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Search: max distance に類似しているローカライズされた文字列を検索します。
         /// </summary>
         internal static string SemanticSearchFieldSearchMaxDistance {

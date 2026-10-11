@@ -149,6 +149,12 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat.ModuleDataAccess
             {
                 sb.AppendLine($"- 次のモジュールは search_records で内容の意味で探せます (似ている順。filters で普通の条件と組み合わせられます): {string.Join(", ", semantic.Select(e => e.Module.Name))}。「似た事例」「〜のような問い合わせ」のように内容で探す質問は Like ではなく search_records を使ってください。結果は近い順に並んでいますが、本当に関係があるかは中身を読んで判断してください。");
             }
+            //キーワード検索は同じモジュール (文章の列への LIKE なので埋め込みプロバイダは要らない)
+            var keyword = design == null ? new() : SemanticModules(design);
+            if (keyword.Count > 0)
+            {
+                sb.AppendLine($"- 次のモジュールは意味検索の項目に Like でスペース区切りのキーワードを指定すると、文章にした全項目 (リンク先の表示名も) を横断して「すべての語を含む行」に絞れます (品番・人名・番号など語そのもので探すとき。find_records / aggregate_records / cross_tab / search_records の filters で使えます。どの項目に入っているか分からないときはこちら): {string.Join(", ", keyword.Select(e => $"{e.Module.Name} ({e.Field.Name})"))}。");
+            }
             sb.AppendLine("- 1 件の内容を子一覧 (明細など) ごと見たいときは get_record (モジュール名と Id) を使います。find_records は子一覧を返しません。");
             if (_options.CommandTimeoutSeconds > 0)
                 sb.AppendLine($"- 1 回の読み取りは {_options.CommandTimeoutSeconds} 秒で打ち切られます。時間切れになったら同じ指定を繰り返さず、条件で絞るか、日付の単位を大きくしてください。");
@@ -323,8 +329,9 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat.ModuleDataAccess
                 context.Logger?.LogWarning("AIChat ModuleDataAccess search_records embedding failed: {Message}", e.Message);
                 return Error(e.Message);
             }
+            //ベクトルの条件を先頭に置く: 並び ("Field.Value") は条件の木で最初に見つかる同じ項目の条件から式を作るので、filters のキーワード条件 (並べられない) より先に
             var semanticCondition = new SemanticMatchCondition { FieldName = target.Field.Name, Vector = vector };
-            condition.Condition = condition.Condition == null ? semanticCondition : MultiMatchCondition.And(condition.Condition, semanticCondition);
+            condition.Condition = condition.Condition == null ? semanticCondition : MultiMatchCondition.And(semanticCondition, condition.Condition);
 
             return await ReadAsync(module, "search_records", context, async scope =>
             {
@@ -742,6 +749,18 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat.ModuleDataAccess
                 ?? throw new InvalidOperationException($"項目 '{filter.Field}' はモジュール '{module.Name}' にありません。describe_module で項目名を確かめてください。");
             var comparison = ModuleDataConverter.ParseComparison(filter.Comparison)
                 ?? throw new InvalidOperationException($"比較 '{filter.Comparison}' は使えません (Equal / NotEqual / LessThan / LessThanOrEqual / GreaterThan / GreaterThanOrEqual / Like / In / NotIn)。");
+            if (field is SemanticSearchFieldDesign semanticField)
+            {
+                //意味検索の項目への Like = キーワード検索 (文章の列が語をすべて含む行。文章にした全項目を横断する。埋め込みは使わない)
+                if (ModuleDataConverter.ToFieldName(filter.Field).Contains('.')) throw new InvalidOperationException($"項目 '{filter.Field}' はリンク先の意味検索の項目なので条件に使えません (自分のモジュールの項目だけ)。");
+                if (!semanticField.HasColumns) throw new InvalidOperationException($"項目 '{filter.Field}' は列が設定されていないので条件に使えません。");
+                if (comparison != MatchComparison.Like) throw new InvalidOperationException($"項目 '{filter.Field}' (意味検索) に使える比較は Like だけです (値はスペース区切りのキーワード。すべて含む行に絞ります)。");
+                //品番などは数値で来ることがあるので、数値もそのまま語にする
+                var keywords = filter.Value.ValueKind switch { JsonValueKind.String => filter.Value.GetString(), JsonValueKind.Number => filter.Value.GetRawText(), _ => null };
+                if (SemanticSearchKeywords.Split(keywords).Count == 0) throw new InvalidOperationException($"項目 '{filter.Field}' の Like にはキーワード (文字列) を指定してください。");
+                var keyword = new SemanticMatchCondition { FieldName = semanticField.Name, Keywords = keywords! };
+                return filter.Not ? new MultiMatchCondition { IsNot = true, Children = { keyword } } : keyword;
+            }
             var leaf = new FieldValueMatchCondition
             {
                 SearchTargetVariable = ModuleDataConverter.ToVariable(filter.Field),

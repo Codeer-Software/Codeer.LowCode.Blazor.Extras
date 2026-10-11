@@ -1845,4 +1845,13 @@
   <data name="TagFieldTagModuleName" xml:space="preserve">
     <value>タグ付けモジュール</value>
   </data>
+  <data name="SemanticSearchFieldKeywordSearch" xml:space="preserve">
+    <value>キーワード検索欄</value>
+  </data>
+  <data name="SemanticSearch_KeywordPlaceholder" xml:space="preserve">
+    <value>キーワード (スペース区切り・すべて含む)</value>
+  </data>
+  <data name="SemanticSearch_ConditionEmpty" xml:space="preserve">
+    <value>{0} の意味検索の条件に文章もキーワードもありません。</value>
+  </data>
 </root>

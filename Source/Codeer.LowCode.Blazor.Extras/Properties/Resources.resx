@@ -1845,4 +1845,13 @@ Recipients: {1}</value>
   <data name="TagFieldTagModuleName" xml:space="preserve">
     <value>Tag Module</value>
   </data>
+  <data name="SemanticSearchFieldKeywordSearch" xml:space="preserve">
+    <value>Keyword search box</value>
+  </data>
+  <data name="SemanticSearch_KeywordPlaceholder" xml:space="preserve">
+    <value>Keywords (space separated, all must match)</value>
+  </data>
+  <data name="SemanticSearch_ConditionEmpty" xml:space="preserve">
+    <value>Semantic search condition for {0} has neither text nor keywords.</value>
+  </data>
 </root>

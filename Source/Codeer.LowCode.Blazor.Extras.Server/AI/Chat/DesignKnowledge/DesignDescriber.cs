@@ -1,4 +1,5 @@
 using Codeer.LowCode.Blazor.DesignLogic;
+using Codeer.LowCode.Blazor.Extras.Designs;
 using Codeer.LowCode.Blazor.Repository.Design;
 using System.Text;
 
@@ -154,6 +155,11 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat.DesignKnowledge
                 {
                     sb.Append(", リンク → ").Append(link.SearchCondition.ModuleName).Append('.').Append(string.IsNullOrEmpty(link.ValueVariable) ? SystemFieldNames.Id : link.ValueVariable);
                     if (!string.IsNullOrEmpty(link.DisplayTextVariable)) sb.Append(" (表示は ").Append(link.DisplayTextVariable).Append(')');
+                }
+                if (field is SemanticSearchFieldDesign { HasColumns: true } semantic)
+                {
+                    var sources = semantic.SourceFields.Count > 0 ? string.Join(", ", semantic.SourceFields) : "入力項目全部";
+                    sb.Append(", 意味検索の項目 (Like にスペース区切りのキーワードで、文章にした項目 [").Append(sources).Append("] を横断してすべての語を含む行に絞れる。値は読めない)");
                 }
                 sb.AppendLine();
             }

@@ -64,6 +64,14 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         [Designer(Index = 7, DisplayName = "$SemanticSearchFieldOnReindexCompleted", CandidateType = CandidateType.ScriptEvent), ScriptMethod]
         public string OnReindexCompleted { get; set; } = string.Empty;
 
+        /// <summary>
+        /// 検索レイアウトにキーワード欄も出す。空白区切りの語をすべて含む行 (文章の列への部分一致の AND) に絞る。埋め込みを使わないので、
+        /// ベクトル検索に対応しない DB のモジュールでも使える。文章 (意味検索) と一緒に入れると、絞ったうえで近い順になる。
+        /// AI チャット (ModuleDataAccess の filters にこの項目の Like) と API (<see cref="SemanticMatchCondition.Keywords"/>) からは、この設定に関係なく使える。
+        /// </summary>
+        [Designer(Index = 9, DisplayName = "$SemanticSearchFieldKeywordSearch")]
+        public bool KeywordSearch { get; set; }
+
         /// <summary>3 つの列 (文章 / ベクトル / ベクトル検索用) がすべて設定されているか (索引と検索の対象になる条件)。</summary>
         internal bool HasColumns => !string.IsNullOrWhiteSpace(DbColumnText) && !string.IsNullOrWhiteSpace(DbColumnVector) && !string.IsNullOrWhiteSpace(DbColumnVectorSearch);
 
@@ -199,26 +207,47 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         public List<string> GetDependencyFields() => SourceFields.ToList();
 
         /// <summary>
-        /// 意味検索の条件 (<see cref="SemanticMatchCondition"/>) を WHERE にする: 索引のある行 (+ 距離の上限)。距離計算は DB (pgvector / SQL Server 2025)。
+        /// 意味検索の条件 (<see cref="SemanticMatchCondition"/>) を WHERE にする: ベクトルがあれば索引のある行 (+ 距離の上限。距離計算は DB = pgvector / SQL Server 2025)、
+        /// キーワードがあれば文章の列が語をすべて含む行 (語ごとの LIKE の AND。どの DB でも動く)。両方あれば AND。
         /// 本体の一覧検索がこの断片を自分の WHERE に入れるので、行の条件・論理削除・権限はそのまま効く。
         /// </summary>
         public string CreateWhere(FieldSqlMatchCondition condition, SqlConditionContext context)
         {
             var semantic = ToSemantic(condition);
-            var where = $"{context.Column(DbColumnVectorSearch)} is not null";
-            if (semantic.MaxDistance != null) where += $" and {Distance(semantic, context)} <= {context.AddParameter(semantic.MaxDistance.Value)}";
-            return where;
+            var parts = new List<string>();
+            if (semantic.Vector.Length > 0)
+            {
+                parts.Add($"{context.Column(DbColumnVectorSearch)} is not null");
+                if (semantic.MaxDistance != null) parts.Add($"{Distance(semantic, context)} <= {context.AddParameter(semantic.MaxDistance.Value)}");
+            }
+            var terms = SemanticSearchKeywords.Split(semantic.Keywords);
+            if (terms.Count > 0)
+            {
+                //エスケープ文字は自前のパラメータで渡す (本体の escape パラメータは本体自身の Like 条件があるときしか SQL の引数に足されない)
+                var escape = context.AddParameter(SemanticSearchKeywords.EscapeChar);
+                foreach (var term in terms)
+                    parts.Add($"{context.Column(DbColumnText)} like {context.AddParameter(SemanticSearchKeywords.LikePattern(term, context.DataSourceType))} escape {escape}");
+            }
+            return parts.Count == 1 ? parts[0] : $"({string.Join(" and ", parts)})";
         }
 
-        /// <summary>近い順 (コサイン距離の昇順) に並べる式。</summary>
+        /// <summary>近い順 (コサイン距離の昇順) に並べる式。キーワードだけの条件 (ベクトル無し) では並べる基準が無いので null。</summary>
         public string? CreateOrderBy(FieldSqlMatchCondition condition, SqlConditionContext context)
-            => Distance(ToSemantic(condition), context);
+        {
+            var semantic = ToSemantic(condition);
+            return semantic.Vector.Length == 0 ? null : Distance(semantic, context);
+        }
 
         SemanticMatchCondition ToSemantic(FieldSqlMatchCondition condition)
         {
             if (condition is not SemanticMatchCondition semantic || !HasColumns)
                 throw LowCodeException.Create(Properties.Resources.SemanticSearch_ConditionNotSupported, Name);
-            if (semantic.Vector.Length == 0) throw LowCodeException.Create(Properties.Resources.SemanticSearch_VectorRequired, Name);
+            if (semantic.Vector.Length == 0)
+            {
+                //文章があるのにベクトルが無い = サーバーの前処理 (ConditionInterceptor) が結線されていない
+                if (!string.IsNullOrWhiteSpace(semantic.Text)) throw LowCodeException.Create(Properties.Resources.SemanticSearch_VectorRequired, Name);
+                if (SemanticSearchKeywords.Split(semantic.Keywords).Count == 0) throw LowCodeException.Create(Properties.Resources.SemanticSearch_ConditionEmpty, Name);
+            }
             return semantic;
         }
 

@@ -97,6 +97,42 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
         }
 
         [Test]
+        public async Task キーワード欄は文章が無くても条件になり文章と合わせれば1つの条件になる()
+        {
+            var design = CreateDesign(maxDistance: 0.5);
+            var module = await ModuleCreationService.CreateModuleAsync(new TestServices(design).Core, new ModuleData { Name = "Note" });
+            var field = (SemanticSearchField)module.GetField("Search")!;
+
+            //キーワードだけ: 文章なし・距離の上限なし (埋め込みを呼ばせない)
+            await field.SetKeywordTextAsync(" 納期　遅延  納期 ");
+            var condition = (FieldMatchCondition)field.GetMatchCondition()!;
+            var semantic = (SemanticMatchCondition)condition.Children.Single();
+            Assert.That(semantic.Keywords, Is.EqualTo("納期 遅延"), "語の正規化 (区切り・重複)");
+            Assert.That(semantic.Text, Is.Empty);
+            Assert.That(semantic.MaxDistance, Is.Null);
+
+            //両方: 1 つの条件に文章 (+ 距離の上限) とキーワード
+            await field.SetSearchTextAsync("納期の遅れ");
+            semantic = (SemanticMatchCondition)((FieldMatchCondition)field.GetMatchCondition()!).Children.Single();
+            Assert.That((semantic.Text, semantic.MaxDistance, semantic.Keywords), Is.EqualTo(("納期の遅れ", 0.5, "納期 遅延")));
+
+            //戻す・消す
+            var saved = ((FieldMatchCondition)field.GetMatchCondition()!).JsonClone();
+            await field.ClearMatchConditionAsync();
+            Assert.That((field.SearchText, field.KeywordText), Is.EqualTo(((string?)null, (string?)null)));
+            Assert.That(field.GetMatchCondition(), Is.Null);
+            await field.SetMatchConditionAsync(saved);
+            Assert.That((field.SearchText, field.KeywordText), Is.EqualTo(("納期の遅れ", "納期 遅延")));
+
+            //前処理はキーワードだけの条件では埋め込みを呼ばない (プロバイダが無くても通る)
+            var interceptor = new SemanticSearchService(() => null, () => design).ConditionInterceptor;
+            await field.SetSearchTextAsync(null);
+            var search = new SearchCondition("Note") { Condition = field.GetMatchCondition() };
+            await interceptor.PrepareConditionAsync(null!, search);
+            Assert.That(((SemanticMatchCondition)((FieldMatchCondition)search.Condition!).Children.Single()).Vector, Is.Empty);
+        }
+
+        [Test]
         public void 検索欄の文章が一覧に効かない構成は設計チェックが指摘する()
         {
             var design = CreateDesign();

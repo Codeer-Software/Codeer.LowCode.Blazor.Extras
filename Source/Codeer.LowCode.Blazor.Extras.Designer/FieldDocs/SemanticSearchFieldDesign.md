@@ -52,6 +52,7 @@ AI チャット ([AIChatField](AIChatFieldDesign.md) の `RawDataAccessAgent`) �
 | `DbColumnVectorSearch` | string | `""` | DB のベクトル検索で距離計算に使うベクトル型の列。**必須**。PostgreSQL は `DbColumnVector` をキャストする生成列の名前、SQL Server は `DbColumnVector` と同じ列名 (VECTOR 型にする)。 |
 | `MaxTextLength` | int | `8000` | 文章の最大文字数 (埋め込みモデルの入力上限の歯止め)。 |
 | `SearchMaxDistance` | double? | `null` | 検索レイアウトの検索欄で探すときのコサイン距離の上限 (0〜2)。空なら距離では絞らない (並びだけ)。 |
+| `KeywordSearch` | bool | `false` | 検索レイアウトにキーワード欄も出す。空白区切りの語をすべて含む行 (文章の列への部分一致の AND) に絞る。埋め込み不要・どの DB でも動く。文章と両方入れると絞ったうえで近い順。 |
 | `OnReindexCompleted` | string | `""` | スクリプトの `Reindex()` / `ReindexMissing()` で起こした再索引が終わった (成功・失敗・中断) ときに呼ぶスクリプト関数名。結果は `ReindexProcessed` / `ReindexError` で見る。 |
 
 3 つのカラムは**すべて必須** (欠けるとデザインチェック `SemanticSearchFieldDesign:1`)。実テーブルに存在するかも検証される。`SourceFields` の各名前が同じモジュールに存在するかも検証される。
@@ -112,6 +113,7 @@ AI チャットの `execute_sql` の SQL に `{embed:探したい内容}` と書
 - **近い順にしたいときは、一覧の並び (ListField の `SearchCondition.SortConditions`) の先頭に `{ "Variable": "Search.Value", "IsDescending": false }` を入れる**。文章が空のときはこの並びは飛ばされ、次の並びになる
 - 文章を埋め込みにするのはサーバー (ホストが `AddInterceptor(SemanticSearchIndex.Service.ConditionInterceptor)` を登録済みであること。テンプレートは登録済み)
 - `SearchMaxDistance` が空で、その検索レイアウトを使う一覧 (ページの一覧・SearchField の結果の一覧・LinkField の検索ダイアログ) の並びに `Search.Value` が無いと、文章を入れても索引のある行に絞られるだけで一覧は変わらない。デザインチェック `SemanticSearchFieldDesign:3` が指摘する (並びに入れるか、`SearchMaxDistance` を設定する)
+- **キーワード検索** (`KeywordSearch: true`): 検索欄にキーワード欄が加わる。品番・人名・番号など語そのもので探す用途 (意味検索は似た番号が混ざる・0 件にならない)。空白区切りの語をすべて含む行に絞る (対象フィールドを横断。リンクの表示名も当たる)。埋め込みを使わないので SQLite / MySQL / Oracle のモジュールでも、3 つの列を用意すればキーワード検索だけは使える。AI チャットからは filters にこの項目の `Like` でキーワードを渡す (設定に関係なく使える)。一致の大文字小文字・全角半角は文章の列の照合順序次第
 
 ### 注意
 

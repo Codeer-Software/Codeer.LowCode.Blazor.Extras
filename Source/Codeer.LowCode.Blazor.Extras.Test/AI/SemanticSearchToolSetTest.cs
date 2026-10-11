@@ -68,6 +68,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
         public void 説明には意味検索できるモジュールと文章にしたフィールドとDBのベクトル列が出る()
         {
             var text = ToolSet(CreateDesign()).GetInstructions(Context());
+            Assert.That(text, Does.Contain("語そのもの").And.Contain("Inquiry = 表 inquiries の列 search_text"), "キーワードは文章の列への LIKE と案内する");
             Assert.That(text, Does.Contain("Inquiry [問い合わせ]").And.Contain("件名, 本文").And.Contain("search_records"));
             Assert.That(text, Does.Contain("inquiries").And.Contain("search_vector_v").And.Contain("{embed:").And.Contain("<=>"), "execute_sql で使うベクトル列と pgvector の書き方");
             Assert.That(text, Does.Not.Contain("Plain"));

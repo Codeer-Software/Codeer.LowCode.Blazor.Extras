@@ -3,7 +3,8 @@ using Codeer.LowCode.Blazor.Repository.Match;
 namespace Codeer.LowCode.Blazor.Extras.SemanticSearch
 {
     /// <summary>
-    /// 意味検索の条件: SemanticSearchField (<see cref="FieldSqlMatchCondition.FieldName"/>) の索引が <see cref="Vector"/> に近い行。
+    /// 意味検索の条件: SemanticSearchField (<see cref="FieldSqlMatchCondition.FieldName"/>) の索引が <see cref="Vector"/> に近い行、
+    /// または文章の列が <see cref="Keywords"/> の語をすべて含む行 (キーワード検索 = LIKE の AND。両方あれば AND)。
     /// 一覧検索 (ModuleDataIO.GetListAsync) の条件に置くと、本体の権限 (モジュールの閲覧権限・行の条件・論理削除・項目の読み取り権限) が効いたまま
     /// DB のベクトル検索 (pgvector / SQL Server 2025) で絞り・並べられる。近い順に並べるときは SortConditions に "フィールド名.Value" (昇順) を足す。
     /// ベクトルは呼び出す側が埋め込みプロバイダで作って入れるか、<see cref="Text"/> だけを入れてサーバーの前処理 (Extras.Server の SemanticSearchService の
@@ -21,5 +22,11 @@ namespace Codeer.LowCode.Blazor.Extras.SemanticSearch
 
         /// <summary>コサイン距離の上限 (0 = 同じ向き〜2)。この距離より遠い行は出さない。null なら距離では絞らない (並べるだけ)。</summary>
         public double? MaxDistance { get; set; }
+
+        /// <summary>
+        /// キーワード (空白区切り)。文章の列 (DbColumnText) がすべての語を含む行に絞る (語ごとの部分一致の AND。語の順は問わない)。
+        /// 埋め込みを使わないので、ベクトル検索に対応しない DB のモジュールでもこれだけなら使える。<see cref="Text"/> / <see cref="Vector"/> と併用すると、絞ったうえで近い順になる。
+        /// </summary>
+        public string Keywords { get; set; } = string.Empty;
     }
 }
