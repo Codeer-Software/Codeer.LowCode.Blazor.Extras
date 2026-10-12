@@ -2876,11 +2876,11 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
         }
         
         /// <summary>
-        ///   Keyword search box に類似しているローカライズされた文字列を検索します。
+        ///   Search boxes に類似しているローカライズされた文字列を検索します。
         /// </summary>
-        internal static string SemanticSearchFieldKeywordSearch {
+        internal static string SemanticSearchFieldSearchBoxes {
             get {
-                return ResourceManager.GetString("SemanticSearchFieldKeywordSearch", resourceCulture);
+                return ResourceManager.GetString("SemanticSearchFieldSearchBoxes", resourceCulture);
             }
         }
         
@@ -2966,7 +2966,7 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
         }
         
         /// <summary>
-        ///   The fields {0} used for the semantic search text have a PermissionField read condition, but this field ({1}) does not. The text column contains the values of the source fields, so anyone who can read {1} can find the values of {0} by keyword search. Give {1} the same or a stricter read condition. に類似しているローカライズされた文字列を検索します。
+        ///   The fields {0} used for the semantic search text have a PermissionField read condition, but this field ({1}) does not. The text column contains the values of the source fields, so anyone who can read {1} can find the values of {0} by keyword search. Give {1} the same or a stricter read condition (it must reference only CurrentUser; if the condition of {0} references row values, remove {0} from SourceFields instead). に類似しているローカライズされた文字列を検索します。
         /// </summary>
         internal static string SemanticSearchCheck_SourceFieldsRestrictedFormat {
             get {
@@ -2975,11 +2975,20 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
         }
         
         /// <summary>
-        ///   The link targets of the fields {0} used for the semantic search text have a UserReadCondition, but this field ({1}) has no PermissionField read condition. The text column contains the link display texts, so anyone who can read {1} can find them by keyword search even without access to the target module. Give {1} a read condition at least as strict as the target modules'. に類似しているローカライズされた文字列を検索します。
+        ///   The modules behind the fields {0} used for the semantic search text have a UserReadCondition, but this field ({1}) has no PermissionField read condition. The text column contains their display texts (tag names), so anyone who can read {1} can find them by keyword search even without access to those modules. Give {1} a read condition that references only CurrentUser (at least as strict as those modules'), or remove {0} from SourceFields. に類似しているローカライズされた文字列を検索します。
         /// </summary>
         internal static string SemanticSearchCheck_LinkTargetsRestrictedFormat {
             get {
                 return ResourceManager.GetString("SemanticSearchCheck_LinkTargetsRestrictedFormat", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   The read condition of PermissionField {0} references row values, but the semantic search field {1} it targets is only used in search conditions, whose permission check has no row, so no one can search with {1} (semantic, keyword, AI). Give {1} a read condition that references only CurrentUser. に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string SemanticSearchCheck_RowDependentReadConditionFormat {
+            get {
+                return ResourceManager.GetString("SemanticSearchCheck_RowDependentReadConditionFormat", resourceCulture);
             }
         }
 

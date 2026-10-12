@@ -275,6 +275,52 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
             Assert.That(CheckLink().Single().Message, Does.Contain("Customer (Customer)").And.Contain("Search"));
             module.Fields.Add(Rule("P4", false, "Search"));
             Assert.That(CheckLink(), Is.Empty);
+            module.Fields.RemoveAll(f => f.Name == "P4");
+
+            //自分で文章にするフィールド (TagField のタグ名 = タグ付けモジュールの行) も同じ
+            customer.UserReadCondition.Condition = null;
+            var tagging = new ModuleDesign { Name = "NoteTags", DataSourceName = Ds, DbTable = "note_tags" };
+            tagging.Fields.Add(new IdFieldDesign { Name = "Id", DbColumn = "id" });
+            tagging.Fields.Add(new IdFieldDesign { Name = "OwnerId", DbColumn = "owner_id", IsManualInput = false });
+            tagging.Fields.Add(new TextFieldDesign { Name = "Name", DbColumn = "name" });
+            tagging.Fields.Add(new TagLinkContractFieldDesign { Name = "TagLinkContract" });
+            design.AddModule(tagging);
+            field.SourceFields.Add("Tags");
+            module.Fields.Add(new TagFieldDesign { Name = "Tags", TagModuleName = "NoteTags" });
+            Assert.That(CheckLink(), Is.Empty);
+            tagging.UserReadCondition.Condition = Rule("x").ReadCondition.Condition;
+            Assert.That(CheckLink().Single().Message, Does.Contain("Tags (NoteTags)"));
+            field.SourceFields.Clear();
+        }
+
+        [Test]
+        public void このフィールドの読み取り条件が行の値を見ていると検索が誰にも通らないので設計チェックが指摘する()
+        {
+            var design = CreateDesign();
+            var module = design.Modules.Find("Note")!;
+            var field = module.Fields.OfType<SemanticSearchFieldDesign>().Single();
+            var code = DesignCheckCode.Create(typeof(SemanticSearchFieldDesign), 6 /* RowDependentReadCondition */);
+            List<DesignCheckInfo> Check() => field.CheckDesign(new DesignCheckContext("Note", design, Utilities.CreateDataSource())).Where(e => e.Code == code).ToList();
+            var rule = new PermissionFieldDesign { Name = "P" };
+            rule.TargetFields.Add("Search");
+            module.Fields.Add(rule);
+
+            //ユーザーだけで決まる条件は検索条件の権限判定 (静的) で許可される
+            rule.ReadCondition.Condition = new FieldValueMatchCondition { SearchTargetVariable = "CurrentUser.Id.Value", Comparison = MatchComparison.Equal, Value = MultiTypeValue.Create("U1") };
+            Assert.That(Check(), Is.Empty);
+
+            //行の値を見る条件 (And の中でも) は静的に拒否 = このフィールドでの検索が誰にも通らない
+            rule.ReadCondition.Condition = MultiMatchCondition.And(
+                new FieldValueMatchCondition { SearchTargetVariable = "CurrentUser.Id.Value", Comparison = MatchComparison.Equal, Value = MultiTypeValue.Create("U1") },
+                new FieldValueMatchCondition { SearchTargetVariable = "Title.Value", Comparison = MatchComparison.Equal, Value = MultiTypeValue.Create("公開") });
+            var info = Check().Single();
+            Assert.That(info.Message, Does.Contain("P").And.Contain("Search"));
+            Assert.That(((FieldDesignCheckInfo)info).Location.Field, Is.EqualTo("P"), "直す場所は PermissionField の条件");
+
+            //このフィールドを対象にしない規則は見ない
+            rule.TargetFields.Clear();
+            rule.TargetFields.Add("Title");
+            Assert.That(Check(), Is.Empty);
         }
     }
 }

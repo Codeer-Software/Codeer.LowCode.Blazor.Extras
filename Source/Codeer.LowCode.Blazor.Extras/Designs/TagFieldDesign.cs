@@ -93,6 +93,9 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
             return names.Count == 0 ? null : string.Join(", ", names);
         }
 
+        public IEnumerable<string> GetSemanticTextModuleNames(IModuleDesigns modules)
+            => string.IsNullOrEmpty(TagModuleName) ? [] : [TagModuleName];
+
         public override string GetWebComponentTypeFullName() => typeof(TagFieldComponent).FullName!;
 
         public override string GetSearchWebComponentTypeFullName() => typeof(TagFieldSearchComponent).FullName!;

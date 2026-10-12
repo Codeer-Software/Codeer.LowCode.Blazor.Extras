@@ -1345,10 +1345,13 @@ Recipients: {1}</value>
     <value>The detail layout '{0}' does not load the fields {1} used for the semantic search text, so a record saved from this layout gets an incomplete text. Place those fields, or this field (with SourceFields set), in the layout or in DataOnlyFields.</value>
   </data>
   <data name="SemanticSearchCheck_LinkTargetsRestrictedFormat" xml:space="preserve">
-    <value>The link targets of the fields {0} used for the semantic search text have a UserReadCondition, but this field ({1}) has no PermissionField read condition. The text column contains the link display texts, so anyone who can read {1} can find them by keyword search even without access to the target module. Give {1} a read condition at least as strict as the target modules'.</value>
+    <value>The modules behind the fields {0} used for the semantic search text have a UserReadCondition, but this field ({1}) has no PermissionField read condition. The text column contains their display texts (tag names), so anyone who can read {1} can find them by keyword search even without access to those modules. Give {1} a read condition that references only CurrentUser (at least as strict as those modules'), or remove {0} from SourceFields.</value>
+  </data>
+  <data name="SemanticSearchCheck_RowDependentReadConditionFormat" xml:space="preserve">
+    <value>The read condition of PermissionField {0} references row values, but the semantic search field {1} it targets is only used in search conditions, whose permission check has no row, so no one can search with {1} (semantic, keyword, AI). Give {1} a read condition that references only CurrentUser.</value>
   </data>
   <data name="SemanticSearchCheck_SourceFieldsRestrictedFormat" xml:space="preserve">
-    <value>The fields {0} used for the semantic search text have a PermissionField read condition, but this field ({1}) does not. The text column contains the values of the source fields, so anyone who can read {1} can find the values of {0} by keyword search. Give {1} the same or a stricter read condition.</value>
+    <value>The fields {0} used for the semantic search text have a PermissionField read condition, but this field ({1}) does not. The text column contains the values of the source fields, so anyone who can read {1} can find the values of {0} by keyword search. Give {1} the same or a stricter read condition (it must reference only CurrentUser; if the condition of {0} references row values, remove {0} from SourceFields instead).</value>
   </data>
   <data name="SemanticSearchFieldDbColumnVectorSearch" xml:space="preserve">
     <value>DB Column (DB vector search)</value>
@@ -1851,8 +1854,8 @@ Recipients: {1}</value>
   <data name="TagFieldTagModuleName" xml:space="preserve">
     <value>Tag Module</value>
   </data>
-  <data name="SemanticSearchFieldKeywordSearch" xml:space="preserve">
-    <value>Keyword search box</value>
+  <data name="SemanticSearchFieldSearchBoxes" xml:space="preserve">
+    <value>Search boxes</value>
   </data>
   <data name="SemanticSearch_KeywordPlaceholder" xml:space="preserve">
     <value>Keywords (space separated, all must match)</value>

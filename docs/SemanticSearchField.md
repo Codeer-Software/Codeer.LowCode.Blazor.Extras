@@ -10,7 +10,7 @@
 
 SQL の集計 (件数・合計) は従来どおり `execute_sql`、内容で探すのは `search_records`、と AI が使い分けます。
 
-同じ文章の列で**キーワード検索** (語をすべて含む行に絞る。埋め込み不要・どの DB でも動く) もできます ([キーワードで絞る](#キーワードで絞る-keywordsearch))。
+同じ文章の列で**キーワード検索** (語をすべて含む行に絞る。埋め込み不要・どの DB でも動く) もできます ([キーワードで絞る](#キーワードで絞る-searchboxes))。
 
 ## 機能
 
@@ -41,7 +41,7 @@ SQL の集計 (件数・合計) は従来どおり `execute_sql`、内容で探�
 | DbColumnVectorSearch | string | ○ | DB のベクトル検索で距離計算に使うベクトル型の列 (後述。PostgreSQL は `DbColumnVector` をキャストする生成列、SQL Server は `DbColumnVector` と同じ列) |
 | MaxTextLength | int | | 文章の最大文字数 (既定 8000。超えた分は切り捨て。埋め込みモデルの入力上限の歯止め) |
 | SearchMaxDistance | double? | | 検索レイアウトの検索欄で探すときのコサイン距離の上限。空なら距離では絞らない ([画面の検索欄から探す](#画面の検索欄から探す-検索レイアウトに置く)) |
-| KeywordSearch | bool | | 検索レイアウトにキーワード欄も出す ([キーワードで絞る](#キーワードで絞る-keywordsearch)) |
+| SearchBoxes | enum | | 検索レイアウトに出す入力欄: `Semantic` (文章の欄だけ。既定) / `SemanticAndKeyword` (文章とキーワード) / `KeywordOnly` (キーワードの欄だけ) ([キーワードで絞る](#キーワードで絞る-searchboxes)) |
 
 3 つのカラムはすべて必要です (欠けるとデザインチェック `SemanticSearchFieldDesign:1`)。実テーブルに存在するかもチェックされます。
 
@@ -224,8 +224,8 @@ condition.SortConditions.Add(new SortCondition { Variable = "Search.Value" });  
 var rows = await moduleDataIO.GetListAsync(condition, 0);
 ```
 
-- 索引の項目 (SemanticSearchField) を読めないユーザー (PermissionField) は拒否されます。距離計算は DB なので、PostgreSQL (pgvector) / SQL Server 2025 のモジュールだけです (他の DB では例外)
-- `Keywords` (空白区切りの語) を入れると、文章の列がすべての語を含む行に絞ります (語ごとの LIKE の AND)。ベクトルと一緒なら絞ったうえで近い順、`Keywords` だけならどの DB でも動きます ([キーワードで絞る](#キーワードで絞る-keywordsearch))
+- 索引の項目 (SemanticSearchField) を読めないユーザー (PermissionField) は拒否されます。検索条件の権限判定は行を持たないので、この項目の読み取り条件は CurrentUser の項目だけを見るものにしてください (行の値を見る条件だと誰も検索できません。デザインチェック `SemanticSearchFieldDesign:6`)。距離計算は DB なので、PostgreSQL (pgvector) / SQL Server 2025 のモジュールだけです (他の DB では例外)
+- `Keywords` (空白区切りの語) を入れると、文章の列がすべての語を含む行に絞ります (語ごとの LIKE の AND)。ベクトルと一緒なら絞ったうえで近い順、`Keywords` だけならどの DB でも動きます ([キーワードで絞る](#キーワードで絞る-searchboxes))
 - この条件はサーバーで実行する一覧検索だけのものです。設計に保存する条件 (権限の条件・ListField / LinkField の条件) には置けません (デザインチェックが指摘します)
 - ベクトルは呼び出し側が作って入れるか、`Text` (文章) だけを入れてサーバーの前処理 (`SemanticSearchService.ConditionInterceptor`) に埋めさせます (画面の検索欄はこちら)
 - AI チャットでは `ModuleDataAccessAgent` に `semanticSearch` を渡すと、この条件で検索する `search_records` が付きます ([AIChatField](AIChatField.md))
@@ -241,15 +241,15 @@ var rows = await moduleDataIO.GetListAsync(condition, 0);
 - 集計 (CrossTabField・集計チャート) を表示先にした検索でも同じ条件で絞れますが、近い順の並びは集計には関係しません
 - メモリ内ページング (`IsInMemoryPaging`) の一覧では、列ヘッダで並べ替えるとメモリ上で並べ直すので近い順は失われます
 
-### キーワードで絞る (KeywordSearch)
+### キーワードで絞る (SearchBoxes)
 
 意味検索は「どう書いてあるか分からないが内容は分かる」ときの道具で、品番・人名・番号のように**語そのもの**で探すのには向きません (似た番号の行が混ざる・0 件になりません)。
-文章の列には対象フィールドの値がそのまま入っているので、そこに部分一致を掛ければキーワード検索になります。`KeywordSearch` を true にすると、検索レイアウトの検索欄に**キーワード欄**が加わります。
+文章の列には対象フィールドの値がそのまま入っているので、そこに部分一致を掛ければキーワード検索になります。`SearchBoxes` を `SemanticAndKeyword` にすると、検索レイアウトの検索欄に**キーワード欄**が加わります (`KeywordOnly` ならキーワード欄だけ)。
 
 - 空白区切りの語を**すべて含む行**に絞ります (語ごとの部分一致の AND。語の順は問わない)。`%` `_` などは文字として扱います
 - 対象フィールドを横断します。リンクの表示名 (得意先名など) や候補値の表示名も文章に入っているので当たります
-- **読み取り権限に注意**: 文章の列は対象フィールドの値を含むので、このフィールドを読める人は、PermissionField で読めない対象フィールドの値もキーワード検索 (部分一致を重ねる) で特定できます。リンク先モジュールに閲覧条件 (UserReadCondition) があるときも同じで、本体はリンク先を読めない人に表示名を空で返しますが、文章の列には保存時の表示名が残っています。対象フィールドやリンク先に読み取りの条件を付けるなら、このフィールドにも同じかそれより厳しい読み取り条件を付けてください (このフィールドにだけ無い構成はデザインチェック `SemanticSearchFieldDesign:4` (対象フィールドの PermissionField) / `:5` (リンク先の UserReadCondition) が指摘します)
-- 埋め込みは使いません。ベクトル検索に対応しない DB (SQLite / MySQL / Oracle) のモジュールでも、3 つの列を用意すればキーワード検索だけは使えます (ベクトル列は NULL のまま)
+- **読み取り権限に注意**: 文章の列は対象フィールドの値を含むので、このフィールドを読める人は、PermissionField で読めない対象フィールドの値もキーワード検索 (部分一致を重ねる) で特定できます。リンク先モジュールやタグ付けのモジュールに閲覧条件 (UserReadCondition) があるときも同じで、本体はリンク先を読めない人に表示名を空で返しますが、文章の列には保存時の表示名が残っています。対象フィールドやリンク先に読み取りの条件を付けるなら、このフィールドにも同じかそれより厳しい読み取り条件を付けてください (このフィールドにだけ無い構成はデザインチェック `SemanticSearchFieldDesign:4` (対象フィールドの PermissionField) / `:5` (相手のモジュールの UserReadCondition) が指摘します)。このフィールドに付けられるのは **CurrentUser の項目だけを見る条件**です (検索条件の権限判定は行を持たないので、行の値を見る条件だと誰も検索できません。`:6`)。対象フィールドの条件が行の値を見るものなら、その項目を `SourceFields` から外してください
+- 埋め込みは使いません。ベクトル検索に対応しない DB (SQLite / MySQL / Oracle) のモジュールや埋め込みプロバイダの無い構成でも、3 つの列を用意すればキーワード検索だけは使えます (ベクトル列は NULL のまま)。そのときは `SearchBoxes` を `KeywordOnly` にして文章の欄を出さないでください (文章の欄に入れると距離計算で失敗します)
 - 文章 (意味検索) とキーワードを両方入れると、キーワードで絞ったうえで近い順になります。キーワードだけなら一覧の普段の並びです
 - 大文字小文字・全角半角・かな種の扱いは文章の列の照合順序で決まります (SQL Server の既定 `Japanese_CI_AS` と MySQL の既定は区別しない、PostgreSQL / Oracle は区別する、SQLite は ASCII の大文字小文字だけ区別しない)。文章には「表示名: 値」の表示名も入っているので、項目名と同じ語は全行に当たります
 - 速さは LIKE の全走査です。PostgreSQL で行数が多ければ文章の列に pg_bigm (2 文字から索引が効く) か pg_trgm の GIN インデックスを張ると、同じ検索がインデックスで走ります
@@ -260,7 +260,7 @@ CREATE EXTENSION IF NOT EXISTS pg_bigm;
 CREATE INDEX inquiries_search_text_bigm ON inquiries USING gin (search_text gin_bigm_ops);
 ```
 
-AI チャット (`ModuleDataAccessAgent`) からは、`find_records` / `aggregate_records` / `cross_tab` / `search_records` の filters にこの項目の `Like` でキーワードを渡すと同じ絞り込みになります (`KeywordSearch` の設定に関係なく使えます。AI には describe_module と手順の説明で案内されます)。API からは `SemanticMatchCondition.Keywords` です。 生 SQL の `RawDataAccessAgent` には「語そのもので探すときは文章の列に LIKE」と案内されます (列名つき)。
+AI チャット (`ModuleDataAccessAgent`) からは、`find_records` / `aggregate_records` / `cross_tab` / `search_records` の filters にこの項目の `Like` でキーワードを渡すと同じ絞り込みになります (`SearchBoxes` の設定に関係なく使えます。AI には describe_module と手順の説明で案内されます)。API からは `SemanticMatchCondition.Keywords` です。生 SQL の `RawDataAccessAgent` には「語そのもので探すときは文章の列に LIKE」と案内されます (列名つき。埋め込みプロバイダやベクトル検索に対応する DB が無くても)。
 
 ### 4. 既存データに一括でベクトルを付ける (再索引)
 

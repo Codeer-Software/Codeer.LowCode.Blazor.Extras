@@ -31,6 +31,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         private const int CodeSearchHasNoEffect = 3;
         private const int CodeSourceFieldsRestricted = 4;
         private const int CodeLinkTargetsRestricted = 5;
+        private const int CodeRowDependentReadCondition = 6;
 
         /// <summary>文章にするフィールド (同じモジュール)。空なら DB 列を持つ入力フィールド全部 (Id・論理削除・楽観ロック・パスワード・作成/更新の記録は除く)。</summary>
         [Designer(Index = 2, CandidateType = CandidateType.Field, DisplayName = "$SemanticSearchFieldSourceFields")]
@@ -67,12 +68,13 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         public string OnReindexCompleted { get; set; } = string.Empty;
 
         /// <summary>
-        /// 検索レイアウトにキーワード欄も出す。空白区切りの語をすべて含む行 (文章の列への部分一致の AND) に絞る。埋め込みを使わないので、
-        /// ベクトル検索に対応しない DB のモジュールでも使える。文章 (意味検索) と一緒に入れると、絞ったうえで近い順になる。
+        /// 検索レイアウトに出す入力欄。キーワード欄は空白区切りの語をすべて含む行 (文章の列への部分一致の AND) に絞る。埋め込みを使わないので、
+        /// ベクトル検索に対応しない DB・埋め込み無しの構成でも使える (そのときは <see cref="SemanticSearchBoxes.KeywordOnly"/> = 文章の欄を出さない。文章の欄に入れると距離計算で失敗する)。
+        /// 文章 (意味検索) と一緒に入れると、絞ったうえで近い順になる。
         /// AI チャット (ModuleDataAccess の filters にこの項目の Like) と API (<see cref="SemanticMatchCondition.Keywords"/>) からは、この設定に関係なく使える。
         /// </summary>
-        [Designer(Index = 9, DisplayName = "$SemanticSearchFieldKeywordSearch")]
-        public bool KeywordSearch { get; set; }
+        [Designer(Index = 9, DisplayName = "$SemanticSearchFieldSearchBoxes")]
+        public SemanticSearchBoxes SearchBoxes { get; set; } = SemanticSearchBoxes.Semantic;
 
         /// <summary>3 つの列 (文章 / ベクトル / ベクトル検索用) がすべて設定されているか (索引と検索の対象になる条件)。</summary>
         internal bool HasColumns => !string.IsNullOrWhiteSpace(DbColumnText) && !string.IsNullOrWhiteSpace(DbColumnVector) && !string.IsNullOrWhiteSpace(DbColumnVectorSearch);
@@ -106,13 +108,15 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
             result.AddRange(CheckSearchHasEffect(context));
             result.AddRange(CheckSourceFieldsReadRestriction(context));
             result.AddRange(CheckLinkTargetsReadRestriction(context));
+            result.AddRange(CheckRowDependentReadCondition(context));
             return result;
         }
 
         /// <summary>
         /// 文章の列は対象フィールドの値を全部含むので、このフィールドを読める人はキーワード検索 (部分一致を重ねる) で対象フィールドの値を言い当てられる。
         /// 対象フィールドに PermissionField の読み取り条件があるのに、このフィールド自身には無い構成を指摘する (このフィールドにも同じかそれより厳しい読み取り条件を付ける)。
-        /// 厳しさの比較まではしない (有無だけ)。
+        /// 厳しさの比較まではしない (有無だけ)。このフィールドに付けられるのはユーザーだけで決まる条件 (<see cref="CheckRowDependentReadCondition"/>) なので、
+        /// 対象フィールドの条件が行の値を見るものなら、答えはその項目を SourceFields から外すこと (文言で案内)。
         /// </summary>
         IEnumerable<DesignCheckInfo> CheckSourceFieldsReadRestriction(DesignCheckContext context)
         {
@@ -131,9 +135,9 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         }
 
         /// <summary>
-        /// リンク (LinkField / SelectField) の表示名も文章に入る。リンク先モジュールに閲覧条件 (UserReadCondition) があると、本体はそのモジュールを読めないユーザーに
-        /// 表示名を空で返すが、文章の列には保存時の表示名が残っているので、このフィールドを読める人はキーワード検索で言い当てられる。
-        /// リンク先に閲覧条件があるのに、このフィールド自身に PermissionField の読み取り条件が無い構成を指摘する (:4 と同じく有無だけ)。
+        /// リンク (LinkField / SelectField) の表示名や、自分で文章にするフィールド (TagField のタグ名) の値も文章に入る。その値を持つ他のモジュールに閲覧条件 (UserReadCondition) があると、
+        /// 本体はそのモジュールを読めないユーザーに表示名を空で返す (リンク) が、文章の列には保存時の値が残っているので、このフィールドを読める人はキーワード検索で言い当てられる。
+        /// 相手のモジュールに閲覧条件があるのに、このフィールド自身に PermissionField の読み取り条件が無い構成を指摘する (:4 と同じく有無だけ)。
         /// </summary>
         IEnumerable<DesignCheckInfo> CheckLinkTargetsReadRestriction(DesignCheckContext context)
         {
@@ -143,14 +147,17 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
             var restricted = new List<string>();
             foreach (var name in SemanticSearchText.SourceFields(module, this))
             {
-                var target = module.Fields.FirstOrDefault(f => f.Name == name) switch
+                IEnumerable<string> targets = module.Fields.FirstOrDefault(f => f.Name == name) switch
                 {
-                    LinkFieldDesign link => link.SearchCondition.ModuleName,
-                    SelectFieldDesign select => select.SearchCondition.ModuleName,
-                    _ => null,
+                    LinkFieldDesign link => [link.SearchCondition.ModuleName],
+                    SelectFieldDesign select => [select.SearchCondition.ModuleName],
+                    ISemanticSearchTextSource source => source.GetSemanticTextModuleNames(context.DesignData.Modules),
+                    _ => [],
                 };
-                if (string.IsNullOrEmpty(target)) continue;
-                if (context.DesignData.Modules.Find(target)?.UserReadCondition.Condition != null) restricted.Add($"{name} ({target})");
+                foreach (var target in targets.Where(t => !string.IsNullOrEmpty(t)).Distinct())
+                {
+                    if (context.DesignData.Modules.Find(target)?.UserReadCondition.Condition != null) restricted.Add($"{name} ({target})");
+                }
             }
             if (restricted.Count == 0) yield break;
             yield return new FieldDesignCheckInfo
@@ -161,9 +168,37 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
             };
         }
 
-        //PermissionField の対象にそのフィールドが入るか (除外モードは「指定した名前以外のすべて」。本体の実効対象の決め方と同じ)
+        /// <summary>
+        /// 検索条件の権限判定は行データを持たないので、行の値を見る読み取り条件は静的に「読めない」と判定される (本体 AuthorizationControl.GetFieldPermissionsStatic)。
+        /// このフィールドは検索条件にしか使わないので、このフィールドを対象にする PermissionField の読み取り条件が行の値を見ていると、
+        /// 意味検索・キーワード検索 (画面・AI・API) が誰にも通らない。CurrentUser の項目だけを見る条件にする。
+        /// </summary>
+        IEnumerable<DesignCheckInfo> CheckRowDependentReadCondition(DesignCheckContext context)
+        {
+            var module = context.GetModuleDesign();
+            if (module == null) yield break;
+            foreach (var rule in module.Fields.OfType<PermissionFieldDesign>())
+            {
+                if (rule.ReadCondition.Condition == null || !Targets(rule, Name) || !ReferencesRowData(rule.ReadCondition.Condition)) continue;
+                yield return new FieldDesignCheckInfo
+                {
+                    Code = DesignCheckCode.Create(typeof(SemanticSearchFieldDesign), CodeRowDependentReadCondition),
+                    Location = new FieldDesignDataLocation { Module = context.OwnerModule, Field = rule.Name, Member = nameof(PermissionFieldDesign.ReadCondition) },
+                    Message = string.Format(Properties.Resources.SemanticSearchCheck_RowDependentReadConditionFormat, rule.Name, Name),
+                };
+            }
+        }
+
+        //条件の左辺に行の値 (CurrentUser.* 以外) があるか (本体 PermissionFieldDesign の行依存の判定と同じ)
+        static bool ReferencesRowData(MatchConditionBase condition)
+            => condition is IFieldMatchCondition field && !field.SearchTargetVariable.StartsWith(SystemFieldNames.CurrentUser + ".")
+                || condition is MultiMatchCondition multi && multi.Children.Any(ReferencesRowData);
+
+        //PermissionField の対象にそのフィールドが入るか (除外モードは「指定した名前以外のすべて」で、本体と同じく Id / 楽観ロックは常に対象外)
         static bool Targets(PermissionFieldDesign rule, string fieldName)
-            => rule.IsExcludeMode ? !rule.TargetFields.Contains(fieldName) : rule.TargetFields.Contains(fieldName);
+            => rule.IsExcludeMode
+                ? !rule.TargetFields.Contains(fieldName) && fieldName != SystemFieldNames.Id && fieldName != SystemFieldNames.OptimisticLocking
+                : rule.TargetFields.Contains(fieldName);
 
         /// <summary>
         /// 文章にするフィールドの値は、レイアウトに置いていなくてもフロントに来ていなければならない (文章はクライアントが組み立てるので、
@@ -205,7 +240,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         IEnumerable<DesignCheckInfo> CheckSearchHasEffect(DesignCheckContext context)
         {
             var module = context.GetModuleDesign();
-            if (module == null || SearchMaxDistance != null) yield break;
+            if (module == null || SearchMaxDistance != null || SearchBoxes == SemanticSearchBoxes.KeywordOnly) yield break;
             var layouts = new HashSet<string>();
             foreach (var (layoutName, layout) in module.SearchLayouts)
             {

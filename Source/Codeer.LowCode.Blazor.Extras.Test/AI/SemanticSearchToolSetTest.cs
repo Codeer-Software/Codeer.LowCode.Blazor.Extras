@@ -85,14 +85,26 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
         }
 
         [Test]
-        public void ベクトル検索に対応しないDBのモジュールは意味検索の対象にならない()
+        public void ベクトル検索に対応しないDBのモジュールは意味検索の対象にならない_文章の列へのLIKEだけ案内する()
         {
             foreach (var type in new[] { DataSourceType.SQLite, DataSourceType.MySQL, DataSourceType.Oracle })
             {
                 var toolSet = ToolSet(CreateDesign(), type);
-                Assert.That(toolSet.GetInstructions(Context()), Is.Empty, type.ToString());
+                var text = toolSet.GetInstructions(Context());
+                Assert.That(text, Does.Contain("Inquiry = 表 inquiries の列 search_text"), type.ToString());
+                Assert.That(text, Does.Not.Contain("search_records").And.Not.Contain("{embed:"), type.ToString());
                 Assert.That(toolSet.CreateTools(Context()), Is.Empty, type.ToString());
             }
+        }
+
+        [Test]
+        public void 埋め込みプロバイダが無ければ意味検索の対象にならない_文章の列へのLIKEだけ案内する()
+        {
+            var toolSet = new SemanticSearchToolSet(() => CreateDesign(), () => Db(DataSourceType.PostgreSQL), () => null, new List<string> { Ds });
+            var text = toolSet.GetInstructions(Context());
+            Assert.That(text, Does.Contain("Inquiry = 表 inquiries の列 search_text"));
+            Assert.That(text, Does.Not.Contain("search_records").And.Not.Contain("{embed:"));
+            Assert.That(toolSet.CreateTools(Context()), Is.Empty);
         }
 
         [Test]
