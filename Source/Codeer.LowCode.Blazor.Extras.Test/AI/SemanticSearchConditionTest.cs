@@ -259,6 +259,22 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
             //除外モード (指定以外のすべて) はこのフィールドも対象に入る
             module.Fields.Add(Rule("P3", true, "Title"));
             Assert.That(Check(), Is.Empty);
+
+            //リンク先モジュールの閲覧条件 (UserReadCondition) も同じ理屈 (表示名が文章に入る) → 別の指摘 (:5)
+            module.Fields.RemoveAll(f => f is PermissionFieldDesign);
+            var customer = new ModuleDesign { Name = "Customer", DataSourceName = Ds, DbTable = "customers" };
+            customer.Fields.Add(new IdFieldDesign { Name = "Id", DbColumn = "id" });
+            design.AddModule(customer);
+            var link = new LinkFieldDesign { Name = "Customer", DbColumn = "customer_id", ValueVariable = "Id.Value", DisplayTextVariable = "Id.Value" };
+            link.SearchCondition.ModuleName = "Customer";
+            module.Fields.Add(link);
+            var linkCode = DesignCheckCode.Create(typeof(SemanticSearchFieldDesign), 5 /* LinkTargetsRestricted */);
+            List<DesignCheckInfo> CheckLink() => field.CheckDesign(new DesignCheckContext("Note", design, Utilities.CreateDataSource())).Where(e => e.Code == linkCode).ToList();
+            Assert.That(CheckLink(), Is.Empty);
+            customer.UserReadCondition.Condition = Rule("x").ReadCondition.Condition;
+            Assert.That(CheckLink().Single().Message, Does.Contain("Customer (Customer)").And.Contain("Search"));
+            module.Fields.Add(Rule("P4", false, "Search"));
+            Assert.That(CheckLink(), Is.Empty);
         }
     }
 }

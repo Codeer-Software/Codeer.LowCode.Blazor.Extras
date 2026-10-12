@@ -1344,6 +1344,9 @@
   <data name="SemanticSearchCheck_FieldsNotLoadedFormat" xml:space="preserve">
     <value>詳細レイアウト '{0}' は意味検索の文章に使うフィールド {1} を読み込まないため、このレイアウトから保存した行の文章が欠けます。そのフィールドか、このフィールド (SourceFields を設定して) をレイアウトか DataOnlyFields に含めてください。</value>
   </data>
+  <data name="SemanticSearchCheck_LinkTargetsRestrictedFormat" xml:space="preserve">
+    <value>意味検索の文章に使うフィールド {0} のリンク先モジュールには閲覧条件 (UserReadCondition) がありますが、このフィールド ({1}) には PermissionField の読み取り条件がありません。文章の列はリンク先の表示名を含むので、リンク先を読めない人も {1} を読めればキーワード検索で表示名を特定できます。{1} にリンク先と同じかそれより厳しい読み取り条件を付けてください。</value>
+  </data>
   <data name="SemanticSearchCheck_SourceFieldsRestrictedFormat" xml:space="preserve">
     <value>意味検索の文章に使うフィールド {0} には PermissionField の読み取り条件がありますが、このフィールド ({1}) にはありません。文章の列は対象フィールドの値を含むので、{1} を読める人はキーワード検索で {0} の値を特定できます。{1} にも同じかそれより厳しい読み取り条件を付けてください。</value>
   </data>

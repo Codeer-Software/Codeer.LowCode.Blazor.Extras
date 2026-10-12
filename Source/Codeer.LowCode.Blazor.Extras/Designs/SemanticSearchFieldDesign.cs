@@ -30,6 +30,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         private const int CodeFieldsNotLoaded = 2;
         private const int CodeSearchHasNoEffect = 3;
         private const int CodeSourceFieldsRestricted = 4;
+        private const int CodeLinkTargetsRestricted = 5;
 
         /// <summary>文章にするフィールド (同じモジュール)。空なら DB 列を持つ入力フィールド全部 (Id・論理削除・楽観ロック・パスワード・作成/更新の記録は除く)。</summary>
         [Designer(Index = 2, CandidateType = CandidateType.Field, DisplayName = "$SemanticSearchFieldSourceFields")]
@@ -104,6 +105,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
             result.AddRange(CheckSourceFieldsLoaded(context));
             result.AddRange(CheckSearchHasEffect(context));
             result.AddRange(CheckSourceFieldsReadRestriction(context));
+            result.AddRange(CheckLinkTargetsReadRestriction(context));
             return result;
         }
 
@@ -125,6 +127,37 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
                 Code = DesignCheckCode.Create(typeof(SemanticSearchFieldDesign), CodeSourceFieldsRestricted),
                 Location = new FieldDesignDataLocation { Module = context.OwnerModule, Field = Name, Member = nameof(SourceFields) },
                 Message = string.Format(Properties.Resources.SemanticSearchCheck_SourceFieldsRestrictedFormat, string.Join(", ", restricted), Name),
+            };
+        }
+
+        /// <summary>
+        /// リンク (LinkField / SelectField) の表示名も文章に入る。リンク先モジュールに閲覧条件 (UserReadCondition) があると、本体はそのモジュールを読めないユーザーに
+        /// 表示名を空で返すが、文章の列には保存時の表示名が残っているので、このフィールドを読める人はキーワード検索で言い当てられる。
+        /// リンク先に閲覧条件があるのに、このフィールド自身に PermissionField の読み取り条件が無い構成を指摘する (:4 と同じく有無だけ)。
+        /// </summary>
+        IEnumerable<DesignCheckInfo> CheckLinkTargetsReadRestriction(DesignCheckContext context)
+        {
+            var module = context.GetModuleDesign();
+            if (module == null || !HasColumns) yield break;
+            if (module.Fields.OfType<PermissionFieldDesign>().Any(p => p.ReadCondition.Condition != null && Targets(p, Name))) yield break;
+            var restricted = new List<string>();
+            foreach (var name in SemanticSearchText.SourceFields(module, this))
+            {
+                var target = module.Fields.FirstOrDefault(f => f.Name == name) switch
+                {
+                    LinkFieldDesign link => link.SearchCondition.ModuleName,
+                    SelectFieldDesign select => select.SearchCondition.ModuleName,
+                    _ => null,
+                };
+                if (string.IsNullOrEmpty(target)) continue;
+                if (context.DesignData.Modules.Find(target)?.UserReadCondition.Condition != null) restricted.Add($"{name} ({target})");
+            }
+            if (restricted.Count == 0) yield break;
+            yield return new FieldDesignCheckInfo
+            {
+                Code = DesignCheckCode.Create(typeof(SemanticSearchFieldDesign), CodeLinkTargetsRestricted),
+                Location = new FieldDesignDataLocation { Module = context.OwnerModule, Field = Name, Member = nameof(SourceFields) },
+                Message = string.Format(Properties.Resources.SemanticSearchCheck_LinkTargetsRestrictedFormat, string.Join(", ", restricted), Name),
             };
         }
 

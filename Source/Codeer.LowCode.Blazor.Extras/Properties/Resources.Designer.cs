@@ -2975,6 +2975,15 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
         }
         
         /// <summary>
+        ///   The link targets of the fields {0} used for the semantic search text have a UserReadCondition, but this field ({1}) has no PermissionField read condition. The text column contains the link display texts, so anyone who can read {1} can find them by keyword search even without access to the target module. Give {1} a read condition at least as strict as the target modules'. に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string SemanticSearchCheck_LinkTargetsRestrictedFormat {
+            get {
+                return ResourceManager.GetString("SemanticSearchCheck_LinkTargetsRestrictedFormat", resourceCulture);
+            }
+        }
+
+        /// <summary>
         ///   DB Column (DB vector search) に類似しているローカライズされた文字列を検索します。
         /// </summary>
         internal static string SemanticSearchFieldDbColumnVectorSearch {
