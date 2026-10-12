@@ -1,4 +1,5 @@
 using Codeer.LowCode.Blazor.DataIO;
+using Codeer.LowCode.Blazor.Extras.Designs;
 using Codeer.LowCode.Blazor.Extras.SemanticSearch;
 using Codeer.LowCode.Blazor.Extras.Server.Properties;
 using Codeer.LowCode.Blazor.Repository.Data;
@@ -22,7 +23,12 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
 
         public async Task PrepareConditionAsync(ModuleDataIOInternalAccess io, ModuleMatchCondition condition)
         {
-            var targets = Collect(condition.Condition).Where(e => e.Vector.Length == 0 && !string.IsNullOrWhiteSpace(e.Text)).ToList();
+            //ベクトル列の無いフィールド (キーワード検索だけの構成) の文章は埋め込まない (SQL を作る側が理由つきで断る)
+            var module = service.GetDesign().Modules.Find(condition.ModuleName);
+            var targets = Collect(condition.Condition)
+                .Where(e => e.Vector.Length == 0 && !string.IsNullOrWhiteSpace(e.Text)
+                    && module?.Fields.FirstOrDefault(f => f.Name == e.FieldName) is SemanticSearchFieldDesign { HasVectorColumns: true })
+                .ToList();
             if (targets.Count == 0) return;
 
             var provider = service.GetProvider() ?? throw LowCodeException.Create(Resources.SemanticSearch_ProviderNotConfigured);

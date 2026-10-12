@@ -55,7 +55,7 @@ AI チャット ([AIChatField](AIChatFieldDesign.md) の `RawDataAccessAgent`) �
 | `SearchBoxes` | enum | `Semantic` | 検索レイアウトに出す入力欄。`Semantic` = 文章の欄だけ / `SemanticAndKeyword` = 文章とキーワード / `KeywordOnly` = キーワードの欄だけ。キーワードは空白区切りの語をすべて含む行 (文章の列への部分一致の AND) に絞る。埋め込み不要・どの DB でも動く。文章と両方入れると絞ったうえで近い順。 |
 | `OnReindexCompleted` | string | `""` | スクリプトの `Reindex()` / `ReindexMissing()` で起こした再索引が終わった (成功・失敗・中断) ときに呼ぶスクリプト関数名。結果は `ReindexProcessed` / `ReindexError` で見る。 |
 
-3 つのカラムは**すべて必須** (欠けるとデザインチェック `SemanticSearchFieldDesign:1`)。実テーブルに存在するかも検証される。`SourceFields` の各名前が同じモジュールに存在するかも検証される。
+3 つのカラムは**すべて必須**。`SearchBoxes: "KeywordOnly"` なら `DbColumnText` だけ必須 (欠けるとデザインチェック `SemanticSearchFieldDesign:1`)。実テーブルに存在するかも検証される。`SourceFields` の各名前が同じモジュールに存在するかも検証される。
 
 ### 必要な DB 構成
 
@@ -113,8 +113,9 @@ AI チャットの `execute_sql` の SQL に `{embed:探したい内容}` と書
 - **近い順にしたいときは、一覧の並び (ListField の `SearchCondition.SortConditions`) の先頭に `{ "Variable": "Search.Value", "IsDescending": false }` を入れる**。文章が空のときはこの並びは飛ばされ、次の並びになる
 - 文章を埋め込みにするのはサーバー (ホストが `AddInterceptor(SemanticSearchIndex.Service.ConditionInterceptor)` を登録済みであること。テンプレートは登録済み)
 - `SearchMaxDistance` が空で、その検索レイアウトを使う一覧 (ページの一覧・SearchField の結果の一覧・LinkField の検索ダイアログ) の並びに `Search.Value` が無いと、文章を入れても索引のある行に絞られるだけで一覧は変わらない。デザインチェック `SemanticSearchFieldDesign:3` が指摘する (並びに入れるか、`SearchMaxDistance` を設定する)
-- **キーワード検索** (`SearchBoxes: "SemanticAndKeyword"`): 検索欄にキーワード欄が加わる。品番・人名・番号など語そのもので探す用途 (意味検索は似た番号が混ざる・0 件にならない)。空白区切りの語をすべて含む行に絞る (対象フィールドを横断。リンクの表示名・タグ名も当たる)。埋め込みを使わないので SQLite / MySQL / Oracle のモジュールや埋め込みプロバイダの無い構成でも、3 つの列を用意すればキーワード検索だけは使える。そのときは `SearchBoxes: "KeywordOnly"` で文章の欄を出さない (文章の欄に入れると距離計算で失敗する)。AI チャットからは filters にこの項目の `Like` でキーワードを渡す (設定に関係なく使える)。一致の大文字小文字・全角半角は文章の列の照合順序次第。**対象フィールドに PermissionField の読み取り条件があるか、リンク先・タグ付けのモジュールに閲覧条件 (UserReadCondition) があるなら、このフィールドにも同じかそれより厳しい読み取り条件を付ける** (文章は対象フィールドの値とリンクの表示名を含むので、このフィールドを読める人はキーワード検索で値を特定できる。このフィールドにだけ無い構成はデザインチェック `SemanticSearchFieldDesign:4` / `:5` が指摘する)
-- **このフィールドに付ける読み取り条件は CurrentUser の項目だけを見るもの**にする。検索条件の権限判定は行を持たないので、行の値を見る条件だと誰もこのフィールドで検索できない (デザインチェック `SemanticSearchFieldDesign:6`)。対象フィールドの条件が行の値を見るものなら、その項目を `SourceFields` から外す
+- **キーワード検索** (`SearchBoxes: "SemanticAndKeyword"`): 検索欄にキーワード欄が加わる。品番・人名・番号など語そのもので探す用途 (意味検索は似た番号が混ざる・0 件にならない)。空白区切りの語をすべて含む行に絞る (対象フィールドを横断。リンクの表示名・タグ名も当たる)。埋め込みを使わないので SQLite / MySQL / Oracle のモジュールや埋め込みプロバイダの無い構成でも使える: `SearchBoxes: "KeywordOnly"` にすれば `DbColumnText` だけで動く (ベクトルの 2 列は不要・文章の欄は出ない・埋め込みは呼ばない)。AI チャットからは filters にこの項目の `Like` でキーワードを渡す (設定に関係なく使える)。一致の大文字小文字・全角半角は文章の列の照合順序次第。**対象フィールドに PermissionField の読み取り条件があるか、リンク先・タグ付けのモジュールに閲覧条件 (UserReadCondition) があるなら、このフィールドにも同じかそれより厳しい読み取り条件を付ける** (文章は対象フィールドの値とリンクの表示名を含むので、このフィールドを読める人はキーワード検索で値を特定できる。このフィールドにだけ無い構成はデザインチェック `SemanticSearchFieldDesign:4` / `:5` が指摘する)
+- **このフィールドの読み取り条件で効くのは CurrentUser だけで真になる部分**。検索条件の権限判定は行を持たないので、行の値を見る部分は偽として扱われ、CurrentUser だけで真になる経路の無い人はこのフィールドで検索できない (デザインチェック `PermissionFieldDesign:4`)。対象フィールドの条件が行の値を見るものや、制限の違う対象フィールドが複数あるときは、その項目を `SourceFields` から外す (空 = 全部なら明示して列挙)
+- 条件の復元 (URL 等) では、欄を出していない方 (`SearchBoxes` を変える前の条件のキーワード等) は捨てる。スクリプトで `SearchText` / `KeywordText` を設定すれば欄が無くても条件に入る
 
 ### 注意
 

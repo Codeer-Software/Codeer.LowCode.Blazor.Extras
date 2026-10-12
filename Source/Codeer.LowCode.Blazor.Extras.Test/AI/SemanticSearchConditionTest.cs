@@ -103,6 +103,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
             var design = CreateDesign(maxDistance: 0.5);
             var module = await ModuleCreationService.CreateModuleAsync(new TestServices(design).Core, new ModuleData { Name = "Note" });
             var field = (SemanticSearchField)module.GetField("Search")!;
+            field.Design.SearchBoxes = SemanticSearchBoxes.SemanticAndKeyword;
 
             //キーワードだけ: 文章なし・距離の上限なし (埋め込みを呼ばせない)
             await field.SetKeywordTextAsync(" 納期　遅延  納期 ");
@@ -294,33 +295,41 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
         }
 
         [Test]
-        public void このフィールドの読み取り条件が行の値を見ていると検索が誰にも通らないので設計チェックが指摘する()
+        public void 空のグループの条件は読み取り条件が無いものとして扱う()
         {
+            //本体の IsEmpty と同じ (デザイナで条件を消すと空の And が残ることがある)
             var design = CreateDesign();
             var module = design.Modules.Find("Note")!;
+            module.Fields.Add(new TextFieldDesign { Name = "Secret", DbColumn = "secret" });
             var field = module.Fields.OfType<SemanticSearchFieldDesign>().Single();
-            var code = DesignCheckCode.Create(typeof(SemanticSearchFieldDesign), 6 /* RowDependentReadCondition */);
-            List<DesignCheckInfo> Check() => field.CheckDesign(new DesignCheckContext("Note", design, Utilities.CreateDataSource())).Where(e => e.Code == code).ToList();
             var rule = new PermissionFieldDesign { Name = "P" };
-            rule.TargetFields.Add("Search");
+            rule.TargetFields.Add("Secret");
+            rule.ReadCondition.Condition = new MultiMatchCondition();
             module.Fields.Add(rule);
+            var code = DesignCheckCode.Create(typeof(SemanticSearchFieldDesign), 4 /* SourceFieldsRestricted */);
+            Assert.That(field.CheckDesign(new DesignCheckContext("Note", design, Utilities.CreateDataSource())).Where(e => e.Code == code), Is.Empty);
+        }
 
-            //ユーザーだけで決まる条件は検索条件の権限判定 (静的) で許可される
-            rule.ReadCondition.Condition = new FieldValueMatchCondition { SearchTargetVariable = "CurrentUser.Id.Value", Comparison = MatchComparison.Equal, Value = MultiTypeValue.Create("U1") };
-            Assert.That(Check(), Is.Empty);
+        [Test]
+        public async Task 条件の復元では欄を出していない方を捨てる()
+        {
+            //設定を SemanticAndKeyword → Semantic に変えた後に古い条件 (URL 等) が戻っても、見えないキーワードの絞り込みを残さない
+            var design = CreateDesign();
+            var module = await ModuleCreationService.CreateModuleAsync(new TestServices(design).Core, new ModuleData { Name = "Note" });
+            var field = (SemanticSearchField)module.GetField("Search")!;
+            var saved = new FieldMatchCondition { FieldName = "Search", Children = [new SemanticMatchCondition { FieldName = "Search", Text = "納期の遅れ", Keywords = "青空" }] };
 
-            //行の値を見る条件 (And の中でも) は静的に拒否 = このフィールドでの検索が誰にも通らない
-            rule.ReadCondition.Condition = MultiMatchCondition.And(
-                new FieldValueMatchCondition { SearchTargetVariable = "CurrentUser.Id.Value", Comparison = MatchComparison.Equal, Value = MultiTypeValue.Create("U1") },
-                new FieldValueMatchCondition { SearchTargetVariable = "Title.Value", Comparison = MatchComparison.Equal, Value = MultiTypeValue.Create("公開") });
-            var info = Check().Single();
-            Assert.That(info.Message, Does.Contain("P").And.Contain("Search"));
-            Assert.That(((FieldDesignCheckInfo)info).Location.Field, Is.EqualTo("P"), "直す場所は PermissionField の条件");
+            field.Design.SearchBoxes = SemanticSearchBoxes.Semantic;
+            await field.SetMatchConditionAsync(saved);
+            Assert.That((field.SearchText, field.KeywordText), Is.EqualTo(("納期の遅れ", (string?)null)));
 
-            //このフィールドを対象にしない規則は見ない
-            rule.TargetFields.Clear();
-            rule.TargetFields.Add("Title");
-            Assert.That(Check(), Is.Empty);
+            field.Design.SearchBoxes = SemanticSearchBoxes.KeywordOnly;
+            await field.SetMatchConditionAsync(saved);
+            Assert.That((field.SearchText, field.KeywordText), Is.EqualTo(((string?)null, "青空")));
+
+            field.Design.SearchBoxes = SemanticSearchBoxes.SemanticAndKeyword;
+            await field.SetMatchConditionAsync(saved);
+            Assert.That((field.SearchText, field.KeywordText), Is.EqualTo(("納期の遅れ", "青空")));
         }
     }
 }

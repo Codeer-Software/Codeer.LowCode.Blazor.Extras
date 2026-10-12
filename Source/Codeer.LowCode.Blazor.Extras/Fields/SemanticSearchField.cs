@@ -55,6 +55,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         /// <summary>
         /// 検索欄の文章とキーワードを 1 つの意味検索の条件にする (文章は文章だけ。埋め込みはサーバーの前処理が作る)。近い順に並べたいときは、一覧の並びに "フィールド名.Value" を入れておく
         /// (文章が空のときは本体がその並びを飛ばす)。キーワードは文章の列が語をすべて含む行に絞る (埋め込み不要)。
+        /// 欄を出していない方 (<see cref="SemanticSearchFieldDesign.SearchBoxes"/>) もスクリプトで設定すれば条件に入る (復元では捨てる)。
         /// </summary>
         [ScriptHide]
         public MatchConditionBase? GetMatchCondition()
@@ -75,13 +76,14 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             };
         }
 
-        /// <summary>URL 等から戻した条件を検索欄に反映する。</summary>
+        /// <summary>URL 等から戻した条件を検索欄に反映する。欄を出していない方 (設定を変える前に保存された条件など) は捨てる (見えない絞り込みを残さない)。</summary>
         [ScriptHide]
         public async Task SetMatchConditionAsync(FieldMatchCondition condition)
         {
             if (condition.Children.FirstOrDefault() is not SemanticMatchCondition semantic) return;
-            await SetSearchTextAsync(string.IsNullOrWhiteSpace(semantic.Text) ? null : semantic.Text);
-            await SetKeywordTextAsync(string.IsNullOrWhiteSpace(semantic.Keywords) ? null : semantic.Keywords);
+            var boxes = Design.SearchBoxes;
+            await SetSearchTextAsync(boxes == SemanticSearchBoxes.KeywordOnly || string.IsNullOrWhiteSpace(semantic.Text) ? null : semantic.Text);
+            await SetKeywordTextAsync(boxes == SemanticSearchBoxes.Semantic || string.IsNullOrWhiteSpace(semantic.Keywords) ? null : semantic.Keywords);
         }
 
         [ScriptHide]
@@ -115,7 +117,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         /// <summary>対象フィールドのどれかが変更されているか (= この Submit で文章を送るか)。自前の状態は持たず対象フィールドに追従する。</summary>
         [ScriptHide]
         public override bool IsModified
-            => Design.HasColumns && SemanticSearchText.SourceFields(Module.Design, Design).Any(n => Module.GetField(n)?.IsModified == true);
+            => Design.HasTextColumn && SemanticSearchText.SourceFields(Module.Design, Design).Any(n => Module.GetField(n)?.IsModified == true);
 
         [ScriptHide]
         public override async Task InitializeDataAsync(FieldDataBase? data)
@@ -131,14 +133,14 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         [ScriptHide]
         public override FieldSubmitData GetSubmitData()
         {
-            if (!Design.HasColumns || (!Module.IsNewData && !IsModified)) return new();
+            if (!Design.HasTextColumn || (!Module.IsNewData && !IsModified)) return new();
             var text = SemanticSearchText.Build(Services.AppInfoService.GetDesignData(), Module.Design, Module.GetData(), Design);
             return new() { FieldData = new SemanticSearchFieldData { Text = text } };
         }
 
         /// <summary>今の行を索引用の文章にしたもの (確認用。Submit で送られるのと同じ規則)。</summary>
         public string Text
-            => Design.HasColumns ? SemanticSearchText.Build(Services.AppInfoService.GetDesignData(), Module.Design, Module.GetData(), Design) : string.Empty;
+            => Design.HasTextColumn ? SemanticSearchText.Build(Services.AppInfoService.GetDesignData(), Module.Design, Module.GetData(), Design) : string.Empty;
 
         /// <summary>再索引が走っている間 true。</summary>
         public bool IsReindexing { get; private set; }
@@ -182,7 +184,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
 
         async Task StartReindexAsync(bool missingOnly)
         {
-            if (IsReindexing || !IsReindexConfigured || !Design.HasColumns) return;
+            if (IsReindexing || !IsReindexConfigured || !Design.HasTextColumn) return;
             var request = new SemanticSearchReindexRequest { ModuleName = Module?.Design.Name ?? string.Empty, FieldName = Design.Name, MissingOnly = missingOnly };
             IsReindexing = true;
             ReindexProcessed = 0;

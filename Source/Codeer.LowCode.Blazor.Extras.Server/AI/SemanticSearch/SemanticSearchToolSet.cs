@@ -142,9 +142,9 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
             => SearchableModules(IndexedModules(design));
 
         List<(ModuleDesign Module, SemanticSearchFieldDesign Field, DataSourceType Type, string DataSourceName)> SearchableModules(List<(ModuleDesign Module, SemanticSearchFieldDesign Field, DataSourceType Type, string DataSourceName)> indexed)
-            => _embeddingProvider() == null ? new() : indexed.Where(t => SemanticSearchVector.SupportsDbSearch(t.Type)).ToList();
+            => _embeddingProvider() == null ? new() : indexed.Where(t => t.Field.HasVectorColumns && SemanticSearchVector.SupportsDbSearch(t.Type)).ToList();
 
-        //索引のあるモジュール = SemanticSearchField (3 列あり) を持ち、表があり、検索に使えるデータソース (下記) があるもの。文章の列への LIKE はここまでで使える (DB 種別を問わない)。
+        //索引のあるモジュール = SemanticSearchField (文章の列あり) を持ち、表があり、検索に使えるデータソース (下記) があるもの。文章の列への LIKE はここまでで使える (DB 種別・ベクトル列を問わない)。
         //データソース種別は DataSource 定義から見る (接続はしない)。DataSourceName は検索に使う接続 (execute_sql の dataSource と同じ名前)
         List<(ModuleDesign Module, SemanticSearchFieldDesign Field, DataSourceType Type, string DataSourceName)> IndexedModules(DesignData design)
         {
@@ -153,7 +153,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
             var candidates = new List<(ModuleDesign Module, SemanticSearchFieldDesign Field)>();
             foreach (var module in all)
             {
-                var field = module.Fields.OfType<SemanticSearchFieldDesign>().FirstOrDefault(f => f.HasColumns);
+                var field = module.Fields.OfType<SemanticSearchFieldDesign>().FirstOrDefault(f => f.HasTextColumn);
                 if (field != null) candidates.Add((module, field));
             }
             if (candidates.Count == 0) return result;

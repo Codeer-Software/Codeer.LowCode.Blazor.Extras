@@ -1347,11 +1347,14 @@
   <data name="SemanticSearchCheck_LinkTargetsRestrictedFormat" xml:space="preserve">
     <value>意味検索の文章に使うフィールド {0} の相手のモジュールには閲覧条件 (UserReadCondition) がありますが、このフィールド ({1}) には PermissionField の読み取り条件がありません。文章の列は相手の表示名 (タグ名) を含むので、相手を読めない人も {1} を読めればキーワード検索で特定できます。{1} に CurrentUser の項目だけを見る読み取り条件 (相手の閲覧条件と同じかそれより厳しいもの) を付けるか、{0} を SourceFields から外してください。</value>
   </data>
-  <data name="SemanticSearchCheck_RowDependentReadConditionFormat" xml:space="preserve">
-    <value>PermissionField {0} の読み取り条件は行の値を見ていますが、対象の意味検索フィールド {1} は検索条件にしか使わず、検索条件の権限判定は行を持たないので、{1} での検索 (意味検索・キーワード検索・AI) が誰にも通りません。{1} に付ける読み取り条件は CurrentUser の項目だけを見る条件にしてください。</value>
+  <data name="SemanticSearchCheck_TextColumnRequired" xml:space="preserve">
+    <value>キーワード検索だけ (KeywordOnly) でも文章の列は必要です。</value>
+  </data>
+  <data name="SemanticSearch_VectorColumnsRequired" xml:space="preserve">
+    <value>意味検索フィールド '{0}' にはベクトルの列が無いので、文章 (意味検索) では探せません。キーワードで探してください。</value>
   </data>
   <data name="SemanticSearchCheck_SourceFieldsRestrictedFormat" xml:space="preserve">
-    <value>意味検索の文章に使うフィールド {0} には PermissionField の読み取り条件がありますが、このフィールド ({1}) にはありません。文章の列は対象フィールドの値を含むので、{1} を読める人はキーワード検索で {0} の値を特定できます。{1} にも同じかそれより厳しい読み取り条件を付けてください (付けられるのは CurrentUser の項目だけを見る条件。{0} の条件が行の値を見るものなら {0} を SourceFields から外してください)。</value>
+    <value>意味検索の文章に使うフィールド {0} には PermissionField の読み取り条件がありますが、このフィールド ({1}) にはありません。文章の列は対象フィールドの値を含むので、{1} を読める人はキーワード検索で {0} の値を特定できます。{1} にも同じかそれより厳しい読み取り条件 (CurrentUser の項目だけを見るもの) を付けるか、{0} を SourceFields から外してください (制限の違う項目が複数あるときや、{0} の条件が行の値を見るときは外すのが答えです。SourceFields が空 = 全部のときは明示して列挙してください)。</value>
   </data>
   <data name="SemanticSearchFieldDbColumnVectorSearch" xml:space="preserve">
     <value>DBカラム (DBベクトル検索用)</value>

@@ -56,6 +56,22 @@ namespace Codeer.LowCode.Blazor.Extras.SemanticSearch
             }
         }
 
+        /// <summary>
+        /// そのフィールドの文章に値が入る他のモジュール = <see cref="FormatValue"/> が他モジュールの値 (リンクの表示名・候補値の表示名・自分で文章にするフィールドの値) を使う型。
+        /// 相手のモジュールに閲覧条件があっても文章の列には値が残るので、設計チェック (SemanticSearchFieldDesign:5) が見る。FormatValue で型を足したらここにも足す。
+        /// </summary>
+        public static IEnumerable<string> ReferencedModuleNames(FieldDesignBase fieldDesign, IModuleDesigns modules)
+        {
+            IEnumerable<string> names = fieldDesign switch
+            {
+                LinkFieldDesign link => [link.SearchCondition.ModuleName],
+                SelectFieldDesign select => [select.SearchCondition.ModuleName],
+                ISemanticSearchTextSource source => source.GetSemanticTextModuleNames(modules),
+                _ => [],
+            };
+            return names.Where(n => !string.IsNullOrEmpty(n)).Distinct();
+        }
+
         /// <summary>1 フィールドの値を人が読む文字列に。空なら null。</summary>
         public static string? FormatValue(DesignData? design, FieldDesignBase fieldDesign, FieldDataBase data)
         {

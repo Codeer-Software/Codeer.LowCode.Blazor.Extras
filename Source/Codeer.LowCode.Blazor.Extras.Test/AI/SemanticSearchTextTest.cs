@@ -156,14 +156,23 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
         }
 
         [Test]
-        public async Task 列が未設定なら何も送らない()
+        public async Task 文章の列が未設定なら何も送らない_ベクトル列が無くても文章は送る()
         {
             var design = CreateDesign();
-            design.Modules.Find("Inquiry")!.Fields.OfType<SemanticSearchFieldDesign>().Single().DbColumnVector = "";
+            var field = design.Modules.Find("Inquiry")!.Fields.OfType<SemanticSearchFieldDesign>().Single();
+            field.DbColumnText = "";
             var services = new TestServices(design);
             var module = await ModuleCreationService.CreateModuleAsync(services.Core, new ModuleData { Name = "Inquiry" });
             await ((TextField)module.GetField("Subject")!).SetValueAsync("x");
             Assert.That(module.GetSubmitData().Add.Single().Fields.ContainsKey("Search"), Is.False);
+
+            //キーワード検索だけの構成 (ベクトル列なし) でも文章は書く
+            field.DbColumnText = "search_text";
+            field.DbColumnVector = "";
+            field.DbColumnVectorSearch = "";
+            module = await ModuleCreationService.CreateModuleAsync(new TestServices(design).Core, new ModuleData { Name = "Inquiry" });
+            await ((TextField)module.GetField("Subject")!).SetValueAsync("x");
+            Assert.That((module.GetSubmitData().Add.Single().Fields["Search"] as SemanticSearchFieldData)?.Text, Is.EqualTo("件名: x"));
         }
     }
 }

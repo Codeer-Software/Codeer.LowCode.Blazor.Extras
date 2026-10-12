@@ -43,6 +43,9 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
     {
         readonly Func<IEmbeddingProvider?> _embeddingProvider;
         readonly Func<DesignData> _design;
+
+        /// <summary>今のデザイン (条件の前処理がフィールドの列の有無を見る)。</summary>
+        internal DesignData GetDesign() => _design();
         readonly ILogger? _logger;
         readonly ConcurrentDictionary<string, Job> _jobs = new();
 
@@ -76,7 +79,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
             if (module == null) return;
             foreach (var field in module.Fields.OfType<SemanticSearchFieldDesign>())
             {
-                if (!field.HasColumns) continue;
+                if (!field.HasTextColumn) continue;
                 string? text = null;
                 if (data.Fields.TryGetValue(field.Name, out var fieldData) && fieldData is SemanticSearchFieldData sent && sent.Text != null)
                 {
@@ -88,7 +91,8 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
                 else
                     continue;
 
-                var vector = await EmbedAsync(text, cancellationToken);
+                //ベクトル列が無い (キーワード検索だけの構成) なら文章だけ (埋め込みは呼ばない)
+                var vector = field.HasVectorColumns ? await EmbedAsync(text, cancellationToken) : null;
                 data.Fields[field.Name] = new SemanticSearchFieldData { Text = text, Vector = vector == null ? null : SemanticSearchVector.Encode(vector) };
             }
         }
@@ -197,8 +201,8 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
         {
             var designData = _design();
             var module = designData.Modules.Find(moduleName) ?? throw new ArgumentException($"Module '{moduleName}' does not exist.", nameof(moduleName));
-            var fields = module.Fields.OfType<SemanticSearchFieldDesign>().Where(f => f.HasColumns).ToList();
-            if (fields.Count == 0) throw new ArgumentException($"Module '{moduleName}' has no SemanticSearchField with the text, vector and vector-search columns set.", nameof(moduleName));
+            var fields = module.Fields.OfType<SemanticSearchFieldDesign>().Where(f => f.HasTextColumn).ToList();
+            if (fields.Count == 0) throw new ArgumentException($"Module '{moduleName}' has no SemanticSearchField with the text column set.", nameof(moduleName));
             var idField = module.Fields.OfType<IdFieldDesign>().FirstOrDefault() ?? throw new ArgumentException($"Module '{moduleName}' has no IdField.", nameof(moduleName));
             var rowsPerPage = pageSize ?? ReindexPageSize;
             //読む列 = 文章にするフィールド + Id。子のレコードを持つフィールド (TagField など) を名前で指定すると、本体が子の行をページの行の分まとめて同梱する
@@ -206,10 +210,11 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
             var selectFields = fields.SelectMany(f => SemanticSearchText.SourceFields(module, f)).Append(idField.Name).Distinct().ToList();
 
             //missingOnly: どのフィールドかでベクトルが無い行 = 対象。索引済み (全フィールドにベクトルあり) の Id を先に集めて飛ばす
+            //(ベクトル列の無いフィールドは見ない = そのフィールドしか無ければ全行)
             HashSet<string>? indexed = null;
             if (missingOnly)
             {
-                foreach (var field in fields)
+                foreach (var field in fields.Where(f => f.HasVectorColumns))
                 {
                     var ids = await SemanticSearchIndexReader.ReadIndexedIdsAsync(db, module, field, cancellationToken);
                     indexed = indexed == null ? ids : indexed.Intersect(ids).ToHashSet();
@@ -246,7 +251,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
                     foreach (var field in fields)
                     {
                         var texts = rows.Select(row => SemanticSearchText.Build(designData, module, row, field)).ToList();
-                        var vectors = await EmbedAllAsync(provider, texts, cancellationToken);
+                        var vectors = field.HasVectorColumns ? await EmbedAllAsync(provider, texts, cancellationToken) : new float[]?[rows.Count];
                         for (var i = 0; i < rows.Count; i++)
                             submits[rows[i]].Fields[field.Name] = new SemanticSearchFieldData { Text = texts[i], Vector = vectors[i] == null ? null : SemanticSearchVector.Encode(vectors[i]!) };
                     }

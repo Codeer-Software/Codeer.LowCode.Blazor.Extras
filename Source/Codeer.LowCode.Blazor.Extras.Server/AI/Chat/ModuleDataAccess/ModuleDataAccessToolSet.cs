@@ -51,7 +51,8 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat.ModuleDataAccess
             _embeddingProvider = embeddingProvider;
         }
 
-        //意味検索できるモジュール: 表を持ち、文章・ベクトル・ベクトル検索の列が揃った SemanticSearchField があるもの (DB がベクトル検索に対応するかは実行時に分かる)
+        //意味検索できるモジュール: 表を持ち、文章・ベクトル・ベクトル検索の列が揃った SemanticSearchField があるもの (DB がベクトル検索に対応するかは実行時に分かる)。
+        //キーワード検索 (filters の Like) は文章の列だけのフィールドでも使える (ToCondition は HasTextColumn で見る)
         static List<(ModuleDesign Module, SemanticSearchFieldDesign Field)> SemanticModules(DesignData design)
             => design.Modules.GetModuleNames().Select(design.Modules.Find)
                 .Where(m => m != null && !string.IsNullOrEmpty(m.DbTable))
@@ -752,7 +753,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat.ModuleDataAccess
             {
                 //意味検索の項目への Like = キーワード検索 (文章の列が語をすべて含む行。文章にした全項目を横断する。埋め込みは使わない)
                 if (ModuleDataConverter.ToFieldName(filter.Field).Contains('.')) throw new InvalidOperationException($"項目 '{filter.Field}' はリンク先の意味検索の項目なので条件に使えません (自分のモジュールの項目だけ)。");
-                if (!semanticField.HasColumns) throw new InvalidOperationException($"項目 '{filter.Field}' は列が設定されていないので条件に使えません。");
+                if (!semanticField.HasTextColumn) throw new InvalidOperationException($"項目 '{filter.Field}' は文章の列が設定されていないので条件に使えません。");
                 if (comparison != MatchComparison.Like) throw new InvalidOperationException($"項目 '{filter.Field}' (意味検索) に使える比較は Like だけです (値はスペース区切りのキーワード。すべて含む行に絞ります)。");
                 //品番などは数値で来ることがあるので、数値もそのまま語にする
                 var keywords = filter.Value.ValueKind switch { JsonValueKind.String => filter.Value.GetString(), JsonValueKind.Number => filter.Value.GetRawText(), _ => null };

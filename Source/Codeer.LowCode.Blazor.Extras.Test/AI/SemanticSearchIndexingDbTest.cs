@@ -181,6 +181,43 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
         }
 
         [Test]
+        public async Task ベクトル列の無いフィールド_キーワード検索だけ_は文章だけ保存し埋め込みを呼ばない()
+        {
+            //SQLite 等でキーワード検索だけ使う構成: 文章の列だけ用意する (KeywordOnly)
+            await _db.ExecuteAsync(Ds, "CREATE TABLE memos (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT, search_text TEXT)", new());
+            var memo = new ModuleDesign { Name = "Memo", DataSourceName = Ds, DbTable = "memos" };
+            memo.Fields.Add(new IdFieldDesign { Name = "Id", DbColumn = "id" });
+            memo.Fields.Add(new TextFieldDesign { Name = "Title", DisplayName = "題名", DbColumn = "title" });
+            memo.Fields.Add(new SemanticSearchFieldDesign { Name = "Search", DbColumnText = "search_text", SearchBoxes = SemanticSearchBoxes.KeywordOnly });
+            memo.ListLayouts[""] = new ListLayoutDesign();
+            _design.AddModule(memo);
+
+            var tempId = IdFieldData.NewId();
+            var data = new ModuleData { Name = "Memo" };
+            data.Fields["Id"] = tempId;
+            data.Fields["Title"] = new TextFieldData { Value = "青空商事の納期" };
+            AssertNoError(await CreateIO(Indexer()).SubmitWithTransactionAsync([new ModuleSubmitData { ModuleName = "Memo", Id = tempId.Value!, Add = [data] }]));
+            var row = (await _db.QueryAsync(Ds, "SELECT search_text FROM memos", new())).Single();
+            Assert.That(row.Values.Single()?.ToString(), Is.EqualTo("題名: 青空商事の納期"));
+            Assert.That(_embedding.Inputs, Is.Empty, "ベクトル列が無ければ埋め込みを呼ばない");
+
+            //キーワードで探せる。文章 (意味検索) の条件は理由つきで断る (前処理も埋め込みを呼ばない)
+            var io = CreateIO(Indexer());
+            var keyword = new SearchCondition("Memo") { Condition = new SemanticMatchCondition { FieldName = "Search", Keywords = "納期 青空" } };
+            Assert.That((await io.GetListAsync(keyword, 0)).Items.Count, Is.EqualTo(1));
+            var text = new SearchCondition("Memo") { Condition = new SemanticMatchCondition { FieldName = "Search", Text = "納期の相談" } };
+            await Indexer().ConditionInterceptor.PrepareConditionAsync(null!, text);
+            Assert.That(_embedding.Inputs, Is.Empty);
+            var error = Assert.ThrowsAsync<LowCodeException>(async () => await io.GetListAsync(text, 0))!;
+            Assert.That(error.Message, Does.Contain("Search"));
+
+            //再索引も文章だけ書く
+            var reindexed = await Indexer().ReindexAsync(io, _db, "Memo");
+            Assert.That(reindexed, Is.EqualTo(1));
+            Assert.That(_embedding.Inputs, Is.Empty);
+        }
+
+        [Test]
         public void デザインチェックは列の未設定と存在しないフィールドを指摘する()
         {
             var field = _design.Modules.Find("Inquiry")!.Fields.OfType<SemanticSearchFieldDesign>().Single();
@@ -188,6 +225,13 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
 
             field.DbColumnVector = "";
             Assert.That(CheckCodes(), Does.Contain(DesignCheckCode.Create(typeof(SemanticSearchFieldDesign), 1 /* ColumnsRequired */)));
+            //キーワード欄だけなら文章の列だけでよい
+            field.SearchBoxes = SemanticSearchBoxes.KeywordOnly;
+            Assert.That(CheckCodes(), Is.Empty, "KeywordOnly はベクトル列が無くてよい");
+            field.DbColumnText = "";
+            Assert.That(CheckCodes(), Does.Contain(DesignCheckCode.Create(typeof(SemanticSearchFieldDesign), 1)), "文章の列は要る");
+            field.DbColumnText = "search_text";
+            field.SearchBoxes = SemanticSearchBoxes.Semantic;
             field.DbColumnVector = "search_vector";
 
             field.DbColumnVectorSearch = "";
