@@ -15,23 +15,23 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
 {
     /// <summary>
     /// 行を「意味で探せる」ようにする書き込み専用フィールド (UI なし)。
-    /// Submit のたびに <see cref="SourceFields"/> の値を「表示名: 値」の行に並べた文章を作り (クライアント側)、
-    /// サーバーの SemanticSearchService がその文章の埋め込みベクトルを付けて、2 つの書き込み専用列に保存する。
+    /// 保存のたびにサーバー (SemanticSearchService の Interceptor) が保存した行を読み、<see cref="SourceFields"/> の値を「表示名: 値」の行に並べた文章と
+    /// その埋め込みベクトルを 2 つの書き込み専用列に保存する。クライアントは何も送らない。
     /// AI チャット (RawDataAccessAgent) は DB のベクトル検索 (pgvector / SQL Server 2025) でこの索引から「似た記録」を探す (search_records)。
     /// 距離計算は DB が行うので、ベクトル検索に対応しない DB (SQLite 等) のモジュールは意味検索の対象にならない。
+    /// 同じ文章の列への部分一致がキーワード検索 (<see cref="KeywordSearch"/> / <see cref="SemanticMatchCondition.Keywords"/>)。
     /// </summary>
     [ToolboxIcon(PackIconMaterialKind = "TextSearch")]
     [Designer(DisplayName = "$SemanticSearchField")]
     [IgnoreBaseProperties(nameof(IgnoreModification), nameof(OnValidateInput), nameof(IsFocusSkip), nameof(OnFocusMoving), nameof(NextFocusField))]
-    public class SemanticSearchFieldDesign() : FieldDesignBase(typeof(SemanticSearchFieldDesign).FullName!), IDataDependentField, ISqlMatchConditionFieldDesign
+    public class SemanticSearchFieldDesign() : FieldDesignBase(typeof(SemanticSearchFieldDesign).FullName!), ISqlMatchConditionFieldDesign
     {
         /// <summary>デザインチェック指摘の番号。DesignCheckCode.Create で発行クラス名と結合して "クラス名:番号" になる。番号は固定(追加は末尾・欠番は再利用しない)。</summary>
         private const int CodeColumnsRequired = 1;
-        private const int CodeFieldsNotLoaded = 2;
+        private const int CodeFieldsNotLoaded = 2;  //欠番 (対象フィールドをフロントに読み込んでいない詳細レイアウトの指摘。文章をサーバーが保存した行から作るようになり不要。番号は再利用しない)
         private const int CodeSearchHasNoEffect = 3;
         private const int CodeSourceFieldsRestricted = 4;
-        private const int CodeLinkTargetsRestricted = 5;
-        //6 は欠番 (読み取り条件が行の値を見る指摘は、公開前に本体 PermissionFieldDesign:4 へ移した = SQL を作るフィールド全般の性質)
+        private const int CodeSourceFieldsRowCondition = 5;
 
         /// <summary>文章にするフィールド (同じモジュール)。空なら DB 列を持つ入力フィールド全部 (Id・論理削除・楽観ロック・パスワード・作成/更新の記録は除く)。</summary>
         [Designer(Index = 2, CandidateType = CandidateType.Field, DisplayName = "$SemanticSearchFieldSourceFields")]
@@ -68,22 +68,15 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         public string OnReindexCompleted { get; set; } = string.Empty;
 
         /// <summary>
-        /// 検索レイアウトに出す入力欄。キーワード欄は空白区切りの語をすべて含む行 (文章の列への部分一致の AND) に絞る。埋め込みを使わないので、
-        /// ベクトル検索に対応しない DB・埋め込み無しの構成でも使える (そのときは <see cref="SemanticSearchBoxes.KeywordOnly"/> = 文章の欄を出さず、ベクトルの 2 列も要らない)。
+        /// 検索レイアウトの検索欄にキーワード欄を出す。空白区切りの語をすべて含む行 (文章の列への部分一致の AND) に絞る。埋め込みを使わないのでどの DB でも動く。
         /// 文章 (意味検索) と一緒に入れると、絞ったうえで近い順になる。
         /// AI チャット (ModuleDataAccess の filters にこの項目の Like) と API (<see cref="SemanticMatchCondition.Keywords"/>) からは、この設定に関係なく使える。
         /// </summary>
-        [Designer(Index = 9, DisplayName = "$SemanticSearchFieldSearchBoxes")]
-        public SemanticSearchBoxes SearchBoxes { get; set; } = SemanticSearchBoxes.Semantic;
+        [Designer(Index = 9, DisplayName = "$SemanticSearchFieldKeywordSearch")]
+        public bool KeywordSearch { get; set; }
 
-        /// <summary>文章の列があるか (文章の保存・キーワード検索・AI の Like はこれだけで動く)。</summary>
-        internal bool HasTextColumn => !string.IsNullOrWhiteSpace(DbColumnText);
-
-        /// <summary>ベクトルの 2 列 (保存用 / 検索用) があるか (埋め込みの保存・意味検索・search_records の条件)。<see cref="SemanticSearchBoxes.KeywordOnly"/> なら無くてよい。</summary>
-        internal bool HasVectorColumns => !string.IsNullOrWhiteSpace(DbColumnVector) && !string.IsNullOrWhiteSpace(DbColumnVectorSearch);
-
-        /// <summary>3 つの列 (文章 / ベクトル / ベクトル検索用) がすべて設定されているか (意味検索の索引と検索の対象になる条件)。</summary>
-        internal bool HasColumns => HasTextColumn && HasVectorColumns;
+        /// <summary>3 つの列 (文章 / ベクトル / ベクトル検索用) がすべて設定されているか (索引付けと検索の対象になる条件)。</summary>
+        internal bool HasColumns => !string.IsNullOrWhiteSpace(DbColumnText) && !string.IsNullOrWhiteSpace(DbColumnVector) && !string.IsNullOrWhiteSpace(DbColumnVectorSearch);
 
         public override string GetWebComponentTypeFullName() => typeof(SemanticSearchFieldComponent).FullName!;
         public override string GetSearchWebComponentTypeFullName() => typeof(SemanticSearchSearchComponent).FullName!;
@@ -94,15 +87,13 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         public override List<DesignCheckInfo> CheckDesign(DesignCheckContext context)
         {
             var result = base.CheckDesign(context);
-            //キーワード欄だけなら文章の列だけ (ベクトル列は無くてよい)。文章の欄を出すなら 3 列
-            var keywordOnly = SearchBoxes == SemanticSearchBoxes.KeywordOnly;
-            if (keywordOnly ? !HasTextColumn : !HasColumns)
+            if (!HasColumns)
             {
                 result.Add(new FieldDesignCheckInfo
                 {
                     Code = DesignCheckCode.Create(typeof(SemanticSearchFieldDesign), CodeColumnsRequired),
                     Location = new FieldDesignDataLocation { Module = context.OwnerModule, Field = Name, Member = string.IsNullOrWhiteSpace(DbColumnText) ? nameof(DbColumnText) : string.IsNullOrWhiteSpace(DbColumnVector) ? nameof(DbColumnVector) : nameof(DbColumnVectorSearch) },
-                    Message = keywordOnly ? Properties.Resources.SemanticSearchCheck_TextColumnRequired : Properties.Resources.SemanticSearchCheck_ColumnsRequired,
+                    Message = Properties.Resources.SemanticSearchCheck_ColumnsRequired,
                 });
             }
             context.CheckFieldDbColumnExistence(Name, nameof(DbColumnText), DbColumnText).AddTo(result);
@@ -112,26 +103,37 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
                 context.CheckFieldFieldExistence(Name, nameof(SourceFields), field).AddTo(result);
             context.CheckFieldFunctionExistence(Name, nameof(OnReindexCompleted), OnReindexCompleted,
                 context.GetScriptMethodAttribute(GetType(), nameof(OnReindexCompleted))).AddTo(result);
-            result.AddRange(CheckSourceFieldsLoaded(context));
             result.AddRange(CheckSearchHasEffect(context));
             result.AddRange(CheckSourceFieldsReadRestriction(context));
-            result.AddRange(CheckLinkTargetsReadRestriction(context));
             return result;
         }
 
         /// <summary>
-        /// 文章の列は対象フィールドの値を全部含むので、このフィールドを読める人はキーワード検索 (部分一致を重ねる) で対象フィールドの値を言い当てられる。
-        /// 対象フィールドに PermissionField の読み取り条件があるのに、このフィールド自身には無い構成を指摘する (このフィールドにも同じかそれより厳しい読み取り条件を付ける)。
-        /// 厳しさの比較まではしない (有無だけ)。このフィールドで検索できるのはユーザーだけで真になる条件の人だけ (本体 PermissionFieldDesign:4) なので、
-        /// 対象フィールドの条件が行の値を見るものや、制限の違う対象フィールドが複数あるときの答えは、その項目を SourceFields から外すこと (文言で案内)。
+        /// 文章の列は対象フィールドの値を全部含むので、このフィールドを読める人は対象フィールドの値も検索 (キーワードの部分一致) で知ることができる。
+        /// :4 = 対象フィールドに PermissionField の読み取り条件があるのに、このフィールド自身には無い構成 (有無だけ。条件の中身は見ない)。直し方は、その項目を SourceFields から外すか、このフィールドにも読み取り条件を付けること。
+        /// :5 = 対象フィールドの読み取り条件が行の値で決まる構成。このフィールドの読み取り条件は行を持たない判定なので代わりにならない。直し方は SourceFields から外すこと。
+        /// どちらも、外したら既存の行の文章に値が残るので再索引が要る (文言で案内)。
         /// </summary>
         IEnumerable<DesignCheckInfo> CheckSourceFieldsReadRestriction(DesignCheckContext context)
         {
             var module = context.GetModuleDesign();
-            if (module == null || !HasTextColumn) yield break;
+            if (module == null) yield break;
             var rules = module.Fields.OfType<PermissionFieldDesign>().Where(p => HasCondition(p.ReadCondition.Condition)).ToList();
-            if (rules.Count == 0 || rules.Any(p => Targets(p, Name))) yield break;
-            var restricted = SemanticSearchText.SourceFields(module, this).Where(s => rules.Any(p => Targets(p, s))).ToList();
+            if (rules.Count == 0) yield break;
+            var sources = SemanticSearchText.SourceFields(module, this).ToList();
+            //(同じ規則がこのフィールドも縛るなら、本体の静的判定でその経路の人は検索ごと拒否される = 漏れないので対象外。本体 PermissionFieldDesign:4 が案内する)
+            var rowRestricted = sources.Where(s => rules.Any(p => Targets(p, s) && !Targets(p, Name) && ReferencesRowData(p.ReadCondition.Condition))).ToList();
+            if (rowRestricted.Count > 0)
+            {
+                yield return new FieldDesignCheckInfo
+                {
+                    Code = DesignCheckCode.Create(typeof(SemanticSearchFieldDesign), CodeSourceFieldsRowCondition),
+                    Location = new FieldDesignDataLocation { Module = context.OwnerModule, Field = Name, Member = nameof(SourceFields) },
+                    Message = string.Format(Properties.Resources.SemanticSearchCheck_SourceFieldsRowConditionFormat, string.Join(", ", rowRestricted), Name),
+                };
+            }
+            if (rules.Any(p => Targets(p, Name))) yield break;
+            var restricted = sources.Where(s => !rowRestricted.Contains(s) && rules.Any(p => Targets(p, s))).ToList();
             if (restricted.Count == 0) yield break;
             yield return new FieldDesignCheckInfo
             {
@@ -141,34 +143,10 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
             };
         }
 
-        /// <summary>
-        /// リンク (LinkField / SelectField) の表示名や、自分で文章にするフィールド (TagField のタグ名) の値も文章に入る。その値を持つ他のモジュールに閲覧条件 (UserReadCondition) があると、
-        /// 本体はそのモジュールを読めないユーザーに表示名を空で返す (リンク) が、文章の列には保存時の値が残っているので、このフィールドを読める人はキーワード検索で言い当てられる。
-        /// 相手のモジュールに閲覧条件があるのに、このフィールド自身に PermissionField の読み取り条件が無い構成を指摘する (:4 と同じく有無だけ)。
-        /// </summary>
-        IEnumerable<DesignCheckInfo> CheckLinkTargetsReadRestriction(DesignCheckContext context)
-        {
-            var module = context.GetModuleDesign();
-            if (module == null || !HasTextColumn) yield break;
-            if (module.Fields.OfType<PermissionFieldDesign>().Any(p => HasCondition(p.ReadCondition.Condition) && Targets(p, Name))) yield break;
-            var restricted = new List<string>();
-            foreach (var name in SemanticSearchText.SourceFields(module, this))
-            {
-                var fieldDesign = module.Fields.FirstOrDefault(f => f.Name == name);
-                if (fieldDesign == null) continue;
-                foreach (var target in SemanticSearchText.ReferencedModuleNames(fieldDesign, context.DesignData.Modules))
-                {
-                    if (HasCondition(context.DesignData.Modules.Find(target)?.UserReadCondition.Condition)) restricted.Add($"{name} ({target})");
-                }
-            }
-            if (restricted.Count == 0) yield break;
-            yield return new FieldDesignCheckInfo
-            {
-                Code = DesignCheckCode.Create(typeof(SemanticSearchFieldDesign), CodeLinkTargetsRestricted),
-                Location = new FieldDesignDataLocation { Module = context.OwnerModule, Field = Name, Member = nameof(SourceFields) },
-                Message = string.Format(Properties.Resources.SemanticSearchCheck_LinkTargetsRestrictedFormat, string.Join(", ", restricted), Name),
-            };
-        }
+        //条件が行の値を参照するか (本体 PermissionFieldDesign と同じ判定: CurrentUser 以外の項目を見る葉があるか)
+        static bool ReferencesRowData(MatchConditionBase? condition)
+            => condition is IFieldMatchCondition field && !field.SearchTargetVariable.StartsWith(SystemFieldNames.CurrentUser + ".")
+                || condition is MultiMatchCondition multi && multi.Children.Any(ReferencesRowData);
 
         //条件があるか (本体の IsEmpty と同じく、葉の無い空のグループは無いものとみなす)
         static bool HasCondition(MatchConditionBase? condition)
@@ -181,38 +159,6 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
                 : rule.TargetFields.Contains(fieldName);
 
         /// <summary>
-        /// 文章にするフィールドの値は、レイアウトに置いていなくてもフロントに来ていなければならない (文章はクライアントが組み立てるので、
-        /// 読み込まれていないフィールドは文章から欠け、その行を保存すると欠けた文章で索引が上書きされる)。
-        /// 詳細画面の読み込みは「レイアウトのフィールド + DataOnlyFields (+ それらの <see cref="IDataDependentField"/> の依存先)」だけなので、
-        /// 各詳細レイアウトについて対象フィールドが読み込まれるかを見る。直し方は、欠けるフィールドか、このフィールド (SourceFields 設定時) をレイアウトか DataOnlyFields に含める。
-        /// </summary>
-        IEnumerable<DesignCheckInfo> CheckSourceFieldsLoaded(DesignCheckContext context)
-        {
-            var module = context.GetModuleDesign();
-            if (module == null || !HasTextColumn) yield break;
-            var sources = SemanticSearchText.SourceFields(module, this).Where(n => module.Fields.Any(f => f.Name == n)).ToList();
-            foreach (var (layoutName, layout) in module.DetailLayouts)
-            {
-                List<string> placed;
-                try { placed = layout.Layout.GetDescendantFields(module).Select(f => f.Name).ToList(); }
-                catch (InvalidOperationException) { continue; } //存在しないフィールドがレイアウトにある = 別のチェックが指摘する
-                var loaded = new HashSet<string>(placed.Concat(layout.DataOnlyFields));
-                foreach (var dependent in loaded.Select(n => module.Fields.FirstOrDefault(f => f.Name == n)).OfType<IDataDependentField>().ToList())
-                    loaded.UnionWith(dependent.GetDependencyFields());
-                //対象フィールドを 1 つも読み込まないレイアウト (既定の空レイアウト等) は、そこから対象を編集できず更新で文章も送らないので対象外
-                if (!sources.Any(loaded.Contains)) continue;
-                var missing = sources.Where(n => !loaded.Contains(n)).ToList();
-                if (missing.Count == 0) continue;
-                yield return new LayoutDesignCheckInfo
-                {
-                    Code = DesignCheckCode.Create(typeof(SemanticSearchFieldDesign), CodeFieldsNotLoaded),
-                    Location = new() { Module = context.OwnerModule, LayoutType = ModuleLayoutType.Detail, Layout = layoutName, Member = nameof(DetailLayoutDesign.DataOnlyFields) },
-                    Message = string.Format(Properties.Resources.SemanticSearchCheck_FieldsNotLoadedFormat, layoutName, string.Join(", ", missing)),
-                };
-            }
-        }
-
-        /// <summary>
         /// 検索レイアウトに置いたのに、文章を入れても一覧の見た目が変わらない構成を指摘する。距離の上限 (<see cref="SearchMaxDistance"/>) が空だと
         /// 索引のある行に絞られるだけなので、その検索レイアウトを使う一覧の並びにこのフィールドが無ければ、検索欄の文章は結果に効かない。
         /// 検索レイアウトを使う一覧は、ページの一覧 (PageFrame のリンク等)・SearchField の結果の一覧・LinkField の検索ダイアログ。
@@ -220,8 +166,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         IEnumerable<DesignCheckInfo> CheckSearchHasEffect(DesignCheckContext context)
         {
             var module = context.GetModuleDesign();
-            //文章の欄を出さない・ベクトル列が無い (意味検索しない) なら関係ない
-            if (module == null || SearchMaxDistance != null || SearchBoxes == SemanticSearchBoxes.KeywordOnly || !HasVectorColumns) yield break;
+            if (module == null || SearchMaxDistance != null) yield break;
             var layouts = new HashSet<string>();
             foreach (var (layoutName, layout) in module.SearchLayouts)
             {
@@ -277,12 +222,6 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         }
 
         /// <summary>
-        /// このフィールドがレイアウトか DataOnlyFields にあれば、文章にするフィールドも一緒に読み込む (本体の SELECT 列の補完。ProgressField 等と同じ仕組み)。
-        /// SourceFields が空 (= 入力フィールド全部) のときはここでは列挙できない (モジュール定義が無い) ので何も足さない。
-        /// </summary>
-        public List<string> GetDependencyFields() => SourceFields.ToList();
-
-        /// <summary>
         /// 意味検索の条件 (<see cref="SemanticMatchCondition"/>) を WHERE にする: ベクトルがあれば索引のある行 (+ 距離の上限。距離計算は DB = pgvector / SQL Server 2025)、
         /// キーワードがあれば文章の列が語をすべて含む行 (語ごとの LIKE の AND。どの DB でも動く)。両方あれば AND。
         /// 本体の一覧検索がこの断片を自分の WHERE に入れるので、行の条件・論理削除・権限はそのまま効く。
@@ -311,14 +250,11 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
 
         SemanticMatchCondition ToSemantic(FieldSqlMatchCondition condition)
         {
-            if (condition is not SemanticMatchCondition semantic || !HasTextColumn)
+            if (condition is not SemanticMatchCondition semantic || !HasColumns)
                 throw LowCodeException.Create(Properties.Resources.SemanticSearch_ConditionNotSupported, Name);
-            //ベクトル列が無い (キーワード検索だけの構成) のに文章・ベクトルの条件
-            if (!HasVectorColumns && (semantic.Vector.Length > 0 || !string.IsNullOrWhiteSpace(semantic.Text)))
-                throw LowCodeException.Create(Properties.Resources.SemanticSearch_VectorColumnsRequired, Name);
             if (semantic.Vector.Length == 0)
             {
-                //文章があるのにベクトルが無い = サーバーの前処理 (ConditionInterceptor) が結線されていない
+                //文章があるのにベクトルが無い = サーバーの前処理 (Interceptor) が結線されていない
                 if (!string.IsNullOrWhiteSpace(semantic.Text)) throw LowCodeException.Create(Properties.Resources.SemanticSearch_VectorRequired, Name);
                 if (SemanticSearchKeywords.Split(semantic.Keywords).Count == 0) throw LowCodeException.Create(Properties.Resources.SemanticSearch_ConditionEmpty, Name);
             }

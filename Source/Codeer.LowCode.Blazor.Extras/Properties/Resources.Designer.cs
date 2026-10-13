@@ -2876,11 +2876,11 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
         }
         
         /// <summary>
-        ///   Search boxes に類似しているローカライズされた文字列を検索します。
+        ///   Keyword search box に類似しているローカライズされた文字列を検索します。
         /// </summary>
-        internal static string SemanticSearchFieldSearchBoxes {
+        internal static string SemanticSearchFieldKeywordSearch {
             get {
-                return ResourceManager.GetString("SemanticSearchFieldSearchBoxes", resourceCulture);
+                return ResourceManager.GetString("SemanticSearchFieldKeywordSearch", resourceCulture);
             }
         }
         
@@ -2957,50 +2957,23 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
         }
         
         /// <summary>
-        ///   The detail layout '{0}' does not load the fields {1} used for the semantic search text, so a record saved from this layout gets an incomplete text. Place those fields, or this field (with SourceFields set), in the layout or in DataOnlyFields. に類似しているローカライズされた文字列を検索します。
-        /// </summary>
-        internal static string SemanticSearchCheck_FieldsNotLoadedFormat {
-            get {
-                return ResourceManager.GetString("SemanticSearchCheck_FieldsNotLoadedFormat", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   The fields {0} used for the semantic search text have a PermissionField read condition, but this field ({1}) does not. The text column contains the values of the source fields, so anyone who can read {1} can find the values of {0} by keyword search. Give {1} the same or a stricter read condition (referencing only CurrentUser), or remove {0} from SourceFields (removing is the answer when several fields have different restrictions or the condition of {0} references row values; when SourceFields is empty = all fields, list them explicitly). に類似しているローカライズされた文字列を検索します。
+        ///   The fields {0} used for the semantic search text have a read condition, but this field ({1}) does not. The text column contains the values of the source fields. Remove {0} from SourceFields, or give {1} a read condition too (after removing, run Reindex() to rebuild the text of existing records). に類似しているローカライズされた文字列を検索します。
         /// </summary>
         internal static string SemanticSearchCheck_SourceFieldsRestrictedFormat {
             get {
                 return ResourceManager.GetString("SemanticSearchCheck_SourceFieldsRestrictedFormat", resourceCulture);
             }
         }
+
+        /// <summary>
+        ///   The read condition of the fields {0} used for the semantic search text depends on row values. A read condition on this field ({1}) cannot replace it (the permission check of a search condition has no row). Remove {0} from SourceFields and run Reindex() to rebuild the text of existing records. に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string SemanticSearchCheck_SourceFieldsRowConditionFormat {
+            get {
+                return ResourceManager.GetString("SemanticSearchCheck_SourceFieldsRowConditionFormat", resourceCulture);
+            }
+        }
         
-        /// <summary>
-        ///   The modules behind the fields {0} used for the semantic search text have a UserReadCondition, but this field ({1}) has no PermissionField read condition. The text column contains their display texts (tag names), so anyone who can read {1} can find them by keyword search even without access to those modules. Give {1} a read condition that references only CurrentUser (at least as strict as those modules'), or remove {0} from SourceFields. に類似しているローカライズされた文字列を検索します。
-        /// </summary>
-        internal static string SemanticSearchCheck_LinkTargetsRestrictedFormat {
-            get {
-                return ResourceManager.GetString("SemanticSearchCheck_LinkTargetsRestrictedFormat", resourceCulture);
-            }
-        }
-
-        /// <summary>
-        ///   The text column is required even for keyword search only (KeywordOnly). に類似しているローカライズされた文字列を検索します。
-        /// </summary>
-        internal static string SemanticSearchCheck_TextColumnRequired {
-            get {
-                return ResourceManager.GetString("SemanticSearchCheck_TextColumnRequired", resourceCulture);
-            }
-        }
-
-        /// <summary>
-        ///   The semantic search field &apos;{0}&apos; has no vector columns, so it cannot search by text (semantic search). Search by keywords. に類似しているローカライズされた文字列を検索します。
-        /// </summary>
-        internal static string SemanticSearch_VectorColumnsRequired {
-            get {
-                return ResourceManager.GetString("SemanticSearch_VectorColumnsRequired", resourceCulture);
-            }
-        }
-
         /// <summary>
         ///   DB Column (DB vector search) に類似しているローカライズされた文字列を検索します。
         /// </summary>

@@ -11,11 +11,5 @@ namespace Codeer.LowCode.Blazor.Extras.SemanticSearch
     {
         /// <summary>フィールドのデータを人が読む文字列に。空なら null (文章に入れない)。</summary>
         string? GetSemanticText(DesignData? design, FieldDataBase data);
-
-        /// <summary>
-        /// 文章に入れる値を持つ他のモジュール (TagField ならタグ付けのモジュール)。そのモジュールに閲覧条件があっても文章の列には値が残るので、
-        /// 設計チェック (SemanticSearchFieldDesign:5) がこのフィールドの読み取り条件を促すのに使う。無ければ空。
-        /// </summary>
-        IEnumerable<string> GetSemanticTextModuleNames(IModuleDesigns modules) => [];
     }
 }

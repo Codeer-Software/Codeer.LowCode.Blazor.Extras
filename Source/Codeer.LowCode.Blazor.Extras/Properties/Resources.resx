@@ -1341,20 +1341,11 @@ Recipients: {1}</value>
   <data name="SemanticSearchCheck_SearchHasNoEffectFormat" xml:space="preserve">
     <value>The search layout '{0}' has a semantic search box, but the list using it ({1}) does not sort by {2}.Value and SearchMaxDistance is empty, so entering text only narrows the list to indexed records and does not change the order. Add {2}.Value to the list's SortConditions, or set SearchMaxDistance.</value>
   </data>
-  <data name="SemanticSearchCheck_FieldsNotLoadedFormat" xml:space="preserve">
-    <value>The detail layout '{0}' does not load the fields {1} used for the semantic search text, so a record saved from this layout gets an incomplete text. Place those fields, or this field (with SourceFields set), in the layout or in DataOnlyFields.</value>
-  </data>
-  <data name="SemanticSearchCheck_LinkTargetsRestrictedFormat" xml:space="preserve">
-    <value>The modules behind the fields {0} used for the semantic search text have a UserReadCondition, but this field ({1}) has no PermissionField read condition. The text column contains their display texts (tag names), so anyone who can read {1} can find them by keyword search even without access to those modules. Give {1} a read condition that references only CurrentUser (at least as strict as those modules'), or remove {0} from SourceFields.</value>
-  </data>
-  <data name="SemanticSearchCheck_TextColumnRequired" xml:space="preserve">
-    <value>The text column is required even for keyword search only (KeywordOnly).</value>
-  </data>
-  <data name="SemanticSearch_VectorColumnsRequired" xml:space="preserve">
-    <value>The semantic search field '{0}' has no vector columns, so it cannot search by text (semantic search). Search by keywords.</value>
-  </data>
   <data name="SemanticSearchCheck_SourceFieldsRestrictedFormat" xml:space="preserve">
-    <value>The fields {0} used for the semantic search text have a PermissionField read condition, but this field ({1}) does not. The text column contains the values of the source fields, so anyone who can read {1} can find the values of {0} by keyword search. Give {1} the same or a stricter read condition (referencing only CurrentUser), or remove {0} from SourceFields (removing is the answer when several fields have different restrictions or the condition of {0} references row values; when SourceFields is empty = all fields, list them explicitly).</value>
+    <value>The fields {0} used for the semantic search text have a read condition, but this field ({1}) does not. The text column contains the values of the source fields. Remove {0} from SourceFields, or give {1} a read condition too (after removing, run Reindex() to rebuild the text of existing records).</value>
+  </data>
+  <data name="SemanticSearchCheck_SourceFieldsRowConditionFormat" xml:space="preserve">
+    <value>The read condition of the fields {0} used for the semantic search text depends on row values. A read condition on this field ({1}) cannot replace it (the permission check of a search condition has no row). Remove {0} from SourceFields and run Reindex() to rebuild the text of existing records.</value>
   </data>
   <data name="SemanticSearchFieldDbColumnVectorSearch" xml:space="preserve">
     <value>DB Column (DB vector search)</value>
@@ -1834,7 +1825,7 @@ Recipients: {1}</value>
     <value>The field '{0}' cannot be searched by meaning with this condition (set the text, vector and vector search columns of SemanticSearchField).</value>
   </data>
   <data name="SemanticSearch_VectorRequired" xml:space="preserve">
-    <value>The semantic search on '{0}' has no embedding vector. Register SemanticSearchService.ConditionInterceptor on the server's ModuleDataIO (AddInterceptor) to search by text.</value>
+    <value>The semantic search on '{0}' has no embedding vector. Register SemanticSearchService.Interceptor on the server's ModuleDataIO (AddInterceptor) to search by text.</value>
   </data>
   <data name="SemanticSearch_DbNotSupported" xml:space="preserve">
     <value>Semantic search is not available on {0} (PostgreSQL with pgvector or SQL Server 2025 is required).</value>
@@ -1857,8 +1848,8 @@ Recipients: {1}</value>
   <data name="TagFieldTagModuleName" xml:space="preserve">
     <value>Tag Module</value>
   </data>
-  <data name="SemanticSearchFieldSearchBoxes" xml:space="preserve">
-    <value>Search boxes</value>
+  <data name="SemanticSearchFieldKeywordSearch" xml:space="preserve">
+    <value>Keyword search box</value>
   </data>
   <data name="SemanticSearch_KeywordPlaceholder" xml:space="preserve">
     <value>Keywords (space separated, all must match)</value>

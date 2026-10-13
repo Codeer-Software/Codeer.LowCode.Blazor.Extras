@@ -108,12 +108,10 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
         }
 
         [Test]
-        public void ベクトル検索用の列が無いモジュールは意味検索の対象にならない_文章の列へのLIKEだけ案内する()
+        public void 列が揃っていないモジュールは索引が無いので何も案内しない()
         {
             var toolSet = ToolSet(CreateDesign(vectorSearchColumn: ""));
-            var text = toolSet.GetInstructions(Context());
-            Assert.That(text, Does.Contain("Inquiry = 表 inquiries の列 search_text"));
-            Assert.That(text, Does.Not.Contain("search_records").And.Not.Contain("{embed:"));
+            Assert.That(toolSet.GetInstructions(Context()), Is.Empty);
             Assert.That(toolSet.CreateTools(Context()), Is.Empty);
         }
 

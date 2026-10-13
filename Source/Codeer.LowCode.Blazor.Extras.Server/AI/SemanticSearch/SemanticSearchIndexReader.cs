@@ -19,15 +19,23 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
         /// <summary>DB 側で距離順に読んだ 1 件 (Score はコサイン類似度 0〜1 に揃える)。</summary>
         public sealed record ScoredEntry(string Id, string Text, double Score);
 
-        /// <summary>ベクトルが入っている行の Id (再索引の missingOnly が「まだ無い行」を決めるのに使う)。どの DB でも読める (テキスト列を見るだけ)。</summary>
+        /// <summary>
+        /// ベクトルが入っている行 (論理削除した行は除く) の Id (再索引の missingOnly が「まだ無い行」を決めるのに使う)。どの DB でも読める (テキスト列を見るだけ)。
+        /// 複合 Id (Id の列が無い) では判定できないので空 = 全行が対象。
+        /// </summary>
         public static async Task<HashSet<string>> ReadIndexedIdsAsync(IDbAccessor db, ModuleDesign module, SemanticSearchFieldDesign field, CancellationToken cancellationToken)
         {
-            var idColumn = module.Fields.OfType<IdFieldDesign>().FirstOrDefault()?.DbColumn;
+            var idColumn = IdColumn(module);
             var result = new HashSet<string>();
             if (string.IsNullOrWhiteSpace(module.DbTable) || string.IsNullOrWhiteSpace(idColumn) || string.IsNullOrWhiteSpace(field.DbColumnVector)) return result;
-            var q = Quote(DataSourceTypeOf(db, module.DataSourceName));
+            var type = DataSourceTypeOf(db, module.DataSourceName);
+            var q = Quote(type);
+            var logicalDelete = LogicalDeleteColumn(module);
+            //MySQL の cast は integer を受け付けない (signed)
+            var integer = type == DataSourceType.MySQL ? "signed" : "integer";
+            var notDeleted = string.IsNullOrWhiteSpace(logicalDelete) ? "" : $" and ({q(logicalDelete)} is null or cast({q(logicalDelete)} as {integer}) = 0)";
             cancellationToken.ThrowIfCancellationRequested();
-            var rows = await db.QueryAsync(module.DataSourceName, $"select {q(idColumn)} from {q(module.DbTable)} where {q(field.DbColumnVector)} is not null", new());
+            var rows = await db.QueryAsync(module.DataSourceName, $"select {q(idColumn)} from {Table(q, module.DbTable)} where {q(field.DbColumnVector)} is not null{notDeleted}", new());
             foreach (var row in rows)
             {
                 var id = Convert.ToString(Value(row, idColumn), CultureInfo.InvariantCulture);
@@ -42,7 +50,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
         /// </summary>
         public static async Task<List<ScoredEntry>> SearchAsync(IDbAccessor db, string dataSourceName, ModuleDesign module, SemanticSearchFieldDesign field, float[] queryVector, int top, CancellationToken cancellationToken)
         {
-            var idColumn = module.Fields.OfType<IdFieldDesign>().FirstOrDefault()?.DbColumn;
+            var idColumn = IdColumn(module);
             if (string.IsNullOrWhiteSpace(module.DbTable) || string.IsNullOrWhiteSpace(idColumn) || !field.HasColumns) return new();
             var type = DataSourceTypeOf(db, dataSourceName);
             var sql = BuildSearchSql(type, module.DbTable, idColumn, field.DbColumnText, field.DbColumnVectorSearch, LogicalDeleteColumn(module), SemanticSearchVector.Literal(type, queryVector), top);
@@ -69,7 +77,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
             var q = Quote(type);
             var notDeleted = string.IsNullOrWhiteSpace(logicalDeleteColumn) ? "" : $" and ({q(logicalDeleteColumn)} is null or cast({q(logicalDeleteColumn)} as integer) = 0)";
             var distance = SemanticSearchVector.CosineDistance(type, q(vectorColumn), vectorLiteral);
-            var select = $"{q(idColumn)}, {q(textColumn)}, 1 - {distance} as semantic_score from {q(table)} where {q(vectorColumn)} is not null{notDeleted} order by {distance}";
+            var select = $"{q(idColumn)}, {q(textColumn)}, 1 - {distance} as semantic_score from {Table(q, table)} where {q(vectorColumn)} is not null{notDeleted} order by {distance}";
             return type == DataSourceType.SQLServer ? $"select top ({top}) {select}" : $"select {select} limit {top}";
         }
 
@@ -84,10 +92,18 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
         internal static DataSourceType DataSourceTypeOf(IDbAccessor db, string dataSourceName)
             => db.GetDataSource(dataSourceName)?.DataSourceType ?? throw new InvalidOperationException($"SemanticSearch: data source '{dataSourceName}' not found.");
 
+        //Id の列 (本体と同じく名前 Id のフィールド)
+        static string? IdColumn(ModuleDesign module)
+            => module.Fields.OfType<IdFieldDesign>().FirstOrDefault(e => e.Name == SystemFieldNames.Id)?.DbColumn;
+
         static string? LogicalDeleteColumn(ModuleDesign module)
             => (module.Fields.FirstOrDefault(f => f.Name == SystemFieldNames.LogicalDelete) as DbValueFieldDesignBase)?.DbColumn;
 
         //識別子の引用符は DB の種類で変わる
+        //表名 (スキーマ付き "dbo.notes" は本体の SqlParts.Table と同じく . で分けて各部を引用)
+        static string Table(Func<string, string> q, string table)
+            => string.Join(".", table.Split('.').Select(q));
+
         static Func<string, string> Quote(DataSourceType type)
             => x => type == DataSourceType.SQLServer ? $"[{x}]" : type == DataSourceType.MySQL ? $"`{x}`" : $"\"{x}\"";
 

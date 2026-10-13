@@ -2,33 +2,24 @@
 
 モジュールの行を「内容の意味で探せる」ようにする補助フィールドです。フィールド自体に UI はなく (描画されません)、保存の裏で動きます。
 
-- Submit のたびに、対象フィールドの値を「表示名: 値」の 1 行ずつに並べた**文章**を作って送る (クライアント側)
-- サーバーがその文章の**埋め込みベクトル** (embedding) を付け、書き込み専用の DB カラムに保存する
+- 対象フィールドが変わった保存のたびに、サーバーが保存した行を読み、対象フィールドの値を「表示名: 値」の 1 行ずつに並べた**文章**を作る
+- その文章の**埋め込みベクトル** (embedding) と一緒に、書き込み専用の DB カラムに保存する
 - AI チャット ([AIChatField](AIChatField.md) の `RawDataAccessAgent`) が `search_records` ツールで、**DB のベクトル検索** (PostgreSQL の pgvector / SQL Server 2025 の VECTOR 型) を使って「似た事例」「〜のような問い合わせ」のように内容で探す質問に答える
 
 距離計算は DB が行います。ベクトル検索に対応しない DB (SQLite / MySQL / Oracle) のモジュールでは意味検索は使えません (索引の保存はどの DB でもできますが、検索の対象になりません)。
 
 SQL の集計 (件数・合計) は従来どおり `execute_sql`、内容で探すのは `search_records`、と AI が使い分けます。
 
-同じ文章の列で**キーワード検索** (語をすべて含む行に絞る。埋め込み不要・どの DB でも動く) もできます ([キーワードで絞る](#キーワードで絞る-searchboxes))。
+同じ文章の列で**キーワード検索** (語をすべて含む行に絞る。埋め込み不要・どの DB でも動く) もできます ([キーワードで絞る](#キーワードで絞る-keywordsearch))。
 
 ## 機能
 
 - **行を文章にする規則**: 対象フィールドを順に「表示名: 値」(値が空のフィールドは出さない)。候補値 (SelectField) は表示名、リンクは表示文字列、日付は `yyyy-MM-dd`、真偽は「はい / いいえ」、リッチテキストはタグを除いた本文。改行は LF 固定 (どの環境で作っても同じ文章になる)
 - **対象フィールド**: `SourceFields` で指定。空なら DB カラムを持つ入力フィールド全部 (Id・論理削除・楽観ロック・パスワード・作成 / 更新の記録・このフィールド自身は除く)
-- **送るタイミング**: 新規行は常に。更新は対象フィールドのどれかが変更されたときだけ (変更が無ければ何も送らない = 埋め込みの呼び出しも起きない)
+- **作るタイミング**: 対象フィールドが変わった保存のたび (追加・対象フィールドを含む更新・タグの付け外し)。保存した行をサーバーが権限を通さず読み直して作るので、保存した人がこのフィールドや対象フィールドを読めなくても索引は最新になります。クライアントは何も送りません
 - **書き込み専用**: `DbColumnText` / `DbColumnVector` は読み戻されない (`IsWriteOnly = true`)。クライアントには値が来ない
 - **埋め込みが無くても保存は止めない**: 埋め込みモデル未設定・呼び出し失敗のときは文章だけ保存し、ベクトルは NULL (警告ログ)。後から再索引で埋められる
 - **既存データへの一括付与 (再索引)**: 保存時の索引付けは新しく保存した行にしか効かないので、導入時に溜まっている既存データにはフィールドのスクリプト `Reindex()` で全行の文章とベクトルをまとめて付ける (1 回押せばよい。その後は保存時の索引付けで追従する)。埋め込みモデルを変えたとき・失敗した行を埋めるときも同じ操作
-
-## 対象フィールドはフロントに読み込まれている必要がある
-
-文章はクライアントが組み立てるので、対象フィールドの値がフロントに来ていなければ文章から欠け、その行を保存すると欠けた文章で索引が上書きされます。詳細画面が読み込むのは「レイアウトに置いたフィールド + `DataOnlyFields` (+ それらの依存先)」だけです。対象フィールドをレイアウトに置かないときは、次のどちらかにしてください。
-
-- 欠けるフィールドを詳細レイアウトの `DataOnlyFields` に入れる
-- `SourceFields` を明示して、この SemanticSearchField をレイアウトか `DataOnlyFields` に置く。SemanticSearchField は `SourceFields` を依存先として申告するので、一緒に読み込まれます (ProgressField / QrCodeField の参照先と同じ仕組み)。`SourceFields` が空のときは依存先を列挙できないので、この方法は効きません
-
-デザインチェックが、対象フィールドの一部だけを読み込む詳細レイアウトを指摘します (`SemanticSearchFieldDesign:2`)。一覧の行を直接編集して保存する構成でも同じ条件が必要です (一覧レイアウトはチェックしないので、列か `DataOnlyFields` に対象を含めてください)。
 
 ## デザイナー設定プロパティ
 
@@ -41,9 +32,9 @@ SQL の集計 (件数・合計) は従来どおり `execute_sql`、内容で探�
 | DbColumnVectorSearch | string | ○ | DB のベクトル検索で距離計算に使うベクトル型の列 (後述。PostgreSQL は `DbColumnVector` をキャストする生成列、SQL Server は `DbColumnVector` と同じ列) |
 | MaxTextLength | int | | 文章の最大文字数 (既定 8000。超えた分は切り捨て。埋め込みモデルの入力上限の歯止め) |
 | SearchMaxDistance | double? | | 検索レイアウトの検索欄で探すときのコサイン距離の上限。空なら距離では絞らない ([画面の検索欄から探す](#画面の検索欄から探す-検索レイアウトに置く)) |
-| SearchBoxes | enum | | 検索レイアウトに出す入力欄: `Semantic` (文章の欄だけ。既定) / `SemanticAndKeyword` (文章とキーワード) / `KeywordOnly` (キーワードの欄だけ) ([キーワードで絞る](#キーワードで絞る-searchboxes)) |
+| KeywordSearch | bool | | 検索レイアウトの検索欄にキーワード欄も出す ([キーワードで絞る](#キーワードで絞る-keywordsearch)) |
 
-3 つのカラムはすべて必要です (`SearchBoxes` が `KeywordOnly` なら文章の列だけ。欠けるとデザインチェック `SemanticSearchFieldDesign:1`)。実テーブルに存在するかもチェックされます。
+3 つのカラムはすべて必要です (欠けるとデザインチェック `SemanticSearchFieldDesign:1`)。実テーブルに存在するかもチェックされます。
 
 ## 必要な DB 構成
 
@@ -80,6 +71,8 @@ SQL の集計 (件数・合計) は従来どおり `execute_sql`、内容で探�
   ```json
   { "DbColumnText": "search_text", "DbColumnVector": "search_vector", "DbColumnVectorSearch": "search_vector" }
   ```
+
+ベクトル検索に対応しない DB (SQLite / MySQL / Oracle) でキーワード検索だけ使うときも列は 3 つ必要です。`DbColumnVectorSearch` は `DbColumnVector` と同じ列名 (文字列の列) でかまいません。
 
 ## モジュール JSON 例
 
@@ -160,25 +153,31 @@ public static SemanticSearchService Service { get; } = new(() => _provider.Value
 
 ### 2. 保存時に索引を付ける
 
-`ModuleDataIO` の派生 (テンプレートの `CustomizedModuleDataIO`) の `AddAsync` / `UpdateAsync` で `ApplyAsync` を呼びます (PasswordHashField の `PasswordHashHelper` と同じ位置)。
+`ModuleDataIO` の派生 (テンプレートの `CustomizedModuleDataIO`) のコンストラクタで `Interceptor` を登録します。一括 INSERT (`BulkAddAsync`) だけは `ApplyAsync` を呼びます (文章だけ付けます。呼び忘れると取り込んだ行は文章も無しになり、サーバーの警告ログに出ます)。
 
 ```csharp
-protected override async Task<string> AddAsync(Guid transactionId, Guid moduleSubmitId, ModuleData data)
+public CustomizedModuleDataIO(...) : base(...)
 {
-    await SemanticSearchIndex.Service.ApplyAsync(data, isNewData: true);
-    return await base.AddAsync(transactionId, moduleSubmitId, data);
+    AddInterceptor(SemanticSearchIndex.Service.Interceptor);
 }
 
-protected override async Task UpdateAsync(Guid transactionId, Guid moduleSubmitId, ModuleData data)
+//一括 INSERT (大量取込) は採番した Id を返さないので、取り込む行のデータから作る
+protected override async Task BulkAddAsync(Guid transactionId, List<ModuleData> datas)
 {
-    await SemanticSearchIndex.Service.ApplyAsync(data, isNewData: false);
-    await base.UpdateAsync(transactionId, moduleSubmitId, data);
+    await SemanticSearchIndex.Service.ApplyAsync(datas);
+    await base.BulkAddAsync(transactionId, datas);
 }
 ```
 
-- 文章がデータに含まれていれば (クライアントが組み立てたもの・再索引) それに埋め込みを付ける
-- 新規行で文章が無ければサーバーで組み立てる (CSV 一括取込などクライアントのフィールドを通らない経路)
-- 更新で文章が無いとき (対象フィールドが変わっていない) は何もしない
+- 対象フィールドが変わった保存 (追加・対象フィールドを含む更新・タグ付けの行の付け外し) だけ、保存が終わった後にその行をサーバーが読み直して (権限を通さない内部読み) 文章と埋め込みを書き込み専用の列だけに書きます (同じトランザクション。レコードの更新ではないので、更新日時・楽観ロックの版・ExecuteSqlField は動きません)。クライアントは何も送らないので、対象フィールドがフロントに読み込まれているかどうかは関係ありません
+- 追従するのは保存した行自身と、同じ送信で付け外しした従属レコード (タグ) までです。リンク先・候補値の表示名やタグ名を後から変えても、既存の行の文章は再索引するまで変わりません
+- 埋め込みの呼び出しは保存のトランザクションの中で `SaveEmbeddingTimeout` (既定 15 秒) まで待ちます (保存時間にその往復が乗り、その間はその行のロックを持ちます)。超えたときや失敗したときは保存を止めず、文章だけ保存して警告ログを出します (後から `ReindexMissing()` で埋まります)
+- 一括 INSERT で取り込んだ行は `ApplyAsync` が文章だけ付けます (キーワード検索は取込直後から効きます)。ベクトルと、送信データに無いリンクの表示名は、取込後の `ReindexMissing()` (または `Reindex()`) で付けてください (大量取込の埋め込みを保存の中で待ちません)
+- 止めないのは埋め込み (外部サービス) の失敗だけです。索引の列への書き込みが失敗したとき (埋め込みモデルを変えたのにベクトル列の次元を直していない等) は保存も失敗します (同じトランザクションの DB の失敗なので握れません。列を直してから保存し直してください)
+- 旧い結線 (`AddAsync` の中で `ApplyAsync` を呼ぶ) が残っていても動きます。文章だけ付いた新規行は保存後に読み直して埋め込みます
+- ホストが `AddAsync` / `UpdateAsync` を直接呼ぶ内部経路 (テンプレートの `AddSystemRecordAsync` など、保存の送信を通らないもの) には付きません。内部の追加 (全項目を持つ行) は一括 INSERT と同じく `ApplyAsync` で文章を付け、内部の更新は再索引で揃えてください (`ApplyAsync` は渡した項目だけで文章を作るので、変えた項目だけの更新データには使えません)
+- 警告ログを出すには、アプリの起動時に `SemanticSearchIndex.Service.LoggerFactory` を設定します (テンプレートは設定済み)
+- 同じインターセプタが、画面の検索欄の文章を検索の前に埋め込みベクトルにします ([画面の検索欄から探す](#画面の検索欄から探す-検索レイアウトに置く))
 
 ### 3. AI チャットに意味検索ツールを付ける
 
@@ -224,10 +223,10 @@ condition.SortConditions.Add(new SortCondition { Variable = "Search.Value" });  
 var rows = await moduleDataIO.GetListAsync(condition, 0);
 ```
 
-- 索引の項目 (SemanticSearchField) を読めないユーザー (PermissionField) は拒否されます。検索条件の権限判定は行を持たない (ユーザーだけで真と確定する条件だけ許可) ので、この項目を対象にする読み取り条件のうち行の値を見る部分は偽として扱われます。CurrentUser だけで真になる経路 (`Or(管理者, 担当者 = CurrentUser)` の管理者側など) の無い人は検索できません (デザインチェック `PermissionFieldDesign:4`)。距離計算は DB なので、PostgreSQL (pgvector) / SQL Server 2025 のモジュールだけです (他の DB では例外)
-- `Keywords` (空白区切りの語) を入れると、文章の列がすべての語を含む行に絞ります (語ごとの LIKE の AND)。ベクトルと一緒なら絞ったうえで近い順、`Keywords` だけならどの DB でも動きます ([キーワードで絞る](#キーワードで絞る-searchboxes))
+- 索引の項目 (SemanticSearchField) を読めないユーザー (PermissionField) は拒否されます。この項目の読み取り条件には CurrentUser を参照する条件を使ってください (検索条件の権限判定は行を持たないので、行データを参照する条件を付けるとこの項目での検索は拒否されます。デザインチェック `PermissionFieldDesign:4` が指摘します)。距離計算は DB なので、PostgreSQL (pgvector) / SQL Server 2025 のモジュールだけです (他の DB では例外)
+- `Keywords` (空白区切りの語) を入れると、文章の列がすべての語を含む行に絞ります (語ごとの LIKE の AND)。ベクトルと一緒なら絞ったうえで近い順、`Keywords` だけならどの DB でも動きます ([キーワードで絞る](#キーワードで絞る-keywordsearch))
 - この条件はサーバーで実行する一覧検索だけのものです。設計に保存する条件 (権限の条件・ListField / LinkField の条件) には置けません (デザインチェックが指摘します)
-- ベクトルは呼び出し側が作って入れるか、`Text` (文章) だけを入れてサーバーの前処理 (`SemanticSearchService.ConditionInterceptor`) に埋めさせます (画面の検索欄はこちら)
+- ベクトルは呼び出し側が作って入れるか、`Text` (文章) だけを入れてサーバーの前処理 (`SemanticSearchService.Interceptor`) に埋めさせます (画面の検索欄はこちら)
 - AI チャットでは `ModuleDataAccessAgent` に `semanticSearch` を渡すと、この条件で検索する `search_records` が付きます ([AIChatField](AIChatField.md))
 
 ### 画面の検索欄から探す (検索レイアウトに置く)
@@ -237,19 +236,19 @@ var rows = await moduleDataIO.GetListAsync(condition, 0);
 - **近い順に並べるには、一覧の並び (ListField の SearchCondition の SortConditions) に `Search.Value` を入れておきます** (例: `[Search.Value 昇順, Subject 昇順]`)。文章が空のときはこの並びは飛ばされるので、普段は次の並び (件名順) になります。列ヘッダでの並べ替えも普段どおり使えます
 - 距離の上限 `SearchMaxDistance` (コサイン距離。0 = 同じ向き〜2) を設定すると、遠い行は出ません。空なら全行 (索引のある行) が対象で、並びだけが変わります
 - 距離の上限が空で、一覧の並びにも `Search.Value` が無いと、文章を入れても一覧は変わりません。デザインチェックが指摘します (`SemanticSearchFieldDesign:3`)
-- 文章を埋め込みにするのはサーバーです。ホストの `CustomizedModuleDataIO` のコンストラクタで `AddInterceptor(SemanticSearchIndex.Service.ConditionInterceptor)` を登録してください (テンプレートは登録済み)。登録していないと「埋め込みベクトルがありません」のエラーになります
+- 文章を埋め込みにするのはサーバーです。ホストの `CustomizedModuleDataIO` のコンストラクタで `AddInterceptor(SemanticSearchIndex.Service.Interceptor)` を登録してください (保存時の索引付けと同じインターセプタ。Cookie テンプレートは登録済み)。登録していないと「埋め込みベクトルがありません」のエラーになります
 - 集計 (CrossTabField・集計チャート) を表示先にした検索でも同じ条件で絞れますが、近い順の並びは集計には関係しません
 - メモリ内ページング (`IsInMemoryPaging`) の一覧では、列ヘッダで並べ替えるとメモリ上で並べ直すので近い順は失われます
 
-### キーワードで絞る (SearchBoxes)
+### キーワードで絞る (KeywordSearch)
 
 意味検索は「どう書いてあるか分からないが内容は分かる」ときの道具で、品番・人名・番号のように**語そのもの**で探すのには向きません (似た番号の行が混ざる・0 件になりません)。
-文章の列には対象フィールドの値がそのまま入っているので、そこに部分一致を掛ければキーワード検索になります。`SearchBoxes` を `SemanticAndKeyword` にすると、検索レイアウトの検索欄に**キーワード欄**が加わります (`KeywordOnly` ならキーワード欄だけ)。
+文章の列には対象フィールドの値がそのまま入っているので、そこに部分一致を掛ければキーワード検索になります。`KeywordSearch` を `true` にすると、検索レイアウトの検索欄に**キーワード欄**が加わります。
 
 - 空白区切りの語を**すべて含む行**に絞ります (語ごとの部分一致の AND。語の順は問わない)。`%` `_` などは文字として扱います
-- 対象フィールドを横断します。リンクの表示名 (得意先名など) や候補値の表示名も文章に入っているので当たります
-- **読み取り権限に注意**: 文章の列は対象フィールドの値を含むので、このフィールドを読める人は、PermissionField で読めない対象フィールドの値もキーワード検索 (部分一致を重ねる) で特定できます。リンク先モジュールやタグ付けのモジュールに閲覧条件 (UserReadCondition) があるときも同じで、本体はリンク先を読めない人に表示名を空で返しますが、文章の列には保存時の表示名が残っています。対象フィールドやリンク先に読み取りの条件を付けるなら、このフィールドにも同じかそれより厳しい読み取り条件を付けてください (このフィールドにだけ無い構成はデザインチェック `SemanticSearchFieldDesign:4` (対象フィールドの PermissionField) / `:5` (相手のモジュールの UserReadCondition) が指摘します)。このフィールドの読み取り条件で効くのは **CurrentUser だけで真になる部分**です (検索条件の権限判定は行を持たないので、行の値を見る部分は偽として扱われます。デザインチェック `PermissionFieldDesign:4`)。対象フィールドの条件が行の値を見るものや、制限の違う対象フィールドが複数あるときは、その項目を `SourceFields` から外してください (空 = 全部なら明示して列挙)
-- 埋め込みは使いません。ベクトル検索に対応しない DB (SQLite / MySQL / Oracle) のモジュールや埋め込みプロバイダの無い構成でも、`SearchBoxes` を `KeywordOnly` にすれば文章の列だけでキーワード検索が使えます (ベクトルの 2 列は要らず、埋め込みも呼びません。文章の欄は出ません。API から文章・ベクトルの条件を渡すと例外)
+- 対象フィールドを横断します。リンクの表示名 (得意先名など) や候補値の表示名も文章に入っているので当たります (リンク先やタグ付けのモジュールの閲覧条件は見ません。そのモジュールを読めない人にも表示名で当たります)
+- **読み取り権限**: 検索できるかはこのフィールド自身の読み取り権限で決まります (他のフィールドと同じ)。文章の列には対象フィールドの値がそのまま入るので、読ませたくない項目は `SourceFields` に入れないでください。入れるなら、このフィールドにも同じ読み取り条件 (CurrentUser で決まるもの) を付けてください。行の値で決まる条件の項目は `SourceFields` から外してください (デザインチェック: 対象フィールドに読み取り条件があるのにこのフィールドに無い構成は `SemanticSearchFieldDesign:4`、行の値で決まる条件の項目は `:5`。`:4` は条件の有無だけを見ます。同じ条件にするのは設計者の責任です)
+- 埋め込みは使いません。ベクトル検索に対応しない DB (SQLite / MySQL / Oracle) のモジュールや埋め込みプロバイダの無い構成でもキーワード検索は使えます (列は 3 つとも必要です)。その構成でも文章の欄 (「内容で探す」) は出ます。入れるとプロバイダ未設定または DB 非対応のエラーになります
 - 文章 (意味検索) とキーワードを両方入れると、キーワードで絞ったうえで近い順になります。キーワードだけなら一覧の普段の並びです
 - 大文字小文字・全角半角・かな種の扱いは文章の列の照合順序で決まります (SQL Server の既定 `Japanese_CI_AS` と MySQL の既定は区別しない、PostgreSQL / Oracle は区別する、SQLite は ASCII の大文字小文字だけ区別しない)。文章には「表示名: 値」の表示名も入っているので、項目名と同じ語は全行に当たります
 - 速さは LIKE の全走査です。PostgreSQL で行数が多ければ文章の列に pg_bigm (2 文字から索引が効く) か pg_trgm の GIN インデックスを張ると、同じ検索がインデックスで走ります
@@ -260,7 +259,7 @@ CREATE EXTENSION IF NOT EXISTS pg_bigm;
 CREATE INDEX inquiries_search_text_bigm ON inquiries USING gin (search_text gin_bigm_ops);
 ```
 
-AI チャット (`ModuleDataAccessAgent`) からは、`find_records` / `aggregate_records` / `cross_tab` / `search_records` の filters にこの項目の `Like` でキーワードを渡すと同じ絞り込みになります (`SearchBoxes` の設定に関係なく使えます。AI には describe_module と手順の説明で案内されます)。API からは `SemanticMatchCondition.Keywords` です。生 SQL の `RawDataAccessAgent` には「語そのもので探すときは文章の列に LIKE」と案内されます (列名つき。埋め込みプロバイダやベクトル検索に対応する DB が無くても)。
+AI チャット (`ModuleDataAccessAgent`) からは、`find_records` / `aggregate_records` / `cross_tab` / `search_records` の filters にこの項目の `Like` でキーワードを渡すと同じ絞り込みになります (`KeywordSearch` の設定に関係なく使えます。AI には describe_module と手順の説明で案内されます)。API からは `SemanticMatchCondition.Keywords` です。生 SQL の `RawDataAccessAgent` には「語そのもので探すときは文章の列に LIKE」と案内されます (列名つき。埋め込みプロバイダやベクトル検索に対応する DB が無くても)。
 
 ### 4. 既存データに一括でベクトルを付ける (再索引)
 
@@ -272,7 +271,7 @@ AI チャット (`ModuleDataAccessAgent`) からは、`find_records` / `aggregat
 2. サーバーの結線 (1.〜3.) と埋め込みプロバイダの設定を入れてデプロイする
 3. 管理用のページの ButtonField から `Reindex()` を 1 回実行する → 既存の全行にベクトルが付き、AI チャットの `search_records` で探せるようになる
 
-同じ操作は、埋め込みモデルを変えたとき (次元が変わるので列を作り直してから全行) と、埋め込みに失敗して NULL のままの行を埋めるとき (`ReindexMissing()`) にも使います。ButtonField を管理用のページに置き、OnClick に書くだけです。
+同じ操作は、埋め込みモデルを変えたとき (次元が変わるので列を作り直してから全行)、`SourceFields` や対象フィールドの表示名を変えたとき (外した項目の値は既存の行の文章に残るので、外したときは必須)、一括取込の後、埋め込みに失敗して NULL のままの行を埋めるとき (`ReindexMissing()`) にも使います。ButtonField を管理用のページに置き、OnClick に書くだけです。
 
 ```csharp
 // ButtonField の OnClick
@@ -292,20 +291,22 @@ void Search_OnReindexCompleted()
 
 | メンバー | 説明 |
 |---|---|
-| `Reindex()` | 読める全行の文章とベクトルをまとめて作る (既存データへの一括付与・作り直し)。走っている間は無視 |
+| `Reindex()` | 全行の文章とベクトルをまとめて作る (既存データへの一括付与・作り直し)。走っている間は無視 |
 | `ReindexMissing()` | ベクトルがまだ無い行だけ |
 | `CancelReindex()` | 走っている再索引を中断する |
 | `IsReindexing` | 走っている間 true |
 | `ReindexProcessed` / `ReindexTotal` | 書き直した行数 / 対象行数 (走っている間は途中経過) |
 | `ReindexError` | 最後の再索引のエラー (成功なら空。中断も文言が入る) |
-| `Text` | 今の行を索引用の文章にしたもの (確認用。Submit で送られるのと同じ規則。3 つの列が未設定なら空) |
+| `SearchText` / `KeywordText` | 検索レイアウトの文章の欄 / キーワード欄の値 (スクリプトで設定すれば、欄を出していなくても条件に入る) |
 
 - スクリプトから `Search` を参照するには、SemanticSearchField がそのレイアウトの `DataOnlyFields` (またはレイアウト) に入っている必要があります (UI が無いので DataOnlyFields が自然です)
-- 誰が起こせるかは権限で決まります。API はその SemanticSearchField を今のユーザーがユーザー権限だけで読めるとき (アプリアクセス条件・モジュールの UserReadCondition・PermissionField) だけ受け付け、行の読み書きは実行ユーザーの ModuleDataIO で行います (読める行だけ・書ける行だけ)。ボタンを置くページの UserReadCondition でも絞れます
-- サーバーではジョブとして走り、ページ (既定 100 行) ごとに文章をまとめて 1 回で埋め込みます。同じモジュールの再索引が走っている間に起こすと、その進捗に合流します
+- 誰が起こせるかは権限で決まります。再索引は索引を書き直す操作なので、API はその SemanticSearchField に今のユーザーがユーザー権限だけで書けるとき (アプリアクセス条件・モジュールの UserWriteCondition・PermissionField の書き込み条件) だけ受け付けます。検索できる人 (読める人) 全員が起こせるわけではありません。ボタンを置くページの UserReadCondition でも絞れます
+- 索引は保存時と同じく、サーバーが権限を通さず全行を読んで書き込み専用の列だけに書きます (誰が起こしても同じ文章になります。レコードの更新ではないので、更新日時・楽観ロックの版は変わらず、監査ログ・編集履歴にも残りません)
+- サーバーではジョブとして走り、ページ (既定 100 行) ごとに文章をまとめて 1 回で埋め込みます。同じモジュールの再索引が走っている間に起こすと、その進捗に合流します (欠損だけの再索引が走っている間に全行を起こすのは合流できないのでエラー)
+- 運用中に走らせると、再索引が行を読んでから書くまでの間に保存した行の索引が古い文章で上書きされることがあります (次の保存か再索引で直ります)
 - 埋め込みモデルが無いときは文章だけ書き直します。埋め込みの失敗はエラーとして返ります (保存時と違い黙って NULL にはしません)
 
-サーバー側は同じ `SemanticSearchService` の `StartReindexAsync` / `GetReindexStatus` / `CancelReindex` を、AIChat と同じ形の薄い Controller から使います (Example の `Controllers/SemanticSearchController.cs`)。ページの行数・ジョブの保持時間は `ReindexPageSize` / `FinishedRetention` / `MaxRunning` プロパティ。バックグラウンドではリクエストの HttpContext が無いので、ユーザー Id を固定した DataService を開いて渡します。
+サーバー側は同じ `SemanticSearchService` の `StartReindexAsync` / `GetReindexStatus` / `CancelReindex` を、AIChat と同じ形の薄い Controller から使います (Example の `Controllers/SemanticSearchController.cs`)。ページの行数・ジョブの保持時間・保存時の埋め込みの上限時間は `ReindexPageSize` / `FinishedRetention` / `MaxRunning` / `SaveEmbeddingTimeout` プロパティ。バックグラウンドではリクエストの HttpContext が無いので、ユーザー Id を固定した DataService を開いて渡します。
 
 ```csharp
 //Controllers/SemanticSearchController.cs ([Route("api/semantic_search/reindex")])
@@ -330,7 +331,7 @@ public async Task<ActionResult<SemanticSearchReindexResponse>> Start([FromBody] 
 SemanticSearchField.EndPoint = "/api/semantic_search/reindex";
 ```
 
-Example (`Source/Example/Extras`) には索引付け (`Services/CustomizedModuleDataIO.cs`)・埋め込みプロバイダの対応表と `SemanticSearchService` の持ち物 (`AI/EmbeddingProviderTable.cs` / `AI/SemanticSearchIndex.cs`)・再索引 API (`Controllers/SemanticSearchController.cs`)・エージェントへの結線 (`AI/AIChatAgentTable.cs`) が入っています。Example のデータは SQLite なので意味検索できるモジュールは置いていません。動かすには PostgreSQL (pgvector) のデータソースに上記の構成でモジュールを作ってください。
+Example (`Source/Example/Extras`) には索引付けの結線 (`Services/CustomizedModuleDataIO.cs`)・埋め込みプロバイダの対応表と `SemanticSearchService` の持ち物 (`AI/EmbeddingProviderTable.cs` / `AI/SemanticSearchIndex.cs`)・再索引 API (`Controllers/SemanticSearchController.cs`)・エージェントへの結線 (`AI/AIChatAgentTable.cs`) が入っています。Example のデータは SQLite なので意味検索できるモジュールは置いていません。動かすには PostgreSQL (pgvector) のデータソースに上記の構成でモジュールを作ってください。
 
 ## 注意事項
 
@@ -338,5 +339,4 @@ Example (`Source/Example/Extras`) には索引付け (`Services/CustomizedModule
 - 埋め込みモデルを変えたら (次元が変わるので) ベクトル列を作り直して全行の再索引が必要です
 - 文章は AI (プロバイダ) に送られます。個人情報などを索引に入れたくない場合は `SourceFields` で対象を絞ってください ([AI に送られるデータ](AIChatField.md#ai-に送られるデータ))
 - 文章の列は AI 向けの索引で、人が読む前提の列ではありません。画面に出すなら元のフィールドを使ってください
-- 再索引は通常の保存として扱われます (全行の更新日時・更新者が書き換わり、監査ログ・編集履歴にも残ります)
 - リンクの表示名は保存時点の値で文章に入ります。リンク先 (得意先名など) を改名しても、既存の行は再索引するまで旧名のままです

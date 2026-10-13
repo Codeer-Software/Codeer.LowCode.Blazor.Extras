@@ -20,5 +20,15 @@ namespace Codeer.LowCode.Blazor.Extras.Server
             return await moduleDataIO.CheckUserReadAuthorization(moduleName, fieldName) as TDesign
                 ?? throw LowCodeException.Create(notFoundMessage, moduleName, fieldName);
         }
+
+        /// <summary>書き込み側 (そのフィールドに書ける人だけに提供する API = 意味検索の再索引)。本体の ModuleDataIO.CheckUserWriteAuthorization (モジュールの UserWriteCondition + フィールドの書き込み権限)。</summary>
+        internal static async Task<TDesign> CheckWriteAsync<TDesign>(ModuleDataIO moduleDataIO, string? moduleName, string? fieldName, string notFoundMessage)
+            where TDesign : FieldDesignBase
+        {
+            moduleName ??= string.Empty;
+            fieldName ??= string.Empty;
+            return await moduleDataIO.CheckUserWriteAuthorization(moduleName, fieldName) as TDesign
+                ?? throw LowCodeException.Create(notFoundMessage, moduleName, fieldName);
+        }
     }
 }

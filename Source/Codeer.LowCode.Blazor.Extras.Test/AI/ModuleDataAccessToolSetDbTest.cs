@@ -61,7 +61,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
             await _db.ExecuteAsync(Ds, "INSERT INTO AppUsers VALUES ('1', 1, 1, '一般'), ('2', 10, 1, '担当A'), ('3', 10, 1, '担当B'), ('9', 30, 1, '管理者')", new());
             await _db.ExecuteAsync(Ds, "CREATE TABLE Customers (Id INTEGER PRIMARY KEY, Name TEXT)", new());
             await _db.ExecuteAsync(Ds, "INSERT INTO Customers VALUES (1, '青空商事'), (2, '緑山工業')", new());
-            //SearchText は意味検索 (SemanticSearchField) の文章の列 (保存時にクライアントが「表示名: 値」で作る。ここでは出来上がりを入れる)。SearchVector は未索引 (NULL)
+            //SearchText は意味検索 (SemanticSearchField) の文章の列 (保存時にサーバーが「表示名: 値」で作る。ここでは出来上がりを入れる)。SearchVector は未索引 (NULL)
             await _db.ExecuteAsync(Ds, "CREATE TABLE Orders (Id INTEGER PRIMARY KEY, Title TEXT, Amount NUMERIC, Status TEXT, OrderedOn DATE, CustomerId INTEGER, OwnerId TEXT, SearchText TEXT, SearchVector TEXT)", new());
             await _db.ExecuteAsync(Ds, "INSERT INTO Orders VALUES " +
                 "(1, '机', 100, '10', '2026-01-10', 1, '2', '品名: 机\n得意先: 青空商事', NULL), " +

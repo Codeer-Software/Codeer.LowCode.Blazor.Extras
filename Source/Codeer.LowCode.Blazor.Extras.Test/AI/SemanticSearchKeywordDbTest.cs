@@ -33,7 +33,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
             m.Fields.Add(new IdFieldDesign { Name = "Id", DbColumn = "id" });
             m.Fields.Add(new TextFieldDesign { Name = "Subject", DisplayName = "件名", DbColumn = "subject" });
             m.Fields.Add(new BooleanFieldDesign { Name = "LogicalDelete", DbColumn = "is_deleted" });
-            m.Fields.Add(new SemanticSearchFieldDesign { Name = "Search", DbColumnText = "search_text", DbColumnVector = "search_vector", DbColumnVectorSearch = "search_vector", SearchBoxes = SemanticSearchBoxes.SemanticAndKeyword });
+            m.Fields.Add(new SemanticSearchFieldDesign { Name = "Search", DbColumnText = "search_text", DbColumnVector = "search_vector", DbColumnVectorSearch = "search_vector", KeywordSearch = true });
             m.ListLayouts[""] = new ListLayoutDesign();
             d.AddModule(m);
             return d;

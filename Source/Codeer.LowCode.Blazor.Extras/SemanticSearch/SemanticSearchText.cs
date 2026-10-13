@@ -12,7 +12,7 @@ namespace Codeer.LowCode.Blazor.Extras.SemanticSearch
     /// <summary>
     /// SemanticSearchField が索引にする文章を、モジュールの 1 行 (<see cref="ModuleData"/>) から組み立てる。
     /// 形は「表示名: 値」を 1 行ずつ (値が空のフィールドは出さない)。候補値は表示名、リンクは表示文字列、日付は ISO 形式。
-    /// クライアント (Submit 時) とサーバー (再索引・一括取込) の両方が同じ規則で作るためにここに置く。
+    /// 作るのはサーバー (保存時のインターセプタ・再索引・一括取込) だけ。クライアントは文章を送らない。
     /// </summary>
     internal static class SemanticSearchText
     {
@@ -54,22 +54,6 @@ namespace Codeer.LowCode.Blazor.Extras.SemanticSearch
                     or SystemFieldNames.DeletedAt or SystemFieldNames.Creator or SystemFieldNames.Updater) continue;
                 yield return f.Name;
             }
-        }
-
-        /// <summary>
-        /// そのフィールドの文章に値が入る他のモジュール = <see cref="FormatValue"/> が他モジュールの値 (リンクの表示名・候補値の表示名・自分で文章にするフィールドの値) を使う型。
-        /// 相手のモジュールに閲覧条件があっても文章の列には値が残るので、設計チェック (SemanticSearchFieldDesign:5) が見る。FormatValue で型を足したらここにも足す。
-        /// </summary>
-        public static IEnumerable<string> ReferencedModuleNames(FieldDesignBase fieldDesign, IModuleDesigns modules)
-        {
-            IEnumerable<string> names = fieldDesign switch
-            {
-                LinkFieldDesign link => [link.SearchCondition.ModuleName],
-                SelectFieldDesign select => [select.SearchCondition.ModuleName],
-                ISemanticSearchTextSource source => source.GetSemanticTextModuleNames(modules),
-                _ => [],
-            };
-            return names.Where(n => !string.IsNullOrEmpty(n)).Distinct();
         }
 
         /// <summary>1 フィールドの値を人が読む文字列に。空なら null。</summary>

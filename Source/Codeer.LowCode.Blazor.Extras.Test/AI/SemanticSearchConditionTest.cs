@@ -20,7 +20,7 @@ using Codeer.LowCode.Blazor.Repository;
 namespace Codeer.LowCode.Blazor.Extras.Test.AI
 {
     /// <summary>
-    /// 画面の検索欄からの意味検索: SemanticSearchField が作る条件 (文章だけ) と、サーバーの前処理 (SemanticSearchService.ConditionInterceptor) が
+    /// 画面の検索欄からの意味検索: SemanticSearchField が作る条件 (文章だけ) と、サーバーの前処理 (SemanticSearchService.Interceptor) が
     /// 文章を埋め込みにすること。検索の中身 (SQL・権限) は本体と SemanticSearchFieldDesign のまま (距離の計算は SemanticSearchVectorDbTest の実 DB)。
     /// </summary>
     public class SemanticSearchConditionTest : IAuthenticationContext
@@ -68,7 +68,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
         public async Task 前処理は文章だけの条件に埋め込みを入れベクトル済みは触らない()
         {
             var embedding = new FakeEmbeddingProvider();
-            var interceptor = new SemanticSearchService(() => embedding, () => CreateDesign()).ConditionInterceptor;
+            var interceptor = new SemanticSearchService(() => embedding, () => CreateDesign()).Interceptor;
 
             var textOnly = new SemanticMatchCondition { FieldName = "Search", Text = "納期の遅れ" };
             var already = new SemanticMatchCondition { FieldName = "Search", Text = "x", Vector = [1f, 2f] };
@@ -92,7 +92,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
         [Test]
         public void 埋め込みプロバイダが無ければ理由つきで失敗する()
         {
-            var interceptor = new SemanticSearchService(() => null, () => CreateDesign()).ConditionInterceptor;
+            var interceptor = new SemanticSearchService(() => null, () => CreateDesign()).Interceptor;
             var condition = new SearchCondition("Note") { Condition = new SemanticMatchCondition { FieldName = "Search", Text = "x" } };
             Assert.That(async () => await interceptor.PrepareConditionAsync(null!, condition), Throws.TypeOf<LowCodeException>());
         }
@@ -103,7 +103,6 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
             var design = CreateDesign(maxDistance: 0.5);
             var module = await ModuleCreationService.CreateModuleAsync(new TestServices(design).Core, new ModuleData { Name = "Note" });
             var field = (SemanticSearchField)module.GetField("Search")!;
-            field.Design.SearchBoxes = SemanticSearchBoxes.SemanticAndKeyword;
 
             //キーワードだけ: 文章なし・距離の上限なし (埋め込みを呼ばせない)
             await field.SetKeywordTextAsync(" 納期　遅延  納期 ");
@@ -127,7 +126,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
             Assert.That((field.SearchText, field.KeywordText), Is.EqualTo(("納期の遅れ", "納期 遅延")));
 
             //前処理はキーワードだけの条件では埋め込みを呼ばない (プロバイダが無くても通る)
-            var interceptor = new SemanticSearchService(() => null, () => design).ConditionInterceptor;
+            var interceptor = new SemanticSearchService(() => null, () => design).Interceptor;
             await field.SetSearchTextAsync(null);
             var search = new SearchCondition("Note") { Condition = field.GetMatchCondition() };
             await interceptor.PrepareConditionAsync(null!, search);
@@ -208,7 +207,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
 
                 //前処理あり: ベクトルが入り、SQL の組み立てまで進む (SQLite はベクトル検索できないのでその理由で止まる)
                 var io = new ModuleDataIO(design, this, db, new TemporaryFileManager(db, [], new List<IFileStorage>()));
-                io.AddInterceptor(new SemanticSearchService(() => new FakeEmbeddingProvider(), () => design).ConditionInterceptor);
+                io.AddInterceptor(new SemanticSearchService(() => new FakeEmbeddingProvider(), () => design).Interceptor);
                 Assert.That(async () => await io.GetListAsync(condition.JsonClone(), 0), Throws.TypeOf<LowCodeException>().With.Message.Contains("SQLite"));
 
                 //検索欄が空 (条件なし) なら、一覧の並びに意味検索が入っていても飛ばして普通に読める
@@ -261,37 +260,30 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
             module.Fields.Add(Rule("P3", true, "Title"));
             Assert.That(Check(), Is.Empty);
 
-            //リンク先モジュールの閲覧条件 (UserReadCondition) も同じ理屈 (表示名が文章に入る) → 別の指摘 (:5)
+            //対象フィールドの読み取り条件が行の値で決まる → このフィールドに条件があっても :5 (外して Reindex)
             module.Fields.RemoveAll(f => f is PermissionFieldDesign);
-            var customer = new ModuleDesign { Name = "Customer", DataSourceName = Ds, DbTable = "customers" };
-            customer.Fields.Add(new IdFieldDesign { Name = "Id", DbColumn = "id" });
-            design.AddModule(customer);
-            var link = new LinkFieldDesign { Name = "Customer", DbColumn = "customer_id", ValueVariable = "Id.Value", DisplayTextVariable = "Id.Value" };
-            link.SearchCondition.ModuleName = "Customer";
-            module.Fields.Add(link);
-            var linkCode = DesignCheckCode.Create(typeof(SemanticSearchFieldDesign), 5 /* LinkTargetsRestricted */);
-            List<DesignCheckInfo> CheckLink() => field.CheckDesign(new DesignCheckContext("Note", design, Utilities.CreateDataSource())).Where(e => e.Code == linkCode).ToList();
-            Assert.That(CheckLink(), Is.Empty);
-            customer.UserReadCondition.Condition = Rule("x").ReadCondition.Condition;
-            Assert.That(CheckLink().Single().Message, Does.Contain("Customer (Customer)").And.Contain("Search"));
-            module.Fields.Add(Rule("P4", false, "Search"));
-            Assert.That(CheckLink(), Is.Empty);
-            module.Fields.RemoveAll(f => f.Name == "P4");
-
-            //自分で文章にするフィールド (TagField のタグ名 = タグ付けモジュールの行) も同じ
-            customer.UserReadCondition.Condition = null;
-            var tagging = new ModuleDesign { Name = "NoteTags", DataSourceName = Ds, DbTable = "note_tags" };
-            tagging.Fields.Add(new IdFieldDesign { Name = "Id", DbColumn = "id" });
-            tagging.Fields.Add(new IdFieldDesign { Name = "OwnerId", DbColumn = "owner_id", IsManualInput = false });
-            tagging.Fields.Add(new TextFieldDesign { Name = "Name", DbColumn = "name" });
-            tagging.Fields.Add(new TagLinkContractFieldDesign { Name = "TagLinkContract" });
-            design.AddModule(tagging);
-            field.SourceFields.Add("Tags");
-            module.Fields.Add(new TagFieldDesign { Name = "Tags", TagModuleName = "NoteTags" });
-            Assert.That(CheckLink(), Is.Empty);
-            tagging.UserReadCondition.Condition = Rule("x").ReadCondition.Condition;
-            Assert.That(CheckLink().Single().Message, Does.Contain("Tags (NoteTags)"));
+            var rowRule = new PermissionFieldDesign { Name = "P5" };
+            rowRule.TargetFields.Add("Secret");
+            rowRule.ReadCondition.Condition = MultiMatchCondition.Or(
+                new FieldValueMatchCondition { SearchTargetVariable = "CurrentUser.Id.Value", Comparison = MatchComparison.Equal, Value = MultiTypeValue.Create("U1") },
+                new FieldValueMatchCondition { SearchTargetVariable = "Title.Value", Comparison = MatchComparison.Equal, Value = MultiTypeValue.Create("public") });
+            module.Fields.Add(rowRule);
+            module.Fields.Add(Rule("P6", false, "Search"));
+            var rowCode = DesignCheckCode.Create(typeof(SemanticSearchFieldDesign), 5 /* SourceFieldsRowCondition */);
+            var infos = field.CheckDesign(new DesignCheckContext("Note", design, Utilities.CreateDataSource()));
+            Assert.That(infos.Single(e => e.Code == rowCode).Message, Does.Contain("Secret").And.Contain("Reindex()"));
+            Assert.That(infos.Where(e => e.Code == code), Is.Empty, "行条件の項目は :4 では数えない");
+            field.SourceFields.Add("Title");
+            Assert.That(field.CheckDesign(new DesignCheckContext("Note", design, Utilities.CreateDataSource())).Where(e => e.Code == rowCode), Is.Empty, "外せば指摘なし");
             field.SourceFields.Clear();
+
+            //同じ行条件の規則がこのフィールドも縛る (除外モード) なら、本体の静的判定で検索ごと拒否される = 漏れないので :5 は出ない
+            module.Fields.RemoveAll(f => f is PermissionFieldDesign);
+            var excludeRule = new PermissionFieldDesign { Name = "P7", IsExcludeMode = true };
+            excludeRule.TargetFields.Add("Title");
+            excludeRule.ReadCondition.Condition = rowRule.ReadCondition.Condition;
+            module.Fields.Add(excludeRule);
+            Assert.That(field.CheckDesign(new DesignCheckContext("Note", design, Utilities.CreateDataSource())).Where(e => e.Code == rowCode || e.Code == code), Is.Empty);
         }
 
         [Test]
@@ -308,28 +300,6 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
             module.Fields.Add(rule);
             var code = DesignCheckCode.Create(typeof(SemanticSearchFieldDesign), 4 /* SourceFieldsRestricted */);
             Assert.That(field.CheckDesign(new DesignCheckContext("Note", design, Utilities.CreateDataSource())).Where(e => e.Code == code), Is.Empty);
-        }
-
-        [Test]
-        public async Task 条件の復元では欄を出していない方を捨てる()
-        {
-            //設定を SemanticAndKeyword → Semantic に変えた後に古い条件 (URL 等) が戻っても、見えないキーワードの絞り込みを残さない
-            var design = CreateDesign();
-            var module = await ModuleCreationService.CreateModuleAsync(new TestServices(design).Core, new ModuleData { Name = "Note" });
-            var field = (SemanticSearchField)module.GetField("Search")!;
-            var saved = new FieldMatchCondition { FieldName = "Search", Children = [new SemanticMatchCondition { FieldName = "Search", Text = "納期の遅れ", Keywords = "青空" }] };
-
-            field.Design.SearchBoxes = SemanticSearchBoxes.Semantic;
-            await field.SetMatchConditionAsync(saved);
-            Assert.That((field.SearchText, field.KeywordText), Is.EqualTo(("納期の遅れ", (string?)null)));
-
-            field.Design.SearchBoxes = SemanticSearchBoxes.KeywordOnly;
-            await field.SetMatchConditionAsync(saved);
-            Assert.That((field.SearchText, field.KeywordText), Is.EqualTo(((string?)null, "青空")));
-
-            field.Design.SearchBoxes = SemanticSearchBoxes.SemanticAndKeyword;
-            await field.SetMatchConditionAsync(saved);
-            Assert.That((field.SearchText, field.KeywordText), Is.EqualTo(("納期の遅れ", "青空")));
         }
     }
 }

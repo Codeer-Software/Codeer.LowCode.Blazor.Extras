@@ -66,4 +66,7 @@
   <data name="SemanticSearch_ProviderNotConfigured" xml:space="preserve">
     <value>埋め込みプロバイダが設定されていないため、意味検索を使えません。</value>
   </data>
+  <data name="SemanticSearch_ReindexMissingRunning" xml:space="preserve">
+    <value>モジュール '{0}' では欠損分の再索引が走っています。終わってから全行の再索引を起こしてください。</value>
+  </data>
 </root>

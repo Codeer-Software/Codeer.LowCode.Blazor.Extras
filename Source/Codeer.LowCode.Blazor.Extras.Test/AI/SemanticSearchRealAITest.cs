@@ -42,20 +42,11 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
             public void ReportPartial(AIChatReply partialReply) { }
         }
 
-        sealed class IndexingModuleDataIO(DesignData design, IAuthenticationContext auth, IDbAccessor db, ITemporaryFileManager files, SemanticSearchService semanticSearch)
-            : ModuleDataIO(design, auth, db, files)
+        //テンプレートの CustomizedModuleDataIO と同じ結線 (インターセプタの登録)
+        sealed class IndexingModuleDataIO : ModuleDataIO
         {
-            protected override async Task<string> AddAsync(Guid transactionId, Guid moduleSubmitId, ModuleData data)
-            {
-                await semanticSearch.ApplyAsync(data, isNewData: true);
-                return await base.AddAsync(transactionId, moduleSubmitId, data);
-            }
-
-            protected override async Task UpdateAsync(Guid transactionId, Guid moduleSubmitId, ModuleData data)
-            {
-                await semanticSearch.ApplyAsync(data, isNewData: false);
-                await base.UpdateAsync(transactionId, moduleSubmitId, data);
-            }
+            public IndexingModuleDataIO(DesignData design, IAuthenticationContext auth, IDbAccessor db, ITemporaryFileManager files, SemanticSearchService semanticSearch)
+                : base(design, auth, db, files) => AddInterceptor(semanticSearch.Interceptor);
         }
 
         [SetUp]

@@ -119,60 +119,26 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
         }
 
         [Test]
-        public async Task フィールドは対象が変更されたときだけ文章を送る()
+        public async Task フィールドは何も送らない_索引はサーバーが保存した行から作る()
         {
             var design = CreateDesign();
             var services = new TestServices(design);
             var module = await ModuleCreationService.CreateModuleAsync(services.Core, Row());
             var field = (SemanticSearchField)module.GetField("Search")!;
-
-            Assert.That(module.IsNewData, Is.False);
             Assert.That(field.IsModified, Is.False);
             Assert.That(field.GetData(), Is.Null);
-            Assert.That(field.GetSubmitData().FieldData, Is.Null, "変更なしでは送らない");
-            Assert.That(field.Text, Does.StartWith("件名: 納期遅れの相談"));
 
+            //対象フィールドを変えても、このフィールドは送信データに載らない
             await ((TextField)module.GetField("Body")!).SetValueAsync("届きました。ありがとう");
-            var sent = field.GetSubmitData().FieldData as SemanticSearchFieldData;
-            Assert.That(sent, Is.Not.Null);
-            Assert.That(sent!.Text, Does.Contain("本文: 届きました。ありがとう"));
-            Assert.That(sent.Vector, Is.Null, "ベクトルはサーバーが付ける");
+            Assert.That(field.IsModified, Is.False);
+            Assert.That(field.GetSubmitData().FieldData, Is.Null);
+            Assert.That(module.GetSubmitData().Update.Single().Fields.ContainsKey("Search"), Is.False);
 
-            //モジュールの Submit データにも載る
-            var submit = module.GetSubmitData();
-            Assert.That(submit.Update.Single().Fields["Search"], Is.TypeOf<SemanticSearchFieldData>());
-        }
-
-        [Test]
-        public async Task 新規行は常に文章を送る()
-        {
-            var design = CreateDesign();
-            var services = new TestServices(design);
-            var module = await ModuleCreationService.CreateModuleAsync(services.Core, new ModuleData { Name = "Inquiry" });
+            //新規行も同じ
+            module = await ModuleCreationService.CreateModuleAsync(services.Core, new ModuleData { Name = "Inquiry" });
             Assert.That(module.IsNewData, Is.True);
             await ((TextField)module.GetField("Subject")!).SetValueAsync("初めての問い合わせ");
-            var sent = module.GetSubmitData().Add.Single().Fields["Search"] as SemanticSearchFieldData;
-            Assert.That(sent?.Text, Is.EqualTo("件名: 初めての問い合わせ"));
-        }
-
-        [Test]
-        public async Task 文章の列が未設定なら何も送らない_ベクトル列が無くても文章は送る()
-        {
-            var design = CreateDesign();
-            var field = design.Modules.Find("Inquiry")!.Fields.OfType<SemanticSearchFieldDesign>().Single();
-            field.DbColumnText = "";
-            var services = new TestServices(design);
-            var module = await ModuleCreationService.CreateModuleAsync(services.Core, new ModuleData { Name = "Inquiry" });
-            await ((TextField)module.GetField("Subject")!).SetValueAsync("x");
             Assert.That(module.GetSubmitData().Add.Single().Fields.ContainsKey("Search"), Is.False);
-
-            //キーワード検索だけの構成 (ベクトル列なし) でも文章は書く
-            field.DbColumnText = "search_text";
-            field.DbColumnVector = "";
-            field.DbColumnVectorSearch = "";
-            module = await ModuleCreationService.CreateModuleAsync(new TestServices(design).Core, new ModuleData { Name = "Inquiry" });
-            await ((TextField)module.GetField("Subject")!).SetValueAsync("x");
-            Assert.That((module.GetSubmitData().Add.Single().Fields["Search"] as SemanticSearchFieldData)?.Text, Is.EqualTo("件名: x"));
         }
     }
 }

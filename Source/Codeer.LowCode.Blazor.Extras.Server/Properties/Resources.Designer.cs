@@ -212,6 +212,15 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Properties {
                 return ResourceManager.GetString("SemanticSearch_ProviderNotConfigured", resourceCulture);
             }
         }
+
+        /// <summary>
+        ///   A reindex of missing rows is running for module &apos;{0}&apos;. Start the full reindex after it finishes. に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string SemanticSearch_ReindexMissingRunning {
+            get {
+                return ResourceManager.GetString("SemanticSearch_ReindexMissingRunning", resourceCulture);
+            }
+        }
         
         /// <summary>
         ///   Module '{0}' has no SemanticSearchField named '{1}'. に類似しているローカライズされた文字列を検索します。
