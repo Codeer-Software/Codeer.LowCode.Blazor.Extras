@@ -499,8 +499,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
             note.Fields.Add(new SemanticSearchFieldDesign { Name = "Search", DbColumnText = "search_text", DbColumnVector = "search_vector", DbColumnVectorSearch = "search_vector" });
             note.ListLayouts[""] = new ListLayoutDesign();
             _design.AddModule(note);
-            //DbAccessor は StartTransaction の後に開いた接続にだけトランザクションを張る (準備で開いたままの接続で保存すると自動コミットになり、ロールバックが観測できない)。
-            //ホストと同じく保存は新しい DbAccessor (= リクエストごと) で行う
+            //ホストと同じく保存は新しい DbAccessor (= リクエストごと) で行う (準備で開いた接続と混ぜない)
             await _db.DisposeAsync();
             _db = NewDb();
             var data = new ModuleData { Name = "Note" };
