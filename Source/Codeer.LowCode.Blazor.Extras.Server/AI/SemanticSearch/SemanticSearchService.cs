@@ -352,6 +352,10 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
         internal void WarnBulkAddNotIndexed(string moduleName)
             => _logger?.LogWarning("SemanticSearch: rows of '{Module}' were inserted in bulk without an index. Call SemanticSearchService.ApplyAsync(datas) in BulkAddAsync, or run a reindex.", moduleName);
 
+        /// <summary>保存時の索引付けが失敗した (索引の列の書き込み失敗など。保存はロールバックされる)。</summary>
+        internal void LogIndexFailed(Exception e)
+            => _logger?.LogError(e, "SemanticSearch: indexing in the save failed and the save was rolled back.");
+
         /// <summary>
         /// 保存時の埋め込み (まとめて 1 回)。プロバイダ未設定・空文は null。失敗・<see cref="SaveEmbeddingTimeout"/> 超過 (プロバイダ側のタイムアウトも) は
         /// 警告ログを出して全部 null (文章だけ保存し、再索引で埋める)。呼び出し側の cancellationToken の中断だけは投げる。

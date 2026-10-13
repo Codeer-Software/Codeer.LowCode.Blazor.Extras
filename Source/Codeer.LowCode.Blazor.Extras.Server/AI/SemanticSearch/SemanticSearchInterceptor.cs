@@ -24,6 +24,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
     /// 文章と埋め込みベクトルを書き込み専用列だけに書く (同じトランザクション。レコードの更新ではないので更新日時・楽観ロックの版・ExecuteSqlField は動かない)。
     /// 索引の列はサーバーだけが書く: 送信にこのフィールドのデータが載っていても保存の前に捨てる。
     /// 埋め込みの失敗は文章だけ保存して保存を止めないが、索引列の書き込みの失敗は保存の失敗 (DB の失敗は同じトランザクションなので握れない)。
+    /// 失敗は本体のインターセプタの約束どおり結果の ExceptionMessage で返す (例外のまま投げると外側のインターセプタ (監査ログ) には成功に見える)。
     /// 一括 INSERT (DB が採番する行) だけは本体も Id を知らないので、ホストの BulkAddAsync が <see cref="SemanticSearchService.ApplyAsync(IEnumerable{ModuleData}, CancellationToken)"/> で文章を付ける</item>
     /// <item>条件の前処理: 文章だけの意味検索の条件 (<see cref="SemanticMatchCondition.Text"/> あり・Vector 空。画面の検索欄が作る) に、索引付けと同じ埋め込みプロバイダでベクトルを入れる。
     /// 検索の中身 (SQL・権限) は本体と SemanticSearchFieldDesign のまま変えない</item>
@@ -62,15 +63,37 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
             //消える / 付け替わる従属レコードの親は、保存の前に読んで控える (消えた後は読めない・付け替えた後は元の親が分からない)
             var ownedParents = OwnedParents(design);
             var targets = new Targets();
-            if (ownedParents.Count > 0) await AddParentsBeforeSaveAsync(io, ownedParents, transactionData, targets);
+            try
+            {
+                if (ownedParents.Count > 0) await AddParentsBeforeSaveAsync(io, ownedParents, transactionData, targets);
+            }
+            catch (Exception ex) when (ex is not LowCodeAccessDeniedException)
+            {
+                return Fail(transactionData, ex);
+            }
 
             var results = await next();
             if (results.Count != transactionData.Count || results.Any(r => !string.IsNullOrEmpty(r.ExceptionMessage))) return results;
 
-            await CollectTargetsAsync(io, design, ownedParents, targets);
-            WarnBulkAddNotIndexed(design, io.ChangedRecords);
-            if (targets.Count > 0) await IndexAsync(io, design, targets);
+            try
+            {
+                await CollectTargetsAsync(io, design, ownedParents, targets);
+                WarnBulkAddNotIndexed(design, io.ChangedRecords);
+                if (targets.Count > 0) await IndexAsync(io, design, targets);
+            }
+            catch (Exception ex) when (ex is not LowCodeAccessDeniedException)
+            {
+                return Fail(transactionData, ex);
+            }
             return results;
+        }
+
+        //索引付けの失敗 (索引列の書き込み失敗など) は結果の ExceptionMessage で返す (本体がロールバックする)。
+        //例外のまま投げると本体が最外で ExceptionMessage にするので、外側のインターセプタ (監査ログ) からは成功に見える。権限の拒否だけは型のまま外側へ上げる
+        List<ModuleSubmitResult> Fail(List<ModuleSubmitData> transactionData, Exception ex)
+        {
+            service.LogIndexFailed(ex);
+            return transactionData.Select(e => new ModuleSubmitResult { SourceId = e.Id, DestinationId = e.Id, ExceptionMessage = ex.Message }).ToList();
         }
 
         //本体が記録した変更から、作り直す行を決める

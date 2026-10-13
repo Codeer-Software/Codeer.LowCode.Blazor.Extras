@@ -85,8 +85,12 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AuditLog
             var temp = IdFieldData.NewId().Value!;
             var submit = new ModuleSubmitData { ModuleName = "Order", Id = temp, Add = { Row("Order", temp) } };
             Assert.ThrowsAsync<InvalidOperationException>(() => audit.RecordSubmitAsync([submit], () => throw new InvalidOperationException("db down")));
-            //結果が無いので採番 Id は分からない。仮 Id は残さず、モジュールと操作だけが残る (失敗の印はミドルウェアが例外から付ける)
+            //結果が無いので採番 Id は分からない。仮 Id は残さず、モジュールと操作だけが残る
             Assert.That(audit.Event.Targets.Select(t => (t.Module, t.Id, t.Operation)).ToArray(), Is.EqualTo(new[] { ("Order", (string?)null, "Add") }));
+            //失敗の印はここで付ける (内側のインターセプタの例外は本体が ExceptionMessage の結果にするので、ミドルウェアには届かない)
+            Assert.That(audit.Event.Result, Is.EqualTo(AuditResult.Failure));
+            Assert.That(audit.Event.Detail, Is.EqualTo("db down"));
+            Assert.That(audit.ComposeDetail(), Is.EqualTo("Add=1; Update=0; Delete=0; db down"));
         }
 
         [Test]

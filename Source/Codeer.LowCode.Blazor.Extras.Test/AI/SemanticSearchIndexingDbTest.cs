@@ -685,6 +685,107 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
             Assert.That(row["title"]?.ToString(), Is.EqualTo("a"), "保存は戻る");
         }
 
+        sealed class AuditedModuleDataIO : ModuleDataIO
+        {
+            //テンプレートと同じ順: 監査 (外側) → 意味検索 (最後に登録 = 一番内側)
+            public AuditedModuleDataIO(DesignData design, IAuthenticationContext auth, IDbAccessor db, ITemporaryFileManager files, SemanticSearchService semanticSearch)
+                : base(design, auth, db, files)
+            {
+                AddInterceptor(new Codeer.LowCode.Blazor.Extras.Server.AuditLog.AuditIOInterceptor(design, new Codeer.LowCode.Blazor.Extras.Server.AuditLog.AuditLogDatabaseSettings()));
+                AddInterceptor(semanticSearch.Interceptor);
+            }
+        }
+
+        [Test]
+        public async Task 索引の書き込みに失敗した保存は監査ログにも失敗として対象つきで残る()
+        {
+            //索引の UPDATE を CHECK 制約で失敗させる。意味検索が例外のまま投げると、本体が最外で ExceptionMessage にするので監査には成功が残っていた
+            await _db.ExecuteAsync(Ds, "CREATE TABLE notes (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT, search_text TEXT, search_vector TEXT CHECK (search_vector IS NULL))", new());
+            var note = new ModuleDesign { Name = "Note", DataSourceName = Ds, DbTable = "notes", CanCreate = true };
+            note.Fields.Add(new IdFieldDesign { Name = "Id", DbColumn = "id" });
+            note.Fields.Add(new TextFieldDesign { Name = "Title", DisplayName = "題名", DbColumn = "title" });
+            note.Fields.Add(new SemanticSearchFieldDesign { Name = "Search", DbColumnText = "search_text", DbColumnVector = "search_vector", DbColumnVectorSearch = "search_vector" });
+            note.ListLayouts[""] = new ListLayoutDesign();
+            _design.AddModule(note);
+            await _db.DisposeAsync();
+            _db = NewDb();
+
+            var audit = new Codeer.LowCode.Blazor.Extras.Server.AuditLog.AuditContext();
+            Codeer.LowCode.Blazor.Extras.Server.AuditLog.AuditContext.Current = audit;
+            try
+            {
+                var tempId = IdFieldData.NewId();
+                var data = new ModuleData { Name = "Note" };
+                data.Fields["Id"] = tempId;
+                data.Fields["Title"] = new TextFieldData { Value = "新規" };
+                var io = new AuditedModuleDataIO(_design, this, _db, new TemporaryFileManager(_db, [], new List<IFileStorage>()), Indexer());
+                var results = await io.SubmitWithTransactionAsync([new ModuleSubmitData { ModuleName = "Note", Id = tempId.Value!, Add = [data] }]);
+
+                Assert.That(results.Single().ExceptionMessage, Is.Not.Empty);
+                var count = (await _db.QueryAsync(Ds, "SELECT COUNT(*) AS c FROM notes", new())).Single()["c"];
+                Assert.That(Convert.ToInt32(count), Is.EqualTo(0), "保存は戻る");
+                Assert.That(audit.Event.Result, Is.EqualTo(Codeer.LowCode.Blazor.Extras.Server.AuditLog.AuditResult.Failure));
+                Assert.That(audit.Event.Detail, Is.Not.Empty);
+                Assert.That(audit.Event.Targets.Select(t => (t.Module, t.Operation)).ToArray(), Is.EqualTo(new[] { ("Note", "Add") }));
+            }
+            finally
+            {
+                Codeer.LowCode.Blazor.Extras.Server.AuditLog.AuditContext.Current = null;
+            }
+        }
+
+        //外側のインターセプタから見える形を記録する (next() が投げたか・結果で返したか)
+        sealed class OuterObserver : IModuleDataIOInterceptor
+        {
+            public Exception? Thrown { get; private set; }
+            public List<ModuleSubmitResult>? Results { get; private set; }
+            public async Task<List<ModuleSubmitResult>> SubmitAsync(ModuleDataIOInternalAccess io, List<ModuleSubmitData> transactionData, Func<Task<List<ModuleSubmitResult>>> next)
+            {
+                try { return Results = await next(); }
+                catch (Exception ex) { Thrown = ex; throw; }
+            }
+            public Task GetListAsync(ModuleDataIOInternalAccess io, SearchCondition condition, Codeer.LowCode.Blazor.Utils.Paging<ModuleData> result) => Task.CompletedTask;
+        }
+
+        sealed class ObservedModuleDataIO : ModuleDataIO
+        {
+            public OuterObserver Outer { get; } = new();
+            public ObservedModuleDataIO(DesignData design, IAuthenticationContext auth, IDbAccessor db, ITemporaryFileManager files, SemanticSearchService semanticSearch)
+                : base(design, auth, db, files)
+            {
+                AddInterceptor(Outer);
+                AddInterceptor(semanticSearch.Interceptor);
+            }
+        }
+
+        [Test]
+        public async Task 索引の書き込みの失敗は例外でなく結果のExceptionMessageで外側のインターセプタに返る()
+        {
+            //本体のインターセプタの約束 (失敗は結果の ExceptionMessage)。例外のまま投げると外側 (監査ログなど) には成功に見える
+            await _db.ExecuteAsync(Ds, "CREATE TABLE notes (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT, search_text TEXT, search_vector TEXT CHECK (search_vector IS NULL))", new());
+            var note = new ModuleDesign { Name = "Note", DataSourceName = Ds, DbTable = "notes", CanCreate = true };
+            note.Fields.Add(new IdFieldDesign { Name = "Id", DbColumn = "id" });
+            note.Fields.Add(new TextFieldDesign { Name = "Title", DisplayName = "題名", DbColumn = "title" });
+            note.Fields.Add(new SemanticSearchFieldDesign { Name = "Search", DbColumnText = "search_text", DbColumnVector = "search_vector", DbColumnVectorSearch = "search_vector" });
+            note.ListLayouts[""] = new ListLayoutDesign();
+            _design.AddModule(note);
+            await _db.DisposeAsync();
+            _db = NewDb();
+
+            var tempId = IdFieldData.NewId();
+            var data = new ModuleData { Name = "Note" };
+            data.Fields["Id"] = tempId;
+            data.Fields["Title"] = new TextFieldData { Value = "新規" };
+            var io = new ObservedModuleDataIO(_design, this, _db, new TemporaryFileManager(_db, [], new List<IFileStorage>()), Indexer());
+            var results = await io.SubmitWithTransactionAsync([new ModuleSubmitData { ModuleName = "Note", Id = tempId.Value!, Add = [data] }]);
+
+            Assert.That(results.Single().ExceptionMessage, Is.Not.Empty);
+            Assert.That(io.Outer.Thrown, Is.Null, "例外のまま投げない");
+            Assert.That(io.Outer.Results?.Single().ExceptionMessage, Is.Not.Empty, "外側には結果の ExceptionMessage で見える");
+            var count = (await _db.QueryAsync(Ds, "SELECT COUNT(*) AS c FROM notes", new())).Single()["c"];
+            Assert.That(Convert.ToInt32(count), Is.EqualTo(0), "保存は戻る");
+        }
+
         [Test]
         public async Task 文章だけが送信に入っている新規行は読み直して埋め込む_旧結線()
         {
