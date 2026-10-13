@@ -5,13 +5,25 @@
 @using Codeer.LowCode.Blazor.Extras.Properties
 @inherits FieldComponentBase<SemanticSearchField>
 
-@* 検索レイアウトの検索欄: 探したい内容を文章で入れる (埋め込みはサーバーが作る) *@
-<input type="text" class="form-control @(Field.GetValidationClassName())" placeholder="@Resources.SemanticSearch_SearchPlaceholder"
-       @bind:get="Field.SearchText" @bind:set="OnChange" @ref="Element" id="@WebElementId" disabled="@(Field.IsEnabled == false)" style="@Field.GetOwnStyleString()" data-role="semantic-search-text" />
+@* 検索レイアウトの検索欄: 探したい内容を文章で入れる (埋め込みはサーバーが作る)。KeywordSearch ならキーワード欄 (語をすべて含む行に絞る) も出す *@
+<div style="display: grid; gap: 4px;">
+  <input type="text" class="form-control @(Field.GetValidationClassName())" placeholder="@Resources.SemanticSearch_SearchPlaceholder"
+         @bind:get="Field.SearchText" @bind:set="OnChange" @ref="Element" id="@WebElementId" disabled="@(Field.IsEnabled == false)" style="@Field.GetOwnStyleString()" data-role="semantic-search-text" />
+  @if (Field.Design.KeywordSearch)
+  {
+    <input type="text" class="form-control @(Field.GetValidationClassName())" placeholder="@Resources.SemanticSearch_KeywordPlaceholder"
+           @bind:get="Field.KeywordText" @bind:set="OnKeywordChange" id="@(WebElementId + "_keyword")" disabled="@(Field.IsEnabled == false)" style="@Field.GetOwnStyleString()" data-role="semantic-search-keyword" />
+  }
+</div>
 
 @code {
   private async Task OnChange(string? value)
   {
     await Field.SetSearchTextAsync(value);
+  }
+
+  private async Task OnKeywordChange(string? value)
+  {
+    await Field.SetKeywordTextAsync(value);
   }
 }

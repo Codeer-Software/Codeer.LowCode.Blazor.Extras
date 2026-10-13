@@ -101,13 +101,17 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
         }
 
         [Test]
-        public void 最大文字数で切る()
+        public void 最大文字数は埋め込みに渡すときだけ切る_文章は全文()
         {
             var design = CreateDesign("Body");
             var module = design.Modules.Find("Inquiry")!;
             var field = module.Fields.OfType<SemanticSearchFieldDesign>().Single();
             field.MaxTextLength = 7;
-            Assert.That(SemanticSearchText.Build(design, module, Row(), field), Is.EqualTo("本文: 先週の"));
+            var text = SemanticSearchText.Build(design, module, Row(), field);
+            Assert.That(text, Is.EqualTo("本文: 先週の注文が\nまだ届きません。"), "文章 (列に保存する・キーワード検索が当たる) は全文");
+            Assert.That(SemanticSearchText.ForEmbedding(field, text), Is.EqualTo("本文: 先週の"));
+            field.MaxTextLength = 0;
+            Assert.That(SemanticSearchText.ForEmbedding(field, text), Is.EqualTo(text), "0 以下は切らない");
         }
 
         [Test]

@@ -52,19 +52,28 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
         public string GetInstructions(AIChatToolContext context)
         {
             var design = _design();
-            var targets = design == null ? new() : SearchableModules(design);
-            if (targets.Count == 0) return string.Empty;
+            var indexed = design == null ? new() : IndexedModules(design);
+            var targets = SearchableModules(indexed);
+            if (indexed.Count == 0) return string.Empty;
             var sb = new StringBuilder();
-            sb.AppendLine("次のモジュールは意味検索 (search_records) で「内容が似た記録」を探せます (各行を文章にして埋め込みで索引済み):");
-            foreach (var (module, field, _, _) in targets)
+            if (targets.Count > 0)
             {
-                var title = DesignDescriber.Title(design!, module);
-                sb.Append("- ").Append(module.Name);
-                if (!string.IsNullOrEmpty(title) && title != module.Name) sb.Append(" [").Append(title).Append(']');
-                sb.Append(" (文章にしているフィールド: ").Append(string.Join(", ", SemanticSearchText.SourceFields(module, field).Select(n => FieldLabel(module, n)))).AppendLine(")");
+                sb.AppendLine("次のモジュールは意味検索 (search_records) で「内容が似た記録」を探せます (各行を文章にして埋め込みで索引済み):");
+                foreach (var (module, field, _, _) in targets)
+                {
+                    var title = DesignDescriber.Title(design!, module);
+                    sb.Append("- ").Append(module.Name);
+                    if (!string.IsNullOrEmpty(title) && title != module.Name) sb.Append(" [").Append(title).Append(']');
+                    sb.Append(" (文章にしているフィールド: ").Append(string.Join(", ", SemanticSearchText.SourceFields(module, field).Select(n => FieldLabel(module, n)))).AppendLine(")");
+                }
+                sb.AppendLine("- 「似た事例は」「〜のような問い合わせ」「〜について書かれた記録」のように内容や意味で探す質問は、SQL の LIKE ではなく search_records を使ってください。件数や合計などの集計は SQL です。");
+                sb.AppendLine("- search_records の結果には Id・詳細ページの URL・文章が付きます。行を挙げるときは URL で Markdown リンクを付け、score が低いものは「近いものは見つからなかった」と正直に伝えてください。");
             }
-            sb.AppendLine("- 「似た事例は」「〜のような問い合わせ」「〜について書かれた記録」のように内容や意味で探す質問は、SQL の LIKE ではなく search_records を使ってください。件数や合計などの集計は SQL です。");
-            sb.AppendLine("- search_records の結果には Id・詳細ページの URL・文章が付きます。行を挙げるときは URL で Markdown リンクを付け、score が低いものは「近いものは見つからなかった」と正直に伝えてください。");
+            //語そのもの (品番・人名) で探すときは文章の列に LIKE (全項目とリンクの表示名を含む 1 列なので、項目を当てずっぽうに選んだり JOIN を書いたりしなくてよい)。
+            //これは埋め込みもベクトル検索も使わないので、意味検索できないモジュール (対応しない DB・プロバイダ無し) にも案内する
+            sb.AppendLine("- 品番・人名・番号のように語そのもので探すときは、execute_sql で文章の列に LIKE を掛けてください。文章の列は文章にした全項目 (リンク先の表示名も) を「表示名: 値」で含む 1 列なので、どの項目に入っているか分からなくても横断して当たります (語ごとに LIKE を AND): "
+                + string.Join("、", indexed.Select(t => $"{t.Module.Name} = 表 {t.Module.DbTable} の列 {t.Field.DbColumnText}")) + "。");
+            if (targets.Count == 0) return sb.ToString();
 
             //同じ表は execute_sql の中でも距離計算できる ({embed:…} を質問の埋め込みに置き換える)
             sb.AppendLine("- これらの表はベクトル型の列を持ち、execute_sql の SQL の中でも意味の近さで絞り込み・並べ替えができます。SQL に `{embed:探したい内容}` と書くと、実行前にその内容の埋め込みベクトルに置き換わります (自分で数値を書かないこと)。WHERE や JOIN・集計と組み合わせたいときはこちら、単に似た記録を挙げるだけなら search_records を使ってください:");
@@ -128,13 +137,18 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
             }
         }
 
-        //意味検索できるモジュール = SemanticSearchField (3 列あり) を持ち、表があり、検索に使えるデータソース (下記) があり、それがベクトル検索に対応する DB のもの。
-        //データソース種別は DataSource 定義から見る (接続はしない)。DataSourceName は検索に使う接続 (execute_sql の dataSource と同じ名前)
+        //意味検索できるモジュール = 索引のあるモジュールのうち、埋め込みプロバイダがあり (appsettings 未設定なら使えない = ツールを出さない)、ベクトル検索に対応する DB のもの
         List<(ModuleDesign Module, SemanticSearchFieldDesign Field, DataSourceType Type, string DataSourceName)> SearchableModules(DesignData design)
+            => SearchableModules(IndexedModules(design));
+
+        List<(ModuleDesign Module, SemanticSearchFieldDesign Field, DataSourceType Type, string DataSourceName)> SearchableModules(List<(ModuleDesign Module, SemanticSearchFieldDesign Field, DataSourceType Type, string DataSourceName)> indexed)
+            => _embeddingProvider() == null ? new() : indexed.Where(t => SemanticSearchVector.SupportsDbSearch(t.Type)).ToList();
+
+        //索引のあるモジュール = SemanticSearchField (3 列あり) を持ち、表があり、検索に使えるデータソース (下記) があるもの。文章の列への LIKE はここまでで使える (DB 種別・プロバイダを問わない)。
+        //データソース種別は DataSource 定義から見る (接続はしない)。DataSourceName は検索に使う接続 (execute_sql の dataSource と同じ名前)
+        List<(ModuleDesign Module, SemanticSearchFieldDesign Field, DataSourceType Type, string DataSourceName)> IndexedModules(DesignData design)
         {
             var result = new List<(ModuleDesign, SemanticSearchFieldDesign, DataSourceType, string)>();
-            //埋め込みプロバイダが無ければ (appsettings 未設定) 意味検索は使えない = ツールを出さない
-            if (_embeddingProvider() == null) return result;
             var all = design.Modules.GetModuleNames().Select(design.Modules.Find).Where(m => m != null && !string.IsNullOrEmpty(m.DbTable)).Select(m => m!).ToList();
             var candidates = new List<(ModuleDesign Module, SemanticSearchFieldDesign Field)>();
             foreach (var module in all)
@@ -155,7 +169,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
                     var dataSourceName = ResolveDataSource(db, module, aliases);
                     if (dataSourceName == null) continue;
                     var type = db.GetDataSource(dataSourceName)?.DataSourceType;
-                    if (type != null && SemanticSearchVector.SupportsDbSearch(type.Value)) result.Add((module, field, type.Value, dataSourceName));
+                    if (type != null) result.Add((module, field, type.Value, dataSourceName));
                 }
             }
             finally

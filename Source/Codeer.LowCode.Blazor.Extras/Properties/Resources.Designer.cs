@@ -2876,6 +2876,33 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
         }
         
         /// <summary>
+        ///   Keyword search box に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string SemanticSearchFieldKeywordSearch {
+            get {
+                return ResourceManager.GetString("SemanticSearchFieldKeywordSearch", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Keywords (space separated, all must match) に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string SemanticSearch_KeywordPlaceholder {
+            get {
+                return ResourceManager.GetString("SemanticSearch_KeywordPlaceholder", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Semantic search condition for {0} has neither text nor keywords. に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string SemanticSearch_ConditionEmpty {
+            get {
+                return ResourceManager.GetString("SemanticSearch_ConditionEmpty", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Search: max distance に類似しているローカライズされた文字列を検索します。
         /// </summary>
         internal static string SemanticSearchFieldSearchMaxDistance {
@@ -2935,6 +2962,24 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
         internal static string SemanticSearchCheck_FieldsNotLoadedFormat {
             get {
                 return ResourceManager.GetString("SemanticSearchCheck_FieldsNotLoadedFormat", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   The fields {0} used for the semantic search text have a read condition, but this field ({1}) does not. The text column contains the values of the source fields. Remove {0} from SourceFields, or give {1} a read condition too (after removing, run Reindex() to rebuild the text of existing records). に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string SemanticSearchCheck_SourceFieldsRestrictedFormat {
+            get {
+                return ResourceManager.GetString("SemanticSearchCheck_SourceFieldsRestrictedFormat", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   The read condition of the fields {0} used for the semantic search text depends on row values. A read condition on this field ({1}) cannot replace it (the permission check of a search condition has no row). Remove {0} from SourceFields and run Reindex() to rebuild the text of existing records. に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string SemanticSearchCheck_SourceFieldsRowConditionFormat {
+            get {
+                return ResourceManager.GetString("SemanticSearchCheck_SourceFieldsRowConditionFormat", resourceCulture);
             }
         }
         

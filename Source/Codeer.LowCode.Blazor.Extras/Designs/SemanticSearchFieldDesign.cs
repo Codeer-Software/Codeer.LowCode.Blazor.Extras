@@ -19,6 +19,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
     /// サーバーの SemanticSearchService がその文章の埋め込みベクトルを付けて、2 つの書き込み専用列に保存する。
     /// AI チャット (RawDataAccessAgent) は DB のベクトル検索 (pgvector / SQL Server 2025) でこの索引から「似た記録」を探す (search_records)。
     /// 距離計算は DB が行うので、ベクトル検索に対応しない DB (SQLite 等) のモジュールは意味検索の対象にならない。
+    /// 同じ文章の列への部分一致がキーワード検索 (<see cref="KeywordSearch"/> / <see cref="SemanticMatchCondition.Keywords"/>)。
     /// </summary>
     [ToolboxIcon(PackIconMaterialKind = "TextSearch")]
     [Designer(DisplayName = "$SemanticSearchField")]
@@ -29,6 +30,8 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         private const int CodeColumnsRequired = 1;
         private const int CodeFieldsNotLoaded = 2;
         private const int CodeSearchHasNoEffect = 3;
+        private const int CodeSourceFieldsRestricted = 4;
+        private const int CodeSourceFieldsRowCondition = 5;
 
         /// <summary>文章にするフィールド (同じモジュール)。空なら DB 列を持つ入力フィールド全部 (Id・論理削除・楽観ロック・パスワード・作成/更新の記録は除く)。</summary>
         [Designer(Index = 2, CandidateType = CandidateType.Field, DisplayName = "$SemanticSearchFieldSourceFields")]
@@ -50,7 +53,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         [Designer(Index = 5, CandidateType = CandidateType.DbColumn, DisplayName = "$SemanticSearchFieldDbColumnVectorSearch")]
         public string DbColumnVectorSearch { get; set; } = string.Empty;
 
-        /// <summary>文章の最大文字数 (超えた分は切り捨て。埋め込みモデルの入力上限の歯止め)。</summary>
+        /// <summary>埋め込みに渡す文章の最大文字数 (超えた分は埋め込みに渡さない。埋め込みモデルの入力上限の歯止め)。文章の列には全文を保存する (キーワード検索は全文に当たる)。</summary>
         [Designer(Index = 6, DisplayName = "$SemanticSearchFieldMaxTextLength")]
         public int MaxTextLength { get; set; } = 8000;
 
@@ -63,6 +66,14 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         /// <summary>スクリプトの Reindex / ReindexMissing で起こした再索引が終わった (成功・失敗・中断) ときに呼ぶスクリプト。結果は ReindexProcessed / ReindexError で見る。</summary>
         [Designer(Index = 7, DisplayName = "$SemanticSearchFieldOnReindexCompleted", CandidateType = CandidateType.ScriptEvent), ScriptMethod]
         public string OnReindexCompleted { get; set; } = string.Empty;
+
+        /// <summary>
+        /// 検索レイアウトの検索欄にキーワード欄を出す。空白区切りの語をすべて含む行 (文章の列への部分一致の AND) に絞る。埋め込みを使わないのでどの DB でも動く。
+        /// 文章 (意味検索) と一緒に入れると、絞ったうえで近い順になる。
+        /// AI チャット (ModuleDataAccess の filters にこの項目の Like) と API (<see cref="SemanticMatchCondition.Keywords"/>) からは、この設定に関係なく使える。
+        /// </summary>
+        [Designer(Index = 9, DisplayName = "$SemanticSearchFieldKeywordSearch")]
+        public bool KeywordSearch { get; set; }
 
         /// <summary>3 つの列 (文章 / ベクトル / ベクトル検索用) がすべて設定されているか (索引と検索の対象になる条件)。</summary>
         internal bool HasColumns => !string.IsNullOrWhiteSpace(DbColumnText) && !string.IsNullOrWhiteSpace(DbColumnVector) && !string.IsNullOrWhiteSpace(DbColumnVectorSearch);
@@ -94,6 +105,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
                 context.GetScriptMethodAttribute(GetType(), nameof(OnReindexCompleted))).AddTo(result);
             result.AddRange(CheckSourceFieldsLoaded(context));
             result.AddRange(CheckSearchHasEffect(context));
+            result.AddRange(CheckSourceFieldsReadRestriction(context));
             return result;
         }
 
@@ -130,6 +142,56 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         }
 
         /// <summary>
+        /// 文章の列は対象フィールドの値を全部含むので、このフィールドを読める人は対象フィールドの値も検索 (キーワードの部分一致) で知ることができる。
+        /// :4 = 対象フィールドに PermissionField の読み取り条件があるのに、このフィールド自身には無い構成 (有無だけ。条件の中身は見ない)。直し方は、その項目を SourceFields から外すか、このフィールドにも読み取り条件を付けること。
+        /// :5 = 対象フィールドの読み取り条件が行の値で決まる構成。このフィールドの読み取り条件は行を持たない判定なので代わりにならない。直し方は SourceFields から外すこと。
+        /// どちらも、外したら既存の行の文章に値が残るので再索引が要る (文言で案内)。
+        /// </summary>
+        IEnumerable<DesignCheckInfo> CheckSourceFieldsReadRestriction(DesignCheckContext context)
+        {
+            var module = context.GetModuleDesign();
+            if (module == null) yield break;
+            var rules = module.Fields.OfType<PermissionFieldDesign>().Where(p => HasCondition(p.ReadCondition.Condition)).ToList();
+            if (rules.Count == 0) yield break;
+            var sources = SemanticSearchText.SourceFields(module, this).ToList();
+            //(同じ規則がこのフィールドも縛るなら、本体の静的判定でその経路の人は検索ごと拒否される = 漏れないので対象外。本体 PermissionFieldDesign:4 が案内する)
+            var rowRestricted = sources.Where(s => rules.Any(p => Targets(p, s) && !Targets(p, Name) && ReferencesRowData(p.ReadCondition.Condition))).ToList();
+            if (rowRestricted.Count > 0)
+            {
+                yield return new FieldDesignCheckInfo
+                {
+                    Code = DesignCheckCode.Create(typeof(SemanticSearchFieldDesign), CodeSourceFieldsRowCondition),
+                    Location = new FieldDesignDataLocation { Module = context.OwnerModule, Field = Name, Member = nameof(SourceFields) },
+                    Message = string.Format(Properties.Resources.SemanticSearchCheck_SourceFieldsRowConditionFormat, string.Join(", ", rowRestricted), Name),
+                };
+            }
+            if (rules.Any(p => Targets(p, Name))) yield break;
+            var restricted = sources.Where(s => !rowRestricted.Contains(s) && rules.Any(p => Targets(p, s))).ToList();
+            if (restricted.Count == 0) yield break;
+            yield return new FieldDesignCheckInfo
+            {
+                Code = DesignCheckCode.Create(typeof(SemanticSearchFieldDesign), CodeSourceFieldsRestricted),
+                Location = new FieldDesignDataLocation { Module = context.OwnerModule, Field = Name, Member = nameof(SourceFields) },
+                Message = string.Format(Properties.Resources.SemanticSearchCheck_SourceFieldsRestrictedFormat, string.Join(", ", restricted), Name),
+            };
+        }
+
+        //条件が行の値を参照するか (本体 PermissionFieldDesign と同じ判定: CurrentUser 以外の項目を見る葉があるか)
+        static bool ReferencesRowData(MatchConditionBase? condition)
+            => condition is IFieldMatchCondition field && !field.SearchTargetVariable.StartsWith(SystemFieldNames.CurrentUser + ".")
+                || condition is MultiMatchCondition multi && multi.Children.Any(ReferencesRowData);
+
+        //条件があるか (本体の IsEmpty と同じく、葉の無い空のグループは無いものとみなす)
+        static bool HasCondition(MatchConditionBase? condition)
+            => condition is MultiMatchCondition multi ? multi.Children.Any(HasCondition) : condition != null;
+
+        //PermissionField の対象にそのフィールドが入るか (除外モードは「指定した名前以外のすべて」で、本体と同じく Id / 楽観ロックは常に対象外)
+        static bool Targets(PermissionFieldDesign rule, string fieldName)
+            => rule.IsExcludeMode
+                ? !rule.TargetFields.Contains(fieldName) && fieldName != SystemFieldNames.Id && fieldName != SystemFieldNames.OptimisticLocking
+                : rule.TargetFields.Contains(fieldName);
+
+        /// <summary>
         /// 検索レイアウトに置いたのに、文章を入れても一覧の見た目が変わらない構成を指摘する。距離の上限 (<see cref="SearchMaxDistance"/>) が空だと
         /// 索引のある行に絞られるだけなので、その検索レイアウトを使う一覧の並びにこのフィールドが無ければ、検索欄の文章は結果に効かない。
         /// 検索レイアウトを使う一覧は、ページの一覧 (PageFrame のリンク等)・SearchField の結果の一覧・LinkField の検索ダイアログ。
@@ -137,7 +199,8 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         IEnumerable<DesignCheckInfo> CheckSearchHasEffect(DesignCheckContext context)
         {
             var module = context.GetModuleDesign();
-            if (module == null || SearchMaxDistance != null) yield break;
+            //キーワード欄を出す構成 (ベクトル検索できない DB でキーワードだけ使う設計を含む) では、文章の欄が効かなくても指摘しない (直す手が無い)
+            if (module == null || SearchMaxDistance != null || KeywordSearch) yield break;
             var layouts = new HashSet<string>();
             foreach (var (layoutName, layout) in module.SearchLayouts)
             {
@@ -199,26 +262,42 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         public List<string> GetDependencyFields() => SourceFields.ToList();
 
         /// <summary>
-        /// 意味検索の条件 (<see cref="SemanticMatchCondition"/>) を WHERE にする: 索引のある行 (+ 距離の上限)。距離計算は DB (pgvector / SQL Server 2025)。
+        /// 意味検索の条件 (<see cref="SemanticMatchCondition"/>) を WHERE にする: ベクトルがあれば索引のある行 (+ 距離の上限。距離計算は DB = pgvector / SQL Server 2025)、
+        /// キーワードがあれば文章の列が語をすべて含む行 (語ごとの LIKE の AND。どの DB でも動く)。両方あれば AND。
         /// 本体の一覧検索がこの断片を自分の WHERE に入れるので、行の条件・論理削除・権限はそのまま効く。
         /// </summary>
         public string CreateWhere(FieldSqlMatchCondition condition, SqlConditionContext context)
         {
             var semantic = ToSemantic(condition);
-            var where = $"{context.Column(DbColumnVectorSearch)} is not null";
-            if (semantic.MaxDistance != null) where += $" and {Distance(semantic, context)} <= {context.AddParameter(semantic.MaxDistance.Value)}";
-            return where;
+            var parts = new List<string>();
+            if (semantic.Vector.Length > 0)
+            {
+                parts.Add($"{context.Column(DbColumnVectorSearch)} is not null");
+                if (semantic.MaxDistance != null) parts.Add($"{Distance(semantic, context)} <= {context.AddParameter(semantic.MaxDistance.Value)}");
+            }
+            //語ごとの部分一致 (パターン・エスケープは本体の Like と同じ)
+            foreach (var term in SemanticSearchKeywords.Split(semantic.Keywords))
+                parts.Add(context.Like(DbColumnText, term));
+            return parts.Count == 1 ? parts[0] : $"({string.Join(" and ", parts)})";
         }
 
-        /// <summary>近い順 (コサイン距離の昇順) に並べる式。</summary>
+        /// <summary>近い順 (コサイン距離の昇順) に並べる式。キーワードだけの条件 (ベクトル無し) では並べる基準が無いので null。</summary>
         public string? CreateOrderBy(FieldSqlMatchCondition condition, SqlConditionContext context)
-            => Distance(ToSemantic(condition), context);
+        {
+            var semantic = ToSemantic(condition);
+            return semantic.Vector.Length == 0 ? null : Distance(semantic, context);
+        }
 
         SemanticMatchCondition ToSemantic(FieldSqlMatchCondition condition)
         {
             if (condition is not SemanticMatchCondition semantic || !HasColumns)
                 throw LowCodeException.Create(Properties.Resources.SemanticSearch_ConditionNotSupported, Name);
-            if (semantic.Vector.Length == 0) throw LowCodeException.Create(Properties.Resources.SemanticSearch_VectorRequired, Name);
+            if (semantic.Vector.Length == 0)
+            {
+                //文章があるのにベクトルが無い = サーバーの前処理 (Interceptor) が結線されていない
+                if (!string.IsNullOrWhiteSpace(semantic.Text)) throw LowCodeException.Create(Properties.Resources.SemanticSearch_VectorRequired, Name);
+                if (SemanticSearchKeywords.Split(semantic.Keywords).Count == 0) throw LowCodeException.Create(Properties.Resources.SemanticSearch_ConditionEmpty, Name);
+            }
             return semantic;
         }
 

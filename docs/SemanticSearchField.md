@@ -6,9 +6,11 @@
 - サーバーがその文章の**埋め込みベクトル** (embedding) を付け、書き込み専用の DB カラムに保存する
 - AI チャット ([AIChatField](AIChatField.md) の `RawDataAccessAgent`) が `search_records` ツールで、**DB のベクトル検索** (PostgreSQL の pgvector / SQL Server 2025 の VECTOR 型) を使って「似た事例」「〜のような問い合わせ」のように内容で探す質問に答える
 
-距離計算は DB が行います。ベクトル検索に対応しない DB (SQLite / MySQL / Oracle) のモジュールでは意味検索は使えません (索引の保存はどの DB でもできますが、検索の対象になりません)。
+距離計算は DB が行います。ベクトル検索に対応しない DB (SQLite / MySQL / Oracle) のモジュールでは意味検索は使えません (索引の保存はどの DB でもできますが、意味検索の対象になりません。キーワード検索 (`KeywordSearch`) はどの DB でも使えます)。
 
 SQL の集計 (件数・合計) は従来どおり `execute_sql`、内容で探すのは `search_records`、と AI が使い分けます。
+
+同じ文章の列で**キーワード検索** (語をすべて含む行に絞る。埋め込み不要・どの DB でも動く) もできます ([キーワードで絞る](#キーワードで絞る-keywordsearch))。
 
 ## 機能
 
@@ -37,8 +39,9 @@ SQL の集計 (件数・合計) は従来どおり `execute_sql`、内容で探�
 | DbColumnText | string | ○ | 文章を保存する DB カラム名 (書き込み専用) |
 | DbColumnVector | string | ○ | ベクトルを保存する DB カラム名 (書き込み専用。`[0.1,-0.2,…]` の JSON 配列テキスト) |
 | DbColumnVectorSearch | string | ○ | DB のベクトル検索で距離計算に使うベクトル型の列 (後述。PostgreSQL は `DbColumnVector` をキャストする生成列、SQL Server は `DbColumnVector` と同じ列) |
-| MaxTextLength | int | | 文章の最大文字数 (既定 8000。超えた分は切り捨て。埋め込みモデルの入力上限の歯止め) |
+| MaxTextLength | int | | 埋め込みに渡す文章の最大文字数 (既定 8000。超えた分は埋め込みに渡さない。埋め込みモデルの入力上限の歯止め)。文章の列には全文が入るので、キーワード検索は全文に当たります |
 | SearchMaxDistance | double? | | 検索レイアウトの検索欄で探すときのコサイン距離の上限。空なら距離では絞らない ([画面の検索欄から探す](#画面の検索欄から探す-検索レイアウトに置く)) |
+| KeywordSearch | bool | | 検索レイアウトの検索欄にキーワード欄も出す ([キーワードで絞る](#キーワードで絞る-keywordsearch)) |
 
 3 つのカラムはすべて必要です (欠けるとデザインチェック `SemanticSearchFieldDesign:1`)。実テーブルに存在するかもチェックされます。
 
@@ -77,6 +80,8 @@ SQL の集計 (件数・合計) は従来どおり `execute_sql`、内容で探�
   ```json
   { "DbColumnText": "search_text", "DbColumnVector": "search_vector", "DbColumnVectorSearch": "search_vector" }
   ```
+
+ベクトル検索に対応しない DB (SQLite / MySQL / Oracle) でキーワード検索だけ使うときも列は 3 つ必要です。`DbColumnVectorSearch` は `DbColumnVector` と同じ列名 (文字列の列) でかまいません。
 
 ## モジュール JSON 例
 
@@ -221,21 +226,43 @@ condition.SortConditions.Add(new SortCondition { Variable = "Search.Value" });  
 var rows = await moduleDataIO.GetListAsync(condition, 0);
 ```
 
-- 索引の項目 (SemanticSearchField) を読めないユーザー (PermissionField) は拒否されます。距離計算は DB なので、PostgreSQL (pgvector) / SQL Server 2025 のモジュールだけです (他の DB では例外)
+- 索引の項目 (SemanticSearchField) を読めないユーザー (PermissionField) は拒否されます。この項目の読み取り条件には CurrentUser を参照する条件を使ってください (検索条件の権限判定は行を持たないので、行データを参照する条件を付けるとこの項目での検索は拒否されます。デザインチェック `PermissionFieldDesign:4` が指摘します)。距離計算は DB なので、PostgreSQL (pgvector) / SQL Server 2025 のモジュールだけです (他の DB では例外)
+- `Keywords` (空白区切りの語) を入れると、文章の列がすべての語を含む行に絞ります (語ごとの LIKE の AND)。ベクトルと一緒なら絞ったうえで近い順、`Keywords` だけならどの DB でも動きます ([キーワードで絞る](#キーワードで絞る-keywordsearch))
 - この条件はサーバーで実行する一覧検索だけのものです。設計に保存する条件 (権限の条件・ListField / LinkField の条件) には置けません (デザインチェックが指摘します)
 - ベクトルは呼び出し側が作って入れるか、`Text` (文章) だけを入れてサーバーの前処理 (`SemanticSearchService.ConditionInterceptor`) に埋めさせます (画面の検索欄はこちら)
 - AI チャットでは `ModuleDataAccessAgent` に `semanticSearch` を渡すと、この条件で検索する `search_records` が付きます ([AIChatField](AIChatField.md))
 
 ### 画面の検索欄から探す (検索レイアウトに置く)
 
-検索レイアウトに SemanticSearchField を置くと、文章の入力欄 (「内容で探す」) が出ます。文章を入れて検索すると、一覧はその内容に近い行に絞られます (権限つきの検索と同じ仕組みで、行の条件・項目の読み取り権限が効きます)。
+検索レイアウトに SemanticSearchField を置くと、文章の入力欄 (「内容で探す」) が出ます。文章を入れて検索すると、一覧はその内容に近い行に絞られます (権限つきの検索と同じ仕組みで、行の条件と、このフィールド自身の読み取り権限が効きます)。
 
 - **近い順に並べるには、一覧の並び (ListField の SearchCondition の SortConditions) に `Search.Value` を入れておきます** (例: `[Search.Value 昇順, Subject 昇順]`)。文章が空のときはこの並びは飛ばされるので、普段は次の並び (件名順) になります。列ヘッダでの並べ替えも普段どおり使えます
 - 距離の上限 `SearchMaxDistance` (コサイン距離。0 = 同じ向き〜2) を設定すると、遠い行は出ません。空なら全行 (索引のある行) が対象で、並びだけが変わります
-- 距離の上限が空で、一覧の並びにも `Search.Value` が無いと、文章を入れても一覧は変わりません。デザインチェックが指摘します (`SemanticSearchFieldDesign:3`)
+- 距離の上限が空で、一覧の並びにも `Search.Value` が無いと、文章を入れても一覧は変わりません。デザインチェックが指摘します (`SemanticSearchFieldDesign:3`。`KeywordSearch` が true のときは指摘しません = キーワードだけで使う構成のため)
 - 文章を埋め込みにするのはサーバーです。ホストの `CustomizedModuleDataIO` のコンストラクタで `AddInterceptor(SemanticSearchIndex.Service.ConditionInterceptor)` を登録してください (テンプレートは登録済み)。登録していないと「埋め込みベクトルがありません」のエラーになります
 - 集計 (CrossTabField・集計チャート) を表示先にした検索でも同じ条件で絞れますが、近い順の並びは集計には関係しません
 - メモリ内ページング (`IsInMemoryPaging`) の一覧では、列ヘッダで並べ替えるとメモリ上で並べ直すので近い順は失われます
+
+### キーワードで絞る (KeywordSearch)
+
+意味検索は「どう書いてあるか分からないが内容は分かる」ときの道具で、品番・人名・番号のように**語そのもの**で探すのには向きません (似た番号の行が混ざる・0 件になりません)。
+文章の列には対象フィールドの値がそのまま入っているので、そこに部分一致を掛ければキーワード検索になります。`KeywordSearch` を `true` にすると、検索レイアウトの検索欄に**キーワード欄**が加わります。
+
+- 空白区切りの語を**すべて含む行**に絞ります (語ごとの部分一致の AND。語の順は問わない)。`%` `_` などは文字として扱います
+- 対象フィールドを横断します。リンクの表示名 (得意先名など) や候補値の表示名も文章に入っているので当たります (リンク先やタグ付けのモジュールの閲覧条件は見ません。そのモジュールを読めない人にも表示名で当たります)
+- **読み取り権限**: 検索できるかはこのフィールド自身の読み取り権限で決まります (他のフィールドと同じ)。文章の列には対象フィールドの値がそのまま入るので、読ませたくない項目は `SourceFields` に入れないでください。入れるなら、このフィールドにも同じ読み取り条件 (CurrentUser で決まるもの) を付けてください。行の値で決まる条件の項目は `SourceFields` から外してください (デザインチェック: 対象フィールドに読み取り条件があるのにこのフィールドに無い構成は `SemanticSearchFieldDesign:4`、行の値で決まる条件の項目は `:5`。`:4` は条件の有無だけを見ます。同じ条件にするのは設計者の責任です。行の値で決まる条件の規則がこのフィールドも対象にしているときは代わりに本体の `PermissionFieldDesign:4` が出ます (その規則の対象からこのフィールドを外すと `:5` が出るので、その項目を `SourceFields` から外してください))
+- 埋め込みは使いません。ベクトル検索に対応しない DB (SQLite / MySQL / Oracle) のモジュールや埋め込みプロバイダの無い構成でもキーワード検索は使えます (列は 3 つとも必要です)。その構成でも文章の欄 (「内容で探す」) は出ます。入れるとプロバイダ未設定または DB 非対応のエラーになります
+- 文章 (意味検索) とキーワードを両方入れると、キーワードで絞ったうえで近い順になります。キーワードだけなら一覧の普段の並びです
+- 大文字小文字・全角半角・かな種の扱いは文章の列の照合順序で決まります (SQL Server の既定 `Japanese_CI_AS` と MySQL の既定は区別しない、PostgreSQL / Oracle は区別する、SQLite は ASCII の大文字小文字だけ区別しない)。文章には「表示名: 値」の表示名も入っているので、項目名と同じ語は全行に当たります
+- 速さは LIKE の全走査です。PostgreSQL で行数が多ければ文章の列に pg_bigm (2 文字から索引が効く) か pg_trgm の GIN インデックスを張ると、同じ検索がインデックスで走ります
+
+```sql
+-- PostgreSQL: キーワード検索を速くする (任意)
+CREATE EXTENSION IF NOT EXISTS pg_bigm;
+CREATE INDEX inquiries_search_text_bigm ON inquiries USING gin (search_text gin_bigm_ops);
+```
+
+AI チャット (`ModuleDataAccessAgent`) からは、`find_records` / `aggregate_records` / `cross_tab` / `search_records` の filters にこの項目の `Like` でキーワードを渡すと同じ絞り込みになります (`KeywordSearch` の設定に関係なく使えます。AI には describe_module と手順の説明で案内されます)。API からは `SemanticMatchCondition.Keywords` です。生 SQL の `RawDataAccessAgent` には「語そのもので探すときは文章の列に LIKE」と案内されます (列名つき。埋め込みプロバイダやベクトル検索に対応する DB が無くても)。
 
 ### 4. 既存データに一括でベクトルを付ける (再索引)
 
@@ -247,7 +274,7 @@ var rows = await moduleDataIO.GetListAsync(condition, 0);
 2. サーバーの結線 (1.〜3.) と埋め込みプロバイダの設定を入れてデプロイする
 3. 管理用のページの ButtonField から `Reindex()` を 1 回実行する → 既存の全行にベクトルが付き、AI チャットの `search_records` で探せるようになる
 
-同じ操作は、埋め込みモデルを変えたとき (次元が変わるので列を作り直してから全行) と、埋め込みに失敗して NULL のままの行を埋めるとき (`ReindexMissing()`) にも使います。ButtonField を管理用のページに置き、OnClick に書くだけです。
+同じ操作は、埋め込みモデルを変えたとき (次元が変わるので列を作り直してから全行)、`SourceFields` や対象フィールドの表示名を変えたとき (外した項目の値は既存の行の文章に残るので、外したときは必須)、埋め込みに失敗して NULL のままの行を埋めるとき (`ReindexMissing()`) にも使います。ButtonField を管理用のページに置き、OnClick に書くだけです。
 
 ```csharp
 // ButtonField の OnClick
@@ -274,6 +301,7 @@ void Search_OnReindexCompleted()
 | `ReindexProcessed` / `ReindexTotal` | 書き直した行数 / 対象行数 (走っている間は途中経過) |
 | `ReindexError` | 最後の再索引のエラー (成功なら空。中断も文言が入る) |
 | `Text` | 今の行を索引用の文章にしたもの (確認用。Submit で送られるのと同じ規則。3 つの列が未設定なら空) |
+| `SearchText` / `KeywordText` | 検索レイアウトの文章の欄 / キーワード欄の値 (スクリプトで設定すれば、欄を出していなくても条件に入る) |
 
 - スクリプトから `Search` を参照するには、SemanticSearchField がそのレイアウトの `DataOnlyFields` (またはレイアウト) に入っている必要があります (UI が無いので DataOnlyFields が自然です)
 - 誰が起こせるかは権限で決まります。API はその SemanticSearchField を今のユーザーがユーザー権限だけで読めるとき (アプリアクセス条件・モジュールの UserReadCondition・PermissionField) だけ受け付け、行の読み書きは実行ユーザーの ModuleDataIO で行います (読める行だけ・書ける行だけ)。ボタンを置くページの UserReadCondition でも絞れます
@@ -309,7 +337,8 @@ Example (`Source/Example/Extras`) には索引付け (`Services/CustomizedModule
 
 ## 注意事項
 
-- 意味検索できるのは PostgreSQL (pgvector 拡張) と SQL Server 2025 のデータソースだけです。SQLite / MySQL / Oracle のモジュールに置いても索引は保存されますが、AI チャットの検索対象にはなりません
+- 意味検索できるのは PostgreSQL (pgvector 拡張) と SQL Server 2025 のデータソースだけです。SQLite / MySQL / Oracle のモジュールに置いても索引は保存されますが、AI チャットの意味検索 (search_records) の対象にはなりません (キーワードの絞り込みは使えます)
+- 0.20 以前からの移行: 文章の列には全文が入るようになりました (0.20 までは `MaxTextLength` で切っていました。今は埋め込みに渡す分だけ切ります)。列を長さ制限つきの型で作っていたら制限の無い型 (TEXT / NVARCHAR(MAX)) に広げてください (超えると保存が失敗します)。既存の行の文章は切られたままなので、全文にキーワードを当てたいなら `Reindex()` を一度流してください
 - 埋め込みモデルを変えたら (次元が変わるので) ベクトル列を作り直して全行の再索引が必要です
 - 文章は AI (プロバイダ) に送られます。個人情報などを索引に入れたくない場合は `SourceFields` で対象を絞ってください ([AI に送られるデータ](AIChatField.md#ai-に送られるデータ))
 - 文章の列は AI 向けの索引で、人が読む前提の列ではありません。画面に出すなら元のフィールドを使ってください

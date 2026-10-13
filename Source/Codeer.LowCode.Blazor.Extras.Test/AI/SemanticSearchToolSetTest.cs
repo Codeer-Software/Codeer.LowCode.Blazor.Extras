@@ -68,6 +68,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
         public void 説明には意味検索できるモジュールと文章にしたフィールドとDBのベクトル列が出る()
         {
             var text = ToolSet(CreateDesign()).GetInstructions(Context());
+            Assert.That(text, Does.Contain("語そのもの").And.Contain("Inquiry = 表 inquiries の列 search_text"), "キーワードは文章の列への LIKE と案内する");
             Assert.That(text, Does.Contain("Inquiry [問い合わせ]").And.Contain("件名, 本文").And.Contain("search_records"));
             Assert.That(text, Does.Contain("inquiries").And.Contain("search_vector_v").And.Contain("{embed:").And.Contain("<=>"), "execute_sql で使うベクトル列と pgvector の書き方");
             Assert.That(text, Does.Not.Contain("Plain"));
@@ -84,18 +85,30 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
         }
 
         [Test]
-        public void ベクトル検索に対応しないDBのモジュールは意味検索の対象にならない()
+        public void ベクトル検索に対応しないDBのモジュールは意味検索の対象にならない_文章の列へのLIKEだけ案内する()
         {
             foreach (var type in new[] { DataSourceType.SQLite, DataSourceType.MySQL, DataSourceType.Oracle })
             {
                 var toolSet = ToolSet(CreateDesign(), type);
-                Assert.That(toolSet.GetInstructions(Context()), Is.Empty, type.ToString());
+                var text = toolSet.GetInstructions(Context());
+                Assert.That(text, Does.Contain("Inquiry = 表 inquiries の列 search_text"), type.ToString());
+                Assert.That(text, Does.Not.Contain("search_records").And.Not.Contain("{embed:"), type.ToString());
                 Assert.That(toolSet.CreateTools(Context()), Is.Empty, type.ToString());
             }
         }
 
         [Test]
-        public void ベクトル検索用の列が無いモジュールは意味検索の対象にならない()
+        public void 埋め込みプロバイダが無ければ意味検索の対象にならない_文章の列へのLIKEだけ案内する()
+        {
+            var toolSet = new SemanticSearchToolSet(() => CreateDesign(), () => Db(DataSourceType.PostgreSQL), () => null, new List<string> { Ds });
+            var text = toolSet.GetInstructions(Context());
+            Assert.That(text, Does.Contain("Inquiry = 表 inquiries の列 search_text"));
+            Assert.That(text, Does.Not.Contain("search_records").And.Not.Contain("{embed:"));
+            Assert.That(toolSet.CreateTools(Context()), Is.Empty);
+        }
+
+        [Test]
+        public void 列が揃っていないモジュールは索引が無いので何も案内しない()
         {
             var toolSet = ToolSet(CreateDesign(vectorSearchColumn: ""));
             Assert.That(toolSet.GetInstructions(Context()), Is.Empty);

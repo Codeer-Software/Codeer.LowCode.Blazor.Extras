@@ -1327,7 +1327,7 @@ Recipients: {1}</value>
     <value>DB Column (Vector)</value>
   </data>
   <data name="SemanticSearchFieldMaxTextLength" xml:space="preserve">
-    <value>Max Text Length</value>
+    <value>Max Text Length for Embedding</value>
   </data>
   <data name="SemanticSearchCheck_ColumnsRequired" xml:space="preserve">
     <value>Set the text column, the vector column and the vector search column.</value>
@@ -1844,5 +1844,20 @@ Recipients: {1}</value>
   </data>
   <data name="TagFieldTagModuleName" xml:space="preserve">
     <value>Tag Module</value>
+  </data>
+  <data name="SemanticSearchCheck_SourceFieldsRestrictedFormat" xml:space="preserve">
+    <value>The fields {0} used for the semantic search text have a read condition, but this field ({1}) does not. The text column contains the values of the source fields. Remove {0} from SourceFields, or give {1} a read condition too (after removing, run Reindex() to rebuild the text of existing records).</value>
+  </data>
+  <data name="SemanticSearchCheck_SourceFieldsRowConditionFormat" xml:space="preserve">
+    <value>The read condition of the fields {0} used for the semantic search text depends on row values. A read condition on this field ({1}) cannot replace it (the permission check of a search condition has no row). Remove {0} from SourceFields and run Reindex() to rebuild the text of existing records.</value>
+  </data>
+  <data name="SemanticSearchFieldKeywordSearch" xml:space="preserve">
+    <value>Keyword search box</value>
+  </data>
+  <data name="SemanticSearch_KeywordPlaceholder" xml:space="preserve">
+    <value>Keywords (space separated, all must match)</value>
+  </data>
+  <data name="SemanticSearch_ConditionEmpty" xml:space="preserve">
+    <value>Semantic search condition for {0} has neither text nor keywords.</value>
   </data>
 </root>

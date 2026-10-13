@@ -88,7 +88,8 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
                 else
                     continue;
 
-                var vector = await EmbedAsync(text, cancellationToken);
+                //文章の列には全文、埋め込みには MaxTextLength までを渡す (キーワード検索は全文に当たる)
+                var vector = await EmbedAsync(SemanticSearchText.ForEmbedding(field, text), cancellationToken);
                 data.Fields[field.Name] = new SemanticSearchFieldData { Text = text, Vector = vector == null ? null : SemanticSearchVector.Encode(vector) };
             }
         }
@@ -246,7 +247,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
                     foreach (var field in fields)
                     {
                         var texts = rows.Select(row => SemanticSearchText.Build(designData, module, row, field)).ToList();
-                        var vectors = await EmbedAllAsync(provider, texts, cancellationToken);
+                        var vectors = await EmbedAllAsync(provider, texts.Select(t => SemanticSearchText.ForEmbedding(field, t)).ToList(), cancellationToken);
                         for (var i = 0; i < rows.Count; i++)
                             submits[rows[i]].Fields[field.Name] = new SemanticSearchFieldData { Text = texts[i], Vector = vectors[i] == null ? null : SemanticSearchVector.Encode(vectors[i]!) };
                     }

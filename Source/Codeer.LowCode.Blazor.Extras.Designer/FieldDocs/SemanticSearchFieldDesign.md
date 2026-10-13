@@ -33,7 +33,7 @@ AI チャット ([AIChatField](AIChatFieldDesign.md) の `RawDataAccessAgent`) �
 
 - 対象フィールドを順に「表示名: 値」(値が空のフィールドは出さない)。表示名が無ければフィールド名
 - 候補値 (SelectField) は表示名、リンクは表示文字列、日付は `yyyy-MM-dd`、日時は `yyyy-MM-dd HH:mm`、真偽は「はい / いいえ」、リッチテキストはタグを除いた本文、ファイルはファイル名。List / Module / Password / SemanticSearch 自身は出さない
-- 改行は LF 固定。`MaxTextLength` を超えた分は切り捨て
+- 改行は LF 固定。文章の列には全文を保存し、`MaxTextLength` を超えた分は埋め込みに渡さない (キーワード検索は全文に当たる)。文章の列は長さ制限の無い型 (TEXT / NVARCHAR(MAX)) にする
 - 更新の Submit では対象フィールドのどれかが変更されたときだけ送る (新規は常に)
 
 ### C# クラス定義 (真実の源)
@@ -50,8 +50,9 @@ AI チャット ([AIChatField](AIChatFieldDesign.md) の `RawDataAccessAgent`) �
 | `DbColumnText` | string | `""` | 文章を保存する DB カラム名。**書き込み専用・必須**。 |
 | `DbColumnVector` | string | `""` | 埋め込みベクトル (`[0.1,-0.2,…]` の JSON 配列テキスト) を保存する DB カラム名。**書き込み専用・必須**。 |
 | `DbColumnVectorSearch` | string | `""` | DB のベクトル検索で距離計算に使うベクトル型の列。**必須**。PostgreSQL は `DbColumnVector` をキャストする生成列の名前、SQL Server は `DbColumnVector` と同じ列名 (VECTOR 型にする)。 |
-| `MaxTextLength` | int | `8000` | 文章の最大文字数 (埋め込みモデルの入力上限の歯止め)。 |
+| `MaxTextLength` | int | `8000` | 埋め込みに渡す文章の最大文字数 (埋め込みモデルの入力上限の歯止め)。文章の列は全文。 |
 | `SearchMaxDistance` | double? | `null` | 検索レイアウトの検索欄で探すときのコサイン距離の上限 (0〜2)。空なら距離では絞らない (並びだけ)。 |
+| `KeywordSearch` | bool | `false` | 検索レイアウトの検索欄にキーワード欄も出す。空白区切りの語をすべて含む行 (文章の列への部分一致の AND) に絞る。埋め込み不要・どの DB でも動く。文章と両方入れると絞ったうえで近い順。 |
 | `OnReindexCompleted` | string | `""` | スクリプトの `Reindex()` / `ReindexMissing()` で起こした再索引が終わった (成功・失敗・中断) ときに呼ぶスクリプト関数名。結果は `ReindexProcessed` / `ReindexError` で見る。 |
 
 3 つのカラムは**すべて必須** (欠けるとデザインチェック `SemanticSearchFieldDesign:1`)。実テーブルに存在するかも検証される。`SourceFields` の各名前が同じモジュールに存在するかも検証される。
@@ -72,6 +73,8 @@ CREATE INDEX ON inquiries USING hnsw (search_vector_v vector_cosine_ops);
 search_text   NVARCHAR(MAX) NULL,
 search_vector VECTOR(1536) NULL
 ```
+
+ベクトル検索に対応しない DB (SQLite / MySQL / Oracle) でキーワード検索だけ使うときも列は 3 つ必要。`DbColumnVectorSearch` は `DbColumnVector` と同じ列名 (文字列の列) でよい。
 
 AI チャットの `execute_sql` の SQL に `{embed:探したい内容}` と書くと質問の埋め込みリテラルに置き換わり、WHERE・JOIN・集計と距離順を 1 本の SQL で書ける (数値は AI が書かずサーバーが差し込む)。単に似た記録を挙げるだけなら `search_records`。
 
@@ -108,14 +111,16 @@ AI チャットの `execute_sql` の SQL に `{embed:探したい内容}` と書
 
 ### 検索レイアウトに置く (画面の検索欄)
 
-- 検索レイアウトに置くと文章の入力欄が出る。文章で一覧を絞れる (行の条件・項目の読み取り権限は一覧検索と同じに効く)
+- 検索レイアウトに置くと文章の入力欄が出る。文章で一覧を絞れる (行の条件と、このフィールド自身の読み取り権限が一覧検索と同じに効く)
 - **近い順にしたいときは、一覧の並び (ListField の `SearchCondition.SortConditions`) の先頭に `{ "Variable": "Search.Value", "IsDescending": false }` を入れる**。文章が空のときはこの並びは飛ばされ、次の並びになる
 - 文章を埋め込みにするのはサーバー (ホストが `AddInterceptor(SemanticSearchIndex.Service.ConditionInterceptor)` を登録済みであること。テンプレートは登録済み)
-- `SearchMaxDistance` が空で、その検索レイアウトを使う一覧 (ページの一覧・SearchField の結果の一覧・LinkField の検索ダイアログ) の並びに `Search.Value` が無いと、文章を入れても索引のある行に絞られるだけで一覧は変わらない。デザインチェック `SemanticSearchFieldDesign:3` が指摘する (並びに入れるか、`SearchMaxDistance` を設定する)
+- `SearchMaxDistance` が空で、その検索レイアウトを使う一覧 (ページの一覧・SearchField の結果の一覧・LinkField の検索ダイアログ) の並びに `Search.Value` が無いと、文章を入れても索引のある行に絞られるだけで一覧は変わらない。デザインチェック `SemanticSearchFieldDesign:3` が指摘する (並びに入れるか、`SearchMaxDistance` を設定する。`KeywordSearch: true` なら指摘しない = キーワードだけで使う構成のため)
+- **キーワード検索** (`KeywordSearch: true`): 検索欄にキーワード欄が加わる。品番・人名・番号など語そのもので探す用途 (意味検索は似た番号が混ざる・0 件にならない)。空白区切りの語をすべて含む行に絞る (対象フィールドを横断。リンクの表示名・タグ名も当たる)。埋め込みを使わないので SQLite / MySQL / Oracle のモジュールや埋め込みプロバイダの無い構成でも使える (列は 3 つとも必要。文章の欄も出るが、入れるとプロバイダ未設定 / DB 非対応のエラー)。AI チャットからは filters にこの項目の `Like` でキーワードを渡す (設定に関係なく使える)。一致の大文字小文字・全角半角は文章の列の照合順序次第。スクリプトで `KeywordText` を設定すれば欄が無くても条件に入る
+- **読み取り権限**: 検索できるかはこのフィールド自身の読み取り権限で決まる (他のフィールドと同じ)。文章の列には対象フィールドの値がそのまま入るので、読ませたくない項目は `SourceFields` に入れない (リンク先・タグ付けモジュールの閲覧条件は見ない = そのモジュールを読めない人にも表示名で当たる)。外したら `Reindex()` (既存の行の文章に値が残る)。入れるなら、このフィールドにも同じ読み取り条件 (CurrentUser で決まるもの) を付ける。行の値で決まる条件の項目は `SourceFields` から外す (デザインチェック: 対象フィールドに読み取り条件があるのにこのフィールドに無い構成は `SemanticSearchFieldDesign:4`、行の値で決まる条件の項目は `:5`。`:4` は条件の有無だけを見る)。読み取り条件は CurrentUser を参照するものにする (検索条件の権限判定は行を持たないので、行データを参照する条件を付けるとこのフィールドでの検索は拒否される。デザインチェック `PermissionFieldDesign:4`)
 
 ### 注意
 
-- 意味検索できるのは PostgreSQL (pgvector) と SQL Server 2025 のデータソースだけ。SQLite / MySQL / Oracle のモジュールは検索対象にならない
+- 意味検索できるのは PostgreSQL (pgvector) と SQL Server 2025 のデータソースだけ。SQLite / MySQL / Oracle のモジュールは意味検索の対象にならない (キーワード検索 `KeywordSearch` は使える)
 - 埋め込みモデルを変えたらベクトル列を作り直して全行の再索引が要る (次元が違うベクトルは入らない)
 - 文章は AI プロバイダに送られる。個人情報などを入れたくないときは `SourceFields` で絞る
 - `RawDataAccessAgent` の `search_records` だけは AI 用の DB 接続で直接読む: 読める範囲と接続は `RawDataAccessOptions.DataSourceNames` で決まり (モジュールのデータソースが一覧に無ければ、AI 用の別名接続のうち同じ DB 種別のもので同じ表を引く)、行ごとの DataReadCondition・項目の読み取り権限は効かない。置くページの UserReadCondition で使える人を絞る。画面の検索欄と `ModuleDataAccessAgent` は一覧検索なので行の条件・項目の権限が効く
@@ -125,6 +130,7 @@ AI チャットの `execute_sql` の SQL に `{embed:探したい内容}` と書
 | メンバー | 型 | 説明 |
 |---|---|---|
 | `Text` | string | 今の行を索引用の文章にしたもの (確認用。Submit で送られるのと同じ規則。列未設定なら空)。 |
+| `SearchText` / `KeywordText` | string | 検索レイアウトの文章の欄 / キーワード欄の値 (スクリプトで設定すれば、欄を出していなくても条件に入る)。 |
 | `Reindex()` | void | 読める全行の文章とベクトルを作り直す (埋め込みモデルを変えたとき・フィールドを後から置いたとき)。サーバーのジョブとして走る。走っている間は無視。 |
 | `ReindexMissing()` | void | ベクトルがまだ無い行だけ索引を付ける (埋め込みに失敗した行の穴埋め)。 |
 | `CancelReindex()` | void | 走っている再索引を中断する。 |

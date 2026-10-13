@@ -6,6 +6,7 @@ using Codeer.LowCode.Blazor.DesignLogic;
 using Codeer.LowCode.Blazor.Extras.Designs;
 using Codeer.LowCode.Blazor.Extras.Server.AI.Chat;
 using Codeer.LowCode.Blazor.Extras.Server.AI.Chat.ChatClient;
+using Codeer.LowCode.Blazor.Extras.Server.AI.Chat.DesignKnowledge;
 using Codeer.LowCode.Blazor.Extras.Server.AI.Chat.ModuleDataAccess;
 using Codeer.LowCode.Blazor.Extras.Server.AI.Chat.RawDataAccess;
 using Codeer.LowCode.Blazor.Extras.Server.AI.Embedding;
@@ -60,12 +61,13 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
             await _db.ExecuteAsync(Ds, "INSERT INTO AppUsers VALUES ('1', 1, 1, '一般'), ('2', 10, 1, '担当A'), ('3', 10, 1, '担当B'), ('9', 30, 1, '管理者')", new());
             await _db.ExecuteAsync(Ds, "CREATE TABLE Customers (Id INTEGER PRIMARY KEY, Name TEXT)", new());
             await _db.ExecuteAsync(Ds, "INSERT INTO Customers VALUES (1, '青空商事'), (2, '緑山工業')", new());
-            await _db.ExecuteAsync(Ds, "CREATE TABLE Orders (Id INTEGER PRIMARY KEY, Title TEXT, Amount NUMERIC, Status TEXT, OrderedOn DATE, CustomerId INTEGER, OwnerId TEXT)", new());
+            //SearchText は意味検索 (SemanticSearchField) の文章の列 (保存時にサーバーが「表示名: 値」で作る。ここでは出来上がりを入れる)。SearchVector は未索引 (NULL)
+            await _db.ExecuteAsync(Ds, "CREATE TABLE Orders (Id INTEGER PRIMARY KEY, Title TEXT, Amount NUMERIC, Status TEXT, OrderedOn DATE, CustomerId INTEGER, OwnerId TEXT, SearchText TEXT, SearchVector TEXT)", new());
             await _db.ExecuteAsync(Ds, "INSERT INTO Orders VALUES " +
-                "(1, '机', 100, '10', '2026-01-10', 1, '2'), " +
-                "(2, '椅子', 50, '20', '2026-01-20', 1, '2'), " +
-                "(3, '棚', 300, '20', '2026-02-05', 2, '2'), " +
-                "(4, '照明', 80, '10', '2026-02-15', 2, '3')", new());
+                "(1, '机', 100, '10', '2026-01-10', 1, '2', '品名: 机\n得意先: 青空商事', NULL), " +
+                "(2, '椅子', 50, '20', '2026-01-20', 1, '2', '品名: 椅子\n得意先: 青空商事', NULL), " +
+                "(3, '棚', 300, '20', '2026-02-05', 2, '2', '品名: 棚\n得意先: 緑山工業', NULL), " +
+                "(4, '照明', 80, '10', '2026-02-15', 2, '3', '品名: 照明\n得意先: 緑山工業', NULL)", new());
             await _db.ExecuteAsync(Ds, "CREATE TABLE OrderLines (Id INTEGER PRIMARY KEY, OrderId INTEGER, Item TEXT, Qty INTEGER)", new());
             await _db.ExecuteAsync(Ds, "INSERT INTO OrderLines VALUES (1, 1, '天板', 1), (2, 1, '脚', 4), (3, 3, '棚板', 3)", new());
 
@@ -402,6 +404,59 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
                 ["page"] = 1,
             });
             Assert.That(second.GetProperty("rows").EnumerateArray().Select(r => r.GetProperty("Title").GetString()), Is.EqualTo(new[] { "棚" }));
+        }
+
+        [Test]
+        public async Task 意味検索の項目へのLikeはキーワード検索になり権限の範囲で横断して絞る()
+        {
+            //文章の列 = SearchText (Orders に入れてある)。埋め込みプロバイダは無し = キーワード検索は埋め込みに依らない
+            AddSemanticSearchField(f => { f.SourceFields.AddRange(["Title", "Customer"]); f.DbColumnText = "SearchText"; f.DbColumnVector = "SearchVector"; f.DbColumnVectorSearch = "SearchVector"; });
+            var tools = Create().CreateTools(Context("2")).ToList();
+
+            //得意先の名前で (Title の列には無い語) → 担当 A の行のうち青空商事の 2 行
+            var result = await InvokeAsync(tools, "find_records", new()
+            {
+                ["moduleName"] = "Order",
+                ["purpose"] = "p",
+                ["filters"] = new[] { Filter("Search", "Like", "青空") },
+                ["sort"] = new[] { new { Field = "Id" } },
+            });
+            Assert.That(ErrorOf(result), Is.Null, result.ToString());
+            Assert.That(result.GetProperty("rows").EnumerateArray().Select(r => r.GetProperty("Title").GetString()), Is.EqualTo(new[] { "机", "椅子" }));
+
+            //複数の語は AND (項目をまたぐ)
+            result = await InvokeAsync(tools, "find_records", new() { ["moduleName"] = "Order", ["purpose"] = "p", ["filters"] = new[] { Filter("Search", "Like", "青空 椅子") } });
+            Assert.That(result.GetProperty("rows").EnumerateArray().Select(r => r.GetProperty("Title").GetString()), Is.EqualTo(new[] { "椅子" }));
+
+            //行の条件はそのまま効く (緑山工業の棚は担当 A の行、照明は担当 B の行)
+            result = await InvokeAsync(tools, "find_records", new() { ["moduleName"] = "Order", ["purpose"] = "p", ["filters"] = new[] { Filter("Search", "Like", "緑山") } });
+            Assert.That(result.GetProperty("rows").EnumerateArray().Select(r => r.GetProperty("Title").GetString()), Is.EqualTo(new[] { "棚" }));
+
+            //集計でも同じ条件で絞れる
+            var aggregate = await InvokeAsync(tools, "aggregate_records", new()
+            {
+                ["moduleName"] = "Order",
+                ["purpose"] = "p",
+                ["measures"] = new object[] { new { Function = "count" } },
+                ["filters"] = new[] { Filter("Search", "Like", "青空") },
+            });
+            Assert.That(ErrorOf(aggregate), Is.Null, aggregate.ToString());
+            Assert.That(aggregate.GetProperty("totalCount").GetInt32(), Is.EqualTo(2));
+
+            //数値 (品番など) もそのまま語にする
+            result = await InvokeAsync(tools, "find_records", new() { ["moduleName"] = "Order", ["purpose"] = "p", ["filters"] = new[] { Filter("Search", "Like", 1234) } });
+            Assert.That(ErrorOf(result), Is.Null, result.ToString());
+            Assert.That(result.GetProperty("rowCount").GetInt32(), Is.EqualTo(0));
+
+            //Like 以外・空の値・リンク先の項目はエラー (AI に理由を返す)
+            Assert.That(ErrorOf(await InvokeAsync(tools, "find_records", new() { ["moduleName"] = "Order", ["purpose"] = "p", ["filters"] = new[] { Filter("Search", "Equal", "青空") } })), Does.Contain("Like"));
+            Assert.That(ErrorOf(await InvokeAsync(tools, "find_records", new() { ["moduleName"] = "Order", ["purpose"] = "p", ["filters"] = new[] { Filter("Search", "Like", " ") } })), Does.Contain("キーワード"));
+            _designData.Modules.Find("Customer")!.Fields.Add(new SemanticSearchFieldDesign { Name = "Search", DbColumnText = "x", DbColumnVector = "y", DbColumnVectorSearch = "y" });
+            Assert.That(ErrorOf(await InvokeAsync(tools, "find_records", new() { ["moduleName"] = "Order", ["purpose"] = "p", ["filters"] = new[] { Filter("Customer.Search", "Like", "青空") } })), Does.Contain("リンク先"));
+
+            //AI への説明と describe_module に出る
+            Assert.That(Create().GetInstructions(Context("2")), Does.Contain("Order (Search)"));
+            Assert.That(DesignDescriber.DescribeModule(_designData, "Order", 1000), Does.Contain("Search SemanticSearch, 意味検索の項目").And.Contain("[Title, Customer]"));
         }
 
         [Test]

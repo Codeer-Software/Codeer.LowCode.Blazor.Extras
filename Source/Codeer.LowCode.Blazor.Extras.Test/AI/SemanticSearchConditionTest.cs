@@ -15,6 +15,7 @@ using Codeer.LowCode.Blazor.Repository.Data;
 using Codeer.LowCode.Blazor.Repository.Design;
 using Codeer.LowCode.Blazor.Repository.Match;
 using Codeer.LowCode.Blazor.SystemSettings;
+using Codeer.LowCode.Blazor.Repository;
 
 namespace Codeer.LowCode.Blazor.Extras.Test.AI
 {
@@ -97,6 +98,42 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
         }
 
         [Test]
+        public async Task キーワード欄は文章が無くても条件になり文章と合わせれば1つの条件になる()
+        {
+            var design = CreateDesign(maxDistance: 0.5);
+            var module = await ModuleCreationService.CreateModuleAsync(new TestServices(design).Core, new ModuleData { Name = "Note" });
+            var field = (SemanticSearchField)module.GetField("Search")!;
+
+            //キーワードだけ: 文章なし・距離の上限なし (埋め込みを呼ばせない)
+            await field.SetKeywordTextAsync(" 納期　遅延  納期 ");
+            var condition = (FieldMatchCondition)field.GetMatchCondition()!;
+            var semantic = (SemanticMatchCondition)condition.Children.Single();
+            Assert.That(semantic.Keywords, Is.EqualTo("納期 遅延"), "語の正規化 (区切り・重複)");
+            Assert.That(semantic.Text, Is.Empty);
+            Assert.That(semantic.MaxDistance, Is.Null);
+
+            //両方: 1 つの条件に文章 (+ 距離の上限) とキーワード
+            await field.SetSearchTextAsync("納期の遅れ");
+            semantic = (SemanticMatchCondition)((FieldMatchCondition)field.GetMatchCondition()!).Children.Single();
+            Assert.That((semantic.Text, semantic.MaxDistance, semantic.Keywords), Is.EqualTo(("納期の遅れ", 0.5, "納期 遅延")));
+
+            //戻す・消す
+            var saved = ((FieldMatchCondition)field.GetMatchCondition()!).JsonClone();
+            await field.ClearMatchConditionAsync();
+            Assert.That((field.SearchText, field.KeywordText), Is.EqualTo(((string?)null, (string?)null)));
+            Assert.That(field.GetMatchCondition(), Is.Null);
+            await field.SetMatchConditionAsync(saved);
+            Assert.That((field.SearchText, field.KeywordText), Is.EqualTo(("納期の遅れ", "納期 遅延")));
+
+            //前処理はキーワードだけの条件では埋め込みを呼ばない (プロバイダが無くても通る)
+            var interceptor = new SemanticSearchService(() => null, () => design).ConditionInterceptor;
+            await field.SetSearchTextAsync(null);
+            var search = new SearchCondition("Note") { Condition = field.GetMatchCondition() };
+            await interceptor.PrepareConditionAsync(null!, search);
+            Assert.That(((SemanticMatchCondition)((FieldMatchCondition)search.Condition!).Children.Single()).Vector, Is.Empty);
+        }
+
+        [Test]
         public void 検索欄の文章が一覧に効かない構成は設計チェックが指摘する()
         {
             var design = CreateDesign();
@@ -136,6 +173,12 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
             field.SearchMaxDistance = 0.5;
             Assert.That(Check(), Is.Empty);
             field.SearchMaxDistance = null;
+
+            //キーワード欄を出す構成 (キーワードだけで使う設計) では指摘しない
+            field.KeywordSearch = true;
+            Assert.That(Check(), Is.Empty);
+            field.KeywordSearch = false;
+            Assert.That(Check(), Has.Count.EqualTo(1));
 
             //SearchField の結果の一覧も対象 (別の検索レイアウトを使う)
             module.SearchLayouts[""] = new SearchLayoutDesign { Layout = Grid("Title") };
@@ -183,6 +226,86 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
             {
                 SqliteTestDb.Delete(file);
             }
+        }
+
+        [Test]
+        public void 読めない対象フィールドの値がキーワード検索で分かる構成は設計チェックが指摘する()
+        {
+            var design = CreateDesign();
+            var module = design.Modules.Find("Note")!;
+            module.Fields.Add(new TextFieldDesign { Name = "Secret", DbColumn = "secret" });
+            var field = module.Fields.OfType<SemanticSearchFieldDesign>().Single();
+            var code = DesignCheckCode.Create(typeof(SemanticSearchFieldDesign), 4 /* SourceFieldsRestricted */);
+            List<DesignCheckInfo> Check() => field.CheckDesign(new DesignCheckContext("Note", design, Utilities.CreateDataSource())).Where(e => e.Code == code).ToList();
+            static PermissionFieldDesign Rule(string name, bool exclude = false, params string[] targets)
+            {
+                var rule = new PermissionFieldDesign { Name = name, IsExcludeMode = exclude };
+                rule.TargetFields.AddRange(targets);
+                rule.ReadCondition.Condition = new FieldValueMatchCondition { SearchTargetVariable = "CurrentUser.Id.Value", Comparison = MatchComparison.Equal, Value = MultiTypeValue.Create("U1") };
+                return rule;
+            }
+
+            //読み取り条件が無ければ対象外
+            Assert.That(Check(), Is.Empty);
+
+            //対象フィールド (既定 = 入力フィールド全部) の Secret に読み取り条件があり、このフィールドには無い → 指摘
+            module.Fields.Add(Rule("P1", false, "Secret"));
+            Assert.That(Check().Single().Message, Does.Contain("Secret").And.Contain("Search"));
+
+            //SourceFields で Secret を外せば対象外
+            field.SourceFields.Add("Title");
+            Assert.That(Check(), Is.Empty);
+            field.SourceFields.Clear();
+
+            //このフィールドにも読み取り条件があれば対象外 (厳しさの比較はしない)
+            module.Fields.Add(Rule("P2", false, "Search"));
+            Assert.That(Check(), Is.Empty);
+            module.Fields.RemoveAll(f => f.Name == "P2");
+
+            //除外モード (指定以外のすべて) はこのフィールドも対象に入る
+            module.Fields.Add(Rule("P3", true, "Title"));
+            Assert.That(Check(), Is.Empty);
+
+            //対象フィールドの読み取り条件が行の値で決まる → このフィールドに条件があっても :5 (外して Reindex)
+            module.Fields.RemoveAll(f => f is PermissionFieldDesign);
+            var rowRule = new PermissionFieldDesign { Name = "P5" };
+            rowRule.TargetFields.Add("Secret");
+            rowRule.ReadCondition.Condition = MultiMatchCondition.Or(
+                new FieldValueMatchCondition { SearchTargetVariable = "CurrentUser.Id.Value", Comparison = MatchComparison.Equal, Value = MultiTypeValue.Create("U1") },
+                new FieldValueMatchCondition { SearchTargetVariable = "Title.Value", Comparison = MatchComparison.Equal, Value = MultiTypeValue.Create("public") });
+            module.Fields.Add(rowRule);
+            module.Fields.Add(Rule("P6", false, "Search"));
+            var rowCode = DesignCheckCode.Create(typeof(SemanticSearchFieldDesign), 5 /* SourceFieldsRowCondition */);
+            var infos = field.CheckDesign(new DesignCheckContext("Note", design, Utilities.CreateDataSource()));
+            Assert.That(infos.Single(e => e.Code == rowCode).Message, Does.Contain("Secret").And.Contain("Reindex()"));
+            Assert.That(infos.Where(e => e.Code == code), Is.Empty, "行条件の項目は :4 では数えない");
+            field.SourceFields.Add("Title");
+            Assert.That(field.CheckDesign(new DesignCheckContext("Note", design, Utilities.CreateDataSource())).Where(e => e.Code == rowCode), Is.Empty, "外せば指摘なし");
+            field.SourceFields.Clear();
+
+            //同じ行条件の規則がこのフィールドも縛る (除外モード) なら、本体の静的判定で検索ごと拒否される = 漏れないので :5 は出ない
+            module.Fields.RemoveAll(f => f is PermissionFieldDesign);
+            var excludeRule = new PermissionFieldDesign { Name = "P7", IsExcludeMode = true };
+            excludeRule.TargetFields.Add("Title");
+            excludeRule.ReadCondition.Condition = rowRule.ReadCondition.Condition;
+            module.Fields.Add(excludeRule);
+            Assert.That(field.CheckDesign(new DesignCheckContext("Note", design, Utilities.CreateDataSource())).Where(e => e.Code == rowCode || e.Code == code), Is.Empty);
+        }
+
+        [Test]
+        public void 空のグループの条件は読み取り条件が無いものとして扱う()
+        {
+            //本体の IsEmpty と同じ (デザイナで条件を消すと空の And が残ることがある)
+            var design = CreateDesign();
+            var module = design.Modules.Find("Note")!;
+            module.Fields.Add(new TextFieldDesign { Name = "Secret", DbColumn = "secret" });
+            var field = module.Fields.OfType<SemanticSearchFieldDesign>().Single();
+            var rule = new PermissionFieldDesign { Name = "P" };
+            rule.TargetFields.Add("Secret");
+            rule.ReadCondition.Condition = new MultiMatchCondition();
+            module.Fields.Add(rule);
+            var code = DesignCheckCode.Create(typeof(SemanticSearchFieldDesign), 4 /* SourceFieldsRestricted */);
+            Assert.That(field.CheckDesign(new DesignCheckContext("Note", design, Utilities.CreateDataSource())).Where(e => e.Code == code), Is.Empty);
         }
     }
 }
