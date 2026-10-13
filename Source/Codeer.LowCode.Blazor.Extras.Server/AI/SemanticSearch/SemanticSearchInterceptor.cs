@@ -19,7 +19,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
     /// <item>保存: 索引を作り直す行は、送信の形ではなく本体が記録した「この保存で変更したレコード」(<see cref="ModuleDataIOInternalAccess.ChangedRecords"/>) で決める。
     /// 規則は 2 つ: (1) 追加した行・削除を取り消した行と、対象フィールド (SourceFields) を書いた更新の行 (一括 INSERT の行は除く = 取込は文章だけ)。
     /// (2) 対象フィールドの従属レコード (タグ付けの行など) を追加・更新・削除・取り消しした、その親の行 (親は従属の宣言の束縛 (子の項目 = 親の項目) から引く。
-    /// 消す子は消える前に読んで親を控える)。取込・内部書き込み・他の拡張が作り直した行も、本体を通って書かれていれば同じ規則で拾う。
+    /// 消す子・更新する子は保存の前にも読んで、消える前 / 付け替える前の親を控える)。取込・内部書き込み・他の拡張が作り直した行も、本体を通って書かれていれば同じ規則で拾う。
     /// 保存が終わった後に行をサーバーで読み直し (権限を通さない内部読み = 保存した人がこのフィールドや対象フィールドを読めなくても索引は最新になる)、
     /// 文章と埋め込みベクトルを書き込み専用列だけに書く (同じトランザクション。レコードの更新ではないので更新日時・楽観ロックの版・ExecuteSqlField は動かない)。
     /// 索引の列はサーバーだけが書く: 送信にこのフィールドのデータが載っていても保存の前に捨てる。
@@ -59,16 +59,16 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
                 if (module == null) continue;
                 foreach (var field in module.Fields.OfType<SemanticSearchFieldDesign>()) data.Fields.Remove(field.Name);
             }
-            //消える従属レコードの親は、消える前に読んで控える (消えた後は読めない)
+            //消える / 付け替わる従属レコードの親は、保存の前に読んで控える (消えた後は読めない・付け替えた後は元の親が分からない)
             var ownedParents = OwnedParents(design);
             var targets = new Targets();
-            if (ownedParents.Count > 0) await AddParentsOfDeletingRowsAsync(io, ownedParents, transactionData, targets);
+            if (ownedParents.Count > 0) await AddParentsBeforeSaveAsync(io, ownedParents, transactionData, targets);
 
             var results = await next();
             if (results.Count != transactionData.Count || results.Any(r => !string.IsNullOrEmpty(r.ExceptionMessage))) return results;
 
             await CollectTargetsAsync(io, design, ownedParents, targets);
-            WarnBulkAddNotIndexed(design, transactionData, io.ChangedRecords);
+            WarnBulkAddNotIndexed(design, io.ChangedRecords);
             if (targets.Count > 0) await IndexAsync(io, design, targets);
             return results;
         }
@@ -90,8 +90,8 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
                     if (fields.Count > 0) targets.Add(module, changed.Id, fields);
                 }
 
-                //(2) 対象フィールドの従属レコードを変えたら、その親 (消した子の親は保存の前に控えてある)
-                if (changed.Kind != ChangedRecordKind.Delete && ownedParents.TryGetValue(changed.ModuleName, out var parents))
+                //(2) 対象フィールドの従属レコードを変えたら、その親 (消した子の親は保存の前に控えてある。Id の分からない一括 INSERT の行は読めない = 取込後の再索引)
+                if (changed.Kind != ChangedRecordKind.Delete && !string.IsNullOrEmpty(changed.Id) && ownedParents.TryGetValue(changed.ModuleName, out var parents))
                 {
                     var row = await io.GetWithOwnedRecordsAsync(changed.ModuleName, changed.Id, _ => false);
                     if (row != null) await AddParentsAsync(io, parents, row, targets);
@@ -99,15 +99,18 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
             }
         }
 
-        //送信で消す従属レコード (Delete / SearchDelete) の親を、消える前に読んで控える
-        static async Task AddParentsOfDeletingRowsAsync(ModuleDataIOInternalAccess io, Dictionary<string, List<OwnedParent>> ownedParents, List<ModuleSubmitData> transactionData, Targets targets)
+        //送信で消す従属レコード (Delete / SearchDelete) と更新する従属レコードの親を、保存の前に読んで控える (消える前 / 付け替える前の親)
+        static async Task AddParentsBeforeSaveAsync(ModuleDataIOInternalAccess io, Dictionary<string, List<OwnedParent>> ownedParents, List<ModuleSubmitData> transactionData, Targets targets)
         {
             foreach (var submit in transactionData)
             {
-                foreach (var delete in submit.Delete)
+                foreach (var (moduleName, rawId) in submit.Delete.Select(e => (e.ModuleName, e.Id))
+                             .Concat(submit.Update.Select(e => (e.Name, (e.Fields.GetValueOrDefault(SystemFieldNames.Id) as IdFieldData)?.Value ?? string.Empty))))
                 {
-                    if (!ownedParents.TryGetValue(delete.ModuleName, out var parents) || string.IsNullOrEmpty(delete.Id)) continue;
-                    var row = await io.GetWithOwnedRecordsAsync(delete.ModuleName, delete.Id, _ => false);
+                    //Id 手打ち変更 ("@replace:旧->新") の行は、保存の前は旧 Id で読む
+                    var id = rawId.StartsWith("@replace:") && rawId.LastIndexOf("->", StringComparison.Ordinal) is var arrow && arrow > 0 ? rawId["@replace:".Length..arrow] : rawId;
+                    if (!ownedParents.TryGetValue(moduleName, out var parents) || string.IsNullOrEmpty(id) || IdFieldData.IsTemporaryId(id)) continue;
+                    var row = await io.GetWithOwnedRecordsAsync(moduleName, id, _ => false);
                     if (row != null) await AddParentsAsync(io, parents, row, targets);
                 }
                 foreach (var searchDelete in submit.SearchDelete)
@@ -186,16 +189,15 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
             return result;
         }
 
-        //一括 INSERT (DB が採番 = 本体に変更の記録が無い) で、行に文章も無い = ホストの BulkAddAsync の結線漏れ (モジュールごとに 1 回警告)
-        void WarnBulkAddNotIndexed(DesignData design, List<ModuleSubmitData> transactionData, IReadOnlyList<ChangedRecord> changedRecords)
+        //一括 INSERT の行 (本体が IsBulkInsert で記録。書いた項目にこのフィールドが無い = ホストの BulkAddAsync が ApplyAsync で文章を付けていない) は結線漏れ (モジュールごとに 1 回警告)
+        void WarnBulkAddNotIndexed(DesignData design, IReadOnlyList<ChangedRecord> changedRecords)
         {
-            foreach (var group in transactionData.SelectMany(e => e.Add).GroupBy(e => e.Name))
+            foreach (var group in changedRecords.Where(e => e.IsBulkInsert).GroupBy(e => e.ModuleName))
             {
                 var module = design.Modules.Find(group.Key);
                 if (module == null) continue;
                 var fields = module.Fields.OfType<SemanticSearchFieldDesign>().Where(f => f.HasColumns).ToList();
-                if (fields.Count == 0 || changedRecords.Any(e => e.ModuleName == group.Key && e.Kind == ChangedRecordKind.Add && !e.IsBulkInsert)) continue;
-                if (group.Any(row => fields.Any(f => !row.Fields.ContainsKey(f.Name)))) service.WarnBulkAddNotIndexed(group.Key);
+                if (fields.Count > 0 && group.Any(e => fields.Any(f => !e.FieldNames.Contains(f.Name)))) service.WarnBulkAddNotIndexed(group.Key);
             }
         }
 

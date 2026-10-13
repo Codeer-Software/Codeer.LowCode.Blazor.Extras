@@ -7,6 +7,7 @@ using Codeer.LowCode.Blazor.Extras.Designs;
 using Codeer.LowCode.Blazor.Extras.SemanticSearch;
 using Codeer.LowCode.Blazor.Extras.Server.AI.Embedding;
 using Codeer.LowCode.Blazor.Extras.Server.Properties;
+using Codeer.LowCode.Blazor.Repository;
 using Codeer.LowCode.Blazor.Repository.Data;
 using Codeer.LowCode.Blazor.Repository.Design;
 using Codeer.LowCode.Blazor.Repository.Match;
@@ -303,10 +304,40 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
         /// 索引用に行を 1 件読む (保存時の索引付けと再索引で同じ)。権限を通さない内部読み。従属レコードは文章に使うもの (SourceFields にある宣言 = タグ付けの行など) だけ付ける。
         /// 論理削除した行・無い行は null。
         /// </summary>
-        internal static Task<ModuleData?> ReadForIndexAsync(ModuleDataIOInternalAccess io, ModuleDesign module, string id, IEnumerable<SemanticSearchFieldDesign> fields)
+        internal static async Task<ModuleData?> ReadForIndexAsync(ModuleDataIOInternalAccess io, ModuleDesign module, string id, IEnumerable<SemanticSearchFieldDesign> fields)
         {
             var sources = fields.SelectMany(f => SemanticSearchText.SourceFields(module, f)).ToHashSet();
-            return io.GetWithOwnedRecordsAsync(module.Name, id, path => sources.Contains(path));
+            var row = await io.GetWithOwnedRecordsAsync(module.Name, id, path => sources.Contains(path));
+            if (row != null) await FillLinkDisplayTextsAsync(io, module, row, sources);
+            return row;
+        }
+
+        //リンク・モジュール連携の候補値の表示名 (得意先名など) を入れる。内部読みは表示名を埋めないので、画面の LinkField と同じくリンク先を値で引く
+        //(権限は通さない = docs のとおりリンク先の閲覧条件は見ない)。リンク先に無い値・表示名の無い設計はそのまま (文章には値が出る)
+        static async Task FillLinkDisplayTextsAsync(ModuleDataIOInternalAccess io, ModuleDesign module, ModuleData row, IEnumerable<string> sources)
+        {
+            foreach (var name in sources)
+            {
+                var (targetModule, valueVariable, displayVariable) = module.Fields.FirstOrDefault(f => f.Name == name) switch
+                {
+                    LinkFieldDesign link => (link.SearchCondition.ModuleName, link.ValueVariable, link.DisplayTextVariable),
+                    SelectFieldDesign select => (select.SearchCondition.ModuleName, select.ValueVariable, select.DisplayTextVariable),
+                    _ => (string.Empty, string.Empty, string.Empty),
+                };
+                if (string.IsNullOrEmpty(targetModule) || string.IsNullOrEmpty(valueVariable) || string.IsNullOrEmpty(displayVariable)) continue;
+                if (row.Fields.GetValueOrDefault(name) is not ValueFieldDataBase<string> { Value: { Length: > 0 } value } data) continue;
+                if (data is LinkFieldData { DisplayText.Length: > 0 } or SelectFieldData { DisplayText.Length: > 0 }) continue;
+                var displayField = new VariableName(displayVariable).FieldName.FullName;
+                var condition = new SearchCondition(targetModule) { LimitCount = 1, SelectFields = [displayField] };
+                condition.Condition = new FieldValueMatchCondition { SearchTargetVariable = valueVariable, Comparison = MatchComparison.Equal, Value = MultiTypeValue.Create(value) };
+                var target = (await io.GetListAsync(condition, 0)).Items.FirstOrDefault();
+                if (target?.Fields.GetValueOrDefault(displayField) is not ValueFieldDataBase<string> { Value: { Length: > 0 } text }) continue;
+                switch (data)
+                {
+                    case LinkFieldData l: l.DisplayText = text; break;
+                    case SelectFieldData s: s.DisplayText = text; break;
+                }
+            }
         }
 
         /// <summary>一括 INSERT の行にこのフィールドのデータが無かった (ホストの BulkAddAsync が ApplyAsync を呼んでいない) ときの警告。</summary>

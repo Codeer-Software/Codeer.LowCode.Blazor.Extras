@@ -269,8 +269,6 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
             TagTestDesigns.AddCompany(_design);
             _design.Modules.Find("Contact")!.Fields.Add(new SemanticSearchFieldDesign { Name = "Search", SourceFields = { "Name", "Tags" }, DbColumnText = "search_text", DbColumnVector = "search_vector", DbColumnVectorSearch = "search_vector" });
 
-            async Task<string?> ContactTextAsync(string id) => (await _db.QueryAsync(Ds, $"SELECT search_text FROM contacts WHERE id = {id}", new())).Single().Values.Single()?.ToString();
-
             //追加だけ
             var tag = new ModuleData { Name = "ContactTags" };
             tag.Fields["Id"] = IdFieldData.NewId();
@@ -284,6 +282,101 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
             var tagId = (await _db.QueryAsync(Ds, "SELECT id FROM contact_tags WHERE owner_id = 2 AND name = 'DXPO'", new())).Single().Values.Single()!.ToString()!;
             AssertNoError(await CreateIO(Indexer()).SubmitWithTransactionAsync([new ModuleSubmitData { ModuleName = "Company", Id = "1", Delete = [new ModuleDeleteInfo { ModuleName = "ContactTags", Id = tagId }] }]));
             Assert.That(await ContactTextAsync("2"), Is.EqualTo("名前: B\nタグ: 展示会"));
+        }
+
+        //タグのテストの準備: 社員 2・3 を会社 1 の一覧に入れ、社員に意味検索 (名前とタグ) を付ける
+        async Task SetUpContactSearchAsync()
+        {
+            await TagTestDesigns.CreateTablesAsync(_db);
+            await _db.ExecuteAsync(Ds, "ALTER TABLE contacts ADD COLUMN search_text TEXT", new());
+            await _db.ExecuteAsync(Ds, "ALTER TABLE contacts ADD COLUMN search_vector TEXT", new());
+            await _db.ExecuteAsync(Ds, "INSERT INTO companies (name) VALUES ('X社')", new());
+            await _db.ExecuteAsync(Ds, "UPDATE contacts SET company_id = 1 WHERE id IN (2, 3)", new());
+            _design = TagTestDesigns.Create();
+            TagTestDesigns.AddCompany(_design);
+            _design.Modules.Find("Contact")!.Fields.Add(new SemanticSearchFieldDesign { Name = "Search", SourceFields = { "Name", "Tags" }, DbColumnText = "search_text", DbColumnVector = "search_vector", DbColumnVectorSearch = "search_vector" });
+        }
+
+        async Task<string?> ContactTextAsync(string id) => (await _db.QueryAsync(Ds, $"SELECT search_text FROM contacts WHERE id = {id}", new())).Single().Values.Single()?.ToString();
+
+        [Test]
+        public async Task 従属レコードを別の親へ付け替えると元の親と新しい親の両方を作り直す()
+        {
+            await SetUpContactSearchAsync();
+            //社員 2 の「展示会」を社員 3 へ付け替える (送信の主レコードは会社)
+            var tagId = (await _db.QueryAsync(Ds, "SELECT id FROM contact_tags WHERE owner_id = 2 AND name = '展示会'", new())).Single().Values.Single()!.ToString()!;
+            var tag = new ModuleData { Name = "ContactTags" };
+            tag.Fields["Id"] = new IdFieldData { Value = tagId };
+            tag.Fields["OwnerId"] = new IdFieldData { Value = "3" };
+            AssertNoError(await CreateIO(Indexer()).SubmitWithTransactionAsync([new ModuleSubmitData { ModuleName = "Company", Id = "1", Update = [tag] }]));
+
+            Assert.That(await ContactTextAsync("2"), Does.Not.Contain("展示会"), "元の親からタグが消える");
+            Assert.That(await ContactTextAsync("2"), Does.StartWith("名前: B"), "元の親も作り直す");
+            Assert.That(await ContactTextAsync("3"), Does.StartWith("名前: C\nタグ: ").And.Contain("展示会").And.Contain("セミナー"), "新しい親にタグが入る");
+            Assert.That(await ContactTextAsync("1"), Is.Null, "他の社員は触らない");
+        }
+
+        [Test]
+        public async Task タグ付けモジュールを一括INSERTしても保存は失敗しない()
+        {
+            await SetUpContactSearchAsync();
+            var saved = ModuleDataIO.BulkAddThreshold;
+            ModuleDataIO.BulkAddThreshold = 2;
+            try
+            {
+                var adds = new[] { "取込タグ1", "取込タグ2" }.Select(name =>
+                {
+                    var d = new ModuleData { Name = "ContactTags" };
+                    d.Fields["OwnerId"] = new IdFieldData { Value = "4" };
+                    d.Fields["Name"] = new TextFieldData { Value = name };
+                    return d;
+                }).ToList();
+                AssertNoError(await CreateIO(Indexer()).SubmitWithTransactionAsync(adds.Select(d => new ModuleSubmitData { ModuleName = "ContactTags", Id = "", Add = [d], NoTemporaryIdResolution = true }).ToList()));
+            }
+            finally
+            {
+                ModuleDataIO.BulkAddThreshold = saved;
+            }
+            Assert.That((await _db.QueryAsync(Ds, "SELECT name FROM contact_tags WHERE owner_id = 4 ORDER BY name", new())).Select(r => r["name"]?.ToString()), Is.EqualTo(new[] { "取込タグ1", "取込タグ2" }));
+            //親 (社員 4) の文章は再索引で揃う
+            var indexer = Indexer();
+            await indexer.ReindexAsync(CreateIO(indexer), _db, "Contact");
+            Assert.That(await ContactTextAsync("4"), Is.EqualTo("名前: D\nタグ: 取込タグ1, 取込タグ2"));
+        }
+
+        [Test]
+        public async Task リンクの表示名が文章に入る_再索引でも同じ()
+        {
+            await _db.ExecuteAsync(Ds, "CREATE TABLE customers (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT)", new());
+            await _db.ExecuteAsync(Ds, "INSERT INTO customers (name) VALUES ('青山商事'), ('赤坂物産')", new());
+            await _db.ExecuteAsync(Ds, "ALTER TABLE inquiries ADD COLUMN customer_id INTEGER", new());
+            var customer = new ModuleDesign { Name = "Customer", DataSourceName = Ds, DbTable = "customers" };
+            customer.Fields.Add(new IdFieldDesign { Name = "Id", DbColumn = "id" });
+            customer.Fields.Add(new TextFieldDesign { Name = "Name", DisplayName = "得意先名", DbColumn = "name" });
+            customer.ListLayouts[""] = new ListLayoutDesign();
+            _design.AddModule(customer);
+            var inquiry = _design.Modules.Find("Inquiry")!;
+            var link = new LinkFieldDesign { Name = "Customer", DisplayName = "得意先", DbColumn = "customer_id", ValueVariable = "Id.Value", DisplayTextVariable = "Name.Value" };
+            link.SearchCondition.ModuleName = "Customer";
+            inquiry.Fields.Add(link);
+            var search = inquiry.Fields.OfType<SemanticSearchFieldDesign>().Single();
+            search.SourceFields.Add("Subject");
+            search.SourceFields.Add("Customer");
+
+            //保存: 送るのはリンクの値 (Id) だけ
+            var data = new ModuleData { Name = "Inquiry" };
+            data.Fields["Id"] = new IdFieldData { Value = "1" };
+            data.Fields["Customer"] = new LinkFieldData { Value = "1" };
+            AssertNoError(await CreateIO(Indexer()).SubmitWithTransactionAsync([new ModuleSubmitData { ModuleName = "Inquiry", Id = "1", Update = [data] }]));
+            const string expected = "件名: 納期遅れの相談\n得意先: 青山商事";
+            Assert.That((await RowAsync("1")).Text, Is.EqualTo(expected), "Id ではなく表示名");
+
+            //再索引でも同じ
+            await _db.ExecuteAsync(Ds, "UPDATE inquiries SET search_text = NULL, search_vector = NULL", new());
+            var indexer = Indexer();
+            await indexer.ReindexAsync(CreateIO(indexer), _db, "Inquiry");
+            Assert.That((await RowAsync("1")).Text, Is.EqualTo(expected));
+            Assert.That((await RowAsync("2")).Text, Is.EqualTo("件名: 請求書の再発行"), "リンクが空の行は項目ごと出さない");
         }
 
         [Test]
