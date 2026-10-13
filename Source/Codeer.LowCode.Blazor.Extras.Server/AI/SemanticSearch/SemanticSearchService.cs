@@ -103,9 +103,18 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
         }
 
         /// <summary>旧形式。新規行 (isNewData = true) なら <see cref="ApplyAsync(IEnumerable{ModuleData}, CancellationToken)"/> と同じ。更新では何もしない (索引は <see cref="Interceptor"/> が保存後の行から作る)。</summary>
-        [Obsolete("Use ApplyAsync(datas) from BulkAddAsync. Normal saves are indexed by Interceptor.")]
+        [Obsolete("Register Interceptor with AddInterceptor (required since 0.21); call ApplyAsync(datas) only from BulkAddAsync.")]
         public Task ApplyAsync(ModuleData data, bool isNewData, CancellationToken cancellationToken = default)
-            => isNewData ? ApplyAsync([data], cancellationToken) : Task.CompletedTask;
+        {
+            //旧結線 (0.17 以前のテンプレート) のまま 0.21 に上げると、Interceptor が未登録で更新の索引が止まる。実行時にも 1 回知らせる
+            if (_interceptor == null && !_warnedInterceptorNotRegistered)
+            {
+                _warnedInterceptorNotRegistered = true;
+                _logger?.LogWarning("SemanticSearch: Interceptor is not registered. Since 0.21 the index is built by Interceptor; register it with AddInterceptor(SemanticSearchService.Interceptor) in your ModuleDataIO, otherwise updated rows are not re-indexed.");
+            }
+            return isNewData ? ApplyAsync([data], cancellationToken) : Task.CompletedTask;
+        }
+        bool _warnedInterceptorNotRegistered;
 
         /// <summary>
         /// 再索引のワイヤリクエスト (POST {EndPoint}) を受けて起動し requestId を返す。Controller を薄く保つための入口。
@@ -276,7 +285,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
                     foreach (var field in fields)
                     {
                         var texts = rows.Select(row => SemanticSearchText.Build(designData, module, row, field)).ToList();
-                        var vectors = await EmbedAllAsync(provider, texts, cancellationToken);
+                        var vectors = await EmbedAllAsync(provider, texts.Select(t => SemanticSearchText.ForEmbedding(field, t)).ToList(), cancellationToken);
                         for (var i = 0; i < rows.Count; i++)
                             updates[i].Fields[field.Name] = new SemanticSearchFieldData { Text = texts[i], Vector = vectors[i] == null ? null : SemanticSearchVector.Encode(vectors[i]!) };
                     }

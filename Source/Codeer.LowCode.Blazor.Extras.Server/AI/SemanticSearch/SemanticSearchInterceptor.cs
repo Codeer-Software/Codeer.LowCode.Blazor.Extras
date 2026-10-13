@@ -4,6 +4,8 @@ using Codeer.LowCode.Blazor.Extras.Data;
 using Codeer.LowCode.Blazor.Extras.Designs;
 using Codeer.LowCode.Blazor.Extras.SemanticSearch;
 using Codeer.LowCode.Blazor.Extras.Server.Properties;
+using Codeer.LowCode.Blazor.Json;
+using Codeer.LowCode.Blazor.Repository;
 using Codeer.LowCode.Blazor.Repository.Data;
 using Codeer.LowCode.Blazor.Repository.Design;
 using Codeer.LowCode.Blazor.Repository.Match;
@@ -14,11 +16,15 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
     /// <summary>
     /// SemanticSearchField のインターセプタ (ホストの ModuleDataIO に登録する)。
     /// <list type="bullet">
-    /// <item>保存: 対象フィールド (SourceFields) が変わった保存だけ、保存が終わった後に行をサーバーで読み直し (権限を通さない内部読み = 保存した人がこのフィールドや
-    /// 対象フィールドを読めなくても索引は最新になる)、文章と埋め込みベクトルを書き込み専用列だけに書く (同じトランザクション。レコードの更新ではないので
-    /// 更新日時・楽観ロックの版・ExecuteSqlField は動かない)。対象 = 追加した行・対象フィールドを送ってきた更新の行・対象フィールドの従属レコード (タグ付けの行など) を
-    /// 付け外しした送信の主レコード。送信データにこのフィールドのデータが付いていても (旧結線の ApplyAsync など) 保存した行から作り直す (索引はいつもサーバーが作る)。
-    /// 埋め込みの失敗は文章だけ保存して保存を止めないが、索引列の書き込みの失敗は保存の失敗 (DB の失敗は同じトランザクションなので握れない)</item>
+    /// <item>保存: 索引を作り直す行は、送信の形ではなく本体が記録した「この保存で変更したレコード」(<see cref="ModuleDataIOInternalAccess.ChangedRecords"/>) で決める。
+    /// 規則は 2 つ: (1) 追加した行・削除を取り消した行と、対象フィールド (SourceFields) を書いた更新の行 (一括 INSERT の行は除く = 取込は文章だけ)。
+    /// (2) 対象フィールドの従属レコード (タグ付けの行など) を追加・更新・削除・取り消しした、その親の行 (親は従属の宣言の束縛 (子の項目 = 親の項目) から引く。
+    /// 消す子は消える前に読んで親を控える)。取込・内部書き込み・他の拡張が作り直した行も、本体を通って書かれていれば同じ規則で拾う。
+    /// 保存が終わった後に行をサーバーで読み直し (権限を通さない内部読み = 保存した人がこのフィールドや対象フィールドを読めなくても索引は最新になる)、
+    /// 文章と埋め込みベクトルを書き込み専用列だけに書く (同じトランザクション。レコードの更新ではないので更新日時・楽観ロックの版・ExecuteSqlField は動かない)。
+    /// 索引の列はサーバーだけが書く: 送信にこのフィールドのデータが載っていても保存の前に捨てる。
+    /// 埋め込みの失敗は文章だけ保存して保存を止めないが、索引列の書き込みの失敗は保存の失敗 (DB の失敗は同じトランザクションなので握れない)。
+    /// 一括 INSERT (DB が採番する行) だけは本体も Id を知らないので、ホストの BulkAddAsync が <see cref="SemanticSearchService.ApplyAsync(IEnumerable{ModuleData}, CancellationToken)"/> で文章を付ける</item>
     /// <item>条件の前処理: 文章だけの意味検索の条件 (<see cref="SemanticMatchCondition.Text"/> あり・Vector 空。画面の検索欄が作る) に、索引付けと同じ埋め込みプロバイダでベクトルを入れる。
     /// 検索の中身 (SQL・権限) は本体と SemanticSearchFieldDesign のまま変えない</item>
     /// </list>
@@ -26,184 +32,201 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
     /// </summary>
     internal sealed class SemanticSearchInterceptor(SemanticSearchService service) : IModuleDataIOInterceptor
     {
-        //索引を作る行: 送信 (結果と突き合わせる番号)・行のデータ (主レコードが送信に無ければ null)・モジュール・Id フィールド・作り直すフィールド・送信時の Id
-        sealed record Target(int SubmitIndex, ModuleSubmitData Submit, ModuleData? Data, ModuleDesign Module, IdFieldDesign IdField, List<SemanticSearchFieldDesign> Fields, string Id);
+        //従属レコードの宣言 1 つ: 子モジュールの行から親 (索引を作り直す行) を引くための束縛。ChildVariable (子の項目) = ParentVariable (親の項目)
+        sealed record OwnedParent(ModuleDesign Parent, SemanticSearchFieldDesign Field, string ChildVariable, string ParentVariable);
+
+        //索引を作り直す行 (モジュール・Id → 作り直すフィールド)
+        sealed class Targets
+        {
+            readonly Dictionary<(string Module, string Id), (ModuleDesign Module, List<SemanticSearchFieldDesign> Fields)> _items = new();
+            public IEnumerable<KeyValuePair<(string Module, string Id), (ModuleDesign Module, List<SemanticSearchFieldDesign> Fields)>> Items => _items;
+            public int Count => _items.Count;
+            public void Add(ModuleDesign module, string id, IEnumerable<SemanticSearchFieldDesign> fields)
+            {
+                if (string.IsNullOrEmpty(id)) return;
+                if (!_items.TryGetValue((module.Name, id), out var target)) _items[(module.Name, id)] = target = (module, new List<SemanticSearchFieldDesign>());
+                foreach (var field in fields) if (!target.Fields.Contains(field)) target.Fields.Add(field);
+            }
+        }
 
         public async Task<List<ModuleSubmitResult>> SubmitAsync(ModuleDataIOInternalAccess io, List<ModuleSubmitData> transactionData, Func<Task<List<ModuleSubmitResult>>> next)
         {
             var design = service.GetDesign();
-            var targets = new List<Target>();
-            var assigned = new Dictionary<int, string>();
-            for (var i = 0; i < transactionData.Count; i++)
+            //索引の列はサーバーだけが書く (クライアントが送ってきた文章・ベクトルは使わない)
+            foreach (var data in transactionData.SelectMany(e => e.Add.Concat(e.Update)))
             {
-                var submit = transactionData[i];
-                if (submit.Add.Count == 0 && submit.Update.Count == 0 && submit.Delete.Count == 0 && submit.SearchDelete.Count == 0) continue;
-                if (AssignTemporaryIdToRootAdd(design, submit) is { } tempId) assigned[i] = tempId;
-                //主レコードの対象フィールドの従属レコード (タグ付けの行など) を付け外しする送信か
-                var childModules = OwnedChildModules(design, submit.ModuleName);
-                var childTouched = childModules.Count > 0 && submit.Add.Concat(submit.Update).Select(e => e.Name).Concat(submit.Delete.Select(e => e.ModuleName)).Concat(submit.SearchDelete.Select(e => e.ModuleName)).Any(childModules.Contains);
-
-                var hasRoot = false;
-                foreach (var data in submit.Add)
-                {
-                    var target = Create(design, i, submit, data, changedOnly: false, childTouched);
-                    if (target == null) continue;
-                    targets.Add(target);
-                    if (IsRoot(target)) hasRoot = true;
-                }
-                foreach (var data in submit.Update)
-                {
-                    var target = Create(design, i, submit, data, changedOnly: true, childTouched);
-                    if (target == null) continue;
-                    targets.Add(target);
-                    if (IsRoot(target)) hasRoot = true;
-                }
-                //主レコード自身は Update に載らない保存 (タグ付け行だけを足した・外した等) でも、主レコードの文章は変わる
-                if (!hasRoot && childTouched && !string.IsNullOrEmpty(submit.Id) && Create(design, i, submit, null, false, true, submit.ModuleName, submit.Id) is { } root) targets.Add(root);
+                var module = design.Modules.Find(data.Name);
+                if (module == null) continue;
+                foreach (var field in module.Fields.OfType<SemanticSearchFieldDesign>()) data.Fields.Remove(field.Name);
             }
+            //消える従属レコードの親は、消える前に読んで控える (消えた後は読めない)
+            var ownedParents = OwnedParents(design);
+            var targets = new Targets();
+            if (ownedParents.Count > 0) await AddParentsOfDeletingRowsAsync(io, ownedParents, transactionData, targets);
 
             var results = await next();
-            //自分が付けた仮 Id は応答に出さない (一括 INSERT は仮 Id を解決せずそのまま返す)
-            foreach (var (i, tempId) in assigned)
-            {
-                if (i >= results.Count) break;
-                if (results[i].SourceId == tempId) results[i].SourceId = string.Empty;
-                if (results[i].DestinationId == tempId) results[i].DestinationId = string.Empty;
-            }
-            if (targets.Count == 0 || results.Count != transactionData.Count || results.Any(r => !string.IsNullOrEmpty(r.ExceptionMessage))) return results;
-            await IndexAsync(io, design, targets, results);
+            if (results.Count != transactionData.Count || results.Any(r => !string.IsNullOrEmpty(r.ExceptionMessage))) return results;
+
+            await CollectTargetsAsync(io, design, ownedParents, targets);
+            WarnBulkAddNotIndexed(design, transactionData, io.ChangedRecords);
+            if (targets.Count > 0) await IndexAsync(io, design, targets);
             return results;
         }
 
-        //行の索引の対象。changedOnly (更新の行) は対象フィールドを送ってきたフィールドだけ (主レコードで従属を付け外しした送信なら全部)
-        static Target? Create(DesignData design, int submitIndex, ModuleSubmitData submit, ModuleData? data, bool changedOnly, bool childTouched, string? moduleName = null, string? id = null)
+        //本体が記録した変更から、作り直す行を決める
+        static async Task CollectTargetsAsync(ModuleDataIOInternalAccess io, DesignData design, Dictionary<string, List<OwnedParent>> ownedParents, Targets targets)
         {
-            var module = design.Modules.Find(moduleName ?? data!.Name);
-            if (module == null) return null;
-            var fields = module.Fields.OfType<SemanticSearchFieldDesign>().Where(f => f.HasColumns).ToList();
-            if (fields.Count == 0) return null;
-            var idField = IdField(module);
-            if (idField == null) return null;
-            if (data != null)
+            foreach (var changed in io.ChangedRecords)
             {
-                if (!data.Fields.TryGetValue(idField.Name, out var idData) || idData is not IdFieldData { Value: { Length: > 0 } value }) return null;
-                id = value;
+                var module = design.Modules.Find(changed.ModuleName);
+                if (module == null) continue;
+
+                //(1) 追加した行・削除を取り消した行は全部、更新した行は対象フィールドを書いたフィールドだけ。
+                //一括 INSERT の行 (手入力 Id) は除く = 一括取込は Id の付け方によらず文章だけ (ホストの ApplyAsync。ベクトルは取込後の ReindexMissing)
+                if (changed.Kind != ChangedRecordKind.Delete && !changed.IsBulkInsert)
+                {
+                    var fields = module.Fields.OfType<SemanticSearchFieldDesign>().Where(f => f.HasColumns)
+                        .Where(f => changed.Kind != ChangedRecordKind.Update || SemanticSearchText.SourceFields(module, f).Any(changed.FieldNames.Contains)).ToList();
+                    if (fields.Count > 0) targets.Add(module, changed.Id, fields);
+                }
+
+                //(2) 対象フィールドの従属レコードを変えたら、その親 (消した子の親は保存の前に控えてある)
+                if (changed.Kind != ChangedRecordKind.Delete && ownedParents.TryGetValue(changed.ModuleName, out var parents))
+                {
+                    var row = await io.GetWithOwnedRecordsAsync(changed.ModuleName, changed.Id, _ => false);
+                    if (row != null) await AddParentsAsync(io, parents, row, targets);
+                }
             }
-            var target = new Target(submitIndex, submit, data, module, idField, fields, id!);
-            if (changedOnly && data != null && !(IsRoot(target) && childTouched))
-            {
-                target = target with { Fields = fields.Where(f => SemanticSearchText.SourceFields(module, f).Any(data.Fields.ContainsKey)).ToList() };
-                if (target.Fields.Count == 0) return null;
-            }
-            return target;
         }
 
-        static IdFieldDesign? IdField(ModuleDesign module)
-            => module.Fields.OfType<IdFieldDesign>().FirstOrDefault(e => e.Name == SystemFieldNames.Id);
-
-        //主レコードの対象フィールドのうち、従属レコードを持つもの (TagField など) の子モジュール名
-        static HashSet<string> OwnedChildModules(DesignData design, string moduleName)
+        //送信で消す従属レコード (Delete / SearchDelete) の親を、消える前に読んで控える
+        static async Task AddParentsOfDeletingRowsAsync(ModuleDataIOInternalAccess io, Dictionary<string, List<OwnedParent>> ownedParents, List<ModuleSubmitData> transactionData, Targets targets)
         {
-            var result = new HashSet<string>();
-            var module = design.Modules.Find(moduleName);
-            if (module == null) return result;
-            foreach (var field in module.Fields.OfType<SemanticSearchFieldDesign>().Where(f => f.HasColumns))
+            foreach (var submit in transactionData)
             {
-                foreach (var name in SemanticSearchText.SourceFields(module, field))
+                foreach (var delete in submit.Delete)
                 {
-                    if (module.Fields.FirstOrDefault(f => f.Name == name) is not IOwnedRecordsFieldDesign owned) continue;
-                    foreach (var declaration in owned.GetOwnedRecords(design.Modules))
-                        if (!string.IsNullOrEmpty(declaration.Condition.ModuleName)) result.Add(declaration.Condition.ModuleName);
+                    if (!ownedParents.TryGetValue(delete.ModuleName, out var parents) || string.IsNullOrEmpty(delete.Id)) continue;
+                    var row = await io.GetWithOwnedRecordsAsync(delete.ModuleName, delete.Id, _ => false);
+                    if (row != null) await AddParentsAsync(io, parents, row, targets);
+                }
+                foreach (var searchDelete in submit.SearchDelete)
+                {
+                    if (!ownedParents.TryGetValue(searchDelete.ModuleName, out var parents)) continue;
+                    var condition = searchDelete.JsonClone();
+                    condition.SelectFields.Clear();
+                    for (var pageIndex = 0; ; pageIndex++)
+                    {
+                        var page = await io.GetListAsync(condition, pageIndex);
+                        foreach (var row in page.Items) await AddParentsAsync(io, parents, row, targets);
+                        if (pageIndex + 1 >= page.PageCount || page.Items.Count == 0) break;
+                    }
+                }
+            }
+        }
+
+        //子の行から親の行を引いて対象に足す (子の項目 = 親の項目。親の項目が Id ならそのまま、そうでなければ親を検索)
+        static async Task AddParentsAsync(ModuleDataIOInternalAccess io, List<OwnedParent> parents, ModuleData childRow, Targets targets)
+        {
+            foreach (var parent in parents)
+            {
+                var value = ValueOf(childRow, new VariableName(parent.ChildVariable).FieldName.FullName);
+                if (value == null) continue;
+                if (new VariableName(parent.ParentVariable).FieldName.FullName == SystemFieldNames.Id)
+                {
+                    targets.Add(parent.Parent, value.ToString() ?? string.Empty, [parent.Field]);
+                    continue;
+                }
+                var condition = new SearchCondition(parent.Parent.Name) { SelectFields = [SystemFieldNames.Id] };
+                condition.Condition = new FieldValueMatchCondition { SearchTargetVariable = parent.ParentVariable, Comparison = MatchComparison.Equal, Value = MultiTypeValue.Create(value) };
+                for (var pageIndex = 0; ; pageIndex++)
+                {
+                    var page = await io.GetListAsync(condition, pageIndex);
+                    foreach (var row in page.Items)
+                        if (row.Fields.GetValueOrDefault(SystemFieldNames.Id) is IdFieldData { Value: { Length: > 0 } id }) targets.Add(parent.Parent, id, [parent.Field]);
+                    if (pageIndex + 1 >= page.PageCount || page.Items.Count == 0) break;
+                }
+            }
+        }
+
+        //束縛の項目の値 (親を指すリンク・Id・数値など)。無ければ null
+        static object? ValueOf(ModuleData row, string fieldName)
+            => row.Fields.GetValueOrDefault(fieldName) switch
+            {
+                ValueFieldDataBase<string> s => string.IsNullOrEmpty(s.Value) ? null : s.Value,
+                ValueFieldDataBase<decimal?> d => d.Value,
+                ValueFieldDataBase<int?> i => i.Value,
+                ValueFieldDataBase<long?> l => l.Value,
+                ModuleFieldData m => string.IsNullOrEmpty(m.Id) ? null : m.Id,
+                _ => null,
+            };
+
+        //対象フィールドのうち従属レコードを持つもの (TagField など) の宣言を、子モジュール名 → 親の引き方 に並べる
+        static Dictionary<string, List<OwnedParent>> OwnedParents(DesignData design)
+        {
+            var result = new Dictionary<string, List<OwnedParent>>();
+            foreach (var module in design.Modules.ToList())
+            {
+                foreach (var field in module.Fields.OfType<SemanticSearchFieldDesign>().Where(f => f.HasColumns))
+                {
+                    foreach (var name in SemanticSearchText.SourceFields(module, field))
+                    {
+                        if (module.Fields.FirstOrDefault(f => f.Name == name) is not IOwnedRecordsFieldDesign owned) continue;
+                        foreach (var declaration in owned.GetOwnedRecords(design.Modules))
+                        {
+                            var childModule = declaration.Condition.ModuleName;
+                            var bind = declaration.Condition.GetFieldVariableConditions().FirstOrDefault();
+                            if (string.IsNullOrEmpty(childModule) || bind == null) continue;
+                            if (!result.TryGetValue(childModule, out var list)) result[childModule] = list = new List<OwnedParent>();
+                            list.Add(new OwnedParent(module, field, bind.SearchTargetVariable, bind.Variable));
+                        }
+                    }
                 }
             }
             return result;
         }
 
-        //主レコード (送信のモジュールと Id。Id 手打ち変更 "@replace:旧->新" の主レコードも)
-        static bool IsRoot(Target target)
-            => target.Module.Name == target.Submit.ModuleName
-                && (target.Id == target.Submit.Id || (target.Data != null && target.Id.StartsWith("@replace:") && ReplaceSource(target.Id) == target.Submit.Id));
-
-        static string ReplaceSource(string id)
+        //一括 INSERT (DB が採番 = 本体に変更の記録が無い) で、行に文章も無い = ホストの BulkAddAsync の結線漏れ (モジュールごとに 1 回警告)
+        void WarnBulkAddNotIndexed(DesignData design, List<ModuleSubmitData> transactionData, IReadOnlyList<ChangedRecord> changedRecords)
         {
-            var arrow = id.LastIndexOf("->", StringComparison.Ordinal);
-            return arrow < 0 ? string.Empty : id["@replace:".Length..arrow];
-        }
-
-        //新規の主レコードに Id が無い (ファイル取込・スクリプトの一括保存) なら仮 Id を付けて、保存後に採番された Id を結果から引けるようにする (編集履歴と同じ)。
-        //主モジュールの Id 無しの行が複数あれば全部に付け、最初の行を送信の主レコードにする。送信の Id に入れた仮 Id を返す
-        static string? AssignTemporaryIdToRootAdd(DesignData design, ModuleSubmitData submit)
-        {
-            if (!string.IsNullOrEmpty(submit.Id)) return null;
-            var module = design.Modules.Find(submit.ModuleName);
-            if (module == null || !module.Fields.OfType<SemanticSearchFieldDesign>().Any(f => f.HasColumns)) return null;
-            var idField = IdField(module);
-            if (idField == null) return null;
-            string? first = null;
-            foreach (var root in submit.Add.Where(e => e.Name == submit.ModuleName && (e.Fields.GetValueOrDefault(idField.Name) as IdFieldData)?.Value is null or ""))
+            foreach (var group in transactionData.SelectMany(e => e.Add).GroupBy(e => e.Name))
             {
-                var tempId = IdFieldData.NewId();
-                root.Fields[idField.Name] = tempId;
-                first ??= tempId.Value;
+                var module = design.Modules.Find(group.Key);
+                if (module == null) continue;
+                var fields = module.Fields.OfType<SemanticSearchFieldDesign>().Where(f => f.HasColumns).ToList();
+                if (fields.Count == 0 || changedRecords.Any(e => e.ModuleName == group.Key && e.Kind == ChangedRecordKind.Add && !e.IsBulkInsert)) continue;
+                if (group.Any(row => fields.Any(f => !row.Fields.ContainsKey(f.Name)))) service.WarnBulkAddNotIndexed(group.Key);
             }
-            if (first == null) return null;
-            submit.Id = first;
-            return first;
         }
 
         //保存した行を読み直して索引を書く
-        async Task IndexAsync(ModuleDataIOInternalAccess io, DesignData design, List<Target> targets, List<ModuleSubmitResult> results)
+        async Task IndexAsync(ModuleDataIOInternalAccess io, DesignData design, Targets targets)
         {
-            var rows = new List<(Target Target, ModuleData Row, ModuleData Update, List<SemanticSearchFieldDesign> Fields)>();
-            var done = new HashSet<(string Module, string Id)>();
-            var warned = new HashSet<string>();
-            foreach (var target in targets)
+            var rows = new List<(ModuleDesign Module, ModuleData Row, ModuleData Update, List<SemanticSearchFieldDesign> Fields)>();
+            foreach (var ((_, id), (module, fields)) in targets.Items)
             {
-                //送信データにこのフィールドのデータが付いていても (旧結線の ApplyAsync など) 保存した行から作り直す = 索引はいつもサーバーが作る
-                var fields = target.Fields;
-                var id = ResolveId(target, results[target.SubmitIndex]);
-                if (id == null)
-                {
-                    //主レコードの Id が引けない = 一括 INSERT (採番 Id を返さない)。ApplyAsync の文章も無ければホストの BulkAddAsync の結線漏れ
-                    if (IsRoot(target) && target.Data != null && fields.Any(f => !target.Data.Fields.ContainsKey(f.Name)) && warned.Add(target.Module.Name)) service.WarnBulkAddNotIndexed(target.Module.Name);
-                    continue;
-                }
-                if (!done.Add((target.Module.Name, id))) continue;
-                //保存時と再索引で同じ読み方 (権限を通さない。従属レコードは文章に使う宣言だけ)。論理削除した行は読めない = 索引しない
-                var row = await SemanticSearchService.ReadForIndexAsync(io, target.Module, id, fields);
-                if (row == null || !row.Fields.ContainsKey(target.IdField.Name)) continue;
+                //保存時と再索引で同じ読み方 (権限を通さない。従属レコードは文章に使う宣言だけ)。論理削除した行・消えた行は読めない = 索引しない
+                var row = await SemanticSearchService.ReadForIndexAsync(io, module, id, fields);
+                var idField = module.Fields.OfType<IdFieldDesign>().FirstOrDefault(e => e.Name == SystemFieldNames.Id);
+                if (row == null || idField == null || !row.Fields.ContainsKey(idField.Name)) continue;
                 var update = new ModuleData { Name = row.Name };
-                update.Fields[target.IdField.Name] = row.Fields[target.IdField.Name];
-                rows.Add((target, row, update, fields));
+                update.Fields[idField.Name] = row.Fields[idField.Name];
+                rows.Add((module, row, update, fields));
             }
             if (rows.Count == 0) return;
 
             //フィールドごとに、行の文章をまとめて 1 回で埋め込む (失敗は警告ログを出して文章だけ書く = 再索引で埋められる)
-            foreach (var group in rows.SelectMany(r => r.Fields.Select(f => (r.Row, r.Update, r.Target.Module, Field: f))).GroupBy(e => e.Field))
+            foreach (var group in rows.SelectMany(r => r.Fields.Select(f => (r.Row, r.Update, r.Module, Field: f))).GroupBy(e => e.Field))
             {
                 var items = group.ToList();
                 var texts = items.Select(e => SemanticSearchText.Build(design, e.Module, e.Row, e.Field)).ToList();
-                var vectors = await service.EmbedForSaveAsync(texts, CancellationToken.None);
+                var vectors = await service.EmbedForSaveAsync(texts.Select(t => SemanticSearchText.ForEmbedding(group.Key, t)).ToList(), CancellationToken.None);
                 for (var i = 0; i < items.Count; i++)
                     items[i].Update.Fields[group.Key.Name] = new SemanticSearchFieldData { Text = texts[i], Vector = vectors[i] == null ? null : SemanticSearchVector.Encode(vectors[i]!) };
             }
             //書き込み専用列だけを書く (レコードの更新ではない)。失敗 (列の型が埋め込みの次元と合わない等) は保存の失敗にする
             //(同じトランザクションの DB の失敗は握れない: PostgreSQL は以後の文が全部失敗し、握ると保存が黙って消える)
             foreach (var (_, _, update, _) in rows) await io.UpdateWriteOnlyColumnsAsync(update);
-        }
-
-        //保存後の Id: 主レコードは結果の Id (仮 Id の採番・手打ちの Id の変更も反映済み)、他の行は仮 Id なら対応表で、Id 手打ち変更なら新しい Id。引けない (一括 INSERT など) なら null
-        static string? ResolveId(Target target, ModuleSubmitResult result)
-        {
-            if (IsRoot(target))
-                return string.IsNullOrEmpty(result.DestinationId) || IdFieldData.IsTemporaryId(result.DestinationId) ? null : result.DestinationId;
-            if (IdFieldData.IsTemporaryId(target.Id)) return result.TemporaryIdMap.TryGetValue(target.Id, out var id) ? id : null;
-            if (target.Id.StartsWith("@replace:"))
-            {
-                var arrow = target.Id.LastIndexOf("->", StringComparison.Ordinal);
-                return arrow < 0 ? null : target.Id[(arrow + 2)..];
-            }
-            return target.Id;
         }
 
         public Task GetListAsync(ModuleDataIOInternalAccess io, SearchCondition condition, Paging<ModuleData> result)

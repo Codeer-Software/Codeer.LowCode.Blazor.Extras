@@ -53,7 +53,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         [Designer(Index = 5, CandidateType = CandidateType.DbColumn, DisplayName = "$SemanticSearchFieldDbColumnVectorSearch")]
         public string DbColumnVectorSearch { get; set; } = string.Empty;
 
-        /// <summary>文章の最大文字数 (超えた分は切り捨て。埋め込みモデルの入力上限の歯止め)。</summary>
+        /// <summary>埋め込みに渡す文章の最大文字数 (超えた分は埋め込みに渡さない。埋め込みモデルの入力上限の歯止め)。文章の列には全文を保存する (キーワード検索は全文に当たる)。</summary>
         [Designer(Index = 6, DisplayName = "$SemanticSearchFieldMaxTextLength")]
         public int MaxTextLength { get; set; } = 8000;
 

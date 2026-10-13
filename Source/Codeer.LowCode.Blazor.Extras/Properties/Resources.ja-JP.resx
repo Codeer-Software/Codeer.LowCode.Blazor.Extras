@@ -1327,7 +1327,7 @@
     <value>DBカラム (ベクトル)</value>
   </data>
   <data name="SemanticSearchFieldMaxTextLength" xml:space="preserve">
-    <value>文章の最大文字数</value>
+    <value>埋め込みに渡す文章の最大文字数</value>
   </data>
   <data name="SemanticSearchCheck_ColumnsRequired" xml:space="preserve">
     <value>文章の列・ベクトルの列・ベクトル検索用の列をすべて設定してください。</value>

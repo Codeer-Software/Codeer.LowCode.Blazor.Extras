@@ -33,9 +33,12 @@ namespace Codeer.LowCode.Blazor.Extras.SemanticSearch
                 //改行は環境によらず LF (索引の文章はどの OS で作っても同じにする)
                 sb.Append(string.IsNullOrEmpty(label) ? name : label).Append(": ").Append(value.Trim()).Append('\n');
             }
-            var text = sb.ToString().TrimEnd();
-            return field.MaxTextLength > 0 && text.Length > field.MaxTextLength ? text[..field.MaxTextLength] : text;
+            return sb.ToString().TrimEnd();
         }
+
+        /// <summary>埋め込みに渡す文章 (<see cref="SemanticSearchFieldDesign.MaxTextLength"/> で切る)。文章の列には全文を保存する (キーワード検索は全文に当たる)。</summary>
+        public static string ForEmbedding(SemanticSearchFieldDesign field, string text)
+            => field.MaxTextLength > 0 && text.Length > field.MaxTextLength ? text[..field.MaxTextLength] : text;
 
         /// <summary>文章にするフィールド名 (デザインの指定、空なら既定)。</summary>
         public static IEnumerable<string> SourceFields(ModuleDesign module, SemanticSearchFieldDesign field)

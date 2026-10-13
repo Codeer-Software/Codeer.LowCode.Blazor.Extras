@@ -17,7 +17,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
     /// <para>
     /// スクリプトからは再索引 (溜まっている行全部の文章とベクトルを作り直す) を起動できる: <c>Search.Reindex()</c> / <c>Search.ReindexMissing()</c>。
     /// サーバーのジョブとして走り、進捗は <see cref="ReindexProcessed"/> / <see cref="ReindexTotal"/> に届き、終わると <see cref="SemanticSearchFieldDesign.OnReindexCompleted"/> が呼ばれる。
-    /// 誰が起動できるかは、この API がフィールドの読取権限で入口を検査することで決まる (索引自体は権限を通さずサーバーが作る。ボタンを置くページの UserReadCondition でも絞れる)。
+    /// 誰が起動できるかは、この API がフィールドの書き込み権限 (ユーザー権限だけ) で入口を検査することで決まる (索引自体は権限を通さずサーバーが作る)。
     /// スクリプトから参照するには、このフィールドがそのレイアウトの DataOnlyFields (またはレイアウト) に入っていること。
     /// </para>
     /// </summary>

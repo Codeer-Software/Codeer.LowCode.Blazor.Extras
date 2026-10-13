@@ -14,7 +14,7 @@ AI チャット ([AIChatField](AIChatFieldDesign.md) の `RawDataAccessAgent`) �
 
 このフィールドを置くだけでは**ベクトルは付かない**。埋め込みモデルの用意と保存時の索引付けはホストアプリの責務で、Extras.Server の `Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch.SemanticSearchService` を 1 つ作って使う (索引付け・再索引 API・AI チャットの意味検索が同じ入口)。
 
-- 保存時: `ModuleDataIO` の派生 (通常 `CustomizedModuleDataIO`) のコンストラクタで `AddInterceptor(semanticSearch.Interceptor)`。保存が終わった後にサーバーが行を読み直して (権限を通さない内部読み) 文章と埋め込みを書き込み専用の列だけに書く (レコードの更新ではない = 更新日時・楽観ロックの版・ExecuteSqlField は動かない)。対象フィールドが変わった保存 (追加・対象フィールドを含む更新・タグの付け外し) だけ作り直す。一括 INSERT (`BulkAddAsync`) だけは `await semanticSearch.ApplyAsync(datas)` で取り込む行のデータから文章だけ作る (ベクトルとリンク表示名は取込後の `ReindexMissing()`)。埋め込みの失敗は文章だけ保存して止めないが、索引の列への書き込みの失敗は保存も失敗 (同じトランザクション)。警告ログは起動時に `SemanticSearchIndex.Service.LoggerFactory` を設定して出す (テンプレートは設定済み)。リンク先の表示名・タグ名を後から変えても既存の行は再索引まで変わらない。埋め込みの往復は保存のトランザクションの中で `SaveEmbeddingTimeout` (既定 15 秒) まで待つ (超過・失敗は文章だけ保存 + 警告ログ。後から `ReindexMissing()`)。ホストが `AddAsync` / `UpdateAsync` を直接呼ぶ内部経路 (保存の送信を通らないもの) には付かない (内部の追加は `ApplyAsync` で文章だけ、更新は再索引。`ApplyAsync` は渡した項目だけで文章を作るので更新データには使えない)。埋め込みモデル未設定・失敗のときは文章だけ保存 (ベクトル NULL・警告ログ)
+- 保存時: `ModuleDataIO` の派生 (通常 `CustomizedModuleDataIO`) のコンストラクタで `AddInterceptor(semanticSearch.Interceptor)`。保存が終わった後にサーバーが行を読み直して (権限を通さない内部読み) 文章と埋め込みを書き込み専用の列だけに書く (レコードの更新ではない = 更新日時・楽観ロックの版・ExecuteSqlField は動かない)。対象フィールドが変わった保存 (追加・対象フィールドを含む更新・タグの付け外し) だけ作り直す。どの行かは送信の形ではなく本体が記録した「この保存で変更したレコード」で決める (取込・編集履歴の復活・拡張の内部書き込みも対象。クライアントが送った索引データは捨てる)。一括 INSERT (`BulkAddAsync`) だけは `await semanticSearch.ApplyAsync(datas)` で取り込む行のデータから文章だけ作る (ベクトルとリンク表示名は取込後の `ReindexMissing()`)。埋め込みの失敗は文章だけ保存して止めないが、索引の列への書き込みの失敗は保存も失敗 (同じトランザクション)。警告ログは起動時に `SemanticSearchIndex.Service.LoggerFactory` を設定して出す (テンプレートは設定済み)。リンク先の表示名・タグ名を後から変えても既存の行は再索引まで変わらない。埋め込みの往復は保存のトランザクションの中で `SaveEmbeddingTimeout` (既定 15 秒) まで待つ (超過・失敗は文章だけ保存 + 警告ログ。後から `ReindexMissing()`)。保存 (`SubmitAsync`) の外でホストが `AddAsync` / `UpdateAsync` を直接呼ぶ経路には付かない (内部の追加は `ApplyAsync` で文章だけ、更新は再索引。`ApplyAsync` は渡した項目だけで文章を作るので更新データには使えない)。埋め込みモデル未設定・失敗のときは文章だけ保存 (ベクトル NULL・警告ログ)
 - AI チャット: `RawDataAccessAgent` / `ModuleDataAccessAgent` のコンストラクタ `semanticSearch` に同じ `SemanticSearchService` を渡す。渡していて埋め込みプロバイダが設定されているときだけ `search_records` が付く (対象は 3 列が設定済みで、データソースが PostgreSQL / SQL Server のモジュール)。`ModuleDataAccessAgent` の `search_records` は本体の一覧検索の条件 (`SemanticMatchCondition`) として走るので、行の条件・項目の読み取り権限が効く (RawDataAccess のほうは AI 用 DB ユーザーの範囲)
 - 再索引 (既存データへの一括付与): 保存時の索引付けは新しく保存した行にしか効かないので、導入時に溜まっている既存データにはフィールドのスクリプト `Reindex()` で全行にまとめてベクトルを付ける (1 回。以後は保存時に追従)。`SourceFields` を変えたとき (外した項目の値は既存の行に残る)・一括取込の後・埋め込みモデルを変えたときも再索引。ホストは同じ `SemanticSearchService` の `StartReindexAsync` / `GetReindexStatus` / `CancelReindex` を、AIChat と同じ形の Controller (POST / GET / DELETE `api/semantic_search/reindex`) から使う。クライアントは `SemanticSearchField.EndPoint` にその URL を設定する。デザイン側はフィールドのスクリプト `Reindex()` を ButtonField から呼ぶだけ
 - 埋め込みは Extras.Server の `IEmbeddingProvider` (メールの IMailSender と同じ作り)。実装は `AzureOpenAIEmbeddingProvider` と、Microsoft.Extensions.AI の生成器を包む `EmbeddingGeneratorProvider` (別プロバイダは IEmbeddingProvider を実装して対応表に足す)。テンプレートは appsettings の `SemanticSearch.EmbeddingProvider` の呼び名で対応表 (`EmbeddingProviderTable`) から選ぶ。空なら意味検索は無効 (文章だけ保存)。モデルを変えたら列の次元を合わせて作り直し、`Reindex()` で全行再索引
@@ -23,7 +23,7 @@ AI チャット ([AIChatField](AIChatFieldDesign.md) の `RawDataAccessAgent`) �
 
 - 対象フィールドを順に「表示名: 値」(値が空のフィールドは出さない)。表示名が無ければフィールド名
 - 候補値 (SelectField) は表示名、リンクは表示文字列、日付は `yyyy-MM-dd`、日時は `yyyy-MM-dd HH:mm`、真偽は「はい / いいえ」、リッチテキストはタグを除いた本文、ファイルはファイル名。List / Module / Password / SemanticSearch 自身は出さない
-- 改行は LF 固定。`MaxTextLength` を超えた分は切り捨て
+- 改行は LF 固定。文章の列には全文を保存し、`MaxTextLength` を超えた分は埋め込みに渡さない (キーワード検索は全文に当たる)
 - 作るのはサーバー (保存のたび・再索引・一括取込)。対象フィールドがフロントに読み込まれているかどうかは関係ない
 
 ### C# クラス定義 (真実の源)
@@ -40,7 +40,7 @@ AI チャット ([AIChatField](AIChatFieldDesign.md) の `RawDataAccessAgent`) �
 | `DbColumnText` | string | `""` | 文章を保存する DB カラム名。**書き込み専用・必須**。 |
 | `DbColumnVector` | string | `""` | 埋め込みベクトル (`[0.1,-0.2,…]` の JSON 配列テキスト) を保存する DB カラム名。**書き込み専用・必須**。 |
 | `DbColumnVectorSearch` | string | `""` | DB のベクトル検索で距離計算に使うベクトル型の列。**必須**。PostgreSQL は `DbColumnVector` をキャストする生成列の名前、SQL Server は `DbColumnVector` と同じ列名 (VECTOR 型にする)。 |
-| `MaxTextLength` | int | `8000` | 文章の最大文字数 (埋め込みモデルの入力上限の歯止め)。 |
+| `MaxTextLength` | int | `8000` | 埋め込みに渡す文章の最大文字数 (埋め込みモデルの入力上限の歯止め)。文章の列は全文。 |
 | `SearchMaxDistance` | double? | `null` | 検索レイアウトの検索欄で探すときのコサイン距離の上限 (0〜2)。空なら距離では絞らない (並びだけ)。 |
 | `KeywordSearch` | bool | `false` | 検索レイアウトの検索欄にキーワード欄も出す。空白区切りの語をすべて含む行 (文章の列への部分一致の AND) に絞る。埋め込み不要・どの DB でも動く。文章と両方入れると絞ったうえで近い順。 |
 | `OnReindexCompleted` | string | `""` | スクリプトの `Reindex()` / `ReindexMissing()` で起こした再索引が終わった (成功・失敗・中断) ときに呼ぶスクリプト関数名。結果は `ReindexProcessed` / `ReindexError` で見る。 |
@@ -110,7 +110,7 @@ AI チャットの `execute_sql` の SQL に `{embed:探したい内容}` と書
 
 ### 注意
 
-- 意味検索できるのは PostgreSQL (pgvector) と SQL Server 2025 のデータソースだけ。SQLite / MySQL / Oracle のモジュールは検索対象にならない
+- 意味検索できるのは PostgreSQL (pgvector) と SQL Server 2025 のデータソースだけ。SQLite / MySQL / Oracle のモジュールは意味検索の対象にならない (キーワード検索 `KeywordSearch` は使える)
 - 埋め込みモデルを変えたらベクトル列を作り直して全行の再索引が要る (次元が違うベクトルは入らない)
 - 文章は AI プロバイダに送られる。個人情報などを入れたくないときは `SourceFields` で絞る
 - `RawDataAccessAgent` の `search_records` だけは AI 用の DB 接続で直接読む: 読める範囲と接続は `RawDataAccessOptions.DataSourceNames` で決まり (モジュールのデータソースが一覧に無ければ、AI 用の別名接続のうち同じ DB 種別のもので同じ表を引く)、行ごとの DataReadCondition・項目の読み取り権限は効かない。置くページの UserReadCondition で使える人を絞る。画面の検索欄と `ModuleDataAccessAgent` は一覧検索なので行の条件・項目の権限が効く

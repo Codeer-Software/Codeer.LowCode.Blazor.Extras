@@ -257,6 +257,36 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
         }
 
         [Test]
+        public async Task 一覧の中の行のタグだけを変えてもその行の索引が作り直される()
+        {
+            //送信の主レコードは会社 (Company)。タグ付け行 (ContactTags) は会社の一覧の中の社員 (Contact 2) のもの = 作り直すのは送信の主レコードでなくタグの持ち主
+            await TagTestDesigns.CreateTablesAsync(_db);
+            await _db.ExecuteAsync(Ds, "ALTER TABLE contacts ADD COLUMN search_text TEXT", new());
+            await _db.ExecuteAsync(Ds, "ALTER TABLE contacts ADD COLUMN search_vector TEXT", new());
+            await _db.ExecuteAsync(Ds, "INSERT INTO companies (name) VALUES ('X社')", new());
+            await _db.ExecuteAsync(Ds, "UPDATE contacts SET company_id = 1 WHERE id = 2", new());
+            _design = TagTestDesigns.Create();
+            TagTestDesigns.AddCompany(_design);
+            _design.Modules.Find("Contact")!.Fields.Add(new SemanticSearchFieldDesign { Name = "Search", SourceFields = { "Name", "Tags" }, DbColumnText = "search_text", DbColumnVector = "search_vector", DbColumnVectorSearch = "search_vector" });
+
+            async Task<string?> ContactTextAsync(string id) => (await _db.QueryAsync(Ds, $"SELECT search_text FROM contacts WHERE id = {id}", new())).Single().Values.Single()?.ToString();
+
+            //追加だけ
+            var tag = new ModuleData { Name = "ContactTags" };
+            tag.Fields["Id"] = IdFieldData.NewId();
+            tag.Fields["OwnerId"] = new IdFieldData { Value = "2" };
+            tag.Fields["Name"] = new TextFieldData { Value = "DXPO" };
+            AssertNoError(await CreateIO(Indexer()).SubmitWithTransactionAsync([new ModuleSubmitData { ModuleName = "Company", Id = "1", Add = [tag] }]));
+            Assert.That(await ContactTextAsync("2"), Is.EqualTo("名前: B\nタグ: 展示会, DXPO"));
+            Assert.That(await ContactTextAsync("1"), Is.Null, "他の社員は触らない");
+
+            //削除だけ (消す行の持ち主は保存の前に読んでおく)
+            var tagId = (await _db.QueryAsync(Ds, "SELECT id FROM contact_tags WHERE owner_id = 2 AND name = 'DXPO'", new())).Single().Values.Single()!.ToString()!;
+            AssertNoError(await CreateIO(Indexer()).SubmitWithTransactionAsync([new ModuleSubmitData { ModuleName = "Company", Id = "1", Delete = [new ModuleDeleteInfo { ModuleName = "ContactTags", Id = tagId }] }]));
+            Assert.That(await ContactTextAsync("2"), Is.EqualTo("名前: B\nタグ: 展示会"));
+        }
+
+        [Test]
         public async Task 再索引はタグ付けモジュールに閲覧条件があってもタグ名を文章に入れる()
         {
             //タグ付けモジュール (ContactTags) を管理者だけが読める構成。保存時と同じ内部読みで再索引するので、U1 (管理者ではない) が起こしてもタグが入る
@@ -385,6 +415,61 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
             {
                 ModuleDataIO.BulkAddThreshold = saved;
             }
+        }
+
+        //テンプレートの CustomizedModuleDataIO と同じく、一括 INSERT で取り込む行に ApplyAsync(datas) で文章を付ける
+        sealed class BulkIndexingModuleDataIO : ModuleDataIO
+        {
+            readonly SemanticSearchService _semanticSearch;
+            public BulkIndexingModuleDataIO(DesignData design, IAuthenticationContext auth, IDbAccessor db, ITemporaryFileManager files, SemanticSearchService semanticSearch)
+                : base(design, auth, db, files)
+            {
+                _semanticSearch = semanticSearch;
+                AddInterceptor(semanticSearch.Interceptor);
+            }
+            protected override async Task BulkAddAsync(Guid transactionId, List<ModuleData> datas)
+            {
+                await _semanticSearch.ApplyAsync(datas);
+                await base.BulkAddAsync(transactionId, datas);
+            }
+        }
+
+        [Test]
+        public async Task 手入力Idの一括INSERTも文章だけ付ける_埋め込みは呼ばない()
+        {
+            await _db.ExecuteAsync(Ds, "CREATE TABLE memos (id TEXT PRIMARY KEY, title TEXT, search_text TEXT, search_vector TEXT)", new());
+            var memo = new ModuleDesign { Name = "Memo", DataSourceName = Ds, DbTable = "memos", CanCreate = true };
+            memo.Fields.Add(new IdFieldDesign { Name = "Id", DbColumn = "id", IsManualInput = true });
+            memo.Fields.Add(new TextFieldDesign { Name = "Title", DisplayName = "題名", DbColumn = "title" });
+            memo.Fields.Add(new SemanticSearchFieldDesign { Name = "Search", DbColumnText = "search_text", DbColumnVector = "search_vector", DbColumnVectorSearch = "search_vector" });
+            memo.ListLayouts[""] = new ListLayoutDesign();
+            _design.AddModule(memo);
+
+            var saved = ModuleDataIO.BulkAddThreshold;
+            ModuleDataIO.BulkAddThreshold = 2;
+            try
+            {
+                var adds = new[] { ("M1", "取込 A"), ("M2", "取込 B") }.Select(e =>
+                {
+                    var d = new ModuleData { Name = "Memo" };
+                    d.Fields["Id"] = new IdFieldData { Value = e.Item1 };
+                    d.Fields["Title"] = new TextFieldData { Value = e.Item2 };
+                    return d;
+                }).ToList();
+                var indexer = Indexer();
+                var io = new BulkIndexingModuleDataIO(_design, this, _db, new TemporaryFileManager(_db, [], new List<IFileStorage>()), indexer);
+                var results = await io.SubmitWithTransactionAsync(adds.Select(d => new ModuleSubmitData { ModuleName = "Memo", Id = ((IdFieldData)d.Fields["Id"]).Value!, Add = [d], NoTemporaryIdResolution = true }).ToList());
+                AssertNoError(results);
+            }
+            finally
+            {
+                ModuleDataIO.BulkAddThreshold = saved;
+            }
+
+            var rows = await _db.QueryAsync(Ds, "SELECT id, search_text, search_vector FROM memos ORDER BY id", new());
+            Assert.That(rows.Select(r => (r["id"]?.ToString(), r["search_text"]?.ToString(), r["search_vector"] is null or DBNull)),
+                Is.EqualTo(new[] { ("M1", "題名: 取込 A", true), ("M2", "題名: 取込 B", true) }), "文章だけ (ベクトルは取込後の ReindexMissing)");
+            Assert.That(_embedding.Calls, Is.EqualTo(0), "保存の中で埋め込みを呼ばない");
         }
 
         [Test]
@@ -524,6 +609,97 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
             var codes = CheckCodes();
             Assert.That(codes, Does.Not.Contain(code));
             Assert.That(codes.Count, Is.EqualTo(1), string.Join(", ", codes));
+        }
+
+        //意味検索のインターセプタより外側 (先に登録) で、next() の前に内部書き込みする (編集履歴の復活など)
+        sealed class InnerWriter(Func<ModuleDataIOInternalAccess, Task> before) : IModuleDataIOInterceptor
+        {
+            public async Task<List<ModuleSubmitResult>> SubmitAsync(ModuleDataIOInternalAccess io, List<ModuleSubmitData> transactionData, Func<Task<List<ModuleSubmitResult>>> next)
+            {
+                await before(io);
+                return await next();
+            }
+            public Task GetListAsync(ModuleDataIOInternalAccess io, SearchCondition condition, Codeer.LowCode.Blazor.Utils.Paging<ModuleData> result) => Task.CompletedTask;
+        }
+
+        sealed class OuterFirstModuleDataIO : ModuleDataIO
+        {
+            public OuterFirstModuleDataIO(DesignData design, IAuthenticationContext auth, IDbAccessor db, ITemporaryFileManager files, IModuleDataIOInterceptor outer, SemanticSearchService semanticSearch)
+                : base(design, auth, db, files)
+            {
+                AddInterceptor(outer);
+                AddInterceptor(semanticSearch.Interceptor);
+            }
+        }
+
+        ModuleDataIO CreateIOWithOuter(Func<ModuleDataIOInternalAccess, Task> before)
+            => new OuterFirstModuleDataIO(_design, this, _db, new TemporaryFileManager(_db, [], new List<IFileStorage>()), new InnerWriter(before), Indexer());
+
+        [Test]
+        public async Task 保存の中で内部追加した行にも索引が付く_編集履歴の復活相当()
+        {
+            string? addedId = null;
+            var io = CreateIOWithOuter(async io =>
+            {
+                var row = new ModuleData { Name = "Inquiry" };
+                row.Fields["Subject"] = new TextFieldData { Value = "復活した件名" };
+                row.Fields["Body"] = new TextFieldData { Value = "復活した本文" };
+                addedId = await io.AddAsync(row);
+            });
+            AssertNoError(await io.SubmitWithTransactionAsync([new ModuleSubmitData { ModuleName = "Inquiry" }]));
+
+            Assert.That(addedId, Is.EqualTo("4"), "採番された Id");
+            var (text, vector) = await RowAsync(addedId!);
+            Assert.That(text, Is.EqualTo("件名: 復活した件名\n本文: 復活した本文"));
+            Assert.That(vector, Is.EqualTo(SemanticSearchVector.Encode(FakeEmbeddingProvider.Embed(text!))));
+        }
+
+        [Test]
+        public async Task 保存の中で内部更新した行にも索引が付く()
+        {
+            var io = CreateIOWithOuter(async io =>
+            {
+                var row = new ModuleData { Name = "Inquiry" };
+                row.Fields["Id"] = new IdFieldData { Value = "1" };
+                row.Fields["Subject"] = new TextFieldData { Value = "内部で変えた件名" };
+                await io.UpdateAsync(row);
+            });
+            AssertNoError(await io.SubmitWithTransactionAsync([new ModuleSubmitData { ModuleName = "Inquiry" }]));
+
+            var (text, vector) = await RowAsync("1");
+            Assert.That(text, Is.EqualTo("件名: 内部で変えた件名\n本文: 注文がまだ届かない"));
+            Assert.That(vector, Is.EqualTo(SemanticSearchVector.Encode(FakeEmbeddingProvider.Embed(text!))));
+            Assert.That(await RowAsync("2"), Is.EqualTo(((string?)null, (string?)null)), "他の行は触らない");
+        }
+
+        [Test]
+        public async Task 索引データだけを送った更新は捨てられ索引は変わらない()
+        {
+            AssertNoError(await CreateIO(Indexer()).SubmitWithTransactionAsync([UpdateSubmit("1")]));
+            var before = await RowAsync("1");
+            Assert.That(before.Text, Is.Not.Null);
+            _embedding.Inputs.Clear();
+
+            var data = new ModuleData { Name = "Inquiry" };
+            data.Fields["Id"] = new IdFieldData { Value = "1" };
+            data.Fields["Search"] = new SemanticSearchFieldData { Text = "t", Vector = "[1,2]" };
+            AssertNoError(await CreateIO(Indexer()).SubmitWithTransactionAsync([new ModuleSubmitData { ModuleName = "Inquiry", Id = "1", Update = [data] }]));
+
+            Assert.That(await RowAsync("1"), Is.EqualTo(before), "送られた文章・ベクトルは書かれない");
+            Assert.That(_embedding.Inputs, Is.Empty, "対象フィールドを書いていないので作り直さない");
+        }
+
+        [Test]
+        public async Task 文章の列は全文_埋め込みには最大文字数まで渡す()
+        {
+            _design.Modules.Find("Inquiry")!.Fields.OfType<SemanticSearchFieldDesign>().Single().MaxTextLength = 10;
+            AssertNoError(await CreateIO(Indexer()).SubmitWithTransactionAsync([UpdateSubmit("1")]));
+
+            var (text, vector) = await RowAsync("1");
+            const string full = "件名: 納期遅れの相談\n本文: 本文を変更";
+            Assert.That(text, Is.EqualTo(full), "列には全文");
+            Assert.That(_embedding.Inputs, Is.EqualTo(new[] { full[..10] }), "埋め込みには 10 文字まで");
+            Assert.That(vector, Is.EqualTo(SemanticSearchVector.Encode(FakeEmbeddingProvider.Embed(full[..10]))));
         }
 
         List<string> CheckCodes()
