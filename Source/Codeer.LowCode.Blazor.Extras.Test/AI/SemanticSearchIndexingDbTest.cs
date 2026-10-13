@@ -113,11 +113,13 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
         }
 
         [Test]
-        public async Task 送信データに文章とベクトルがあればそのまま書く_再索引()
+        public async Task 送信データに文章とベクトルが付いていても保存した行から作り直す()
         {
             AssertNoError(await CreateIO(Indexer()).SubmitWithTransactionAsync([UpdateSubmit("1", new SemanticSearchFieldData { Text = "t", Vector = "[1,2]" })]));
-            Assert.That(await RowAsync("1"), Is.EqualTo(("t", "[1,2]")));
-            Assert.That(_embedding.Inputs, Is.Empty, "埋め込みを呼び直さない");
+            var (text, vector) = await RowAsync("1");
+            Assert.That(text, Is.EqualTo("件名: 納期遅れの相談\n本文: 本文を変更"), "送られた文章は使わない");
+            Assert.That(vector, Is.EqualTo(SemanticSearchVector.Encode(FakeEmbeddingProvider.Embed(text!))), "送られたベクトルは使わない");
+            Assert.That(_embedding.Inputs, Is.EqualTo(new[] { text }), "保存した行の文章で埋め込む");
         }
 
         [Test]

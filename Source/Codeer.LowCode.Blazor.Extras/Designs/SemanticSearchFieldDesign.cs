@@ -166,7 +166,8 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         IEnumerable<DesignCheckInfo> CheckSearchHasEffect(DesignCheckContext context)
         {
             var module = context.GetModuleDesign();
-            if (module == null || SearchMaxDistance != null) yield break;
+            //キーワード欄を出す構成 (ベクトル検索できない DB でキーワードだけ使う設計を含む) では、文章の欄が効かなくても指摘しない (直す手が無い)
+            if (module == null || SearchMaxDistance != null || KeywordSearch) yield break;
             var layouts = new HashSet<string>();
             foreach (var (layoutName, layout) in module.SearchLayouts)
             {

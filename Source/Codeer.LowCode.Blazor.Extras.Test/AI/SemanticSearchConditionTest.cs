@@ -174,6 +174,12 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
             Assert.That(Check(), Is.Empty);
             field.SearchMaxDistance = null;
 
+            //キーワード欄を出す構成 (キーワードだけで使う設計) では指摘しない
+            field.KeywordSearch = true;
+            Assert.That(Check(), Is.Empty);
+            field.KeywordSearch = false;
+            Assert.That(Check(), Has.Count.EqualTo(1));
+
             //SearchField の結果の一覧も対象 (別の検索レイアウトを使う)
             module.SearchLayouts[""] = new SearchLayoutDesign { Layout = Grid("Title") };
             module.SearchLayouts["Semantic"] = new SearchLayoutDesign { Layout = Grid("Search") };

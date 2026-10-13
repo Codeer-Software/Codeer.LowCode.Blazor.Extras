@@ -17,7 +17,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
     /// <item>保存: 対象フィールド (SourceFields) が変わった保存だけ、保存が終わった後に行をサーバーで読み直し (権限を通さない内部読み = 保存した人がこのフィールドや
     /// 対象フィールドを読めなくても索引は最新になる)、文章と埋め込みベクトルを書き込み専用列だけに書く (同じトランザクション。レコードの更新ではないので
     /// 更新日時・楽観ロックの版・ExecuteSqlField は動かない)。対象 = 追加した行・対象フィールドを送ってきた更新の行・対象フィールドの従属レコード (タグ付けの行など) を
-    /// 付け外しした送信の主レコード。送信データにベクトルまで付いた行 (再索引・外部で作ったもの) はそのまま書く。文章だけの行 (旧結線の ApplyAsync) は読み直して埋め込む。
+    /// 付け外しした送信の主レコード。送信データにこのフィールドのデータが付いていても (旧結線の ApplyAsync など) 保存した行から作り直す (索引はいつもサーバーが作る)。
     /// 埋め込みの失敗は文章だけ保存して保存を止めないが、索引列の書き込みの失敗は保存の失敗 (DB の失敗は同じトランザクションなので握れない)</item>
     /// <item>条件の前処理: 文章だけの意味検索の条件 (<see cref="SemanticMatchCondition.Text"/> あり・Vector 空。画面の検索欄が作る) に、索引付けと同じ埋め込みプロバイダでベクトルを入れる。
     /// 検索の中身 (SQL・権限) は本体と SemanticSearchFieldDesign のまま変えない</item>
@@ -159,9 +159,8 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
             var warned = new HashSet<string>();
             foreach (var target in targets)
             {
-                //送信データにベクトルまで付いている (再索引・外部で作ったもの) ならそのまま書かれている。文章だけ (旧結線の ApplyAsync) なら読み直して埋め込む
-                var fields = target.Fields.Where(f => target.Data == null || target.Data.Fields.GetValueOrDefault(f.Name) is not SemanticSearchFieldData { Vector: not null }).ToList();
-                if (fields.Count == 0) continue;
+                //送信データにこのフィールドのデータが付いていても (旧結線の ApplyAsync など) 保存した行から作り直す = 索引はいつもサーバーが作る
+                var fields = target.Fields;
                 var id = ResolveId(target, results[target.SubmitIndex]);
                 if (id == null)
                 {
