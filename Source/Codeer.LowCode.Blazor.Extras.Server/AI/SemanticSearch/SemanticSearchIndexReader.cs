@@ -30,12 +30,8 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
             if (string.IsNullOrWhiteSpace(module.DbTable) || string.IsNullOrWhiteSpace(idColumn) || string.IsNullOrWhiteSpace(field.DbColumnVector)) return result;
             var type = DataSourceTypeOf(db, module.DataSourceName);
             var q = Quote(type);
-            var logicalDelete = LogicalDeleteColumn(module);
-            //MySQL の cast は integer を受け付けない (signed)
-            var integer = type == DataSourceType.MySQL ? "signed" : "integer";
-            var notDeleted = string.IsNullOrWhiteSpace(logicalDelete) ? "" : $" and ({q(logicalDelete)} is null or cast({q(logicalDelete)} as {integer}) = 0)";
             cancellationToken.ThrowIfCancellationRequested();
-            var rows = await db.QueryAsync(module.DataSourceName, $"select {q(idColumn)} from {Table(q, module.DbTable)} where {q(field.DbColumnVector)} is not null{notDeleted}", new());
+            var rows = await db.QueryAsync(module.DataSourceName, $"select {q(idColumn)} from {Table(q, module.DbTable)} where {q(field.DbColumnVector)} is not null{NotDeletedSql(module, type)}", new());
             foreach (var row in rows)
             {
                 var id = Convert.ToString(Value(row, idColumn), CultureInfo.InvariantCulture);
@@ -53,7 +49,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
             var idColumn = IdColumn(module);
             if (string.IsNullOrWhiteSpace(module.DbTable) || string.IsNullOrWhiteSpace(idColumn) || !field.HasColumns) return new();
             var type = DataSourceTypeOf(db, dataSourceName);
-            var sql = BuildSearchSql(type, module.DbTable, idColumn, field.DbColumnText, field.DbColumnVectorSearch, LogicalDeleteColumn(module), SemanticSearchVector.Literal(type, queryVector), top);
+            var sql = BuildSearchSql(type, module.DbTable, idColumn, field.DbColumnText, field.DbColumnVectorSearch, NotDeletedSql(module, type), SemanticSearchVector.Literal(type, queryVector), top);
             cancellationToken.ThrowIfCancellationRequested();
             var rows = await db.QueryAsync(dataSourceName, sql, new());
             var result = new List<ScoredEntry>();
@@ -72,13 +68,30 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
         /// 距離順に上位 top 件を取る SELECT。列 semantic_score にコサイン類似度 (1 - コサイン距離) を出す。
         /// 距離の式は <see cref="SemanticSearchVector.CosineDistance"/> (画面の検索欄・権限の効く検索と同じ)。
         /// </summary>
-        public static string BuildSearchSql(DataSourceType type, string table, string idColumn, string textColumn, string vectorColumn, string? logicalDeleteColumn, string vectorLiteral, int top)
+        public static string BuildSearchSql(DataSourceType type, string table, string idColumn, string textColumn, string vectorColumn, string notDeletedSql, string vectorLiteral, int top)
         {
             var q = Quote(type);
-            var notDeleted = string.IsNullOrWhiteSpace(logicalDeleteColumn) ? "" : $" and ({q(logicalDeleteColumn)} is null or cast({q(logicalDeleteColumn)} as integer) = 0)";
             var distance = SemanticSearchVector.CosineDistance(type, q(vectorColumn), vectorLiteral);
-            var select = $"{q(idColumn)}, {q(textColumn)}, 1 - {distance} as semantic_score from {Table(q, table)} where {q(vectorColumn)} is not null{notDeleted} order by {distance}";
+            var select = $"{q(idColumn)}, {q(textColumn)}, 1 - {distance} as semantic_score from {Table(q, table)} where {q(vectorColumn)} is not null{notDeletedSql} order by {distance}";
             return type == DataSourceType.SQLServer ? $"select top ({top}) {select}" : $"select {select} limit {top}";
+        }
+
+        /// <summary>
+        /// 削除済みの行を除く WHERE の断片 (" and ..." か空)。判定の規則は本体の一覧検索 (SelectSqlCreator.CreateDeletedFilterCondition) と同じ:
+        /// LogicalDelete があればそれ (NULL か偽を残す)、無ければ DeletedAt → Deleter の順 (NULL を残す)。
+        /// </summary>
+        public static string NotDeletedSql(ModuleDesign module, DataSourceType type)
+        {
+            var q = Quote(type);
+            var logicalDelete = DbColumnOf(module, SystemFieldNames.LogicalDelete);
+            if (!string.IsNullOrWhiteSpace(logicalDelete))
+            {
+                //MySQL の cast は integer を受け付けない (signed)
+                var integer = type == DataSourceType.MySQL ? "signed" : "integer";
+                return $" and ({q(logicalDelete)} is null or cast({q(logicalDelete)} as {integer}) = 0)";
+            }
+            var marker = DbColumnOf(module, SystemFieldNames.DeletedAt) ?? DbColumnOf(module, SystemFieldNames.Deleter);
+            return string.IsNullOrWhiteSpace(marker) ? "" : $" and {q(marker)} is null";
         }
 
         /// <summary>SQL の方言ごとの、ベクトル検索の書き方 (AI への説明用)。</summary>
@@ -96,8 +109,8 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
         static string? IdColumn(ModuleDesign module)
             => module.Fields.OfType<IdFieldDesign>().FirstOrDefault(e => e.Name == SystemFieldNames.Id)?.DbColumn;
 
-        static string? LogicalDeleteColumn(ModuleDesign module)
-            => (module.Fields.FirstOrDefault(f => f.Name == SystemFieldNames.LogicalDelete) as DbValueFieldDesignBase)?.DbColumn;
+        static string? DbColumnOf(ModuleDesign module, string fieldName)
+            => (module.Fields.FirstOrDefault(f => f.Name == fieldName) as DbValueFieldDesignBase)?.DbColumn is { Length: > 0 } column ? column : null;
 
         //識別子の引用符は DB の種類で変わる
         //表名 (スキーマ付き "dbo.notes" は本体の SqlParts.Table と同じく . で分けて各部を引用)

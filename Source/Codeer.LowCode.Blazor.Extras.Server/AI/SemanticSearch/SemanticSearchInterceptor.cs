@@ -32,8 +32,8 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
     /// </summary>
     internal sealed class SemanticSearchInterceptor(SemanticSearchService service) : IModuleDataIOInterceptor
     {
-        //従属レコードの宣言 1 つ: 子モジュールの行から親 (索引を作り直す行) を引くための束縛。ChildVariable (子の項目) = ParentVariable (親の項目)
-        sealed record OwnedParent(ModuleDesign Parent, SemanticSearchFieldDesign Field, string ChildVariable, string ParentVariable);
+        //従属レコードの宣言 1 つ: 子モジュールの行から親 (索引を作り直す行) を引くための束縛 (ChildVariable (子の項目) = ParentVariable (親の項目)。複数ならすべて AND)
+        sealed record OwnedParent(ModuleDesign Parent, SemanticSearchFieldDesign Field, IReadOnlyList<(string ChildVariable, string ParentVariable)> Bindings);
 
         //索引を作り直す行 (モジュール・Id → 作り直すフィールド)
         sealed class Targets
@@ -90,8 +90,9 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
                     if (fields.Count > 0) targets.Add(module, changed.Id, fields);
                 }
 
-                //(2) 対象フィールドの従属レコードを変えたら、その親 (消した子の親は保存の前に控えてある。Id の分からない一括 INSERT の行は読めない = 取込後の再索引)
-                if (changed.Kind != ChangedRecordKind.Delete && !string.IsNullOrEmpty(changed.Id) && ownedParents.TryGetValue(changed.ModuleName, out var parents))
+                //(2) 対象フィールドの従属レコードを変えたら、その親 (消した子の親は保存の前に控えてある)。
+                //一括 INSERT の行は (1) と同じく除く = 取込の親の文章は取込後の Reindex (大量取込の分の親の埋め込みを保存の中で待たない。DB 採番の行は Id も無い)
+                if (changed.Kind != ChangedRecordKind.Delete && !changed.IsBulkInsert && !string.IsNullOrEmpty(changed.Id) && ownedParents.TryGetValue(changed.ModuleName, out var parents))
                 {
                     var row = await io.GetWithOwnedRecordsAsync(changed.ModuleName, changed.Id, _ => false);
                     if (row != null) await AddParentsAsync(io, parents, row, targets);
@@ -107,8 +108,8 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
                 foreach (var (moduleName, rawId) in submit.Delete.Select(e => (e.ModuleName, e.Id))
                              .Concat(submit.Update.Select(e => (e.Name, (e.Fields.GetValueOrDefault(SystemFieldNames.Id) as IdFieldData)?.Value ?? string.Empty))))
                 {
-                    //Id 手打ち変更 ("@replace:旧->新") の行は、保存の前は旧 Id で読む
-                    var id = rawId.StartsWith("@replace:") && rawId.LastIndexOf("->", StringComparison.Ordinal) is var arrow && arrow > 0 ? rawId["@replace:".Length..arrow] : rawId;
+                    //Id 手打ち変更の行は、保存の前は旧 Id で読む (形の解釈は本体)
+                    var id = IdFieldData.TryGetReplaceIdData(rawId, out var previousId, out _) ? previousId : rawId;
                     if (!ownedParents.TryGetValue(moduleName, out var parents) || string.IsNullOrEmpty(id) || IdFieldData.IsTemporaryId(id)) continue;
                     var row = await io.GetWithOwnedRecordsAsync(moduleName, id, _ => false);
                     if (row != null) await AddParentsAsync(io, parents, row, targets);
@@ -128,20 +129,23 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
             }
         }
 
-        //子の行から親の行を引いて対象に足す (子の項目 = 親の項目。親の項目が Id ならそのまま、そうでなければ親を検索)
+        //子の行から親の行を引いて対象に足す (子の項目 = 親の項目。束縛のどれかの親の項目が Id ならその値そのもの、そうでなければ束縛すべてで親を検索)
         static async Task AddParentsAsync(ModuleDataIOInternalAccess io, List<OwnedParent> parents, ModuleData childRow, Targets targets)
         {
             foreach (var parent in parents)
             {
-                var value = ValueOf(childRow, new VariableName(parent.ChildVariable).FieldName.FullName);
-                if (value == null) continue;
-                if (new VariableName(parent.ParentVariable).FieldName.FullName == SystemFieldNames.Id)
+                var values = parent.Bindings
+                    .Select(b => (b.ParentVariable, Value: ValueOf(childRow, new VariableName(b.ChildVariable).FieldName.FullName)))
+                    .Where(e => e.Value != null).ToList();
+                if (values.Count != parent.Bindings.Count) continue;
+                if (values.FirstOrDefault(e => new VariableName(e.ParentVariable).FieldName.FullName == SystemFieldNames.Id) is { Value: { } parentId })
                 {
-                    targets.Add(parent.Parent, value.ToString() ?? string.Empty, [parent.Field]);
+                    targets.Add(parent.Parent, parentId.ToString() ?? string.Empty, [parent.Field]);
                     continue;
                 }
                 var condition = new SearchCondition(parent.Parent.Name) { SelectFields = [SystemFieldNames.Id] };
-                condition.Condition = new FieldValueMatchCondition { SearchTargetVariable = parent.ParentVariable, Comparison = MatchComparison.Equal, Value = MultiTypeValue.Create(value) };
+                var conditions = values.Select(e => (MatchConditionBase)new FieldValueMatchCondition { SearchTargetVariable = e.ParentVariable, Comparison = MatchComparison.Equal, Value = MultiTypeValue.Create(e.Value!) }).ToArray();
+                condition.Condition = conditions.Length == 1 ? conditions[0] : MultiMatchCondition.And(conditions);
                 for (var pageIndex = 0; ; pageIndex++)
                 {
                     var page = await io.GetListAsync(condition, pageIndex);
@@ -178,10 +182,10 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
                         foreach (var declaration in owned.GetOwnedRecords(design.Modules))
                         {
                             var childModule = declaration.Condition.ModuleName;
-                            var bind = declaration.Condition.GetFieldVariableConditions().FirstOrDefault();
-                            if (string.IsNullOrEmpty(childModule) || bind == null) continue;
+                            var bindings = declaration.Condition.GetFieldVariableConditions().Select(b => (b.SearchTargetVariable, b.Variable)).ToList();
+                            if (string.IsNullOrEmpty(childModule) || bindings.Count == 0) continue;
                             if (!result.TryGetValue(childModule, out var list)) result[childModule] = list = new List<OwnedParent>();
-                            list.Add(new OwnedParent(module, field, bind.SearchTargetVariable, bind.Variable));
+                            list.Add(new OwnedParent(module, field, bindings));
                         }
                     }
                 }

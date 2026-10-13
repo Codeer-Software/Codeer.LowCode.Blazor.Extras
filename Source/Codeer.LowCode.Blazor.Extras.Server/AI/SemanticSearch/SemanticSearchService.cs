@@ -89,6 +89,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
         /// </summary>
         public Task ApplyAsync(IEnumerable<ModuleData> datas, CancellationToken cancellationToken = default)
         {
+            WarnIfInterceptorNotRegistered();
             var designData = _design();
             foreach (var group in datas.GroupBy(d => d.Name))
             {
@@ -107,13 +108,16 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
         [Obsolete("Register Interceptor with AddInterceptor (required since 0.21); call ApplyAsync(datas) only from BulkAddAsync.")]
         public Task ApplyAsync(ModuleData data, bool isNewData, CancellationToken cancellationToken = default)
         {
-            //旧結線 (0.17 以前のテンプレート) のまま 0.21 に上げると、Interceptor が未登録で更新の索引が止まる。実行時にも 1 回知らせる
-            if (_interceptor == null && !_warnedInterceptorNotRegistered)
-            {
-                _warnedInterceptorNotRegistered = true;
-                _logger?.LogWarning("SemanticSearch: Interceptor is not registered. Since 0.21 the index is built by Interceptor; register it with AddInterceptor(SemanticSearchService.Interceptor) in your ModuleDataIO, otherwise updated rows are not re-indexed.");
-            }
+            WarnIfInterceptorNotRegistered();
             return isNewData ? ApplyAsync([data], cancellationToken) : Task.CompletedTask;
+        }
+
+        //Interceptor が未登録 (0.17 以前のテンプレートの旧結線のまま、または AddInterceptor を忘れた) だと索引が作り直されない。ApplyAsync が呼ばれたときに 1 回知らせる
+        void WarnIfInterceptorNotRegistered()
+        {
+            if (_interceptor != null || _warnedInterceptorNotRegistered) return;
+            _warnedInterceptorNotRegistered = true;
+            _logger?.LogWarning("SemanticSearch: Interceptor is not registered. Since 0.21 the index is built by Interceptor; register it with AddInterceptor(SemanticSearchService.Interceptor) in your ModuleDataIO, otherwise saved rows are not indexed.");
         }
         bool _warnedInterceptorNotRegistered;
 
@@ -188,16 +192,20 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
         {
             Cleanup();
             var key = moduleName ?? string.Empty;
-            var running = _jobs.Values.FirstOrDefault(j => !j.IsFinished && string.Equals(j.ModuleName, key, StringComparison.OrdinalIgnoreCase));
-            if (running != null)
+            Job job;
+            //走っているジョブの検査と登録は 1 組で (同時の 2 リクエストが両方起動しないように)
+            lock (_jobs)
             {
-                if (running.MissingOnly && !missingOnly) throw LowCodeException.Create(Resources.SemanticSearch_ReindexMissingRunning, key);
-                running.Watchers.Add(ownerKey ?? string.Empty);
-                return running.Id;
+                var running = _jobs.Values.FirstOrDefault(j => !j.IsFinished && string.Equals(j.ModuleName, key, StringComparison.OrdinalIgnoreCase));
+                if (running != null)
+                {
+                    if (running.MissingOnly && !missingOnly) throw LowCodeException.Create(Resources.SemanticSearch_ReindexMissingRunning, key);
+                    running.Watchers.Add(ownerKey ?? string.Empty);
+                    return running.Id;
+                }
+                job = new Job(ownerKey ?? string.Empty, key, missingOnly);
+                _jobs[job.Id] = job;
             }
-
-            var job = new Job(ownerKey ?? string.Empty, key, missingOnly);
-            _jobs[job.Id] = job;
             var culture = CultureInfo.CurrentCulture;
             var uiCulture = CultureInfo.CurrentUICulture;
             //リクエストの実行コンテキスト (監査ログの AuditContext.Current など AsyncLocal) をジョブに引き継がない。
@@ -356,7 +364,8 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
             timeout.CancelAfter(SaveEmbeddingTimeout);
             try
             {
-                return await EmbedAllAsync(provider, texts, timeout.Token);
+                //プロバイダがトークンを見なくても SaveEmbeddingTimeout で待つのをやめる (呼び出しは裏で終わる)
+                return await EmbedAllAsync(provider, texts, timeout.Token).WaitAsync(timeout.Token);
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
             catch (Exception e)

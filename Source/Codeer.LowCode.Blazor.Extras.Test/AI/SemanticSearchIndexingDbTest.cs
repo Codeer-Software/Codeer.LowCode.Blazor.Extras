@@ -345,6 +345,87 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
         }
 
         [Test]
+        public async Task 手入力Idのタグ付け行を一括INSERTしても親の文章は作り直さない()
+        {
+            //Id の分かる一括 INSERT の行でも、従属レコードの親は保存の中で作り直さない = 取込の親の文章は取込後の Reindex
+            await SetUpContactSearchAsync();
+            _design.Modules.Find("ContactTags")!.Fields.OfType<IdFieldDesign>().Single(f => f.Name == "Id").IsManualInput = true;
+            var saved = ModuleDataIO.BulkAddThreshold;
+            ModuleDataIO.BulkAddThreshold = 2;
+            try
+            {
+                var adds = new[] { ("100", "取込タグ1"), ("101", "取込タグ2") }.Select(e =>
+                {
+                    var d = new ModuleData { Name = "ContactTags" };
+                    d.Fields["Id"] = new IdFieldData { Value = e.Item1 };
+                    d.Fields["OwnerId"] = new IdFieldData { Value = "4" };
+                    d.Fields["Name"] = new TextFieldData { Value = e.Item2 };
+                    return d;
+                }).ToList();
+                AssertNoError(await CreateIO(Indexer()).SubmitWithTransactionAsync(adds.Select(d => new ModuleSubmitData { ModuleName = "ContactTags", Id = ((IdFieldData)d.Fields["Id"]).Value!, Add = [d], NoTemporaryIdResolution = true }).ToList()));
+            }
+            finally
+            {
+                ModuleDataIO.BulkAddThreshold = saved;
+            }
+            Assert.That((await _db.QueryAsync(Ds, "SELECT id FROM contact_tags WHERE owner_id = 4 ORDER BY id", new())).Select(r => r["id"]?.ToString()), Is.EqualTo(new[] { "100", "101" }), "手入力の Id で入る");
+            Assert.That(await ContactTextAsync("4"), Is.Null, "親 (社員 4) は保存の中では作り直さない");
+            Assert.That(_embedding.Calls, Is.EqualTo(0), "保存の中で埋め込みを呼ばない");
+
+            //親の文章は再索引で揃う
+            var indexer = Indexer();
+            await indexer.ReindexAsync(CreateIO(indexer), _db, "Contact");
+            Assert.That(await ContactTextAsync("4"), Is.EqualTo("名前: D\nタグ: 取込タグ1, 取込タグ2"));
+        }
+
+        [Test]
+        public async Task 束縛が複数の従属一覧は全部の束縛を満たす親だけ作り直す()
+        {
+            //子.Code = 親.Code AND 子.Kind = 親.Kind (Id 以外の束縛 2 つ)。Code だけだとグループ 1 と 2 の両方に当たる
+            await _db.ExecuteAsync(Ds, "CREATE TABLE groups_t (id INTEGER PRIMARY KEY AUTOINCREMENT, code TEXT, kind TEXT, name TEXT, search_text TEXT, search_vector TEXT)", new());
+            await _db.ExecuteAsync(Ds, "CREATE TABLE members (id INTEGER PRIMARY KEY AUTOINCREMENT, code TEXT, kind TEXT, name TEXT)", new());
+            await _db.ExecuteAsync(Ds, "INSERT INTO groups_t (code, kind, name, search_text) VALUES ('A', 'x', 'Ax', 'stale'), ('A', 'y', 'Ay', 'stale'), ('B', 'x', 'Bx', 'stale')", new());
+            var member = new ModuleDesign { Name = "Member", DataSourceName = Ds, DbTable = "members", CanCreate = true, CanUpdate = true, CanDelete = true };
+            member.Fields.Add(new IdFieldDesign { Name = "Id", DbColumn = "id" });
+            member.Fields.Add(new TextFieldDesign { Name = "Code", DbColumn = "code" });
+            member.Fields.Add(new TextFieldDesign { Name = "Kind", DbColumn = "kind" });
+            member.Fields.Add(new TextFieldDesign { Name = "Name", DbColumn = "name" });
+            member.ListLayouts[""] = new ListLayoutDesign();
+            _design.AddModule(member);
+            var group = new ModuleDesign { Name = "Group", DataSourceName = Ds, DbTable = "groups_t", CanCreate = true, CanUpdate = true, CanDelete = true };
+            group.Fields.Add(new IdFieldDesign { Name = "Id", DbColumn = "id" });
+            group.Fields.Add(new TextFieldDesign { Name = "Code", DbColumn = "code" });
+            group.Fields.Add(new TextFieldDesign { Name = "Kind", DbColumn = "kind" });
+            group.Fields.Add(new TextFieldDesign { Name = "Name", DisplayName = "名前", DbColumn = "name" });
+            group.Fields.Add(new ListFieldDesign
+            {
+                Name = "Members",
+                CanCreate = true,
+                SearchCondition = new SearchCondition
+                {
+                    ModuleName = "Member",
+                    Condition = MultiMatchCondition.And(
+                        new FieldVariableMatchCondition { SearchTargetVariable = "Code.Value", Variable = "Code.Value", Comparison = MatchComparison.Equal },
+                        new FieldVariableMatchCondition { SearchTargetVariable = "Kind.Value", Variable = "Kind.Value", Comparison = MatchComparison.Equal }),
+                },
+            });
+            group.Fields.Add(new SemanticSearchFieldDesign { Name = "Search", SourceFields = { "Name", "Members" }, DbColumnText = "search_text", DbColumnVector = "search_vector", DbColumnVectorSearch = "search_vector" });
+            group.ListLayouts[""] = new ListLayoutDesign();
+            _design.AddModule(group);
+            async Task<string?[]> GroupTextsAsync()
+                => (await _db.QueryAsync(Ds, "SELECT search_text FROM groups_t ORDER BY id", new())).Select(r => r["search_text"] is null or DBNull ? null : r["search_text"].ToString()).ToArray();
+
+            var add = new ModuleData { Name = "Member" };
+            add.Fields["Id"] = IdFieldData.NewId();
+            add.Fields["Code"] = new TextFieldData { Value = "A" };
+            add.Fields["Kind"] = new TextFieldData { Value = "x" };
+            add.Fields["Name"] = new TextFieldData { Value = "m1" };
+            AssertNoError(await CreateIO(Indexer()).SubmitWithTransactionAsync([new ModuleSubmitData { ModuleName = "Group", Id = "1", Add = [add] }]));
+            Assert.That(await GroupTextsAsync(), Is.EqualTo(new[] { "名前: Ax", "stale", "stale" }), "両方の束縛を満たすグループ 1 だけ (Code だけ同じ 2・Kind だけ同じ 3 は触らない)");
+            Assert.That(_embedding.Inputs, Is.EqualTo(new[] { "名前: Ax" }));
+        }
+
+        [Test]
         public async Task リンクの表示名が文章に入る_再索引でも同じ()
         {
             await _db.ExecuteAsync(Ds, "CREATE TABLE customers (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT)", new());
@@ -792,6 +873,178 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
             Assert.That(text, Is.EqualTo(full), "列には全文");
             Assert.That(_embedding.Inputs, Is.EqualTo(new[] { full[..10] }), "埋め込みには 10 文字まで");
             Assert.That(vector, Is.EqualTo(SemanticSearchVector.Encode(FakeEmbeddingProvider.Embed(full[..10]))));
+        }
+
+        sealed class CapturingLoggerFactory : Microsoft.Extensions.Logging.ILoggerFactory
+        {
+            public List<(Microsoft.Extensions.Logging.LogLevel Level, string Message)> Entries { get; } = new();
+            public Microsoft.Extensions.Logging.ILogger CreateLogger(string categoryName) => new Logger(Entries);
+            public void AddProvider(Microsoft.Extensions.Logging.ILoggerProvider provider) { }
+            public void Dispose() { }
+            sealed class Logger(List<(Microsoft.Extensions.Logging.LogLevel Level, string Message)> entries) : Microsoft.Extensions.Logging.ILogger
+            {
+                public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+                public bool IsEnabled(Microsoft.Extensions.Logging.LogLevel logLevel) => true;
+                public void Log<TState>(Microsoft.Extensions.Logging.LogLevel logLevel, Microsoft.Extensions.Logging.EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+                {
+                    lock (entries) entries.Add((logLevel, formatter(state, exception)));
+                }
+            }
+        }
+
+        [Test]
+        public async Task Interceptor未登録で一括取込のApplyAsyncを呼ぶと警告を1回だけ出す()
+        {
+            static ModuleData Row(string subject) { var d = new ModuleData { Name = "Inquiry" }; d.Fields["Subject"] = new TextFieldData { Value = subject }; return d; }
+            static bool IsNotRegistered((Microsoft.Extensions.Logging.LogLevel Level, string Message) e) => e.Level == Microsoft.Extensions.Logging.LogLevel.Warning && e.Message.Contains("Interceptor is not registered");
+
+            var log = new CapturingLoggerFactory();
+            var service = new SemanticSearchService(() => _embedding, () => _design, log);
+            await service.ApplyAsync([Row("a")]);
+            await service.ApplyAsync([Row("b")]);
+#pragma warning disable CS0618 //旧結線の版とも共通 (合わせて 1 回)
+            await service.ApplyAsync(Row("c"), isNewData: true);
+#pragma warning restore CS0618
+            Assert.That(log.Entries.Count(IsNotRegistered), Is.EqualTo(1));
+            Assert.That(log.Entries.Single(IsNotRegistered).Message, Does.EndWith("otherwise saved rows are not indexed."));
+
+            //Interceptor を登録したサービスでは出さない
+            var registered = new CapturingLoggerFactory();
+            var wired = new SemanticSearchService(() => _embedding, () => _design, registered);
+            _ = CreateIO(wired);
+            await wired.ApplyAsync([Row("d")]);
+            Assert.That(registered.Entries.Count(IsNotRegistered), Is.EqualTo(0));
+        }
+
+        [Test]
+        public async Task 削除日時方式のモジュールは索引済みのIdから削除済みの行を除く()
+        {
+            await _db.ExecuteAsync(Ds, "CREATE TABLE docs (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT, deleted_at TEXT, search_text TEXT, search_vector TEXT)", new());
+            await _db.ExecuteAsync(Ds, "INSERT INTO docs (title, deleted_at, search_text, search_vector) VALUES ('a', NULL, 'a', '[1]'), ('b', '2026-01-01 00:00:00', 'b', '[1]'), ('c', NULL, 'c', '[1]'), ('d', NULL, NULL, NULL)", new());
+            var doc = new ModuleDesign { Name = "Doc", DataSourceName = Ds, DbTable = "docs" };
+            doc.Fields.Add(new IdFieldDesign { Name = "Id", DbColumn = "id" });
+            doc.Fields.Add(new TextFieldDesign { Name = "Title", DbColumn = "title" });
+            doc.Fields.Add(new DateTimeFieldDesign { Name = SystemFieldNames.DeletedAt, DbColumn = "deleted_at" });
+            var field = new SemanticSearchFieldDesign { Name = "Search", DbColumnText = "search_text", DbColumnVector = "search_vector", DbColumnVectorSearch = "search_vector" };
+            doc.Fields.Add(field);
+            _design.AddModule(doc);
+            var ids = await SemanticSearchIndexReader.ReadIndexedIdsAsync(_db, doc, field, CancellationToken.None);
+            Assert.That(ids.OrderBy(e => e), Is.EqualTo(new[] { "1", "3" }), "削除日時に値のある行 (2) とベクトルの無い行 (4) は除く");
+        }
+
+        //トークンを見ずに返ってこないプロバイダ
+        sealed class HangingEmbeddingProvider : Codeer.LowCode.Blazor.Extras.Server.AI.Embedding.IEmbeddingProvider
+        {
+            public string ModelId => "hanging";
+            public int Dimensions => FakeEmbeddingProvider.Dimensions;
+            public int Calls;
+            public async Task<IReadOnlyList<float[]>> EmbedAsync(IReadOnlyList<string> texts, CancellationToken cancellationToken = default)
+            {
+                Interlocked.Increment(ref Calls);
+                await Task.Delay(Timeout.Infinite);
+                return [];
+            }
+        }
+
+        [Test]
+        public async Task トークンを見ないプロバイダでも保存時の上限時間で打ち切り文章だけ保存する()
+        {
+            var hanging = new HangingEmbeddingProvider();
+            var service = new SemanticSearchService(() => hanging, () => _design) { SaveEmbeddingTimeout = TimeSpan.FromMilliseconds(200) };
+            var submit = CreateIO(service).SubmitWithTransactionAsync([UpdateSubmit("1")]);
+            Assert.That(await Task.WhenAny(submit, Task.Delay(TimeSpan.FromSeconds(30))), Is.SameAs(submit), "上限時間で待つのをやめる");
+            AssertNoError(await submit);
+            Assert.That(hanging.Calls, Is.EqualTo(1));
+            Assert.That(await RowAsync("1"), Is.EqualTo(("件名: 納期遅れの相談\n本文: 本文を変更", (string?)null)), "文章だけ (ベクトルは NULL)");
+        }
+
+        [Test]
+        public async Task 外側のインターセプタが削除を取り消した行の索引が作り直される()
+        {
+            await _db.ExecuteAsync(Ds, "UPDATE inquiries SET is_deleted = 1 WHERE id = 3", new());
+            var io = CreateIOWithOuter(async io =>
+            {
+                var row = new ModuleData { Name = "Inquiry" };
+                row.Fields["Id"] = new IdFieldData { Value = "3" };
+                await io.UndeleteAsync("Inquiry", "3", row);
+            });
+            AssertNoError(await io.SubmitWithTransactionAsync([new ModuleSubmitData { ModuleName = "Inquiry" }]));
+
+            var (text, vector) = await RowAsync("3");
+            Assert.That(text, Is.EqualTo("件名: 納品書の再発行\n本文: 納品書を紛失した"));
+            Assert.That(vector, Is.EqualTo(SemanticSearchVector.Encode(FakeEmbeddingProvider.Embed(text!))));
+            Assert.That(await RowAsync("1"), Is.EqualTo(((string?)null, (string?)null)), "他の行は触らない");
+        }
+
+        [Test]
+        public async Task 自己参照の従属は直接の上司だけ作り直し祖父は対象外_ループしない()
+        {
+            //社員.部下 → 社員 (BossId = Id)。1 ← 2 ← 3 の上司関係で 3 を変えると、3 自身と直接の上司 2 だけ
+            await _db.ExecuteAsync(Ds, "CREATE TABLE employees (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, boss_id INTEGER, search_text TEXT, search_vector TEXT)", new());
+            await _db.ExecuteAsync(Ds, "INSERT INTO employees (name, boss_id, search_text) VALUES ('社長', NULL, 'stale'), ('部長', 1, 'stale'), ('課長', 2, 'stale')", new());
+            var employee = new ModuleDesign { Name = "Employee", DataSourceName = Ds, DbTable = "employees", CanCreate = true, CanUpdate = true, CanDelete = true };
+            employee.Fields.Add(new IdFieldDesign { Name = "Id", DbColumn = "id" });
+            employee.Fields.Add(new TextFieldDesign { Name = "Name", DisplayName = "名前", DbColumn = "name" });
+            employee.Fields.Add(new IdFieldDesign { Name = "BossId", DbColumn = "boss_id", IsManualInput = true });
+            employee.Fields.Add(new ListFieldDesign
+            {
+                Name = "Subordinates",
+                CanUpdate = true,
+                SearchCondition = new SearchCondition
+                {
+                    ModuleName = "Employee",
+                    Condition = MultiMatchCondition.And(new FieldVariableMatchCondition { SearchTargetVariable = "BossId.Value", Variable = "Id.Value", Comparison = MatchComparison.Equal }),
+                },
+            });
+            employee.Fields.Add(new SemanticSearchFieldDesign { Name = "Search", SourceFields = { "Name", "Subordinates" }, DbColumnText = "search_text", DbColumnVector = "search_vector", DbColumnVectorSearch = "search_vector" });
+            employee.ListLayouts[""] = new ListLayoutDesign();
+            _design.AddModule(employee);
+
+            var data = new ModuleData { Name = "Employee" };
+            data.Fields["Id"] = new IdFieldData { Value = "3" };
+            data.Fields["Name"] = new TextFieldData { Value = "係長" };
+            var submit = CreateIO(Indexer()).SubmitWithTransactionAsync([new ModuleSubmitData { ModuleName = "Employee", Id = "3", Update = [data] }]);
+            Assert.That(await Task.WhenAny(submit, Task.Delay(TimeSpan.FromSeconds(30))), Is.SameAs(submit), "ループしない");
+            AssertNoError(await submit);
+            var texts = (await _db.QueryAsync(Ds, "SELECT search_text FROM employees ORDER BY id", new())).Select(r => r["search_text"]?.ToString()).ToArray();
+            Assert.That(texts, Is.EqualTo(new[] { "stale", "名前: 部長", "名前: 係長" }), "自分 (3) と直接の上司 (2) だけ。祖父 (1) は対象外");
+        }
+
+        [Test]
+        public async Task 最大文字数が0と負は切らない_全項目空の行は文章が空でベクトルNULL_埋め込みを呼ばない()
+        {
+            var field = _design.Modules.Find("Inquiry")!.Fields.OfType<SemanticSearchFieldDesign>().Single();
+            const string full = "件名: 納期遅れの相談\n本文: 本文を変更";
+            foreach (var max in new[] { 0, -1 })
+            {
+                field.MaxTextLength = max;
+                _embedding.Inputs.Clear();
+                AssertNoError(await CreateIO(Indexer()).SubmitWithTransactionAsync([UpdateSubmit("1")]));
+                Assert.That(_embedding.Inputs, Is.EqualTo(new[] { full }), $"MaxTextLength {max} は切らない");
+                Assert.That((await RowAsync("1")).Vector, Is.EqualTo(SemanticSearchVector.Encode(FakeEmbeddingProvider.Embed(full))));
+            }
+
+            //全項目が空の行
+            var calls = _embedding.Calls;
+            var data = new ModuleData { Name = "Inquiry" };
+            data.Fields["Id"] = new IdFieldData { Value = "2" };
+            data.Fields["Subject"] = new TextFieldData { Value = null };
+            data.Fields["Body"] = new TextFieldData { Value = null };
+            AssertNoError(await CreateIO(Indexer()).SubmitWithTransactionAsync([new ModuleSubmitData { ModuleName = "Inquiry", Id = "2", Update = [data] }]));
+            Assert.That(await RowAsync("2"), Is.EqualTo(("", (string?)null)), "文章は空・ベクトルは NULL");
+            Assert.That(_embedding.Calls, Is.EqualTo(calls), "埋め込みを呼ばない");
+        }
+
+        [Test]
+        public async Task 条件で消す子の親の文章が作り直される()
+        {
+            //SearchDelete (条件で消す) の行の持ち主は保存の前に読んでおく
+            await SetUpContactSearchAsync();
+            var delete = new SearchCondition("ContactTags") { Condition = new FieldValueMatchCondition { SearchTargetVariable = "OwnerId.Value", Comparison = MatchComparison.Equal, Value = MultiTypeValue.Create("1") } };
+            AssertNoError(await CreateIO(Indexer()).SubmitWithTransactionAsync([new ModuleSubmitData { ModuleName = "Company", Id = "1", SearchDelete = [delete] }]));
+            Assert.That((await _db.QueryAsync(Ds, "SELECT COUNT(*) AS c FROM contact_tags WHERE owner_id = 1", new())).Single()["c"]?.ToString(), Is.EqualTo("0"));
+            Assert.That(await ContactTextAsync("1"), Is.EqualTo("名前: A"), "タグを消した社員 1 の文章を作り直す");
+            Assert.That(await ContactTextAsync("2"), Is.Null, "他の社員は触らない");
         }
 
         List<string> CheckCodes()

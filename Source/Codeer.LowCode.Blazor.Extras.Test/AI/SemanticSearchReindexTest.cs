@@ -218,6 +218,24 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
         }
 
         [Test]
+        public async Task 同じモジュールの欠損だけの再索引を同時に起こしても1本に合流する()
+        {
+            var indexer = Service(pageSize: 1);
+            using var store = indexer;
+            _embedding.Delay = TimeSpan.FromMilliseconds(200);
+            //検査と登録の間に割り込まれないこと (同時の 2 リクエストが両方起動しない) を何度か試す
+            for (var i = 0; i < 10; i++)
+            {
+                using var barrier = new Barrier(2);
+                string Start(string owner) { barrier.SignalAndWait(); return store.StartReindex(owner, "Inquiry", true, () => OpenScope(indexer)); }
+                var ids = await Task.WhenAll(Task.Run(() => Start("u1")), Task.Run(() => Start("u2")));
+                Assert.That(ids[1], Is.EqualTo(ids[0]), $"{i} 回目: 同じ requestId");
+                store.CancelReindex("u1", ids[0]);
+                await WaitDoneAsync(store, "u1", ids[0]);
+            }
+        }
+
+        [Test]
         public async Task 欠損だけの再索引が走っている間は全行の再索引を起こせない()
         {
             var indexer = Service();
