@@ -16,7 +16,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
     /// <summary>
     /// SemanticSearchField のインターセプタ (ホストの ModuleDataIO に登録する)。
     /// <list type="bullet">
-    /// <item>保存: 索引を作り直す行は、送信の形ではなく本体が記録した「この保存で変更したレコード」(<see cref="ModuleDataIOWithoutAuthorization.ChangedRecords"/>) で決める。
+    /// <item>保存: 索引を作り直す行は、送信の形ではなく本体が記録した「この保存で変更したレコード」(<see cref="ModuleDataIOSystemAccess.ChangedRecords"/>) で決める。
     /// 規則は 2 つ: (1) 追加した行・削除を取り消した行と、対象フィールド (SourceFields) を書いた更新の行 (一括 INSERT の行は除く = 取込は文章だけ)。
     /// (2) 対象フィールドの従属レコード (タグ付けの行など) を追加・更新・削除・取り消しした、その親の行 (親は従属の宣言の束縛 (子の項目 = 親の項目) から引く。
     /// 消す子・更新する子は保存の前にも読んで、消える前 / 付け替える前の親を控える)。取込・内部書き込み・他の拡張が作り直した行も、本体を通って書かれていれば同じ規則で拾う。
@@ -50,7 +50,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
             }
         }
 
-        public async Task<List<ModuleSubmitResult>> SubmitAsync(ModuleDataIOWithoutAuthorization io, List<ModuleSubmitData> transactionData, Func<Task<List<ModuleSubmitResult>>> next)
+        public async Task<List<ModuleSubmitResult>> SubmitAsync(ModuleDataIOSystemAccess io, List<ModuleSubmitData> transactionData, Func<Task<List<ModuleSubmitResult>>> next)
         {
             var design = service.GetDesign();
             //索引の列はサーバーだけが書く (クライアントが送ってきた文章・ベクトルは使わない)
@@ -97,7 +97,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
         }
 
         //本体が記録した変更から、作り直す行を決める
-        static async Task CollectTargetsAsync(ModuleDataIOWithoutAuthorization io, DesignData design, Dictionary<string, List<OwnedParent>> ownedParents, Targets targets)
+        static async Task CollectTargetsAsync(ModuleDataIOSystemAccess io, DesignData design, Dictionary<string, List<OwnedParent>> ownedParents, Targets targets)
         {
             foreach (var changed in io.ChangedRecords)
             {
@@ -124,7 +124,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
         }
 
         //送信で消す従属レコード (Delete / SearchDelete) と更新する従属レコードの親を、保存の前に読んで控える (消える前 / 付け替える前の親)
-        static async Task AddParentsBeforeSaveAsync(ModuleDataIOWithoutAuthorization io, Dictionary<string, List<OwnedParent>> ownedParents, List<ModuleSubmitData> transactionData, Targets targets)
+        static async Task AddParentsBeforeSaveAsync(ModuleDataIOSystemAccess io, Dictionary<string, List<OwnedParent>> ownedParents, List<ModuleSubmitData> transactionData, Targets targets)
         {
             foreach (var submit in transactionData)
             {
@@ -151,7 +151,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
         }
 
         //子の行から親の行を引いて対象に足す (子の項目 = 親の項目。束縛のどれかの親の項目が Id ならその値そのもの、そうでなければ束縛すべてで親を検索)
-        static async Task AddParentsAsync(ModuleDataIOWithoutAuthorization io, List<OwnedParent> parents, ModuleData childRow, Targets targets)
+        static async Task AddParentsAsync(ModuleDataIOSystemAccess io, List<OwnedParent> parents, ModuleData childRow, Targets targets)
         {
             foreach (var parent in parents)
             {
@@ -227,7 +227,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
         }
 
         //保存した行を読み直して索引を書く
-        async Task IndexAsync(ModuleDataIOWithoutAuthorization io, DesignData design, Targets targets)
+        async Task IndexAsync(ModuleDataIOSystemAccess io, DesignData design, Targets targets)
         {
             var rows = new List<(ModuleDesign Module, ModuleData Row, ModuleData Update, List<SemanticSearchFieldDesign> Fields)>();
             foreach (var ((_, id), (module, fields)) in targets.Items)
@@ -256,10 +256,10 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
             foreach (var (_, _, update, _) in rows) await io.UpdateWriteOnlyColumnsAsync(update);
         }
 
-        public Task GetListAsync(ModuleDataIOWithoutAuthorization io, SearchCondition condition, Paging<ModuleData> result)
+        public Task GetListAsync(ModuleDataIOSystemAccess io, SearchCondition condition, Paging<ModuleData> result)
             => Task.CompletedTask;
 
-        public async Task PrepareConditionAsync(ModuleDataIOWithoutAuthorization io, ModuleMatchCondition condition)
+        public async Task PrepareConditionAsync(ModuleDataIOSystemAccess io, ModuleMatchCondition condition)
         {
             var module = service.GetDesign().Modules.Find(condition.ModuleName);
             var targets = Collect(condition.Condition)

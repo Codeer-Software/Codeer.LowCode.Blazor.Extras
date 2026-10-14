@@ -53,7 +53,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.EditHistory
 
         // ===== 読み出し: Snapshot を読む人の権限に落とす =====
 
-        public async Task GetListAsync(ModuleDataIOWithoutAuthorization io, SearchCondition condition, Paging<ModuleData> result)
+        public async Task GetListAsync(ModuleDataIOSystemAccess io, SearchCondition condition, Paging<ModuleData> result)
         {
             if (!_usesHistory) return;
             var names = EditHistoryContracts.Contract(_designData.Modules.Find(condition.ModuleName));
@@ -81,7 +81,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.EditHistory
         }
 
         //スナップショット JSON を読む人の権限に落とす。壊れている・落とす途中で失敗・対象モジュールを読めない・行が条件に合わない、なら空 (版は出るが内容は見えない)
-        async Task<string> ToReadableAsync(ModuleDataIOWithoutAuthorization io, string json)
+        async Task<string> ToReadableAsync(ModuleDataIOSystemAccess io, string json)
         {
             try
             {
@@ -98,7 +98,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.EditHistory
 
         // ===== 保存: 復活 → 本体の保存 → 記録 =====
 
-        public async Task<List<ModuleSubmitResult>> SubmitAsync(ModuleDataIOWithoutAuthorization io, List<ModuleSubmitData> transactionData, Func<Task<List<ModuleSubmitResult>>> next)
+        public async Task<List<ModuleSubmitResult>> SubmitAsync(ModuleDataIOSystemAccess io, List<ModuleSubmitData> transactionData, Func<Task<List<ModuleSubmitResult>>> next)
         {
             if (!_usesHistory) return await next();
 
@@ -322,14 +322,14 @@ namespace Codeer.LowCode.Blazor.Extras.Server.EditHistory
         //レコード + 従属レコード (明細・埋め込みモジュールの子レコード等、宣言の先) を内部読み (権限に関係なく全列・全従属) で読み、
         //NULL だった列も null として持たせる (版に「空だった」を残す = 復元で空に戻せる)。
         //含めない従属レコード (そのモジュールの EditHistoryField の除外・行ごと指定) は読まない
-        async Task<ModuleData?> LoadAsync(ModuleDataIOWithoutAuthorization io, string moduleName, string id)
+        async Task<ModuleData?> LoadAsync(ModuleDataIOSystemAccess io, string moduleName, string id)
         {
             var field = EditHistoryContracts.Field(_designData.Modules.Find(moduleName));
             return EditHistorySnapshot.FillNulls(_designData, await io.GetWithOwnedRecordsAsync(moduleName, id, path => EditHistoryPolicy.IsIncluded(field, path)));
         }
 
         //行ごとに記録する宣言の先も読む (除外は読まない)。親の削除で消える「行ごとに記録する行」を見つけるため
-        async Task<ModuleData?> LoadFullAsync(ModuleDataIOWithoutAuthorization io, string moduleName, string id)
+        async Task<ModuleData?> LoadFullAsync(ModuleDataIOSystemAccess io, string moduleName, string id)
         {
             var field = EditHistoryContracts.Field(_designData.Modules.Find(moduleName));
             return EditHistorySnapshot.FillNulls(_designData, await io.GetWithOwnedRecordsAsync(moduleName, id, path => !EditHistoryPolicy.IsExcluded(field, path)));
@@ -375,7 +375,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.EditHistory
 
         //親の削除 (従属レコードも一緒に消える) で、行ごとに記録する宣言の先の行の削除の版を作る。
         //行は削除前に、行のモジュール自身の履歴の規則 (そのモジュールの EditHistoryField の除外・行ごと) で読む (行のモジュールの画面で保存した版と同じ内容になる)
-        async Task<(List<Plan> Plans, string? Error)> IndividuallyRecordedDeletePlansAsync(ModuleDataIOWithoutAuthorization io, int index, ModuleDesign module, ModuleData full)
+        async Task<(List<Plan> Plans, string? Error)> IndividuallyRecordedDeletePlansAsync(ModuleDataIOSystemAccess io, int index, ModuleDesign module, ModuleData full)
         {
             var field = EditHistoryContracts.Field(module);
             if (field != null && field.IndividuallyRecordedOwnedRecords.Count == 0) return (new(), null);
@@ -459,7 +459,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.EditHistory
             }).ToList();
         }
 
-        async Task WriteAsync(ModuleDataIOWithoutAuthorization io, Plan plan, string id, string userId, DateTime localNow, DateTime utcNow)
+        async Task WriteAsync(ModuleDataIOSystemAccess io, Plan plan, string id, string userId, DateTime localNow, DateTime utcNow)
         {
             var names = plan.Names;
             var data = new ModuleData { Name = plan.HistoryModule.Name };
