@@ -86,7 +86,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.EditHistory
             try
             {
                 var snapshot = EditHistorySnapshot.Deserialize(json);
-                if (snapshot == null || !await io.RemoveUnreadableAsync(snapshot)) return string.Empty;
+                if (snapshot == null || !await io.RestrictToCurrentUserAsync(snapshot)) return string.Empty;
                 return EditHistorySnapshot.Serialize(snapshot);
             }
             catch (Exception ex)
@@ -140,7 +140,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.EditHistory
                 if (error != null) return Fail(transactionData, error);
                 var isRootDelete = submitData.Delete.Any(e => e.ModuleName == submitData.ModuleName && e.Id == submitData.Id);
                 //履歴を持つモジュールのレコードに触る送信では、削除・差し替えで消える添付ファイルを残す (版から戻したときに実体がある)
-                if (resolved != null || TouchesHistoryModule(submitData)) io.SystemAccess.KeepDeletedFiles(submitData);
+                if (resolved != null || TouchesHistoryModule(submitData)) io.SystemAccess.KeepFilesOfDeletedRecords(submitData);
                 if (resolved == null)
                 {
                     //履歴を持たないモジュールの削除でも、一緒に消える従属レコードのうち自分の履歴を持つモジュールの行には削除の版を残す

@@ -56,7 +56,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.EditHistory
                 //この版に置き換える: 版の従属レコードのうち「今は削除中で、その人に見えている (差分に出ている)」論理削除の行を Id を保って取り消す
                 //(レコード自身と行の値はフォームの保存が持つ)。見えていない行は触らない。戻せない行 (削除権限が無い等) があれば例外 = 保存失敗
                 var visible = snapshot.JsonClone();
-                if (await io.SystemAccess.RemoveUnreadableAsync(visible)) await UndeleteDeletedRowsAsync(io, module, field, visible, string.Empty, together: false);
+                if (await io.SystemAccess.RestrictToCurrentUserAsync(visible)) await UndeleteDeletedRowsAsync(io, module, field, visible, string.Empty, together: false);
                 return new EditHistoryUndeleteResult { IsWholeRecord = false, RestoredId = dataId };
             }
 
