@@ -41,6 +41,61 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
         }
 
         /// <summary>
+        /// ベクトルが無く文章がある行 (論理削除した行は除く) の Id → DB から読んだままの Id の値 (再索引の missingOnly が、保存時に埋め込みだけ失敗した行を見分けるのに使う。
+        /// 文章は <see cref="ReadUnembeddedTextsAsync"/> でページごとに読む = 全行の文章を持たない・書く直前の文章を使う)。
+        /// 文章の無い行 (一括取込の行など) は入らない (行から文章を作る)。複合 Id では空 (全行を行から作る)。
+        /// </summary>
+        public static async Task<Dictionary<string, object>> ReadUnembeddedIdsAsync(IDbAccessor db, ModuleDesign module, SemanticSearchFieldDesign field, CancellationToken cancellationToken)
+        {
+            var idColumn = IdColumn(module);
+            var result = new Dictionary<string, object>();
+            if (string.IsNullOrWhiteSpace(module.DbTable) || string.IsNullOrWhiteSpace(idColumn) || !field.HasColumns) return result;
+            var type = DataSourceTypeOf(db, module.DataSourceName);
+            var q = Quote(type);
+            cancellationToken.ThrowIfCancellationRequested();
+            var rows = await db.QueryAsync(module.DataSourceName, $"select {q(idColumn)} from {Table(q, module.DbTable)} where {UnembeddedSql(q, field)}{NotDeletedSql(module, type)}", new());
+            foreach (var row in rows)
+            {
+                var value = Value(row, idColumn);
+                var id = Convert.ToString(value, CultureInfo.InvariantCulture);
+                if (value != null && !string.IsNullOrEmpty(id)) result[id] = value;
+            }
+            return result;
+        }
+
+        /// <summary>
+        /// 指定した行のうち、今もベクトルが無く文章がある行の Id → 文章 (<see cref="ReadUnembeddedIdsAsync"/> の Id の値で引く。型は DB から読んだまま渡すので Id の列の型によらない)。
+        /// 読んだ後にベクトルが付いた行 (再索引中に保存された行) は入らない。
+        /// </summary>
+        public static async Task<Dictionary<string, string>> ReadUnembeddedTextsAsync(IDbAccessor db, ModuleDesign module, SemanticSearchFieldDesign field, IReadOnlyList<object> ids, CancellationToken cancellationToken)
+        {
+            var idColumn = IdColumn(module);
+            var result = new Dictionary<string, string>();
+            if (ids.Count == 0 || string.IsNullOrWhiteSpace(module.DbTable) || string.IsNullOrWhiteSpace(idColumn) || !field.HasColumns) return result;
+            var type = DataSourceTypeOf(db, module.DataSourceName);
+            var q = Quote(type);
+            var p = type == DataSourceType.Oracle ? ":p" : "@p";
+            //IN の要素数の上限 (Oracle 1000・SQL Server のパラメータ 2100) を超えないように分けて読む
+            foreach (var chunk in ids.Chunk(500))
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var args = chunk.Select((id, i) => (Key: $"{p}{i + 1}", Value: id)).ToList();
+                var sql = $"select {q(idColumn)}, {q(field.DbColumnText)} from {Table(q, module.DbTable)} where {q(idColumn)} in ({string.Join(", ", args.Select(e => e.Key))}) and {UnembeddedSql(q, field)}{NotDeletedSql(module, type)}";
+                foreach (var row in await db.QueryAsync(module.DataSourceName, sql, args.ToDictionary(e => e.Key, e => new ParamAndRawDbTypeName { Value = e.Value })))
+                {
+                    var id = Convert.ToString(Value(row, idColumn), CultureInfo.InvariantCulture);
+                    var text = Convert.ToString(Value(row, field.DbColumnText), CultureInfo.InvariantCulture);
+                    if (!string.IsNullOrEmpty(id) && !string.IsNullOrEmpty(text)) result[id] = text;
+                }
+            }
+            return result;
+        }
+
+        //ベクトルが無く文章がある (空文字は読んだ側で除く = 行から作り直す)
+        static string UnembeddedSql(Func<string, string> q, SemanticSearchFieldDesign field)
+            => $"{q(field.DbColumnVector)} is null and {q(field.DbColumnText)} is not null";
+
+        /// <summary>
         /// DB のベクトル検索で、質問ベクトルに近い順に上位 top 件を読む。
         /// dataSourceName は接続に使うデータソース (AI 用に別名の読み取り専用接続を作っている構成ではモジュールの DataSourceName と違う)。
         /// </summary>

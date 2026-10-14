@@ -22,7 +22,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
     /// <list type="bullet">
     /// <item>保存時の索引付け: <see cref="Interceptor"/> を <c>ModuleDataIO</c> に登録する (テンプレートの <c>CustomizedModuleDataIO</c> のコンストラクタで AddInterceptor)。
     /// 保存のたびに保存した行をサーバーで読み直し (権限を通さない内部読み)、文章と埋め込みベクトルを書き込み専用列だけに書く (レコードの更新ではない)。クライアントは何も送らない。
-    /// 一括 INSERT (<c>BulkAddAsync</c>。行を読み戻せない) だけは <see cref="ApplyAsync(IEnumerable{ModuleData}, CancellationToken)"/> で取り込んだ内容から作る</item>
+    /// 一括 INSERT (<c>BulkAddAsync</c>) の行には付けない (取込の後に再索引の ReindexMissing で付ける)</item>
     /// <item>再索引 API: <see cref="StartReindexAsync"/> / <see cref="GetReindexStatus"/> / <see cref="CancelReindex"/> を薄い Controller (POST / GET / DELETE) から呼ぶ。
     /// フィールドのスクリプト Reindex がポーリングする (AIChatService と同じ形)</item>
     /// <item>AI チャットの意味検索: <c>RawDataAccessAgent</c> に渡すと search_records と <c>{embed:…}</c> が使えるようになる</item>
@@ -35,12 +35,6 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
     /// public static SemanticSearchService Service { get; } = new(() => embeddingProvider, () => DesignerService.GetDesignData());
     /// //CustomizedModuleDataIO のコンストラクタ
     /// AddInterceptor(SemanticSearchIndex.Service.Interceptor);
-    /// //一括 INSERT だけ
-    /// protected override async Task BulkAddAsync(Guid transactionId, List&lt;ModuleData&gt; datas)
-    /// {
-    ///     await SemanticSearchIndex.Service.ApplyAsync(datas);
-    ///     await base.BulkAddAsync(transactionId, datas);
-    /// }
     /// </code>
     /// </summary>
     public sealed class SemanticSearchService : IDisposable
@@ -53,7 +47,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
         ILoggerFactory? _loggerFactory;
         ILogger? _logger;
 
-        /// <summary>警告ログの出し先 (埋め込みの失敗・一括 INSERT の結線漏れなど)。ホストが DI を組み立てた後に設定する (静的に作るサービスなので ctor では渡せないことがある)。</summary>
+        /// <summary>警告ログの出し先 (埋め込みの失敗・Interceptor の登録漏れなど)。ホストが DI を組み立てた後に設定する (静的に作るサービスなので ctor では渡せないことがある)。</summary>
         public ILoggerFactory? LoggerFactory
         {
             get => _loggerFactory;
@@ -80,39 +74,15 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
         /// <summary>保存時の埋め込みの上限時間 (保存のトランザクションの中で待つので短めに)。超えたら文章だけ保存して警告ログ (再索引で埋める)。</summary>
         public TimeSpan SaveEmbeddingTimeout { get; init; } = TimeSpan.FromSeconds(15);
 
-        /// <summary>
-        /// 一括 INSERT (<c>ModuleDataIO.BulkAddAsync</c>) 用: 取り込む行の文章を、書く前にその行のデータから作る (<see cref="SemanticSearchFieldData"/> として各行に入れる。ベクトルは付けない)。
-        /// 一括 INSERT は採番した Id を返さないので、保存後に行を読み直す <see cref="Interceptor"/> では索引を作れない。
-        /// 文章だけなのでキーワード検索は取込直後から効く。ベクトル (と送信データに無いリンクの表示名) は取込後の ReindexMissing / Reindex で付ける
-        /// (大量取込の埋め込みを保存のトランザクションの中で待たない)。すでにこのフィールドのデータが入っている行は触らない。通常の保存 (AddAsync / UpdateAsync) では呼ばなくてよい。
-        /// 全項目を持つ新規の行にだけ使う (更新の data = 変えた項目だけ、で呼ぶと部分的な文章で上書きされる。内部経路の更新は再索引)。
-        /// </summary>
-        public Task ApplyAsync(IEnumerable<ModuleData> datas, CancellationToken cancellationToken = default)
-        {
-            WarnIfInterceptorNotRegistered();
-            var designData = _design();
-            foreach (var group in datas.GroupBy(d => d.Name))
-            {
-                var module = designData.Modules.Find(group.Key);
-                if (module == null) continue;
-                foreach (var field in module.Fields.OfType<SemanticSearchFieldDesign>().Where(f => f.HasColumns))
-                {
-                    foreach (var row in group.Where(d => !d.Fields.ContainsKey(field.Name)))
-                        row.Fields[field.Name] = new SemanticSearchFieldData { Text = SemanticSearchText.Build(designData, module, row, field), Vector = null };
-                }
-            }
-            return Task.CompletedTask;
-        }
-
-        /// <summary>旧形式。新規行 (isNewData = true) なら <see cref="ApplyAsync(IEnumerable{ModuleData}, CancellationToken)"/> と同じ。更新では何もしない (索引は <see cref="Interceptor"/> が保存後の行から作る)。</summary>
-        [Obsolete("Register Interceptor with AddInterceptor (required since 0.22); call ApplyAsync(datas) only from BulkAddAsync.")]
+        /// <summary>旧形式。何もしない (索引は <see cref="Interceptor"/> が保存後の行から作る。一括取込の後は ReindexMissing)。Interceptor が未登録なら警告ログを 1 回出す。</summary>
+        [Obsolete("Register Interceptor with AddInterceptor (required since 0.22); this method does nothing. After a bulk import call ReindexMissing().")]
         public Task ApplyAsync(ModuleData data, bool isNewData, CancellationToken cancellationToken = default)
         {
             WarnIfInterceptorNotRegistered();
-            return isNewData ? ApplyAsync([data], cancellationToken) : Task.CompletedTask;
+            return Task.CompletedTask;
         }
 
-        //Interceptor が未登録 (0.17 以前のテンプレートの旧結線のまま、または AddInterceptor を忘れた) だと索引が作り直されない。ApplyAsync が呼ばれたときに 1 回知らせる
+        //Interceptor が未登録 (0.17 以前のテンプレートの旧結線のまま、または AddInterceptor を忘れた) だと索引が作り直されない。旧形式の ApplyAsync が呼ばれたときに 1 回知らせる
         void WarnIfInterceptorNotRegistered()
         {
             if (_interceptor != null || _warnedInterceptorNotRegistered) return;
@@ -230,7 +200,8 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
         /// 行は Id だけをページ読みし、1 行ずつ保存時の索引付けと同じ内部読み (<see cref="ReadForIndexAsync"/>。権限を通さない = 誰が起こしても同じ文章になる。従属レコードも権限なし) で読み、
         /// ページ分をまとめて 1 回で埋め込み、保存時と同じく書き込み専用列だけに書く (レコードの更新ではない = 更新日時・楽観ロックの版・ExecuteSql・監査・編集履歴に乗らない)。読んだ後に消えた行は飛ばす。
         /// 埋め込みモデルが無いときは文章だけ書き直す。埋め込みの失敗はそのまま例外にする (保存時と違い黙って null にはしない)。
-        /// missingOnly はベクトルがまだ無い行だけ (書き込み専用列を db で直接読んで判定する)。progress には (書いた行数, 対象行数) を報告する。戻り値は書いた行数。
+        /// missingOnly はベクトルがまだ無い行だけ (書き込み専用列を db で直接読んで判定する)。文章がある行 (保存時に埋め込みだけ失敗した行) はその文章をそのまま埋め込み (行を読み直さない)、
+        /// 文章も無い行 (一括取込の行) は行から作る。埋め込みモデルが無ければ文章のある行には何もしない。progress には (書いた行数, 対象行数) を報告する。戻り値は書いた行数。
         /// </summary>
         internal async Task<int> ReindexAsync(ModuleDataIO moduleDataIO, IDbAccessor db, string moduleName, bool missingOnly = false,
             IProgress<(int Processed, int Total)>? progress = null, int? pageSize = null, CancellationToken cancellationToken = default)
@@ -245,13 +216,18 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
             //ページ読みは Id だけ。行の中身は 1 行ずつ保存時と同じ内部読みで取る (ページ読みの同梱は子モジュールの閲覧条件を見るので、タグ付け行が欠けることがある)
             var selectFields = new List<string> { idField.Name };
 
-            //missingOnly: どのフィールドかでベクトルが無い行 = 対象。索引済み (全フィールドにベクトルあり) の Id を先に集めて飛ばす
+            //missingOnly: どのフィールドかでベクトルが無い行 = 対象。索引済み (全フィールドにベクトルあり) の Id を先に集めて飛ばす。
+            //フィールドごとに、ベクトルのある行 (そのフィールドは触らない) と、ベクトルが無く文章のある行 (文章をそのまま埋め込む = 行を読み直さない) も控える
             HashSet<string>? indexed = null;
+            var indexedByField = new Dictionary<SemanticSearchFieldDesign, HashSet<string>>();
+            var unembeddedByField = new Dictionary<SemanticSearchFieldDesign, Dictionary<string, object>>();
             if (missingOnly)
             {
                 foreach (var field in fields)
                 {
                     var ids = await SemanticSearchIndexReader.ReadIndexedIdsAsync(db, module, field, cancellationToken);
+                    indexedByField[field] = ids;
+                    unembeddedByField[field] = await SemanticSearchIndexReader.ReadUnembeddedIdsAsync(db, module, field, cancellationToken);
                     indexed = indexed == null ? ids : indexed.Intersect(ids).ToHashSet();
                 }
             }
@@ -274,33 +250,52 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
                     progress?.Report((0, total));
                 }
 
-                var ids = page.Items.Select(row => row.Fields.TryGetValue(idField.Name, out var id) && id is IdFieldData idData ? idData.Value : null)
-                    .Where(id => !string.IsNullOrEmpty(id) && (indexed == null || !indexed.Contains(id!))).Select(id => id!).ToList();
-                var rows = new List<ModuleData>();
-                foreach (var id in ids)
+                var ids = page.Items.Select(row => row.Fields.TryGetValue(idField.Name, out var id) ? id as IdFieldData : null)
+                    .Where(id => !string.IsNullOrEmpty(id?.Value) && (indexed == null || !indexed.Contains(id.Value!))).Select(id => id!).ToList();
+
+                //ベクトルが無く文章のある行の文章 (ページ分を書く直前に読む。読んだ後にベクトルが付いた行は入らない = 行から作る)
+                var texts = new Dictionary<SemanticSearchFieldDesign, Dictionary<string, string>>();
+                foreach (var (field, unembedded) in unembeddedByField)
+                {
+                    var targetIds = ids.Select(id => unembedded.GetValueOrDefault(id.Value!)).OfType<object>().ToList();
+                    texts[field] = await SemanticSearchIndexReader.ReadUnembeddedTextsAsync(db, module, field, targetIds, cancellationToken);
+                }
+
+                var rows = new List<(ModuleData Update, ModuleData? Row, List<(SemanticSearchFieldDesign Field, string? Text)> Fields)>();
+                foreach (var idData in ids)
                 {
                     cancellationToken.ThrowIfCancellationRequested();
-                    var row = await ReadForIndexAsync(access, module, id, fields);
-                    if (row != null) rows.Add(row);
+                    var id = idData.Value!;
+                    //missingOnly: ベクトルのあるフィールドは触らない。文章があればそのまま使い、無ければ行から作る
+                    var work = fields.Where(f => !indexedByField.TryGetValue(f, out var done) || !done.Contains(id))
+                        .Select(f => (Field: f, Text: texts.GetValueOrDefault(f)?.GetValueOrDefault(id))).ToList();
+                    //埋め込みが無ければ、文章のあるフィールドにすることは無い (ベクトルは作れない)
+                    if (provider == null) work.RemoveAll(e => e.Text != null);
+                    if (work.Count == 0) continue;
+                    ModuleData? row = null;
+                    if (work.Any(e => e.Text == null))
+                    {
+                        row = await ReadForIndexAsync(access, module, id, fields);
+                        if (row == null) continue;
+                    }
+                    var update = new ModuleData { Name = moduleName };
+                    update.Fields[idField.Name] = row?.Fields[idField.Name] ?? idData;
+                    rows.Add((update, row, work));
                 }
                 if (rows.Count > 0)
                 {
                     //フィールドごとに、ページ分の文章をまとめて 1 回で埋め込む
-                    var updates = rows.Select(row =>
-                    {
-                        var update = new ModuleData { Name = moduleName };
-                        update.Fields[idField.Name] = row.Fields[idField.Name];
-                        return update;
-                    }).ToList();
                     foreach (var field in fields)
                     {
-                        var texts = rows.Select(row => SemanticSearchText.Build(designData, module, row, field)).ToList();
-                        var vectors = await EmbedAllAsync(provider, texts.Select(t => SemanticSearchText.ForEmbedding(field, t)).ToList(), cancellationToken);
-                        for (var i = 0; i < rows.Count; i++)
-                            updates[i].Fields[field.Name] = new SemanticSearchFieldData { Text = texts[i], Vector = vectors[i] == null ? null : SemanticSearchVector.Encode(vectors[i]!) };
+                        var items = rows.SelectMany(r => r.Fields.Where(e => e.Field == field)
+                            .Select(e => (r.Update, Text: e.Text ?? SemanticSearchText.Build(designData, module, r.Row!, field)))).ToList();
+                        if (items.Count == 0) continue;
+                        var vectors = await EmbedAllAsync(provider, items.Select(e => SemanticSearchText.ForEmbedding(field, e.Text)).ToList(), cancellationToken);
+                        for (var i = 0; i < items.Count; i++)
+                            items[i].Update.Fields[field.Name] = new SemanticSearchFieldData { Text = items[i].Text, Vector = vectors[i] == null ? null : SemanticSearchVector.Encode(vectors[i]!) };
                     }
                     //書き込み専用列だけを書く (保存時の索引付けと同じ。レコードの更新ではない)。読んだ後に消えた行は飛ばす
-                    foreach (var update in updates)
+                    foreach (var (update, _, _) in rows)
                         if (await access.WriteWithoutSideEffectsAsync(update)) count++;
                     progress?.Report((count, total));
                 }
@@ -348,10 +343,6 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
                 }
             }
         }
-
-        /// <summary>一括 INSERT の行にこのフィールドのデータが無かった (ホストの BulkAddAsync が ApplyAsync を呼んでいない) ときの警告。</summary>
-        internal void WarnBulkAddNotIndexed(string moduleName)
-            => _logger?.LogWarning("SemanticSearch: rows of '{Module}' were inserted in bulk without an index. Call SemanticSearchService.ApplyAsync(datas) in BulkAddAsync, or run a reindex.", moduleName);
 
         /// <summary>保存時の索引付けが失敗した (索引の列の書き込み失敗など。保存はロールバックされる)。</summary>
         internal void LogIndexFailed(Exception e)

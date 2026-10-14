@@ -137,24 +137,16 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
         }
 
         [Test]
-        public async Task 一括INSERT用のApplyAsyncは取り込む行のデータから作る()
+        public async Task 旧形式のApplyAsyncは何もしない()
         {
             var data = new ModuleData { Name = "Inquiry" };
             data.Fields["Subject"] = new TextFieldData { Value = "一括取込の件名" };
-#pragma warning disable CS0618 //旧形式 (1 行版) の挙動の確認
+#pragma warning disable CS0618 //旧形式の挙動の確認
             await Indexer().ApplyAsync(data, isNewData: true);
-            var sent = (SemanticSearchFieldData)data.Fields["Search"]!;
-            Assert.That(sent.Text, Is.EqualTo("件名: 一括取込の件名"));
-            Assert.That(sent.Vector, Is.Null, "一括取込は文章だけ (ベクトルは ReindexMissing)");
-
-            //すでにあれば触らない・更新では何もしない (保存後の行から作る)
-            await Indexer().ApplyAsync(data, isNewData: true);
-            Assert.That(data.Fields["Search"], Is.SameAs(sent));
-            var update = new ModuleData { Name = "Inquiry" };
-            update.Fields["Subject"] = new TextFieldData { Value = "x" };
-            await Indexer().ApplyAsync(update, isNewData: false);
+            await Indexer().ApplyAsync(data, isNewData: false);
 #pragma warning restore CS0618
-            Assert.That(update.Fields.ContainsKey("Search"), Is.False);
+            Assert.That(data.Fields.Keys, Is.EqualTo(new[] { "Subject" }), "文章も付けない (索引は Interceptor・一括取込の後は ReindexMissing)");
+            Assert.That(_embedding.Calls, Is.EqualTo(0));
         }
 
         [Test]
@@ -568,16 +560,9 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
         }
 
         [Test]
-        public async Task 一括INSERTの取込は文章だけ付ける_仮Idは応答に出さない()
+        public async Task 一括INSERTの行は索引の列が空のまま_取込後のReindexMissingで付く_仮Idは応答に出さない()
         {
-            //ApplyAsync(datas) = 文章だけ (ベクトルは取込後の ReindexMissing。保存の中で大量の埋め込みを待たない)
-            var rows = new[] { "一括 1", "一括 2", "一括 3" }.Select(s => { var d = new ModuleData { Name = "Inquiry" }; d.Fields["Subject"] = new TextFieldData { Value = s }; return d; }).ToList();
-            await Indexer().ApplyAsync(rows);
-            Assert.That(rows.Select(r => ((SemanticSearchFieldData)r.Fields["Search"]!).Text), Is.EqualTo(new[] { "件名: 一括 1", "件名: 一括 2", "件名: 一括 3" }));
-            Assert.That(rows.All(r => ((SemanticSearchFieldData)r.Fields["Search"]!).Vector == null), Is.True);
-            Assert.That(_embedding.Calls, Is.EqualTo(0));
-
-            //一括 INSERT の経路 (閾値以上の純 Add・NoTemporaryIdResolution): 主レコードに付けた仮 Id が結果に残らない
+            //一括 INSERT の経路 (閾値以上の純 Add・NoTemporaryIdResolution): 保存の中では索引を付けない (大量の埋め込みを待たない)。主レコードに付けた仮 Id が結果に残らない
             var saved = ModuleDataIO.BulkAddThreshold;
             ModuleDataIO.BulkAddThreshold = 2;
             try
@@ -591,27 +576,20 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
             {
                 ModuleDataIO.BulkAddThreshold = saved;
             }
-        }
+            Assert.That(await RowAsync("4"), Is.EqualTo(((string?)null, (string?)null)));
+            Assert.That(await RowAsync("5"), Is.EqualTo(((string?)null, (string?)null)));
+            Assert.That(_embedding.Calls, Is.EqualTo(0), "保存の中で埋め込みを呼ばない");
 
-        //テンプレートの CustomizedModuleDataIO と同じく、一括 INSERT で取り込む行に ApplyAsync(datas) で文章を付ける
-        sealed class BulkIndexingModuleDataIO : ModuleDataIO
-        {
-            readonly SemanticSearchService _semanticSearch;
-            public BulkIndexingModuleDataIO(DesignData design, IAuthenticationContext auth, IDbAccessor db, ITemporaryFileManager files, SemanticSearchService semanticSearch)
-                : base(design, auth, db, files)
-            {
-                _semanticSearch = semanticSearch;
-                AddInterceptor(semanticSearch.Interceptor);
-            }
-            protected override async Task BulkAddAsync(Guid transactionId, List<ModuleData> datas)
-            {
-                await _semanticSearch.ApplyAsync(datas);
-                await base.BulkAddAsync(transactionId, datas);
-            }
+            //取込後の ReindexMissing が行から文章を作って埋め込む
+            var indexer = Indexer();
+            await indexer.ReindexAsync(CreateIO(indexer), _db, "Inquiry", missingOnly: true);
+            var (text, vector) = await RowAsync("4");
+            Assert.That(text, Is.EqualTo("件名: 取込 A"));
+            Assert.That(vector, Is.EqualTo(SemanticSearchVector.Encode(FakeEmbeddingProvider.Embed(text!))));
         }
 
         [Test]
-        public async Task 手入力Idの一括INSERTも文章だけ付ける_埋め込みは呼ばない()
+        public async Task 手入力Idの一括INSERTも索引を付けない_埋め込みは呼ばない()
         {
             await _db.ExecuteAsync(Ds, "CREATE TABLE memos (id TEXT PRIMARY KEY, title TEXT, search_text TEXT, search_vector TEXT)", new());
             var memo = new ModuleDesign { Name = "Memo", DataSourceName = Ds, DbTable = "memos", CanCreate = true };
@@ -632,9 +610,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
                     d.Fields["Title"] = new TextFieldData { Value = e.Item2 };
                     return d;
                 }).ToList();
-                var indexer = Indexer();
-                var io = new BulkIndexingModuleDataIO(_design, this, _db, new TemporaryFileManager(_db, [], new List<IFileStorage>()), indexer);
-                var results = await io.SubmitWithTransactionAsync(adds.Select(d => new ModuleSubmitData { ModuleName = "Memo", Id = ((IdFieldData)d.Fields["Id"]).Value!, Add = [d], NoTemporaryIdResolution = true }).ToList());
+                var results = await CreateIO(Indexer()).SubmitWithTransactionAsync(adds.Select(d => new ModuleSubmitData { ModuleName = "Memo", Id = ((IdFieldData)d.Fields["Id"]).Value!, Add = [d], NoTemporaryIdResolution = true }).ToList());
                 AssertNoError(results);
             }
             finally
@@ -643,8 +619,8 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
             }
 
             var rows = await _db.QueryAsync(Ds, "SELECT id, search_text, search_vector FROM memos ORDER BY id", new());
-            Assert.That(rows.Select(r => (r["id"]?.ToString(), r["search_text"]?.ToString(), r["search_vector"] is null or DBNull)),
-                Is.EqualTo(new[] { ("M1", "題名: 取込 A", true), ("M2", "題名: 取込 B", true) }), "文章だけ (ベクトルは取込後の ReindexMissing)");
+            Assert.That(rows.Select(r => (r["id"]?.ToString(), r["search_text"] as string, r["search_vector"] is null or DBNull)),
+                Is.EqualTo(new[] { ("M1", (string?)null, true), ("M2", (string?)null, true) }), "索引の列は空のまま (取込後の ReindexMissing)");
             Assert.That(_embedding.Calls, Is.EqualTo(0), "保存の中で埋め込みを呼ばない");
         }
 
@@ -996,17 +972,16 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
         }
 
         [Test]
-        public async Task Interceptor未登録で一括取込のApplyAsyncを呼ぶと警告を1回だけ出す()
+        public async Task Interceptor未登録で旧形式のApplyAsyncを呼ぶと警告を1回だけ出す()
         {
             static ModuleData Row(string subject) { var d = new ModuleData { Name = "Inquiry" }; d.Fields["Subject"] = new TextFieldData { Value = subject }; return d; }
             static bool IsNotRegistered((Microsoft.Extensions.Logging.LogLevel Level, string Message) e) => e.Level == Microsoft.Extensions.Logging.LogLevel.Warning && e.Message.Contains("Interceptor is not registered");
 
             var log = new CapturingLoggerFactory();
             var service = new SemanticSearchService(() => _embedding, () => _design, log);
-            await service.ApplyAsync([Row("a")]);
-            await service.ApplyAsync([Row("b")]);
-#pragma warning disable CS0618 //旧結線の版とも共通 (合わせて 1 回)
-            await service.ApplyAsync(Row("c"), isNewData: true);
+#pragma warning disable CS0618 //旧形式の結線が残っているときの知らせ
+            await service.ApplyAsync(Row("a"), isNewData: true);
+            await service.ApplyAsync(Row("b"), isNewData: false);
 #pragma warning restore CS0618
             Assert.That(log.Entries.Count(IsNotRegistered), Is.EqualTo(1));
             Assert.That(log.Entries.Single(IsNotRegistered).Message, Does.EndWith("otherwise saved rows are not indexed."));
@@ -1015,7 +990,9 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
             var registered = new CapturingLoggerFactory();
             var wired = new SemanticSearchService(() => _embedding, () => _design, registered);
             _ = CreateIO(wired);
-            await wired.ApplyAsync([Row("d")]);
+#pragma warning disable CS0618
+            await wired.ApplyAsync(Row("d"), isNewData: true);
+#pragma warning restore CS0618
             Assert.That(registered.Entries.Count(IsNotRegistered), Is.EqualTo(0));
         }
 

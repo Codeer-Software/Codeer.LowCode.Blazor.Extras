@@ -17,15 +17,14 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
     /// SemanticSearchField のインターセプタ (ホストの ModuleDataIO に登録する)。
     /// <list type="bullet">
     /// <item>保存: 索引を作り直す行は、送信の形ではなく本体が記録した「この保存で変更したレコード」(<see cref="SubmitContext.ChangedRecords"/>) で決める。
-    /// 規則は 2 つ: (1) 追加した行・削除を取り消した行と、対象フィールド (SourceFields) を書いた更新の行 (一括 INSERT の行は除く = 取込は文章だけ)。
+    /// 規則は 2 つ: (1) 追加した行・削除を取り消した行と、対象フィールド (SourceFields) を書いた更新の行 (一括 INSERT の行は除く = 取込の索引は取込後の ReindexMissing)。
     /// (2) 対象フィールドの従属レコード (タグ付けの行など) を追加・更新・削除・取り消しした、その親の行 (親は従属の宣言の束縛 (子の項目 = 親の項目) から引く。
     /// 消す子・更新する子は保存の前にも読んで、消える前 / 付け替える前の親を控える)。取込・内部書き込み・他の拡張が作り直した行も、本体を通って書かれていれば同じ規則で拾う。
     /// 保存が終わった後に行をサーバーで読み直し (権限を通さない内部読み = 保存した人がこのフィールドや対象フィールドを読めなくても索引は最新になる)、
     /// 文章と埋め込みベクトルを書き込み専用列だけに書く (同じトランザクション。レコードの更新ではないので更新日時・楽観ロックの版・ExecuteSqlField は動かない)。
     /// 索引の列はサーバーだけが書く: 送信にこのフィールドのデータが載っていても保存の前に捨てる。
     /// 埋め込みの失敗は文章だけ保存して保存を止めないが、索引列の書き込みの失敗は保存の失敗 (DB の失敗は同じトランザクションなので握れない)。
-    /// 失敗は本体のインターセプタの約束どおり結果の ExceptionMessage で返す (例外のまま投げると外側のインターセプタ (監査ログ) には成功に見える)。
-    /// 一括 INSERT (DB が採番する行) だけは本体も Id を知らないので、ホストの BulkAddAsync が <see cref="SemanticSearchService.ApplyAsync(IEnumerable{ModuleData}, CancellationToken)"/> で文章を付ける</item>
+    /// 失敗は本体のインターセプタの約束どおり結果の ExceptionMessage で返す (例外のまま投げると外側のインターセプタ (監査ログ) には成功に見える)</item>
     /// <item>条件の前処理: 文章だけの意味検索の条件 (<see cref="SemanticMatchCondition.Text"/> あり・Vector 空。画面の検索欄が作る) に、索引付けと同じ埋め込みプロバイダでベクトルを入れる。
     /// 検索の中身 (SQL・権限) は本体と SemanticSearchFieldDesign のまま変えない</item>
     /// </list>
@@ -80,7 +79,6 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
             {
                 var changedRecords = context.ChangedRecords;
                 await CollectTargetsAsync(access, design, changedRecords, ownedParents, targets);
-                WarnBulkAddNotIndexed(design, changedRecords);
                 if (targets.Count > 0) await IndexAsync(access, design, targets);
             }
             catch (Exception ex) when (ex is not LowCodeAccessDeniedException)
@@ -107,7 +105,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
                 if (module == null) continue;
 
                 //(1) 追加した行・削除を取り消した行は全部、更新した行は対象フィールドを書いたフィールドだけ。
-                //一括 INSERT の行 (手入力 Id) は除く = 一括取込は Id の付け方によらず文章だけ (ホストの ApplyAsync。ベクトルは取込後の ReindexMissing)
+                //一括 INSERT の行 (手入力 Id) は除く = 一括取込は Id の付け方によらず索引を付けない (取込後の ReindexMissing。大量取込の埋め込みを保存の中で待たない)
                 if (changed.Kind != ChangedRecordKind.Delete && !changed.IsBulkInsert)
                 {
                     var fields = module.Fields.OfType<SemanticSearchFieldDesign>().Where(f => f.HasColumns)
@@ -116,7 +114,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
                 }
 
                 //(2) 対象フィールドの従属レコードを変えたら、その親 (消した子の親は保存の前に控えてある)。
-                //一括 INSERT の行は (1) と同じく除く = 取込の親の文章は取込後の Reindex (大量取込の分の親の埋め込みを保存の中で待たない。DB 採番の行は Id も無い)
+                //一括 INSERT の行は (1) と同じく除く = 取込の親の索引は取込後の Reindex (大量取込の分の親の埋め込みを保存の中で待たない。DB 採番の行は Id も無い)
                 if (changed.Kind != ChangedRecordKind.Delete && !changed.IsBulkInsert && !string.IsNullOrEmpty(changed.Id) && ownedParents.TryGetValue(changed.ModuleName, out var parents))
                 {
                     var row = await io.GetWithOwnedRecordsAsync(changed.ModuleName, changed.Id, _ => false);
@@ -214,18 +212,6 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
                 }
             }
             return result;
-        }
-
-        //一括 INSERT の行 (本体が IsBulkInsert で記録。書いた項目にこのフィールドが無い = ホストの BulkAddAsync が ApplyAsync で文章を付けていない) は結線漏れ (モジュールごとに 1 回警告)
-        void WarnBulkAddNotIndexed(DesignData design, IReadOnlyList<ChangedRecord> changedRecords)
-        {
-            foreach (var group in changedRecords.Where(e => e.IsBulkInsert).GroupBy(e => e.ModuleName))
-            {
-                var module = design.Modules.Find(group.Key);
-                if (module == null) continue;
-                var fields = module.Fields.OfType<SemanticSearchFieldDesign>().Where(f => f.HasColumns).ToList();
-                if (fields.Count > 0 && group.Any(e => fields.Any(f => !e.FieldNames.Contains(f.Name)))) service.WarnBulkAddNotIndexed(group.Key);
-            }
         }
 
         //保存した行を読み直して索引を書く

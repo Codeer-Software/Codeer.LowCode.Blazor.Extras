@@ -16,7 +16,7 @@
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>
 		<PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
-		<PackageReleaseNotes>SemanticSearchService: the index is built after each save from the saved records by Interceptor (register it with AddInterceptor last; ConditionInterceptor is now an obsolete alias, ApplyAsync is only for BulkAddAsync and adds the text only). Reindex requires write permission on the field and writes only the index columns. Indexing failures roll back the save and are recorded as failures in the audit log. LoggerFactory for warnings. Requires DbAccess 0.2.1.</PackageReleaseNotes>
+		<PackageReleaseNotes>SemanticSearchService: the index is built after each save from the saved records by Interceptor (register it with AddInterceptor last; ConditionInterceptor is now an obsolete alias). ApplyAsync(datas) removed; bulk imports leave the index empty, call ReindexMissing() afterwards (it embeds existing text as is and builds text only where missing). Reindex requires write permission on the field and writes only the index columns. Indexing failures roll back the save and are recorded as failures in the audit log. LoggerFactory for warnings. Requires DbAccess 0.2.1.</PackageReleaseNotes>
 		<PackageId>Codeer.LowCode.Blazor.Extras.Server</PackageId>
 		<!-- NU5104: Azure.AI.OpenAI has no stable release built for the OpenAI 2.9+ line yet, so the prerelease dependency is intentional -->
 		<NoWarn>$(NoWarn);NU5104</NoWarn>

@@ -46,8 +46,6 @@ namespace Extras.Server.Services
             if (moduleDesign == null) throw LowCodeException.Create("invalid design");
 
             foreach (var data in datas) PasswordHashHelper.ApplyPasswordHash(moduleDesign, data);
-            //SemanticSearchField の索引: 一括 INSERT は採番した Id を返さないので、取り込む行のデータから作る
-            await SemanticSearchIndex.Service.ApplyAsync(datas);
             await base.BulkAddAsync(transactionId, datas);
         }
 

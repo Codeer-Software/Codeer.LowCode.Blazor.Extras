@@ -135,6 +135,65 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
             Assert.That(progress.First(), Is.EqualTo((0, 5)));
         }
 
+        //行 2 は保存時に埋め込みに失敗した行 (文章だけある)。その後で件名を変える (行から作り直すと文章が変わる)
+        async Task SetTextOnlyRowAsync()
+        {
+            await using var db = new DbAccessor(_dataSources);
+            await db.ExecuteAsync(Ds, "UPDATE inquiries SET subject = '変えた件名', search_text = '保存時の文章', search_vector = NULL WHERE id = 2", new());
+        }
+
+        [Test]
+        public async Task missingOnlyは文章のある行はその文章をそのまま埋め込み_文章の無い行は行から作る()
+        {
+            await SetTextOnlyRowAsync();
+            var indexer = Service();
+            await using var scope = OpenScope(indexer);
+            Assert.That(await indexer.ReindexAsync(scope.ModuleDataIO, scope.DbAccessor, "Inquiry", missingOnly: true), Is.EqualTo(5));
+            var rows = await RowsAsync();
+            Assert.That(rows.Single(r => r.Id == 2), Is.EqualTo((2, "保存時の文章", SemanticSearchVector.Encode(FakeEmbeddingProvider.Embed("保存時の文章")))), "行を読み直さない (変えた件名は入らない)");
+            Assert.That(rows.Where(r => r.Id is 1 or 4 or 6 or 7).All(r => r.Text == $"件名: 件名 {r.Id}" && r.Vector == SemanticSearchVector.Encode(FakeEmbeddingProvider.Embed(r.Text!))), Is.True, "文章の無い行は行から作る");
+            Assert.That(rows.Where(r => r.Id is 3 or 5).Select(r => (r.Text, r.Vector)), Is.All.EqualTo(("old", "[0.1,0.2]")), "索引済みの行は触らない");
+            Assert.That(_embedding.Inputs, Does.Contain("保存時の文章"));
+        }
+
+        [Test]
+        public async Task missingOnlyで文章をそのまま使うときも埋め込みには最大文字数まで渡す()
+        {
+            await SetTextOnlyRowAsync();
+            _design.Modules.Find("Inquiry")!.Fields.OfType<SemanticSearchFieldDesign>().Single().MaxTextLength = 4;
+            var indexer = Service();
+            await using var scope = OpenScope(indexer);
+            await indexer.ReindexAsync(scope.ModuleDataIO, scope.DbAccessor, "Inquiry", missingOnly: true);
+            var row = (await RowsAsync()).Single(r => r.Id == 2);
+            Assert.That(row.Text, Is.EqualTo("保存時の文章"), "列は全文のまま");
+            Assert.That(row.Vector, Is.EqualTo(SemanticSearchVector.Encode(FakeEmbeddingProvider.Embed("保存時の"))));
+        }
+
+        [Test]
+        public async Task 全行の再索引は文章のある行も行から作り直す()
+        {
+            await SetTextOnlyRowAsync();
+            var indexer = Service();
+            await using var scope = OpenScope(indexer);
+            Assert.That(await indexer.ReindexAsync(scope.ModuleDataIO, scope.DbAccessor, "Inquiry"), Is.EqualTo(7));
+            var rows = await RowsAsync();
+            Assert.That(rows.Single(r => r.Id == 2).Text, Is.EqualTo("件名: 変えた件名"));
+            Assert.That(rows.Single(r => r.Id == 3).Text, Is.EqualTo("件名: 件名 3"));
+        }
+
+        [Test]
+        public async Task 埋め込みモデルが無ければmissingOnlyは文章のある行を触らず文章の無い行に文章だけ書く()
+        {
+            await SetTextOnlyRowAsync();
+            var indexer = new SemanticSearchService(() => null, () => _design);
+            await using var scope = OpenScope(indexer);
+            Assert.That(await indexer.ReindexAsync(scope.ModuleDataIO, scope.DbAccessor, "Inquiry", missingOnly: true), Is.EqualTo(4));
+            var rows = await RowsAsync();
+            Assert.That(rows.Single(r => r.Id == 2), Is.EqualTo((2, "保存時の文章", (string?)null)));
+            Assert.That(rows.Where(r => r.Id is 1 or 4 or 6 or 7).All(r => r.Text == $"件名: 件名 {r.Id}" && r.Vector == null), Is.True);
+            Assert.That(rows.Where(r => r.Id is 3 or 5).Select(r => (r.Text, r.Vector)), Is.All.EqualTo(("old", "[0.1,0.2]")));
+        }
+
         [Test]
         public async Task 埋め込みモデルが無ければ文章だけ書き直す()
         {
