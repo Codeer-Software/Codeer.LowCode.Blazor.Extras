@@ -16,7 +16,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
     /// <summary>
     /// SemanticSearchField のインターセプタ (ホストの ModuleDataIO に登録する)。
     /// <list type="bullet">
-    /// <item>保存: 索引を作り直す行は、送信の形ではなく本体が記録した「この保存で変更したレコード」(<see cref="ModuleDataIOSystemAccess.ChangedRecords"/>) で決める。
+    /// <item>保存: 索引を作り直す行は、送信の形ではなく本体が記録した「この保存で変更したレコード」(<see cref="ModuleDataIO.ChangedRecords"/>) で決める。
     /// 規則は 2 つ: (1) 追加した行・削除を取り消した行と、対象フィールド (SourceFields) を書いた更新の行 (一括 INSERT の行は除く = 取込は文章だけ)。
     /// (2) 対象フィールドの従属レコード (タグ付けの行など) を追加・更新・削除・取り消しした、その親の行 (親は従属の宣言の束縛 (子の項目 = 親の項目) から引く。
     /// 消す子・更新する子は保存の前にも読んで、消える前 / 付け替える前の親を控える)。取込・内部書き込み・他の拡張が作り直した行も、本体を通って書かれていれば同じ規則で拾う。
@@ -77,8 +77,9 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
 
             try
             {
-                await CollectTargetsAsync(io.SystemAccess, design, ownedParents, targets);
-                WarnBulkAddNotIndexed(design, io.SystemAccess.ChangedRecords);
+                var changedRecords = io.ChangedRecords;
+                await CollectTargetsAsync(io.SystemAccess, design, changedRecords, ownedParents, targets);
+                WarnBulkAddNotIndexed(design, changedRecords);
                 if (targets.Count > 0) await IndexAsync(io.SystemAccess, design, targets);
             }
             catch (Exception ex) when (ex is not LowCodeAccessDeniedException)
@@ -97,9 +98,9 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
         }
 
         //本体が記録した変更から、作り直す行を決める
-        static async Task CollectTargetsAsync(ModuleDataIOSystemAccess io, DesignData design, Dictionary<string, List<OwnedParent>> ownedParents, Targets targets)
+        static async Task CollectTargetsAsync(ModuleDataIOSystemAccess io, DesignData design, IReadOnlyList<ChangedRecord> changedRecords, Dictionary<string, List<OwnedParent>> ownedParents, Targets targets)
         {
-            foreach (var changed in io.ChangedRecords)
+            foreach (var changed in changedRecords)
             {
                 var module = design.Modules.Find(changed.ModuleName);
                 if (module == null) continue;

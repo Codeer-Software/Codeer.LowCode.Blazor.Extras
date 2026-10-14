@@ -64,7 +64,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.EditHistory
             foreach (var row in result.Items)
             {
                 if (row.Fields.GetValueOrDefault(names.Snapshot) is not TextFieldData snapshotData || string.IsNullOrEmpty(snapshotData.Value)) continue;
-                snapshotData.Value = await ToReadableAsync(io.SystemAccess, snapshotData.Value);
+                snapshotData.Value = await ToReadableAsync(io, snapshotData.Value);
             }
         }
 
@@ -81,7 +81,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.EditHistory
         }
 
         //スナップショット JSON を読む人の権限に落とす。壊れている・落とす途中で失敗・対象モジュールを読めない・行が条件に合わない、なら空 (版は出るが内容は見えない)
-        async Task<string> ToReadableAsync(ModuleDataIOSystemAccess io, string json)
+        async Task<string> ToReadableAsync(ModuleDataIO io, string json)
         {
             try
             {
@@ -140,7 +140,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.EditHistory
                 if (error != null) return Fail(transactionData, error);
                 var isRootDelete = submitData.Delete.Any(e => e.ModuleName == submitData.ModuleName && e.Id == submitData.Id);
                 //履歴を持つモジュールのレコードに触る送信では、削除・差し替えで消える添付ファイルを残す (版から戻したときに実体がある)
-                if (resolved != null || TouchesHistoryModule(submitData)) io.SystemAccess.KeepFilesOfDeletedRecords(submitData);
+                if (resolved != null || TouchesHistoryModule(submitData)) io.KeepFilesOfDeletedRecords(submitData);
                 if (resolved == null)
                 {
                     //履歴を持たないモジュールの削除でも、一緒に消える従属レコードのうち自分の履歴を持つモジュールの行には削除の版を残す
