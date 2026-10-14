@@ -300,7 +300,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
                     }
                     //書き込み専用列だけを書く (保存時の索引付けと同じ。レコードの更新ではない)。読んだ後に消えた行は飛ばす
                     foreach (var update in updates)
-                        if (await moduleDataIO.SystemAccess.UpdateWriteOnlyColumnsAsync(update)) count++;
+                        if (await moduleDataIO.SystemAccess.WriteWithoutSideEffectsAsync(update)) count++;
                     progress?.Report((count, total));
                 }
                 if (pageIndex + 1 >= page.PageCount || page.Items.Count == 0) break;

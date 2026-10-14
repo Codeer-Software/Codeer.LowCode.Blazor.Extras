@@ -253,7 +253,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
             }
             //書き込み専用列だけを書く (レコードの更新ではない)。失敗 (列の型が埋め込みの次元と合わない等) は保存の失敗にする
             //(同じトランザクションの DB の失敗は握れない: PostgreSQL は以後の文が全部失敗し、握ると保存が黙って消える)
-            foreach (var (_, _, update, _) in rows) await io.UpdateWriteOnlyColumnsAsync(update);
+            foreach (var (_, _, update, _) in rows) await io.WriteWithoutSideEffectsAsync(update);
         }
 
         public Task GetListAsync(ModuleDataIO io, SearchCondition condition, Paging<ModuleData> result)
