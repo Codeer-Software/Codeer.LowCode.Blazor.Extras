@@ -31,7 +31,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.EditHistory
     sealed class EditHistoryUndeleter(DesignData designData)
     {
         //履歴行を読み、版のスナップショットから戻す
-        internal async Task<EditHistoryUndeleteResult> RestoreAsync(ModuleDataIOInternalAccess io, ModuleSubmitData submitData, EditHistoryUndeleteData request)
+        internal async Task<EditHistoryUndeleteResult> RestoreAsync(ModuleDataIOWithoutAuthorization io, ModuleSubmitData submitData, EditHistoryUndeleteData request)
         {
             var historyModule = designData.Modules.Find(request.HistoryModuleName)
                 ?? throw new InvalidOperationException($"Edit history module '{request.HistoryModuleName}' does not exist.");
@@ -87,7 +87,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.EditHistory
         //版の従属レコード (含める宣言の先。子・孫も) のうち、今は削除中 (通常の読み出しで見つからない) の行を戻す。
         //論理削除モジュールの行は Id を保って取り消す。together = 親と一緒に消えた行の取り消し (子の CanDelete だけ見る。物理削除モジュールの行は作り直す)。
         //together でなければ (この版に置き換える) その人の権限で取り消す (物理削除モジュールの行はフォームが新しい行として送る)
-        async Task UndeleteDeletedRowsAsync(ModuleDataIOInternalAccess io, ModuleDesign design, EditHistoryFieldDesign? field, ModuleData data, string prefix, bool together)
+        async Task UndeleteDeletedRowsAsync(ModuleDataIOWithoutAuthorization io, ModuleDesign design, EditHistoryFieldDesign? field, ModuleData data, string prefix, bool together)
         {
             var recreated = new Dictionary<string, Dictionary<string, string>>();
             foreach (var owned in OrderByReferences(design))
@@ -124,7 +124,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.EditHistory
         //親への参照は宣言の束縛条件から付け替える: 子が親を参照する宣言 (明細) は親を先に作って子の参照を親の新しい Id に、
         //親が子を参照する宣言 (埋め込みモジュール) は子を先に用意して親の参照を子の Id にする (子が今もあればそれを参照し、無ければ作り直す)。
         //履歴を持つモジュールのレコードを新しい Id で作ったときは、旧 Id の版を新しい Id に付け替える (履歴が繋がる・旧 Id の削除の版から二度復活できない)
-        async Task<string> RecreateAsync(ModuleDataIOInternalAccess io, ModuleDesign design, EditHistoryFieldDesign? field, ModuleData data, string prefix,
+        async Task<string> RecreateAsync(ModuleDataIOWithoutAuthorization io, ModuleDesign design, EditHistoryFieldDesign? field, ModuleData data, string prefix,
             OwnedRecordsDesign? bindTo, string? parentId)
         {
             var oldId = EditHistorySnapshot.GetId(data);
@@ -216,7 +216,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.EditHistory
         }
 
         //Id が変わったレコード (新しい Id での作り直し・Id を変えた更新) の、旧 Id の版を新しい Id に付け替える (そのモジュールが履歴を持つときだけ)
-        internal async Task RelinkVersionsAsync(ModuleDataIOInternalAccess io, ModuleDesign design, string oldId, string newId)
+        internal async Task RelinkVersionsAsync(ModuleDataIOWithoutAuthorization io, ModuleDesign design, string oldId, string newId)
         {
             var resolved = EditHistoryContracts.Resolve(designData, design, out _);
             if (resolved == null) return;

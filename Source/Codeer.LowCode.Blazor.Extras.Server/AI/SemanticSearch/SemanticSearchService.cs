@@ -266,7 +266,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
                 //並びは Id (複合 Id ならその各列。Id 自体は列を持たないので並びに入らない)
                 if (idField.CompositeIdVariables.Count > 0) condition.SortConditions.AddRange(idField.CompositeIdVariables.Select(v => new SortCondition { Variable = v }));
                 else condition.SortConditions.Add(new SortCondition { Variable = $"{idField.Name}.Value" });
-                var page = await moduleDataIO.Internal.GetListAsync(condition, pageIndex);
+                var page = await moduleDataIO.WithoutAuthorization.GetListAsync(condition, pageIndex);
                 if (pageIndex == 0)
                 {
                     total = indexed == null ? page.TotalCount : Math.Max(0, page.TotalCount - indexed.Count);
@@ -279,7 +279,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
                 foreach (var id in ids)
                 {
                     cancellationToken.ThrowIfCancellationRequested();
-                    var row = await ReadForIndexAsync(moduleDataIO.Internal, module, id, fields);
+                    var row = await ReadForIndexAsync(moduleDataIO.WithoutAuthorization, module, id, fields);
                     if (row != null) rows.Add(row);
                 }
                 if (rows.Count > 0)
@@ -300,7 +300,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
                     }
                     //書き込み専用列だけを書く (保存時の索引付けと同じ。レコードの更新ではない)。読んだ後に消えた行は飛ばす
                     foreach (var update in updates)
-                        if (await moduleDataIO.Internal.UpdateWriteOnlyColumnsAsync(update)) count++;
+                        if (await moduleDataIO.WithoutAuthorization.UpdateWriteOnlyColumnsAsync(update)) count++;
                     progress?.Report((count, total));
                 }
                 if (pageIndex + 1 >= page.PageCount || page.Items.Count == 0) break;
@@ -312,7 +312,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
         /// 索引用に行を 1 件読む (保存時の索引付けと再索引で同じ)。権限を通さない内部読み。従属レコードは文章に使うもの (SourceFields にある宣言 = タグ付けの行など) だけ付ける。
         /// 論理削除した行・無い行は null。
         /// </summary>
-        internal static async Task<ModuleData?> ReadForIndexAsync(ModuleDataIOInternalAccess io, ModuleDesign module, string id, IEnumerable<SemanticSearchFieldDesign> fields)
+        internal static async Task<ModuleData?> ReadForIndexAsync(ModuleDataIOWithoutAuthorization io, ModuleDesign module, string id, IEnumerable<SemanticSearchFieldDesign> fields)
         {
             var sources = fields.SelectMany(f => SemanticSearchText.SourceFields(module, f)).ToHashSet();
             var row = await io.GetWithOwnedRecordsAsync(module.Name, id, path => sources.Contains(path));
@@ -322,7 +322,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
 
         //リンク・モジュール連携の候補値の表示名 (得意先名など) を入れる。内部読みは表示名を埋めないので、画面の LinkField と同じくリンク先を値で引く
         //(権限は通さない = docs のとおりリンク先の閲覧条件は見ない)。リンク先に無い値・表示名の無い設計はそのまま (文章には値が出る)
-        static async Task FillLinkDisplayTextsAsync(ModuleDataIOInternalAccess io, ModuleDesign module, ModuleData row, IEnumerable<string> sources)
+        static async Task FillLinkDisplayTextsAsync(ModuleDataIOWithoutAuthorization io, ModuleDesign module, ModuleData row, IEnumerable<string> sources)
         {
             foreach (var name in sources)
             {

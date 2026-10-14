@@ -741,12 +741,12 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
         {
             public Exception? Thrown { get; private set; }
             public List<ModuleSubmitResult>? Results { get; private set; }
-            public async Task<List<ModuleSubmitResult>> SubmitAsync(ModuleDataIOInternalAccess io, List<ModuleSubmitData> transactionData, Func<Task<List<ModuleSubmitResult>>> next)
+            public async Task<List<ModuleSubmitResult>> SubmitAsync(ModuleDataIOWithoutAuthorization io, List<ModuleSubmitData> transactionData, Func<Task<List<ModuleSubmitResult>>> next)
             {
                 try { return Results = await next(); }
                 catch (Exception ex) { Thrown = ex; throw; }
             }
-            public Task GetListAsync(ModuleDataIOInternalAccess io, SearchCondition condition, Codeer.LowCode.Blazor.Utils.Paging<ModuleData> result) => Task.CompletedTask;
+            public Task GetListAsync(ModuleDataIOWithoutAuthorization io, SearchCondition condition, Codeer.LowCode.Blazor.Utils.Paging<ModuleData> result) => Task.CompletedTask;
         }
 
         sealed class ObservedModuleDataIO : ModuleDataIO
@@ -888,14 +888,14 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
         }
 
         //意味検索のインターセプタより外側 (先に登録) で、next() の前に内部書き込みする (編集履歴の復活など)
-        sealed class InnerWriter(Func<ModuleDataIOInternalAccess, Task> before) : IModuleDataIOInterceptor
+        sealed class InnerWriter(Func<ModuleDataIOWithoutAuthorization, Task> before) : IModuleDataIOInterceptor
         {
-            public async Task<List<ModuleSubmitResult>> SubmitAsync(ModuleDataIOInternalAccess io, List<ModuleSubmitData> transactionData, Func<Task<List<ModuleSubmitResult>>> next)
+            public async Task<List<ModuleSubmitResult>> SubmitAsync(ModuleDataIOWithoutAuthorization io, List<ModuleSubmitData> transactionData, Func<Task<List<ModuleSubmitResult>>> next)
             {
                 await before(io);
                 return await next();
             }
-            public Task GetListAsync(ModuleDataIOInternalAccess io, SearchCondition condition, Codeer.LowCode.Blazor.Utils.Paging<ModuleData> result) => Task.CompletedTask;
+            public Task GetListAsync(ModuleDataIOWithoutAuthorization io, SearchCondition condition, Codeer.LowCode.Blazor.Utils.Paging<ModuleData> result) => Task.CompletedTask;
         }
 
         sealed class OuterFirstModuleDataIO : ModuleDataIO
@@ -908,7 +908,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
             }
         }
 
-        ModuleDataIO CreateIOWithOuter(Func<ModuleDataIOInternalAccess, Task> before)
+        ModuleDataIO CreateIOWithOuter(Func<ModuleDataIOWithoutAuthorization, Task> before)
             => new OuterFirstModuleDataIO(_design, this, _db, new TemporaryFileManager(_db, [], new List<IFileStorage>()), new InnerWriter(before), Indexer());
 
         [Test]
