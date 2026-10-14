@@ -105,7 +105,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
         }
 
         /// <summary>旧形式。新規行 (isNewData = true) なら <see cref="ApplyAsync(IEnumerable{ModuleData}, CancellationToken)"/> と同じ。更新では何もしない (索引は <see cref="Interceptor"/> が保存後の行から作る)。</summary>
-        [Obsolete("Register Interceptor with AddInterceptor (required since 0.21); call ApplyAsync(datas) only from BulkAddAsync.")]
+        [Obsolete("Register Interceptor with AddInterceptor (required since 0.22); call ApplyAsync(datas) only from BulkAddAsync.")]
         public Task ApplyAsync(ModuleData data, bool isNewData, CancellationToken cancellationToken = default)
         {
             WarnIfInterceptorNotRegistered();
@@ -117,7 +117,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
         {
             if (_interceptor != null || _warnedInterceptorNotRegistered) return;
             _warnedInterceptorNotRegistered = true;
-            _logger?.LogWarning("SemanticSearch: Interceptor is not registered. Since 0.21 the index is built by Interceptor; register it with AddInterceptor(SemanticSearchService.Interceptor) in your ModuleDataIO, otherwise saved rows are not indexed.");
+            _logger?.LogWarning("SemanticSearch: Interceptor is not registered. Since 0.22 the index is built by Interceptor; register it with AddInterceptor(SemanticSearchService.Interceptor) in your ModuleDataIO, otherwise saved rows are not indexed.");
         }
         bool _warnedInterceptorNotRegistered;
 

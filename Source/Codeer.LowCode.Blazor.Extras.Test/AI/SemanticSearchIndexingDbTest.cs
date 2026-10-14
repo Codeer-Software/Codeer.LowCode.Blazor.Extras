@@ -141,6 +141,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
         {
             var data = new ModuleData { Name = "Inquiry" };
             data.Fields["Subject"] = new TextFieldData { Value = "一括取込の件名" };
+#pragma warning disable CS0618 //旧形式 (1 行版) の挙動の確認
             await Indexer().ApplyAsync(data, isNewData: true);
             var sent = (SemanticSearchFieldData)data.Fields["Search"]!;
             Assert.That(sent.Text, Is.EqualTo("件名: 一括取込の件名"));
@@ -152,6 +153,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
             var update = new ModuleData { Name = "Inquiry" };
             update.Fields["Subject"] = new TextFieldData { Value = "x" };
             await Indexer().ApplyAsync(update, isNewData: false);
+#pragma warning restore CS0618
             Assert.That(update.Fields.ContainsKey("Search"), Is.False);
         }
 
