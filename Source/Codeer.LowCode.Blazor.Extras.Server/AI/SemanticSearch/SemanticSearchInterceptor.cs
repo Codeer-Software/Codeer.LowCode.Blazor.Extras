@@ -16,7 +16,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
     /// <summary>
     /// SemanticSearchField のインターセプタ (ホストの ModuleDataIO に登録する)。
     /// <list type="bullet">
-    /// <item>保存: 索引を作り直す行は、送信の形ではなく本体が記録した「この保存で変更したレコード」(<see cref="ModuleDataIO.ChangedRecords"/>) で決める。
+    /// <item>保存: 索引を作り直す行は、送信の形ではなく本体が記録した「この保存で変更したレコード」(<see cref="SubmitContext.ChangedRecords"/>) で決める。
     /// 規則は 2 つ: (1) 追加した行・削除を取り消した行と、対象フィールド (SourceFields) を書いた更新の行 (一括 INSERT の行は除く = 取込は文章だけ)。
     /// (2) 対象フィールドの従属レコード (タグ付けの行など) を追加・更新・削除・取り消しした、その親の行 (親は従属の宣言の束縛 (子の項目 = 親の項目) から引く。
     /// 消す子・更新する子は保存の前にも読んで、消える前 / 付け替える前の親を控える)。取込・内部書き込み・他の拡張が作り直した行も、本体を通って書かれていれば同じ規則で拾う。
@@ -50,9 +50,10 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
             }
         }
 
-        public async Task<List<ModuleSubmitResult>> SubmitAsync(ModuleDataIO io, List<ModuleSubmitData> transactionData, Func<Task<List<ModuleSubmitResult>>> next)
+        public async Task<List<ModuleSubmitResult>> SubmitAsync(ModuleDataIO io, SubmitContext context, List<ModuleSubmitData> transactionData, Func<Task<List<ModuleSubmitResult>>> next)
         {
             var design = service.GetDesign();
+            var access = io.CreateSystemAccess();
             //索引の列はサーバーだけが書く (クライアントが送ってきた文章・ベクトルは使わない)
             foreach (var data in transactionData.SelectMany(e => e.Add.Concat(e.Update)))
             {
@@ -65,7 +66,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
             var targets = new Targets();
             try
             {
-                if (ownedParents.Count > 0) await AddParentsBeforeSaveAsync(io.SystemAccess, ownedParents, transactionData, targets);
+                if (ownedParents.Count > 0) await AddParentsBeforeSaveAsync(access, ownedParents, transactionData, targets);
             }
             catch (Exception ex) when (ex is not LowCodeAccessDeniedException)
             {
@@ -77,10 +78,10 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
 
             try
             {
-                var changedRecords = io.ChangedRecords;
-                await CollectTargetsAsync(io.SystemAccess, design, changedRecords, ownedParents, targets);
+                var changedRecords = context.ChangedRecords;
+                await CollectTargetsAsync(access, design, changedRecords, ownedParents, targets);
                 WarnBulkAddNotIndexed(design, changedRecords);
-                if (targets.Count > 0) await IndexAsync(io.SystemAccess, design, targets);
+                if (targets.Count > 0) await IndexAsync(access, design, targets);
             }
             catch (Exception ex) when (ex is not LowCodeAccessDeniedException)
             {

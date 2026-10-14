@@ -98,9 +98,10 @@ namespace Codeer.LowCode.Blazor.Extras.Server.EditHistory
 
         // ===== 保存: 復活 → 本体の保存 → 記録 =====
 
-        public async Task<List<ModuleSubmitResult>> SubmitAsync(ModuleDataIO io, List<ModuleSubmitData> transactionData, Func<Task<List<ModuleSubmitResult>>> next)
+        public async Task<List<ModuleSubmitResult>> SubmitAsync(ModuleDataIO io, SubmitContext context, List<ModuleSubmitData> transactionData, Func<Task<List<ModuleSubmitResult>>> next)
         {
             if (!_usesHistory) return await next();
+            var access = io.CreateSystemAccess();
 
             //履歴モジュールの版はシステムだけが書く (画面・API からの追加・更新は拒否。削除は古い版の整理のために許す)
             //見るのは送信に乗った行のモジュール (別のモジュールの送信に混ぜた行も同じ)
@@ -140,17 +141,17 @@ namespace Codeer.LowCode.Blazor.Extras.Server.EditHistory
                 if (error != null) return Fail(transactionData, error);
                 var isRootDelete = submitData.Delete.Any(e => e.ModuleName == submitData.ModuleName && e.Id == submitData.Id);
                 //履歴を持つモジュールのレコードに触る送信では、削除・差し替えで消える添付ファイルを残す (版から戻したときに実体がある)
-                if (resolved != null || TouchesHistoryModule(submitData)) io.KeepFilesOfDeletedRecords(submitData);
+                if (resolved != null || TouchesHistoryModule(submitData)) context.KeepFilesOfDeletedRecords(submitData);
                 if (resolved == null)
                 {
                     //履歴を持たないモジュールの削除でも、一緒に消える従属レコードのうち自分の履歴を持つモジュールの行には削除の版を残す
                     if (isRootDelete && IndividualTargets(module, null, out var targetError).Count != 0)
                     {
                         if (targetError != null) return Fail(transactionData, targetError);
-                        var full = await LoadFullAsync(io.SystemAccess, module.Name, submitData.Id);
+                        var full = await LoadFullAsync(access, module.Name, submitData.Id);
                         if (full != null)
                         {
-                            var (rowPlans, rowError) = await IndividuallyRecordedDeletePlansAsync(io.SystemAccess, i, module, full);
+                            var (rowPlans, rowError) = await IndividuallyRecordedDeletePlansAsync(access, i, module, full);
                             if (rowError != null) return Fail(transactionData, rowError);
                             plans.AddRange(rowPlans);
                         }
@@ -175,11 +176,11 @@ namespace Codeer.LowCode.Blazor.Extras.Server.EditHistory
                 {
                     plan.ChangeType = EditHistoryChangeType.Delete;
                     //削除の版は削除前の内容。行ごとに記録する従属レコードの行も親の削除で消えるので、その削除の版も残す (削除前に読んでおく)
-                    var full = await LoadFullAsync(io.SystemAccess, module.Name, submitData.Id);
+                    var full = await LoadFullAsync(access, module.Name, submitData.Id);
                     plan.Snapshot = EditHistoryPolicy.Strip(_designData, EditHistoryContracts.Field(module), full?.JsonClone());
                     if (full != null)
                     {
-                        var (rowPlans, rowError) = await IndividuallyRecordedDeletePlansAsync(io.SystemAccess, i, module, full);
+                        var (rowPlans, rowError) = await IndividuallyRecordedDeletePlansAsync(access, i, module, full);
                         if (rowError != null) return Fail(transactionData, rowError);
                         plans.AddRange(rowPlans);
                     }
@@ -189,7 +190,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.EditHistory
                     //ExecuteSqlField (Standalone) だけの送信: レコード自体が変わったときだけ版にする (変更前を取っておいて後で比べる)
                     if (string.IsNullOrEmpty(submitData.Id) || IdFieldData.IsTemporaryId(submitData.Id)) continue;
                     plan.ChangeType = EditHistoryChangeType.Update;
-                    plan.Before = await LoadAsync(io.SystemAccess, module.Name, submitData.Id);
+                    plan.Before = await LoadAsync(access, module.Name, submitData.Id);
                 }
                 else if (IsEmpty(submitData))
                 {
@@ -234,7 +235,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.EditHistory
                 foreach (var d in submitData.Delete)
                 {
                     if (!targets.TryGetValue(d.ModuleName, out var t)) continue;
-                    plans.Add(RowPlan(i, t, EditHistoryChangeType.Delete) with { RowId = d.Id, Snapshot = await LoadAsync(io.SystemAccess, d.ModuleName, d.Id) });
+                    plans.Add(RowPlan(i, t, EditHistoryChangeType.Delete) with { RowId = d.Id, Snapshot = await LoadAsync(access, d.ModuleName, d.Id) });
                 }
             }
 
@@ -266,17 +267,17 @@ namespace Codeer.LowCode.Blazor.Extras.Server.EditHistory
                             _logError?.Invoke($"Edit history of a row of '{plan.Module.Name}' was not recorded: the Id of the saved row is not available.");
                             continue;
                         }
-                        plan.Snapshot = await LoadAsync(io.SystemAccess, plan.Module.Name, id);
+                        plan.Snapshot = await LoadAsync(access, plan.Module.Name, id);
                     }
                     else if (plan.RowId != null)
                     {
                         id = plan.RowId;
-                        if (plan.ChangeType != EditHistoryChangeType.Delete) plan.Snapshot = await LoadAsync(io.SystemAccess, plan.Module.Name, id);
+                        if (plan.ChangeType != EditHistoryChangeType.Delete) plan.Snapshot = await LoadAsync(access, plan.Module.Name, id);
                     }
                     else if (plan.FixedId != null)
                     {
                         id = plan.FixedId;
-                        plan.Snapshot = await LoadAsync(io.SystemAccess, plan.Module.Name, id);
+                        plan.Snapshot = await LoadAsync(access, plan.Module.Name, id);
                     }
                     else if (plan.ChangeType == EditHistoryChangeType.Delete)
                     {
@@ -290,12 +291,12 @@ namespace Codeer.LowCode.Blazor.Extras.Server.EditHistory
                             _logError?.Invoke($"Edit history of '{plan.Module.Name}' was not recorded: the Id of the saved record is not available (bulk insert, or an ExecuteSqlField create without NewId).");
                             continue;
                         }
-                        plan.Snapshot = await LoadAsync(io.SystemAccess, plan.Module.Name, id);
+                        plan.Snapshot = await LoadAsync(access, plan.Module.Name, id);
                         //Id を変えた更新 (手入力 Id の書き換え・複合 Id の構成項目の変更): 旧 Id の版を新しい Id に付け替えて履歴を繋ぐ
                         var oldId = transactionData[plan.Index].Id;
                         if (plan.ChangeType == EditHistoryChangeType.Update && plan.Snapshot != null && oldId != id
                             && !string.IsNullOrEmpty(oldId) && !IdFieldData.IsTemporaryId(oldId))
-                            await _undeleter.RelinkVersionsAsync(io.SystemAccess, plan.Module, oldId, id);
+                            await _undeleter.RelinkVersionsAsync(access, plan.Module, oldId, id);
                         //Standalone の SQL でレコードが変わっていなければ版にしない
                         if (plan.Before != null && plan.Snapshot != null &&
                             EditHistorySnapshot.Serialize(plan.Before) == EditHistorySnapshot.Serialize(plan.Snapshot)) continue;
@@ -305,7 +306,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.EditHistory
                         _logError?.Invoke($"Edit history of '{plan.Module.Name}' ({id}) was not recorded: the record could not be read.");
                         continue;
                     }
-                    await WriteAsync(io.SystemAccess, plan, id, userId, localNow, utcNow);
+                    await WriteAsync(access, plan, id, userId, localNow, utcNow);
                 }
             }
             catch (Exception ex)

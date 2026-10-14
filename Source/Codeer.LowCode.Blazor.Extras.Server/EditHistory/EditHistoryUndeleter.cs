@@ -33,11 +33,12 @@ namespace Codeer.LowCode.Blazor.Extras.Server.EditHistory
         //履歴行を読み、版のスナップショットから戻す
         internal async Task<EditHistoryUndeleteResult> RestoreAsync(ModuleDataIO io, ModuleSubmitData submitData, EditHistoryUndeleteData request)
         {
+            var access = io.CreateSystemAccess();
             var historyModule = designData.Modules.Find(request.HistoryModuleName)
                 ?? throw new InvalidOperationException($"Edit history module '{request.HistoryModuleName}' does not exist.");
             var names = EditHistoryContracts.Contract(historyModule)
                 ?? throw new InvalidOperationException($"Edit history module '{historyModule.Name}' has no {nameof(EditHistoryContractFieldDesign)}.");
-            var historyRow = await io.SystemAccess.GetWithOwnedRecordsAsync(historyModule.Name, request.HistoryRowId, _ => false)
+            var historyRow = await access.GetWithOwnedRecordsAsync(historyModule.Name, request.HistoryRowId, _ => false)
                 ?? throw new InvalidOperationException("The edit history version does not exist.");
             var targetModuleName = EditHistoryContracts.GetText(historyRow, names.ModuleName);
             var dataId = EditHistoryContracts.GetText(historyRow, names.DataId);
@@ -56,38 +57,38 @@ namespace Codeer.LowCode.Blazor.Extras.Server.EditHistory
                 //この版に置き換える: 版の従属レコードのうち「今は削除中で、その人に見えている (差分に出ている)」論理削除の行を Id を保って取り消す
                 //(レコード自身と行の値はフォームの保存が持つ)。見えていない行は触らない。戻せない行 (削除権限が無い等) があれば例外 = 保存失敗
                 var visible = snapshot.JsonClone();
-                if (await io.RestrictToCurrentUserAsync(visible)) await UndeleteDeletedRowsAsync(io, module, field, visible, string.Empty, together: false);
+                if (await io.RestrictToCurrentUserAsync(visible)) await UndeleteDeletedRowsAsync(io, access, module, field, visible, string.Empty, together: false);
                 return new EditHistoryUndeleteResult { IsWholeRecord = false, RestoredId = dataId };
             }
 
             //復活ボタン: 削除の版からレコード全体を戻す。復活できるのはそのレコードの最新の版が削除のときだけ (復活済み・作り直し済みなら不可)
             if (EditHistoryContracts.GetText(historyRow, names.ChangeType) != EditHistoryChangeType.Delete.ToString())
                 throw new InvalidOperationException("Only a deleted record (a Delete version) can be restored.");
-            var latest = (await io.SystemAccess.GetListAsync(EditHistoryContracts.VersionsCondition(historyModule.Name, names, targetModuleName, dataId, 1, SystemFieldNames.Id))).Items.FirstOrDefault();
+            var latest = (await access.GetListAsync(EditHistoryContracts.VersionsCondition(historyModule.Name, names, targetModuleName, dataId, 1, SystemFieldNames.Id))).Items.FirstOrDefault();
             if (latest == null || EditHistorySnapshot.GetId(latest) != request.HistoryRowId)
                 throw new InvalidOperationException("Only the latest version can be restored. The record has been changed or restored after this version.");
             //復活できるのは今そのレコードが無い (削除中) ときだけ。版の削除で Delete 版が最新に戻った場合や別の経路で戻っていた場合に、
             //同じレコードをもう 1 件作ったり、削除されていないレコードに復活の版を積んだりしない (手入力 Id で同じ Id のレコードがある場合も同じ)
-            if (await io.SystemAccess.GetWithOwnedRecordsAsync(module.Name, dataId, _ => false) != null)
+            if (await access.GetWithOwnedRecordsAsync(module.Name, dataId, _ => false) != null)
                 throw new InvalidOperationException($"The record '{dataId}' of '{module.Name}' exists (it is not deleted). Only a deleted record can be restored.");
 
             if (module.UsesLogicalDelete())
             {
                 //論理削除: Id を保って取り消し (権限は削除と同じ)。親と一緒に消えた従属レコードも戻す (親の削除が子を消すのと同じ規則)
                 await io.UndeleteAsync(module.Name, dataId, snapshot);
-                await UndeleteDeletedRowsAsync(io, module, field, snapshot, string.Empty, together: true);
+                await UndeleteDeletedRowsAsync(io, access, module, field, snapshot, string.Empty, together: true);
                 return new EditHistoryUndeleteResult { IsWholeRecord = true, RestoredId = dataId };
             }
             //物理削除: スナップショットから作り直す。手入力 Id は元の Id、自動採番は新しい Id (旧 Id の版を付け替えて履歴を繋ぐ)
             if (!await io.CanUndeleteAsync(module.Name, snapshot)) throw new InvalidOperationException("You are not allowed to restore this record.");
-            var newId = await RecreateAsync(io.SystemAccess, module, field, snapshot, string.Empty, null, null);
+            var newId = await RecreateAsync(access, module, field, snapshot, string.Empty, null, null);
             return new EditHistoryUndeleteResult { IsWholeRecord = true, IsRecreated = newId != dataId, RestoredId = newId };
         }
 
         //版の従属レコード (含める宣言の先。子・孫も) のうち、今は削除中 (通常の読み出しで見つからない) の行を戻す。
         //論理削除モジュールの行は Id を保って取り消す。together = 親と一緒に消えた行の取り消し (子の CanDelete だけ見る。物理削除モジュールの行は作り直す)。
         //together でなければ (この版に置き換える) その人の権限で取り消す (物理削除モジュールの行はフォームが新しい行として送る)
-        async Task UndeleteDeletedRowsAsync(ModuleDataIO io, ModuleDesign design, EditHistoryFieldDesign? field, ModuleData data, string prefix, bool together)
+        async Task UndeleteDeletedRowsAsync(ModuleDataIO io, ModuleDataIOSystemAccess access, ModuleDesign design, EditHistoryFieldDesign? field, ModuleData data, string prefix, bool together)
         {
             var recreated = new Dictionary<string, Dictionary<string, string>>();
             foreach (var owned in OrderByReferences(design))
@@ -101,7 +102,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.EditHistory
                 foreach (var row in rows)
                 {
                     var id = EditHistorySnapshot.GetId(row);
-                    var exists = id.Length == 0 || await io.SystemAccess.GetWithOwnedRecordsAsync(child.Name, id, _ => false) != null;
+                    var exists = id.Length == 0 || await access.GetWithOwnedRecordsAsync(child.Name, id, _ => false) != null;
                     if (!exists && child.UsesLogicalDelete())
                     {
                         if (together) await io.UndeleteTogetherAsync(child.Name, id);
@@ -111,11 +112,11 @@ namespace Codeer.LowCode.Blazor.Extras.Server.EditHistory
                     {
                         //物理削除モジュールの明細は親の削除で消えている。作り直す (親の Id は変わらないので参照はそのまま)
                         if (!child.CanDelete) throw new InvalidOperationException($"The rows of '{child.Name}' cannot be restored.");
-                        var newId = await RecreateAsync(io.SystemAccess, child, field, ResolveReferences(owned, row, recreated), path, owned, EditHistorySnapshot.GetId(data));
+                        var newId = await RecreateAsync(access, child, field, ResolveReferences(owned, row, recreated), path, owned, EditHistorySnapshot.GetId(data));
                         Remember(recreated, owned.Name, id, newId);
                         continue;
                     }
-                    await UndeleteDeletedRowsAsync(io, child, field, row, path, together);
+                    await UndeleteDeletedRowsAsync(io, access, child, field, row, path, together);
                 }
             }
         }

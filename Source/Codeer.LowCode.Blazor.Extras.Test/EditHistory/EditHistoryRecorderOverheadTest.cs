@@ -1,4 +1,5 @@
 using Codeer.LowCode.Blazor.DataIO;
+using Codeer.LowCode.Blazor.DbAccess;
 using Codeer.LowCode.Blazor.DesignLogic;
 using Codeer.LowCode.Blazor.Extras.Designs;
 using Codeer.LowCode.Blazor.Extras.EditHistory;
@@ -6,6 +7,7 @@ using Codeer.LowCode.Blazor.Extras.Server.EditHistory;
 using Codeer.LowCode.Blazor.Repository.Data;
 using Codeer.LowCode.Blazor.Repository.Design;
 using Codeer.LowCode.Blazor.Repository.Match;
+using Codeer.LowCode.Blazor.SystemSettings;
 
 namespace Codeer.LowCode.Blazor.Extras.Test.EditHistory
 {
@@ -72,15 +74,18 @@ namespace Codeer.LowCode.Blazor.Extras.Test.EditHistory
 
         [TestCase(false)]
         [TestCase(true)]
-        public void 履歴の無いモジュールの保存は送信を書き換えず本体の保存の結果をそのまま返す(bool withHistory)
+        public async Task 履歴の無いモジュールの保存は送信を書き換えず本体の保存の結果をそのまま返す(bool withHistory)
         {
-            var recorder = new EditHistoryRecorder(DenseDesign(withHistory));
+            var design = DenseDesign(withHistory);
+            var recorder = new EditHistoryRecorder(design);
             var transaction = BulkAdd("M0", 10000);
             var expected = transaction.Select(e => new ModuleSubmitResult()).ToList();
             var nextCalls = 0;
 
-            //履歴の無いモジュールの保存では内部操作 (io) を使わない
-            var results = WithinSeconds(20, () => recorder.SubmitAsync(null!, transaction, () =>
+            //履歴の無いモジュールの保存では内部操作を使わない (io はデータソースを持たない = 内部読み・書きをすれば例外)
+            await using var db = new DbAccessor(Array.Empty<DataSource>());
+            var io = new ModuleDataIO(design, null!, db, null!);
+            var results = WithinSeconds(20, () => recorder.SubmitAsync(io, null!, transaction, () =>
             {
                 nextCalls++;
                 return Task.FromResult(expected);

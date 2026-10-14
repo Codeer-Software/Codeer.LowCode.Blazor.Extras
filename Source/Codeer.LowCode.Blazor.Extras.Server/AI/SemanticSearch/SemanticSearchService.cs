@@ -236,6 +236,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
             IProgress<(int Processed, int Total)>? progress = null, int? pageSize = null, CancellationToken cancellationToken = default)
         {
             var designData = _design();
+            var access = moduleDataIO.CreateSystemAccess();
             var module = designData.Modules.Find(moduleName) ?? throw new ArgumentException($"Module '{moduleName}' does not exist.", nameof(moduleName));
             var fields = module.Fields.OfType<SemanticSearchFieldDesign>().Where(f => f.HasColumns).ToList();
             if (fields.Count == 0) throw new ArgumentException($"Module '{moduleName}' has no SemanticSearchField with the columns set.", nameof(moduleName));
@@ -266,7 +267,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
                 //並びは Id (複合 Id ならその各列。Id 自体は列を持たないので並びに入らない)
                 if (idField.CompositeIdVariables.Count > 0) condition.SortConditions.AddRange(idField.CompositeIdVariables.Select(v => new SortCondition { Variable = v }));
                 else condition.SortConditions.Add(new SortCondition { Variable = $"{idField.Name}.Value" });
-                var page = await moduleDataIO.SystemAccess.GetListAsync(condition, pageIndex);
+                var page = await access.GetListAsync(condition, pageIndex);
                 if (pageIndex == 0)
                 {
                     total = indexed == null ? page.TotalCount : Math.Max(0, page.TotalCount - indexed.Count);
@@ -279,7 +280,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
                 foreach (var id in ids)
                 {
                     cancellationToken.ThrowIfCancellationRequested();
-                    var row = await ReadForIndexAsync(moduleDataIO.SystemAccess, module, id, fields);
+                    var row = await ReadForIndexAsync(access, module, id, fields);
                     if (row != null) rows.Add(row);
                 }
                 if (rows.Count > 0)
@@ -300,7 +301,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
                     }
                     //書き込み専用列だけを書く (保存時の索引付けと同じ。レコードの更新ではない)。読んだ後に消えた行は飛ばす
                     foreach (var update in updates)
-                        if (await moduleDataIO.SystemAccess.WriteWithoutSideEffectsAsync(update)) count++;
+                        if (await access.WriteWithoutSideEffectsAsync(update)) count++;
                     progress?.Report((count, total));
                 }
                 if (pageIndex + 1 >= page.PageCount || page.Items.Count == 0) break;

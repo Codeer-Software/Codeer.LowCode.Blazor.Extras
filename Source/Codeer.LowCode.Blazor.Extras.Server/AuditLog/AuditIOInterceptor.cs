@@ -31,7 +31,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AuditLog
                     .ToHashSet();
         }
 
-        public Task<List<ModuleSubmitResult>> SubmitAsync(ModuleDataIO io, List<ModuleSubmitData> transactionData, Func<Task<List<ModuleSubmitResult>>> next)
+        public Task<List<ModuleSubmitResult>> SubmitAsync(ModuleDataIO io, SubmitContext context, List<ModuleSubmitData> transactionData, Func<Task<List<ModuleSubmitResult>>> next)
         {
             var hit = _protectedModules.Count == 0 ? null : transactionData.SelectMany(Modules).FirstOrDefault(_protectedModules.Contains);
             if (hit != null)
