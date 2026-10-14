@@ -50,7 +50,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
             }
         }
 
-        public async Task<List<ModuleSubmitResult>> SubmitAsync(ModuleDataIOSystemAccess io, List<ModuleSubmitData> transactionData, Func<Task<List<ModuleSubmitResult>>> next)
+        public async Task<List<ModuleSubmitResult>> SubmitAsync(ModuleDataIO io, List<ModuleSubmitData> transactionData, Func<Task<List<ModuleSubmitResult>>> next)
         {
             var design = service.GetDesign();
             //索引の列はサーバーだけが書く (クライアントが送ってきた文章・ベクトルは使わない)
@@ -65,7 +65,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
             var targets = new Targets();
             try
             {
-                if (ownedParents.Count > 0) await AddParentsBeforeSaveAsync(io, ownedParents, transactionData, targets);
+                if (ownedParents.Count > 0) await AddParentsBeforeSaveAsync(io.SystemAccess, ownedParents, transactionData, targets);
             }
             catch (Exception ex) when (ex is not LowCodeAccessDeniedException)
             {
@@ -77,9 +77,9 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
 
             try
             {
-                await CollectTargetsAsync(io, design, ownedParents, targets);
-                WarnBulkAddNotIndexed(design, io.ChangedRecords);
-                if (targets.Count > 0) await IndexAsync(io, design, targets);
+                await CollectTargetsAsync(io.SystemAccess, design, ownedParents, targets);
+                WarnBulkAddNotIndexed(design, io.SystemAccess.ChangedRecords);
+                if (targets.Count > 0) await IndexAsync(io.SystemAccess, design, targets);
             }
             catch (Exception ex) when (ex is not LowCodeAccessDeniedException)
             {
@@ -256,10 +256,10 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
             foreach (var (_, _, update, _) in rows) await io.UpdateWriteOnlyColumnsAsync(update);
         }
 
-        public Task GetListAsync(ModuleDataIOSystemAccess io, SearchCondition condition, Paging<ModuleData> result)
+        public Task GetListAsync(ModuleDataIO io, SearchCondition condition, Paging<ModuleData> result)
             => Task.CompletedTask;
 
-        public async Task PrepareConditionAsync(ModuleDataIOSystemAccess io, ModuleMatchCondition condition)
+        public async Task PrepareConditionAsync(ModuleDataIO io, ModuleMatchCondition condition)
         {
             var module = service.GetDesign().Modules.Find(condition.ModuleName);
             var targets = Collect(condition.Condition)
