@@ -43,8 +43,8 @@ namespace Extras.Server.Controllers
         public async Task<IActionResult> GetDesignData()
         {
             await LicenseService.UpdateAsync(Request);
-            await _dataService.ModuleDataIO.CheckAppAuthorization();
-            return this.FileWithETag(_dataService.Design.ForFront(await _dataService.ModuleDataIO.GetCurrentUser()), "application/octet-stream");
+            await _dataService.ModuleDataIO.AuthorizationChecker.CheckAppAccessAsync();
+            return this.FileWithETag(_dataService.Design.ForFront(await _dataService.ModuleDataIO.AuthorizationChecker.GetCurrentUserAsync()), "application/octet-stream");
         }
 
         //監査ログ: 参照は「誰が・どのモジュールを・何件読んだか」を常に残す (DataRead)。
