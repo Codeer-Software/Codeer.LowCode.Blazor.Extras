@@ -401,13 +401,13 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Approval
             //(アプリアクセス条件・モジュールの UserReadCondition・ユーザーで偽と確定する PermissionField の読取条件。本体の判定)。
             //通らなければ LowCodeException (メール系の入口と同じ)。申請書の行 (DataReadCondition) は既存フローへの操作で別途読む (CanReadTargetAsync)。
             //誰が操作できるか (承認者・申請者) の判定は各アクションが別に行う
-            await _io.CheckUserReadAuthorization(targetModule.Name, fieldDesign.Name);
+            await _io.AuthorizationChecker.CheckUserReadAuthorization(targetModule.Name, fieldDesign.Name);
 
             //承認モジュール群 (フロー / メンバー / 履歴) と契約は、クライアントと同じ解決を使う
             var modules = ApprovalModules.Resolve(_designData, fieldDesign.FlowModuleName);
             if (modules == null) return (null, Resources.ApprovalError_DesignNotFound);
 
-            var currentUser = await _io.GetCurrentUser();
+            var currentUser = await _io.AuthorizationChecker.GetCurrentUser();
             var actorId = currentUser == null ? string.Empty : GetId(currentUser);
 
             return (new Context

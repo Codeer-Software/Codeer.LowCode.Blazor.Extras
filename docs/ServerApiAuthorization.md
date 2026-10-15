@@ -11,7 +11,7 @@ Codeer.LowCode.Blazor 1.3.33 / Codeer.LowCode.Blazor.Extras 0.12.0 / Codeer.LowC
 
 ## 共通ルール
 
-判定は本体の `ModuleDataIO.CheckUserReadAuthorization(moduleName, fieldName)` です。ログインユーザーの情報だけで決まる条件を見て、**レコード (行) は読みません**。
+判定は本体の `ModuleDataIO.AuthorizationChecker.CheckUserReadAuthorization(moduleName, fieldName)` です。ログインユーザーの情報だけで決まる条件を見て、**レコード (行) は読みません**。
 
 | 条件 | 検査 | 意味 |
 |---|---|---|

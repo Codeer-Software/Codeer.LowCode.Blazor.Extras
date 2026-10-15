@@ -459,7 +459,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat.ModuleDataAccess
             {
                 await using var scope = await _openScope(context.Request.UserName);
                 if (scope.DbAccessor != null && timeout > 0) scope.DbAccessor.CommandTimeoutSeconds = timeout;
-                await scope.ModuleDataIO.CheckAppAuthorization();
+                await scope.ModuleDataIO.AuthorizationChecker.CheckAppAuthorization();
                 var result = await body(scope);
                 context.Logger?.LogInformation("AIChat ModuleDataAccess {Tool} done by {User} on {Module}: {ElapsedMs} ms", tool, context.Request.UserName, module.Name, stopwatch.ElapsedMilliseconds);
                 return result;
