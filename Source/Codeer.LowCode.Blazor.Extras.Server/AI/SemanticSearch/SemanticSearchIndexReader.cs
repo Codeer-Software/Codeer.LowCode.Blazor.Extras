@@ -19,15 +19,19 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
         /// <summary>DB 側で距離順に読んだ 1 件 (Score はコサイン類似度 0〜1 に揃える)。</summary>
         public sealed record ScoredEntry(string Id, string Text, double Score);
 
-        /// <summary>ベクトルが入っている行の Id (再索引の missingOnly が「まだ無い行」を決めるのに使う)。どの DB でも読める (テキスト列を見るだけ)。</summary>
+        /// <summary>
+        /// ベクトルが入っている行 (論理削除した行は除く) の Id (再索引の missingOnly が「まだ無い行」を決めるのに使う)。どの DB でも読める (テキスト列を見るだけ)。
+        /// 複合 Id (Id の列が無い) では判定できないので空 = 全行が対象。
+        /// </summary>
         public static async Task<HashSet<string>> ReadIndexedIdsAsync(IDbAccessor db, ModuleDesign module, SemanticSearchFieldDesign field, CancellationToken cancellationToken)
         {
-            var idColumn = module.Fields.OfType<IdFieldDesign>().FirstOrDefault()?.DbColumn;
+            var idColumn = IdColumn(module);
             var result = new HashSet<string>();
             if (string.IsNullOrWhiteSpace(module.DbTable) || string.IsNullOrWhiteSpace(idColumn) || string.IsNullOrWhiteSpace(field.DbColumnVector)) return result;
-            var q = Quote(DataSourceTypeOf(db, module.DataSourceName));
+            var type = DataSourceTypeOf(db, module.DataSourceName);
+            var q = Quote(type);
             cancellationToken.ThrowIfCancellationRequested();
-            var rows = await db.QueryAsync(module.DataSourceName, $"select {q(idColumn)} from {q(module.DbTable)} where {q(field.DbColumnVector)} is not null", new());
+            var rows = await db.QueryAsync(module.DataSourceName, $"select {q(idColumn)} from {Table(q, module.DbTable)} where {q(field.DbColumnVector)} is not null{NotDeletedSql(module, type)}", new());
             foreach (var row in rows)
             {
                 var id = Convert.ToString(Value(row, idColumn), CultureInfo.InvariantCulture);
@@ -37,15 +41,70 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
         }
 
         /// <summary>
+        /// ベクトルが無く文章がある行 (論理削除した行は除く) の Id → DB から読んだままの Id の値 (再索引の missingOnly が、保存時に埋め込みだけ失敗した行を見分けるのに使う。
+        /// 文章は <see cref="ReadUnembeddedTextsAsync"/> でページごとに読む = 全行の文章を持たない・書く直前の文章を使う)。
+        /// 文章の無い行 (一括取込の行など) は入らない (行から文章を作る)。複合 Id では空 (全行を行から作る)。
+        /// </summary>
+        public static async Task<Dictionary<string, object>> ReadUnembeddedIdsAsync(IDbAccessor db, ModuleDesign module, SemanticSearchFieldDesign field, CancellationToken cancellationToken)
+        {
+            var idColumn = IdColumn(module);
+            var result = new Dictionary<string, object>();
+            if (string.IsNullOrWhiteSpace(module.DbTable) || string.IsNullOrWhiteSpace(idColumn) || !field.HasColumns) return result;
+            var type = DataSourceTypeOf(db, module.DataSourceName);
+            var q = Quote(type);
+            cancellationToken.ThrowIfCancellationRequested();
+            var rows = await db.QueryAsync(module.DataSourceName, $"select {q(idColumn)} from {Table(q, module.DbTable)} where {UnembeddedSql(q, field)}{NotDeletedSql(module, type)}", new());
+            foreach (var row in rows)
+            {
+                var value = Value(row, idColumn);
+                var id = Convert.ToString(value, CultureInfo.InvariantCulture);
+                if (value != null && !string.IsNullOrEmpty(id)) result[id] = value;
+            }
+            return result;
+        }
+
+        /// <summary>
+        /// 指定した行のうち、今もベクトルが無く文章がある行の Id → 文章 (<see cref="ReadUnembeddedIdsAsync"/> の Id の値で引く。型は DB から読んだまま渡すので Id の列の型によらない)。
+        /// 読んだ後にベクトルが付いた行 (再索引中に保存された行) は入らない。
+        /// </summary>
+        public static async Task<Dictionary<string, string>> ReadUnembeddedTextsAsync(IDbAccessor db, ModuleDesign module, SemanticSearchFieldDesign field, IReadOnlyList<object> ids, CancellationToken cancellationToken)
+        {
+            var idColumn = IdColumn(module);
+            var result = new Dictionary<string, string>();
+            if (ids.Count == 0 || string.IsNullOrWhiteSpace(module.DbTable) || string.IsNullOrWhiteSpace(idColumn) || !field.HasColumns) return result;
+            var type = DataSourceTypeOf(db, module.DataSourceName);
+            var q = Quote(type);
+            var p = type == DataSourceType.Oracle ? ":p" : "@p";
+            //IN の要素数の上限 (Oracle 1000・SQL Server のパラメータ 2100) を超えないように分けて読む
+            foreach (var chunk in ids.Chunk(500))
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var args = chunk.Select((id, i) => (Key: $"{p}{i + 1}", Value: id)).ToList();
+                var sql = $"select {q(idColumn)}, {q(field.DbColumnText)} from {Table(q, module.DbTable)} where {q(idColumn)} in ({string.Join(", ", args.Select(e => e.Key))}) and {UnembeddedSql(q, field)}{NotDeletedSql(module, type)}";
+                foreach (var row in await db.QueryAsync(module.DataSourceName, sql, args.ToDictionary(e => e.Key, e => new ParamAndRawDbTypeName { Value = e.Value })))
+                {
+                    var id = Convert.ToString(Value(row, idColumn), CultureInfo.InvariantCulture);
+                    var text = Convert.ToString(Value(row, field.DbColumnText), CultureInfo.InvariantCulture);
+                    if (!string.IsNullOrEmpty(id) && !string.IsNullOrEmpty(text)) result[id] = text;
+                }
+            }
+            return result;
+        }
+
+        //ベクトルが無く文章がある (空文字は読んだ側で除く = 行から作り直す)
+        static string UnembeddedSql(Func<string, string> q, SemanticSearchFieldDesign field)
+            => $"{q(field.DbColumnVector)} is null and {q(field.DbColumnText)} is not null";
+
+        /// <summary>
         /// DB のベクトル検索で、質問ベクトルに近い順に上位 top 件を読む。
         /// dataSourceName は接続に使うデータソース (AI 用に別名の読み取り専用接続を作っている構成ではモジュールの DataSourceName と違う)。
         /// </summary>
         public static async Task<List<ScoredEntry>> SearchAsync(IDbAccessor db, string dataSourceName, ModuleDesign module, SemanticSearchFieldDesign field, float[] queryVector, int top, CancellationToken cancellationToken)
         {
-            var idColumn = module.Fields.OfType<IdFieldDesign>().FirstOrDefault()?.DbColumn;
+            var idColumn = IdColumn(module);
             if (string.IsNullOrWhiteSpace(module.DbTable) || string.IsNullOrWhiteSpace(idColumn) || !field.HasColumns) return new();
             var type = DataSourceTypeOf(db, dataSourceName);
-            var sql = BuildSearchSql(type, module.DbTable, idColumn, field.DbColumnText, field.DbColumnVectorSearch, LogicalDeleteColumn(module), SemanticSearchVector.Literal(type, queryVector), top);
+            var sql = BuildSearchSql(type, module.DbTable, idColumn, field.DbColumnText, field.DbColumnVectorSearch, NotDeletedSql(module, type), SemanticSearchVector.Literal(type, queryVector), top);
             cancellationToken.ThrowIfCancellationRequested();
             var rows = await db.QueryAsync(dataSourceName, sql, new());
             var result = new List<ScoredEntry>();
@@ -64,13 +123,30 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
         /// 距離順に上位 top 件を取る SELECT。列 semantic_score にコサイン類似度 (1 - コサイン距離) を出す。
         /// 距離の式は <see cref="SemanticSearchVector.CosineDistance"/> (画面の検索欄・権限の効く検索と同じ)。
         /// </summary>
-        public static string BuildSearchSql(DataSourceType type, string table, string idColumn, string textColumn, string vectorColumn, string? logicalDeleteColumn, string vectorLiteral, int top)
+        public static string BuildSearchSql(DataSourceType type, string table, string idColumn, string textColumn, string vectorColumn, string notDeletedSql, string vectorLiteral, int top)
         {
             var q = Quote(type);
-            var notDeleted = string.IsNullOrWhiteSpace(logicalDeleteColumn) ? "" : $" and ({q(logicalDeleteColumn)} is null or cast({q(logicalDeleteColumn)} as integer) = 0)";
             var distance = SemanticSearchVector.CosineDistance(type, q(vectorColumn), vectorLiteral);
-            var select = $"{q(idColumn)}, {q(textColumn)}, 1 - {distance} as semantic_score from {q(table)} where {q(vectorColumn)} is not null{notDeleted} order by {distance}";
+            var select = $"{q(idColumn)}, {q(textColumn)}, 1 - {distance} as semantic_score from {Table(q, table)} where {q(vectorColumn)} is not null{notDeletedSql} order by {distance}";
             return type == DataSourceType.SQLServer ? $"select top ({top}) {select}" : $"select {select} limit {top}";
+        }
+
+        /// <summary>
+        /// 削除済みの行を除く WHERE の断片 (" and ..." か空)。判定の規則は本体の一覧検索 (SelectSqlCreator.CreateDeletedFilterCondition) と同じ:
+        /// LogicalDelete があればそれ (NULL か偽を残す)、無ければ DeletedAt → Deleter の順 (NULL を残す)。
+        /// </summary>
+        public static string NotDeletedSql(ModuleDesign module, DataSourceType type)
+        {
+            var q = Quote(type);
+            var logicalDelete = DbColumnOf(module, SystemFieldNames.LogicalDelete);
+            if (!string.IsNullOrWhiteSpace(logicalDelete))
+            {
+                //MySQL の cast は integer を受け付けない (signed)
+                var integer = type == DataSourceType.MySQL ? "signed" : "integer";
+                return $" and ({q(logicalDelete)} is null or cast({q(logicalDelete)} as {integer}) = 0)";
+            }
+            var marker = DbColumnOf(module, SystemFieldNames.DeletedAt) ?? DbColumnOf(module, SystemFieldNames.Deleter);
+            return string.IsNullOrWhiteSpace(marker) ? "" : $" and {q(marker)} is null";
         }
 
         /// <summary>SQL の方言ごとの、ベクトル検索の書き方 (AI への説明用)。</summary>
@@ -84,10 +160,18 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
         internal static DataSourceType DataSourceTypeOf(IDbAccessor db, string dataSourceName)
             => db.GetDataSource(dataSourceName)?.DataSourceType ?? throw new InvalidOperationException($"SemanticSearch: data source '{dataSourceName}' not found.");
 
-        static string? LogicalDeleteColumn(ModuleDesign module)
-            => (module.Fields.FirstOrDefault(f => f.Name == SystemFieldNames.LogicalDelete) as DbValueFieldDesignBase)?.DbColumn;
+        //Id の列 (本体と同じく名前 Id のフィールド)
+        static string? IdColumn(ModuleDesign module)
+            => module.Fields.OfType<IdFieldDesign>().FirstOrDefault(e => e.Name == SystemFieldNames.Id)?.DbColumn;
+
+        static string? DbColumnOf(ModuleDesign module, string fieldName)
+            => (module.Fields.FirstOrDefault(f => f.Name == fieldName) as DbValueFieldDesignBase)?.DbColumn is { Length: > 0 } column ? column : null;
 
         //識別子の引用符は DB の種類で変わる
+        //表名 (スキーマ付き "dbo.notes" は本体の SqlParts.Table と同じく . で分けて各部を引用)
+        static string Table(Func<string, string> q, string table)
+            => string.Join(".", table.Split('.').Select(q));
+
         static Func<string, string> Quote(DataSourceType type)
             => x => type == DataSourceType.SQLServer ? $"[{x}]" : type == DataSourceType.MySQL ? $"`{x}`" : $"\"{x}\"";
 

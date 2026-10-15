@@ -31,7 +31,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AuditLog
                     .ToHashSet();
         }
 
-        public Task<List<ModuleSubmitResult>> SubmitAsync(ModuleDataIOInternalAccess io, List<ModuleSubmitData> transactionData, Func<Task<List<ModuleSubmitResult>>> next)
+        public Task<List<ModuleSubmitResult>> SubmitAsync(ModuleDataIO io, SubmitContext context, List<ModuleSubmitData> transactionData, Func<Task<List<ModuleSubmitResult>>> next)
         {
             var hit = _protectedModules.Count == 0 ? null : transactionData.SelectMany(Modules).FirstOrDefault(_protectedModules.Contains);
             if (hit != null)
@@ -44,7 +44,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AuditLog
             return audit == null ? next() : audit.RecordSubmitAsync(transactionData, next);
         }
 
-        public Task GetListAsync(ModuleDataIOInternalAccess io, SearchCondition condition, Paging<ModuleData> result) => Task.CompletedTask;
+        public Task GetListAsync(ModuleDataIO io, SearchCondition condition, Paging<ModuleData> result) => Task.CompletedTask;
 
         static IEnumerable<string> Modules(ModuleSubmitData e)
             => new[] { e.ModuleName }

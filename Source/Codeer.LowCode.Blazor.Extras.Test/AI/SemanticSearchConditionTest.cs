@@ -20,7 +20,7 @@ using Codeer.LowCode.Blazor.Repository;
 namespace Codeer.LowCode.Blazor.Extras.Test.AI
 {
     /// <summary>
-    /// 画面の検索欄からの意味検索: SemanticSearchField が作る条件 (文章だけ) と、サーバーの前処理 (SemanticSearchService.ConditionInterceptor) が
+    /// 画面の検索欄からの意味検索: SemanticSearchField が作る条件 (文章だけ) と、サーバーの前処理 (SemanticSearchService.Interceptor) が
     /// 文章を埋め込みにすること。検索の中身 (SQL・権限) は本体と SemanticSearchFieldDesign のまま (距離の計算は SemanticSearchVectorDbTest の実 DB)。
     /// </summary>
     public class SemanticSearchConditionTest : IAuthenticationContext
@@ -68,7 +68,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
         public async Task 前処理は文章だけの条件に埋め込みを入れベクトル済みは触らない()
         {
             var embedding = new FakeEmbeddingProvider();
-            var interceptor = new SemanticSearchService(() => embedding, () => CreateDesign()).ConditionInterceptor;
+            var interceptor = new SemanticSearchService(() => embedding, () => CreateDesign()).Interceptor;
 
             var textOnly = new SemanticMatchCondition { FieldName = "Search", Text = "納期の遅れ" };
             var already = new SemanticMatchCondition { FieldName = "Search", Text = "x", Vector = [1f, 2f] };
@@ -92,7 +92,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
         [Test]
         public void 埋め込みプロバイダが無ければ理由つきで失敗する()
         {
-            var interceptor = new SemanticSearchService(() => null, () => CreateDesign()).ConditionInterceptor;
+            var interceptor = new SemanticSearchService(() => null, () => CreateDesign()).Interceptor;
             var condition = new SearchCondition("Note") { Condition = new SemanticMatchCondition { FieldName = "Search", Text = "x" } };
             Assert.That(async () => await interceptor.PrepareConditionAsync(null!, condition), Throws.TypeOf<LowCodeException>());
         }
@@ -126,7 +126,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
             Assert.That((field.SearchText, field.KeywordText), Is.EqualTo(("納期の遅れ", "納期 遅延")));
 
             //前処理はキーワードだけの条件では埋め込みを呼ばない (プロバイダが無くても通る)
-            var interceptor = new SemanticSearchService(() => null, () => design).ConditionInterceptor;
+            var interceptor = new SemanticSearchService(() => null, () => design).Interceptor;
             await field.SetSearchTextAsync(null);
             var search = new SearchCondition("Note") { Condition = field.GetMatchCondition() };
             await interceptor.PrepareConditionAsync(null!, search);
@@ -213,7 +213,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
 
                 //前処理あり: ベクトルが入り、SQL の組み立てまで進む (SQLite はベクトル検索できないのでその理由で止まる)
                 var io = new ModuleDataIO(design, this, db, new TemporaryFileManager(db, [], new List<IFileStorage>()));
-                io.AddInterceptor(new SemanticSearchService(() => new FakeEmbeddingProvider(), () => design).ConditionInterceptor);
+                io.AddInterceptor(new SemanticSearchService(() => new FakeEmbeddingProvider(), () => design).Interceptor);
                 Assert.That(async () => await io.GetListAsync(condition.JsonClone(), 0), Throws.TypeOf<LowCodeException>().With.Message.Contains("SQLite"));
 
                 //検索欄が空 (条件なし) なら、一覧の並びに意味検索が入っていても飛ばして普通に読める

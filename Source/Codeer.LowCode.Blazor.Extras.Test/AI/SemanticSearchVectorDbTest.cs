@@ -39,20 +39,11 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
             public void ReportPartial(AIChatReply partialReply) { }
         }
 
-        sealed class IndexingModuleDataIO(DesignData design, IAuthenticationContext auth, IDbAccessor db, ITemporaryFileManager files, SemanticSearchService semanticSearch)
-            : ModuleDataIO(design, auth, db, files)
+        //テンプレートの CustomizedModuleDataIO と同じ結線 (インターセプタの登録)
+        sealed class IndexingModuleDataIO : ModuleDataIO
         {
-            protected override async Task<string> AddAsync(Guid transactionId, Guid moduleSubmitId, ModuleData data)
-            {
-                await semanticSearch.ApplyAsync(data, isNewData: true);
-                return await base.AddAsync(transactionId, moduleSubmitId, data);
-            }
-
-            protected override async Task UpdateAsync(Guid transactionId, Guid moduleSubmitId, ModuleData data)
-            {
-                await semanticSearch.ApplyAsync(data, isNewData: false);
-                await base.UpdateAsync(transactionId, moduleSubmitId, data);
-            }
+            public IndexingModuleDataIO(DesignData design, IAuthenticationContext auth, IDbAccessor db, ITemporaryFileManager files, SemanticSearchService semanticSearch)
+                : base(design, auth, db, files) => AddInterceptor(semanticSearch.Interceptor);
         }
 
         static readonly (string Subject, string Body)[] Rows =
@@ -166,11 +157,11 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
                         Assert.That(mdaIds, Is.EqualTo(ids), "search_records (生 SQL) と同じ行が同じ順に出る");
                     }
 
-                    //画面の検索欄と同じ形 (文章だけの条件 + 一覧の並びに意味検索): 前処理 (ConditionInterceptor) が埋め込みを入れ、同じ行が同じ順に出る
+                    //画面の検索欄と同じ形 (文章だけの条件 + 一覧の並びに意味検索): 前処理 (Interceptor) が埋め込みを入れ、同じ行が同じ順に出る
                     await using (var screenDb = new DbAccessor(dataSources))
                     {
                         var io = new ModuleDataIO(design, this, screenDb, new TemporaryFileManager(screenDb, [], new List<IFileStorage>()));
-                        io.AddInterceptor(indexer.ConditionInterceptor);
+                        io.AddInterceptor(indexer.Interceptor);
                         var screen = new SearchCondition("Inquiry")
                         {
                             Condition = new FieldMatchCondition { FieldName = "Search", Children = [new SemanticMatchCondition { FieldName = "Search", Text = "納期が遅れている注文" }] },

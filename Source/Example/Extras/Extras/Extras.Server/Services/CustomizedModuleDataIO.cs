@@ -25,8 +25,8 @@ namespace Extras.Server.Services
             AddInterceptor(new AuditIOInterceptor(designData, SystemConfig.Instance.AuditLog.Database));
             //編集履歴: EditHistoryField を置いたモジュールの保存ごとに履歴モジュールへスナップショットを書き、履歴モジュールを読むときは Snapshot を読む人の権限に落とす (結線はこの 1 行)
             AddInterceptor(new EditHistoryRecorder(designData));
-            //意味検索 (SemanticSearchField): 検索欄の文章を埋め込みにしてから検索する
-            AddInterceptor(SemanticSearchIndex.Service.ConditionInterceptor);
+            //意味検索 (SemanticSearchField): 保存した行から索引 (文章と埋め込み) を作る・検索欄の文章を埋め込みにしてから検索する
+            AddInterceptor(SemanticSearchIndex.Service.Interceptor);
         }
 
 
@@ -36,9 +36,17 @@ namespace Extras.Server.Services
             if (moduleDesign == null) throw LowCodeException.Create("invalid design");
 
             PasswordHashHelper.ApplyPasswordHash(moduleDesign, data);
-            //SemanticSearchField の文章に埋め込みベクトルを付ける (新規で文章が無ければここで組み立てる = 一括取込)
-            await SemanticSearchIndex.Service.ApplyAsync(data, isNewData: true);
             return await base.AddAsync(transactionId, moduleSubmitId, data);
+        }
+
+        //一括INSERT (大量取込) は行ごとの AddAsync を通らないため、同じ加工をこちらでも行う
+        protected override async Task BulkAddAsync(Guid transactionId, List<ModuleData> datas)
+        {
+            var moduleDesign = _designData.Modules.Find(datas.FirstOrDefault()?.Name ?? string.Empty);
+            if (moduleDesign == null) throw LowCodeException.Create("invalid design");
+
+            foreach (var data in datas) PasswordHashHelper.ApplyPasswordHash(moduleDesign, data);
+            await base.BulkAddAsync(transactionId, datas);
         }
 
         protected async override Task UpdateAsync(Guid transactionId, Guid moduleSubmitId, ModuleData data)
@@ -47,8 +55,6 @@ namespace Extras.Server.Services
             if (moduleDesign == null) throw LowCodeException.Create("invalid design");
 
             PasswordHashHelper.ApplyPasswordHash(moduleDesign, data);
-            //文章が送られてきたとき (対象フィールドが変わったとき・再索引) だけ埋め込みを付け直す
-            await SemanticSearchIndex.Service.ApplyAsync(data, isNewData: false);
             await base.UpdateAsync(transactionId, moduleSubmitId, data);
         }
         //メール送信履歴などシステムの記録を、操作ユーザーの書き込み権限に依存せず追加する内部経路。

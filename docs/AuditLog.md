@@ -160,7 +160,7 @@ create index "ix_audit_log_occurred_at" on "audit_log" ("occurred_at_utc");
 - 本体の権限チェックで拒否された (`LowCodeAccessDeniedException`。アプリアクセス条件・モジュールの UserRead / UserWrite 条件・行の条件・フィールドの権限・デザインが許していない追加 / 更新 / 削除) → `Denied` (Detail にその文言。保存では対象の行も残る)
 - HTTP 401 / 403 → `Denied` (認可ミドルウェアの拒否も含む)
 - その他の 4xx / 5xx → `Failure`
-- 200 でも業務として失敗したもの (保存結果の `ExceptionMessage`、承認の `ErrorMessage`、ログインのコード不一致) はコントローラが `Failure` / `Denied` に上書きする
+- 200 でも業務として失敗したもの (保存結果の `ExceptionMessage`、承認の `ErrorMessage`、ログインのコード不一致) はコントローラが `Failure` / `Denied` に上書きする。保存の中で監査より内側のインターセプタ (編集履歴・意味検索の索引付け) が失敗したときも `Failure` (本体は内側の例外も保存結果の `ExceptionMessage` にして 200 で返すので、監査の側で例外からも付ける)
 - ファイルを読みながら返す応答 (添付のダウンロード・動画の再生) は、送り始めた時点で結果が決まる (ストレージから開けなければ `Failure`。送っている途中で切れても `Success` のまま)
 
 何を記録するかは appsettings ではなく **ホストのコード** (コントローラの `[Audit]`) で決まります。分類を宣言したアクションは成功も失敗も記録し、

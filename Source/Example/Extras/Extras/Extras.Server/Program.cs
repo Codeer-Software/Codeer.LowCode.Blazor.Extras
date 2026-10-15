@@ -127,6 +127,8 @@ builder.Services.AddAuthentication(Microsoft.AspNetCore.Authentication.Cookies.C
     .AddCookie(options => options.Cookie.Name = "ExtrasExample.Auth");
 
 var app = builder.Build();
+//意味検索の警告ログ (埋め込みの失敗など) をアプリのログに出す
+Extras.Server.AI.SemanticSearchIndex.Service.LoggerFactory = app.Services.GetRequiredService<ILoggerFactory>();
 
 app.UseResponseCompression();
 app.UseRequestLocalization();

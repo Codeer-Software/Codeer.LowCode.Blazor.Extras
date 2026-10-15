@@ -84,7 +84,8 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AuditLog
         ///   Id の無い新規行 (ファイル取込の自動採番) には、採番 Id を結果から引くために仮 Id を付ける。
         ///   記録が済んだら、呼び出し元へ返す結果は仮 Id を付ける前の形に戻す (監査ログの有無で保存の応答を変えない)
         /// - 本体の一括 INSERT (BulkAddThreshold 以上の純粋な追加) は採番 Id を返さない。その新規行は Id 無しで、モジュールごとに 1 件の Add と件数だけが残る
-        /// - 結果にエラーがあれば失敗にする。保存が例外で終わっても対象は残す (権限拒否 LowCodeAccessDeniedException は Denied、他の例外はミドルウェアが Failure にする)
+        /// - 結果にエラーがあれば失敗にする。保存が例外で終わっても対象は残し、失敗 (権限拒否 LowCodeAccessDeniedException は Denied) にしてから投げ直す。
+        ///   本体 (ModuleDataIO.SubmitAsync) は内側のインターセプタが投げた例外も呼び出し元には ExceptionMessage の結果 (HTTP 200) にするので、ここで付けないと保存は巻き戻るのに監査には成功が残る
         /// </summary>
         internal async Task<List<ModuleSubmitResult>> RecordSubmitAsync(List<ModuleSubmitData> data, Func<Task<List<ModuleSubmitResult>>> submit)
         {
@@ -107,6 +108,12 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AuditLog
             {
                 //本体の権限拒否は型のまま上がってくる (ModuleDataIO.SubmitAsync が呼び出し元には ExceptionMessage にする)。対象は finally が残す
                 Deny(ex.Message);
+                throw;
+            }
+            catch (Exception ex)
+            {
+                //内側のインターセプタ (編集履歴・意味検索の索引付けなど) の例外も本体が ExceptionMessage の結果にする = ミドルウェアには届かない。ここで失敗にする
+                Fail(ex.Message);
                 throw;
             }
             finally

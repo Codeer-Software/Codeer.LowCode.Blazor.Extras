@@ -11,7 +11,7 @@ Codeer.LowCode.Blazor 1.3.33 / Codeer.LowCode.Blazor.Extras 0.12.0 / Codeer.LowC
 
 ## 共通ルール
 
-判定は本体の `ModuleDataIO.CheckUserReadAuthorization(moduleName, fieldName)` です。ログインユーザーの情報だけで決まる条件を見て、**レコード (行) は読みません**。
+判定は本体の `ModuleDataIO.AuthorizationChecker.CheckFieldUserReadAsync(moduleName, fieldName)` です。ログインユーザーの情報だけで決まる条件を見て、**レコード (行) は読みません**。
 
 | 条件 | 検査 | 意味 |
 |---|---|---|
@@ -34,7 +34,7 @@ Codeer.LowCode.Blazor 1.3.33 / Codeer.LowCode.Blazor.Extras 0.12.0 / Codeer.LowC
 | ApprovalFlowField ([承認フロー](ApprovalFlow.md)) | `POST /api/approval` | `TargetModuleName` / `FieldName` / `FlowId` | (1) 既存フローへの操作 (承認・却下・差し戻し・取り下げ・回覧確認・再申請) では**申請書の行を読めること** (DataReadCondition) (2) 本人性: 承認・却下・差し戻しは今順番の来ている承認者本人、取り下げ・再申請は申請者本人、回覧確認は到達済みの回覧者本人 (3) フローは申請書モジュールと組で識別 (別モジュール名を添えた要求は「フローなし」) (4) 申請・再申請の保存データはそのモジュールのもの、再申請はそのフローの申請書レコードの更新に限る (5) 申請・再申請の申請書保存は通常の保存経路 (UserWrite / DataWrite / 編集ロック) | `WithdrawPolicy` 等の運用設定 |
 | AIChatField ([AI チャット](AIChatField.md)) | `POST /api/ai_chat` | `ModuleName` / `FieldName` | ジョブの取得・中断はそのジョブの所有者 (ログイン ID) だけ。**AI が何を読めるか** (RawDataAccessAgent) は AI 用 DB ユーザーの権限で決まり、ここでは決めない | `Agent` / `DocumentFolder` |
 | AITextAnalyzerField ([AI 帳票解析](AITextAnalyzerField.md)) | `POST /api/ai_text_analyze/file` / `/text` | クエリの `moduleName` / `fieldName` | なし。検査は AI 呼び出し (ファイルの読み取り) より前 | `Remarks` (補足指示) |
-| SemanticSearchField ([意味検索](SemanticSearchField.md)) | `POST /api/semantic_search/reindex` (再索引の開始) | `ModuleName` / `FieldName` | 検査を通らなければジョブは作られない。行の読み書きは実行ユーザーの ModuleDataIO で行うので、読める行だけを読み、書ける行だけを書く (通常の権限)。状態の取得・中断はそのジョブを起こしたユーザー (ログイン ID) だけ | 文章にするフィールド・列 (`SourceFields` / `DbColumnText` 等) |
+| SemanticSearchField ([意味検索](SemanticSearchField.md)) | `POST /api/semantic_search/reindex` (再索引の開始) | `ModuleName` / `FieldName` | 読み取りではなく**書き込み** (モジュールの UserWriteCondition + PermissionField の書き込み条件) を見る = 索引を書き直す操作。検査を通らなければジョブは作られない。索引は保存時と同じくサーバーが権限を通さず全行を読み、書き込み専用の列だけに書く (誰が起こしても同じ文章。レコードの更新ではない)。状態の取得・中断はそのジョブを起こしたユーザー (ログイン ID。走っている間に起こして合流した人を含む) だけ | 文章にするフィールド・列 (`SourceFields` / `DbColumnText` 等) |
 
 ### 一斉送信で取得するデータ
 

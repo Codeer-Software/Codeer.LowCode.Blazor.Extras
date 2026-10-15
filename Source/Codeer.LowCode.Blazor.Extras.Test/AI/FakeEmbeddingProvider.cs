@@ -13,6 +13,8 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
         /// <summary>EmbedAsync の呼び出し回数 (まとめて埋め込んでいるかの確認用)。</summary>
         public int Calls { get; private set; }
         public bool Fail { get; set; }
+        /// <summary>設定されていれば EmbedAsync でこの例外を投げる (タイムアウト = TaskCanceledException の再現用)。</summary>
+        public Exception? Throw { get; set; }
         /// <summary>1 回の呼び出しにかかる時間 (中断のテスト用)。</summary>
         public TimeSpan Delay { get; set; }
 
@@ -38,6 +40,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
         public async Task<IReadOnlyList<float[]>> EmbedAsync(IReadOnlyList<string> texts, CancellationToken cancellationToken = default)
         {
             if (Fail) throw new InvalidOperationException("embedding failed (fake)");
+            if (Throw != null) throw Throw;
             Calls++;
             if (Delay > TimeSpan.Zero) await Task.Delay(Delay, cancellationToken);
             Inputs.AddRange(texts);

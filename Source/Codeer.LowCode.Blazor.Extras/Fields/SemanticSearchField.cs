@@ -1,6 +1,5 @@
 using Codeer.LowCode.Blazor.DataIO;
 using Codeer.LowCode.Blazor.Extras.AIChat;
-using Codeer.LowCode.Blazor.Extras.Data;
 using Codeer.LowCode.Blazor.Extras.Designs;
 using Codeer.LowCode.Blazor.Extras.SemanticSearch;
 using Codeer.LowCode.Blazor.Extras.Services;
@@ -13,12 +12,12 @@ using Microsoft.Extensions.DependencyInjection;
 namespace Codeer.LowCode.Blazor.Extras.Fields
 {
     /// <summary>
-    /// SemanticSearchField のランタイム。UI も読み込みデータも持たない。
-    /// Submit のとき、対象フィールドのどれかが変更されていれば (新規なら常に) 行を文章にして送る。ベクトルはサーバー (SemanticSearchService) が付ける。
+    /// SemanticSearchField のランタイム。UI も読み込みデータも持たず、Submit でも何も送らない
+    /// (索引 = 文章とベクトルは、保存のたびにサーバーの SemanticSearchService が保存した行から作る)。
     /// <para>
     /// スクリプトからは再索引 (溜まっている行全部の文章とベクトルを作り直す) を起動できる: <c>Search.Reindex()</c> / <c>Search.ReindexMissing()</c>。
     /// サーバーのジョブとして走り、進捗は <see cref="ReindexProcessed"/> / <see cref="ReindexTotal"/> に届き、終わると <see cref="SemanticSearchFieldDesign.OnReindexCompleted"/> が呼ばれる。
-    /// 誰が起動できるかは、この API がフィールドの読取権限で入口を検査し、行の書き込みが実行ユーザーの権限で通ることで決まる (ボタンを置くページの UserReadCondition でも絞れる)。
+    /// 誰が起動できるかは、この API がフィールドの書き込み権限 (ユーザー権限だけ) で入口を検査することで決まる (索引自体は権限を通さずサーバーが作る)。
     /// スクリプトから参照するには、このフィールドがそのレイアウトの DataOnlyFields (またはレイアウト) に入っていること。
     /// </para>
     /// </summary>
@@ -113,10 +112,9 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         CancellationTokenSource? _reindexCancellation;
         string _reindexRequestId = string.Empty;
 
-        /// <summary>対象フィールドのどれかが変更されているか (= この Submit で文章を送るか)。自前の状態は持たず対象フィールドに追従する。</summary>
+        /// <summary>値を持たないので変更もない (索引はサーバーが保存した行から作る)。</summary>
         [ScriptHide]
-        public override bool IsModified
-            => Design.HasColumns && SemanticSearchText.SourceFields(Module.Design, Design).Any(n => Module.GetField(n)?.IsModified == true);
+        public override bool IsModified => false;
 
         [ScriptHide]
         public override async Task InitializeDataAsync(FieldDataBase? data)
@@ -129,17 +127,9 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         public override async Task SetDataAsync(FieldDataBase? data)
             => await Task.CompletedTask;
 
+        /// <summary>何も送らない (索引はサーバーが保存した行から作る)。</summary>
         [ScriptHide]
-        public override FieldSubmitData GetSubmitData()
-        {
-            if (!Design.HasColumns || (!Module.IsNewData && !IsModified)) return new();
-            var text = SemanticSearchText.Build(Services.AppInfoService.GetDesignData(), Module.Design, Module.GetData(), Design);
-            return new() { FieldData = new SemanticSearchFieldData { Text = text } };
-        }
-
-        /// <summary>今の行を索引用の文章にしたもの (確認用。Submit で送られるのと同じ規則)。</summary>
-        public string Text
-            => Design.HasColumns ? SemanticSearchText.Build(Services.AppInfoService.GetDesignData(), Module.Design, Module.GetData(), Design) : string.Empty;
+        public override FieldSubmitData GetSubmitData() => new();
 
         /// <summary>再索引が走っている間 true。</summary>
         public bool IsReindexing { get; private set; }

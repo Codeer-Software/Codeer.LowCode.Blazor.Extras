@@ -35,7 +35,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AuditLog
         {
             var interceptor = new AuditIOInterceptor(CreateDesign(), Settings);
             var nextCalled = false;
-            var results = await interceptor.SubmitAsync(null!, [Submit("Customer"), Submit("AuditView")], () => { nextCalled = true; return Task.FromResult(new List<ModuleSubmitResult>()); });
+            var results = await interceptor.SubmitAsync(null!, null!, [Submit("Customer"), Submit("AuditView")], () => { nextCalled = true; return Task.FromResult(new List<ModuleSubmitResult>()); });
 
             Assert.That(nextCalled, Is.False);
             Assert.That(results, Has.Count.EqualTo(2));
@@ -47,7 +47,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AuditLog
         {
             var interceptor = new AuditIOInterceptor(CreateDesign(), Settings);
             var expected = new List<ModuleSubmitResult> { new() { SourceId = "1", DestinationId = "1" } };
-            var results = await interceptor.SubmitAsync(null!, [Submit("Customer")], () => Task.FromResult(expected));
+            var results = await interceptor.SubmitAsync(null!, null!, [Submit("Customer")], () => Task.FromResult(expected));
             Assert.That(results, Is.SameAs(expected));
         }
 
@@ -56,7 +56,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AuditLog
         {
             var interceptor = new AuditIOInterceptor(CreateDesign(), Settings);
             var submit = new ModuleSubmitData { ModuleName = "Customer", Id = "1", Delete = { new ModuleDeleteInfo { ModuleName = "AuditView", Id = "9" } } };
-            var results = await interceptor.SubmitAsync(null!, [submit], () => Task.FromResult(new List<ModuleSubmitResult>()));
+            var results = await interceptor.SubmitAsync(null!, null!, [submit], () => Task.FromResult(new List<ModuleSubmitResult>()));
             Assert.That(results.Single().ExceptionMessage, Does.Contain("AuditView"));
         }
 
@@ -66,7 +66,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AuditLog
             //DB に出力していない (ファイルだけ) 構成では、守るテーブルは無い
             var interceptor = new AuditIOInterceptor(CreateDesign(), new AuditLogDatabaseSettings());
             var expected = new List<ModuleSubmitResult> { new() { SourceId = "1", DestinationId = "1" } };
-            Assert.That(await interceptor.SubmitAsync(null!, [Submit("AuditView")], () => Task.FromResult(expected)), Is.SameAs(expected));
+            Assert.That(await interceptor.SubmitAsync(null!, null!, [Submit("AuditView")], () => Task.FromResult(expected)), Is.SameAs(expected));
         }
 
         [Test]
@@ -76,7 +76,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AuditLog
             AuditContext.Current = audit;
             var interceptor = new AuditIOInterceptor(CreateDesign(), Settings);
 
-            await interceptor.SubmitAsync(null!, [Submit("Customer")], () => Task.FromResult(new List<ModuleSubmitResult> { new() { SourceId = "1", DestinationId = "1" } }));
+            await interceptor.SubmitAsync(null!, null!, [Submit("Customer")], () => Task.FromResult(new List<ModuleSubmitResult> { new() { SourceId = "1", DestinationId = "1" } }));
 
             Assert.That(audit.Event.Targets.Select(t => (t.Module, t.Id, t.Operation)).ToArray(), Is.EqualTo(new[] { ("Customer", "1", "Update") }));
             Assert.That(audit.ComposeDetail(), Is.EqualTo("Add=0; Update=1; Delete=0"));
@@ -89,7 +89,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AuditLog
             AuditContext.Current = audit;
             var interceptor = new AuditIOInterceptor(CreateDesign(), Settings);
 
-            await interceptor.SubmitAsync(null!, [Submit("AuditView")], () => Task.FromResult(new List<ModuleSubmitResult>()));
+            await interceptor.SubmitAsync(null!, null!, [Submit("AuditView")], () => Task.FromResult(new List<ModuleSubmitResult>()));
 
             Assert.That(audit.Event.Result, Is.EqualTo(AuditResult.Failure));
             Assert.That(audit.Event.Detail, Does.Contain("append-only"));
@@ -105,7 +105,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AuditLog
             var interceptor = new AuditIOInterceptor(CreateDesign(), Settings);
 
             Assert.ThrowsAsync<LowCodeAccessDeniedException>(async () =>
-                await interceptor.SubmitAsync(null!, [Submit("Customer")], () => throw LowCodeAccessDeniedException.Create("no permission")));
+                await interceptor.SubmitAsync(null!, null!, [Submit("Customer")], () => throw LowCodeAccessDeniedException.Create("no permission")));
 
             Assert.That(audit.Event.Result, Is.EqualTo(AuditResult.Denied));
             Assert.That(audit.ComposeDetail(), Is.EqualTo("Add=0; Update=1; Delete=0; no permission"));
@@ -118,7 +118,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AuditLog
             //バックグラウンドのジョブ・監査ログが無効のとき (Current が無い) は、送信に手を加えずそのまま通す
             var interceptor = new AuditIOInterceptor(CreateDesign(), Settings);
             var submit = new ModuleSubmitData { ModuleName = "Customer", Add = { new ModuleData { Name = "Customer" } } };
-            await interceptor.SubmitAsync(null!, [submit], () => Task.FromResult(new List<ModuleSubmitResult>()));
+            await interceptor.SubmitAsync(null!, null!, [submit], () => Task.FromResult(new List<ModuleSubmitResult>()));
             Assert.That(submit.Id, Is.Null.Or.Empty, "仮 Id を付けない");
         }
     }

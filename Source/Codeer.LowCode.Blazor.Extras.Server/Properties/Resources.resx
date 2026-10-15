@@ -66,4 +66,7 @@
   <data name="SemanticSearch_ProviderNotConfigured" xml:space="preserve">
     <value>Semantic search is not available because the embedding provider is not configured.</value>
   </data>
+  <data name="SemanticSearch_ReindexMissingRunning" xml:space="preserve">
+    <value>A reindex of missing rows is running for module '{0}'. Start the full reindex after it finishes.</value>
+  </data>
 </root>

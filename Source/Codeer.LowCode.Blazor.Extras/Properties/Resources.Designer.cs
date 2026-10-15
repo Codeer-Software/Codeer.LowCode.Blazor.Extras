@@ -2957,15 +2957,6 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
         }
         
         /// <summary>
-        ///   The detail layout '{0}' does not load the fields {1} used for the semantic search text, so a record saved from this layout gets an incomplete text. Place those fields, or this field (with SourceFields set), in the layout or in DataOnlyFields. に類似しているローカライズされた文字列を検索します。
-        /// </summary>
-        internal static string SemanticSearchCheck_FieldsNotLoadedFormat {
-            get {
-                return ResourceManager.GetString("SemanticSearchCheck_FieldsNotLoadedFormat", resourceCulture);
-            }
-        }
-        
-        /// <summary>
         ///   The fields {0} used for the semantic search text have a read condition, but this field ({1}) does not. The text column contains the values of the source fields. Remove {0} from SourceFields, or give {1} a read condition too (after removing, run Reindex() to rebuild the text of existing records). に類似しているローカライズされた文字列を検索します。
         /// </summary>
         internal static string SemanticSearchCheck_SourceFieldsRestrictedFormat {

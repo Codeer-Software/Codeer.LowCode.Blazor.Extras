@@ -15,8 +15,8 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
 {
     /// <summary>
     /// 行を「意味で探せる」ようにする書き込み専用フィールド (UI なし)。
-    /// Submit のたびに <see cref="SourceFields"/> の値を「表示名: 値」の行に並べた文章を作り (クライアント側)、
-    /// サーバーの SemanticSearchService がその文章の埋め込みベクトルを付けて、2 つの書き込み専用列に保存する。
+    /// 保存のたびにサーバー (SemanticSearchService の Interceptor) が保存した行を読み、<see cref="SourceFields"/> の値を「表示名: 値」の行に並べた文章と
+    /// その埋め込みベクトルを 2 つの書き込み専用列に保存する。クライアントは何も送らない。
     /// AI チャット (RawDataAccessAgent) は DB のベクトル検索 (pgvector / SQL Server 2025) でこの索引から「似た記録」を探す (search_records)。
     /// 距離計算は DB が行うので、ベクトル検索に対応しない DB (SQLite 等) のモジュールは意味検索の対象にならない。
     /// 同じ文章の列への部分一致がキーワード検索 (<see cref="KeywordSearch"/> / <see cref="SemanticMatchCondition.Keywords"/>)。
@@ -24,11 +24,11 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
     [ToolboxIcon(PackIconMaterialKind = "TextSearch")]
     [Designer(DisplayName = "$SemanticSearchField")]
     [IgnoreBaseProperties(nameof(IgnoreModification), nameof(OnValidateInput), nameof(IsFocusSkip), nameof(OnFocusMoving), nameof(NextFocusField))]
-    public class SemanticSearchFieldDesign() : FieldDesignBase(typeof(SemanticSearchFieldDesign).FullName!), IDataDependentField, ISqlMatchConditionFieldDesign
+    public class SemanticSearchFieldDesign() : FieldDesignBase(typeof(SemanticSearchFieldDesign).FullName!), ISqlMatchConditionFieldDesign
     {
         /// <summary>デザインチェック指摘の番号。DesignCheckCode.Create で発行クラス名と結合して "クラス名:番号" になる。番号は固定(追加は末尾・欠番は再利用しない)。</summary>
         private const int CodeColumnsRequired = 1;
-        private const int CodeFieldsNotLoaded = 2;
+        private const int CodeFieldsNotLoaded = 2;  //欠番 (対象フィールドをフロントに読み込んでいない詳細レイアウトの指摘。文章をサーバーが保存した行から作るようになり不要。番号は再利用しない)
         private const int CodeSearchHasNoEffect = 3;
         private const int CodeSourceFieldsRestricted = 4;
         private const int CodeSourceFieldsRowCondition = 5;
@@ -75,7 +75,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         [Designer(Index = 9, DisplayName = "$SemanticSearchFieldKeywordSearch")]
         public bool KeywordSearch { get; set; }
 
-        /// <summary>3 つの列 (文章 / ベクトル / ベクトル検索用) がすべて設定されているか (索引と検索の対象になる条件)。</summary>
+        /// <summary>3 つの列 (文章 / ベクトル / ベクトル検索用) がすべて設定されているか (索引付けと検索の対象になる条件)。</summary>
         internal bool HasColumns => !string.IsNullOrWhiteSpace(DbColumnText) && !string.IsNullOrWhiteSpace(DbColumnVector) && !string.IsNullOrWhiteSpace(DbColumnVectorSearch);
 
         public override string GetWebComponentTypeFullName() => typeof(SemanticSearchFieldComponent).FullName!;
@@ -103,42 +103,9 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
                 context.CheckFieldFieldExistence(Name, nameof(SourceFields), field).AddTo(result);
             context.CheckFieldFunctionExistence(Name, nameof(OnReindexCompleted), OnReindexCompleted,
                 context.GetScriptMethodAttribute(GetType(), nameof(OnReindexCompleted))).AddTo(result);
-            result.AddRange(CheckSourceFieldsLoaded(context));
             result.AddRange(CheckSearchHasEffect(context));
             result.AddRange(CheckSourceFieldsReadRestriction(context));
             return result;
-        }
-
-        /// <summary>
-        /// 文章にするフィールドの値は、レイアウトに置いていなくてもフロントに来ていなければならない (文章はクライアントが組み立てるので、
-        /// 読み込まれていないフィールドは文章から欠け、その行を保存すると欠けた文章で索引が上書きされる)。
-        /// 詳細画面の読み込みは「レイアウトのフィールド + DataOnlyFields (+ それらの <see cref="IDataDependentField"/> の依存先)」だけなので、
-        /// 各詳細レイアウトについて対象フィールドが読み込まれるかを見る。直し方は、欠けるフィールドか、このフィールド (SourceFields 設定時) をレイアウトか DataOnlyFields に含める。
-        /// </summary>
-        IEnumerable<DesignCheckInfo> CheckSourceFieldsLoaded(DesignCheckContext context)
-        {
-            var module = context.GetModuleDesign();
-            if (module == null || !HasColumns) yield break;
-            var sources = SemanticSearchText.SourceFields(module, this).Where(n => module.Fields.Any(f => f.Name == n)).ToList();
-            foreach (var (layoutName, layout) in module.DetailLayouts)
-            {
-                List<string> placed;
-                try { placed = layout.Layout.GetDescendantFields(module).Select(f => f.Name).ToList(); }
-                catch (InvalidOperationException) { continue; } //存在しないフィールドがレイアウトにある = 別のチェックが指摘する
-                var loaded = new HashSet<string>(placed.Concat(layout.DataOnlyFields));
-                foreach (var dependent in loaded.Select(n => module.Fields.FirstOrDefault(f => f.Name == n)).OfType<IDataDependentField>().ToList())
-                    loaded.UnionWith(dependent.GetDependencyFields());
-                //対象フィールドを 1 つも読み込まないレイアウト (既定の空レイアウト等) は、そこから対象を編集できず更新で文章も送らないので対象外
-                if (!sources.Any(loaded.Contains)) continue;
-                var missing = sources.Where(n => !loaded.Contains(n)).ToList();
-                if (missing.Count == 0) continue;
-                yield return new LayoutDesignCheckInfo
-                {
-                    Code = DesignCheckCode.Create(typeof(SemanticSearchFieldDesign), CodeFieldsNotLoaded),
-                    Location = new() { Module = context.OwnerModule, LayoutType = ModuleLayoutType.Detail, Layout = layoutName, Member = nameof(DetailLayoutDesign.DataOnlyFields) },
-                    Message = string.Format(Properties.Resources.SemanticSearchCheck_FieldsNotLoadedFormat, layoutName, string.Join(", ", missing)),
-                };
-            }
         }
 
         /// <summary>
@@ -254,12 +221,6 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
             return condition.SortConditions.Append(new SortCondition { Variable = condition.SortFieldVariable }).ToList();
 #pragma warning restore CS0618
         }
-
-        /// <summary>
-        /// このフィールドがレイアウトか DataOnlyFields にあれば、文章にするフィールドも一緒に読み込む (本体の SELECT 列の補完。ProgressField 等と同じ仕組み)。
-        /// SourceFields が空 (= 入力フィールド全部) のときはここでは列挙できない (モジュール定義が無い) ので何も足さない。
-        /// </summary>
-        public List<string> GetDependencyFields() => SourceFields.ToList();
 
         /// <summary>
         /// 意味検索の条件 (<see cref="SemanticMatchCondition"/>) を WHERE にする: ベクトルがあれば索引のある行 (+ 距離の上限。距離計算は DB = pgvector / SQL Server 2025)、

@@ -31,19 +31,19 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
         [Test]
         public void PostgreSQLの距離順SELECT()
         {
-            var sql = SemanticSearchIndexReader.BuildSearchSql(DataSourceType.PostgreSQL, "inquiries", "id", "search_text", "search_vector_v", "is_deleted", "'[1,2]'::vector", 5);
+            var sql = SemanticSearchIndexReader.BuildSearchSql(DataSourceType.PostgreSQL, "inquiries", "id", "search_text", "search_vector_v", " and (\"is_deleted\" is null or cast(\"is_deleted\" as integer) = 0)", "'[1,2]'::vector", 5);
             Assert.That(sql, Does.StartWith("select \"id\", \"search_text\", 1 - (\"search_vector_v\" <=> '[1,2]'::vector) as semantic_score from \"inquiries\""));
             Assert.That(sql, Does.Contain("where \"search_vector_v\" is not null and (\"is_deleted\" is null or cast(\"is_deleted\" as integer) = 0)"));
             Assert.That(sql, Does.EndWith("order by (\"search_vector_v\" <=> '[1,2]'::vector) limit 5"));
 
-            var noDelete = SemanticSearchIndexReader.BuildSearchSql(DataSourceType.PostgreSQL, "t", "id", "txt", "vec", null, "'[1]'::vector", 3);
+            var noDelete = SemanticSearchIndexReader.BuildSearchSql(DataSourceType.PostgreSQL, "t", "id", "txt", "vec", "", "'[1]'::vector", 3);
             Assert.That(noDelete, Does.Contain("where \"vec\" is not null order by"));
         }
 
         [Test]
         public void SQLServerの距離順SELECT()
         {
-            var sql = SemanticSearchIndexReader.BuildSearchSql(DataSourceType.SQLServer, "inquiries", "id", "search_text", "search_vector", "is_deleted", "CAST('[1,2]' AS VECTOR(2))", 5);
+            var sql = SemanticSearchIndexReader.BuildSearchSql(DataSourceType.SQLServer, "inquiries", "id", "search_text", "search_vector", " and ([is_deleted] is null or cast([is_deleted] as integer) = 0)", "CAST('[1,2]' AS VECTOR(2))", 5);
             Assert.That(sql, Does.StartWith("select top (5) [id], [search_text], 1 - VECTOR_DISTANCE('cosine', [search_vector], CAST('[1,2]' AS VECTOR(2))) as semantic_score from [inquiries]"));
             Assert.That(sql, Does.EndWith("order by VECTOR_DISTANCE('cosine', [search_vector], CAST('[1,2]' AS VECTOR(2)))"));
         }
@@ -51,12 +51,44 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
         [Test]
         public void 対応しないDBは例外()
         {
-            Assert.That(() => SemanticSearchIndexReader.BuildSearchSql(DataSourceType.SQLite, "t", "id", "txt", "vec", null, "x", 1), Throws.TypeOf<NotSupportedException>());
+            Assert.That(() => SemanticSearchIndexReader.BuildSearchSql(DataSourceType.SQLite, "t", "id", "txt", "vec", "", "x", 1), Throws.TypeOf<NotSupportedException>());
             Assert.That(() => SemanticSearchVector.Literal(DataSourceType.MySQL, [1f]), Throws.TypeOf<NotSupportedException>());
             Assert.That(SemanticSearchVector.SupportsDbSearch(DataSourceType.PostgreSQL), Is.True);
             Assert.That(SemanticSearchVector.SupportsDbSearch(DataSourceType.SQLServer), Is.True);
             Assert.That(SemanticSearchVector.SupportsDbSearch(DataSourceType.SQLite), Is.False);
             Assert.That(SemanticSearchVector.SupportsDbSearch(DataSourceType.Oracle), Is.False);
+        }
+
+        [Test]
+        public void 削除済みを除く条件は本体の一覧検索と同じ規則()
+        {
+            static ModuleDesign Module(params DbValueFieldDesignBase[] fields)
+            {
+                var m = new ModuleDesign { Name = "Inquiry", DataSourceName = "Main", DbTable = "inquiries" };
+                m.Fields.Add(new IdFieldDesign { Name = "Id", DbColumn = "id" });
+                foreach (var f in fields) m.Fields.Add(f);
+                return m;
+            }
+            var logicalDelete = new BooleanFieldDesign { Name = SystemFieldNames.LogicalDelete, DbColumn = "is_deleted" };
+            var deletedAt = new DateTimeFieldDesign { Name = SystemFieldNames.DeletedAt, DbColumn = "deleted_at" };
+            var deleter = new TextFieldDesign { Name = SystemFieldNames.Deleter, DbColumn = "deleted_by" };
+
+            //LogicalDelete があればそれ (NULL か偽を残す)。DeletedAt / Deleter があっても LogicalDelete が優先
+            Assert.That(SemanticSearchIndexReader.NotDeletedSql(Module(logicalDelete, deletedAt, deleter), DataSourceType.PostgreSQL),
+                Is.EqualTo(" and (\"is_deleted\" is null or cast(\"is_deleted\" as integer) = 0)"));
+            Assert.That(SemanticSearchIndexReader.NotDeletedSql(Module(logicalDelete), DataSourceType.SQLServer),
+                Is.EqualTo(" and ([is_deleted] is null or cast([is_deleted] as integer) = 0)"));
+            Assert.That(SemanticSearchIndexReader.NotDeletedSql(Module(logicalDelete), DataSourceType.MySQL),
+                Is.EqualTo(" and (`is_deleted` is null or cast(`is_deleted` as signed) = 0)"), "MySQL の cast は signed");
+
+            //無ければ DeletedAt → Deleter の順 (NULL を残す)
+            Assert.That(SemanticSearchIndexReader.NotDeletedSql(Module(deletedAt, deleter), DataSourceType.PostgreSQL), Is.EqualTo(" and \"deleted_at\" is null"));
+            Assert.That(SemanticSearchIndexReader.NotDeletedSql(Module(deleter), DataSourceType.PostgreSQL), Is.EqualTo(" and \"deleted_by\" is null"));
+
+            //どれも無ければ条件なし
+            Assert.That(SemanticSearchIndexReader.NotDeletedSql(Module(), DataSourceType.PostgreSQL), Is.Empty);
+            //DB 列の無いシステムフィールドは無いのと同じ
+            Assert.That(SemanticSearchIndexReader.NotDeletedSql(Module(new BooleanFieldDesign { Name = SystemFieldNames.LogicalDelete }, deletedAt), DataSourceType.PostgreSQL), Is.EqualTo(" and \"deleted_at\" is null"));
         }
 
         [Test]
