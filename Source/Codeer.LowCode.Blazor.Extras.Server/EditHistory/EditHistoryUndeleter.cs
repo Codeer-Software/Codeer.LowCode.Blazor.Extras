@@ -57,7 +57,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.EditHistory
                 //この版に置き換える: 版の従属レコードのうち「今は削除中で、その人に見えている (差分に出ている)」論理削除の行を Id を保って取り消す
                 //(レコード自身と行の値はフォームの保存が持つ)。見えていない行は触らない。戻せない行 (削除権限が無い等) があれば例外 = 保存失敗
                 var visible = snapshot.JsonClone();
-                if (await io.CreateSnapshotAccess().RestrictToCurrentUserAsync(visible)) await UndeleteDeletedRowsAsync(io, access, module, field, visible, string.Empty, together: false);
+                if (await io.AuthorizationChecker.RestrictToReadableAsync(visible)) await UndeleteDeletedRowsAsync(io, access, module, field, visible, string.Empty, together: false);
                 return new EditHistoryUndeleteResult { IsWholeRecord = false, RestoredId = dataId };
             }
 
@@ -75,12 +75,12 @@ namespace Codeer.LowCode.Blazor.Extras.Server.EditHistory
             if (module.UsesLogicalDelete())
             {
                 //論理削除: Id を保って取り消し (権限は削除と同じ)。親と一緒に消えた従属レコードも戻す (親の削除が子を消すのと同じ規則)
-                await io.CreateSnapshotAccess().UndeleteAsync(module.Name, dataId, snapshot);
+                await io.UndeleteAsync(module.Name, dataId, snapshot);
                 await UndeleteDeletedRowsAsync(io, access, module, field, snapshot, string.Empty, together: true);
                 return new EditHistoryUndeleteResult { IsWholeRecord = true, RestoredId = dataId };
             }
             //物理削除: スナップショットから作り直す。手入力 Id は元の Id、自動採番は新しい Id (旧 Id の版を付け替えて履歴を繋ぐ)
-            if (!await io.CreateSnapshotAccess().CanUndeleteAsync(module.Name, snapshot)) throw new InvalidOperationException("You are not allowed to restore this record.");
+            if (!await io.AuthorizationChecker.CanUndeleteAsync(module.Name, snapshot)) throw new InvalidOperationException("You are not allowed to restore this record.");
             var newId = await RecreateAsync(access, module, field, snapshot, string.Empty, null, null);
             return new EditHistoryUndeleteResult { IsWholeRecord = true, IsRecreated = newId != dataId, RestoredId = newId };
         }
@@ -105,8 +105,8 @@ namespace Codeer.LowCode.Blazor.Extras.Server.EditHistory
                     var exists = id.Length == 0 || await access.GetWithOwnedRecordsAsync(child.Name, id, _ => false) != null;
                     if (!exists && child.UsesLogicalDelete())
                     {
-                        if (together) await io.CreateSnapshotAccess().UndeleteTogetherAsync(child.Name, id);
-                        else await io.CreateSnapshotAccess().UndeleteAsync(child.Name, id, row);
+                        if (together) await io.UndeleteTogetherAsync(child.Name, id);
+                        else await io.UndeleteAsync(child.Name, id, row);
                     }
                     else if (!exists && together && binding is { ParentRefersChild: false })
                     {

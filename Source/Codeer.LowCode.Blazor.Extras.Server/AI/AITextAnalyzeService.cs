@@ -26,7 +26,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI
     /// route is kept so the host can swap the provider.
     /// The entry points take the module name and the AITextAnalyzerField name: the request is refused unless that field is visible
     /// to the current user by user permissions alone (application access conditions, the module UserReadCondition and the PermissionField read conditions
-    /// that are false for the user regardless of the row; via ModuleDataIO.AuthorizationChecker.CheckUserReadAuthorization), and the extraction hints (Remarks) come from the field design.
+    /// that are false for the user regardless of the row; via ModuleDataIO.AuthorizationChecker.CheckFieldUserReadAsync), and the extraction hints (Remarks) come from the field design.
     /// To customize (prompts, models, etc.), copy this class into your app and modify it (the source is MIT licensed).
     /// </summary>
     public class AITextAnalyzeService

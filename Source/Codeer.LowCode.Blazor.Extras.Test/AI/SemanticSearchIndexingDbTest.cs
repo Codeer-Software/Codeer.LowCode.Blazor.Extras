@@ -1046,7 +1046,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
             {
                 var row = new ModuleData { Name = "Inquiry" };
                 row.Fields["Id"] = new IdFieldData { Value = "3" };
-                await io.CreateSnapshotAccess().UndeleteAsync("Inquiry", "3", row);
+                await io.UndeleteAsync("Inquiry", "3", row);
             });
             AssertNoError(await io.SubmitWithTransactionAsync([new ModuleSubmitData { ModuleName = "Inquiry" }]));
 

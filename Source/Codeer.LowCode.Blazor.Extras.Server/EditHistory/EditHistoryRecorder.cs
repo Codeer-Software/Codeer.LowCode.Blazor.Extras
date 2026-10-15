@@ -86,7 +86,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.EditHistory
             try
             {
                 var snapshot = EditHistorySnapshot.Deserialize(json);
-                if (snapshot == null || !await io.CreateSnapshotAccess().RestrictToCurrentUserAsync(snapshot)) return string.Empty;
+                if (snapshot == null || !await io.AuthorizationChecker.RestrictToReadableAsync(snapshot)) return string.Empty;
                 return EditHistorySnapshot.Serialize(snapshot);
             }
             catch (Exception ex)
@@ -250,7 +250,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.EditHistory
 
             try
             {
-                var user = await io.AuthorizationChecker.GetCurrentUser();
+                var user = await io.AuthorizationChecker.GetCurrentUserAsync();
                 var userId = user == null ? string.Empty : ModuleDataValues.GetId(user);
                 var localNow = DateTime.Now;
                 var utcNow = DateTime.UtcNow;
