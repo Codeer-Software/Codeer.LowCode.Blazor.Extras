@@ -114,6 +114,84 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
             Assert.That(SemanticSearchText.ForEmbedding(field, text), Is.EqualTo(text), "0 以下は切らない");
         }
 
+        //添付 2 つ (見積書・図面) を持つ行
+        static (DesignData Design, ModuleDesign Module, SemanticSearchFieldDesign Field, ModuleData Row) AttachmentRow(params string[] sourceFields)
+        {
+            var design = CreateDesign(sourceFields);
+            var module = design.Modules.Find("Inquiry")!;
+            module.Fields.Add(new FileFieldDesign { Name = "Quote", DisplayName = "見積書", DbColumnFileName = "quote_name", DbColumnFileGuid = "quote_guid" });
+            module.Fields.Add(new FileFieldDesign { Name = "Drawing", DbColumnFileName = "drawing_name", DbColumnFileGuid = "drawing_guid" });
+            var row = Row();
+            row.Fields["Quote"] = new FileFieldData { FileName = "quote.pdf", FileGuid = Guid.NewGuid() };
+            row.Fields["Drawing"] = new FileFieldData { FileName = "drawing.txt", FileGuid = Guid.NewGuid() };
+            return (design, module, module.Fields.OfType<SemanticSearchFieldDesign>().Single(), row);
+        }
+
+        [Test]
+        public void 添付の中身は全部のフィールドの行の後ろに空行で区切って対象フィールドの順で足す()
+        {
+            var (design, module, field, row) = AttachmentRow("Drawing", "Subject", "Quote");
+            var text = SemanticSearchText.Build(design, module, row, field, new Dictionary<string, string>
+            {
+                ["Quote"] = "  見積金額 120 万円\r\n納期 3 週間\r\n\r\n",
+                ["Drawing"] = "\n部品 A-100\r側板",
+            });
+            Assert.That(text, Is.EqualTo(
+                "Drawing: drawing.txt\n" +
+                "件名: 納期遅れの相談\n" +
+                "見積書: quote.pdf\n" +
+                "\n" +
+                "Drawing: drawing.txt\n" +
+                "部品 A-100\n側板\n" +
+                "\n" +
+                "見積書: quote.pdf\n" +
+                "見積金額 120 万円\n納期 3 週間"), "改行は LF・前後の空白は除く・表示名が無ければフィールド名");
+        }
+
+        [Test]
+        public void 添付の中身が空なら足さない_渡さなければファイル名だけ()
+        {
+            var (design, module, field, row) = AttachmentRow("Subject", "Quote", "Drawing");
+            const string names = "件名: 納期遅れの相談\n見積書: quote.pdf\nDrawing: drawing.txt";
+            Assert.That(SemanticSearchText.Build(design, module, row, field), Is.EqualTo(names));
+            Assert.That(SemanticSearchText.Build(design, module, row, field, new Dictionary<string, string> { ["Quote"] = " \r\n ", ["Drawing"] = "" }), Is.EqualTo(names));
+            //ファイル名の無い (添付の無い) フィールドの中身は出さない
+            row.Fields["Quote"] = new FileFieldData();
+            Assert.That(SemanticSearchText.Build(design, module, row, field, new Dictionary<string, string> { ["Quote"] = "残っていた中身" }), Is.EqualTo("件名: 納期遅れの相談\nDrawing: drawing.txt"));
+        }
+
+        [Test]
+        public void 添付の中身は1件ごとにMaxFileTextLengthで切る()
+        {
+            var (design, module, field, row) = AttachmentRow("Quote", "Drawing");
+            field.MaxFileTextLength = 5;
+            var attachments = new Dictionary<string, string> { ["Quote"] = "0123456789", ["Drawing"] = "abc" };
+            Assert.That(SemanticSearchText.Build(design, module, row, field, attachments),
+                Is.EqualTo("見積書: quote.pdf\nDrawing: drawing.txt\n\n見積書: quote.pdf\n01234\n\nDrawing: drawing.txt\nabc"));
+            field.MaxFileTextLength = 0;
+            Assert.That(SemanticSearchText.Build(design, module, row, field, attachments), Does.Contain("0123456789"), "0 は無制限");
+            Assert.That(new SemanticSearchFieldDesign().MaxFileTextLength, Is.EqualTo(100000));
+        }
+
+        [Test]
+        public void 添付の中身の制御文字は落とし_サロゲートペアの途中で切らない()
+        {
+            var (design, module, field, row) = AttachmentRow("Quote", "Drawing");
+            var attachments = new Dictionary<string, string> { ["Quote"] = "A\0B\u0001C\tD\r\nE\u007f", ["Drawing"] = "ab\U0001F600cd" };
+            Assert.That(SemanticSearchText.Build(design, module, row, field, attachments),
+                Is.EqualTo("見積書: quote.pdf\nDrawing: drawing.txt\n\n見積書: quote.pdf\nABC\tD\nE\n\nDrawing: drawing.txt\nab\U0001F600cd"));
+            field.MaxFileTextLength = 3;
+            Assert.That(SemanticSearchText.Build(design, module, row, field, attachments), Does.EndWith("\n見積書: quote.pdf\nABC\n\nDrawing: drawing.txt\nab"), "絵文字の上位サロゲートの直前で切る");
+        }
+
+        [Test]
+        public void 既定の対象にFileFieldは入らない()
+        {
+            var (design, module, field, row) = AttachmentRow();
+            Assert.That(SemanticSearchText.SourceFields(module, field), Does.Not.Contain("Quote").And.Not.Contain("Drawing"));
+            Assert.That(SemanticSearchText.Build(design, module, row, field, new Dictionary<string, string> { ["Quote"] = "中身" }), Does.Not.Contain("中身").And.Not.Contain("quote.pdf"));
+        }
+
         [Test]
         public void リッチテキストはタグを除く()
         {

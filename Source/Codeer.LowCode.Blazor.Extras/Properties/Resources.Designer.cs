@@ -2840,6 +2840,15 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
         }
         
         /// <summary>
+        ///   Max Text Length per File に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string SemanticSearchFieldMaxFileTextLength {
+            get {
+                return ResourceManager.GetString("SemanticSearchFieldMaxFileTextLength", resourceCulture);
+            }
+        }
+
+        /// <summary>
         ///   Max Text Length に類似しているローカライズされた文字列を検索します。
         /// </summary>
         internal static string SemanticSearchFieldMaxTextLength {

@@ -234,7 +234,8 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
             foreach (var group in rows.SelectMany(r => r.Fields.Select(f => (r.Row, r.Update, r.Module, Field: f))).GroupBy(e => e.Field))
             {
                 var items = group.ToList();
-                var texts = items.Select(e => SemanticSearchText.Build(design, e.Module, e.Row, e.Field)).ToList();
+                var texts = new List<string>();
+                foreach (var e in items) texts.Add(await service.BuildTextAsync(design, e.Module, e.Row, e.Field, CancellationToken.None));
                 var vectors = await service.EmbedForSaveAsync(texts.Select(t => SemanticSearchText.ForEmbedding(group.Key, t)).ToList(), CancellationToken.None);
                 for (var i = 0; i < items.Count; i++)
                     items[i].Update.Fields[group.Key.Name] = new SemanticSearchFieldData { Text = texts[i], Vector = vectors[i] == null ? null : SemanticSearchVector.Encode(vectors[i]!) };

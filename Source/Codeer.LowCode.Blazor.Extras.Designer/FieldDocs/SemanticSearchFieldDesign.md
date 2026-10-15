@@ -25,6 +25,7 @@ AI チャット ([AIChatField](AIChatFieldDesign.md) の `RawDataAccessAgent`) �
 - 候補値 (SelectField) は表示名、リンクは表示文字列、日付は `yyyy-MM-dd`、日時は `yyyy-MM-dd HH:mm`、真偽は「はい / いいえ」、リッチテキストはタグを除いた本文、ファイルはファイル名。List / Module / Password / SemanticSearch 自身は出さない
 - 改行は LF 固定。文章の列には全文を保存し、`MaxTextLength` を超えた分は埋め込みに渡さない (キーワード検索は全文に当たる)。文章の列は長さ制限の無い型 (TEXT / NVARCHAR(MAX)) にする
 - 作るのはサーバー (保存のたび・再索引・一括取込)。対象フィールドがフロントに読み込まれているかどうかは関係ない
+- `SourceFields` に**名前を書いた** FileField は添付の中身も入る (空の既定には FileField は入らない)。全部のフィールドの行の後ろに、中身のある添付ごとに空行 +「表示名: ファイル名」の行 + 中身 (改行 LF・前後の空白と改行・タブ以外の制御文字を除く・1 件 `MaxFileTextLength` 文字まで) を `SourceFields` の順で足す。ストレージの添付はホストが `SemanticSearchService.FileStorages` を渡しているときだけ読む (渡していなければファイル名だけ。DB 列格納モード `DbColumnFileContent` の添付は常に読む)。取り出し方は拡張子の対応表 `FileTextExtractors` (拡張子 → `IFileTextExtractor` の実装。既定 = `.pdf` / `.docx` / `.pptx` / `.xlsx` (数式はキャッシュ値) / `.txt` `.csv` `.md` `.json` `.xml` (BOM → UTF-8 → Shift_JIS) / `.html` `.htm` (タグ除去))。対応表に無い拡張子 (`.doc` / `.xls` / `.msg` / 画像など) はファイル名だけで、ファイルを開かない。取り出しの失敗は警告ログ (`SemanticSearch: ...`) を出してファイル名だけにし、保存は止めない。ホストが `IFileTextExtractor` を実装して対応表に足す・外す (`FileTextExtractors.Add(new MyMailTextExtractor())` / `Remove(".xlsx")`。同じ拡張子は後から足したものが勝つ)。既存の行に中身を入れるには `Reindex()`
 
 ### C# クラス定義 (真実の源)
 
@@ -41,6 +42,7 @@ AI チャット ([AIChatField](AIChatFieldDesign.md) の `RawDataAccessAgent`) �
 | `DbColumnVector` | string | `""` | 埋め込みベクトル (`[0.1,-0.2,…]` の JSON 配列テキスト) を保存する DB カラム名。**書き込み専用・必須**。 |
 | `DbColumnVectorSearch` | string | `""` | DB のベクトル検索で距離計算に使うベクトル型の列。**必須**。PostgreSQL は `DbColumnVector` をキャストする生成列の名前、SQL Server は `DbColumnVector` と同じ列名 (VECTOR 型にする)。 |
 | `MaxTextLength` | int | `8000` | 埋め込みに渡す文章の最大文字数 (埋め込みモデルの入力上限の歯止め)。文章の列は全文。 |
+| `MaxFileTextLength` | int | `100000` | `SourceFields` に書いた FileField の添付の中身を文章に入れるときの、添付 1 件あたりの最大文字数 (0 = 無制限)。行全体の埋め込みは `MaxTextLength` まで・文章の列は全文。 |
 | `SearchMaxDistance` | double? | `null` | 検索レイアウトの検索欄で探すときのコサイン距離の上限 (0〜2)。空なら距離では絞らない (並びだけ)。 |
 | `KeywordSearch` | bool | `false` | 検索レイアウトの検索欄にキーワード欄も出す。空白区切りの語をすべて含む行 (文章の列への部分一致の AND) に絞る。埋め込み不要・どの DB でも動く。文章と両方入れると絞ったうえで近い順。 |
 | `OnReindexCompleted` | string | `""` | スクリプトの `Reindex()` / `ReindexMissing()` で起こした再索引が終わった (成功・失敗・中断) ときに呼ぶスクリプト関数名。結果は `ReindexProcessed` / `ReindexError` で見る。 |
@@ -77,6 +79,7 @@ AI チャットの `execute_sql` の SQL に `{embed:探したい内容}` と書
   "DbColumnVector": "search_vector",
   "DbColumnVectorSearch": "search_vector_v",
   "MaxTextLength": 8000,
+  "MaxFileTextLength": 100000,
   "Name": "Search",
   "IgnoreModification": false,
   "OnValidateInput": "",

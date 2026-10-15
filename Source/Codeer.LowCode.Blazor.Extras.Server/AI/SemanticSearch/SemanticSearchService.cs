@@ -6,6 +6,7 @@ using Codeer.LowCode.Blazor.Extras.Data;
 using Codeer.LowCode.Blazor.Extras.Designs;
 using Codeer.LowCode.Blazor.Extras.SemanticSearch;
 using Codeer.LowCode.Blazor.Extras.Server.AI.Embedding;
+using Codeer.LowCode.Blazor.Extras.Server.FileManagement;
 using Codeer.LowCode.Blazor.Extras.Server.Properties;
 using Codeer.LowCode.Blazor.Repository;
 using Codeer.LowCode.Blazor.Repository.Data;
@@ -73,6 +74,16 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
         public int ReindexPageSize { get; init; } = 100;
         /// <summary>保存時の埋め込みの上限時間 (保存のトランザクションの中で待つので短めに)。超えたら文章だけ保存して警告ログ (再索引で埋める)。</summary>
         public TimeSpan SaveEmbeddingTimeout { get; init; } = TimeSpan.FromSeconds(15);
+
+        /// <summary>
+        /// 添付ファイルの置き場所 (アプリのファイル保存先と同じもの)。SourceFields に書いた FileField の添付の中身を文章に入れるときに読む。
+        /// null (既定) ならストレージの添付はファイル名だけ (DB 列格納モードの添付は行と一緒に読めるので、これが無くても中身を入れる)。
+        /// <code>new(...) { FileStorages = () => FileStorageTable.Storages }</code>
+        /// </summary>
+        public Func<IEnumerable<IFileStorage>>? FileStorages { get; set; }
+
+        /// <summary>添付の中身を文字列にする対応表 (拡張子 → <see cref="IFileTextExtractor"/>)。既定は <see cref="FileManagement.FileTextExtractors.Default"/>。対応表に無い拡張子の添付は読まない (ファイル名だけ)。</summary>
+        public FileTextExtractors FileTextExtractors { get; set; } = FileTextExtractors.Default();
 
         /// <summary>旧形式。何もしない (索引は <see cref="Interceptor"/> が保存後の行から作る。一括取込の後は ReindexMissing)。Interceptor が未登録なら警告ログを 1 回出す。</summary>
         [Obsolete("Register Interceptor with AddInterceptor (required since 0.22); this method does nothing. After a bulk import call ReindexMissing().")]
@@ -287,8 +298,12 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
                     //フィールドごとに、ページ分の文章をまとめて 1 回で埋め込む
                     foreach (var field in fields)
                     {
-                        var items = rows.SelectMany(r => r.Fields.Where(e => e.Field == field)
-                            .Select(e => (r.Update, Text: e.Text ?? SemanticSearchText.Build(designData, module, r.Row!, field)))).ToList();
+                        var items = new List<(ModuleData Update, string Text)>();
+                        foreach (var (update, row, work) in rows)
+                        {
+                            foreach (var (_, text) in work.Where(e => e.Field == field))
+                                items.Add((update, text ?? await BuildTextAsync(designData, module, row!, field, cancellationToken)));
+                        }
                         if (items.Count == 0) continue;
                         var vectors = await EmbedAllAsync(provider, items.Select(e => SemanticSearchText.ForEmbedding(field, e.Text)).ToList(), cancellationToken);
                         for (var i = 0; i < items.Count; i++)
@@ -314,6 +329,54 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
             var row = await io.GetWithOwnedRecordsAsync(module.Name, id, path => sources.Contains(path));
             if (row != null) await FillLinkDisplayTextsAsync(io, module, row, sources);
             return row;
+        }
+
+        /// <summary>
+        /// 索引の文章を作る (保存時の索引付けと再索引で同じ。文章を作るのはここだけ)。<paramref name="row"/> は <see cref="ReadForIndexAsync"/> で読んだ行。
+        /// SourceFields の FileField の添付は、対応表 (<see cref="FileTextExtractors"/>) に拡張子があるものだけ読んで中身を文章に入れる
+        /// (ストレージの添付は <see cref="FileStorages"/> があるとき。DB 列格納モードは行の Content)。読めない・取り出せない添付は警告ログを出してファイル名だけにする (保存は止めない)。
+        /// </summary>
+        internal async Task<string> BuildTextAsync(DesignData design, ModuleDesign module, ModuleData row, SemanticSearchFieldDesign field, CancellationToken cancellationToken)
+        {
+            Dictionary<string, string>? attachments = null;
+            foreach (var name in SemanticSearchText.SourceFields(module, field))
+            {
+                if (module.Fields.FirstOrDefault(f => f.Name == name) is not FileFieldDesign fileDesign) continue;
+                if (row.Fields.GetValueOrDefault(name) is not FileFieldData { FileName.Length: > 0 } file) continue;
+                var text = await ReadAttachmentTextAsync(module, fileDesign, file, cancellationToken);
+                if (string.IsNullOrWhiteSpace(text)) continue;
+                (attachments ??= new())[name] = text;
+            }
+            return SemanticSearchText.Build(design, module, row, field, attachments);
+        }
+
+        //添付 1 件の中身。対応表に無い拡張子・読む先が無い添付は開かずに null
+        async Task<string?> ReadAttachmentTextAsync(ModuleDesign module, FileFieldDesign fileDesign, FileFieldData file, CancellationToken cancellationToken)
+        {
+            var extractor = FileTextExtractors?.Find(file.FileName);
+            if (extractor == null) return null;
+            Func<Task<Stream>>? open = null;
+            if (!string.IsNullOrEmpty(fileDesign.DbColumnFileContent))
+            {
+                if (file.Content != null) open = () => Task.FromResult<Stream>(new MemoryStream(file.Content, false));
+            }
+            else if (FileStorages != null && file.FileGuid is { } guid)
+            {
+                open = () => StorageAccess.OpenReadAsync(FileStorages(), new FileLocation { Guid = guid, StorageName = fileDesign.StorageName, FileName = file.FileName });
+            }
+            if (open == null) return null;
+            try
+            {
+                await using var content = await open();
+                return await extractor.ExtractAsync(file.FileName!, content, cancellationToken);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
+            catch (Exception e)
+            {
+                _logger?.LogWarning(e, "SemanticSearch: the text of the attachment could not be extracted (module {Module}, field {Field}, file {FileName}). Only the file name is indexed.",
+                    module.Name, fileDesign.Name, file.FileName);
+                return null;
+            }
         }
 
         //リンク・モジュール連携の候補値の表示名 (得意先名など) を入れる。内部読みは表示名を埋めないので、画面の LinkField と同じくリンク先を値で引く

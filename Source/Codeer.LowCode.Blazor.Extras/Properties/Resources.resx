@@ -1329,6 +1329,9 @@ Recipients: {1}</value>
   <data name="SemanticSearchFieldMaxTextLength" xml:space="preserve">
     <value>Max Text Length for Embedding</value>
   </data>
+  <data name="SemanticSearchFieldMaxFileTextLength" xml:space="preserve">
+    <value>Max Text Length per File</value>
+  </data>
   <data name="SemanticSearchCheck_ColumnsRequired" xml:space="preserve">
     <value>Set the text column, the vector column and the vector search column.</value>
   </data>

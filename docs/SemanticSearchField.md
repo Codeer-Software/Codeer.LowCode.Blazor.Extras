@@ -14,7 +14,7 @@ SQL の集計 (件数・合計) は従来どおり `execute_sql`、内容で探�
 
 ## 機能
 
-- **行を文章にする規則**: 対象フィールドを順に「表示名: 値」(値が空のフィールドは出さない)。候補値 (SelectField) は表示名、リンクは表示文字列、日付は `yyyy-MM-dd`、真偽は「はい / いいえ」、リッチテキストはタグを除いた本文。改行は LF 固定 (どの環境で作っても同じ文章になる)
+- **行を文章にする規則**: 対象フィールドを順に「表示名: 値」(値が空のフィールドは出さない)。候補値 (SelectField) は表示名、リンクは表示文字列、日付は `yyyy-MM-dd`、真偽は「はい / いいえ」、リッチテキストはタグを除いた本文。改行は LF 固定 (どの環境で作っても同じ文章になる)。`SourceFields` に書いた FileField は添付の中身も入る ([添付ファイルの中身を索引する](#添付ファイルの中身を索引する-filefield))
 - **対象フィールド**: `SourceFields` で指定。空なら DB カラムを持つ入力フィールド全部 (Id・論理削除・楽観ロック・パスワード・作成 / 更新の記録・このフィールド自身は除く)。従属レコードのフィールド (TagField など。DB カラムを持たない) は空の既定には入らないので、タグ名を文章に入れるなら名前を書きます
 - **作るタイミング**: 対象フィールドが変わった保存のたび (追加・対象フィールドを含む更新・タグの付け外し)。どの行を作り直すかは送信の形ではなく、本体が記録した「この保存で変更したレコード」で決めるので、編集履歴の復活・拡張の内部書き込みなど、保存の中で本体を通って書かれた行は全部対象です (一括 INSERT になる取込の行には付けません。取込の後は行数によらず `ReindexMissing()` を流してください)。保存した行をサーバーが権限を通さず読み直して作るので、保存した人がこのフィールドや対象フィールドを読めなくても索引は最新になります。クライアントは何も送りません (送っても捨てます)
 - **書き込み専用**: `DbColumnText` / `DbColumnVector` は読み戻されない (`IsWriteOnly = true`)。クライアントには値が来ない
@@ -31,6 +31,7 @@ SQL の集計 (件数・合計) は従来どおり `execute_sql`、内容で探�
 | DbColumnVector | string | ○ | ベクトルを保存する DB カラム名 (書き込み専用。`[0.1,-0.2,…]` の JSON 配列テキスト) |
 | DbColumnVectorSearch | string | ○ | DB のベクトル検索で距離計算に使うベクトル型の列 (後述。PostgreSQL は `DbColumnVector` をキャストする生成列、SQL Server は `DbColumnVector` と同じ列) |
 | MaxTextLength | int | | 埋め込みに渡す文章の最大文字数 (既定 8000。超えた分は埋め込みに渡さない。埋め込みモデルの入力上限の歯止め)。文章の列には全文が入るので、キーワード検索は全文に当たります |
+| MaxFileTextLength | int | | `SourceFields` に書いた FileField の添付の中身を文章に入れるときの、添付 1 件あたりの最大文字数 (既定 100000。0 = 無制限) ([添付ファイルの中身を索引する](#添付ファイルの中身を索引する-filefield)) |
 | SearchMaxDistance | double? | | 検索レイアウトの検索欄で探すときのコサイン距離の上限。空なら距離では絞らない ([画面の検索欄から探す](#画面の検索欄から探す-検索レイアウトに置く)) |
 | KeywordSearch | bool | | 検索レイアウトの検索欄にキーワード欄も出す ([キーワードで絞る](#キーワードで絞る-keywordsearch)) |
 
@@ -94,6 +95,7 @@ SQL の集計 (件数・合計) は従来どおり `execute_sql`、内容で探�
       "DbColumnVector": "search_vector",
       "DbColumnVectorSearch": "search_vector_v",
       "MaxTextLength": 8000,
+      "MaxFileTextLength": 100000,
       "Name": "Search",
       "TypeFullName": "Codeer.LowCode.Blazor.Extras.Designs.SemanticSearchFieldDesign"
     }
@@ -255,6 +257,55 @@ CREATE INDEX inquiries_search_text_bigm ON inquiries USING gin (search_text gin_
 ```
 
 AI チャット (`ModuleDataAccessAgent`) からは、`find_records` / `aggregate_records` / `cross_tab` / `search_records` の filters にこの項目の `Like` でキーワードを渡すと同じ絞り込みになります (`KeywordSearch` の設定に関係なく使えます。AI には describe_module と手順の説明で案内されます)。API からは `SemanticMatchCondition.Keywords` です。生 SQL の `RawDataAccessAgent` には「語そのもので探すときは文章の列に LIKE」と案内されます (列名つき。埋め込みプロバイダやベクトル検索に対応する DB が無くても)。
+
+### 添付ファイルの中身を索引する (FileField)
+
+`SourceFields` に FileField を書くと、ファイル名だけでなく**添付ファイルの中身の文字列**も文章に入ります (見積書の PDF・仕様書の Word・一覧の Excel など)。キーワード検索は全文に当たり、意味検索は今までどおり文章の先頭 `MaxTextLength` 文字を埋め込みます。
+
+- 対象は `SourceFields` に**名前を書いた** FileField だけです。`SourceFields` が空の既定の対象には FileField は入りません (既定の構成の保存は重くなりません)
+- ストレージ (ファイルシステム / Azure Blob / S3) の添付を読むには、ホストが `SemanticSearchService.FileStorages` にアプリのファイル保存先を渡します。渡していなければ今までどおりファイル名だけです (警告も出ません)。DB 列格納モード (`DbColumnFileContent`) の添付は行と一緒に読めるので、渡していなくても中身が入ります
+- 文章の形: 全部のフィールドの行の後ろに、中身のある添付ごとに空行 +「表示名: ファイル名」の行 + 中身を `SourceFields` の順で足します (改行は LF・前後の空白と改行・タブ以外の制御文字は除く。中身が空なら足しません)
+- 1 件あたり `MaxFileTextLength` 文字 (既定 100000。0 = 無制限) で切ります。行全体の上限は埋め込みに渡す `MaxTextLength` だけで、文章の列には全文が入ります
+- 中身を取り出す方法は拡張子ごとの対応表 (`FileTextExtractors`。拡張子 → `IFileTextExtractor` の実装) で決まります。対応表に無い拡張子の添付は**読みません** (ファイル名だけ)
+- 取り出しに失敗したとき (壊れたファイル・置き場所が読めない等) は警告ログ (`SemanticSearch: ...`。モジュール名・フィールド名・ファイル名) を出してその添付はファイル名だけにします。**保存は止めません**
+- 保存のたび (添付を差し替えた保存・対象フィールドを書いた保存) と、行から文章を作る再索引 (`Reindex()` / 文章の無い行の `ReindexMissing()`) で読みます。保存ではトランザクションの中で添付を読むので、大きな添付ほど保存が長くなります。既存の行に中身を入れるには、結線した後に `Reindex()` を 1 回流してください
+
+既定の対応表 (`FileTextExtractors.Default()`):
+
+| 拡張子 | 実装 | 取り出し方 |
+|---|---|---|
+| `.pdf` | `PdfTextExtractor` | ページ順のテキスト (PdfPig)。画像だけの PDF (スキャン) は文字が取れません |
+| `.docx` | `WordTextExtractor` | 本文の段落と表 (表は行ごとにセルをタブ区切り) |
+| `.pptx` | `PowerPointTextExtractor` | スライド順のテキスト |
+| `.xlsx` | `ExcelTextExtractor` | シートごとにシート名の行 + 使用範囲の行 (セルはタブ区切り。数式はファイルに保存された計算結果) |
+| `.txt` `.csv` `.md` `.json` `.xml` | `PlainTextExtractor` | テキスト (BOM があればその符号化、無ければ UTF-8、読めなければ Shift_JIS) |
+| `.html` `.htm` | `HtmlTextExtractor` | タグを除いた本文 |
+
+旧形式の Office (`.doc` / `.xls`)・メール (`.eml` / `.msg`)・画像の文字認識 (OCR) は既定に入れていません (外部のサービスに送る処理を既定では行いません)。必要ならホストが `IFileTextExtractor` を実装して対応表に足します (`Extensions` に受ける拡張子 (小文字・ドット付き) を並べ、`ExtractAsync` で中身の文字列を返す。null を返すとその添付はファイル名だけ。1 つの実装が複数の拡張子を受けてもかまいません)。同じ拡張子がすでにあれば後から `Add` したものが勝ちます。既定の実装 (`FileManagement.TextExtractors` 名前空間) は単独でも使えます。
+
+```csharp
+//AI/SemanticSearchIndex.cs: アプリのファイル保存先を渡す (Example は SystemConfig.Instance.FileStorages)
+public static SemanticSearchService Service { get; } = new(() => _provider.Value, () => DesignerService.GetDesignData())
+{
+    FileStorages = () => FileStorageTable.Storages,
+};
+
+//対応表を変える (起動時に 1 回)
+var extractors = FileTextExtractors.Default();
+extractors.Add(new MyMailTextExtractor()); // .msg を読む実装を足す
+extractors.Remove(".xlsx");               // Excel は索引に入れない
+SemanticSearchIndex.Service.FileTextExtractors = extractors;
+
+//.msg を読む実装 (MyMailReader はホストが用意するもの)
+public class MyMailTextExtractor : IFileTextExtractor
+{
+    public IEnumerable<string> Extensions => [".msg"];
+
+    //文字列を返す。null ならその添付はファイル名だけ。content は呼び出し側が閉じる
+    public async Task<string?> ExtractAsync(string fileName, Stream content, CancellationToken cancellationToken)
+        => await MyMailReader.ReadTextAsync(content, cancellationToken);
+}
+```
 
 ### 4. 既存データに一括でベクトルを付ける (再索引)
 

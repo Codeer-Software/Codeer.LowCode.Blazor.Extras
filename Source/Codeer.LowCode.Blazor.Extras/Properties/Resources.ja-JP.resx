@@ -1329,6 +1329,9 @@
   <data name="SemanticSearchFieldMaxTextLength" xml:space="preserve">
     <value>埋め込みに渡す文章の最大文字数</value>
   </data>
+  <data name="SemanticSearchFieldMaxFileTextLength" xml:space="preserve">
+    <value>添付 1 件の文字数上限</value>
+  </data>
   <data name="SemanticSearchCheck_ColumnsRequired" xml:space="preserve">
     <value>文章の列・ベクトルの列・ベクトル検索用の列をすべて設定してください。</value>
   </data>

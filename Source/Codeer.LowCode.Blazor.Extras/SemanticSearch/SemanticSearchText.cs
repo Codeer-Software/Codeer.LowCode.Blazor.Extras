@@ -18,11 +18,17 @@ namespace Codeer.LowCode.Blazor.Extras.SemanticSearch
     {
         static readonly Regex _tags = new("<[^>]+>", RegexOptions.Compiled);
 
-        /// <summary>行を文章にする。対象フィールドは <see cref="SemanticSearchFieldDesign.SourceFields"/> (空なら <see cref="DefaultSourceFields"/>)。</summary>
+        /// <summary>
+        /// 行を文章にする。対象フィールドは <see cref="SemanticSearchFieldDesign.SourceFields"/> (空なら <see cref="DefaultSourceFields"/>)。
+        /// 添付の中身 (<paramref name="attachmentTexts"/>) があれば、全部のフィールドの行の後ろに、添付ごとに空行 +「表示名: ファイル名」の行 + 中身を対象フィールドの順で足す
+        /// (中身は改行を LF にして前後の空白を除き、<see cref="SemanticSearchFieldDesign.MaxFileTextLength"/> で切る。空なら足さない)。
+        /// </summary>
         /// <param name="design">候補値 (Enum) の解決に使う。null なら SelectField は値のまま</param>
-        public static string Build(DesignData? design, ModuleDesign module, ModuleData row, SemanticSearchFieldDesign field)
+        /// <param name="attachmentTexts">FileField の名前 → 添付から取り出した文字列 (サーバーが先に読んで渡す)。null ならファイル名だけ</param>
+        public static string Build(DesignData? design, ModuleDesign module, ModuleData row, SemanticSearchFieldDesign field, IReadOnlyDictionary<string, string>? attachmentTexts = null)
         {
             var sb = new StringBuilder();
+            var attachments = new StringBuilder();
             foreach (var name in SourceFields(module, field))
             {
                 var fieldDesign = module.Fields.FirstOrDefault(f => f.Name == name);
@@ -31,10 +37,30 @@ namespace Codeer.LowCode.Blazor.Extras.SemanticSearch
                 if (string.IsNullOrWhiteSpace(value)) continue;
                 var label = (fieldDesign as IDisplayName)?.DisplayName;
                 //改行は環境によらず LF (索引の文章はどの OS で作っても同じにする)
-                sb.Append(string.IsNullOrEmpty(label) ? name : label).Append(": ").Append(value.Trim()).Append('\n');
+                var line = $"{(string.IsNullOrEmpty(label) ? name : label)}: {value.Trim()}";
+                sb.Append(line).Append('\n');
+
+                var content = attachmentTexts?.GetValueOrDefault(name);
+                if (content == null) continue;
+                //取り出したままの中身には DB の文字列に入らないものが混ざる (NUL 等の制御文字。PostgreSQL は NUL を拒否し、索引の列の書き込みの失敗は保存の失敗になる) ので落とす
+                content = NormalizeAttachmentText(content);
+                if (field.MaxFileTextLength > 0 && content.Length > field.MaxFileTextLength) content = content[..CutLength(content, field.MaxFileTextLength)].TrimEnd();
+                if (content.Length == 0) continue;
+                attachments.Append('\n').Append(line).Append('\n').Append(content).Append('\n');
             }
-            return sb.ToString().TrimEnd();
+            return (sb.ToString().TrimEnd() + "\n" + attachments).TrimEnd();
         }
+
+        //改行は LF に、改行とタブ以外の制御文字 (NUL を含む) は除く
+        static readonly Regex _controlChars = new("[\\x00-\\x08\\x0B\\x0C\\x0E-\\x1F\\x7F]", RegexOptions.Compiled);
+        static string NormalizeAttachmentText(string content)
+            => _controlChars.Replace(content.Replace("\r\n", "\n").Replace('\r', '\n'), string.Empty).Trim();
+
+        //サロゲートペアの途中で切らない (孤立サロゲートは DB に書けない)
+        static int CutLength(string s, int max) => char.IsHighSurrogate(s[max - 1]) ? max - 1 : max;
+
+        /// <summary>HTML のタグを除いて文字参照を戻す (リッチテキストの値・HTML の添付)。</summary>
+        public static string StripTags(string html) => System.Net.WebUtility.HtmlDecode(_tags.Replace(html, " "));
 
         /// <summary>埋め込みに渡す文章 (<see cref="SemanticSearchFieldDesign.MaxTextLength"/> で切る)。文章の列には全文を保存する (キーワード検索は全文に当たる)。</summary>
         public static string ForEmbedding(SemanticSearchFieldDesign field, string text)
@@ -77,7 +103,7 @@ namespace Codeer.LowCode.Blazor.Extras.SemanticSearch
                     if (!string.IsNullOrEmpty(select.DisplayText)) return select.DisplayText;
                     return string.IsNullOrEmpty(select.Value) ? null : (CandidateDisplayText(design, fieldDesign as SelectFieldDesign, select.Value) ?? select.Value);
                 case RichTextFieldData rich:
-                    return rich.Value == null ? null : System.Net.WebUtility.HtmlDecode(_tags.Replace(rich.Value, " "));
+                    return rich.Value == null ? null : StripTags(rich.Value);
                 case FileFieldData file:
                     return file.FileName;
                 case BooleanFieldData b:

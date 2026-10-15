@@ -75,6 +75,13 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         [Designer(Index = 9, DisplayName = "$SemanticSearchFieldKeywordSearch")]
         public bool KeywordSearch { get; set; }
 
+        /// <summary>
+        /// <see cref="SourceFields"/> に書いた FileField の添付の中身を文章に入れるときの、添付 1 件あたりの最大文字数 (0 = 無制限)。
+        /// 中身を読むのはホストが SemanticSearchService.FileStorages を渡しているとき (DB 列格納モードの添付は常に)。行全体の埋め込みは <see cref="MaxTextLength"/> まで。
+        /// </summary>
+        [Designer(Index = 10, DisplayName = "$SemanticSearchFieldMaxFileTextLength")]
+        public int MaxFileTextLength { get; set; } = 100000;
+
         /// <summary>3 つの列 (文章 / ベクトル / ベクトル検索用) がすべて設定されているか (索引付けと検索の対象になる条件)。</summary>
         internal bool HasColumns => !string.IsNullOrWhiteSpace(DbColumnText) && !string.IsNullOrWhiteSpace(DbColumnVector) && !string.IsNullOrWhiteSpace(DbColumnVectorSearch);
 
