@@ -283,6 +283,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         /// <summary>
         /// 打った文字を含む候補 (よく使われている順。サーバーで絞る): タグ付けモジュールを
         /// 「タグ名でグループ化・件数・件数の多い順 → 名前順・上位 10 件・打った文字で部分一致」で 1 回引く (本体の集計)。
+        /// 何も打っていなければ部分一致を付けない (よく使われている上位 10 件)。
         /// 効くのはタグ付けモジュールの読み取り条件 (UserRead / DataRead)。タグを付けるモジュール (親) の行の条件は効かない。
         /// </summary>
         [ScriptHide]
@@ -290,14 +291,14 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         {
             text = text.Trim();
             var link = Link;
-            if (text.Length == 0 || link == null || Services.AppInfoService.IsDesignMode) return new();
+            if (link == null || Services.AppInfoService.IsDesignMode) return new();
             var module = Services.AppInfoService.GetDesignData().Modules.Find(Design.TagModuleName);
             if (module == null || !module.HasUserReadPermission(Services)) return new();
 
             var variable = $"{link.TagName}.Value";
             var aggregate = new AggregateCondition(Design.TagModuleName)
             {
-                Condition = MultiMatchCondition.And(new FieldValueMatchCondition { SearchTargetVariable = variable, Comparison = MatchComparison.Like, Value = new StringValue { Value = text } }),
+                Condition = text.Length == 0 ? null : MultiMatchCondition.And(new FieldValueMatchCondition { SearchTargetVariable = variable, Comparison = MatchComparison.Like, Value = new StringValue { Value = text } }),
                 Groups = { new ValueGroup { Variable = variable } },
                 Measures = { new AggregateMeasure { Function = AggregateFunction.Count, Name = "count" } },
                 SortConditions =

@@ -40,6 +40,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designer
             DesignerApp.ScriptRuntimeTypeManager.AddType<GanttViewMode>();
             DesignerApp.ScriptRuntimeTypeManager.AddType<Marker>();
             DesignerApp.ScriptRuntimeTypeManager.AddType<CrossTabCell>();
+            DesignerApp.ScriptRuntimeTypeManager.AddType<TagSearchMatch>();
 
             //Extras のスクリプトオブジェクト/サービス (スクリプト補完・script-catalog 用)。
             //デザイナでは実行されないため依存はダミーでよい。差し替えたいアプリは

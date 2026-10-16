@@ -6,7 +6,7 @@
 		<Nullable>enable</Nullable>
 		<AddRazorSupportForMvc>true</AddRazorSupportForMvc>
 		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
-		<Version>0.22.0</Version>
+		<Version>0.22.1</Version>
 		<Authors>Codeer</Authors>
 		<Company>Codeer</Company>
 		<Description>Extra field components and client-side services for Codeer.LowCode.Blazor. Includes Calendar, Gantt Chart, Task Board (Kanban), Rich Text Editor, Markdown Editor, Color Picker, Marker List, QR Code, Progress Bar, Password Hash, and AI Text Analyzer fields, plus built-in script objects (Excel, WebApi, Toaster, Mail) and client infrastructure services (HTTP, UI, logging, localization).</Description>
@@ -17,7 +17,7 @@
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>
 		<PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
-		<PackageReleaseNotes>SemanticSearchField: keyword search (KeywordSearch / SemanticMatchCondition.Keywords; the text column keeps the full text, MaxTextLength limits only the text passed to the embedding). The index is built on the server from the saved record (the Text script property and IDataDependentField are removed; placing the field in DataOnlyFields no longer loads its SourceFields). Attachment contents of FileFields listed in SourceFields are indexed (MaxFileTextLength). Design checks for source fields with read conditions.</PackageReleaseNotes>
+		<PackageReleaseNotes>HttpService: the loading overlay appears only when a request takes longer than 3 seconds. TagField: the candidate list is no longer clipped in fixed-width columns. TagField: the most used tags are suggested before typing.</PackageReleaseNotes>
 		<PackageId>Codeer.LowCode.Blazor.Extras</PackageId>
 	</PropertyGroup>
 

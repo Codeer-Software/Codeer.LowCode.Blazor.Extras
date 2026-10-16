@@ -55,8 +55,18 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Tag
             Assert.That(like.Comparison, Is.EqualTo(MatchComparison.Like));
             Assert.That(((StringValue)like.Value!).Value, Is.EqualTo("展"));
 
-            Assert.That(await field.GetCandidatesAsync("  "), Is.Empty, "何も打っていなければ問い合わせない");
-            Assert.That(services.App.AggregateRequests, Has.Count.EqualTo(1));
+        }
+
+        [Test]
+        public async Task 何も打っていなければ絞らずによく使われている上位を引く()
+        {
+            var (services, field) = await CreateAsync();
+            Assert.That(await field.GetCandidatesAsync("  "), Is.EqualTo(new[] { "展示会", "DXPO" }));
+            var condition = services.App.AggregateRequests.Single().Single();
+            Assert.That(condition.Condition, Is.Null, "部分一致を付けない");
+            Assert.That(condition.SortConditions[0].Target, Is.EqualTo(AggregateSortTarget.Measure));
+            Assert.That(condition.SortConditions[0].IsDescending, Is.True);
+            Assert.That(condition.LimitCount, Is.EqualTo(10));
         }
 
         [Test]

@@ -53,10 +53,16 @@
   color: var(--bs-body-color, #212529);
 }
 
+/* 入力欄と候補の入れ物。位置の基準にはしない (候補の上下は枠 .tag-editor、左右は入力欄の左端)。
+   最小幅は候補の幅 (.dropdown-menu の min-width 10rem): 右端の残りが狭ければ入力欄が次の行へ回り、候補が枠の右へはみ出さない */
+.tag-input-wrap {
+  flex: 1 1 10rem;
+  min-width: min(10rem, 100%);
+}
+
 .tag-input,
 .tag-input:focus {
-  flex: 1 1 6rem;
-  min-width: 6rem;
+  width: 100%;
   padding: 0;
   border: 0;
   outline: 0;
@@ -67,14 +73,15 @@
 
 /* 一覧のセル (本体の td.form-control-style-inline) では、本体が input:focus に内側のリングを高い詳細度で付ける。
    枠とリングは .tag-editor が持つので入力欄では消す。本体のセレクタと同じ :not 列を付けて詳細度で上回らせる (!important は使わない) */
-div.tag-editor > input.tag-input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):focus {
+div.tag-editor input.tag-input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):focus {
   outline: 0;
   box-shadow: none;
 }
 
+/* 上下は枠の下端からフォーカスのリング (0.25rem) の下へ。左右は left: auto = 置かれた場所 (入力欄の左端) のまま */
 .tag-candidates {
-  top: 100%;
-  left: 0;
+  top: calc(100% + 0.25rem + 2px);
+  left: auto;
   max-height: 16rem;
   overflow-y: auto;
   z-index: 1040;

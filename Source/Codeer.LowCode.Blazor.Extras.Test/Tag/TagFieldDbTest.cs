@@ -283,6 +283,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Tag
             for (var i = 1; i <= 12; i++) await _db.ExecuteAsync(Ds, $"INSERT INTO contact_tags (owner_id, name) VALUES (4, '候補{i:00}')", new());
             var field = Tags(await Client().OpenAsync("Contact", "3"));
             Assert.That(await field.GetCandidatesAsync("候補"), Is.EqualTo(Enumerable.Range(1, 10).Select(i => $"候補{i:00}")));
+            Assert.That(await field.GetCandidatesAsync(""), Has.Count.EqualTo(10), "何も打っていなければ絞らずに上位 10 件");
         }
 
         [Test]
