@@ -140,7 +140,7 @@ var app = builder.Build();
 Extras.Server.AI.SemanticSearchIndex.Service.LoggerFactory = app.Services.GetRequiredService<ILoggerFactory>();
 //非同期で起動したジョブ (JobTriggerField) の失敗をアプリのログに出す
 var jobLogger = app.Services.GetRequiredService<ILoggerFactory>().CreateLogger("Jobs");
-Codeer.LowCode.Blazor.Extras.Server.Jobs.JobProcess.Log = message => jobLogger.LogError("{Message}", message);
+JobProcess.Log = message => jobLogger.LogError("{Message}", message);
 
 app.UseResponseCompression();
 app.UseRequestLocalization();

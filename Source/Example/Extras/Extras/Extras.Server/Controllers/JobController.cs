@@ -1,12 +1,12 @@
 using Codeer.LowCode.Blazor.Extras.Jobs;
 using Codeer.LowCode.Blazor.Extras.Server.AuditLog;
-using Codeer.LowCode.Blazor.Extras.Server.Jobs;
 using Microsoft.AspNetCore.Mvc;
+using Extras.Server.Jobs;
 using Extras.Server.Services;
 
 namespace Extras.Server.Controllers
 {
-    //ジョブの実行 (JobTriggerField) の受け口。ジョブ (Jobs/) を押したユーザーで別プロセスに起動し、終わるまで待つ
+    //ジョブの実行 (JobTriggerField) の受け口。ジョブ (Jobs/) を押したユーザーで別プロセスに起動する (JobProcess。Wait なら終わるまで待つ)
     [ApiController]
     [Route("api/job")]
     public class JobController : ControllerBase, IAsyncDisposable

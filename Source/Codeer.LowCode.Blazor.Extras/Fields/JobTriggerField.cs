@@ -11,8 +11,8 @@ using Microsoft.Extensions.DependencyInjection;
 namespace Codeer.LowCode.Blazor.Extras.Fields
 {
     /// <summary>
-    /// JobTriggerField のランタイム。ボタン (またはスクリプトの <c>Job.Run()</c>) でサーバーにジョブの実行を頼み、終わるまで待って結果をトーストで知らせる。
-    /// 値を持たず、保存 (Submit) には何も載せない。ジョブは別プロセスで動き、保存したいならジョブが自分で ModuleDataIO で保存する。
+    /// JobTriggerField のランタイム。ボタン (またはスクリプトの <c>Job.Run()</c>) でホストにジョブの実行を頼み、応答 (同期なら終わった結果・非同期なら開始) をトーストで知らせる。
+    /// 値を持たず、保存 (Submit) には何も載せない。ジョブをどう動かすかはホストの持ち物 (このフィールドはジョブ名と JSON を渡して結果を受け取るだけ)。
     /// </summary>
     public class JobTriggerField(JobTriggerFieldDesign design) : FieldBase<JobTriggerFieldDesign>(design)
     {

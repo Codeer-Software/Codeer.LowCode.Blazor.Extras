@@ -2,11 +2,11 @@ using System.Diagnostics;
 using System.Reflection;
 using System.Text;
 
-namespace Codeer.LowCode.Blazor.Extras.Server.Jobs
+namespace Extras.Server.Jobs
 {
     /// <summary>
-    /// ホストのジョブモード (<c>dotnet LowCodeApp.Server.dll job &lt;ジョブ名&gt; [引数...]</c>) を別プロセスで起動する (終わるまで待つ <see cref="RunAsync"/> / 待たない <see cref="Start"/>)。
-    /// 引数は JSON 1 つ。実行ユーザーは環境変数 <c>Jobs__UserId</c> (ホストの appsettings の Jobs:UserId を上書き) で渡す。
+    /// ジョブモード (JobRunner) を別プロセスで起動する (終わるまで待つ <see cref="RunAsync"/> / 待たない <see cref="Start"/>)。
+    /// 引数の並び (job &lt;ジョブ名&gt; &lt;JSON&gt;)・環境変数 (Jobs__UserId)・終了コードは同じフォルダの JobRunner と対。
     /// </summary>
     public static class JobProcess
     {
@@ -15,9 +15,6 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Jobs
 
         /// <summary>ジョブモードを持つホストの dll (既定はこのプロセスの入口の dll = LowCodeApp.Server.dll)。</summary>
         public static string EntryDll { get; set; } = Assembly.GetEntryAssembly()?.Location ?? string.Empty;
-
-        //テスト用: プロセスを起動する代わりに呼ぶ
-        internal static Func<ProcessStartInfo, Task<(int ExitCode, string Output, string Error)>>? StartOverride { get; set; }
 
         /// <summary>待たずに起動したジョブ (<see cref="Start"/>) が失敗したときの記録先 (未設定なら何もしない)。ホストが Program.cs で ILogger につなぐ。</summary>
         public static Action<string>? Log { get; set; }
@@ -42,7 +39,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Jobs
             {
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
-                //ジョブモードは標準出力・標準エラーを UTF-8 で書く (テンプレの JobRunner が Console.OutputEncoding を UTF-8 にする)
+                //ジョブモードは標準出力・標準エラーを UTF-8 で書く (JobRunner が Console.OutputEncoding を UTF-8 にする)
                 StandardOutputEncoding = Encoding.UTF8,
                 StandardErrorEncoding = Encoding.UTF8,
                 UseShellExecute = false,
@@ -61,7 +58,6 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Jobs
         //起動はこの呼び出しの中で済ませ (起動の失敗は呼び出し元へ例外)、終了を待つ Task を返す
         static Task<(int ExitCode, string Output, string Error)> Launch(string jobName, ProcessStartInfo info)
         {
-            if (StartOverride != null) return StartOverride(info);
             var process = Process.Start(info) ?? throw new InvalidOperationException($"The job '{jobName}' could not be started.");
             return WaitForExitAsync(process);
         }

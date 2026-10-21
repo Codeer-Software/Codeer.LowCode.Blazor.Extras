@@ -1,9 +1,9 @@
 using Codeer.LowCode.Blazor.DesignLogic;
 using Codeer.LowCode.Blazor.Extras.Designs;
 
-namespace Codeer.LowCode.Blazor.Extras.Server.Jobs
+namespace Codeer.LowCode.Blazor.Extras.Jobs
 {
-    /// <summary>デザインに置かれた JobTriggerField の問い合わせ。ホストのジョブ API はデザインに書かれたジョブ名だけを受け付ける。</summary>
+    /// <summary>デザインに置かれた JobTriggerField の問い合わせ。ホストのジョブ API は、これでデザインに書かれたジョブ名 (呼び名) だけを受け付ける。</summary>
     public static class JobTriggerFields
     {
         /// <summary>デザインのどれかのモジュールの JobTriggerField の JobName と一致するか (大文字小文字は区別しない)。</summary>

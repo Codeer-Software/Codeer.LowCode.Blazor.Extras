@@ -8,9 +8,9 @@ using Codeer.LowCode.Blazor.Repository.Design;
 namespace Codeer.LowCode.Blazor.Extras.Designs
 {
     /// <summary>
-    /// ボタン (またはスクリプトの Run()) でホストのジョブ (dotnet LowCodeApp.Server.dll job &lt;JobName&gt; &lt;JSON&gt;) を別プロセスで起動して終わるまで待つ。
-    /// UseSubmitData なら画面の送信内容 (<c>{"submit":[ModuleSubmitData...]}</c>、送るものが無ければ現在値 <c>{"data":ModuleData}</c>) を渡す。保存はしない。
-    /// 実体はサーバーの API (POST {JobTriggerField.EndPoint}/run → Extras.Server の JobProcess)。データは持たない。
+    /// ボタン (またはスクリプトの Run()) で、ジョブ名と画面の内容の JSON をホストの API (POST {JobTriggerField.EndPoint}/run) に渡してジョブの実行を頼み、結果を受け取る。
+    /// JobName はホストが解決する呼び名で、ジョブをどう動かすかはホストの持ち物 (Starter テンプレートは JobController / JobProcess / JobRunner)。
+    /// UseSubmitData なら画面の送信内容 (<c>{"submit":[ModuleSubmitData...]}</c>、送るものが無ければ現在値 <c>{"data":ModuleData}</c>) を渡す。保存はしない。データは持たない。
     /// </summary>
     [ToolboxIcon(PackIconMaterialKind = "CogOutline")]
     [Designer(DisplayName = "$JobTriggerField")]
