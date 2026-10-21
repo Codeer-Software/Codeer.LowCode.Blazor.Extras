@@ -289,6 +289,11 @@ dotnet build Source/Codeer.LowCode.Blazor.Extras/Codeer.LowCode.Blazor.Extras.cs
 - **UI**: デザインモードでは `OrientationLock (...)` プレースホルダを表示
 - **ファイル**: `Designs/OrientationLockFieldDesign.cs`, `Fields/OrientationLockField.cs`, `Components/OrientationLockFieldComponent.razor`
 
+#### JobTriggerField - ボタンでホストのジョブを別プロセスで起動
+- **状態**: 実装済み (docs/Jobs.md、FieldDocs/JobTriggerFieldDesign.md)。0.23.0
+- **構図**: Design `JobName` (必須) / `ShowButton` (既定 true) / `ButtonText` (空 = リソースの「実行」) / `UseSubmitData` (既定 true) / `IsAsynchronous` (既定 false。true なら `JobRunRequest.Wait = false` → ホストが `JobProcess.Start` (起動したら返す・失敗は `JobProcess.Log`) して `Started = true`、画面は「開始しました」)。見た目は `btn-outline-primary` 固定。デザインに無いジョブ名はホストが `JobTriggerFields.IsDeclared` で拒否 (終了コード 2)。ランタイムはスクリプト `Run()` (`[ScriptName("Run")] RunAsync`) と `IsRunning`。`UseSubmitData` なら `Module.ValidateInput()` (SubmitButtonField と同じ) → `Module.GetSubmitData()` が空でなければ `{"submit":[ModuleSubmitData]}`、空なら `{"data":ModuleData}` (現在値)、OFF なら `{}`。静的 `JobTriggerField.EndPoint` (テンプレ "/api/job") に `POST {EndPoint}/run` で `JobRunRequest {JobName, Arguments}` → `JobRunResponse {ExitCode, Error}` (DTO は Extras `Jobs/`) を同期で待ち、成功 / 失敗 (Error) を `UIService.NotifySuccess/NotifyError`。保存 (Submit) には何も載せない。ホストの `JobController` (Starter Cookie / Example) が `CheckAppAccessAsync` → `JobProcess.RunAsync(jobName, arguments, userId)` (`dotnet <EntryDll> job <JobName> <JSON>`、`Jobs__UserId` = 押したユーザー、UTF-8 読み)。親は DB に触らない。編集履歴・意味検索の索引・ホストの override はジョブが `ModuleDataIO` で保存したときにジョブのトランザクションで付く (生 SQL では付かない)。ジョブはテンプレの `Server/Jobs` (Extras に IJob は置かない)。★2026-10-20 「Submit の分岐 (ModuleDataController で JobTriggerSubmit)」から「ボタン + 専用 API」に作り替え (JobTriggerSubmit は削除)
+- **ファイル**: `Designs/JobTriggerFieldDesign.cs`・`Fields/JobTriggerField.cs`・`Components/JobTriggerFieldComponent.razor`・`Jobs/JobRunRequest.cs` / `JobRunResponse.cs`・Extras.Server `Jobs/JobProcess.cs`。テスト `Extras.Test/Jobs/JobDbTest` (`JobProcess` を `StartOverride` で差し替え + DTO の往復)
+
 ### 実験済みプロトタイプ (Experiments/)
 - **タスクガントチャート** (`TaskGantt.razor`): SVGベース、ドラッグ移動/リサイズ、タスク依存線、スナップ。→ `GanttField` として製品化済み
 - **設備稼働ガントチャート** (`DeviceStateGantt.razor`): SVGベース、ステータス色分け(正常/警告/異常)、時間軸

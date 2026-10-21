@@ -1,0 +1,20 @@
+@using Codeer.LowCode.Blazor.Components
+@using Codeer.LowCode.Blazor.Extras.Fields
+@using Microsoft.AspNetCore.Components.Web
+@inherits FieldComponentBase<JobTriggerField>
+
+@* ShowButton = false ならスクリプトの Run() 専用で何も描かない (デザインモードでは置き場所が分かるように名前を出す) *@
+@if (Field.Design.ShowButton)
+{
+  <button type="button" class="btn btn-outline-primary" style="@Field.GetOwnStyleString()"
+          disabled="@(IsDesignMode || Field.IsEnabled == false || Field.IsRunning)"
+          @onclick="@(async () => await Field.RunAsync())" data-system="job-trigger">@Field.ButtonText</button>
+}
+else if (IsDesignMode)
+{
+  <span style="color:#888; font-size:small;">JobTrigger (@Field.Design.JobName)</span>
+}
+
+@code {
+  bool IsDesignMode => Field.Services.AppInfoService.IsDesignMode;
+}

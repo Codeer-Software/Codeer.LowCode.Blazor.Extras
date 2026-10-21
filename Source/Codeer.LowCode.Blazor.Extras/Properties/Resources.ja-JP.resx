@@ -1860,4 +1860,43 @@
   <data name="SemanticSearch_ConditionEmpty" xml:space="preserve">
     <value>{0} の意味検索の条件に文章もキーワードもありません。</value>
   </data>
+  <data name="JobTriggerField" xml:space="preserve">
+    <value>ジョブトリガー</value>
+  </data>
+  <data name="JobTriggerJobNameRequired" xml:space="preserve">
+    <value>ジョブ名を設定してください。</value>
+  </data>
+  <data name="JobTriggerJobName" xml:space="preserve">
+    <value>ジョブ名</value>
+  </data>
+  <data name="JobTriggerShowButton" xml:space="preserve">
+    <value>ボタンを表示</value>
+  </data>
+  <data name="JobTriggerButtonText" xml:space="preserve">
+    <value>ボタンの文言</value>
+  </data>
+  <data name="JobTriggerUseSubmitData" xml:space="preserve">
+    <value>画面の内容を渡す</value>
+  </data>
+  <data name="JobTrigger_DefaultButtonText" xml:space="preserve">
+    <value>実行</value>
+  </data>
+  <data name="JobTrigger_InvalidInput" xml:space="preserve">
+    <value>不正な入力があります</value>
+  </data>
+  <data name="JobTrigger_SucceededFormat" xml:space="preserve">
+    <value>ジョブ {0} が完了しました</value>
+  </data>
+  <data name="JobTrigger_FailedFormat" xml:space="preserve">
+    <value>ジョブ {0} が失敗しました (終了コード {1})</value>
+  </data>
+  <data name="JobTrigger_RequestFailedFormat" xml:space="preserve">
+    <value>ジョブ {0} を実行できませんでした。{1}</value>
+  </data>
+  <data name="JobTriggerIsAsynchronous" xml:space="preserve">
+    <value>非同期で実行</value>
+  </data>
+  <data name="JobTrigger_StartedFormat" xml:space="preserve">
+    <value>ジョブ {0} を開始しました</value>
+  </data>
 </root>

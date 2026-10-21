@@ -1,0 +1,71 @@
+using Codeer.LowCode.Blazor.DbAccess;
+using Extras.Server.AI;
+using Extras.Server.Services;
+
+namespace Extras.Server.Jobs
+{
+    /// <summary>
+    /// ジョブ (バッチ) モード。Program.cs が dotnet Extras.Server.dll job &lt;ジョブ名&gt; [引数...] のときに呼ぶ。
+    /// Web ホストは立てずにジョブを 1 つ実行する。戻り値はプロセスの終了コード (成功 0 / 失敗 1 / ジョブが無い 2)。
+    /// </summary>
+    public static class JobRunner
+    {
+        public const int Success = 0;
+        public const int Failure = 1;
+        public const int JobNotFound = 2;
+
+        public static async Task<int> RunAsync(IConfiguration config, string[] args)
+        {
+            Console.OutputEncoding = System.Text.Encoding.UTF8;
+            if (args.Length == 0)
+            {
+                Console.WriteLine("使い方: Extras.Server job <ジョブ名> [引数...]");
+                Console.WriteLine($"ジョブ: {string.Join(", ", GetJobNames())}");
+                return JobNotFound;
+            }
+
+            var job = FindJob(args[0]);
+            if (job == null)
+            {
+                Console.Error.WriteLine($"ジョブ '{args[0]}' がありません。ジョブ: {string.Join(", ", GetJobNames())}");
+                return JobNotFound;
+            }
+
+            using var loggerFactory = LoggerFactory.Create(builder => builder.AddSimpleConsole(options => options.SingleLine = true));
+            try
+            {
+                //意味検索の警告ログ (埋め込みの失敗など) を標準出力に出す
+                SemanticSearchIndex.Service.LoggerFactory = loggerFactory;
+                //実行した SQL とパラメータを標準出力に出す
+                if (config.GetSection("SqlLog").Get<bool>()) DbAccessor.SqlLog = Console.WriteLine;
+
+                if (!File.Exists(Path.Combine(SystemConfig.Instance.DesignFileDirectory, "App.zip")))
+                {
+                    throw new FileNotFoundException($"DesignFileDirectory に App.zip がありません: {SystemConfig.Instance.DesignFileDirectory}");
+                }
+
+                //権限の条件はこのユーザーで判定される。空なら匿名 (ログインが要るデザインでは読み書きできない)
+                var userId = config["Jobs:UserId"] ?? string.Empty;
+                await using var data = new DataService(userId);
+                await job.RunAsync(data, args[1..]);
+                return Success;
+            }
+            catch (Exception e)
+            {
+                Console.Error.WriteLine(e);
+                return Failure;
+            }
+        }
+
+        public static IReadOnlyList<string> GetJobNames()
+            => CreateJobs().Select(e => e.Name).OrderBy(e => e, StringComparer.OrdinalIgnoreCase).ToList();
+
+        static IJob? FindJob(string name)
+            => CreateJobs().FirstOrDefault(e => string.Equals(e.Name, name, StringComparison.OrdinalIgnoreCase));
+
+        static IEnumerable<IJob> CreateJobs()
+            => typeof(IJob).Assembly.GetTypes()
+                .Where(e => typeof(IJob).IsAssignableFrom(e) && e.IsClass && !e.IsAbstract && e.GetConstructor(Type.EmptyTypes) != null)
+                .Select(e => (IJob)Activator.CreateInstance(e)!);
+    }
+}
