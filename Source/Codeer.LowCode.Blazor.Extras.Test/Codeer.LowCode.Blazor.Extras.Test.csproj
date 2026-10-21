@@ -28,6 +28,8 @@
     <ProjectReference Include="..\Codeer.LowCode.Blazor.Extras\Codeer.LowCode.Blazor.Extras.csproj" />
     <ProjectReference Include="..\Codeer.LowCode.Blazor.Extras.Server\Codeer.LowCode.Blazor.Extras.Server.csproj" />
     <ProjectReference Include="..\Codeer.LowCode.Blazor.Extras.Designer\Codeer.LowCode.Blazor.Extras.Designer.csproj" />
+    <!-- Jobs のプロセス越しテストの子。出力 (dll / exe / runtimeconfig) がこのテストの bin に写り、JobProcessTest がそこから起動する -->
+    <ProjectReference Include="..\Codeer.LowCode.Blazor.Extras.Test.JobHost\Codeer.LowCode.Blazor.Extras.Test.JobHost.csproj" />
   </ItemGroup>
 
   <ItemGroup>

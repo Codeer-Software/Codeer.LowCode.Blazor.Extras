@@ -1860,4 +1860,46 @@ Recipients: {1}</value>
   <data name="SemanticSearch_ConditionEmpty" xml:space="preserve">
     <value>Semantic search condition for {0} has neither text nor keywords.</value>
   </data>
+  <data name="JobTriggerField" xml:space="preserve">
+    <value>JobTrigger</value>
+  </data>
+  <data name="JobTriggerJobName" xml:space="preserve">
+    <value>Job name</value>
+  </data>
+  <data name="JobTriggerShowButton" xml:space="preserve">
+    <value>Show button</value>
+  </data>
+  <data name="JobTriggerButtonText" xml:space="preserve">
+    <value>Text</value>
+  </data>
+  <data name="JobTriggerUseSubmitData" xml:space="preserve">
+    <value>Pass screen data</value>
+  </data>
+  <data name="JobTriggerIsAsynchronous" xml:space="preserve">
+    <value>Run asynchronously</value>
+  </data>
+  <data name="DesignCheck_JobTriggerJobNameRequired" xml:space="preserve">
+    <value>Set the job name.</value>
+  </data>
+  <data name="DesignCheck_Data_conditions_are_not_applied_to_job_execution_" xml:space="preserve">
+    <value>DataReadCondition and DataWriteCondition are not applied when the server decides whether the job of JobTriggerField '{0}' can run (they only make the button unavailable on that row). To stop by the state of the row, check the received data or the database in the job.</value>
+  </data>
+  <data name="JobTrigger_DefaultButtonText" xml:space="preserve">
+    <value>Run</value>
+  </data>
+  <data name="JobTrigger_SucceededFormat" xml:space="preserve">
+    <value>Job {0} completed</value>
+  </data>
+  <data name="JobTrigger_FailedFormat" xml:space="preserve">
+    <value>Job {0} failed</value>
+  </data>
+  <data name="JobTrigger_StartedFormat" xml:space="preserve">
+    <value>Job {0} started</value>
+  </data>
+  <data name="JobTrigger_InvalidInput" xml:space="preserve">
+    <value>There is an invalid input</value>
+  </data>
+  <data name="JobTrigger_NotConfigured" xml:space="preserve">
+    <value>Jobs are not available in this app (JobTriggerField.EndPoint is not set).</value>
+  </data>
 </root>

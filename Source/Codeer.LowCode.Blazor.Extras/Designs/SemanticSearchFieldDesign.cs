@@ -125,7 +125,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         {
             var module = context.GetModuleDesign();
             if (module == null) yield break;
-            var rules = module.Fields.OfType<PermissionFieldDesign>().Where(p => HasCondition(p.ReadCondition.Condition)).ToList();
+            var rules = module.Fields.OfType<PermissionFieldDesign>().Where(p => p.ReadCondition.Condition.HasEffectiveCondition()).ToList();
             if (rules.Count == 0) yield break;
             var sources = SemanticSearchText.SourceFields(module, this).ToList();
             //(同じ規則がこのフィールドも縛るなら、本体の静的判定でその経路の人は検索ごと拒否される = 漏れないので対象外。本体 PermissionFieldDesign:4 が案内する)
@@ -156,9 +156,6 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
                 || condition is MultiMatchCondition multi && multi.Children.Any(ReferencesRowData);
 
         //条件があるか (本体の IsEmpty と同じく、葉の無い空のグループは無いものとみなす)
-        static bool HasCondition(MatchConditionBase? condition)
-            => condition is MultiMatchCondition multi ? multi.Children.Any(HasCondition) : condition != null;
-
         //PermissionField の対象にそのフィールドが入るか (除外モードは「指定した名前以外のすべて」で、本体と同じく Id / 楽観ロックは常に対象外)
         static bool Targets(PermissionFieldDesign rule, string fieldName)
             => rule.IsExcludeMode

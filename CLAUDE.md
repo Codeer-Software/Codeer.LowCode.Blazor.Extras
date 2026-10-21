@@ -226,6 +226,16 @@ dotnet build Source/Codeer.LowCode.Blazor.Extras/Codeer.LowCode.Blazor.Extras.cs
 - **Example のテスト用モジュール**: `Order` + `OrderItem` (明細・論理削除)、`Project` + `ProjectTask` (Gantt)、`Plan` + `PlanEvent` / `PlanCard` / `PlanMarker` (Calendar / TaskBoard / MarkerList)、履歴モジュール `EditHistory` + enum `EditHistoryTargetModule`。テーブルはローカル SQLite。承認系のモジュールは他の確認にも使うので履歴の検証には使わない
 - **未対応**: 「この版に置き換える」での添付ファイルの復元 (実体は残っているので、Restorer が FileFieldData を外さなければ戻せる。要望が出たら) / 洗い替え (ReplaceMode) の一覧は行 Id が毎回変わるので差分が「削除 + 追加」に見える (記録・復元は正しい) / 自動保存の版をまとめる機能 / 保持期間の自動削除
 
+#### JobTriggerField (ジョブトリガー) - ボタンでサーバーのジョブを実行
+- **状態**: 実装済み (docs/JobTriggerField.md)。Extras 0.23.0 (2026-10-21。本体 1.3.52 から移動。本体は 1.3.53 で削除し `IExecutionFieldDesign` (行を持たない実行系フィールドの印) だけ残した)
+- **構図**: `Designs/JobTriggerFieldDesign` (JobName / ShowButton / ButtonText / UseSubmitData / IsAsynchronous。`IExecutionFieldDesign` = 本体の PermissionFieldDesign:3 が行条件を注意する対象。設計チェック :1 ジョブ名必須 / :2 モジュールの DataRead/WriteCondition は効かない) / `Fields/JobTriggerField` (`Run()` = 入力チェック → `{"data","submit"}` の JSON → 送信 → 通知。送信は静的 `EndPoint` (テンプレ "/api/job/run") への POST か `RunCoreAsync` の差し替え。どちらも無ければ「このアプリではジョブを実行できません」) / `Jobs/JobRunRequest・JobRunResponse` (DTO。Extras.Server の JobController 側も同じ型) / `Components/JobTriggerFieldComponent` (ButtonField と同じ ViewOnly 制御)
+- **テスト**: `Test/Fields/JobTriggerFieldTest` (RunCoreAsync の偽ホスト + 記録する IUIService) / `Test/DesignCheck/JobTriggerFieldDesignCheckTest`
+
+#### ジョブ (Jobs) - サーバー機能 (フィールド無し)
+- **状態**: 実装済み (docs/Jobs.md)。Extras.Server 0.23.0 (2026-10-21)
+- **構図** (Extras.Server `Jobs/`): ホストのアプリ自身を別プロセスで `job <ジョブ名> --stdin` で起動する親 `JobProcess` (static。`RunAsync` = 待つ / `Start` = 起動だけ・失敗は `LoggerFactory` に Error。`HostExecutable` = EntryDll の隣の apphost → single-file なら ProcessPath → 無ければ `DotnetPath` + `EntryDll`) と、子側 `JobMode.RunAsync(args, jobNames, runJob)` (UTF-8・`--stdin` を標準入力の内容に置換・終了コード 0/1/2・最後の行 = 成功の文言・標準エラー 1 行目 = 例外のメッセージ)、結果 `JobResult` (Succeeded / Message / ErrorMessage / ExitCode / Output / Error)。親子の約束はこの 3 つに閉じる。ジョブの型 (`IJob`)・DataService の組み立て・JobController はホストテンプレ (Starter Cookie `Server/Jobs/JobRunner.cs`) = 利用者が触る側
+- **使う側**: Extras の `JobTriggerField` (画面のボタン → `JobTriggerField.EndPoint` への POST → テンプレの `JobController` → `JobProcess`) と、コマンドライン / タスクスケジューラ / Azure WebJobs (`Program.cs` の `job` 分岐 → `JobMode`)
+- **テスト**: `Test/Jobs/` (JobMode 同一プロセス・JobResult の行の取り出し・JobProcessTest = テスト用の最小ホスト `Codeer.LowCode.Blazor.Extras.Test.JobHost` を dotnet <dll> と apphost の両方で起動する往復。Test.csproj の ProjectReference でテストの bin に出力が写る)
 #### 監査ログ (AuditLog) - サーバー機能 (フィールド無し)
 - **状態**: 実装済み (docs/AuditLog.md)。Extras.Server 0.17.0
 - **位置づけ**: 「いつ・誰が・どこから・何に・何をして・どうなったか」を WebAPI ごとに記録する (状態を変える操作は試行+結果の 2 行)。トランザクションは業務と別 (CLB は複数 DB なので合わせられない。失敗の記録がロールバックに巻き込まれない利点)。J-SOX / ISMS の監査証跡向け。編集履歴とは別 (編集履歴 = 業務データの変更、監査ログ = 失敗・拒否・参照・ログインも含むシステム操作の記録)。値は記録しない。ハッシュチェーンは持たない (権限分離 + 外部転送で足りる)

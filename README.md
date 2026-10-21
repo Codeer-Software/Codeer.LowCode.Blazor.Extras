@@ -29,6 +29,7 @@
 | [ColorPickerField](docs/ColorPickerField.md) | カラーピッカー。HTML5ネイティブカラーピッカーで色をHEX文字列として保存 |
 | [MarkerListField](docs/MarkerListField.md) | 画像上にマーカー(ピン)を配置・操作するフィールド |
 | [QrCodeField](docs/QrCodeField.md) | 文字列をQRコード画像として表示する表示専用フィールド (外部ライブラリ QRCoder を使用) |
+| [JobTriggerField](docs/JobTriggerField.md) | ジョブトリガー。ボタン (またはスクリプトの `Run()`) でサーバーのジョブ (C# のバッチ処理) を実行し、画面の内容を渡して結果を通知する。同期 / 非同期。実行できるのはこのフィールドに書けるユーザー。サーバー側は Extras.Server の JobProcess ([ジョブ](docs/Jobs.md)) |
 | [ProgressField](docs/ProgressField.md) | 進捗率を横バー / 半円メーターで表示する表示専用フィールド。値・色を別フィールドから参照 |
 | [ExcelReportButtonField](docs/ExcelReportButtonField.md) | テンプレート Excel のセル (`$フィールド名.Value`) を自モジュールの値で置き換えて xlsx / PDF でダウンロードするボタン。スクリプト不要 |
 | [BulkFileTransferButtonField](docs/BulkFileTransfer.md#bulkfiletransferbuttonfield-一括ファイル転送ボタン) | 詳細画面に置く一括ダウンロード / 一括更新ボタン。対象は同じ画面の検索フィールドか一覧の条件 |
@@ -120,6 +121,7 @@ Codeer.LowCode.Blazor 本体が持つのは認可だけで、認証 (ログイ�
 - StorageAccess / TemporaryFileManager — ファイルストレージ (ファイルシステム / Azure Blob / Amazon S3 (S3 互換含む)。独自の保存先は IFileStorage で追加) と一時ファイル管理。[FileStorage](docs/FileStorage.md)
 - CustomFontResolver — Excel PDF 変換用のフォントリゾルバ
 - 監査ログ — AuditLogger (いつ・誰が・どこから・何に・何をして・どうなったかを WebAPI ごとに 1 レコード記録。DB / JSON Lines ファイルへ。Strict/BestEffort・保持期限・追記専用の保護)。appsettings だけで有効化。[監査ログ](docs/AuditLog.md)
+- ジョブ (バッチ) — JobProcess / JobMode (ホストのジョブを別プロセスで動かす親と子。画面のボタン (JobTriggerField) とコマンドライン `job <ジョブ名>` の両方の土台。約束 = 引数・標準入力・環境変数・終了コード・UTF-8)。[ジョブ](docs/Jobs.md)
 - Web ヘルパ — ETag 付きファイル応答 (FileWithETag)、ホットリロード (HotReloadHub / FileWatcherService)
 
 ## セットアップ

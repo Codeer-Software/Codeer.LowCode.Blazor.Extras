@@ -1,14 +1,15 @@
 using Codeer.LowCode.Blazor.Extras.Server.AuditLog;
-using Codeer.LowCode.Blazor.Repository.Design;
-using Codeer.LowCode.Blazor.RequestInterfaces;
+using Codeer.LowCode.Blazor.Extras.Server.Jobs;
+using Codeer.LowCode.Blazor.Extras.Jobs;
+using Codeer.LowCode.Blazor.Extras.Designs;
 using Microsoft.AspNetCore.Mvc;
 using Extras.Server.Jobs;
 using Extras.Server.Services;
 
 namespace Extras.Server.Controllers
 {
-    //ジョブの実行 (JobTriggerField) の受け口。クライアントは ModuleDataService.RunJobAsync。
-    //動かすジョブと待つかどうかはデザインの JobTriggerField (JobName / IsAsynchronous) で決める (クライアントからは受け取らない)。そのフィールドに書けるユーザーが、自分の権限で動く別プロセスとして起動する (Jobs/JobProcess)
+    //ジョブの実行 (Extras の JobTriggerField) の受け口。クライアントは JobTriggerField.EndPoint (Client.Shared/Services/ServiceInitializer.cs) への POST。
+    //動かすジョブと待つかどうかはデザインの JobTriggerField (JobName / IsAsynchronous) で決める (クライアントからは受け取らない)。そのフィールドに書けるユーザーが、自分の権限で動く別プロセスとして起動する (Extras.Server の JobProcess。子側は Program.cs の JobMode)
     [ApiController]
     [Route("api/job")]
     public class JobController : ControllerBase, IAsyncDisposable
@@ -36,27 +37,22 @@ namespace Extras.Server.Controllers
             //そのモジュールとフィールドに書けるユーザーだけ (ExecuteSqlField の実行と同じ軸。書けなければ例外)
             await _dataService.ModuleDataIO.AuthorizationChecker.CheckFieldUserWriteAsync(request.ModuleName, request.FieldName);
             //ジョブが無ければ起動しない
-            if (!JobRunner.GetJobNames().Contains(design.JobName, StringComparer.OrdinalIgnoreCase))
+            if (!JobRunner.Names.Contains(design.JobName, StringComparer.OrdinalIgnoreCase))
             {
                 return Failure($"ジョブ '{design.JobName}' がありません");
             }
             var userId = await _dataService.GetCurrentUserIdAsync();
             //ここから先は DB を使わない。子プロセスを待つ間 (同期) に接続を握らないよう先にプールへ返す
             await _dataService.DbAccess.ClearAsync();
-            //非同期: 起動したらすぐ返す (失敗は JobProcess.Log = サーバーのログ)
+            //非同期: 起動したらすぐ返す (失敗は JobProcess.LoggerFactory = サーバーのログ)
             if (design.IsAsynchronous)
             {
                 JobProcess.Start(design.JobName, request.Arguments, userId);
                 return new JobRunResponse { Started = true };
             }
-            //同期: 終了コード 0 なら成功で標準出力の最後の行を画面の通知に、それ以外は標準エラーの 1 行目 (例外のメッセージ) を画面のエラーに (全文はログ)
-            var (exitCode, output, error) = await JobProcess.RunAsync(design.JobName, request.Arguments, userId);
-            if (exitCode == 0)
-            {
-                return new JobRunResponse { Succeeded = true, Message = JobProcess.LastLine(output) };
-            }
-            JobProcess.Log?.Invoke(JobProcess.FormatFailure(design.JobName, exitCode, output, error));
-            return Failure(string.IsNullOrWhiteSpace(error) ? $"ジョブ {design.JobName} が失敗しました (終了コード {exitCode})" : JobProcess.FirstLine(error));
+            //同期: 終わるまで待つ。成功ならジョブの戻り値を画面の通知に、失敗なら例外のメッセージを画面のエラーに (全文は JobProcess がログに出す)
+            var result = await JobProcess.RunAsync(design.JobName, request.Arguments, userId);
+            return result.Succeeded ? new JobRunResponse { Succeeded = true, Message = result.Message } : Failure(result.ErrorMessage);
         }
 
         //HTTP としては成功 (200) で返す業務上の失敗。監査にも失敗として残す

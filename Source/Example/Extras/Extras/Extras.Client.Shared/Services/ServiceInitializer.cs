@@ -16,6 +16,8 @@ namespace Extras.Client.Shared.Services
         {
             //Extras の組み込みサービスが使うエンドポイント。URL はアプリ(Controller を持つ側)の持ち物なのでここで一元定義する
             MailTransport.SendMailEndPoint = "/api/mail";
+            //ジョブの実行 (JobTriggerField)。サーバーの Controllers/JobController.cs
+            JobTriggerField.EndPoint = "/api/job/run";
             MailTransport.BulkSearchMailEndPoint = "/api/mail/bulk_search";
             MailTransport.PreviewMailEndPoint = "/api/mail/preview";
             MailTransport.BulkPreviewMailEndPoint = "/api/mail/bulk_preview";

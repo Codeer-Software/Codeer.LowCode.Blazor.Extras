@@ -1,0 +1,26 @@
+@using Codeer.LowCode.Blazor.Components
+@using Codeer.LowCode.Blazor.Extras.Fields
+@using Microsoft.AspNetCore.Components.Web
+@inherits FieldComponentBase<JobTriggerField>
+
+@* ShowButton = false ならスクリプトの Run() 専用で何も描かない (デザインモードでは置き場所が分かるように名前を出す) *@
+@if (Field.Design.ShowButton) {
+  <button type="button" class="btn btn-outline-primary" id="@WebElementId" style="@GetStyle()"
+          disabled="@(IsDesignMode || Field.IsEnabled == false || Field.IsRunning)" tabindex="@ViewOnlyTabIndex"
+          @onclick="@RaiseOnClick" data-system="job-trigger">@Field.ButtonText</button>
+} else if (IsDesignMode) {
+  <span class="text-secondary small">JobTrigger (@Field.Design.JobName)</span>
+}
+
+@code {
+  bool IsDesignMode => Field.Services.AppInfoService.IsDesignMode;
+
+  //ButtonField と同じく、書けない (ViewOnly = 書き込み不可の権限・閲覧モード) ときは見た目を変えずに押せなくする
+  bool IsViewMode => Field.IsViewOnly;
+
+  int? ViewOnlyTabIndex => IsViewMode ? -1 : null;
+
+  string GetStyle() => (IsViewMode ? "pointer-events: none;" : string.Empty) + Field.GetOwnStyleString();
+
+  private async Task RaiseOnClick() => await Field.RunAsync();
+}
