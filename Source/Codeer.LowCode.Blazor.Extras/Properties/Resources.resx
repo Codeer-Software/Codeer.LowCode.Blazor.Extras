@@ -1902,4 +1902,7 @@ Recipients: {1}</value>
   <data name="JobTrigger_NotConfigured" xml:space="preserve">
     <value>Jobs are not available in this app (JobTriggerField.EndPoint is not set).</value>
   </data>
+  <data name="DesignCheck_Permission_row_conditions_are_not_applied_to_job_execution_" xml:space="preserve">
+    <value>Conditions of PermissionField '{1}' that reference row data are not applied when the server decides whether the job of JobTriggerField '{0}' can run (they only make the button unavailable on that row). Use conditions that reference CurrentUser.</value>
+  </data>
 </root>

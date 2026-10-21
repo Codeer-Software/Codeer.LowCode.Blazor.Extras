@@ -13,17 +13,18 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
     /// ボタン (またはスクリプトの Run()) で、ホストにジョブの実行を頼むフィールド (POST JobTriggerField.EndPoint)。
     /// ホストに渡すのはモジュール名・フィールド名・画面の内容の JSON で、どのジョブを動かすか (JobName)・待つかどうか (IsAsynchronous) はホストがこのデザインから読む。
     /// ジョブをどう動かすかはホストの実装 (Extras.Server の JobProcess とテンプレの Jobs/README.md)。保存はしない。データは持たない。
-    /// 実行の可否はサーバーがこのフィールドの書き込み権限で判定する (行を持たない = IExecutionFieldDesign)。
+    /// 実行の可否はサーバーがこのフィールドの書き込み権限で判定する (行を持たないので、ユーザーだけで確定する条件しか適用されない)。
     /// </summary>
     [Designer(DisplayName = "$JobTriggerField")]
     [ToolboxIcon(PackIconMaterialKind = "CogOutline")]
     [AllowColorInheritance(false)]
     [IgnoreBaseProperties(nameof(FieldDesignBase.IgnoreModification), nameof(FieldDesignBase.OnValidateInput))]
-    public class JobTriggerFieldDesign() : FieldDesignBase(typeof(JobTriggerFieldDesign).FullName!), IExecutionFieldDesign
+    public class JobTriggerFieldDesign() : FieldDesignBase(typeof(JobTriggerFieldDesign).FullName!)
     {
         /// <summary>デザインチェック指摘の番号。DesignCheckCode.Create で発行クラス名と結合して "クラス名:番号" になる。番号は固定(追加は末尾・欠番は再利用しない)。</summary>
         private const int CodeJobNameRequired = 1;
         private const int CodeDataConditionsNotAppliedToJobExecution = 2;
+        private const int CodePermissionRowConditionsNotAppliedToJobExecution = 3;
 
         /// <summary>実行するジョブの名前 (ホストが解決する)。必須。</summary>
         [Designer(Index = 3, DisplayName = "$JobTriggerJobName")]
@@ -88,6 +89,24 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
                         Member = nameof(JobName),
                     },
                     Message = string.Format(Resources.DesignCheck_Data_conditions_are_not_applied_to_job_execution_, Name),
+                });
+            }
+
+            //このフィールドを対象にした PermissionField の条件も同じ。行データを参照する条件は画面でボタンが押せなくなるだけで、サーバーの判定には使われない (ExecuteSqlField は本体の PermissionFieldDesign:3 が同じことを言う)
+            foreach (var permission in moduleDesign?.Fields.OfType<PermissionFieldDesign>() ?? [])
+            {
+                if (!permission.Targets(Name)) continue;
+                if (!permission.ReadCondition.Condition.ReferencesRowData() && !permission.WriteCondition.Condition.ReferencesRowData()) continue;
+                result.Add(new FieldDesignCheckInfo
+                {
+                    Code = DesignCheckCode.Create(typeof(JobTriggerFieldDesign), CodePermissionRowConditionsNotAppliedToJobExecution),
+                    Location = new FieldDesignDataLocation
+                    {
+                        Module = context.OwnerModule,
+                        Field = Name,
+                        Member = nameof(JobName),
+                    },
+                    Message = string.Format(Resources.DesignCheck_Permission_row_conditions_are_not_applied_to_job_execution_, Name, permission.Name),
                 });
             }
             return result;

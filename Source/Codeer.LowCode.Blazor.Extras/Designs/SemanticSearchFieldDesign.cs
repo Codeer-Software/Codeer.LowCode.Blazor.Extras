@@ -129,7 +129,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
             if (rules.Count == 0) yield break;
             var sources = SemanticSearchText.SourceFields(module, this).ToList();
             //(同じ規則がこのフィールドも縛るなら、本体の静的判定でその経路の人は検索ごと拒否される = 漏れないので対象外。本体 PermissionFieldDesign:4 が案内する)
-            var rowRestricted = sources.Where(s => rules.Any(p => Targets(p, s) && !Targets(p, Name) && ReferencesRowData(p.ReadCondition.Condition))).ToList();
+            var rowRestricted = sources.Where(s => rules.Any(p => p.Targets(s) && !p.Targets(Name) && p.ReadCondition.Condition.ReferencesRowData())).ToList();
             if (rowRestricted.Count > 0)
             {
                 yield return new FieldDesignCheckInfo
@@ -139,8 +139,8 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
                     Message = string.Format(Properties.Resources.SemanticSearchCheck_SourceFieldsRowConditionFormat, string.Join(", ", rowRestricted), Name),
                 };
             }
-            if (rules.Any(p => Targets(p, Name))) yield break;
-            var restricted = sources.Where(s => !rowRestricted.Contains(s) && rules.Any(p => Targets(p, s))).ToList();
+            if (rules.Any(p => p.Targets(Name))) yield break;
+            var restricted = sources.Where(s => !rowRestricted.Contains(s) && rules.Any(p => p.Targets(s))).ToList();
             if (restricted.Count == 0) yield break;
             yield return new FieldDesignCheckInfo
             {
@@ -151,17 +151,6 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         }
 
         //条件が行の値を参照するか (本体 PermissionFieldDesign と同じ判定: CurrentUser 以外の項目を見る葉があるか)
-        static bool ReferencesRowData(MatchConditionBase? condition)
-            => condition is IFieldMatchCondition field && !field.SearchTargetVariable.StartsWith(SystemFieldNames.CurrentUser + ".")
-                || condition is MultiMatchCondition multi && multi.Children.Any(ReferencesRowData);
-
-        //条件があるか (本体の IsEmpty と同じく、葉の無い空のグループは無いものとみなす)
-        //PermissionField の対象にそのフィールドが入るか (除外モードは「指定した名前以外のすべて」で、本体と同じく Id / 楽観ロックは常に対象外)
-        static bool Targets(PermissionFieldDesign rule, string fieldName)
-            => rule.IsExcludeMode
-                ? !rule.TargetFields.Contains(fieldName) && fieldName != SystemFieldNames.Id && fieldName != SystemFieldNames.OptimisticLocking
-                : rule.TargetFields.Contains(fieldName);
-
         /// <summary>
         /// 検索レイアウトに置いたのに、文章を入れても一覧の見た目が変わらない構成を指摘する。距離の上限 (<see cref="SearchMaxDistance"/>) が空だと
         /// 索引のある行に絞られるだけなので、その検索レイアウトを使う一覧の並びにこのフィールドが無ければ、検索欄の文章は結果に効かない。

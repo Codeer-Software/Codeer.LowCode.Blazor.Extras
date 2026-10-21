@@ -227,8 +227,8 @@ dotnet build Source/Codeer.LowCode.Blazor.Extras/Codeer.LowCode.Blazor.Extras.cs
 - **未対応**: 「この版に置き換える」での添付ファイルの復元 (実体は残っているので、Restorer が FileFieldData を外さなければ戻せる。要望が出たら) / 洗い替え (ReplaceMode) の一覧は行 Id が毎回変わるので差分が「削除 + 追加」に見える (記録・復元は正しい) / 自動保存の版をまとめる機能 / 保持期間の自動削除
 
 #### JobTriggerField (ジョブトリガー) - ボタンでサーバーのジョブを実行
-- **状態**: 実装済み (docs/JobTriggerField.md)。Extras 0.23.0 (2026-10-21。本体 1.3.52 から移動。本体は 1.3.53 で削除し `IExecutionFieldDesign` (行を持たない実行系フィールドの印) だけ残した)
-- **構図**: `Designs/JobTriggerFieldDesign` (JobName / ShowButton / ButtonText / UseSubmitData / IsAsynchronous。`IExecutionFieldDesign` = 本体の PermissionFieldDesign:3 が行条件を注意する対象。設計チェック :1 ジョブ名必須 / :2 モジュールの DataRead/WriteCondition は効かない) / `Fields/JobTriggerField` (`Run()` = 入力チェック → `{"data","submit"}` の JSON → 送信 → 通知。送信は静的 `EndPoint` (テンプレ "/api/job/run") への POST か `RunCoreAsync` の差し替え。どちらも無ければ「このアプリではジョブを実行できません」) / `Jobs/JobRunRequest・JobRunResponse` (DTO。Extras.Server の JobController 側も同じ型) / `Components/JobTriggerFieldComponent` (ButtonField と同じ ViewOnly 制御)
+- **状態**: 実装済み (docs/JobTriggerField.md)。Extras 0.23.0 (2026-10-21。本体 1.3.52 から移動。本体は 1.3.53 で削除。1.3.53 で残した印 `IExecutionFieldDesign` は 1.3.54 で削除 = 本体はジョブを一切知らない)
+- **構図**: `Designs/JobTriggerFieldDesign` (JobName / ShowButton / ButtonText / UseSubmitData / IsAsynchronous。設計チェック :1 ジョブ名必須 / :2 モジュールの DataRead/WriteCondition は効かない / :3 このフィールドを対象にした PermissionField の行条件は効かない。行条件の判定と対象判定は `Designs/MatchConditionDesignExtensions` (SemanticSearchFieldDesign と共用)) / `Fields/JobTriggerField` (`Run()` = 入力チェック → `{"data","submit"}` の JSON → 送信 → 通知。送信は静的 `EndPoint` (テンプレ "/api/job/run") への POST か `RunCoreAsync` の差し替え。どちらも無ければ「このアプリではジョブを実行できません」) / `Jobs/JobRunRequest・JobRunResponse` (DTO。Extras.Server の JobController 側も同じ型) / `Components/JobTriggerFieldComponent` (ButtonField と同じ ViewOnly 制御)
 - **テスト**: `Test/Fields/JobTriggerFieldTest` (RunCoreAsync の偽ホスト + 記録する IUIService) / `Test/DesignCheck/JobTriggerFieldDesignCheckTest`
 
 #### ジョブ (Jobs) - サーバー機能 (フィールド無し)

@@ -5,7 +5,7 @@
 ボタンを押す (またはスクリプトで `Run()`) と、画面の内容の JSON をホストに渡してジョブ (サーバーの C# の処理) の実行を頼み、結果を通知 (トースト) で出すフィールド。動かすジョブは `JobName` で、ホストがこのデザインから読む (クライアントからジョブ名は送らない)。このフィールド自体は保存しない (保存ボタンは別に置ける)。
 
 - **ホストの実装が要る** (ジョブ本体も含めて C# で書く。デザインファイルでは作れない)。Starter テンプレートでは Web サーバー (Cookie。MAUI はそのサーバー経由) だけで、WPF / WinForms は未対応 (押すと「このアプリではジョブを実行できません」の通知が出る)。仕組みは Codeer.LowCode.Blazor.Extras の `docs/Jobs.md`、ジョブの書き方はテンプレートの `Jobs/README.md`
-- **このフィールドに書けるユーザーが実行でき、ジョブはそのユーザーの権限で動く** (`ExecuteSqlField` の実行と同じ)。書けない (PermissionField の書き込み条件・閲覧モード・`CanCreate` / `CanUpdate` が `false` の読み取り専用のモジュール) ときは他のボタンと同じく押せず、`Run()` も何もせず `false` (読み取り専用のモジュールで使うなら OnLoad のスクリプトでこのフィールドの `IsViewOnly` を `false` にする)。絞るなら **CurrentUser だけで決まる** PermissionField の書き込み条件を使う。行の値を見る条件は、画面ではその行でボタンが押せなくなるが、**サーバーの実行可否の判定には使われない** (対象行が無い。PermissionField の行条件は設計チェック `PermissionFieldDesign:3`、モジュールの `DataReadCondition` / `DataWriteCondition` は `JobTriggerFieldDesign:2` で検出)。行の状態で実行を止めたいなら、ジョブが受け取った `data` や DB を見て自分で確かめる
+- **このフィールドに書けるユーザーが実行でき、ジョブはそのユーザーの権限で動く** (`ExecuteSqlField` の実行と同じ)。書けない (PermissionField の書き込み条件・閲覧モード・`CanCreate` / `CanUpdate` が `false` の読み取り専用のモジュール) ときは他のボタンと同じく押せず、`Run()` も何もせず `false` (読み取り専用のモジュールで使うなら OnLoad のスクリプトでこのフィールドの `IsViewOnly` を `false` にする)。絞るなら **CurrentUser だけで決まる** PermissionField の書き込み条件を使う。行の値を見る条件は、画面ではその行でボタンが押せなくなるが、**サーバーの実行可否の判定には使われない** (対象行が無い。モジュールの `DataReadCondition` / `DataWriteCondition` は設計チェック `JobTriggerFieldDesign:2`、このフィールドを対象にした PermissionField の行条件は `JobTriggerFieldDesign:3` で検出)。行の状態で実行を止めたいなら、ジョブが受け取った `data` や DB を見て自分で確かめる
 - ジョブが DB に保存しても画面には反映されない (新規の画面は仮 Id のまま。そのまま保存ボタンを押すと二重に登録される)。DB に書く用途は「保存ボタン → スクリプトから `Run()`」の順にするか、ジョブは画面の内容を読むだけにする
 - 見た目は固定 (枠線のボタン)。凝るときは `ShowButton` を `false` にして ButtonField の OnClick から `Run()` を呼ぶ
 
@@ -40,7 +40,7 @@ DB 列格納モードの FileField (`DbColumnFileContent`) は実体ごと (base
 ### C# クラス定義 (真実の源)
 
 ```csharp
-public class JobTriggerFieldDesign : FieldDesignBase, IExecutionFieldDesign
+public class JobTriggerFieldDesign : FieldDesignBase
 {
     public string JobName { get; set; } = string.Empty;
     public bool ShowButton { get; set; } = true;

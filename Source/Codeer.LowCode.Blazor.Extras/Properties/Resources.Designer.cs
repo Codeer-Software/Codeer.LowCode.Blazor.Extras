@@ -4421,5 +4421,11 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
                 return ResourceManager.GetString("JobTrigger_NotConfigured", resourceCulture);
             }
         }
+
+        internal static string DesignCheck_Permission_row_conditions_are_not_applied_to_job_execution_ {
+            get {
+                return ResourceManager.GetString("DesignCheck_Permission_row_conditions_are_not_applied_to_job_execution_", resourceCulture);
+            }
+        }
     }
 }

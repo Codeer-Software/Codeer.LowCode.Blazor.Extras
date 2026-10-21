@@ -71,31 +71,60 @@ namespace Codeer.LowCode.Blazor.Extras.Test.DesignCheck
             Assert.That(field.CheckDesign(new DesignCheckContext(mod.Name, designData, new())), Is.Empty);
         }
 
-        [Test]
-        public void 行を持たない実行系フィールドとしてPermissionFieldの行条件が指摘される()
+        static (DesignData designData, ModuleDesign mod, PermissionFieldDesign permission, JobTriggerFieldDesign job) BuildWithPermission(bool excludeMode)
         {
-            //本体の PermissionFieldDesign:3 は IExecutionFieldDesign を見る
             var (designData, mod) = Utilities.CreateDesignData();
             designData.AppSettings.CurrentUserModuleDesignName = "user";
             var user = Utilities.CreateModule("user");
             user.Fields.Add(new BooleanFieldDesign { Name = "IsAdmin" });
             designData.AddModule(user);
             mod.Fields.Add(new TextFieldDesign { Name = "State" });
-            mod.Fields.Add(new JobTriggerFieldDesign { Name = "Job", JobName = "Sample" });
-            var permission = new PermissionFieldDesign { Name = "Permission1", TargetFields = { "Job" } };
+            var job = new JobTriggerFieldDesign { Name = "Job", JobName = "Sample" };
+            mod.Fields.Add(job);
+            //除外モードは「State 以外 = Job」が対象
+            var permission = excludeMode
+                ? new PermissionFieldDesign { Name = "Permission1", IsExcludeMode = true, TargetFields = { "State" } }
+                : new PermissionFieldDesign { Name = "Permission1", TargetFields = { "Job" } };
             mod.Fields.Add(permission);
+            return (designData, mod, permission, job);
+        }
 
+        [Test]
+        public void このフィールドを対象にしたPermissionFieldのCurrentUser条件は指摘なし()
+        {
+            var (designData, mod, permission, job) = BuildWithPermission(excludeMode: false);
             permission.WriteCondition.ModuleName = mod.Name;
             permission.WriteCondition.Condition = new FieldValueMatchCondition
             { SearchTargetVariable = "CurrentUser.IsAdmin.Value", Comparison = MatchComparison.Equal, Value = MultiTypeValue.Create(true) };
-            Assert.That(permission.CheckDesign(new DesignCheckContext(mod.Name, designData, new())), Is.Empty);
+            Assert.That(job.CheckDesign(new DesignCheckContext(mod.Name, designData, new())), Is.Empty);
+        }
 
+        [TestCase(false)]
+        [TestCase(true)]
+        public void このフィールドを対象にしたPermissionFieldの行条件は指摘(bool excludeMode)
+        {
+            //行データを参照する条件は画面でボタンが押せなくなるだけで、サーバーのジョブの実行可否には使われない (除外モードで巻き込まれたときも)
+            var (designData, mod, permission, job) = BuildWithPermission(excludeMode);
+            permission.ReadCondition.ModuleName = mod.Name;
+            permission.ReadCondition.Condition = new FieldValueMatchCondition
+            { SearchTargetVariable = "State.Value", Comparison = MatchComparison.Equal, Value = MultiTypeValue.Create("Start") };
+            var ret = job.CheckDesign(new DesignCheckContext(mod.Name, designData, new()));
+            Assert.That(ret, Has.Count.EqualTo(1));
+            Assert.That(ret[0].Code, Is.EqualTo("JobTriggerFieldDesign:3"));
+            Assert.That(ret[0].Message, Is.EqualTo("PermissionField 'Permission1' の行データを参照する条件は、JobTriggerField 'Job' のジョブの実行可否には適用されません (画面ではその行でボタンが押せなくなるだけです)。CurrentUser を参照する条件を使用してください。"));
+            ret[0].AssertFieldLocation(mod.Name, "Job", "JobName");
+        }
+
+        [Test]
+        public void 対象でないPermissionFieldの行条件は指摘しない()
+        {
+            var (designData, mod, permission, job) = BuildWithPermission(excludeMode: false);
+            permission.TargetFields.Clear();
+            permission.TargetFields.Add("State");
+            permission.WriteCondition.ModuleName = mod.Name;
             permission.WriteCondition.Condition = new FieldValueMatchCondition
             { SearchTargetVariable = "State.Value", Comparison = MatchComparison.Equal, Value = MultiTypeValue.Create("Start") };
-            var ret = permission.CheckDesign(new DesignCheckContext(mod.Name, designData, new()));
-            Assert.That(ret, Has.Count.EqualTo(1));
-            Assert.That(ret[0].Code, Is.EqualTo(DesignCheckCode.Create(typeof(PermissionFieldDesign), 3)));
-            ret[0].AssertFieldLocation(mod.Name, "Permission1", "TargetFields");
+            Assert.That(job.CheckDesign(new DesignCheckContext(mod.Name, designData, new())), Is.Empty);
         }
 
         [Test]
