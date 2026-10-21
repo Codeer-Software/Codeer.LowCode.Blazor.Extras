@@ -289,11 +289,6 @@ dotnet build Source/Codeer.LowCode.Blazor.Extras/Codeer.LowCode.Blazor.Extras.cs
 - **UI**: デザインモードでは `OrientationLock (...)` プレースホルダを表示
 - **ファイル**: `Designs/OrientationLockFieldDesign.cs`, `Fields/OrientationLockField.cs`, `Components/OrientationLockFieldComponent.razor`
 
-#### JobTriggerField - ボタンでホストにジョブの実行を頼む
-- **状態**: 実装済み (docs/Jobs.md、FieldDocs/JobTriggerFieldDesign.md)。Extras 0.23.0 (Extras.Server は変更なし)
-- **構図**: 「デザインは呼び名だけ、実体はホスト」(MailSenderTable 等と同じ層の分け方)。Extras は `JobName` (ホストが解決する呼び名) と JSON を `POST {JobTriggerField.EndPoint}/run` (テンプレ "/api/job") に送り `JobRunRequest {JobName, Arguments, Wait}` → `JobRunResponse {ExitCode, Error, Started}` を受け取るだけ。ジョブをどう動かすか (`dotnet <dll> job <名前> <JSON>` の引数の並び・`Jobs__UserId`・終了コード) はテンプレの `JobController` / `Jobs/JobProcess` / `Jobs/JobRunner` の約束で、Extras は知らない (★2026-10-21 JobProcess を Extras.Server からテンプレへ移した)。Design `JobName` (必須) / `ShowButton` (既定 true) / `ButtonText` (空 = リソースの「実行」) / `UseSubmitData` (既定 true) / `IsAsynchronous` (既定 false → `Wait = false`、画面は「開始しました」、失敗はホストのログ)。見た目は `btn-outline-primary` 固定。ランタイムはスクリプト `Run()` (`[ScriptName("Run")] RunAsync`) と `IsRunning`。`UseSubmitData` なら `Module.ValidateInput()` (SubmitButtonField と同じ) → `Module.GetSubmitData()` が空でなければ `{"submit":[ModuleSubmitData]}`、空なら `{"data":ModuleData}` (現在値)、OFF なら `{}`。保存 (Submit) には何も載せない。ホストが受け付けるジョブ名の判定 `JobTriggerFields.IsDeclared(DesignData, name)` は Extras (`Jobs/`) に置く (デザインの JobTriggerField の JobName と大文字小文字無視で一致)。編集履歴・意味検索の索引はジョブが `ModuleDataIO` で保存したときに付く
-- **ファイル**: `Designs/JobTriggerFieldDesign.cs`・`Fields/JobTriggerField.cs`・`Components/JobTriggerFieldComponent.razor`・`Jobs/JobRunRequest.cs` / `JobRunResponse.cs` / `JobTriggerFields.cs`。テスト `Extras.Test/Jobs/JobTriggerFieldTest` (DTO の往復と IsDeclared)・`DesignCheck/JobTriggerFieldDesignCheckTest`
-
 ### 実験済みプロトタイプ (Experiments/)
 - **タスクガントチャート** (`TaskGantt.razor`): SVGベース、ドラッグ移動/リサイズ、タスク依存線、スナップ。→ `GanttField` として製品化済み
 - **設備稼働ガントチャート** (`DeviceStateGantt.razor`): SVGベース、ステータス色分け(正常/警告/異常)、時間軸

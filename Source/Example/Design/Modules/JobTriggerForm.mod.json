@@ -40,7 +40,7 @@
       "IsFocusSkip": false,
       "NextFocusField": "",
       "OnFocusMoving": "",
-      "TypeFullName": "Codeer.LowCode.Blazor.Extras.Designs.JobTriggerFieldDesign"
+      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.JobTriggerFieldDesign"
     }
   ],
   "UserWriteCondition": {

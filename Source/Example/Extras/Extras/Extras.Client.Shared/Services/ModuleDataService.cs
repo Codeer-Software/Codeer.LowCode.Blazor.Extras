@@ -63,5 +63,9 @@ namespace Extras.Client.Shared.Services
 
         public async Task<List<ModuleSubmitResult>?> SubmitByFileAsync(string moduleName, StreamContent content)
             => await _http.PostContentAsJsonAsync<List<ModuleSubmitResult>>($"/api/module_data/submit_by_file?moduleName={moduleName}", content);
+
+        //ジョブの実行 (JobTriggerField)。サーバーの JobController が動かすジョブをデザインから決める。通信の失敗は null (理由は HttpService が通知する)
+        public async Task<JobRunResponse?> RunJobAsync(JobRunRequest request)
+            => await _http.PostAsJsonAsync<JobRunRequest, JobRunResponse>($"/api/job/run", request);
     }
 }

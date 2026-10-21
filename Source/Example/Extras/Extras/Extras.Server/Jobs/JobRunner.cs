@@ -7,6 +7,8 @@ namespace Extras.Server.Jobs
     /// <summary>
     /// ジョブ (バッチ) モード。Program.cs が dotnet Extras.Server.dll job &lt;ジョブ名&gt; [引数...] のときに呼ぶ。
     /// Web ホストは立てずにジョブを 1 つ実行する。戻り値はプロセスの終了コード (成功 0 / 失敗 1 / ジョブが無い 2)。
+    /// 引数の --stdin は標準入力の内容 (JSON) に置き換える (JobProcess が画面の内容をこれで渡す。手で動かすときは echo {...} | dotnet Extras.Server.dll job Sample --stdin)。
+    /// 失敗したときは標準エラーに例外のメッセージだけ (画面に出る文言)、例外の全文は標準出力に出す。
     /// </summary>
     public static class JobRunner
     {
@@ -47,14 +49,24 @@ namespace Extras.Server.Jobs
                 //権限の条件はこのユーザーで判定される。空なら匿名 (ログインが要るデザインでは読み書きできない)
                 var userId = config["Jobs:UserId"] ?? string.Empty;
                 await using var data = new DataService(userId);
-                await job.RunAsync(data, args[1..]);
+                await job.RunAsync(data, ReadStandardInput(args[1..]));
                 return Success;
             }
             catch (Exception e)
             {
-                Console.Error.WriteLine(e);
+                Console.Error.WriteLine(e.Message);
+                Console.WriteLine(e);
                 return Failure;
             }
+        }
+
+        //--stdin を標準入力の内容に置き換える (UTF-8。JobProcess が書いて閉じる)
+        static string[] ReadStandardInput(string[] args)
+        {
+            if (!args.Contains("--stdin")) return args;
+            using var reader = new StreamReader(Console.OpenStandardInput(), new System.Text.UTF8Encoding(false));
+            var input = reader.ReadToEnd();
+            return args.Select(e => e == "--stdin" ? input : e).ToArray();
         }
 
         public static IReadOnlyList<string> GetJobNames()

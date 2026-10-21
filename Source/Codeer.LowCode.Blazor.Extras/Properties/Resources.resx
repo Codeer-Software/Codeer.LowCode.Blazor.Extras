@@ -1860,43 +1860,4 @@ Recipients: {1}</value>
   <data name="SemanticSearch_ConditionEmpty" xml:space="preserve">
     <value>Semantic search condition for {0} has neither text nor keywords.</value>
   </data>
-  <data name="JobTriggerField" xml:space="preserve">
-    <value>Job Trigger</value>
-  </data>
-  <data name="JobTriggerJobNameRequired" xml:space="preserve">
-    <value>Set the job name.</value>
-  </data>
-  <data name="JobTriggerJobName" xml:space="preserve">
-    <value>Job Name</value>
-  </data>
-  <data name="JobTriggerShowButton" xml:space="preserve">
-    <value>Show Button</value>
-  </data>
-  <data name="JobTriggerButtonText" xml:space="preserve">
-    <value>Button Text</value>
-  </data>
-  <data name="JobTriggerUseSubmitData" xml:space="preserve">
-    <value>Pass Screen Data</value>
-  </data>
-  <data name="JobTrigger_DefaultButtonText" xml:space="preserve">
-    <value>Run</value>
-  </data>
-  <data name="JobTrigger_InvalidInput" xml:space="preserve">
-    <value>There is an invalid input</value>
-  </data>
-  <data name="JobTrigger_SucceededFormat" xml:space="preserve">
-    <value>Job {0} completed.</value>
-  </data>
-  <data name="JobTrigger_FailedFormat" xml:space="preserve">
-    <value>Job {0} failed (exit code {1}).</value>
-  </data>
-  <data name="JobTrigger_RequestFailedFormat" xml:space="preserve">
-    <value>Job {0} could not be run. {1}</value>
-  </data>
-  <data name="JobTriggerIsAsynchronous" xml:space="preserve">
-    <value>Run asynchronously</value>
-  </data>
-  <data name="JobTrigger_StartedFormat" xml:space="preserve">
-    <value>Job {0} started.</value>
-  </data>
 </root>
