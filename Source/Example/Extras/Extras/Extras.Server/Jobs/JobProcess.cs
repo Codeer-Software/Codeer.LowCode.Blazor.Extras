@@ -10,8 +10,8 @@ namespace Extras.Server.Jobs
     /// </summary>
     public static class JobProcess
     {
-        /// <summary>dotnet の実行ファイル (既定 "dotnet")。</summary>
-        public static string DotnetPath { get; set; } = "dotnet";
+        /// <summary>dotnet の実行ファイル (既定はこのプロセスを起動した dotnet。dotnet から起動されていなければ "dotnet")。</summary>
+        public static string DotnetPath { get; set; } = GetDefaultDotnetPath();
 
         /// <summary>
         /// ジョブモードを持つホストの dll (既定はこのプロセスの入口の dll = Extras.Server.dll)。
@@ -19,7 +19,7 @@ namespace Extras.Server.Jobs
         /// </summary>
         public static string EntryDll { get; set; } = Assembly.GetEntryAssembly()?.Location ?? string.Empty;
 
-        /// <summary>待たずに起動したジョブ (<see cref="Start"/>) が失敗したときの記録先 (未設定なら何もしない)。ホストが Program.cs で ILogger につなぐ。</summary>
+        /// <summary>ジョブが失敗したときの記録先 (未設定なら何もしない)。ホストが Program.cs で ILogger につなぐ。</summary>
         public static Action<string>? Log { get; set; }
 
         /// <summary>ジョブを起動して終わるまで待つ。戻り値は終了コードと標準出力・標準エラー。</summary>
@@ -36,6 +36,21 @@ namespace Extras.Server.Jobs
             _ = WatchAsync(jobName, completion);
         }
 
+        /// <summary>標準出力の最後の空でない行 (ジョブが画面の通知に出す文言)。無ければ空。</summary>
+        public static string LastLine(string output)
+            => output.Split('\n').Select(e => e.Trim()).LastOrDefault(e => e.Length != 0) ?? string.Empty;
+
+        /// <summary>失敗したジョブの記録の文言 (標準エラーと標準出力をまとめる)。</summary>
+        public static string FormatFailure(string jobName, int exitCode, string output, string error)
+            => $"ジョブ {jobName} が失敗しました (終了コード {exitCode}): {error.Trim()}{Environment.NewLine}{output.Trim()}";
+
+        static string GetDefaultDotnetPath()
+        {
+            var fileName = Path.GetFileName(Environment.ProcessPath ?? string.Empty);
+            var isDotnet = string.Equals(fileName, "dotnet", StringComparison.OrdinalIgnoreCase) || string.Equals(fileName, "dotnet.exe", StringComparison.OrdinalIgnoreCase);
+            return isDotnet ? Environment.ProcessPath! : "dotnet";
+        }
+
         static ProcessStartInfo CreateStartInfo(string jobName, string userId)
         {
             //dll があれば dotnet <dll>、無ければ (single-file 発行) この実行ファイルを直接起動する
@@ -45,7 +60,7 @@ namespace Extras.Server.Jobs
                 RedirectStandardInput = true,
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
-                //ジョブモードは標準入力を UTF-8 で読み、標準出力・標準エラーを UTF-8 で書く (JobRunner が Console の Encoding を UTF-8 にする)
+                //ジョブモードは標準入力を UTF-8 で読み、標準出力・標準エラーを UTF-8 で書く (Program.cs と JobRunner が Console の Encoding を UTF-8 にする)
                 StandardInputEncoding = new UTF8Encoding(false),
                 StandardOutputEncoding = Encoding.UTF8,
                 StandardErrorEncoding = Encoding.UTF8,
@@ -99,7 +114,7 @@ namespace Extras.Server.Jobs
             try
             {
                 var (exitCode, output, error) = await completion;
-                if (exitCode != 0) Log?.Invoke($"ジョブ {jobName} が失敗しました (終了コード {exitCode}): {error.Trim()}{Environment.NewLine}{output.Trim()}");
+                if (exitCode != 0) Log?.Invoke(FormatFailure(jobName, exitCode, output, error));
             }
             catch (Exception e)
             {

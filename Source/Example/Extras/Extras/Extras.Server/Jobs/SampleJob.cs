@@ -17,10 +17,12 @@ namespace Extras.Server.Jobs
         {
             if (args.Length < 1) throw new ArgumentException("モジュール名を指定してください。例: job Sample Customer");
 
-            //JobTriggerField (ボタン) から起動されたときは、画面の内容の JSON ({"submit":[...]} / {"data":...} / {}) が 1 つ渡る
+            //JobTriggerField (ボタン) から起動されたときは、画面の内容の JSON ({"data":...,"submit":[...]} / {}) が 1 つ渡る。
+            //標準出力の最後の行が画面の成功の通知になる
             if (args[0].StartsWith('[') || args[0].StartsWith('{'))
             {
                 Console.WriteLine(args[0]);
+                Console.WriteLine($"JSON を受け取りました ({args[0].Length} 文字)");
                 return;
             }
 

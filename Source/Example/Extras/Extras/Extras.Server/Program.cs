@@ -19,6 +19,7 @@ using Microsoft.AspNetCore.Localization;
 using Microsoft.AspNetCore.ResponseCompression;
 using PdfSharp.Fonts;
 using System.Globalization;
+using System.Text;
 using System.Text.Json.Serialization;
 
 //load dll.
@@ -30,6 +31,8 @@ ExtrasServerInitializer.Initialize();
 //Web ホストは立てず、同じ appsettings でジョブを 1 つ実行して終了コードを返す。
 //設定は exe の隣から読む (タスクスケジューラ等ではカレントフォルダが exe の場所とは限らない)。ジョブの引数は設定に混ぜない
 var isJob = args is ["job", ..];
+//ジョブモードの標準出力・標準エラーは UTF-8 (JobProcess がそのつもりで読む。設定の読み込みで失敗したときの出力も含める)
+if (isJob) Console.OutputEncoding = Encoding.UTF8;
 var builder = isJob
     ? WebApplication.CreateBuilder(new WebApplicationOptions { Args = [], ContentRootPath = AppContext.BaseDirectory })
     : WebApplication.CreateBuilder(args);

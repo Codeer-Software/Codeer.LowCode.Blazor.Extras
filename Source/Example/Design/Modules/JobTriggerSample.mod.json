@@ -1,10 +1,10 @@
 {
   "Name": "JobTriggerSample",
   "DataSourceName": "SampleSQLite",
-  "DbTable": "customers",
+  "DbTable": "job_trigger_samples",
   "CanCreate": true,
   "CanUpdate": true,
-  "CanDelete": true,
+  "CanDelete": false,
   "Fields": [
     {
       "DbColumn": "id",
@@ -28,7 +28,7 @@
       "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.IdFieldDesign"
     },
     {
-      "DbColumn": "name",
+      "DbColumn": "text",
       "IsMultiline": false,
       "IsAutoFitRows": false,
       "Placeholder": "",
@@ -368,7 +368,7 @@
     "DeleteTogether": false,
     "CanCreate": false,
     "CanUpdate": false,
-    "CanDelete": true,
+    "CanDelete": false,
     "CanUserSort": true,
     "CanSelect": false,
     "UseIndexSort": false,
