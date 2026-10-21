@@ -48,6 +48,13 @@
           "ASPNETCORE_ENVIRONMENT": "AIChatTest"
         }
       },
+      "job": {
+        "commandName": "Project",
+        "commandLineArgs": "job Sample AppUser",
+        "environmentVariables": {
+          "ASPNETCORE_ENVIRONMENT": "Development"
+        }
+      },
       "IIS Express": {
         "commandName": "IISExpress",
         "launchBrowser": true,
