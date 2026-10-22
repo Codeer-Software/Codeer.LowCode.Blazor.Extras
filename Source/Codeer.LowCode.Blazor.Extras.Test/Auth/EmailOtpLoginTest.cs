@@ -12,15 +12,15 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Auth
         readonly List<MailMessage> _sent = new();
         bool _sendFails;
 
-        EmailOtpLogin Create(EmailOtpLoginSettings? settings = null)
+        EmailOtpLogin Create(EmailOtpLoginSettings? settings = null, IDistributedCache? cache = null, Func<DateTimeOffset>? now = null)
         {
-            var cache = new MemoryDistributedCache(Microsoft.Extensions.Options.Options.Create(new MemoryDistributedCacheOptions()));
+            cache ??= new MemoryDistributedCache(Microsoft.Extensions.Options.Options.Create(new MemoryDistributedCacheOptions()));
             return new EmailOtpLogin(settings ?? new(), m =>
             {
                 if (_sendFails) return Task.FromResult(new MailSendResult { TotalCount = 1, Failures = { new MailSendFailure { To = m.To.FirstOrDefault() ?? "", Error = "down" } } });
                 _sent.Add(m);
                 return Task.FromResult(new MailSendResult { TotalCount = 1, SuccessCount = 1 });
-            }, cache);
+            }, cache, now ?? (() => DateTimeOffset.UtcNow));
         }
 
         static string CodeIn(MailMessage m) => Regex.Match(m.Body, @"\b(\d{6})\b").Groups[1].Value;
@@ -44,7 +44,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Auth
 
             if (code != "000000") Assert.That((await otp.VerifyAsync("U1", "taro@example.com", "000000")).Status, Is.EqualTo(EmailOtpLoginStatus.InvalidCode));
             Assert.That((await otp.VerifyAsync("U1", "taro@example.com", " " + code + " ")).Status, Is.EqualTo(EmailOtpLoginStatus.Ok), "前後の空白は許容");
-            Assert.That((await otp.VerifyAsync("U1", "taro@example.com", code)).Status, Is.EqualTo(EmailOtpLoginStatus.InvalidCode), "使い捨て");
+            Assert.That((await otp.VerifyAsync("U1", "taro@example.com", code)).Status, Is.EqualTo(EmailOtpLoginStatus.CodeExpired), "使い捨て (使用済みは有効なコードが無い)");
         }
 
         [Test]
@@ -68,7 +68,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Auth
             var code = CodeIn(_sent[0]);
             var wrong = code == "111111" ? "222222" : "111111";
             for (var i = 0; i < 3; i++) Assert.That((await otp.VerifyAsync("U1", "taro@example.com", wrong)).Status, Is.EqualTo(EmailOtpLoginStatus.InvalidCode));
-            Assert.That((await otp.VerifyAsync("U1", "taro@example.com", code)).Status, Is.EqualTo(EmailOtpLoginStatus.InvalidCode), "3 回外したらコードは破棄され、正しいコードも通らない");
+            Assert.That((await otp.VerifyAsync("U1", "taro@example.com", code)).Status, Is.EqualTo(EmailOtpLoginStatus.CodeExpired), "3 回外したらコードは破棄され、正しいコードも通らない");
         }
 
         [Test]
@@ -79,7 +79,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Auth
             await otp.VerifyAsync("U1", "taro@example.com", null);
             var code = CodeIn(_sent[0]);
             var other = Create();
-            Assert.That((await other.VerifyAsync("U1", "taro@example.com", code)).Status, Is.EqualTo(EmailOtpLoginStatus.InvalidCode));
+            Assert.That((await other.VerifyAsync("U1", "taro@example.com", code)).Status, Is.EqualTo(EmailOtpLoginStatus.CodeExpired));
         }
 
         [Test]
@@ -90,7 +90,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Auth
             var r = await otp.VerifyAsync("U1", "taro@example.com", null);
             Assert.That(r.Status, Is.EqualTo(EmailOtpLoginStatus.SendFailed));
             _sendFails = false;
-            Assert.That((await otp.VerifyAsync("U1", "taro@example.com", "123456")).Status, Is.EqualTo(EmailOtpLoginStatus.InvalidCode));
+            Assert.That((await otp.VerifyAsync("U1", "taro@example.com", "123456")).Status, Is.EqualTo(EmailOtpLoginStatus.CodeExpired));
             Assert.That((await otp.VerifyAsync("U1", "", null)).Status, Is.EqualTo(EmailOtpLoginStatus.SendFailed), "送信先が無い");
         }
 
@@ -107,6 +107,33 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Auth
             if (a != b) Assert.That((await otp.VerifyAsync("A", "a@example.com", b)).Status, Is.EqualTo(EmailOtpLoginStatus.InvalidCode), "他人のコードは通らない");
             Assert.That((await otp.VerifyAsync("A", "a@example.com", a)).Status, Is.EqualTo(EmailOtpLoginStatus.Ok));
             Assert.That((await otp.VerifyAsync("B", "b@example.com", b)).Status, Is.EqualTo(EmailOtpLoginStatus.Ok));
+        }
+
+        [Test]
+        public async Task WrongCodesDoNotExtendTheLifetime()
+        {
+            var now = DateTimeOffset.UtcNow;
+            var otp = Create(new EmailOtpLoginSettings { CodeLifetimeMinutes = 10 }, now: () => now);
+            await otp.VerifyAsync("U1", "taro@example.com", null);
+            var code = CodeIn(_sent[0]);
+            var wrong = code == "000000" ? "111111" : "000000";
+            now = now.AddMinutes(9);
+            Assert.That((await otp.VerifyAsync("U1", "taro@example.com", wrong)).Status, Is.EqualTo(EmailOtpLoginStatus.InvalidCode));
+            now = now.AddMinutes(1);
+            Assert.That((await otp.VerifyAsync("U1", "taro@example.com", code)).Status, Is.EqualTo(EmailOtpLoginStatus.CodeExpired), "期限は発行から 10 分のまま");
+        }
+
+        [Test]
+        public async Task CodeForAnotherAddressIsNotAccepted()
+        {
+            //共有キャッシュを別のアプリが同じ Id で使う: 送信先が違えばそのコードは通らない
+            var cache = new MemoryDistributedCache(Microsoft.Extensions.Options.Options.Create(new MemoryDistributedCacheOptions()));
+            var appA = Create(cache: cache);
+            var appB = Create(cache: cache);
+            await appA.VerifyAsync("1", "a@example.com", null);
+            var code = CodeIn(_sent[0]);
+            Assert.That((await appB.VerifyAsync("1", "b@example.com", code)).Status, Is.EqualTo(EmailOtpLoginStatus.CodeExpired));
+            Assert.That((await appA.VerifyAsync("1", "A@Example.com ", code)).Status, Is.EqualTo(EmailOtpLoginStatus.Ok), "大文字小文字・前後の空白は同じ送信先");
         }
 
         [Test]

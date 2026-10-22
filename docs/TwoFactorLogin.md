@@ -18,6 +18,7 @@
 - 有効化: `LoginAccountContractField.TwoFactorEmail` にメールアドレスのフィールドを設定する (それだけ)
 - サーバー設定 (appsettings `EmailOtpLogin`、すべて任意): `MailInfraName` (送信インフラの呼び名。空なら `Mail.DefaultInfraName`) / `Subject` (既定 "認証コード: {code}") / `Body` ({code} と {minutes} が置き換わる) / `CodeLifetimeMinutes` (既定 10) / `MaxAttempts` (既定 5。超えるとコード破棄)
 - 流れ: パスワード成功 → コードを発行してメール送信 → `status: "email"` と伏せ字の送信先 (`maskedEmail`) を返す → `TwoFactorCode` 付きで再送 → `ok`
+- コードの期限は発行したときに決まり、打ち間違えても延びない。コードは発行したときの送信先に結び付き、送信先が変わったら通らない
 - 再送 = パスワードからやり直す (前のコードは無効になる)。同じコードは 1 回だけ。送れなかったときは `send_failed` (サインインしない)
 - テンプレートは `MailDispatcher` 経由で送るので、`Mail.DebugRedirectAllTo` (開発環境の宛先リダイレクト) が効く。履歴モジュールには記録しない (コードを残さない)
 - コードの置き場は `IDistributedCache` (テンプレートは `CookieAuthentication.cs` で `AddDistributedMemoryCache()`)。複数インスタンスでは Redis 等の共有キャッシュに差し替える (docs/ExternalLogin.md の「複数インスタンスの注意」)
@@ -28,7 +29,7 @@ if (accounts.HasTwoFactorEmail)
 {
     var email = new EmailOtpLogin(SystemConfig.Instance.EmailOtpLogin, message => CreateMailDispatcher().SendAsync(...), _cache);
     var result = await email.VerifyAsync(account.UserId, account.TwoFactorEmail, loginInfo.TwoFactorCode);
-    if (result.Status != EmailOtpLoginStatus.Ok) return Ok(result);   // email / invalid_code / send_failed: サインインしない
+    if (result.Status != EmailOtpLoginStatus.Ok) return Ok(result);   // email / invalid_code / code_expired / send_failed: サインインしない
 }
 ```
 
@@ -75,7 +76,8 @@ if (accounts.HasTwoFactorEmail)
 | `setup` | (認証アプリ) パスワードは正しいが未登録 | QR (`qrPngBase64`) と手入力用の鍵 (`secret`) を表示し、コードを入力させて `TwoFactorCode` 付きで再送 |
 | `totp` | (認証アプリ) パスワードは正しく登録済み | コードを入力させて `TwoFactorCode` 付きで再送 |
 | `email` | (メール) コードを送った | 送信先 (`maskedEmail`) を案内し、コードを入力させて `TwoFactorCode` 付きで再送 |
-| `invalid_code` | コード不一致 (期限切れ・同じコードの再利用・試行超過を含む) | 入力し直し |
+| `invalid_code` | コード不一致 | 入力し直し |
+| `code_expired` | (メール) 有効なコードが無い (期限切れ・使用済み・試行超過で破棄)。総当たり対策の失敗には数えない | パスワードの入力からやり直す (新しいコードが送られる) |
 | `send_failed` | (メール) 送れなかった | 管理者に連絡するよう案内 |
 | `ok` | サインイン済み | アプリへ |
 
@@ -189,7 +191,8 @@ TotpResetClient.ResetEndPoint = "/api/account/totp/reset";
 ## 割り切りと補い方
 
 - **初回ログイン時の登録**: パスワードだけを知る第三者が先に登録できる余地がある。許容できない運用では、初回ログインを管理者立ち会いで行う等で補う
-- 試行回数制限・リカバリーコードは持たない。必要なら前段 (リバースプロキシ等) か AccountController で足す
+- コードの総当たりは、パスワードと同じ [LoginLockout](Authentication.md#総当たり対策-loginlockout) が回数を抑える (コードの不一致もログインの失敗として数え、ロックが繰り返されるたびに長くなる。既定では 1 つのアカウントに最初の 24 時間で 90 回、以降は 1 日 10 回ほど。1 インスタンスのとき)
+- リカバリーコードは持たない。必要なら AccountController で足す
 - 時刻ずれはサーバーと端末の時計に依存する。サーバーは NTP で合わせておく
 
 ## ネイティブアプリ (MAUI)

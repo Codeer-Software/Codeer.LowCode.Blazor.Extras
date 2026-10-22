@@ -108,6 +108,11 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Auth
             //ExternalLoginName 役割が無ければ LoginName の列で突き合わせる
             Assert.That((await accounts.FindByExternalLoginNameAsync("admin"))?.UserId, Is.EqualTo("1"));
             Assert.That(await accounts.FindByExternalLoginNameAsync("nobody"), Is.Null);
+
+            //総当たり対策が数える鍵: パスワードを照合せずにアカウントを引く
+            Assert.That((await accounts.FindByLoginNameAsync("admin"))?.UserId, Is.EqualTo("1"));
+            Assert.That(await accounts.FindByLoginNameAsync("nobody"), Is.Null);
+            Assert.That(await accounts.FindByLoginNameAsync(null), Is.Null);
         }
 
         [Test]

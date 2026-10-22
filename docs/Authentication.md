@@ -54,6 +54,27 @@ Codeer.LowCode.Blazor 本体が持つのは**認可** (ログインしたユー�
 `Codeer.LowCode.Blazor.Extras.Server.Auth.LoginAccountStore` がデザインの契約からテーブル・列を引き、ログイン ID で行を探してハッシュを照合します。
 有効フラグが偽の行は拒否します。初回起動でユーザーが 0 件なら `admin` / `admin` を作ります。
 
+### 総当たり対策: LoginLockout
+
+`Codeer.LowCode.Blazor.Extras.Server.Auth.LoginLockout` がアカウントごとにログインの失敗 (パスワード・二要素認証のコードの不一致) を数え、
+続けて `MaxFailedAttempts` 回 (既定 10) に達したら、最後の失敗から `LockoutMinutes` 分 (既定 5) そのアカウントのログインを受け付けません (正しいパスワードでも)。
+ロックが繰り返されるたびに長さは倍になり (5 分 → 10 分 → 20 分 …)、上限は `MaxLockoutMinutes` (既定 1440 = 1 日) です。サインインできたら全部数え直します。
+二要素認証のコードを求めた段階、メールのコードの期限切れ (`code_expired`)、照合中の例外 (DB の障害など) は失敗に数えません。既定では、1 つのアカウントに試せるのは最初の 24 時間で 90 回、以降は 1 日 10 回ほどです (1 インスタンスのとき。記録は最後の試行から 30 日残るので、黙って待っても段階は戻りません)。
+
+- 鍵はアカウントの Id です (`LoginAccountStore.FindByLoginNameAsync` で引く)。DB の照合順序で同じ行に当たる別表記 (大文字小文字・全角半角など) も 1 つに数えます
+- 存在しないログイン名は数えません (ASP.NET Identity と同じ)。アカウントの有無を隠すことはこの機能の目的ではありません
+- ロック中の `api/account/login` は 429 を返し、ログイン画面は「しばらくしてからやり直してください」を出します
+- 照合の前に 1 回分を数えるので、同時に大量に送られても回数を超えて照合しません (1 つのプロセスの中での保証)
+- 回数はサーバー側のキャッシュ (`IDistributedCache`) に置くので DB 列は要りません。記録は最後の試行から 30 日で消えます。キャッシュが使えないとき (共有キャッシュの障害など) は、ロックを判定できないのでパスワードのログインはエラーになります
+- 複数インスタンスなら共有キャッシュ (Redis 等) にします。読んで書くまでの排他はインスタンスの中だけなので、インスタンスをまたいで同時に送られたときの回数は保証しません (数え漏らしが起きる)。厳密に抑えたいときは前段の IP 単位の制限と併用します。共有キャッシュを複数のアプリ (本番と検証など) で使うときは、`InstanceName` でアプリごとに分けます (鍵はアカウントの Id なので、分けないと別のアプリの同じ Id と回数を共有します。メールのワンタイムコードも同じキャッシュに置きます。こちらは送信先が違うコードを通さないので取り違えは起きませんが、発行したコードが上書きされて再送が要ることがあります)
+- ロックは時間が経つまで解けません (管理者がパスワードを設定し直しても解けない)。急いで解くときは、キャッシュのキー `codeer.loginlockout.<アカウントの Id>` を消すか、既定のメモリキャッシュならサーバーを再起動します
+- ログイン ID を知っていれば、他人がそのアカウントをロックさせ続けられます (ロックアウト方式に共通の性質)。また 1 つのパスワードを多数のアカウントに試す攻撃 (パスワードスプレー) はアカウントごとの数えでは止まりません。どちらも前段 (WAF・リバースプロキシの IP 単位の制限) で補います
+- appsettings の `LoginLockout` で変えます。`MaxFailedAttempts` を 0 にすると無効です
+
+```json
+"LoginLockout": { "MaxFailedAttempts": 10, "LockoutMinutes": 5, "MaxLockoutMinutes": 1440 }
+```
+
 ### 外部 IdP: Entra ID / Google / AWS Cognito / OpenID Connect
 
 appsettings に IdP の設定を書くだけでログイン画面にボタンが増えます。IdP は本人確認の手段で、セッションは Cookie のままです。
@@ -78,7 +99,7 @@ MAUI クライアントも同じサーバーの `api/account/*` を使います�
 
 | ファイル | 役割 |
 |---|---|
-| `Controllers/AccountController.cs` | `login_options` / `login` / `login/{provider}` / `logout` / `current_user` / 認証アプリの解除 |
+| `Controllers/AccountController.cs` | `login_options` / `login` (総当たり対策の `LoginLockout` を含む) / `login/{provider}` / `logout` / `current_user` / 認証アプリの解除 |
 | `CookieAuthentication.cs` | Cookie 認証と外部 IdP の登録、初回 admin の作成 |
 | `Services/ExternalLoginTable.cs` | appsettings の IdP 設定 → プロバイダの対応表 |
 | `ExternalLoginUserResolver.cs` | 外部 IdP の本人 → ユーザー行 (事前登録制) |

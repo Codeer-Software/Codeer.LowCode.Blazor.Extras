@@ -5,7 +5,7 @@
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>enable</Nullable>
 		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
-		<Version>0.23.0</Version>
+		<Version>0.23.1</Version>
 		<Authors>Codeer</Authors>
 		<Company>Codeer</Company>
 		<Description>Server-side services for Codeer.LowCode.Blazor apps. Includes AI document analysis (Azure Document Intelligence + Azure OpenAI), mail sending (SMTP / Microsoft Graph / SendGrid / Gmail), file storage (file system / Azure Blob / S3), external logins (Entra ID / Google / AWS Cognito / OIDC), TOTP two-factor authentication, audit log (who / when / from where / what / result, per Web API, to database and JSON Lines files), and ASP.NET Core helpers (hot reload, ETag file responses).</Description>
@@ -16,7 +16,7 @@
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>
 		<PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
-		<PackageReleaseNotes>Jobs: JobProcess / JobMode / JobResult run a job of the host in a separate process (used by the host template for JobTriggerField and the job command line). Requires Codeer.LowCode.Blazor 1.3.53.</PackageReleaseNotes>
+		<PackageReleaseNotes>LoginLockout: brute-force protection for password logins (locks an account for a while after repeated failures). EmailOtpLogin: returns code_expired when no valid code exists; the code lifetime is no longer extended by wrong attempts; a code is bound to its recipient.</PackageReleaseNotes>
 		<PackageId>Codeer.LowCode.Blazor.Extras.Server</PackageId>
 		<!-- NU5104: Azure.AI.OpenAI has no stable release built for the OpenAI 2.9+ line yet, so the prerelease dependency is intentional -->
 		<NoWarn>$(NoWarn);NU5104</NoWarn>

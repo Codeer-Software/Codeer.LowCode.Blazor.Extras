@@ -35,8 +35,10 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Auth
         public const string Ok = "ok";
         /// <summary>コードを送った。メールのコードを送ってくること。</summary>
         public const string CodeRequired = "email";
-        /// <summary>コード不一致 (期限切れ・試行超過を含む)。</summary>
+        /// <summary>コード不一致 (今有効なコードと違う)。</summary>
         public const string InvalidCode = "invalid_code";
+        /// <summary>有効なコードが無い (期限切れ・試行超過で破棄・使用済み)。パスワードからやり直す (新しいコードを送る)。</summary>
+        public const string CodeExpired = "code_expired";
         /// <summary>メールを送れなかった (送信インフラ未設定・送信失敗)。</summary>
         public const string SendFailed = "send_failed";
     }
@@ -56,7 +58,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Auth
     /// <code>
     /// var email = new EmailOtpLogin(SystemConfig.Instance.EmailOtpLogin, message => dispatcher.SendAsync(SystemConfig.Instance.EmailOtpLogin.MailInfraName, message), cache);
     /// var result = await email.VerifyAsync(account.UserId, account.TwoFactorEmail, loginInfo.TwoFactorCode);
-    /// if (result.Status != EmailOtpLoginStatus.Ok) return Ok(result);   // email / invalid_code / send_failed: サインインしない
+    /// if (result.Status != EmailOtpLoginStatus.Ok) return Ok(result);   // email / invalid_code / code_expired / send_failed: サインインしない
     /// </code>
     /// </summary>
     public class EmailOtpLogin
@@ -66,19 +68,28 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Auth
         readonly EmailOtpLoginSettings _settings;
         readonly Func<MailMessage, Task<MailSendResult>> _send;
         readonly IDistributedCache _cache;
+        readonly Func<DateTimeOffset> _now;
 
         /// <param name="send">メール送信。テンプレートは MailDispatcher (デバッグ時の宛先リダイレクト・送信インフラの解決) を通す。</param>
         public EmailOtpLogin(EmailOtpLoginSettings settings, Func<MailMessage, Task<MailSendResult>> send, IDistributedCache cache)
+            : this(settings, send, cache, () => DateTimeOffset.UtcNow) { }
+
+        internal EmailOtpLogin(EmailOtpLoginSettings settings, Func<MailMessage, Task<MailSendResult>> send, IDistributedCache cache, Func<DateTimeOffset> now)
         {
             _settings = settings;
             _send = send;
             _cache = cache;
+            _now = now;
         }
 
         sealed class Pending
         {
             public string Code { get; set; } = string.Empty;
             public int Attempts { get; set; }
+            //発行した時点で決まる期限 (打ち間違えて書き直しても延ばさない)
+            public DateTimeOffset ExpiresAt { get; set; }
+            //送信先のハッシュ。キーは Id だけなので、共有キャッシュを別のアプリが同じ Id で使っても、そのコードを通さない
+            public string Address { get; set; } = string.Empty;
         }
 
         /// <summary>
@@ -111,14 +122,17 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Auth
                 }
                 if (!result.IsSuccess) return new EmailOtpLoginResult { Status = EmailOtpLoginStatus.SendFailed };
 
-                await _cache.SetStringAsync(key, JsonSerializer.Serialize(new Pending { Code = newCode }),
-                    new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = lifetime });
+                var issued = new Pending { Code = newCode, ExpiresAt = _now() + lifetime, Address = AddressHash(emailAddress) };
+                await _cache.SetStringAsync(key, JsonSerializer.Serialize(issued),
+                    new DistributedCacheEntryOptions { AbsoluteExpiration = issued.ExpiresAt });
                 return new EmailOtpLoginResult { Status = EmailOtpLoginStatus.CodeRequired, MaskedEmail = Mask(emailAddress) };
             }
 
             var json = await _cache.GetStringAsync(key);
-            var pending = json == null ? null : JsonSerializer.Deserialize<Pending>(json);
-            if (pending == null) return new EmailOtpLoginResult { Status = EmailOtpLoginStatus.InvalidCode };
+            var pending = Read(json);
+            //どのコードでも通らない状態なので不一致とは分ける (本人が期限切れのコードを入れ直し続けても総当たり対策の失敗に数えさせない)
+            if (pending == null || pending.ExpiresAt <= _now() || pending.Address != AddressHash(emailAddress))
+                return new EmailOtpLoginResult { Status = EmailOtpLoginStatus.CodeExpired };
 
             var match = CryptographicOperations.FixedTimeEquals(System.Text.Encoding.ASCII.GetBytes(pending.Code), System.Text.Encoding.ASCII.GetBytes(code.Trim()));
             if (match)
@@ -135,12 +149,29 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Auth
             }
             else
             {
-                //残り時間は縮めない (再設定で延びるのを避けるため sliding にはしない)
+                //期限は発行したときのまま (書き直しで延ばさない)
                 await _cache.SetStringAsync(key, JsonSerializer.Serialize(pending),
-                    new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(Math.Max(1, _settings.CodeLifetimeMinutes)) });
+                    new DistributedCacheEntryOptions { AbsoluteExpiration = pending.ExpiresAt });
             }
             return new EmailOtpLoginResult { Status = EmailOtpLoginStatus.InvalidCode };
         }
+
+        //読めない値 (前の版が書いた等) は有効なコードが無いものとして扱う
+        static Pending? Read(string? json)
+        {
+            if (json == null) return null;
+            try
+            {
+                return JsonSerializer.Deserialize<Pending>(json);
+            }
+            catch (JsonException)
+            {
+                return null;
+            }
+        }
+
+        static string AddressHash(string emailAddress)
+            => Convert.ToHexString(SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(emailAddress.Trim().ToUpperInvariant())));
 
         static string Format(string template, string code, TimeSpan lifetime)
             => template.Replace("{code}", code).Replace("{minutes}", ((int)lifetime.TotalMinutes).ToString());

@@ -108,6 +108,17 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Auth
         }
 
         /// <summary>
+        /// ログイン ID でアカウントを探す (パスワードは照合しない)。無い・停止中は null。
+        /// 総当たり対策 (LoginLockout) がアカウントごとに数えるために使う。
+        /// </summary>
+        public async Task<LoginAccount?> FindByLoginNameAsync(string? loginName)
+        {
+            if (string.IsNullOrEmpty(loginName)) return null;
+            var row = await FindRowAsync(_loginNameColumn, loginName);
+            return row == null || !IsActive(row) ? null : ToAccount(row);
+        }
+
+        /// <summary>
         /// 外部 IdP が確認した本人 (Entra = UPN、Google / Cognito = メール) をアカウントに解決する。契約の ExternalLoginName の列 (空なら LoginName の列) で探す。
         /// 無い・停止中は null。
         /// </summary>
