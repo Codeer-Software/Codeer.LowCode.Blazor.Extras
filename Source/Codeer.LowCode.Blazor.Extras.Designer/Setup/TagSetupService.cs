@@ -181,10 +181,10 @@ namespace Codeer.LowCode.Blazor.Extras.Designer.Setup
                 $"CREATE UNIQUE INDEX ux_{table}_{TagSetupService.OwnerColumn}_{NameColumn} ON {table} ({TagSetupService.OwnerColumn}, {NameColumn});",
                 $"CREATE INDEX ix_{table}_{NameColumn} ON {table} ({NameColumn});",
             };
-            //SQLite は接続ごとに外部キーが既定で無効 (接続文字列の Foreign Keys=True で有効になる)。DDL を実行する人に見えるよう先頭に書く
+            //SQLite の外部キーは接続文字列の Foreign Keys で切り替わる。DDL を実行する人に見えるよう先頭に書く
             if (type == DataSourceType.SQLite)
-                ddl.Insert(0, "-- SQLite は接続文字列に Foreign Keys=True を付ける。無いと外部キーが効かず、レコードを消してもタグ付け行が残る");
-            //レコードを消せばタグも消える (SQLite は列に書いた)
+                ddl.Insert(0, "-- 外部キーは TagField の DeleteTogether を false にして DB に削除を任せるときの保険。SQLite は接続文字列に Foreign Keys=True を付ける");
+            //レコードを消したときのタグ付け行の削除は TagField の DeleteTogether (既定) が行う。外部キーは DeleteTogether を使わないときの保険 (SQLite は列に書いた)
             if (type != DataSourceType.SQLite)
                 ddl.Add($"ALTER TABLE {table} ADD CONSTRAINT fk_{table}_{TagSetupService.OwnerColumn} FOREIGN KEY ({TagSetupService.OwnerColumn}) REFERENCES {ownerTable} ({ownerIdColumn}) ON DELETE CASCADE;");
             return ddl;

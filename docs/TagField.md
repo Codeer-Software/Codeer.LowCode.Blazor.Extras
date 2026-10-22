@@ -28,8 +28,8 @@
 ### 保存
 
 - 足し外しは何も書かない。**レコードを保存したときに一緒に書く** (1 つのトランザクション・レコードの書き込み権限)。保存せずにやめれば何も残らない
-- レコードを消すと、そのタグは DDL の外部キー (ON DELETE CASCADE) で一緒に消える。論理削除のモジュールではタグ付け行は残る (親が消えている間は検索に出ず、復活すればそのまま戻る。候補の件数には数える)
-- SQLite は接続文字列に `Foreign Keys=True` を付ける。無いと外部キーが効かずタグ付け行が残る
+- レコードを消すと、そのタグは一緒に消える (`DeleteTogether`。既定 on。一覧フィールドの DeleteTogether と同じ仕組みで、レコードの削除の前にタグ付け行を 1 行ずつ消す。タグ付けモジュールの CanDelete が要る)。論理削除のモジュールでも、タグ付けモジュールに論理削除が無ければタグ付け行は物理的に消える (編集履歴の「復活」は版から作り直す)
+- `DeleteTogether` を off にすると本体は消さない。DDL の外部キー (ON DELETE CASCADE) に任せるとき (SQLite は接続文字列に `Foreign Keys=True` を付ける)、または論理削除のモジュールでタグ付け行を残して復活でそのまま戻したいときに使う
 - レコードをコピーすると、タグもコピーされる (コピーを保存したときに新しい行として書く。コピー元のタグには触らない)
 
 ### 検索 (検索レイアウトに置いたとき)
@@ -51,7 +51,7 @@
 
 ```
 tag_tests (タグを付けるモジュール)      tag_test_tags (タグ付け。タグを付けるモジュールごとに 1 つ)
-├── id ◄──────────────────────────── owner_id   FK ON DELETE CASCADE (レコードを消せば一緒に消える)
+├── id ◄──────────────────────────── owner_id   FK ON DELETE CASCADE (DeleteTogether を使わないときの保険)
 └── ...                               name       タグ名をそのまま持つ
                                       一意: (owner_id, name)   インデックス: name
 ```
@@ -74,7 +74,7 @@ tag_tests (タグを付けるモジュール)      tag_test_tags (タグ付け�
 
 1. タグ付けモジュール `<Module>Tags` (`Id` / `OwnerId` / `Name` + `TagLinkContractField`)。一覧レイアウトは要らない
 2. タグを付けるモジュールに TagField `Tags` (`TagModuleName` = `<Module>Tags`)。同名の TagField が結び付きなしで既にあれば、それに入れる
-3. DDL (3 列の表を DB ごとに組む): テーブル、(owner_id, name) の一意インデックス、name のインデックス、レコードへの外部キー (ON DELETE CASCADE。SQLite は列に書く)。`owner_id` の型は対象の Id 列に合わせる (DB にあればその型、無ければ対象の Id が手入力なら文字列型、そうでなければ整数型。文字列の型は長さが分からないので既定の長さで作り、結果に「対象の Id 列と同じ長さにする」と出す)。既定の照合順序が大文字小文字を区別しない SQL Server / MySQL では、name の列に区別する照合順序を付ける (`Latin1_General_CS_AS_KS_WS` / `utf8mb4_bin`。完全一致を DB でも成り立たせる。候補の Like も区別する)
+3. DDL (3 列の表を DB ごとに組む): テーブル、(owner_id, name) の一意インデックス、name のインデックス、レコードへの外部キー (ON DELETE CASCADE。SQLite は列に書く。タグ付け行の削除は既定では TagField の `DeleteTogether` が行うので、外部キーは `DeleteTogether` を off にして DB に任せるときの保険)。`owner_id` の型は対象の Id 列に合わせる (DB にあればその型、無ければ対象の Id が手入力なら文字列型、そうでなければ整数型。文字列の型は長さが分からないので既定の長さで作り、結果に「対象の Id 列と同じ長さにする」と出す)。既定の照合順序が大文字小文字を区別しない SQL Server / MySQL では、name の列に区別する照合順序を付ける (`Latin1_General_CS_AS_KS_WS` / `utf8mb4_bin`。完全一致を DB でも成り立たせる。候補の Like も区別する)
 
 **冪等**: `<Module>Tags` が既にあれば作らない (ただし `TagLinkContractField` が無ければ結び付けずにエラーで止める)。結び付き済みの TagField は触らない。DDL は自動実行されない (結果画面の実行ボタン、または `--ddl-out` のファイルを実行する)。
 画面への配置はデザイナで行う (TagField を詳細・一覧・検索のレイアウトに置く)。
@@ -86,6 +86,7 @@ tag_tests (タグを付けるモジュール)      tag_test_tags (タグ付け�
 | TagModuleName | タグ付けモジュール | string | タグ付けモジュール (`TagLinkContractField` を置いたモジュール)。セットアップが入れる。これだけで結び付きが決まる |
 | DisplayName | 表示名 | string | ラベル・編集履歴・意味検索の文章に使う |
 | Placeholder | プレースホルダ | string | タグが無いときの入力欄のプレースホルダ |
+| DeleteTogether | 親テーブルと一緒に削除 | bool | レコードの削除でタグ付け行も一緒に消す (既定 on)。off は DDL の外部キーに任せる (0.23 までの動き) |
 | IsSimpleSearchParameter | 簡易検索パラメータ | bool | 検索欄に一致の選択を出さない |
 | SearchMatchDefaultValue | 検索の一致の既定 | enum | `All` = すべて含む (既定) / `Any` = いずれかを含む。画面で切り替えられる |
 | OnDataChanged | データ変更イベント | string | タグが変わったときのスクリプト |
@@ -97,6 +98,7 @@ tag_tests (タグを付けるモジュール)      tag_test_tags (タグ付け�
 | コード | 内容 |
 |---|---|
 | `TagFieldDesign:1` | `TagModuleName` のモジュールに `TagLinkContractField` が無い (空・不在は本体のチェック) |
+| `TagFieldDesign:2` | `DeleteTogether` なのにタグ付けモジュールの `CanDelete` が false (レコードの削除が失敗する) |
 | `TagLinkContractFieldDesign:1` | タグ付けモジュールの `OwnerId` が IdField でない、または `Name` が TextField でない |
 
 ## スクリプト API

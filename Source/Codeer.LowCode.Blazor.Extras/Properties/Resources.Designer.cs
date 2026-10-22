@@ -4338,6 +4338,12 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
             }
         }
 
+        internal static string TagCheck_LinkModuleCannotDeleteFormat {
+            get {
+                return ResourceManager.GetString("TagCheck_LinkModuleCannotDeleteFormat", resourceCulture);
+            }
+        }
+
         internal static string JobTriggerField {
             get {
                 return ResourceManager.GetString("JobTriggerField", resourceCulture);

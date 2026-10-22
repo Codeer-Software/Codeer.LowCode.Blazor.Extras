@@ -150,6 +150,21 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Tag
         }
 
         [Test]
+        public void デザインチェック_DeleteTogetherならタグ付けモジュールにCanDeleteが要る()
+        {
+            var d = TagTestDesigns.Create();
+            d.Modules.Find("ContactTags")!.CanDelete = false;
+            var ret = Check(d, "Contact", "Tags");
+            Assert.That(ret.Select(e => e.Code), Is.EqualTo(new[] { "TagFieldDesign:2" }));
+            ret[0].AssertFieldLocation("Contact", "Tags", "DeleteTogether");
+
+            //外部キーに任せる (DeleteTogether = false) なら CanDelete は要らない
+            d = TagTestDesigns.Create(e => e.DeleteTogether = false);
+            d.Modules.Find("ContactTags")!.CanDelete = false;
+            Assert.That(Check(d, "Contact", "Tags"), Is.Empty);
+        }
+
+        [Test]
         public void デザインチェック_タグ付けモジュールは契約のあるモジュールであること()
         {
             var ret = Check(TagTestDesigns.Create(e => e.TagModuleName = "Contact"), "Contact", "Tags");
@@ -163,6 +178,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Tag
 
             //無いモジュールは本体のチェックが指摘する (重ねて出さない)
             ret = Check(TagTestDesigns.Create(e => e.TagModuleName = "NoSuchModule"), "Contact", "Tags");
+            Assert.That(ret.Select(e => e.Code), Does.Not.Contain("TagFieldDesign:2"), "契約の指摘だけ (CanDelete の指摘はタグ付けモジュールがあるときだけ)");
             Assert.That(ret, Has.Count.EqualTo(1));
             ret[0].AssertFieldLocation("Contact", "Tags", "TagModuleName");
         }

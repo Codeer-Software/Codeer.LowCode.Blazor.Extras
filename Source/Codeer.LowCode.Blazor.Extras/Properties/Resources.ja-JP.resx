@@ -1851,6 +1851,9 @@
   <data name="TagFieldTagModuleName" xml:space="preserve">
     <value>タグ付けモジュール</value>
   </data>
+  <data name="TagCheck_LinkModuleCannotDeleteFormat" xml:space="preserve">
+    <value>タグ付けモジュール &apos;{0}&apos; の CanDelete が false です。レコードと一緒にタグ付け行を消す (DeleteTogether) には CanDelete が必要です (外部キーで消すなら DeleteTogether を false にしてください)。</value>
+  </data>
   <data name="SemanticSearchFieldKeywordSearch" xml:space="preserve">
     <value>キーワード検索欄</value>
   </data>

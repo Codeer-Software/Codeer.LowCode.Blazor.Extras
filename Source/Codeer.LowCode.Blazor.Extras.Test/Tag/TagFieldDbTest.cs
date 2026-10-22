@@ -179,13 +179,44 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Tag
             Assert.That(await LinksAsync(), Is.EqualTo("A:展示会 A:DXPO A2:展示会 B:展示会 C:セミナー"), "コピーのタグは新しい行。元のレコードのタグは消えない");
         }
 
-        [Test]
-        public async Task レコードを消せばタグ付け行も消える()
+        //外部キーを効かせない接続 (同梱の SQLite は省略すると有効なので明示して切る)。本体の DeleteTogether が消すことを外部キーと切り分けて確かめる
+        DbAccessor DbWithoutForeignKeys() => new([new DataSource { Name = Ds, DataSourceType = DataSourceType.SQLite, ConnectionString = $"Data Source={_dbFile};Foreign Keys=False" }]);
+
+        async Task<string?> DeleteContactAsync(DbAccessor db, string id)
         {
-            var io = CreateIO();
-            var results = await io.SubmitWithTransactionAsync([new ModuleSubmitData { ModuleName = "Contact", Id = "1", Delete = { new() { Id = "1", ModuleName = "Contact" } } }]);
-            Assert.That(results.Select(e => e.ExceptionMessage).Where(e => !string.IsNullOrEmpty(e)), Is.Empty);
+            var io = new ModuleDataIO(_design, this, db, new TemporaryFileManager(db, [], new List<IFileStorage>()));
+            var results = await io.SubmitWithTransactionAsync([new ModuleSubmitData { ModuleName = "Contact", Id = id, Delete = { new() { Id = id, ModuleName = "Contact" } } }]);
+            return results.Select(e => e.ExceptionMessage).FirstOrDefault(e => !string.IsNullOrEmpty(e));
+        }
+
+        [Test]
+        public async Task レコードを消せばタグ付け行も本体が消す_外部キーに頼らない()
+        {
+            await using var db = DbWithoutForeignKeys();
+            Assert.That(await DeleteContactAsync(db, "1"), Is.Null);
             Assert.That(await LinksAsync(), Is.EqualTo("B:展示会 C:セミナー"));
+        }
+
+        [Test]
+        public async Task DeleteTogetherを切れば本体は消さない_外部キーが効いていれば外部キーが消す()
+        {
+            _design = TagTestDesigns.Create(e => e.DeleteTogether = false);
+            await using var db = DbWithoutForeignKeys();
+            Assert.That(await DeleteContactAsync(db, "1"), Is.Null);
+            Assert.That(Convert.ToInt32((await _db.QueryAsync(Ds, "SELECT COUNT(*) AS cnt FROM contact_tags WHERE owner_id = 1", new()))[0]["cnt"]), Is.EqualTo(2), "本体は消さない");
+
+            Assert.That(await DeleteContactAsync(_db, "2"), Is.Null);
+            Assert.That(await LinksAsync(), Is.EqualTo("C:セミナー"), "外部キー (Foreign Keys=True) が消す");
+        }
+
+        [Test]
+        public async Task タグ付けモジュールのCanDeleteが無ければレコードの削除ごと失敗する()
+        {
+            _design = TagTestDesigns.Create();
+            _design.Modules.Find("ContactTags")!.CanDelete = false;
+            Assert.That(await DeleteContactAsync(_db, "1"), Is.Not.Null);
+            Assert.That(await LinksAsync(), Is.EqualTo("A:展示会 A:DXPO B:展示会 C:セミナー"));
+            Assert.That(Convert.ToInt32((await _db.QueryAsync(Ds, "SELECT COUNT(*) AS cnt FROM contacts WHERE id = 1", new()))[0]["cnt"]), Is.EqualTo(1), "レコードも残る (ロールバック)");
         }
 
         [Test]

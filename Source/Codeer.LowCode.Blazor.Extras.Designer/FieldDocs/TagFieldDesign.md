@@ -16,11 +16,11 @@
 
 1. タグ付けモジュール `<Module>Tags` (`Id` / `OwnerId` / `Name` + `TagLinkContractField`)。一覧レイアウトは要らない
 2. 対象モジュールに TagField `Tags` (`TagModuleName` = `<Module>Tags`)。同名の TagField が結び付きなしで既にあれば、それに入れる
-3. DDL: テーブル (3 列)、(owner_id, name) の一意インデックス、name のインデックス、レコードへの外部キー (ON DELETE CASCADE)。`owner_id` の型は対象の Id 列に合わせる (DB にあればその型、無ければ手入力の Id は文字列・それ以外は整数)。SQL Server / MySQL では name に大文字小文字を区別する照合順序を付ける
+3. DDL: テーブル (3 列)、(owner_id, name) の一意インデックス、name のインデックス、レコードへの外部キー (ON DELETE CASCADE。タグ付け行の削除は既定では TagField の `DeleteTogether` が行うので、外部キーは `DeleteTogether` を false にして DB に任せるときの保険)。`owner_id` の型は対象の Id 列に合わせる (DB にあればその型、無ければ手入力の Id は文字列・それ以外は整数)。SQL Server / MySQL では name に大文字小文字を区別する照合順序を付ける
 
 - 冪等: `<Module>Tags` が既にあれば作らない (ただし TagLinkContractField が無ければ結び付けずにエラーで止める)。結び付き済みの TagField は触らない
 - DDL は流れない: `--ddl-out` で出したファイルを確認し、`sql` CLI (AllowCliSqlAccess のデータソース) またはユーザーが実行する。文字列の Id のモジュールでは `owner_id` の長さを対象の Id 列に合わせてから実行する
-- その後の手順: 対象モジュールの詳細・一覧・検索のレイアウトに `Tags` を置く (セットアップは置かない)。SQLite は接続文字列に `Foreign Keys=True` を付ける
+- その後の手順: 対象モジュールの詳細・一覧・検索のレイアウトに `Tags` を置く (セットアップは置かない)
 - タグを付けるモジュールが複数あれば、モジュールごとに実行する (タグ付けモジュールは共有しない)
 
 ## Design
@@ -32,7 +32,8 @@
 - タグの確定は Enter かスペース (半角・全角)。打った文字にスペースが入っていれば (貼り付けなど) そこで分ける。タグにスペースは入らない。「,」「、」「，」は区切らない (タグの一部)。区切りの集合は `TagField.Separators` の 1 か所。IME の変換中のキーは無視する。入力欄の外へフォーカスが移ったときも、打ちかけの文字をタグにする。入力欄が空のときの Backspace は右端のチップを外す
 - タグ名は 200 文字まで (入力欄・タグ付けモジュールの `Name` の MaxLength・DDL の列の長さが同じ値 `TagField.MaxTagLength`)。長すぎるタグは足さずにエラーを出す (同じ操作でほかのタグが足されても残る)
 - 同一判定は完全一致 (大文字小文字を区別する)。前後の空白は落とす
-- 足し外しは何も書かない。レコードの保存で一緒に書く (保存せずにやめれば何も残らない)。レコードを消したときのタグの削除は DDL の外部キー (ON DELETE CASCADE)
+- 足し外しは何も書かない。レコードの保存で一緒に書く (保存せずにやめれば何も残らない)
+- レコードを消すとタグ付け行も一緒に消える (`DeleteTogether`、既定 true。一覧フィールドの DeleteTogether と同じ仕組み = 従属レコードの宣言で、本体がレコードの削除の前にタグ付け行を 1 行ずつ消す。タグ付けモジュールの CanDelete が要る)。論理削除のモジュールでもタグ付けモジュールに論理削除が無ければ物理的に消える (編集履歴の「復活」は版から作り直す)。`DeleteTogether` を false にすると本体は消さない (DDL の外部キーに任せる。SQLite は接続文字列に `Foreign Keys=True` を付ける。論理削除のモジュールでタグ付け行を残して復活でそのまま戻したいときも false)
 - 候補: 何も打っていなければ全部のタグから、打てば打った文字を含むタグから、よく使われている順 (同じ件数なら名前順) に最大 10 件。タグ付けモジュールを本体の集計で 1 回引く。付いているタグは出さない。効くのはタグ付けモジュールの読み取り条件で、タグを付けるモジュール (親) の行の条件は効かない
 - 検索: 選んだタグを「すべて含む (`ContainsAll`) / いずれかを含む (`In`)」で組み合わせる。どちらも SQL で判定する。タグは丸ごとの完全一致。親の検索に子のタグを置いたとき (`LinkFieldNames` で 社員.タグ など) の「すべて含む」は、親の子の行のタグを合わせて判定する
 - 一覧レイアウトにも置ける (ページの行の分は一覧の読み込みに同梱される)
@@ -47,6 +48,7 @@
 | `TagModuleName` | string | `""` | タグ付けモジュール (`TagLinkContractField` を置いたモジュール)。セットアップが入れる。 |
 | `DisplayName` | string | `""` | 表示名。 |
 | `Placeholder` | string | `""` | タグが 1 つも無いときの入力欄のプレースホルダ。 |
+| `DeleteTogether` | bool | `true` | レコードの削除でタグ付け行も一緒に消す。`false` は DDL の外部キー (ON DELETE CASCADE) に任せる。 |
 | `IsSimpleSearchParameter` | bool | `false` | 検索欄に一致の選択を出さない。 |
 | `SearchMatchDefaultValue` | enum | `All` | 検索の一致の既定。`All` = すべて含む、`Any` = いずれかを含む。 |
 | `OnDataChanged` | string | `""` | タグが変わったときのスクリプトイベント名。 |
@@ -62,14 +64,14 @@
 ```
 
 - タグ付けモジュールに一覧レイアウトは要らない (TagField が結び付きで読む列を決める)
-- テーブル: (owner_id, name) の一意インデックス、name のインデックス (SQL Server / MySQL は name に大文字小文字を区別する照合順序)、レコードへの外部キー (ON DELETE CASCADE。論理削除のレコードのタグ行は残る)
-- SQLite は接続文字列に `Foreign Keys=True` を付ける。無いと外部キーが効かずタグ付け行が残る
+- テーブル: (owner_id, name) の一意インデックス、name のインデックス (SQL Server / MySQL は name に大文字小文字を区別する照合順序)、レコードへの外部キー (ON DELETE CASCADE。`DeleteTogether` を false にして DB に削除を任せるときの保険。SQLite は接続文字列に `Foreign Keys=True` を付ける)
 
 ### 設計チェック
 
 | コード | 内容 |
 |---|---|
 | `TagFieldDesign:1` | `TagModuleName` が空か、そのモジュールに TagLinkContractField が無い (モジュールが無いときは本体のチェックも出る) |
+| `TagFieldDesign:2` | `DeleteTogether` なのにタグ付けモジュールの `CanDelete` が false (レコードの削除が失敗する)。セットアップは CanDelete = true で作る |
 
 ### 配置の注意
 

@@ -1851,6 +1851,9 @@ Recipients: {1}</value>
   <data name="TagFieldTagModuleName" xml:space="preserve">
     <value>Tag Module</value>
   </data>
+  <data name="TagCheck_LinkModuleCannotDeleteFormat" xml:space="preserve">
+    <value>The tag module &apos;{0}&apos; has CanDelete = false. DeleteTogether needs it to delete the tag rows with the record (or set DeleteTogether = false and let the foreign key delete them).</value>
+  </data>
   <data name="SemanticSearchFieldKeywordSearch" xml:space="preserve">
     <value>Keyword search box</value>
   </data>

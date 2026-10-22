@@ -41,8 +41,12 @@ namespace Codeer.LowCode.Blazor.Extras.Test.EditHistory
             var d = TagTestDesigns.Create();
             var tags = (TagFieldDesign)d.Modules.Find("Contact")!.Fields.Single(e => e.Name == "Tags");
             var owned = tags.GetOwnedRecords(d.Modules).Single();
-            Assert.That((owned.Name, owned.Condition.ModuleName, owned.HoldsAllRecords), Is.EqualTo(("Tags", "ContactTags", true)));
+            Assert.That((owned.Name, owned.Condition.ModuleName, owned.HoldsAllRecords, owned.DeleteTogether), Is.EqualTo(("Tags", "ContactTags", true, true)));
             Assert.That(owned.Condition.GetFieldVariableConditions().Single().SearchTargetVariable, Is.EqualTo("OwnerId.Value"), "検索・同梱と同じ結び付き");
+
+            //DeleteTogether を切れば宣言も切れる (本体は親の削除で消さない)
+            var noDelete = TagTestDesigns.Create(e => e.DeleteTogether = false);
+            Assert.That(((TagFieldDesign)noDelete.Modules.Find("Contact")!.Fields.Single(e => e.Name == "Tags")).GetOwnedRecords(noDelete.Modules).Single().DeleteTogether, Is.False);
 
             var noContract = TagTestDesigns.Create(e => e.TagModuleName = "Contact");
             Assert.That(((TagFieldDesign)noContract.Modules.Find("Contact")!.Fields.Single(e => e.Name == "Tags")).GetOwnedRecords(noContract.Modules), Is.Empty);

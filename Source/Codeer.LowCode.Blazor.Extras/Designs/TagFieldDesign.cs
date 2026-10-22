@@ -25,8 +25,8 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
     /// <summary>
     /// タグを入力・表示して保存するフィールド。タグはタグ付けモジュール (TagLinkContractField。タグを付けるモジュールごとに 1 つ) の行に持つ:
     /// 1 行 = このレコードに付いたタグ 1 つ (OwnerId + タグ名)。タグのマスタは無い。
-    /// 設定はタグ付けモジュール名だけ。結び付き (OwnerId.Value = Id.Value・並び Id・読む列) はタグ付けモジュールの契約から組み立てて本体に渡す
-    /// (検索・一覧の行への同梱・子のパスの解決)。
+    /// 結び付き (OwnerId.Value = Id.Value・並び Id・読む列) はタグ付けモジュールの契約から組み立てて本体に渡す
+    /// (検索・一覧の行への同梱・子のパスの解決・レコードの削除で一緒に消す DeleteTogether)。
     /// </summary>
     [ToolboxIcon(PackIconMaterialKind = "TagMultiple")]
     [Designer(DisplayName = "$TagField")]
@@ -34,6 +34,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
     {
         /// <summary>デザインチェック指摘の番号。DesignCheckCode.Create で発行クラス名と結合して "クラス名:番号" になる。番号は固定(追加は末尾・欠番は再利用しない)。</summary>
         private const int CodeNotLinkModule = 1;
+        private const int CodeLinkModuleCannotDelete = 2;
 
         [Designer(DisplayName = "$DisplayName")]
         public string DisplayName { get; set; } = string.Empty;
@@ -44,6 +45,13 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
 
         [Designer(Index = 4, DisplayName = "$TagFieldPlaceholder")]
         public string Placeholder { get; set; } = string.Empty;
+
+        /// <summary>
+        /// レコードの削除でタグ付け行も一緒に消す (本体の DeleteTogether = 従属レコードの宣言。親の削除の前にタグ付け行を消す。タグ付けモジュールの CanDelete が要る)。
+        /// false なら本体は消さない (DDL の外部キー ON DELETE CASCADE に任せる・論理削除の親のタグ付け行を残して復活でそのまま戻すとき)。
+        /// </summary>
+        [Designer(Index = 5, DisplayName = "$DeleteTogether")]
+        public bool DeleteTogether { get; set; } = true;
 
         /// <summary>検索欄に一致 (すべて含む / いずれかを含む) の選択を出さない (既定の一致で検索する)。</summary>
         [Designer(Index = 0, DisplayName = "$IsSimpleSearchParameter", Category = "$SearchSettings")]
@@ -77,12 +85,12 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
             };
         }
 
-        //従属レコードの宣言: タグ付け行はレコードの一部 (編集履歴の版に入り、復元で戻る)。契約が無ければ宣言しない
+        //従属レコードの宣言: タグ付け行はレコードの一部 (編集履歴の版に入り、復元で戻る。DeleteTogether ならレコードの削除で本体が消す)。契約が無ければ宣言しない
         public IEnumerable<OwnedRecordsDesign> GetOwnedRecords(IModuleDesigns modules)
         {
             var condition = GetChildRecordsCondition(modules);
             if (condition == null) yield break;
-            yield return new OwnedRecordsDesign { Name = Name, Condition = condition, HoldsAllRecords = true };
+            yield return new OwnedRecordsDesign { Name = Name, Condition = condition, HoldsAllRecords = true, DeleteTogether = DeleteTogether };
         }
 
         //意味検索の文章: 付いているタグ名を「, 」で並べる (無ければ null = 文章に入れない)
@@ -118,6 +126,16 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
                     Code = DesignCheckCode.Create(typeof(TagFieldDesign), CodeNotLinkModule),
                     Location = new FieldDesignDataLocation { Module = context.OwnerModule, Field = Name, Member = nameof(TagModuleName) },
                     Message = string.Format(Properties.Resources.TagCheck_NotLinkModuleFormat, TagModuleName),
+                });
+            }
+            //本体は親の削除でタグ付け行を消すときタグ付けモジュールの CanDelete を見る (無ければ親の削除ごと失敗する)。契約が無ければ宣言しないので :1 だけ
+            if (DeleteTogether && linkModule != null && TagContracts.LinkContract(linkModule) != null && !linkModule.CanDelete)
+            {
+                result.Add(new FieldDesignCheckInfo
+                {
+                    Code = DesignCheckCode.Create(typeof(TagFieldDesign), CodeLinkModuleCannotDelete),
+                    Location = new FieldDesignDataLocation { Module = context.OwnerModule, Field = Name, Member = nameof(DeleteTogether) },
+                    Message = string.Format(Properties.Resources.TagCheck_LinkModuleCannotDeleteFormat, TagModuleName),
                 });
             }
             return result;
