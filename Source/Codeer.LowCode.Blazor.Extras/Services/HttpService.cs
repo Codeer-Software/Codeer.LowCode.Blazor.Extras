@@ -14,9 +14,6 @@ namespace Codeer.LowCode.Blazor.Extras.Services
         readonly LoadingService _loadingService;
         readonly List<ErrorCheckerScope> _checkers = new List<ErrorCheckerScope>();
 
-        //通信が短ければローディングを出さない (タグの候補など打つたびの問い合わせで画面が覆われないように)
-        const int LoadingDelayMilliseconds = 3000;
-
         public HttpService(HttpClient http, LoadingService loadingService, Codeer.LowCode.Blazor.RequestInterfaces.ILogger logger)
         {
             _http = http;
@@ -62,7 +59,7 @@ namespace Codeer.LowCode.Blazor.Extras.Services
 
         async Task<T?> ExecuteReturnJson<T>(Func<Task<HttpResponseMessage>> a, bool loading) where T : class
         {
-            using var scope = loading ? _loadingService.StartLoading(LoadingDelayMilliseconds) : null;
+            using var scope = loading ? _loadingService.StartLoading() : null;
             var response = await ExecuteReturnHttpResponseMessage(a, loading);
             try
             {
@@ -77,7 +74,7 @@ namespace Codeer.LowCode.Blazor.Extras.Services
 
         async Task<Stream?> ExecuteReturnStream(Func<Task<HttpResponseMessage>> a, bool loading)
         {
-            using var scope = loading ? _loadingService.StartLoading(LoadingDelayMilliseconds) : null;
+            using var scope = loading ? _loadingService.StartLoading() : null;
             var response = await ExecuteReturnHttpResponseMessage(a, loading);
             try
             {
@@ -92,7 +89,7 @@ namespace Codeer.LowCode.Blazor.Extras.Services
 
         async Task<HttpResponseMessage?> ExecuteReturnHttpResponseMessage(Func<Task<HttpResponseMessage>> a, bool loading)
         {
-            using var scope = loading ? _loadingService.StartLoading(LoadingDelayMilliseconds) : null;
+            using var scope = loading ? _loadingService.StartLoading() : null;
             try
             {
                 var response = await a();

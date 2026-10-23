@@ -1,3 +1,4 @@
+using Codeer.LowCode.Blazor.Components.AppParts.Loading;
 using Codeer.LowCode.Blazor.DataIO;
 using Codeer.LowCode.Blazor.DesignLogic;
 using Codeer.LowCode.Blazor.Extras.Designs;
@@ -9,6 +10,7 @@ using Codeer.LowCode.Blazor.Repository.Design;
 using Codeer.LowCode.Blazor.Repository.Match;
 using Codeer.LowCode.Blazor.Script;
 using Codeer.LowCode.Blazor.Utils;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Codeer.LowCode.Blazor.Extras.Fields
 {
@@ -310,6 +312,8 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             };
             try
             {
+                //打つたびの問い合わせなのでローディングで画面を覆わない
+                using var loadingScope = Services.Provider.GetService<LoadingService>()?.StartLoading(int.MaxValue);
                 var result = (await Services.ModuleDataService.AggregateAsync(new List<AggregateCondition> { aggregate })).FirstOrDefault();
                 return (result?.Rows ?? new())
                     .Select(e => e.KeyText(0) ?? string.Empty)
