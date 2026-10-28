@@ -4380,6 +4380,12 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
             }
         }
 
+        internal static string JobTriggerAllowsConcurrentRuns {
+            get {
+                return ResourceManager.GetString("JobTriggerAllowsConcurrentRuns", resourceCulture);
+            }
+        }
+
         internal static string DesignCheck_JobTriggerJobNameRequired {
             get {
                 return ResourceManager.GetString("DesignCheck_JobTriggerJobNameRequired", resourceCulture);

@@ -42,9 +42,18 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         [Designer(Index = 6, DisplayName = "$JobTriggerUseSubmitData")]
         public bool UseSubmitData { get; set; } = true;
 
-        /// <summary>非同期で実行する。true ならジョブを起動したらすぐ戻る (結果は画面に返らない)。false ならジョブが終わるまで待って結果を出す。</summary>
+        /// <summary>
+        /// 非同期で実行する。true ならジョブを起動したらすぐ戻り「開始しました」を通知する (結果はフィールドの JobId / JobIds と GetJobStatus で問い合わせる)。
+        /// false ならジョブが終わるまで待って結果を出す。
+        /// </summary>
         [Designer(Index = 7, DisplayName = "$JobTriggerIsAsynchronous")]
         public bool IsAsynchronous { get; set; }
+
+        /// <summary>
+        /// 同じジョブ (JobName) を重ねて動かすことを許す。false なら、そのジョブが実行中 (誰が起動したものでも・同期と非同期のどちらでも) に起動すると失敗の通知になる (判定はサーバーがジョブ名で行う)。
+        /// </summary>
+        [Designer(Index = 8, DisplayName = "$JobTriggerAllowsConcurrentRuns")]
+        public bool AllowsConcurrentRuns { get; set; }
 
         public override string GetWebComponentTypeFullName() => typeof(JobTriggerFieldComponent).FullName!;
 

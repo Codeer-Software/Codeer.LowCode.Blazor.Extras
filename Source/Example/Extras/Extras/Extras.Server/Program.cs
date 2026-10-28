@@ -14,6 +14,7 @@ using Codeer.LowCode.Blazor.Extras.Server.Web;
 using Extras.Server.Jobs;
 using Codeer.LowCode.Blazor.Extras.Server.Jobs;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.Extensions.Caching.Distributed;
 using Extras.Server.Services.DataChangeHistory;
 using Codeer.LowCode.Blazor.Extras.Server.FileManagement;
 using Microsoft.AspNetCore.Localization;
@@ -138,12 +139,16 @@ builder.Services.AddAuditLog(SystemConfig.Instance.AuditLog, AuditSinkTable.Crea
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddAuthentication(Microsoft.AspNetCore.Authentication.Cookies.CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options => options.Cookie.Name = "ExtrasExample.Auth");
+//サーバー側のキャッシュ (IDistributedCache。非同期のジョブの状態に使う)
+builder.Services.AddDistributedMemoryCache();
 
 var app = builder.Build();
 //意味検索の警告ログ (埋め込みの失敗など) をアプリのログに出す
 Extras.Server.AI.SemanticSearchIndex.Service.LoggerFactory = app.Services.GetRequiredService<ILoggerFactory>();
 //画面のボタン (JobTriggerField) から起動したジョブの失敗をアプリのログに出す
 JobProcess.LoggerFactory = app.Services.GetRequiredService<ILoggerFactory>();
+//非同期のジョブの状態の置き場 (複数インスタンスでは共有キャッシュ)
+JobProcess.Cache = app.Services.GetRequiredService<IDistributedCache>();
 
 app.UseResponseCompression();
 app.UseRequestLocalization();

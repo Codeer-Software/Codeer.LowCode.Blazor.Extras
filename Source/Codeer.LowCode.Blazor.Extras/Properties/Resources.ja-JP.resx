@@ -1881,6 +1881,9 @@
   <data name="JobTriggerIsAsynchronous" xml:space="preserve">
     <value>非同期で実行</value>
   </data>
+  <data name="JobTriggerAllowsConcurrentRuns" xml:space="preserve">
+    <value>同時実行を許す</value>
+  </data>
   <data name="DesignCheck_JobTriggerJobNameRequired" xml:space="preserve">
     <value>ジョブ名を設定してください。</value>
   </data>

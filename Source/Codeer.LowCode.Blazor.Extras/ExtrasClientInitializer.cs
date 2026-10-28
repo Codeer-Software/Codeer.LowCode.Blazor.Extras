@@ -19,6 +19,9 @@ namespace Codeer.LowCode.Blazor.Extras
             //クロス集計のセル (OnCellClick の引数)
             app.GetScriptRuntimeTypeManager().AddType<CrossTabCell>();
             app.GetScriptRuntimeTypeManager().AddType<TagSearchMatch>();
+            //JobTriggerField.GetJobStatus の戻り値と、その Status の enum
+            app.GetScriptRuntimeTypeManager().AddType<Jobs.JobStatusResponse>();
+            app.GetScriptRuntimeTypeManager().AddType<Jobs.JobStatus>();
         }
 
         /// <summary>

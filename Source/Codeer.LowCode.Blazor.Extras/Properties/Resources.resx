@@ -1881,6 +1881,9 @@ Recipients: {1}</value>
   <data name="JobTriggerIsAsynchronous" xml:space="preserve">
     <value>Run asynchronously</value>
   </data>
+  <data name="JobTriggerAllowsConcurrentRuns" xml:space="preserve">
+    <value>Allow concurrent runs</value>
+  </data>
   <data name="DesignCheck_JobTriggerJobNameRequired" xml:space="preserve">
     <value>Set the job name.</value>
   </data>

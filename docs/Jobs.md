@@ -3,7 +3,7 @@
 ホストのアプリが持つジョブ (C# の処理) を、同じアプリの別プロセスで動かす部品です。画面のボタン ([JobTriggerField](JobTriggerField.md)) から起動するときも、
 コマンドライン (`dotnet LowCodeApp.Server.dll job <ジョブ名>`) から起動するときも、同じ経路を通ります。
 
-- 親側 `JobProcess`: このプロセス自身を `job <ジョブ名> --stdin` で起動し、入力を標準入力で渡して結果 (`JobResult`) を受け取る
+- 親側 `JobProcess`: このプロセス自身を `job <ジョブ名> --stdin` で起動し、入力を標準入力で渡して結果 (`JobResult`) を受け取る。待たずに起動したジョブは Id で状態を問い合わせられる
 - 子側 `JobMode`: `job` より後ろの引数を受けてジョブを 1 つ実行し、終了コードを返す
 - 親と子の約束 (引数の並び・標準入力・環境変数・終了コード・UTF-8・結果の文言の取り出し) はこの 2 つの中に閉じています。ホストはジョブの一覧と DB アクセスの組み立てだけを書きます
 
@@ -44,10 +44,12 @@ if (isJob) return await JobMode.RunAsync(args[1..], JobRunner.Names, (name, jobA
 //JobController (画面のボタン = JobTriggerField の受け口)
 if (design.IsAsynchronous)
 {
-    JobProcess.Start(design.JobName, request.Arguments, userId);     // 起動したら返す
-    return new JobRunResponse { Started = true };
+    var jobId = await JobProcess.StartAsync(design.JobName, request.Arguments, userId, design.AllowsConcurrentRuns);   // 起動したら Id を返す
+    if (jobId == null) return Failure($"ジョブ '{design.JobName}' は実行中です");                               // 同時実行を許さないジョブが実行中
+    return new JobRunResponse { Started = true, JobId = jobId };
 }
-var result = await JobProcess.RunAsync(design.JobName, request.Arguments, userId);   // 終わるまで待つ
+var result = await JobProcess.RunAsync(design.JobName, request.Arguments, userId, design.AllowsConcurrentRuns);   // 終わるまで待つ
+if (result == null) return Failure($"ジョブ '{design.JobName}' は実行中です");
 return result.Succeeded ? new JobRunResponse { Succeeded = true, Message = result.Message } : Failure(result.ErrorMessage);
 
 //HTTP としては成功 (200) で返す業務上の失敗。監査ログ (AuditLog) にも失敗として残す
@@ -57,9 +59,23 @@ JobRunResponse Failure(string error)
     return new JobRunResponse { Succeeded = false, Error = error };
 }
 
-//Program.cs (失敗の記録先)
+//非同期で起動したジョブの状態 (JobTriggerField の GetJobStatus が問い合わせる)。起動したユーザーにだけ返す
+[HttpGet("run/{jobId}")]
+public async Task<ActionResult<JobStatusResponse>> StatusAsync(string jobId)
+{
+    var userId = await _dataService.GetCurrentUserIdAsync();
+    var status = await JobProcess.GetStatusAsync(jobId, userId);
+    return status == null ? NotFound() : status;
+}
+
+//Program.cs (失敗の記録先と、非同期のジョブの状態の置き場)
+builder.Services.AddDistributedMemoryCache();
+...
 JobProcess.LoggerFactory = app.Services.GetRequiredService<ILoggerFactory>();
+JobProcess.Cache = app.Services.GetRequiredService<IDistributedCache>();
 ```
+
+`JobProcess.RunAsync(jobName, input, userId, allowConcurrent = true)` は終わるまで待って `JobResult` を返します。`allowConcurrent` が `false` で同じ名前のジョブが実行中なら、起動せずに null を返します。
 
 `JobResult`:
 
@@ -69,6 +85,22 @@ JobProcess.LoggerFactory = app.Services.GetRequiredService<ILoggerFactory>();
 | `Message` | 成功したときの文言 = 標準出力の最後の行 (ジョブの戻り値。null なら空) |
 | `ErrorMessage` | 失敗したときの文言 = 標準エラーの最初の空でない行 (例外のメッセージ)。無ければ「ジョブ X が失敗しました (終了コード N)」 |
 | `ExitCode` / `Output` / `Error` | 終了コード・標準出力の全文・標準エラーの全文 |
+
+### 非同期の結果
+
+| メンバー | 内容 |
+|---|---|
+| `JobProcess.StartAsync(jobName, input, userId, allowConcurrent = true)` | 起動したら待たずにジョブの Id (文字列) を返す。`allowConcurrent` が `false` で同じ名前のジョブが実行中なら、起動せずに null。起動できなければ例外 |
+| `JobProcess.GetStatusAsync(jobId, userId)` | `JobStatusResponse` (`Status` = `JobStatus` の `Running` / `Done` / `Error`、成功の文言 `Message` = `JobResult.Message`、失敗の文言 `Error` = `JobResult.ErrorMessage`)。知らない Id・別のユーザーが起動したジョブ・`Cache` が未設定なら null |
+| `JobProcess.Cache` | 状態の置き場 (`IDistributedCache`)。ホストが起動時に設定する。未設定なら `StartAsync` は Id を返すが状態を残さない |
+| `JobProcess.FinishedRetention` | 終わった結果を持っておく時間 (終了からの経過。既定 30 分)。過ぎたら `GetStatusAsync` は null |
+
+状態は `JobProcess.Cache` (`IDistributedCache`) に置きます。テンプレートはメモリキャッシュなので、サーバーを再起動すると消えます (JobTriggerField の `GetJobStatus` は null を返します)。サーバーを複数インスタンスで動かすときは、Redis などの共有キャッシュに差し替えます。実行中にサーバーが落ちたジョブは `running` のまま残ります。
+
+### 同時実行
+
+実行中のジョブはジョブ名 (大文字小文字は区別しない) で数えています。同期 (`RunAsync`) と非同期 (`StartAsync`) のどちらも数えます。
+`allowConcurrent` が `false` のとき、同じ名前のジョブが実行中 (誰が起動したものでも) なら起動しません。JobController はデザインの JobTriggerField の `AllowsConcurrentRuns` を渡します。
 
 ---
 
@@ -94,15 +126,15 @@ JobProcess.LoggerFactory = app.Services.GetRequiredService<ILoggerFactory>();
 | `JobProcess.EntryDll` | このプロセスの入口の dll (`LowCodeApp.Server.dll`)。`HostExecutable` が空のとき `dotnet <dll>` で起動する |
 | `JobProcess.DotnetPath` | `HostExecutable` が空のときの `dotnet` (このプロセスを起動した dotnet。dotnet から起動されていなければ PATH の `dotnet`) |
 
-起動できないとき (実行ファイルが無い等) は `RunAsync` / `Start` が例外を投げます (ジョブの失敗ではなく環境の不備)。
+起動できないとき (実行ファイルが無い等) は `RunAsync` / `StartAsync` が例外を投げます (ジョブの失敗ではなく環境の不備)。
 
 ---
 
 ## 制限
 
-- 同じジョブが同時に動くことがあります。排他が要るならジョブが自分で取ります
-- 同期 (`RunAsync`) にタイムアウトはありません。長い処理はホストが非同期 (`Start`) で起動します
+- 同じジョブを重ねて動かさないようにするには JobTriggerField の `AllowsConcurrentRuns` を `false` にします。止まるのは 1 台のサーバーの中だけです。サーバーを複数台で動かすときや、コマンドライン・タスクスケジューラから起動したジョブとは重なることがあるので、厳密な排他が要るならジョブが自分で取ります
+- 同期 (`RunAsync`) にタイムアウトはありません。長い処理はホストが非同期 (`StartAsync`) で起動します
 - ジョブが起動した別のプロセスが標準出力を引き継いだまま残ると、ジョブが終わっても出力の終わりを待ち続けます。ジョブから長く動くプロセスを起動するときは、標準出力・標準エラーをリダイレクトして切り離します
-- 非同期の結果を問い合わせる口はありません (終わったかどうかはジョブ自身が DB 等に残す)
+- 非同期の結果は終了から `FinishedRetention` の間だけ `JobProcess.Cache` に残ります。共有キャッシュにすれば複数台でもどのサーバーからでも問い合わせられますが、同時実行の判定 (`AllowsConcurrentRuns`) だけは 1 台の中です。長く残したい結果はジョブ自身が DB 等に残します
 - 成功したジョブの標準出力はどこにも残りません (使うのは最後の 1 行だけ)。失敗したときは全文がログに出るので、ジョブは受け取った内容や秘密情報を標準出力に出さないようにします
 - 子プロセスの書き込みは、親のリクエストの監査ログ (AuditLog) には載りません。記録されるのは親の呼び出し 1 件です
