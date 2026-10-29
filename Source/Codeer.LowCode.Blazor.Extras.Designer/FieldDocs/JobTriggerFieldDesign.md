@@ -88,8 +88,8 @@ public class JobTriggerFieldDesign : FieldDesignBase
 
 ### ホストの結線 (ユーザーの作業。テンプレートには入っている)
 
-- クライアント: 起動時に `JobTriggerField.EndPoint = "/api/job/run"` (テンプレートの `Client.Shared/Services/ServiceInitializer.cs`)。`GetJobStatus` は `GET {EndPoint}/{jobId}` で問い合わせる。HTTP を使わないホストは `JobTriggerField.RunCoreAsync` と `JobTriggerField.GetJobStatusCoreAsync` (非同期のジョブの状態の問い合わせ) を差し替える
-- サーバー: `Controllers/JobController.cs` が `JobRunRequest` を受け、書き込み権限を確かめて Extras.Server の `JobProcess` でジョブを別プロセスとして起動する。非同期では `JobId` を返し、`GET /api/job/run/{jobId}` で状態 (`JobStatusResponse`) を返す。`AllowsConcurrentRuns` が `false` で同じジョブが実行中なら起動せず失敗を返す
+- クライアント: 設定不要 (共通の API `ExtrasTransport.EndPoint` = `/api/extras` に送る。`GetJobStatus` も同じ口で問い合わせる)。ジョブ専用のエンドポイントで受けるホストは `JobTriggerField.EndPoint` を設定する (状態は `GET {EndPoint}/{jobId}`)。HTTP を使わないホストは `JobTriggerField.RunCoreAsync` と `JobTriggerField.GetJobStatusCoreAsync` (非同期のジョブの状態の問い合わせ) を差し替える
+- サーバー: ホストの共通の API (テンプレートの `Controllers/ExtrasController.cs`) の対応表 `Services/ExtrasApiTable.cs` に `JobApi` が載っていること (テンプレートは載せ済み: `new JobApi(JobRunner.Names)`。動かせるジョブは `Jobs/JobRunner`)。`JobApi` が `JobRunRequest` を受け、書き込み権限を確かめて Extras.Server の `JobProcess` でジョブを別プロセスとして起動する。非同期では `JobId` を返し、状態の問い合わせに `JobStatusResponse` を返す。`AllowsConcurrentRuns` が `false` で同じジョブが実行中なら起動せず失敗を返す
 
 ## Script
 

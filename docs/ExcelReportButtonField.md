@@ -58,29 +58,17 @@
 ## PDF 出力に必要な設定
 
 `Format` を `Pdf` にすると、テンプレートに値を書き込んだ xlsx を PDF に変換してからダウンロードします。変換はスクリプトの `Excel.DownloadPdf()` と同じ経路です。
-新しいアプリテンプレートには次がすべて入っています。
+新しいアプリテンプレートには 1 と 3 が入っています。
 
 **Web アプリ (Blazor WebAssembly)**: サーバーで変換します。
 
-1. サーバーの変換 API (テンプレートの `ExcelController`)
+1. サーバーの共通の API (`POST /api/extras`。テンプレートの `Controllers/ExtrasController.cs`) の対応表 `Services/ExtrasApiTable.cs` に変換を並べる。クライアント側の設定は要りません
 
    ```csharp
-   [ApiController]
-   [Route("api/excel")]
-   public class ExcelController : ControllerBase
-   {
-       [HttpPost("pdf")]
-       public async Task<IActionResult> ConvertToPdfAsync()
-       {
-           using var memoryStream = new MemoryStream();
-           await Request.Body.CopyToAsync(memoryStream);
-           memoryStream.Position = 0;
-           return Ok(ExcelConverter.ConvertToPdf(memoryStream));
-       }
-   }
+   new ExcelApi(),   //Excel → PDF (Excel.ConvertPdf)
    ```
 
-2. クライアントの起動時にエンドポイントを設定 (テンプレートは `ServiceInitializer`)
+2. 専用のルートで受ける場合だけ、クライアントの起動時にそのルートを設定する (設定するとそちらへ xlsx を POST します)
 
    ```csharp
    Codeer.LowCode.Blazor.Extras.ScriptObjects.Excel.ConvertPdfEndPoint = "api/excel/pdf";
@@ -92,9 +80,9 @@
    GlobalFontSettings.FontResolver = new CustomFontResolver(SystemConfig.Instance.FontFileDirectory);
    ```
 
-**デスクトップアプリ (WPF / WinForms)**: 同じプロセスで変換します。起動時に変換関数を設定し (`Excel.ConvertPdf = ExcelConverter.ConvertToPdf;`)、フォントリゾルバも同様に設定します。`ConvertPdf` が設定されていればエンドポイントは使いません。
+**デスクトップアプリ (WPF / WinForms)**: 同じプロセスで変換します。起動時に変換関数を設定し (`Excel.ConvertPdf = ExcelConverter.ConvertToPdf;`)、フォントリゾルバも同様に設定します。`ConvertPdf` が設定されていればサーバーには送りません。
 
-どちらも未設定のときは PDF がダウンロードされません。
+サーバーが変換を受けない (対応表に `ExcelApi` が無い) ときは PDF がダウンロードされません。
 
 ## スクリプト API
 

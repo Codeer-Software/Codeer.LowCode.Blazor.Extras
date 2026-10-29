@@ -35,7 +35,7 @@
 
 ## サーバー側設定
 
-このフィールドはサーバーの AI 解析エンドポイント (`/api/ai_text_analyze`、アプリテンプレートに設定済み) を呼び出します。
+このフィールドはサーバーの共通の API (`POST /api/extras` の `AITextAnalyze.AnalyzeFile` / `AnalyzeText`、アプリテンプレートに設定済み) を呼び出します。
 動作にはサーバーの `appsettings.json` に `AISettings` セクションが必要です。
 
 ```json
@@ -53,9 +53,11 @@
 - `FileField` を併用する場合は FileField のサーバー要件 (一時ファイルテーブル・ファイルストレージ設定) も必要です
 
 サーバー側の解析ロジックは `Codeer.LowCode.Blazor.Extras.Server` パッケージの `AITextAnalyzeService` が提供します
-(`AnalyzeFileAsync` / `AnalyzeTextAsync` に ModuleDataIO とモジュール名・フィールド名を渡す。テンプレートの `AITextAnalyzeController` が結線済み)。
+(`AnalyzeFileAsync` / `AnalyzeTextAsync` に ModuleDataIO とモジュール名・フィールド名を渡す)。共通の API では `Services/ExtrasApiTable.cs` の `new AITextAnalyzeApi(SystemConfig.Instance.AISettings)` がこれを呼びます (テンプレートは結線済み)。
+専用のルートで受ける場合は、クライアントの起動時に `AITextAnalyzerField.FileToModuleDataEndPoint` / `TextToModuleDataEndPoint` を設定するとそちらへ送ります。
 チャットモデルは Microsoft.Extensions.AI の `IChatClient` 経由で呼びます。既定のコンストラクタ (`AISettings` だけ) は Azure OpenAI の IChatClient を組み立て、
 `AITextAnalyzeService(AISettings, Func<IChatClient>)` なら AIChat の Agent と同じくホストが好きなプロバイダを渡せます (AISettings は文書解析の接続に使う)。
+共通の API で使うときは ExtrasApiTable に `new AITextAnalyzeApi(new AITextAnalyzeService(settings, factory))` と並べます。
 サーバーは解析のたびに、その AITextAnalyzerField が今のユーザーに見えること (アプリのアクセス条件・モジュールの UserReadCondition・PermissionField の読取権限) を確かめてから AI を呼び、補足指示 (Remarks) はフィールドのデザインから取ります
 ([サーバー API の権限チェック](ServerApiAuthorization.md))。
 プロンプトや解析処理を変えたい場合は、ソース (MIT) をコピーして改変してください。

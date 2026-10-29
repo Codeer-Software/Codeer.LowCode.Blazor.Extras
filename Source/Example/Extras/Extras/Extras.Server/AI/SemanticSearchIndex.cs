@@ -8,7 +8,7 @@ namespace Extras.Server.AI
     /// SemanticSearchField (意味検索) のサーバー側の持ち物 = <see cref="SemanticSearchService"/> をプロセスに 1 つ。
     /// 埋め込みプロバイダは appsettings の SemanticSearch.EmbeddingProvider の呼び名で <see cref="EmbeddingProviderTable"/> から選ぶ (Azure OpenAI / 独自)。
     /// 呼び名が空 (対応表に無い) なら埋め込み無し = 文章だけ保存され、意味検索ツールは付かない。
-    /// 使う場所: CustomizedModuleDataIO (保存時の索引付け) / SemanticSearchController (再索引 API) / AIChatAgentTable (RawDataAccessAgent の search_records)。
+    /// 使う場所: CustomizedModuleDataIO (保存時の索引付け) / ExtrasApiTable (再索引 API) / AIChatAgentTable (RawDataAccessAgent の search_records)。
     /// </summary>
     internal static class SemanticSearchIndex
     {

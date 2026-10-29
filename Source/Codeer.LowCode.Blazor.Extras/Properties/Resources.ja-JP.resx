@@ -1906,7 +1906,7 @@
     <value>不正な入力があります</value>
   </data>
   <data name="JobTrigger_NotConfigured" xml:space="preserve">
-    <value>このアプリではジョブを実行できません (JobTriggerField.EndPoint が設定されていません)。</value>
+    <value>このアプリではジョブを実行できません (ジョブを実行する口が設定されていません)。</value>
   </data>
   <data name="DesignCheck_Permission_row_conditions_are_not_applied_to_job_execution_" xml:space="preserve">
     <value>PermissionField '{1}' の行データを参照する条件は、JobTriggerField '{0}' のジョブの実行可否には適用されません (画面ではその行でボタンが押せなくなるだけです)。CurrentUser を参照する条件を使用してください。</value>

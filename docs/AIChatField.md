@@ -87,9 +87,9 @@ DELETE {EndPoint}/{requestId}   // 中断
 
 Example の `DummyAIChatAgent` (`Example/Extras/Extras/Extras.Server/AI/`) は AI を呼ばないダミーで、UI の確認と、自分で `IAIChatAgent` を書くときの雛形です。発言に `html` / `text` / `error` / `slow` を含めると振る舞いが変わります。
 
-### 対応表と Controller (アプリ側)
+### 対応表と API への結線 (アプリ側)
 
-対応表と Controller はアプリの持ち物です。サンプル (`Example/Extras/Extras/Extras.Server/AI/AIChatAgentTable.cs` と `Controllers/AIChatController.cs`):
+対応表はアプリの持ち物です。サンプル (`Example/Extras/Extras/Extras.Server/AI/AIChatAgentTable.cs`):
 
 ```csharp
 // AI/AIChatAgentTable.cs: Agent 名 → Agent。AIChatField のデザインの Agent がこの名前を指す。自分の Agent はここに 1 行足す
@@ -118,32 +118,11 @@ public static class AIChatAgentTable
 ```
 
 ```csharp
-[ApiController]
-[Route("api/ai_chat")]
-public class AIChatController : ControllerBase, IAsyncDisposable
-{
-    static AIChatService aiChat => AIChatAgentTable.Service;
-
-    readonly DataService _dataService;                        // ModuleDataIO を持つ (テンプレートの Services/DataService)
-    public AIChatController(DataService dataService) => _dataService = dataService;
-    public async ValueTask DisposeAsync() => await _dataService.DisposeAsync();
-
-    string Owner => User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.Identity?.Name ?? string.Empty;
-
-    //送信は ModuleDataIO を渡す = リクエストの AIChatField が今のユーザーに見えるときだけ受け付ける (アプリアクセス条件・モジュールの UserRead・フィールド読取権限)
-    [HttpPost]
-    public async Task<ActionResult<AIChatSendResponse>> Send([FromBody] AIChatSendRequest request)
-        => Accepted(new AIChatSendResponse { RequestId = await aiChat.StartAsync(Owner, request, _dataService.ModuleDataIO) });
-
-    [HttpGet("{requestId}")]
-    public ActionResult<AIChatStatusResponse> Status(string requestId)
-        => aiChat.GetStatus(Owner, requestId) is { } s ? s : NotFound();
-
-    [HttpDelete("{requestId}")]
-    public IActionResult Cancel(string requestId)
-        => aiChat.Cancel(Owner, requestId) ? NoContent() : NotFound();
-}
+// Services/ExtrasApiTable.cs: 共通の API (Controllers/ExtrasController.cs = POST api/extras) に出す機能の対応表に 1 行
+new AIChatApi(AIChatAgentTable.Service),
 ```
+
+`AIChatApi` (Extras.Server) が送信・返事の状態・中断を受け、`AIChatService` の `StartAsync` / `GetStatus` / `Cancel` を呼びます。送信はリクエストの AIChatField が今のユーザーに見えるときだけ受け付け (アプリアクセス条件・モジュールの UserRead・フィールド読取権限)、ジョブの状態の取得・中断は送信したユーザーにだけ応じます。
 
 ```csharp
 // IChatClient は Extras.Server の AzureOpenAIClients が AISettings (Azure OpenAI の OpenAIEndPoint / OpenAIKey / ChatModel) から作る。設定が欠けていれば null
@@ -152,10 +131,7 @@ Func<IChatClient>? chatClientFactory = AzureOpenAIClients.ChatClientFactory(Syst
 // Func<IChatClient> chatClientFactory = () => new OllamaChatClient(...);
 ```
 
-```csharp
-// クライアント (ServiceInitializer)。URL はアプリの持ち物なので起動時に一度設定する
-AIChatField.EndPoint = "/api/ai_chat";
-```
+クライアント側の設定は不要です (共通の API `ExtrasTransport.EndPoint` = `/api/extras` に送ります)。チャット専用のコントローラで受ける場合は、従来どおり `AIChatField.EndPoint` にその URL (POST {EndPoint} / GET・DELETE {EndPoint}/{requestId}) を設定すればそちらに送ります。
 
 ### RawDataAccessAgent と DB の権限
 

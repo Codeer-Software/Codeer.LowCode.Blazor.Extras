@@ -47,7 +47,7 @@
   リンクパス `{ApproverUser.Name.Value}` / 宛先 `ApproverUser.Email.Value` 等)
 - 送信は操作のコミット後。**通知の失敗は承認操作を失敗させない** (サーバーログのみ)
 - アドレスが空のメンバーはスキップされる。送信履歴 (Mail.HistoryModuleName) にも記録される
-- サーバー側は ApprovalEngine の `MailDispatcher` プロパティの結線が必要 (テンプレートの ApprovalController 参照)
+- サーバー側はホストの共通の API (テンプレートの ExtrasController) に `ApprovalApi` が載っていること (テンプレートは載せ済み。`ApprovalApi` が ApprovalEngine の `MailDispatcher` を結線する)
 
 ```json
 { "Name": "Contract", "TurnNotifyMail": "TurnMail",

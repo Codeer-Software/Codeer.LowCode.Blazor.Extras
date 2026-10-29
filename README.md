@@ -153,31 +153,21 @@ ExtrasClientInitializer.Initialize(this);
 ExtrasClientInitializer.Initialize(this, http, logger, toaster);
 ```
 
-メール送信・承認フロー・Excel PDF 変換・AI 解析・AI チャット・意味検索・スクリプトの一括ファイル入出力・自分の認証アプリ解除ボタンを使う場合は、エンドポイント URL を起動時に設定します
-(URL はアプリのコントローラに合わせて変更してください)。
+メール送信・ジョブ・承認フロー・AI チャット・意味検索の再索引・自分の認証アプリ解除ボタン・Excel PDF 変換・AI 解析は、サーバーの共通の API
+(`ExtrasTransport.EndPoint`。既定 `/api/extras`) に送るので、クライアント側の設定は要りません。
+
+スクリプトの一括ファイル入出力を使う場合は、エンドポイント URL を起動時に設定します
+(受け口は本体の `ModuleDataController`。URL はアプリのコントローラに合わせて変更してください)。
 
 ```csharp
-using Codeer.LowCode.Blazor.Extras.Fields;
-using Codeer.LowCode.Blazor.Extras.Mail;
-using Codeer.LowCode.Blazor.Extras.Approval;
 using Codeer.LowCode.Blazor.Extras.ScriptObjects;
 
-MailTransport.SendMailEndPoint = "/api/mail";
-MailTransport.BulkSearchMailEndPoint = "/api/mail/bulk_search";
-MailTransport.PreviewMailEndPoint = "/api/mail/preview";
-MailTransport.BulkPreviewMailEndPoint = "/api/mail/bulk_preview";
-ApprovalTransport.EndPointBase = "/api/approval";
-Codeer.LowCode.Blazor.Extras.ScriptObjects.Excel.ConvertPdfEndPoint = "api/excel/pdf";
-AITextAnalyzerField.FileToModuleDataEndPoint = "/api/ai_text_analyze/file";
-AITextAnalyzerField.TextToModuleDataEndPoint = "/api/ai_text_analyze/text";
-AIChatField.EndPoint = "/api/ai_chat";
-SemanticSearchField.EndPoint = "/api/semantic_search/reindex";
 BulkFileReader.ParseFileEndPoint = "/api/module_data/parse_file";
 BulkFileTransferService.ListFileByDataEndPoint = "/api/module_data/list_file_by_data";
 BulkFileTransferService.BulkSubmitEndPoint = "/api/module_data/bulk_submit";
-TotpResetClient.StatusEndPoint = "/api/account/totp/status";
-TotpResetClient.ResetEndPoint = "/api/account/totp/reset";
 ```
+
+機能ごとの専用コントローラで受ける従来の結線 (`MailTransport.SendMailEndPoint` / `ApprovalTransport.EndPointBase` / `JobTriggerField.EndPoint` / `AIChatField.EndPoint` / `SemanticSearchField.EndPoint` / `TotpResetClient.StatusEndPoint`・`ResetEndPoint` / `Excel.ConvertPdfEndPoint` / `AITextAnalyzerField.FileToModuleDataEndPoint`・`TextToModuleDataEndPoint` を設定する) も引き続き動きます。設定した機能はそちらを使います。
 
 #### LowCodeApp.Server
 
@@ -189,13 +179,34 @@ using Codeer.LowCode.Blazor.Extras;
 ExtrasServerInitializer.Initialize();
 ```
 
-メール送信・承認フローを使う場合は、受け口となるコントローラ (`MailController` / `ApprovalController`) と
-送信インフラの対応表 (`MailSenderTable`) が必要です。新しいアプリテンプレートには含まれています。
-詳細は [メール送信](docs/Mail.md) / [承認フロー](docs/ApprovalFlow.md) を参照してください。
+メール送信・ジョブ・承認フロー・AI チャット・意味検索の再索引・自分の認証アプリ解除ボタン・Excel PDF 変換・AI 解析を使う場合は、共通の API の受け口
+`Controllers/ExtrasController.cs` (`POST api/extras`) と、出す機能の対応表 `Services/ExtrasApiTable.cs` が必要です。
+新しいアプリテンプレート (Cookie) には含まれています。対応表には Extras.Server の機能を 1 行ずつ並べ、並べていない機能の要求は 404 になります。
+
+```csharp
+//Services/ExtrasApiTable.cs
+public static ExtrasApi Create() => new()
+{
+    Handlers =
+    {
+        new MailApi(SystemConfig.Instance.Mail, MailSenderTable.Create),       //メール (送信インフラの対応表 MailSenderTable)
+        new JobApi(JobRunner.Names),                                           //ジョブ
+        new ApprovalApi(SystemConfig.Instance.Mail, MailSenderTable.Create),   //承認フロー (通知メール)
+        new AIChatApi(AIChatAgentTable.Service),                               //AI チャット
+        new SemanticSearchApi(SemanticSearchIndex.Service, userId => ...),     //意味検索の再索引
+        new TotpApi(SystemConfig.Instance.TotpLogin),                          //自分の認証アプリの解除
+        new ExcelApi(),                                                        //Excel → PDF
+        new AITextAnalyzeApi(SystemConfig.Instance.AISettings),                //AI 文書解析
+    },
+};
+```
+
+`ExtrasController` は `[Authorize, AutoValidateAntiforgeryToken]` を付けた POST 1 本で、`DataService` から組んだ `ExtrasApiContext` (ModuleDataIO・デザイン・DB 接続・ユーザー Id) を `ExtrasApi.ExecuteAsync` に渡します。
+メール・承認フローの詳細は [メール送信](docs/Mail.md) / [承認フロー](docs/ApprovalFlow.md) を参照してください。
 
 一括ファイル入出力 (CSV / 固定長 / 列マッピング / 値の変換) を使う場合は、`ModuleDataController` の `list_file` / `submit_by_file` を `BulkFileTransfer` に移譲し、スクリプト用の `list_file_by_data` / `bulk_submit` / `parse_file` を足します。新しいアプリテンプレートには含まれています。詳細は [一括ファイル入出力](docs/BulkFileTransfer.md#ホスト側の結線) を参照してください。
 
-AI チャット・意味検索を使う場合も同じ形で、受け口のコントローラ (`AIChatController` / `SemanticSearchController`) と対応表
+AI チャット・意味検索を使う場合は、`ExtrasApiTable` に並べる `AIChatApi` / `SemanticSearchApi` に渡す対応表
 (Agent 名 → Agent の `AIChatAgentTable`、埋め込みプロバイダの呼び名 → 実装の `EmbeddingProviderTable`) をアプリが持ちます。
 新しいアプリテンプレート (Cookie) には含まれています。モデルの接続先は appsettings の `AISettings` (チャット) と `SemanticSearch` / `AzureOpenAIEmbedding` (埋め込み) で、
 未設定なら AI チャットの Agent と意味検索は使えないだけでアプリは動きます。詳細は [AIChatField](docs/AIChatField.md) / [SemanticSearchField](docs/SemanticSearchField.md) を参照してください。

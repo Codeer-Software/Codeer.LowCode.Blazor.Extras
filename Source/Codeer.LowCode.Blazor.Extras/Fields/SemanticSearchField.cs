@@ -1,5 +1,6 @@
 using Codeer.LowCode.Blazor.DataIO;
 using Codeer.LowCode.Blazor.Extras.AIChat;
+using Codeer.LowCode.Blazor.Extras.Api;
 using Codeer.LowCode.Blazor.Extras.Designs;
 using Codeer.LowCode.Blazor.Extras.SemanticSearch;
 using Codeer.LowCode.Blazor.Extras.Services;
@@ -97,8 +98,8 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         static readonly TimeSpan _maxWait = TimeSpan.FromHours(2);
 
         /// <summary>
-        /// 再索引 API のベース URL (POST {EndPoint} / GET・DELETE {EndPoint}/{requestId})。
-        /// URL はアプリ (Controller を持つ側) の持ち物なので起動時に一度設定する (テンプレートは "/api/semantic_search/reindex")。
+        /// 再索引専用の API のベース URL (POST {EndPoint} / GET・DELETE {EndPoint}/{requestId})。
+        /// 空 (既定) なら共通の口 (<see cref="ExtrasTransport"/> = ホストの 1 本の API の SemanticSearchApi) を使う。再索引専用の Controller を持つホストが起動時に設定する。
         /// </summary>
         [ScriptHide]
         public static string EndPoint { get; set; } = string.Empty;
@@ -143,8 +144,8 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         /// <summary>最後の再索引のエラー (成功なら空)。</summary>
         public string ReindexError { get; private set; } = string.Empty;
 
-        /// <summary>再索引を起動できる設定か (エンドポイントかホストフックのどちらかがある)。</summary>
-        internal bool IsReindexConfigured => ReindexCoreAsync != null || (Http != null && !string.IsNullOrEmpty(EndPoint));
+        /// <summary>再索引を起動できる設定か (ホストフック・専用のエンドポイント・共通の口のどれかがある)。</summary>
+        internal bool IsReindexConfigured => ReindexCoreAsync != null || (!string.IsNullOrEmpty(EndPoint) ? Http != null : ExtrasTransport.CanSend(Http));
 
         //ホスト (デザイナ等) には登録されていないことがあるため任意解決
         IHttpService? Http => Services.Provider?.GetService<IHttpService>();
@@ -163,10 +164,21 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         {
             if (!IsReindexing) return;
             var http = Http;
-            if (ReindexCoreAsync == null && http != null && !string.IsNullOrEmpty(_reindexRequestId))
+            if (ReindexCoreAsync == null && !string.IsNullOrEmpty(_reindexRequestId))
             {
-                using var _ = http.AddChecker((_, _) => { });
-                await http.DeleteAsync($"{EndPoint}/{_reindexRequestId}", loading: false);
+                //専用のルート (EndPoint) があればそこへ DELETE、無ければ共通の口 (ExtrasTransport) の Cancel。失敗は通知しない
+                if (!string.IsNullOrEmpty(EndPoint))
+                {
+                    if (http != null)
+                    {
+                        using var _ = http.AddChecker((_, _) => { });
+                        await http.DeleteAsync($"{EndPoint}/{_reindexRequestId}", loading: false);
+                    }
+                }
+                else
+                {
+                    await ExtrasTransport.CallAsync<object>(http, SemanticSearchApiNames.Feature, SemanticSearchApiNames.Cancel, new SemanticSearchJobRequest { RequestId = _reindexRequestId }, loading: false, onError: (_, _) => { });
+                }
             }
             _reindexCancellation?.Cancel();
         }
@@ -213,14 +225,23 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
                 return await ReindexCoreAsync(this, request, progress, token);
             }
 
-            var http = Http ?? throw new InvalidOperationException("IHttpService is not available.");
+            //専用のルート (EndPoint) があればそこへ POST / GET、無ければ共通の口 (ExtrasTransport) の Reindex / Status。
             //通信エラーはトーストに流さず、このフィールドのエラーにまとめる
+            var http = Http;
+            var ownRoute = !string.IsNullOrEmpty(EndPoint);
+            if (ownRoute && http == null) throw new InvalidOperationException("IHttpService is not available.");
             string? lastError = null;
-            using var checker = http.AddChecker((_, message) => lastError = message);
-            var sent = await http.PostAsJsonAsync<SemanticSearchReindexRequest, SemanticSearchReindexResponse>(EndPoint, request, loading: false);
+            using var checker = ownRoute ? http!.AddChecker((_, message) => lastError = message) : null;
+            async Task<T?> CallAsync<T>(Func<IHttpService, Task<T?>> byOwnRoute, string action, object apiRequest) where T : class
+                => ownRoute
+                    ? await byOwnRoute(http!)
+                    : (await ExtrasTransport.CallAsync<T>(http, SemanticSearchApiNames.Feature, action, apiRequest, loading: false, onError: (_, message) => lastError = message)).Response;
+
+            var sent = await CallAsync(h => h.PostAsJsonAsync<SemanticSearchReindexRequest, SemanticSearchReindexResponse>(EndPoint, request, loading: false), SemanticSearchApiNames.Reindex, request);
             if (sent == null || string.IsNullOrEmpty(sent.RequestId))
                 return new() { Status = AIChatJobStatus.Error, Error = lastError ?? Properties.Resources.SemanticSearchReindex_Failed };
             _reindexRequestId = sent.RequestId;
+            var statusRequest = new SemanticSearchJobRequest { RequestId = sent.RequestId };
 
             var started = DateTime.Now;
             while (true)
@@ -228,7 +249,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
                 var elapsed = DateTime.Now - started;
                 await Task.Delay(elapsed < _fastPeriod ? _fastInterval : _slowInterval, token);
 
-                var status = await http.GetFromJsonAsync<SemanticSearchReindexStatusResponse>($"{EndPoint}/{sent.RequestId}", loading: false);
+                var status = await CallAsync(h => h.GetFromJsonAsync<SemanticSearchReindexStatusResponse>($"{EndPoint}/{sent.RequestId}", loading: false), SemanticSearchApiNames.Status, statusRequest);
                 if (status == null)
                 {
                     token.ThrowIfCancellationRequested();

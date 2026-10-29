@@ -144,42 +144,15 @@ if (totp != null)
 
 ### サーバー API と結線 (MyTotpResetButtonField)
 
-Starter の Cookie テンプレートの `AccountController` に組み込み済みです。対象は常にログイン中のユーザーです。
+Starter の Cookie テンプレートの共通の API (`Controllers/ExtrasController.cs` = `POST api/extras`) に組み込み済みです。対応表 `Services/ExtrasApiTable.cs` に `new TotpApi(SystemConfig.Instance.TotpLogin)` を並べます。対象は常にログイン中のユーザーです。
 
-| API | 内容 |
+| 操作 | 内容 |
 |---|---|
-| `GET api/account/totp/status` | 状態 `{ Enabled, Registered }` を返す (`Enabled` = 契約に TOTP 列がある) |
-| `POST api/account/totp/reset` | 自分の 3 列を空にし (`TotpLogin.ResetAsync`)、解除後の状態を返す |
+| `Totp.Status` | 状態 `{ Enabled, Registered }` を返す (`Enabled` = 契約に TOTP 列がある) |
+| `Totp.Reset` | 自分の 3 列を空にし (`TotpLogin.ResetAsync`)、解除後の状態を返す |
 
-```csharp
-// AccountController (どちらも [Authorize])
-[HttpGet("totp/status")]
-public async Task<IActionResult> GetTotpStatus()
-{
-    var totp = TotpLogin.Create(DesignerService.GetDesignData(), SystemConfig.Instance.TotpLogin, _dataService.DbAccess);
-    if (totp == null) return Ok(new TotpStatus());
-    var current = await totp.FindAsync(DataService.GetCurrentUserId(HttpContext));
-    return Ok(new TotpStatus { Enabled = true, Registered = current?.IsConfirmed == true });
-}
-
-[HttpPost("totp/reset")]
-public async Task<IActionResult> TotpReset()
-{
-    var totp = TotpLogin.Create(DesignerService.GetDesignData(), SystemConfig.Instance.TotpLogin, _dataService.DbAccess);
-    if (totp == null) return NotFound();
-    await totp.ResetAsync(DataService.GetCurrentUserId(HttpContext));
-    return Ok(new TotpStatus { Enabled = true, Registered = false });
-}
-```
-
-クライアントは起動時にエンドポイントを設定します (テンプレートは `ServiceInitializer`)。未設定のときは状態が取れないので、ボタンは何も表示しません。
-
-```csharp
-using Codeer.LowCode.Blazor.Extras.Fields;
-
-TotpResetClient.StatusEndPoint = "/api/account/totp/status";
-TotpResetClient.ResetEndPoint = "/api/account/totp/reset";
-```
+クライアント側の設定は不要です (共通の API `ExtrasTransport.EndPoint` = `/api/extras` に送ります)。送る先が無いときは状態が取れないので、ボタンは何も表示しません。
+専用のエンドポイントで受ける場合は、従来どおり `TotpResetClient.StatusEndPoint` (GET) / `ResetEndPoint` (POST) の両方に URL を設定すればそちらに送ります。
 
 ## 検証の既定
 

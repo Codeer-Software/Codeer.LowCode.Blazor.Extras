@@ -1,4 +1,4 @@
-using Codeer.LowCode.Blazor.Components.Dialog;
+﻿using Codeer.LowCode.Blazor.Components.Dialog;
 using Codeer.LowCode.Blazor.DataIO;
 using Codeer.LowCode.Blazor.DesignLogic;
 using Codeer.LowCode.Blazor.Extras.Designs;
@@ -509,7 +509,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Fields
             Assert.That(await job.RunAsync(), Is.False);
 
             Assert.That(host.Requests, Is.Empty);
-            Assert.That(host.UI.Errors.Single(), Does.Contain("JobTriggerField.EndPoint"));
+            Assert.That(host.UI.Errors.Single(), Is.EqualTo(Codeer.LowCode.Blazor.Extras.Properties.Resources.JobTrigger_NotConfigured));
             Assert.That(job.IsRunning, Is.False);
         }
 

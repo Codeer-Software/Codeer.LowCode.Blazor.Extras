@@ -41,8 +41,8 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
     public class AIChatField(AIChatFieldDesign design) : FieldBase<AIChatFieldDesign>(design)
     {
         /// <summary>
-        /// チャット API のベース URL (POST {EndPoint} / GET・DELETE {EndPoint}/{requestId})。
-        /// URL はアプリ (Controller を持つ側) の持ち物なので起動時に一度設定する (テンプレートは "/api/ai_chat")。
+        /// チャット専用の API のベース URL (POST {EndPoint} / GET・DELETE {EndPoint}/{requestId})。
+        /// 空 (既定) なら共通の口 (<see cref="Api.ExtrasTransport"/> = ホストの 1 本の API の AIChatApi) を使う。チャット専用の Controller を持つホストが起動時に設定する。
         /// </summary>
         [ScriptHide]
         public static string EndPoint { get; set; } = string.Empty;
@@ -87,9 +87,9 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         /// <summary>最後に確定した返事 (HTML)。まだ無ければ空。</summary>
         public string LastReply => Conversation.LastReply;
 
-        /// <summary>設定済みで送信できるか (エンドポイントかホストフックのどちらかがある)。</summary>
+        /// <summary>設定済みで送信できるか (ホストフック・専用のエンドポイント・共通の口のどれかがある)。</summary>
         [ScriptHide]
-        public bool IsConfigured => SendCoreAsync != null || (Http != null && !string.IsNullOrEmpty(EndPoint));
+        public bool IsConfigured => SendCoreAsync != null || (!string.IsNullOrEmpty(EndPoint) ? Http != null : Api.ExtrasTransport.CanSend(Http));
 
         /// <summary>保管庫の鍵 (モジュール名 + フィールド名)。同じ画面に戻ったときに同じ会話が戻る。</summary>
         [ScriptHide]

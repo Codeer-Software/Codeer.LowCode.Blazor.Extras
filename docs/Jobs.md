@@ -38,10 +38,13 @@ if (isJob) return await JobMode.RunAsync(args[1..], JobRunner.Names, (name, jobA
 
 戻り値はプロセスの終了コード (`JobMode.Success` = 0 / `Failure` = 1 / `JobNotFound` = 2)。
 
-### 親側: JobController と Program.cs
+### 親側: JobApi と Program.cs
+
+画面のボタン (JobTriggerField) の受け口は Extras.Server の `JobApi` です。ホストは共通の API の対応表 (テンプレートの `Services/ExtrasApiTable.cs`) に `new JobApi(JobRunner.Names)` (動かせるジョブの名前。無い名前は起動しない) を並べます。
+`JobApi` はフィールドへの書き込み権限を確かめてから、デザインの JobTriggerField に従って `JobProcess` を呼びます。
 
 ```csharp
-//JobController (画面のボタン = JobTriggerField の受け口)
+//JobApi の中 (自分の Controller で受けるときも同じ呼び方)
 if (design.IsAsynchronous)
 {
     var jobId = await JobProcess.StartAsync(design.JobName, request.Arguments, userId, design.AllowsConcurrentRuns);   // 起動したら Id を返す
@@ -55,18 +58,12 @@ return result.Succeeded ? new JobRunResponse { Succeeded = true, Message = resul
 //HTTP としては成功 (200) で返す業務上の失敗。監査ログ (AuditLog) にも失敗として残す
 JobRunResponse Failure(string error)
 {
-    _audit.Fail(error);
+    audit?.Fail(error);
     return new JobRunResponse { Succeeded = false, Error = error };
 }
 
-//非同期で起動したジョブの状態 (JobTriggerField の GetJobStatus が問い合わせる)。起動したユーザーにだけ返す
-[HttpGet("run/{jobId}")]
-public async Task<ActionResult<JobStatusResponse>> StatusAsync(string jobId)
-{
-    var userId = await _dataService.GetCurrentUserIdAsync();
-    var status = await JobProcess.GetStatusAsync(jobId, userId);
-    return status == null ? NotFound() : status;
-}
+//非同期で起動したジョブの状態 (JobTriggerField の GetJobStatus が問い合わせる)。起動したユーザーにだけ返す (null = 応答なし)
+var status = await JobProcess.GetStatusAsync(jobId, userId);
 
 //Program.cs (失敗の記録先と、非同期のジョブの状態の置き場)
 builder.Services.AddDistributedMemoryCache();
@@ -100,7 +97,7 @@ JobProcess.Cache = app.Services.GetRequiredService<IDistributedCache>();
 ### 同時実行
 
 実行中のジョブはジョブ名 (大文字小文字は区別しない) で数えています。同期 (`RunAsync`) と非同期 (`StartAsync`) のどちらも数えます。
-`allowConcurrent` が `false` のとき、同じ名前のジョブが実行中 (誰が起動したものでも) なら起動しません。JobController はデザインの JobTriggerField の `AllowsConcurrentRuns` を渡します。
+`allowConcurrent` が `false` のとき、同じ名前のジョブが実行中 (誰が起動したものでも) なら起動しません。JobApi はデザインの JobTriggerField の `AllowsConcurrentRuns` を渡します。
 
 ---
 

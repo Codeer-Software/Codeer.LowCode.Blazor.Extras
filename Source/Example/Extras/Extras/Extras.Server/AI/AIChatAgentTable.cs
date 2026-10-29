@@ -21,7 +21,7 @@ namespace Extras.Server.AI
     {
         static readonly ConcurrentDictionary<string, Lazy<IAIChatAgent?>> _agents = new(StringComparer.OrdinalIgnoreCase);
 
-        /// <summary>AIChatController が使う入口。送信で Agent をバックグラウンド実行し、ポーリングに状態を返す。</summary>
+        /// <summary>ExtrasApiTable (AIChatApi) が使う入口。送信で Agent をバックグラウンド実行し、ポーリングに状態を返す。</summary>
         public static AIChatService Service { get; } = new(Create);
 
         /// <summary>名前に対応する Agent (無ければ null = ジョブは error)。</summary>

@@ -69,8 +69,8 @@ namespace Codeer.LowCode.Blazor.Extras.ScriptObjects
         public static Func<MemoryStream, MemoryStream>? ConvertPdf { get; set; }
 
         /// <summary>
-        /// PDF conversion endpoint. URLs belong to the app (which owns the controllers),
-        /// so set this once at startup (e.g. in ServiceInitializer). Not used when <see cref="ConvertPdf"/> is set.
+        /// PDF 変換専用のエンドポイント (xlsx の本文を POST し PDF の本文を受ける)。空 (既定) なら共通の口 (<see cref="Api.ExtrasTransport"/> = ホストの 1 本の API の ExcelApi) を使う。
+        /// 変換専用の Controller を持つホストが起動時に設定する。<see cref="ConvertPdf"/> が設定されていればどちらも使わない。
         /// </summary>
         [ScriptHide]
         public static string ConvertPdfEndPoint { get; set; } = string.Empty;
@@ -137,18 +137,25 @@ namespace Codeer.LowCode.Blazor.Extras.ScriptObjects
             var stream = GetStream();
             if (stream == null) return false;
 
-            MemoryStream pdfStream = default!;
-            if (ConvertPdf == null)
+            //差し替え (ConvertPdf) があればそれ、変換専用のルート (ConvertPdfEndPoint) があればそこへ POST、どちらも無ければ共通の口 (ExtrasTransport) の ConvertPdf
+            MemoryStream pdfStream;
+            if (ConvertPdf != null)
             {
-                var endPoint = ConvertPdfEndPoint;
-                if (Http == null || string.IsNullOrEmpty(endPoint)) return false;
-                var result = await Http.PostContent(endPoint, new StreamContent(stream));
+                pdfStream = ConvertPdf(stream);
+            }
+            else if (!string.IsNullOrEmpty(ConvertPdfEndPoint))
+            {
+                if (Http == null) return false;
+                var result = await Http.PostContent(ConvertPdfEndPoint, new StreamContent(stream));
                 if (result == null) return false;
                 pdfStream = (MemoryStream)await result.Content.ReadAsStreamAsync();
             }
             else
             {
-                pdfStream = ConvertPdf(stream);
+                if (!Api.ExtrasTransport.CanSend(Http)) return false;
+                var (response, _) = await Api.ExtrasTransport.CallAsync<ExcelConvertPdfResponse>(Http, ExcelApiNames.Feature, ExcelApiNames.ConvertPdf, new ExcelConvertPdfRequest { Content = stream.ToArray() });
+                if (response == null) return false;
+                pdfStream = new MemoryStream(response.Content);
             }
             return await Services!.UIService.DownloadFile(pdfStream, Path.GetFileNameWithoutExtension(_fileName) + ".pdf");
         }

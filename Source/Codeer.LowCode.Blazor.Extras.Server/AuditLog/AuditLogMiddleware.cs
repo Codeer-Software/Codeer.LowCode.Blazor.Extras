@@ -53,12 +53,17 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AuditLog
             e.DesignVersion = _logger.GetDesignVersion(context);
             var userId = await ResolveUserIdAsync(context);
 
-            //前段: 試行の記録。書けなければ (Strict) ここで例外 = 操作は実行されない
-            await _logger.WriteAsync(new AuditEvent
+            //前段: 試行の記録。書けなければ (Strict) ここで例外 = 操作は実行されない。
+            //分類を処理の中で決める Controller (AuditContext.StartAsync) が同じ形で書けるよう、書き方を渡しておく
+            Task WriteAttemptAsync(AuditEvent current) => _logger.WriteAsync(new AuditEvent
             {
-                Category = e.Category, Action = e.Action, Result = AuditResult.Attempt, UserId = userId,
+                Category = current.Category, Action = current.Action, Result = AuditResult.Attempt,
+                UserId = string.IsNullOrEmpty(current.UserId) ? userId : current.UserId,
                 ClientIp = e.ClientIp, UserAgent = e.UserAgent, RequestId = e.RequestId, DesignVersion = e.DesignVersion,
             });
+            audit.WriteAttemptAsync = WriteAttemptAsync;
+            audit.AttemptWritten = AuditLogger.HasAttempt(e.Category);
+            await WriteAttemptAsync(e);
 
             var completed = false;
             async Task CompleteAsync(Exception? exception)

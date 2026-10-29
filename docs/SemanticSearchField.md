@@ -352,32 +352,20 @@ void Search_OnReindexCompleted()
 - 運用中に走らせると、再索引が行を読んでから書くまでの間に保存した行の索引が古い文章で上書きされることがあります (次の保存か再索引で直ります)
 - 埋め込みモデルが無いときは文章だけ書き直します。埋め込みの失敗はエラーとして返ります (保存時と違い黙って NULL にはしません)
 
-サーバー側は同じ `SemanticSearchService` の `StartReindexAsync` / `GetReindexStatus` / `CancelReindex` を、AIChat と同じ形の薄い Controller から使います (Example の `Controllers/SemanticSearchController.cs`)。ページの行数・ジョブの保持時間・保存時の埋め込みの上限時間は `ReindexPageSize` / `FinishedRetention` / `MaxRunning` / `SaveEmbeddingTimeout` プロパティ。バックグラウンドではリクエストの HttpContext が無いので、ユーザー Id を固定した DataService を開いて渡します。
+サーバー側は共通の API (`Controllers/ExtrasController.cs` = `POST api/extras`) の対応表 `Services/ExtrasApiTable.cs` に `SemanticSearchApi` を並べます。`SemanticSearchApi` (Extras.Server) が再索引の開始・状態・中断を受け、同じ `SemanticSearchService` の `StartReindexAsync` / `GetReindexStatus` / `CancelReindex` を呼びます。ページの行数・ジョブの保持時間・保存時の埋め込みの上限時間は `ReindexPageSize` / `FinishedRetention` / `MaxRunning` / `SaveEmbeddingTimeout` プロパティ。バックグラウンドではリクエストの HttpContext が無いので、ユーザー Id を固定した DataService を開いて渡します。
 
 ```csharp
-//Controllers/SemanticSearchController.cs ([Route("api/semantic_search/reindex")])
-[HttpPost]
-public async Task<ActionResult<SemanticSearchReindexResponse>> Start([FromBody] SemanticSearchReindexRequest request)
+//Services/ExtrasApiTable.cs
+new SemanticSearchApi(SemanticSearchIndex.Service, userId =>
 {
-    var userId = await _dataService.GetCurrentUserIdAsync();
-    var requestId = await SemanticSearchIndex.Service.StartReindexAsync(Owner, request, _dataService.ModuleDataIO, () =>
-    {
-        var dataService = new DataService(userId);
-        return new SemanticSearchReindexScope(dataService.ModuleDataIO, dataService.DbAccess, dataService);
-    });
-    return Accepted(new SemanticSearchReindexResponse { RequestId = requestId });
-}
-
-[HttpGet("{requestId}")]    // → SemanticSearchReindexStatusResponse (Status / Processed / Total / Error)
-[HttpDelete("{requestId}")] // 中断
+    var dataService = new DataService(userId);
+    return new SemanticSearchReindexScope(dataService.ModuleDataIO, dataService.DbAccess, dataService);
+}),
 ```
 
-```csharp
-// クライアント (ServiceInitializer)。URL はアプリの持ち物なので起動時に一度設定する
-SemanticSearchField.EndPoint = "/api/semantic_search/reindex";
-```
+クライアント側の設定は不要です (共通の API `ExtrasTransport.EndPoint` = `/api/extras` に送ります)。再索引専用のコントローラで受ける場合は、従来どおり `SemanticSearchField.EndPoint` にその URL (POST {EndPoint} / GET・DELETE {EndPoint}/{requestId}) を設定すればそちらに送ります。
 
-Example (`Source/Example/Extras`) には索引付けの結線 (`Services/CustomizedModuleDataIO.cs`)・埋め込みプロバイダの対応表と `SemanticSearchService` の持ち物 (`AI/EmbeddingProviderTable.cs` / `AI/SemanticSearchIndex.cs`)・再索引 API (`Controllers/SemanticSearchController.cs`)・エージェントへの結線 (`AI/AIChatAgentTable.cs`) が入っています。Example のデータは SQLite なので意味検索できるモジュールは置いていません。動かすには PostgreSQL (pgvector) のデータソースに上記の構成でモジュールを作ってください。
+Example (`Source/Example/Extras`) には索引付けの結線 (`Services/CustomizedModuleDataIO.cs`)・埋め込みプロバイダの対応表と `SemanticSearchService` の持ち物 (`AI/EmbeddingProviderTable.cs` / `AI/SemanticSearchIndex.cs`)・エージェントへの結線 (`AI/AIChatAgentTable.cs`) が入っています。Example のデータは SQLite なので意味検索できるモジュールは置いていません。動かすには PostgreSQL (pgvector) のデータソースに上記の構成でモジュールを作ってください。
 
 ## 注意事項
 

@@ -113,8 +113,10 @@ void CheckJob()
 
 アプリのテンプレート（Cookie）には入っています。自分で組むときは次の 2 つです。
 
-- クライアント: 起動時に `JobTriggerField.EndPoint = "/api/job/run";`（テンプレートは `Client.Shared/Services/ServiceInitializer.cs`）。HTTP を使わないホストは `JobTriggerField.RunCoreAsync` に送り方を、`JobTriggerField.GetJobStatusCoreAsync` に非同期のジョブの状態の問い合わせ方を設定します（`GetJobStatusCoreAsync` が無ければ `GetJobStatus` は `null`）
-- サーバー: `Controllers/JobController.cs` が `JobRunRequest`（`Codeer.LowCode.Blazor.Extras.Jobs`）を受け、このフィールドへの書き込み権限を確かめて、Extras.Server の `JobProcess` でジョブを別プロセスとして起動します（[ジョブ (バッチ)](Jobs.md)）。非同期では `JobRunResponse` の `JobId` を返し、`GET /api/job/run/{jobId}` で状態（`JobStatusResponse`）を返します。同時実行を許さないジョブが実行中なら起動せずに失敗を返します
+- クライアント: 設定は不要です（共通の API `ExtrasTransport.EndPoint` = `/api/extras` に送ります）。HTTP を使わないホストは `JobTriggerField.RunCoreAsync` に送り方を、`JobTriggerField.GetJobStatusCoreAsync` に非同期のジョブの状態の問い合わせ方を設定します（`GetJobStatusCoreAsync` が無ければ `GetJobStatus` は `null`）
+- サーバー: 共通の API（`Controllers/ExtrasController.cs`）の対応表 `Services/ExtrasApiTable.cs` に `new JobApi(JobRunner.Names)` を並べます。Extras.Server の `JobApi` が `JobRunRequest`（`Codeer.LowCode.Blazor.Extras.Jobs`）を受け、このフィールドへの書き込み権限を確かめて、`JobProcess` でジョブを別プロセスとして起動します（[ジョブ (バッチ)](Jobs.md)）。非同期では `JobRunResponse` の `JobId` を返し、状態の問い合わせに `JobStatusResponse` を返します。同時実行を許さないジョブが実行中なら起動せずに失敗を返します
+
+ジョブ専用のコントローラで受ける場合は、従来どおり `JobTriggerField.EndPoint` にその URL を設定すればそちらに送ります（状態は `GET {EndPoint}/{jobId}`）。
 
 ## 関連
 

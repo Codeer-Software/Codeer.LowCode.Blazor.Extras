@@ -1,4 +1,5 @@
 using Codeer.LowCode.Blazor.Extras.AIChat;
+using Codeer.LowCode.Blazor.Extras.Api;
 using Codeer.LowCode.Blazor.Extras.Services;
 using System.Net;
 using System.Text.RegularExpressions;
@@ -90,10 +91,19 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             if (cts == null) return;
             var running = _messages.LastOrDefault(e => e.IsRunning);
             cts.Cancel();
-            if (running != null && !string.IsNullOrEmpty(running.RequestId) && context?.Http != null && AIChatField.SendCoreAsync == null)
+            if (running != null && !string.IsNullOrEmpty(running.RequestId) && context != null && AIChatField.SendCoreAsync == null)
             {
-                using var _ = context.Http.AddChecker((_, _) => { });
-                await context.Http.DeleteAsync($"{context.EndPoint}/{running.RequestId}", loading: false);
+                //専用のルート (EndPoint) があればそこへ DELETE、無ければ共通の口 (ExtrasTransport) の Cancel。失敗は通知しない
+                if (!string.IsNullOrEmpty(context.EndPoint))
+                {
+                    if (context.Http == null) return;
+                    using var _ = context.Http.AddChecker((_, _) => { });
+                    await context.Http.DeleteAsync($"{context.EndPoint}/{running.RequestId}", loading: false);
+                }
+                else
+                {
+                    await ExtrasTransport.CallAsync<object>(context.Http, AIChatApiNames.Feature, AIChatApiNames.Cancel, new AIChatJobRequest { RequestId = running.RequestId }, loading: false, onError: (_, _) => { });
+                }
             }
         }
 
@@ -131,17 +141,26 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
                 return;
             }
 
-            var http = context.Http ?? throw new InvalidOperationException("IHttpService is not available.");
+            //専用のルート (EndPoint) があればそこへ POST / GET、無ければ共通の口 (ExtrasTransport) の Send / Status。
             //通信エラーはトーストやログに流さず、この発言のエラー表示にまとめる
+            var http = context.Http;
+            var ownRoute = !string.IsNullOrEmpty(context.EndPoint);
+            if (ownRoute && http == null) throw new InvalidOperationException("IHttpService is not available.");
             string? lastError = null;
-            using var checker = http.AddChecker((_, message) => lastError = message);
-            var sent = await http.PostAsJsonAsync<AIChatSendRequest, AIChatSendResponse>(context.EndPoint, request, loading: false);
+            using var checker = ownRoute ? http!.AddChecker((_, message) => lastError = message) : null;
+            async Task<T?> CallAsync<T>(Func<IHttpService, Task<T?>> byOwnRoute, string action, object apiRequest) where T : class
+                => ownRoute
+                    ? await byOwnRoute(http!)
+                    : (await ExtrasTransport.CallAsync<T>(http, AIChatApiNames.Feature, action, apiRequest, loading: false, onError: (_, message) => lastError = message)).Response;
+
+            var sent = await CallAsync(h => h.PostAsJsonAsync<AIChatSendRequest, AIChatSendResponse>(context.EndPoint, request, loading: false), AIChatApiNames.Send, request);
             if (sent == null || string.IsNullOrEmpty(sent.RequestId))
             {
                 assistant.Error = lastError ?? Properties.Resources.AIChat_Failed;
                 return;
             }
             assistant.RequestId = sent.RequestId;
+            var statusRequest = new AIChatJobRequest { RequestId = sent.RequestId };
 
             var started = DateTime.Now;
             var timeout = TimeSpan.FromSeconds(Math.Max(1, context.TimeoutSeconds));
@@ -150,7 +169,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
                 var elapsed = DateTime.Now - started;
                 await Task.Delay(elapsed < _fastPeriod ? _fastInterval : _slowInterval, token);
 
-                var status = await http.GetFromJsonAsync<AIChatStatusResponse>($"{context.EndPoint}/{sent.RequestId}", loading: false);
+                var status = await CallAsync(h => h.GetFromJsonAsync<AIChatStatusResponse>($"{context.EndPoint}/{sent.RequestId}", loading: false), AIChatApiNames.Status, statusRequest);
                 if (status == null)
                 {
                     assistant.Error = token.IsCancellationRequested ? Properties.Resources.AIChat_Canceled
