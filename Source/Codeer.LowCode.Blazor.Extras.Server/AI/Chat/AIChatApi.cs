@@ -13,7 +13,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat
     {
         readonly AIChatService _service;
 
-        /// <param name="service">プロセスに 1 つの AIChatService (テンプレの AI/AIChatAgentTable.Service)。</param>
+        /// <param name="service">プロセスに 1 つの AIChatService (テンプレの Extras/AIChatAgentTable.Service)。</param>
         public AIChatApi(AIChatService service) => _service = service;
 
         public string Feature => AIChatApiNames.Feature;

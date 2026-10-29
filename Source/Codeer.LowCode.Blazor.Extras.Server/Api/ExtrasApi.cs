@@ -7,7 +7,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Api
     /// <summary>
     /// Extras の機能の要求を、機能名で <see cref="IExtrasApiHandler"/> に振り分ける。
     /// Web ホストは 1 本の Controller (テンプレの Controllers/ExtrasController.cs。認証・CSRF・監査の属性はそこに書く) から、
-    /// デスクトップは ExtrasTransport.Handler からプロセス内で呼ぶ。どの機能を出すか・何を渡すかは <see cref="Handlers"/> に並べる (テンプレの Services/ExtrasApiTable.cs)。
+    /// デスクトップは ExtrasTransport.Handler からプロセス内で呼ぶ。どの機能を出すか・何を渡すかは <see cref="Handlers"/> に並べる (テンプレの Extras/ExtrasApiTable.cs)。
     /// </summary>
     public sealed class ExtrasApi
     {

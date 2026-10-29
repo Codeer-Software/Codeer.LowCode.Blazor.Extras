@@ -23,7 +23,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat.ModuleDataAccess
     ///     chatClientFactory,                                          // IChatClient の作り方 (アプリの責務)
     ///     userId => { var ds = new DataService(userId); return Task.FromResult(new ModuleDataAccessScope(ds.ModuleDataIO, ds)); },
     ///                                                                 // そのユーザーの権限を持つ ModuleDataIO (ツール呼び出しごとに開いて閉じる)
-    ///     () => DesignerService.GetDesignData(),                      // デザイン定義 (ホットリロードで変わるので都度)
+    ///     () => AppDesign.Store.GetDesignData(),                     // デザイン定義 (ホットリロードで変わるので都度)
     ///     folder => DesignDataFileManager.GetResourceTexts(dir, folder, ".md", ".txt")   // 補足文書 (デザインの Resources/{DocumentFolder}。null 可)
     ///         .Select(e => new AIChatDocument(e.Name, e.Text)).ToList(),
     ///     new ModuleDataAccessOptions());

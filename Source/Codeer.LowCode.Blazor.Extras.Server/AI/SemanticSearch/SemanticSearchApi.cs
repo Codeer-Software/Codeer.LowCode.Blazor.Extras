@@ -13,7 +13,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
         readonly SemanticSearchService _service;
         readonly Func<string, SemanticSearchReindexScope> _openScope;
 
-        /// <param name="service">プロセスに 1 つの SemanticSearchService (テンプレの AI/SemanticSearchIndex.Service)。</param>
+        /// <param name="service">プロセスに 1 つの SemanticSearchService (テンプレの Extras/SemanticSearchTable.Service)。</param>
         /// <param name="openScope">
         /// ユーザー Id → バックグラウンドの再索引が使う実行ユーザーの ModuleDataIO と DB 接続。
         /// リクエストの外で動くので、ホストはユーザー Id を固定して開く (テンプレは new DataService(userId))。

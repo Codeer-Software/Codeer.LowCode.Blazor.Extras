@@ -104,7 +104,7 @@ public class CustomizedModuleDataIO : PasswordHashingModuleDataIO
 }
 ```
 
-- ハッシュ化は「行を書く直前の変換」なので、保存 (Submit) 単位のインターセプタではなく行書き込みの口に置いています。保存だけでなく、システム権限の内部書き込み (`ModuleDataIOSystemAccess` の `AddAsync` / `UpdateAsync`、ホストの `AddSystemRecordAsync`) も通ります
+- ハッシュ化は「行を書く直前の変換」なので、保存 (Submit) 単位のインターセプタではなく行書き込みの口に置いています。保存だけでなく、システム権限の内部書き込み (`ModuleDataIOSystemAccess` の `AddAsync` / `UpdateAsync`、デスクトップホストの `AddSystemRecordAsync`) も通ります
 - 本体のフィールド書き込み権限の検査の後に入るので、ハッシュ列の書き込み権限は見ません (ユーザーが書くのは `PasswordField`)
 - `CustomizedModuleDataIO` で `ModuleDataIO` の virtual (`AddAsync` など) を override するときは base を呼んでください (呼ばないと基底のハッシュ化が飛びます)
 - `AddAsync` / `UpdateAsync` を override して `ApplyPasswordHash` を呼ぶ従来の形でも動きます

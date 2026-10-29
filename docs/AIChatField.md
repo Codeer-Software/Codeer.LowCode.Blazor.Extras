@@ -89,10 +89,10 @@ Example の `DummyAIChatAgent` (`Example/Extras/Extras/Extras.Server/AI/`) は A
 
 ### 対応表と API への結線 (アプリ側)
 
-対応表はアプリの持ち物です。サンプル (`Example/Extras/Extras/Extras.Server/AI/AIChatAgentTable.cs`):
+対応表はアプリの持ち物です。アプリテンプレート (Starter の `Server/Extras/AIChatAgentTable.cs`。Example は旧配置の `AI/AIChatAgentTable.cs`) の形:
 
 ```csharp
-// AI/AIChatAgentTable.cs: Agent 名 → Agent。AIChatField のデザインの Agent がこの名前を指す。自分の Agent はここに 1 行足す
+// Extras/AIChatAgentTable.cs: Agent 名 → Agent。AIChatField のデザインの Agent がこの名前を指す。自分の Agent はここに 1 行足す
 public static class AIChatAgentTable
 {
     static readonly ConcurrentDictionary<string, Lazy<IAIChatAgent?>> _agents = new(StringComparer.OrdinalIgnoreCase);
