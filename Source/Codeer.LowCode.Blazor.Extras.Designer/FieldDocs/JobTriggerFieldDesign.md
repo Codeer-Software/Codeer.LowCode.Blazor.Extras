@@ -116,13 +116,19 @@ void RunButton_OnClick()
 }
 ```
 
-非同期のジョブの結果を確かめる例 (同時実行を許さないジョブ。確かめたいときに呼ぶ。待つ仕組みは無い):
+非同期のジョブを起動して、終わるまで 3 秒ごとに確かめる例 (同時実行を許さないジョブ。レイアウトに本体の `TimerField` を `Poll` (`IntervalMilliseconds: 3000`, `OnTick: "CheckJob"`) として置く。画面から外れると止まる。フィールド自身に待つ仕組みは無い):
 
 ```csharp
-void CheckButton_OnClick()
+void RunButton_OnClick()
+{
+    if (ImportJob.Run()) Poll.Start();
+}
+
+void CheckJob()
 {
     var status = ImportJob.GetJobStatus();
     if (status == null || status.Status == JobStatus.Running) return;
+    Poll.Stop();
     if (status.Status == JobStatus.Done) MessageBox.Show("完了しました: " + status.Message);
     else MessageBox.Show("失敗しました: " + status.Error);
 }

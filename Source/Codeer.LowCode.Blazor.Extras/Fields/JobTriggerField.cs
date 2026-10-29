@@ -142,8 +142,9 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         /// サーバーが知らない Id (結果を忘れた = 二度と分からない) は <see cref="JobIds"/> から外す。通信の失敗 (次は分かるかもしれない) では外さない。
         /// </summary>
         /// <param name="jobId">ジョブの Id (<see cref="JobId"/> / <see cref="JobIds"/>)。空なら <see cref="JobIds"/> の先頭 (一番古いもの。無ければ問い合わせずに null)。</param>
+        //スクリプトは省略可能引数を解決しない (本体の流儀どおりオーバーロードで出す)
         [ScriptName("GetJobStatus")]
-        public async Task<JobStatusResponse?> GetJobStatusAsync(string jobId = "")
+        public async Task<JobStatusResponse?> GetJobStatusAsync(string jobId)
         {
             if (Services.AppInfoService.IsDesignMode) return null;
             if (string.IsNullOrEmpty(jobId)) jobId = _jobIds.FirstOrDefault() ?? string.Empty;
@@ -161,6 +162,10 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             if (unknown || (status != null && status.Status != JobStatus.Running)) _jobIds.Remove(jobId);
             return status;
         }
+
+        /// <summary><see cref="JobIds"/> の先頭 (一番古いもの) を問い合わせる。無ければ問い合わせずに null。</summary>
+        [ScriptName("GetJobStatus")]
+        public async Task<JobStatusResponse?> GetJobStatusAsync() => await GetJobStatusAsync(string.Empty);
 
         //差し替え (RunCoreAsync) を使うホストは GetJobStatusCoreAsync (無ければ null)、それ以外は GET {EndPoint}/{jobId}。HTTP の失敗はトーストに出さず null。
         //Unknown = サーバーが知らない Id (差し替えが null・HTTP が 404)
