@@ -74,7 +74,7 @@ CREATE TABLE app_users (
 
 ## サーバサイド実装が必須
 
-`PasswordHashField` は **Field 側 (クライアント側) だけでは動きません**。Submit されたデータの `Password` フィールドを取り出してハッシュ化し、`PasswordHashFieldData` (Hash + Salt) として書き戻す処理を **サーバ側で実装する必要があります**。
+`PasswordHashField` は **Field 側 (クライアント側) だけでは動きません**。Submit されたデータの `Password` フィールドを取り出してハッシュ化し、`PasswordHashFieldData` (Hash + Salt) として書き戻す処理を **サーバ側で結線する必要があります** (下記の `PasswordHashingModuleDataIO` の継承)。
 
 ### Extras 本体に組み込み済の `PasswordHashHelper`
 
@@ -89,48 +89,27 @@ CREATE TABLE app_users (
 
 ### 最小限の組み込み手順
 
-`ModuleDataIO` を継承したクラスを作って、`AddAsync` / `UpdateAsync` の冒頭で `PasswordHashHelper.ApplyPasswordHash(...)` を呼ぶだけです (in-tree に helper をコピーする必要はありません)。
+`ModuleDataIO` の派生 (テンプレートの `CustomizedModuleDataIO`) を、`ModuleDataIO` ではなく `Codeer.LowCode.Blazor.Extras.Server` の `PasswordHashingModuleDataIO` (`Codeer.LowCode.Blazor.Extras.Server.Auth`) から継承するだけです (アプリテンプレートは継承済み)。本体の行書き込み `AddAsync` / `UpdateAsync` / `BulkAddAsync` を override して、書く行に `PasswordHashHelper.ApplyPasswordHash(...)` を当てます。
 
 ```csharp
-using Codeer.LowCode.Blazor;
-using Codeer.LowCode.Blazor.DataIO;
-using Codeer.LowCode.Blazor.DataIO.Db;
-using Codeer.LowCode.Blazor.DesignLogic;
-using Codeer.LowCode.Blazor.Repository.Data;
-using Codeer.LowCode.Blazor.Extras.Services;  // ← Extras 本体の Helper を使う
+using Codeer.LowCode.Blazor.Extras.Server.Auth;
 
-public class CustomizedModuleDataIO : ModuleDataIO
+public class CustomizedModuleDataIO : PasswordHashingModuleDataIO
 {
-    readonly DesignData _designData;
-
-    public CustomizedModuleDataIO(DesignData designData, IAuthenticationContext auth,
-        IDbAccessor db, ITemporaryFileManager tfm)
-        : base(designData, auth, db, tfm)
+    public CustomizedModuleDataIO(DesignData designData, IAuthenticationContext authenticationContext, IDbAccessor dbAccess, ITemporaryFileManager temporaryFileManager)
+        : base(designData, authenticationContext, dbAccess, temporaryFileManager)
     {
-        _designData = designData;
-    }
-
-    protected override async Task<string> AddAsync(Guid txn, Guid submitId, ModuleData data)
-    {
-        var moduleDesign = _designData.Modules.Find(data.Name)
-            ?? throw LowCodeException.Create("invalid design");
-        PasswordHashHelper.ApplyPasswordHash(moduleDesign, data);
-        return await base.AddAsync(txn, submitId, data);
-    }
-
-    protected override async Task UpdateAsync(Guid txn, Guid submitId, ModuleData data)
-    {
-        var moduleDesign = _designData.Modules.Find(data.Name)
-            ?? throw LowCodeException.Create("invalid design");
-        PasswordHashHelper.ApplyPasswordHash(moduleDesign, data);
-        await base.UpdateAsync(txn, submitId, data);
+        // 監査・編集履歴・意味検索などのインターセプタの登録はここ
     }
 }
 ```
 
-最後に `Program.cs` 等で `ModuleDataIO` を `CustomizedModuleDataIO` に差し替えて DI 登録すれば完了です。
+- ハッシュ化は「行を書く直前の変換」なので、保存 (Submit) 単位のインターセプタではなく行書き込みの口に置いています。保存だけでなく、システム権限の内部書き込み (`ModuleDataIOSystemAccess` の `AddAsync` / `UpdateAsync`、ホストの `AddSystemRecordAsync`) も通ります
+- 本体のフィールド書き込み権限の検査の後に入るので、ハッシュ列の書き込み権限は見ません (ユーザーが書くのは `PasswordField`)
+- `CustomizedModuleDataIO` で `ModuleDataIO` の virtual (`AddAsync` など) を override するときは base を呼んでください (呼ばないと基底のハッシュ化が飛びます)
+- `AddAsync` / `UpdateAsync` を override して `ApplyPasswordHash` を呼ぶ従来の形でも動きます
 
-完全な動く例は `Source/Example/Extras/Extras/Extras.Server/Services/CustomizedModuleDataIO.cs` を参照してください。
+従来の形 (override で `ApplyPasswordHash` を呼ぶ) の例は `Source/Example/Extras/Extras/Extras.Server/Services/CustomizedModuleDataIO.cs` にあります。
 
 ### ログイン検証 (Cookie 認証等) でハッシュを照合する場合
 
@@ -142,7 +121,7 @@ var ok = PasswordHashHelper.VerifyHash(inputPassword, rowHash, rowSalt);
 
 ## ハッシュアルゴリズムを変えたい場合
 
-Extras 標準の PBKDF2-SHA256 100k iter で要件を満たさない場合は、`PasswordHashHelper` を呼ばずに自前ロジックを `CustomizedModuleDataIO` の中に書いてください (Field 側の `PasswordHashFieldDesign` / `PasswordHashFieldData` はアルゴリズム非依存で、Hash と Salt をただの文字列として保持するだけ)。Argon2 / bcrypt / scrypt 等への置き換えは、`PasswordHashFieldData` を作って `data.Fields[hashFieldDesign.Name]` にセットするコードを書くだけで完結します。
+Extras 標準の PBKDF2-SHA256 100k iter で要件を満たさない場合は、`CustomizedModuleDataIO` を `PasswordHashingModuleDataIO` ではなく `ModuleDataIO` から継承し、`AddAsync` / `UpdateAsync` / `BulkAddAsync` を override して自前ロジックを書いてください (Field 側の `PasswordHashFieldDesign` / `PasswordHashFieldData` はアルゴリズム非依存で、Hash と Salt をただの文字列として保持するだけ)。Argon2 / bcrypt / scrypt 等への置き換えは、`PasswordHashFieldData` を作って `data.Fields[hashFieldDesign.Name]` にセットするコードを書くだけで完結します。
 
 ## スクリプト API
 

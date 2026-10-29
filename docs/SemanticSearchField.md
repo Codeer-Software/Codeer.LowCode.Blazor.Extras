@@ -147,7 +147,7 @@ public static IEmbeddingProvider? CreateEmbeddingProvider(string name) => name s
 
 //同じクラスの SemanticSearchService (プロセスに 1 つ)
 static readonly Lazy<IEmbeddingProvider?> _provider = new(() => CreateEmbeddingProvider(SystemConfig.Instance.SemanticSearch.EmbeddingProvider));
-public static SemanticSearchService Service { get; } = new(() => _provider.Value, () => DesignerService.GetDesignData());
+public static SemanticSearchService Service { get; } = new(() => _provider.Value, () => AppDesign.Store.GetDesignData());
 ```
 
 `IEmbeddingProvider` は `ModelId` / `Dimensions` と `EmbedAsync(texts)` だけの小さなインターフェースです。`Dimensions` を申告しておくと、返ったベクトルの長さが違うときに保存や再索引がエラーで止まり、DB の列定義との食い違いに早く気づけます。
@@ -182,7 +182,7 @@ public CustomizedModuleDataIO(...) : base(...)
 `RawDataAccessAgent` のコンストラクタの `semanticSearch` に同じ `SemanticSearchService` を渡します。埋め込みプロバイダが設定されていて、デザインに (3 つの列が設定された) SemanticSearchField を持ち、データソースが PostgreSQL か SQL Server のモジュールがあれば、AI に `search_records(moduleName, query, top)` ツールと「内容で探す質問はこれを使う」という指示が付きます。
 
 ```csharp
-new RawDataAccessAgent(chatClientFactory, () => new DbAccessor(config.DataSources), () => DesignerService.GetDesignData(), documents,
+new RawDataAccessAgent(chatClientFactory, () => new DbAccessor(config.DataSources), () => AppDesign.Store.GetDesignData(), documents,
     new RawDataAccessOptions { DataSourceNames = config.AIChat.RawDataAccessDataSources },
     semanticSearch: SemanticSearchTable.Service);
 ```
@@ -286,7 +286,7 @@ AI チャット (`ModuleDataAccessAgent`) からは、`find_records` / `aggregat
 
 ```csharp
 //Extras/SemanticSearchTable.cs: アプリのファイル保存先を渡す (Example は SystemConfig.Instance.FileStorages)
-public static SemanticSearchService Service { get; } = new(() => _provider.Value, () => DesignerService.GetDesignData())
+public static SemanticSearchService Service { get; } = new(() => _provider.Value, () => AppDesign.Store.GetDesignData())
 {
     FileStorages = () => FileStorageTable.Storages,
 };

@@ -108,7 +108,7 @@ public static class AIChatAgentTable
         "RawDataAccess" => new RawDataAccessAgent(
             chatClientFactory,                                           // IChatClient の作り方 (下記)
             () => new DbAccessor(SystemConfig.Instance.DataSources),     // IDbAccessor の作り方 (SQL ごとに作って捨てる)
-            () => DesignerService.GetDesignData(),                       // デザイン定義 (ホットリロードで変わるので都度。null 可)
+            () => AppDesign.Store.GetDesignData(),                       // デザイン定義 (ホットリロードで変わるので都度。null 可)
             folder => DesignDataFileManager.GetResourceTexts(designFileDirectory, folder, ".md", ".txt")   // 補足文書 = デザインの Resources/{DocumentFolder}/*.md|*.txt (本体 1.3.32 以降。null 可)
                           .Select(e => new AIChatDocument(e.Name, e.Text)).ToList(),
             new RawDataAccessOptions { DataSourceNames = { "Analytics" } }),  // AI 用の読み取り専用 DB ユーザーで接続するデータソース (複数可)
@@ -259,7 +259,7 @@ DB 側でやること (ライブラリでは代われないもの):
         var dataService = new DataService(userId);              // テンプレートの「ユーザー Id を固定した DataService」
         return Task.FromResult(new ModuleDataAccessScope(dataService.ModuleDataIO, dataService, dataService.DbAccess));  // 接続も渡すと SQL のタイムアウトが効く
     },
-    () => DesignerService.GetDesignData(),                      // デザイン定義 (ホットリロードで変わるので都度)
+    () => AppDesign.Store.GetDesignData(),                      // デザイン定義 (ホットリロードで変わるので都度)
     folder => DesignDataFileManager.GetResourceTexts(config.DesignFileDirectory, folder, ".md", ".txt")
         .Select(e => new AIChatDocument(e.Name, e.Text)).ToList(),
     config.AIChat.ModuleDataAccess,                             // ModuleDataAccessOptions (appsettings の AIChat:ModuleDataAccess をそのまま束縛)

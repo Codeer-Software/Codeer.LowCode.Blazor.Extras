@@ -113,13 +113,14 @@ Codeer.LowCode.Blazor 本体が持つのは認可だけで、認証 (ログイ�
 - AITextAnalyzeService — Azure Document Intelligence + Azure OpenAI による帳票・テキスト解析 (AITextAnalyzerField のサーバー側)
 - AI チャット — AIChatService (AIChatField の受け口。送信をバックグラウンドの Agent に渡し、ポーリングに状態を返す) と標準 Agent の RawDataAccessAgent (アプリの設計を読み、DB を SQL で読んで集計・グラフで答える)・ModuleDataAccessAgent (ログインユーザーの権限で本体を通して読み、集計 API で集計・クロス集計)。独自の Agent は IAIChatAgent で追加。[AIChatField](docs/AIChatField.md)
 - 意味検索 — SemanticSearchService (SemanticSearchField のサーバー側。保存時に行の文章へ埋め込みベクトルを付け、再索引をジョブで実行し、AI チャットに search_records ツールを提供)。埋め込みモデルは IEmbeddingProvider (Azure OpenAI 実装を同梱。独自実装で差し替え可)。類似度の計算は DB 側 (PostgreSQL pgvector / SQL Server 2025)。[SemanticSearchField](docs/SemanticSearchField.md)
-- 認証 — LoginAccountStore (ID/パスワード照合・ユーザー行の解決) / 外部 IdP (OidcLoginProvider と Entra / Google / Cognito 実装) / TotpLogin・EmailOtpLogin (二要素認証)。[認証の全体像](docs/Authentication.md)
+- 認証 — LoginAccountStore (ID/パスワード照合・ユーザー行の解決) / 外部 IdP (OidcLoginProvider と Entra / Google / Cognito 実装) / TotpLogin・EmailOtpLogin (二要素認証) / PasswordHashingModuleDataIO (行を書くときのパスワードのハッシュ化。`CustomizedModuleDataIO` がこれを継承)。[認証の全体像](docs/Authentication.md)
 - メール送信 — MailDispatcher (テンプレート解決・一斉送信・送信履歴) と SMTP / Microsoft Graph / SendGrid / Gmail API 送信。独自の送信手段は IMailSender で追加
 - 承認フロー — ApprovalEngine (状態遷移の検証と実行)
 - 編集履歴 — EditHistoryRecorder (本体の IO インターセプタ。`ModuleDataIO` の派生 (テンプレートの `CustomizedModuleDataIO`) で `AddInterceptor(new EditHistoryRecorder(designData))` と登録すると、保存時の記録・復活と、版の内容を読む人の権限に落とす処理の両方に効く)。[編集履歴](docs/EditHistory.md)
 - 一括ファイル入出力 — BulkFileTransfer (一覧の一括ダウンロード / 一括更新とスクリプトの入出力の処理本体。ModuleDataController から移譲する)、CsvUtils (CSV の生成 / 解析)。[一括ファイル入出力](docs/BulkFileTransfer.md)
 - StorageAccess / TemporaryFileManager — ファイルストレージ (ファイルシステム / Azure Blob / Amazon S3 (S3 互換含む)。独自の保存先は IFileStorage で追加) と一時ファイル管理。[FileStorage](docs/FileStorage.md)
 - CustomFontResolver — Excel PDF 変換用のフォントリゾルバ
+- ホストの部品 — DesignDataStore (配置された App.zip の読み込み・差し替えの検知・版 (SHA-256))、AddLowCodeLocalization (Accept-Language で ja-JP / 中立を切り替えるリクエストローカライズの登録)
 - 監査ログ — AuditLogger (いつ・誰が・どこから・何に・何をして・どうなったかを WebAPI ごとに 1 レコード記録。DB / JSON Lines ファイルへ。Strict/BestEffort・保持期限・追記専用の保護)。appsettings だけで有効化。[監査ログ](docs/AuditLog.md)
 - ジョブ (バッチ) — JobProcess / JobMode (ホストのジョブを別プロセスで動かす親と子。画面のボタン (JobTriggerField) とコマンドライン `job <ジョブ名>` の両方の土台。約束 = 引数・標準入力・環境変数・終了コード・UTF-8。非同期のジョブの状態は IDistributedCache)。[ジョブ](docs/Jobs.md)
 - Web ヘルパ — ETag 付きファイル応答 (FileWithETag)、ホットリロード (HotReloadHub / FileWatcherService)

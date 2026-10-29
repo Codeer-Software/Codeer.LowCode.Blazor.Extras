@@ -45,7 +45,7 @@ Codeer.LowCode.Blazor 本体が持つのは**認可** (ログインしたユー�
 
 ### パスワードの保存
 
-契約の `PasswordField` を指定すると、ユーザーを保存するときにサーバー (`PasswordHashHelper.ApplyPasswordHash`、テンプレートの `CustomizedModuleDataIO` が呼ぶ) が
+契約の `PasswordField` を指定すると、ユーザーを保存するときにサーバー (`PasswordHashingModuleDataIO`。テンプレートの `CustomizedModuleDataIO` はこれを継承済み) が
 平文からハッシュ / ソルト (PBKDF2-HMAC-SHA256) を作って契約の列に書きます。ユーザーモジュールに別のフィールドは要りません。
 契約の無いモジュール (同じテーブルを参照するパスワード変更ダイアログなど) では [PasswordHashField](PasswordHashField.md) を使います。
 
@@ -103,7 +103,7 @@ MAUI クライアントも同じサーバーの `api/account/*` を使います�
 | `Infrastructure/CookieAuthentication.cs` | Cookie 認証と外部 IdP の登録、初回 admin の作成 |
 | `Extras/ExternalLoginTable.cs` | appsettings の IdP 設定 → プロバイダの対応表 |
 | `Infrastructure/ExternalLoginUserResolver.cs` | 外部 IdP の本人 → ユーザー行 (事前登録制) |
-| `Infrastructure/CustomizedModuleDataIO.cs` | 保存時のパスワードハッシュ化 |
+| `Infrastructure/CustomizedModuleDataIO.cs` | 保存時のパスワードハッシュ化 (`PasswordHashingModuleDataIO` を継承) |
 | `wwwroot/login.html` + `login.js` | ログイン画面 (見た目は html を直接編集) |
 
 これらはテンプレートが生成するソースなので、必要に応じて書き換えられます。認証を外す (前段で認証済みなど) 手順は Starter の `CLAUDE.md`「認証を外す」にあります。

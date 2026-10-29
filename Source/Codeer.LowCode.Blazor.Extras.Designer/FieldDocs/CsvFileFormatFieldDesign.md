@@ -53,11 +53,11 @@
 //(モジュールデザインの CsvFileFormatField の有無で CSV / Excel を分岐する)
 [HttpPost("list_file")]
 public async Task<IActionResult> GetListFileAsync(SearchCondition? condition)
-    => Ok(await BulkFileTransfer.GetListFileAsync(DesignerService.GetDesignData(), _dataService.ModuleDataIO, condition!));
+    => Ok(await BulkFileTransfer.GetListFileAsync(_dataService.Design.DesignData, _dataService.ModuleDataIO, condition!));
 
 [HttpPost("submit_by_file")]
 public async Task<List<ModuleSubmitResult>> SubmitByFileAsync(string? moduleName)
-    => await BulkFileTransfer.SubmitByFileAsync(DesignerService.GetDesignData(), _dataService.ModuleDataIO, moduleName, Request.Body);
+    => await BulkFileTransfer.SubmitByFileAsync(_dataService.Design.DesignData, _dataService.ModuleDataIO, moduleName, Request.Body);
 ```
 
 `BulkFileTransfer` は `Codeer.LowCode.Blazor.Extras.Server.BulkFile` 名前空間、

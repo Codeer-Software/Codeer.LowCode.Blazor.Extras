@@ -367,10 +367,11 @@ Claude Code でデザインを編集している場合 (デザイナの Tools > 
 3. `builder.Services.AddAuditLog(SystemConfig.Instance.AuditLog, AuditSinkTable.Create(), designVersion);`
    `designVersion` はデザインの版を返す関数です。リクエストの中 (HttpContext あり) ではそのリクエストが使う版、外 (null) では今読み込んでいる版を返します。
    テンプレートは `Infrastructure/RequestDesign` (スコープ) がリクエストの最初にデザインを 1 つに固定し、コントローラは `DataService.Design` 経由でその版だけを使います
-   (`DesignerService` から直接取ると、処理の途中で差し替わった版が混ざります)。渡さなければ版は記録されません
+   (`AppDesign.Store` (Extras.Server の `DesignDataStore`) から直接取ると、処理の途中で差し替わった版が混ざります)。
+   テンプレートは `http => http?.RequestServices.GetRequiredService<RequestDesign>().Version ?? AppDesign.Store.GetCurrent().Version` を渡します。渡さなければ版は記録されません
 4. `app.UseRouting();` の直後に `app.UseAuditLog();` (認可の前。401/403 も記録するため。認証はミドルウェアが自分で解決するので認証ミドルウェアより前でよい)
 5. `CustomizedModuleDataIO` のコンストラクタで `AddInterceptor(new AuditIOInterceptor(designData, SystemConfig.Instance.AuditLog.Database));`
-   保存の対象の記録と、監査ログのテーブルの保護を行います。保存の最終結果を記録するので、**他のインターセプタ (編集履歴など) より先に登録します**
+   保存の対象の記録と、監査ログのテーブルの保護を行います。保存の最終結果を記録するので、**他のインターセプタ (編集履歴など) より先 (最初) に登録します**
 6. 各コントローラのアクションに `[Audit(AuditCategory.Xxx)]` を付け、対象や業務上の失敗は `AuditContext` (スコープ) で足す
    (保存の対象は 5 のインターセプタが記録するので、保存のアクションで対象を足す必要はありません)
 
