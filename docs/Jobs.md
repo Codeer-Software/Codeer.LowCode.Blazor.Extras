@@ -40,7 +40,7 @@ if (isJob) return await JobMode.RunAsync(args[1..], JobRunner.Names, (name, jobA
 
 ### 親側: JobApi と Program.cs
 
-画面のボタン (JobTriggerField) の受け口は Extras.Server の `JobApi` です。ホストは共通の API の対応表 (テンプレートの `Services/ExtrasApiTable.cs`) に `new JobApi(JobRunner.Names)` (動かせるジョブの名前。無い名前は起動しない) を並べます。
+画面のボタン (JobTriggerField) の受け口は Extras.Server の `JobApi` です。ホストは共通の API の対応表 (テンプレートの `Extras/ExtrasApiTable.cs`) に `new JobApi(JobRunner.Names)` (動かせるジョブの名前。無い名前は起動しない) を並べます。
 `JobApi` はフィールドへの書き込み権限を確かめてから、デザインの JobTriggerField に従って `JobProcess` を呼びます。
 
 ```csharp

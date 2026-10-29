@@ -277,7 +277,7 @@ UI もデータも持たない「宣言用」のフィールドです。役割 �
 
 新しいアプリテンプレートには最初から入っています。既存アプリに足す場合の要点:
 
-- 共通の API — `Controllers/ExtrasController.cs` (`POST api/extras`) と、その対応表 `Services/ExtrasApiTable.cs` の `new MailApi(SystemConfig.Instance.Mail, MailSenderTable.Create)`。単発送信・一斉送信・プレビュー (`MailPreviewBuilder` が HTML を作る) を受ける。単発送信は `MailDispatcher.SendAsync(request, moduleDataIO)` に ModuleDataIO を渡す
+- 共通の API — `Controllers/ExtrasController.cs` (`POST api/extras`) と、その対応表 `Extras/ExtrasApiTable.cs` の `new MailApi(SystemConfig.Instance.Mail, MailSenderTable.Create)`。単発送信・一斉送信・プレビュー (`MailPreviewBuilder` が HTML を作る) を受ける。単発送信は `MailDispatcher.SendAsync(request, moduleDataIO)` に ModuleDataIO を渡す
 - 送信・プレビューのサーバー側ブロック (単発・一斉とも) — リクエストの `SourceModule` / `FieldName` の MailField (一斉なら BulkMailField) がデザインにあり、そのフィールドが今のユーザーに見える (アプリのアクセス条件・モジュールの UserReadCondition・ユーザーだけで偽と確定する PermissionField の読取条件) ときだけ応じる。送信インフラの呼び名はデザインの `MailInfraName` を使う。行は読まないので DataReadCondition や行に依存する PermissionField 条件は見ず、DB に繋がっていないモジュールや未保存のレコードからも送れる (一斉送信の宛先は別途 GetListAsync で読むので、宛先側の読み取り権限・行条件は従来どおり効く)
 - `MailSenderTable` — 呼び名 → `IMailSender` の対応表
 - クライアント側の設定は不要 (共通の API `ExtrasTransport.EndPoint` = `/api/extras` に送る)。メール専用のコントローラで受ける場合は、従来どおり `MailTransport.SendMailEndPoint` / `BulkSearchMailEndPoint` / `PreviewMailEndPoint` / `BulkPreviewMailEndPoint` に URL を設定すればそちらに送る

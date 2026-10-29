@@ -144,7 +144,7 @@ if (totp != null)
 
 ### サーバー API と結線 (MyTotpResetButtonField)
 
-Starter の Cookie テンプレートの共通の API (`Controllers/ExtrasController.cs` = `POST api/extras`) に組み込み済みです。対応表 `Services/ExtrasApiTable.cs` に `new TotpApi(SystemConfig.Instance.TotpLogin)` を並べます。対象は常にログイン中のユーザーです。
+Starter の Cookie テンプレートの共通の API (`Controllers/ExtrasController.cs` = `POST api/extras`) に組み込み済みです。対応表 `Extras/ExtrasApiTable.cs` に `new TotpApi(SystemConfig.Instance.TotpLogin)` を並べます。対象は常にログイン中のユーザーです。
 
 | 操作 | 内容 |
 |---|---|

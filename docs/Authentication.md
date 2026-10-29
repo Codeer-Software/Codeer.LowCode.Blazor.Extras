@@ -100,10 +100,10 @@ MAUI クライアントも同じサーバーの `api/account/*` を使います�
 | ファイル | 役割 |
 |---|---|
 | `Controllers/AccountController.cs` | `login_options` / `login` (総当たり対策の `LoginLockout` を含む) / `login/{provider}` / `logout` / `current_user` / 認証アプリの解除 |
-| `CookieAuthentication.cs` | Cookie 認証と外部 IdP の登録、初回 admin の作成 |
-| `Services/ExternalLoginTable.cs` | appsettings の IdP 設定 → プロバイダの対応表 |
-| `ExternalLoginUserResolver.cs` | 外部 IdP の本人 → ユーザー行 (事前登録制) |
-| `Services/CustomizedModuleDataIO.cs` | 保存時のパスワードハッシュ化 |
+| `Infrastructure/CookieAuthentication.cs` | Cookie 認証と外部 IdP の登録、初回 admin の作成 |
+| `Extras/ExternalLoginTable.cs` | appsettings の IdP 設定 → プロバイダの対応表 |
+| `Infrastructure/ExternalLoginUserResolver.cs` | 外部 IdP の本人 → ユーザー行 (事前登録制) |
+| `Infrastructure/CustomizedModuleDataIO.cs` | 保存時のパスワードハッシュ化 |
 | `wwwroot/login.html` + `login.js` | ログイン画面 (見た目は html を直接編集) |
 
 これらはテンプレートが生成するソースなので、必要に応じて書き換えられます。認証を外す (前段で認証済みなど) 手順は Starter の `CLAUDE.md`「認証を外す」にあります。

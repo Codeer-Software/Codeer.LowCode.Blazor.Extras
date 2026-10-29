@@ -78,7 +78,7 @@ IdP の種類ごとに独立したセクション (メールの `Smtp` / `GraphA
 
 機構はパッケージ、方針はアプリ。アプリが持つのは次の 2 つだけ。
 
-1. **設定** — 上の各セクションを `SystemConfig` に束ねる (Program.cs。メールの Smtp / GraphApi と同じ)。**対応表** (`Services/ExternalLoginTable.cs`) がそれを読んで `IExternalLoginProvider` の一覧にする。独自 IdP はここに 1 行足す
+1. **設定** — 上の各セクションを `SystemConfig` に束ねる (`SystemConfig` にプロパティを持ち、Program.cs の `builder.Configuration.Bind(SystemConfig.Instance)` で読む。メールの Smtp / GraphApi と同じ)。**対応表** (`Extras/ExternalLoginTable.cs`) がそれを読んで `IExternalLoginProvider` の一覧にする。独自 IdP はここに 1 行足す
 2. **配線** (`CookieAuthentication.cs`)
    ```csharp
    builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)

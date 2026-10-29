@@ -62,7 +62,7 @@
 
 **Web アプリ (Blazor WebAssembly)**: サーバーで変換します。
 
-1. サーバーの共通の API (`POST /api/extras`。テンプレートの `Controllers/ExtrasController.cs`) の対応表 `Services/ExtrasApiTable.cs` に変換を並べる。クライアント側の設定は要りません
+1. サーバーの共通の API (`POST /api/extras`。テンプレートの `Controllers/ExtrasController.cs`) の対応表 `Extras/ExtrasApiTable.cs` に変換を並べる。クライアント側の設定は要りません
 
    ```csharp
    new ExcelApi(),   //Excel → PDF (Excel.ConvertPdf)

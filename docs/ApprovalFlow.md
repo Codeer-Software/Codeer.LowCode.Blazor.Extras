@@ -217,7 +217,7 @@ var r = 承認.Submit();          if (!r.IsSuccess) Logger.Error(r.ErrorMessage)
 
 - すべての操作は `ApprovalCommand` (Action + 対象 + 楽観ロック値) を共通の API (`POST /api/extras`。テンプレートの `Controllers/ExtrasController.cs`) に送ります。
   受けるのは Extras.Server の `ApprovalApi` で、`ApprovalEngine.ExecuteAsync(command)` を呼び、通知メールとログも結線します。
-  アプリ側は対応表 `Services/ExtrasApiTable.cs` に `new ApprovalApi(SystemConfig.Instance.Mail, MailSenderTable.Create)` を並べるだけです
+  アプリ側は対応表 `Extras/ExtrasApiTable.cs` に `new ApprovalApi(SystemConfig.Instance.Mail, MailSenderTable.Create)` を並べるだけです
 - サーバーは毎回、認証ユーザーの資格 (承認者本人か・申請者本人か)、状態遷移の整合、楽観ロック値、
   差し戻し範囲、コメント必須、経路の妥当性 (承認ステップが 1 つ以上・承認者空でない) を検証します
 - 入口では、申請書モジュールの ApprovalFlowField が今のユーザーに見えること (アプリのアクセス条件・申請書モジュールの UserReadCondition・ユーザーだけで偽と確定する PermissionField の読取条件) も本体の判定で確かめます。経路上の承認者でも、申請書モジュールを開けない人やフィールドを隠されている人は操作できません。既存のフローへの操作 (承認・却下・差し戻し・取り下げ・回覧確認・再申請) では申請書の行を読めること (DataReadCondition) も確かめます

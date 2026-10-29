@@ -180,11 +180,11 @@ ExtrasServerInitializer.Initialize();
 ```
 
 メール送信・ジョブ・承認フロー・AI チャット・意味検索の再索引・自分の認証アプリ解除ボタン・Excel PDF 変換・AI 解析を使う場合は、共通の API の受け口
-`Controllers/ExtrasController.cs` (`POST api/extras`) と、出す機能の対応表 `Services/ExtrasApiTable.cs` が必要です。
+`Controllers/ExtrasController.cs` (`POST api/extras`) と、出す機能の対応表 `Extras/ExtrasApiTable.cs` が必要です。
 新しいアプリテンプレート (Cookie) には含まれています。対応表には Extras.Server の機能を 1 行ずつ並べ、並べていない機能の要求は 404 になります。
 
 ```csharp
-//Services/ExtrasApiTable.cs
+//Extras/ExtrasApiTable.cs
 public static ExtrasApi Create() => new()
 {
     Handlers =
@@ -193,7 +193,7 @@ public static ExtrasApi Create() => new()
         new JobApi(JobRunner.Names),                                           //ジョブ
         new ApprovalApi(SystemConfig.Instance.Mail, MailSenderTable.Create),   //承認フロー (通知メール)
         new AIChatApi(AIChatAgentTable.Service),                               //AI チャット
-        new SemanticSearchApi(SemanticSearchIndex.Service, userId => ...),     //意味検索の再索引
+        new SemanticSearchApi(SemanticSearchTable.Service, userId => ...),     //意味検索の再索引
         new TotpApi(SystemConfig.Instance.TotpLogin),                          //自分の認証アプリの解除
         new ExcelApi(),                                                        //Excel → PDF
         new AITextAnalyzeApi(SystemConfig.Instance.AISettings),                //AI 文書解析
@@ -207,7 +207,7 @@ public static ExtrasApi Create() => new()
 一括ファイル入出力 (CSV / 固定長 / 列マッピング / 値の変換) を使う場合は、`ModuleDataController` の `list_file` / `submit_by_file` を `BulkFileTransfer` に移譲し、スクリプト用の `list_file_by_data` / `bulk_submit` / `parse_file` を足します。新しいアプリテンプレートには含まれています。詳細は [一括ファイル入出力](docs/BulkFileTransfer.md#ホスト側の結線) を参照してください。
 
 AI チャット・意味検索を使う場合は、`ExtrasApiTable` に並べる `AIChatApi` / `SemanticSearchApi` に渡す対応表
-(Agent 名 → Agent の `AIChatAgentTable`、埋め込みプロバイダの呼び名 → 実装の `EmbeddingProviderTable`) をアプリが持ちます。
+(Agent 名 → Agent の `AIChatAgentTable`、埋め込みプロバイダの呼び名 → 実装の `SemanticSearchTable`) をアプリが持ちます。
 新しいアプリテンプレート (Cookie) には含まれています。モデルの接続先は appsettings の `AISettings` (チャット) と `SemanticSearch` / `AzureOpenAIEmbedding` (埋め込み) で、
 未設定なら AI チャットの Agent と意味検索は使えないだけでアプリは動きます。詳細は [AIChatField](docs/AIChatField.md) / [SemanticSearchField](docs/SemanticSearchField.md) を参照してください。
 

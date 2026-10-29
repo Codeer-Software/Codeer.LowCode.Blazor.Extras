@@ -118,7 +118,7 @@ public static class AIChatAgentTable
 ```
 
 ```csharp
-// Services/ExtrasApiTable.cs: 共通の API (Controllers/ExtrasController.cs = POST api/extras) に出す機能の対応表に 1 行
+// Extras/ExtrasApiTable.cs: 共通の API (Controllers/ExtrasController.cs = POST api/extras) に出す機能の対応表に 1 行
 new AIChatApi(AIChatAgentTable.Service),
 ```
 
@@ -263,7 +263,7 @@ DB 側でやること (ライブラリでは代われないもの):
     folder => DesignDataFileManager.GetResourceTexts(config.DesignFileDirectory, folder, ".md", ".txt")
         .Select(e => new AIChatDocument(e.Name, e.Text)).ToList(),
     config.AIChat.ModuleDataAccess,                             // ModuleDataAccessOptions (appsettings の AIChat:ModuleDataAccess をそのまま束縛)
-    semanticSearch: SemanticSearchIndex.Service),                // 意味検索 (search_records)。SemanticSearchField を置いたモジュールを権限つきで探せる
+    semanticSearch: SemanticSearchTable.Service),                // 意味検索 (search_records)。SemanticSearchField を置いたモジュールを権限つきで探せる
 ```
 
 - ユーザー Id は `AIChatAgentRequest.UserName` (= `AIChatService.StartAsync` の ownerKey。テンプレートはログインユーザーの Id) で、Agent はそれで `ModuleDataAccessScope` を開きます。バックグラウンド実行なのでリクエストの `DataService` は使えず、意味検索の再索引と同じく「ユーザー Id を固定した DataService」を新しく開きます

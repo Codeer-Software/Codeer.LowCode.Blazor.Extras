@@ -53,7 +53,7 @@
 - `FileField` を併用する場合は FileField のサーバー要件 (一時ファイルテーブル・ファイルストレージ設定) も必要です
 
 サーバー側の解析ロジックは `Codeer.LowCode.Blazor.Extras.Server` パッケージの `AITextAnalyzeService` が提供します
-(`AnalyzeFileAsync` / `AnalyzeTextAsync` に ModuleDataIO とモジュール名・フィールド名を渡す)。共通の API では `Services/ExtrasApiTable.cs` の `new AITextAnalyzeApi(SystemConfig.Instance.AISettings)` がこれを呼びます (テンプレートは結線済み)。
+(`AnalyzeFileAsync` / `AnalyzeTextAsync` に ModuleDataIO とモジュール名・フィールド名を渡す)。共通の API では `Extras/ExtrasApiTable.cs` の `new AITextAnalyzeApi(SystemConfig.Instance.AISettings)` がこれを呼びます (テンプレートは結線済み)。
 専用のルートで受ける場合は、クライアントの起動時に `AITextAnalyzerField.FileToModuleDataEndPoint` / `TextToModuleDataEndPoint` を設定するとそちらへ送ります。
 チャットモデルは Microsoft.Extensions.AI の `IChatClient` 経由で呼びます。既定のコンストラクタ (`AISettings` だけ) は Azure OpenAI の IChatClient を組み立て、
 `AITextAnalyzeService(AISettings, Func<IChatClient>)` なら AIChat の Agent と同じくホストが好きなプロバイダを渡せます (AISettings は文書解析の接続に使う)。

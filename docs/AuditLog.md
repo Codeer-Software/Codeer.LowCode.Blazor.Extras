@@ -362,11 +362,11 @@ Claude Code でデザインを編集している場合 (デザイナの Tools > 
 
 テンプレート (Cookie) には含まれています。既存のアプリに足す場合:
 
-1. `SystemConfig` に `AuditLogSettings` を持ち、`Program.cs` で `AuditLog` セクションを読む (出力先の `Database` / `File` は入れ子)
-2. `Services/AuditSinkTable.cs` (設定 → `IAuditSink` の並び) を置く
+1. `SystemConfig` に `AuditLogSettings` の `AuditLog` プロパティを持つ (`Program.cs` の `builder.Configuration.Bind(SystemConfig.Instance)` が `AuditLog` セクションを読む。出力先の `Database` / `File` は入れ子)
+2. `Extras/AuditSinkTable.cs` (設定 → `IAuditSink` の並び) を置く
 3. `builder.Services.AddAuditLog(SystemConfig.Instance.AuditLog, AuditSinkTable.Create(), designVersion);`
    `designVersion` はデザインの版を返す関数です。リクエストの中 (HttpContext あり) ではそのリクエストが使う版、外 (null) では今読み込んでいる版を返します。
-   テンプレートは `Services/RequestDesign` (スコープ) がリクエストの最初にデザインを 1 つに固定し、コントローラは `DataService.Design` 経由でその版だけを使います
+   テンプレートは `Infrastructure/RequestDesign` (スコープ) がリクエストの最初にデザインを 1 つに固定し、コントローラは `DataService.Design` 経由でその版だけを使います
    (`DesignerService` から直接取ると、処理の途中で差し替わった版が混ざります)。渡さなければ版は記録されません
 4. `app.UseRouting();` の直後に `app.UseAuditLog();` (認可の前。401/403 も記録するため。認証はミドルウェアが自分で解決するので認証ミドルウェアより前でよい)
 5. `CustomizedModuleDataIO` のコンストラクタで `AddInterceptor(new AuditIOInterceptor(designData, SystemConfig.Instance.AuditLog.Database));`
