@@ -276,7 +276,7 @@ Extras の機能 (メール・ジョブ・承認・AI チャット・意味検�
 
 #### LoginAccountContractField - ログインアカウント契約
 - **状態**: 実装済み (Extras.Designer FieldDocs/LoginAccountContractFieldDesign.md)
-- **機能**: ユーザーモジュール (CurrentUserModule) に置き、行がログインアカウントとしてどう振る舞うかを宣言する契約フィールド。役割 (フィールド参照): LoginName (必須) / ExternalLoginName (外部 IdP の突き合わせ。空なら LoginName) / IsActive (偽なら拒否) / DisplayName (Cookie の Name と TOTP の QR) / TwoFactorEmail (メール二要素の送信先)。ログイン用の書き込み専用列: DbColumnPasswordHash + Salt (照合用。空 = パスワードログイン無し)、DbColumnTotp* 3 列 (認証アプリの二要素。空 = 無効)。テンプレートのログイン (Extras.Server `LoginAccountStore` / `TotpLogin` / `EmailOtpLogin`) はこの契約だけを見る。PasswordHashField は「書く側」として別に置く
+- **機能**: ユーザーモジュール (CurrentUserModule) に置き、行がログインアカウントとしてどう振る舞うかを宣言する契約フィールド。役割 (フィールド参照): LoginName (必須) / ExternalLoginName (外部 IdP の突き合わせ。空なら LoginName) / IsActive (偽なら拒否) / DisplayName (Cookie の Name と TOTP の QR) / TwoFactorEmail (メール二要素の送信先)。ログイン用の書き込み専用列: DbColumnPasswordHash + Salt (照合用。空 = パスワードログイン無し)、DbColumnTotp* 3 列 (認証アプリの二要素。空 = 無効)。テンプレートのログイン (Extras.Server `PasswordLogin` = 検証の流れ 1 回呼び: 契約の確認 → `LoginLockout` → `LoginAccountStore.VerifyPasswordAsync` → `TotpLogin` / `EmailOtpLogin` → 結果 `PasswordLoginResult{Status(NotAvailable/Locked/Unauthorized/TwoFactor/Ok), Account(Ok だけ), Response(クライアントへそのまま), Detail, IsDenied}`。HTTP・監査・Cookie はホストの AccountController。★2026-10-30 ホストの Login 80 行をここへ) はこの契約だけを見る。PasswordHashField は「書く側」として別に置く
 - **ファイル**: `Designs/LoginAccountContractFieldDesign.cs` (`ContractFieldDesignBase` 派生。UI・データ無し)
 
 #### EmailOtpLogin - 二要素認証 (メールのワンタイムコード)

@@ -26,14 +26,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Auth
     /// 照合の前に 1 回分を数えておき、失敗でなければ取り消す。こうすると同時に大量に送られても、1 つのプロセスの中では回数を超えて照合させない
     /// (読んで書くまでの排他はプロセスの中だけ。複数インスタンスで共有キャッシュを使っても、インスタンスをまたいだ同時送信には回数を保証しない)。
     /// 回数の置き場はサーバー側のキャッシュ (IDistributedCache) で DB 列は要らない。記録は最後の試行から 30 日 (MaxLockoutMinutes の 2 倍の方が長ければそれ) で消える。
-    /// <code>
-    /// var lockout = new LoginLockout(SystemConfig.Instance.LoginLockout, cache);
-    /// var userId = (await accounts.FindByLoginNameAsync(loginInfo.Id))?.UserId;
-    /// if (!await lockout.TryStartAttemptAsync(userId)) return StatusCode(StatusCodes.Status429TooManyRequests);
-    /// ... パスワードの照合 (不一致ならそのまま返す = 失敗として残る。例外なら CancelAttemptAsync) ...
-    /// ... 二要素認証でコードを求めて返すとき: await lockout.CancelAttemptAsync(userId);   // 失敗ではない
-    /// await lockout.ResetAsync(userId);   // サインインする直前
-    /// </code>
+    /// 呼ぶ順 (TryStartAttempt → 照合 → 不一致は残す / コードを求めた・例外は Cancel / サインインの直前に Reset) は <see cref="PasswordLogin"/> が持つ。
     /// </summary>
     public class LoginLockout
     {

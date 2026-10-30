@@ -1,4 +1,4 @@
-using System.Security.Claims;
+using Codeer.LowCode.Blazor.Extras.Server.Auth;
 using Codeer.LowCode.Blazor.Extras.Server.AuditLog;
 using Codeer.LowCode.Blazor.SystemSettings;
 using Extras.Server.Services;
@@ -61,14 +61,8 @@ namespace Extras.Server.Controllers
             }
             audit.Event.UserId = user.Id;
 
-            var claims = new List<Claim>
-            {
-                new(ClaimTypes.NameIdentifier, user.Id),
-                new(ClaimTypes.Name, user.Name),
-            };
-            var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
             await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme,
-                new ClaimsPrincipal(identity), new AuthenticationProperties { IsPersistent = true });
+                LoginPrincipal.Create(user.Id, user.Name), new AuthenticationProperties { IsPersistent = true });
             return Ok();
         }
 
@@ -82,8 +76,8 @@ namespace Extras.Server.Controllers
         [HttpGet("current")]
         public DemoUser GetCurrent() => new()
         {
-            Id = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty,
-            Name = User.FindFirstValue(ClaimTypes.Name) ?? string.Empty,
+            Id = LoginPrincipal.GetUserId(User),
+            Name = LoginPrincipal.GetDisplayName(User),
         };
     }
 }

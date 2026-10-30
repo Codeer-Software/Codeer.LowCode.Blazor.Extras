@@ -120,8 +120,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Auth
             //ネイティブアプリの流れは上で抜けている (成立はチケットを Cookie に交換するアクションが記録する)
             await AuditAsync(ctx.HttpContext, AuditResult.Success, user.UserId, $"Provider={provider.Name}; LoginName={identity.LoginName}");
 
-            //Cookie にはパスワードログインと同形の最小クレームだけを積む
-            ctx.Principal = service.CreatePrincipal(user, provider.Name);
+            ctx.Principal = LoginPrincipal.Create(user.UserId, user.UserName, provider.Name);
         }
 
         //サインインさせずログイン画面 (モバイルはアプリ) へ差し戻す

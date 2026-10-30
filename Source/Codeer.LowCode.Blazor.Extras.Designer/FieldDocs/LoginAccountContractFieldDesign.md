@@ -79,13 +79,14 @@ totp_last_timestep INTEGER NULL
 
 ## サーバ側 (テンプレートに組み込み済み)
 
-`Codeer.LowCode.Blazor.Extras.Server.Auth.LoginAccountStore`:
+`Codeer.LowCode.Blazor.Extras.Server.Auth.PasswordLogin` (ID/パスワードのログインの検証の流れ) と `LoginAccountStore` (契約から表・列を引く):
 
 ```csharp
+var login = new PasswordLogin(designData, dataService.DbAccess, cache, config.LoginLockout, config.TotpLogin, config.EmailOtpLogin, sendMail);
+var result = await login.VerifyAsync(loginInfo.Id, loginInfo.Password, loginInfo.TwoFactorCode);   // Ok なら result.Account でサインイン
 var accounts = LoginAccountStore.Create(designData, dataService.DbAccess);   // 契約が無ければ null
-var account = accounts?.HasPassword == true ? await accounts.VerifyPasswordAsync(loginInfo.Id, loginInfo.Password) : null;   // ID/パスワード
-var account2 = accounts == null ? null : await accounts.FindByExternalLoginNameAsync(identity.LoginName);                     // 外部 IdP の解決
-// account.UserId → NameIdentifier、account.DisplayName → Name、account.LoginName → TOTP の QR
+var account2 = accounts == null ? null : await accounts.FindByExternalLoginNameAsync(identity.LoginName);   // 外部 IdP の解決
+// サインインは LoginPrincipal.Create(account.UserId, account.DisplayName)。account.LoginName → TOTP の QR
 ```
 
 ## Script

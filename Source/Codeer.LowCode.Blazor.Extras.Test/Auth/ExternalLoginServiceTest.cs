@@ -34,14 +34,23 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Auth
         }
 
         [Test]
-        public void CreatePrincipal_HasSameShapeAsPasswordLoginPlusIdp()
+        public void LoginPrincipal_PasswordAndExternalHaveSameShape()
         {
-            var principal = Create().CreatePrincipal(new ExternalLoginUser("U1", "taro"), "Entra");
+            var external = LoginPrincipal.Create("U1", "taro", "Entra");
+            Assert.That(LoginPrincipal.GetUserId(external), Is.EqualTo("U1"));
+            Assert.That(external.FindFirst(ClaimTypes.NameIdentifier)?.Value, Is.EqualTo("U1"));
+            Assert.That(external.FindFirst(ClaimTypes.Name)?.Value, Is.EqualTo("taro"));
+            Assert.That(LoginPrincipal.GetDisplayName(external), Is.EqualTo("taro"));
+            Assert.That(LoginPrincipal.GetProvider(external), Is.EqualTo("Entra"));
+            Assert.That(external.Identity?.AuthenticationType, Is.EqualTo("Cookies"));
 
-            Assert.That(principal.FindFirst(ClaimTypes.NameIdentifier)?.Value, Is.EqualTo("U1"));
-            Assert.That(principal.FindFirst(ClaimTypes.Name)?.Value, Is.EqualTo("taro"));
-            Assert.That(principal.FindFirst(ExternalLoginService.IdpClaimType)?.Value, Is.EqualTo("Entra"));
-            Assert.That(principal.Identity?.AuthenticationType, Is.EqualTo("Cookies"));
+            var password = LoginPrincipal.Create("U1", "taro");
+            Assert.That(LoginPrincipal.GetUserId(password), Is.EqualTo("U1"));
+            Assert.That(LoginPrincipal.GetProvider(password), Is.Null, "パスワードログインには idp を付けない");
+            Assert.That(password.Claims.Count(), Is.EqualTo(2));
+
+            Assert.That(LoginPrincipal.GetUserId(null), Is.EqualTo(string.Empty));
+            Assert.That(LoginPrincipal.GetUserId(new ClaimsPrincipal(new ClaimsIdentity())), Is.EqualTo(string.Empty));
         }
 
         [Test]
@@ -53,14 +62,14 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Auth
                 new CognitoLoginProvider(new() { ClientId = "c", Authority = "https://cognito-idp.x.amazonaws.com/p" }),
                 new CognitoLoginProvider(new() { ClientId = "c", Authority = "https://cognito-idp.x.amazonaws.com/p", Domain = "https://x.auth.ap-northeast-1.amazoncognito.com" }, "CognitoWithDomain"));
 
-            Assert.That(await service.GetSignOutProviderAsync(service.CreatePrincipal(new("U", "u"), "Entra")), Is.EqualTo("Entra"));
-            Assert.That(await service.GetSignOutProviderAsync(service.CreatePrincipal(new("U", "u"), "Google")), Is.Null, "Google に end-session は無い");
-            Assert.That(await service.GetSignOutProviderAsync(service.CreatePrincipal(new("U", "u"), "Cognito")), Is.Null, "Domain 未設定はローカルログアウトのみ");
-            Assert.That(await service.GetSignOutProviderAsync(service.CreatePrincipal(new("U", "u"), "CognitoWithDomain")), Is.EqualTo("CognitoWithDomain"));
+            Assert.That(await service.GetSignOutProviderAsync(LoginPrincipal.Create("U", "u", "Entra")), Is.EqualTo("Entra"));
+            Assert.That(await service.GetSignOutProviderAsync(LoginPrincipal.Create("U", "u", "Google")), Is.Null, "Google に end-session は無い");
+            Assert.That(await service.GetSignOutProviderAsync(LoginPrincipal.Create("U", "u", "Cognito")), Is.Null, "Domain 未設定はローカルログアウトのみ");
+            Assert.That(await service.GetSignOutProviderAsync(LoginPrincipal.Create("U", "u", "CognitoWithDomain")), Is.EqualTo("CognitoWithDomain"));
 
             //パスワードログイン (idp クレーム無し) と、設定を外した後の旧 Cookie
             Assert.That(await service.GetSignOutProviderAsync(new ClaimsPrincipal(new ClaimsIdentity())), Is.Null);
-            Assert.That(await service.GetSignOutProviderAsync(service.CreatePrincipal(new("U", "u"), "Removed")), Is.Null);
+            Assert.That(await service.GetSignOutProviderAsync(LoginPrincipal.Create("U", "u", "Removed")), Is.Null);
         }
 
         [Test]

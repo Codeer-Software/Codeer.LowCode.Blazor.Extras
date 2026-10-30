@@ -1,5 +1,6 @@
 using Codeer.LowCode.Blazor.DataIO;
 using Codeer.LowCode.Blazor.Extras.Server.FileManagement;
+using Codeer.LowCode.Blazor.Extras.Server.Auth;
 using Codeer.LowCode.Blazor.DbAccess;
 
 namespace Extras.Server.Services
@@ -33,8 +34,7 @@ namespace Extras.Server.Services
         {
             await Task.CompletedTask;
             if (_fixedUserId != null) return _fixedUserId;
-            return _httpContextAccessor?.HttpContext?.User
-                .FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? string.Empty;
+            return LoginPrincipal.GetUserId(_httpContextAccessor?.HttpContext?.User);
         }
 
         public async ValueTask DisposeAsync()
