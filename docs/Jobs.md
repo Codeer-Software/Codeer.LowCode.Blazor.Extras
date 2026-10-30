@@ -113,7 +113,7 @@ JobProcess.Cache = app.Services.GetRequiredService<IDistributedCache>();
 | 失敗 | 終了コード 0 以外。文言は標準エラーの最初の空でない行 | 例外のメッセージを標準エラーに、例外の全文を標準出力に書いて 1。ジョブが無ければ標準エラーに「ジョブ 'X' がありません」を書いて 2 |
 | 失敗の記録 | 同期・非同期とも、終了コードが 0 以外なら標準エラーと標準出力の全文を `LoggerFactory` に Error で書く | — |
 
-手で同じことをするには `echo {"data":{},"submit":null} | dotnet LowCodeApp.Server.dll job Sample --stdin`。
+手で同じことをするには `echo {"data":{},"submit":null} | dotnet LowCodeApp.Server.dll job <ジョブ名> --stdin`。
 
 ### 起動する実行ファイル
 
