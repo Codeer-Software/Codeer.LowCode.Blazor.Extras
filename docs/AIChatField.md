@@ -57,6 +57,8 @@ void Chat_OnReplyReceived(string replyHtml)
 
 クライアントは HTML を表示するだけで内容を解釈しません。Markdown やテキストを HTML にするのはサーバーの仕事です。返事に時間がかかる Agent を想定し、HTTP を張ったまま待たず、受付番号でポーリングします。
 
+既定は共通の API (`POST /api/extras`) に `AIChat.Send` / `AIChat.Status` / `AIChat.Cancel` を送ります (要求・応答の型は下と同じ)。以下は `AIChatField.EndPoint` にチャット専用のコントローラを設定したときの形です。
+
 ```
 POST   {EndPoint}               { "conversationId": "…", "message": "…", "moduleName": "…", "fieldName": "…", "agent": "", "documentFolder": "" }   // moduleName / fieldName = AIChatField の場所 (サーバーはこのデザインから Agent 名と文書フォルダを取る。agent / documentFolder は参考値)
        → 202 { "requestId": "…" }

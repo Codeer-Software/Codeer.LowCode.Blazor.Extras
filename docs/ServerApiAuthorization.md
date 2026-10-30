@@ -50,7 +50,7 @@ Codeer.LowCode.Blazor 1.3.33 / Codeer.LowCode.Blazor.Extras 0.12.0 / Codeer.LowC
 
 ## ホスト側の結線
 
-各 Controller は `DataService.ModuleDataIO` (ログインユーザーで作った ModuleDataIO) を Extras.Server の入口に渡します。アプリテンプレートには結線済みです。
+`ExtrasController` は `DataService.ModuleDataIO` (ログインユーザーで作った ModuleDataIO) を Extras.Server の入口 (`ExtrasApiContext`) に渡します。アプリテンプレートには結線済みです。
 
 | 入口 | 渡し方 |
 |---|---|
