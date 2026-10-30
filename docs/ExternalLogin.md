@@ -78,7 +78,7 @@ IdP の種類ごとに独立したセクション (メールの `Smtp` / `GraphA
 
 機構はパッケージ、方針はアプリ。アプリが持つのは次の 2 つだけ。
 
-1. **設定** — 上の各セクションを `SystemConfig` に束ねる (Program.cs。メールの Smtp / GraphApi と同じ)。**対応表** (`Services/ExternalLoginTable.cs`) がそれを読んで `IExternalLoginProvider` の一覧にする。独自 IdP はここに 1 行足す
+1. **設定** — 上の各セクションを `SystemConfig` に束ねる (`SystemConfig` にプロパティを持ち、Program.cs の `builder.Configuration.Bind(SystemConfig.Instance)` で読む。メールの Smtp / GraphApi と同じ)。**対応表** (`Extras/ExternalLoginTable.cs`) がそれを読んで `IExternalLoginProvider` の一覧にする。独自 IdP はここに 1 行足す
 2. **配線** (`CookieAuthentication.cs`)
    ```csharp
    builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
@@ -109,7 +109,7 @@ IdP の種類ごとに独立したセクション (メールの `Smtp` / `GraphA
 - Google / Cognito: `email_verified == true` のメールだけ。汎用 OIDC もユーザー名を `email` から取るときは `email_verified == false` を拒否する (クレームを返さない IdP は判定できないので通す)
 - `Scopes` に `openid` が無ければ自動で足す (無いと id_token が返らず OIDC として成立しない)
 - Authorization Code + PKCE。クレーム名は id_token のまま (`MapInboundClaims = false`)。IdP 側の失敗は詳細を漏らさずログイン画面へ
-- Cookie にはパスワードログインと同形の最小クレーム (`Name` / `NameIdentifier`) と経路 (`idp`) だけを積む。IdP のトークンは Cookie の認証プロパティに保持 (ログアウトの `id_token_hint` 用)
+- Cookie にはパスワードログインと同形の最小クレーム (`Name` / `NameIdentifier`) と経路 (`idp`) だけを積む (`LoginPrincipal`。読むときも同じクラス)。IdP のトークンは Cookie の認証プロパティに保持 (ログアウトの `id_token_hint` 用)
 
 ## ネイティブアプリ (MAUI)
 

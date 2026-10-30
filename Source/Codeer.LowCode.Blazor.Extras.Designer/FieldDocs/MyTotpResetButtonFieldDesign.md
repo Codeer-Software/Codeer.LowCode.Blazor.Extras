@@ -14,8 +14,8 @@
 
 ### サーバ側
 
-テンプレート (Starter の Cookie ホスト) に組み込み済み: `GET api/account/totp/status` / `POST api/account/totp/reset` (ログイン中のユーザーが対象)。
-独自ホストなら同じ形のエンドポイントを用意し、`TotpResetClient.StatusEndPoint` / `ResetEndPoint` に結線する (テンプレートは `ServiceInitializer` で設定)。
+ホストの共通の API (テンプレートの ExtrasController) に `TotpApi` が載っていること (Starter の Cookie ホストは載せ済み。状態の取得と解除。ログイン中のユーザーが対象)。クライアント側の設定は不要。
+専用のエンドポイントで受けるホストは `TotpResetClient.StatusEndPoint` / `ResetEndPoint` の両方に結線する。
 
 ### プロパティ
 

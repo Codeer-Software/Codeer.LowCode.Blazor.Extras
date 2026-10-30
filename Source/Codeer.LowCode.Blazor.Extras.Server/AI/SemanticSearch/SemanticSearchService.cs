@@ -33,9 +33,9 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
     /// ジョブはプロセス内メモリ。単一インスタンス前提。
     /// <code>
     /// //アプリの静的な持ち物として 1 つ作る
-    /// public static SemanticSearchService Service { get; } = new(() => embeddingProvider, () => DesignerService.GetDesignData());
+    /// public static SemanticSearchService Service { get; } = new(() => embeddingProvider, () => AppDesign.Store.GetDesignData());
     /// //CustomizedModuleDataIO のコンストラクタ
-    /// AddInterceptor(SemanticSearchIndex.Service.Interceptor);
+    /// AddInterceptor(SemanticSearchTable.Service.Interceptor);
     /// </code>
     /// </summary>
     public sealed class SemanticSearchService : IDisposable
@@ -145,7 +145,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
         IModuleDataIOInterceptor? _interceptor;
 
         /// <summary>
-        /// ホストの ModuleDataIO に登録するインターセプタ (<c>AddInterceptor(SemanticSearchIndex.Service.Interceptor)</c>)。
+        /// ホストの ModuleDataIO に登録するインターセプタ (<c>AddInterceptor(SemanticSearchTable.Service.Interceptor)</c>)。
         /// 保存のたびに保存した行から索引 (文章とベクトル) を作って書き、画面の検索欄 (検索レイアウトに置いた SemanticSearchField) の文章には検索の前に埋め込みベクトルを入れる。
         /// </summary>
         public IModuleDataIOInterceptor Interceptor => _interceptor ??= new SemanticSearchInterceptor(this);

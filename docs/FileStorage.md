@@ -67,12 +67,15 @@ FileField がアップロードしたファイルの実体を置く場所です�
 ## アプリ側の結線 (テンプレート)
 
 ```csharp
-// Program.cs: 設定は SystemConfig に束ねる (Azure の接続文字列は ConnectionStrings:<Name> にも置ける)
-SystemConfig.Instance.FileSystemStorages = builder.Configuration.GetSection("FileSystemStorages").Get<FileSystemStorageSettings[]>() ?? [];
-SystemConfig.Instance.AzureBlobStorages = builder.Configuration.GetSection("AzureBlobStorages").Get<AzureBlobStorageSettings[]>() ?? [];
-SystemConfig.Instance.S3Storages = builder.Configuration.GetSection("S3Storages").Get<S3StorageSettings[]>() ?? [];
+// Infrastructure/SystemConfig.cs: 設定はプロパティで持つ (セクション名 = プロパティ名)
+public FileSystemStorageSettings[] FileSystemStorages { get; set; } = [];
+public AzureBlobStorageSettings[] AzureBlobStorages { get; set; } = [];
+public S3StorageSettings[] S3Storages { get; set; } = [];
 
-// Services/FileStorageTable.cs: 設定 → IFileStorage (初回に組み立てて使い回す。Storages プロパティで取り出す)
+// Program.cs: appsettings → SystemConfig (Azure の接続文字列は ConnectionStrings:<Name> にも置ける)
+builder.Configuration.Bind(SystemConfig.Instance);
+
+// Extras/FileStorageTable.cs: 設定 → IFileStorage (初回に組み立てて使い回す。Storages プロパティで取り出す)
 static List<IFileStorage> Create()
 {
     var config = SystemConfig.Instance;

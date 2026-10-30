@@ -1,5 +1,6 @@
 using Codeer.LowCode.Blazor.DataIO;
 using Codeer.LowCode.Blazor.Extras.Designs;
+using Codeer.LowCode.Blazor.Extras.Api;
 using Codeer.LowCode.Blazor.Extras.Jobs;
 using Codeer.LowCode.Blazor.Extras.Properties;
 using Codeer.LowCode.Blazor.Extras.Services;
@@ -23,7 +24,8 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         public JobTriggerField(JobTriggerFieldDesign design) : base(design) { }
 
         /// <summary>
-        /// ジョブ実行の API (POST。本文は <see cref="JobRunRequest"/>、応答は <see cref="JobRunResponse"/>)。ホストが起動時に設定する (テンプレートは "/api/job/run")。
+        /// ジョブ専用の API の URL (POST。本文は <see cref="JobRunRequest"/>、応答は <see cref="JobRunResponse"/>)。
+        /// 空 (既定) なら共通の口 (<see cref="Api.ExtrasTransport"/> = ホストの 1 本の API の JobApi) を使う。ジョブ専用の Controller を持つホストが起動時に設定する。
         /// 非同期で起動したジョブの状態は GET {EndPoint}/{jobId} (応答は <see cref="JobStatusResponse"/>。知らない Id は 404) で問い合わせる。
         /// 空のまま (かつ <see cref="RunCoreAsync"/> も無い) ならジョブは動かせず、押すとその旨を通知する。
         /// </summary>
@@ -167,8 +169,9 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         [ScriptName("GetJobStatus")]
         public async Task<JobStatusResponse?> GetJobStatusAsync() => await GetJobStatusAsync(string.Empty);
 
-        //差し替え (RunCoreAsync) を使うホストは GetJobStatusCoreAsync (無ければ null)、それ以外は GET {EndPoint}/{jobId}。HTTP の失敗はトーストに出さず null。
-        //Unknown = サーバーが知らない Id (差し替えが null・HTTP が 404)
+        //差し替え (RunCoreAsync) を使うホストは GetJobStatusCoreAsync (無ければ null)、ジョブ専用のルート (EndPoint) なら GET {EndPoint}/{jobId}、
+        //どちらも無ければ共通の口 (ExtrasTransport) の Status。HTTP の失敗はトーストに出さず null。
+        //Unknown = サーバーが知らない Id (差し替えが null・ジョブ専用ルートが 404・共通の口に届いて応答なし)
         async Task<(JobStatusResponse? Status, bool Unknown)> GetJobStatusCoreOrHttpAsync(string jobId)
         {
             if (RunCoreAsync != null)
@@ -178,11 +181,17 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
                 return (status, status == null);
             }
             var http = Services.Provider?.GetService<IHttpService>();
-            if (http == null || string.IsNullOrEmpty(EndPoint)) return (null, false);
-            HttpStatusCode? code = null;
-            using var checker = http.AddChecker((c, _) => code = c);
-            var result = await http.GetFromJsonAsync<JobStatusResponse>($"{EndPoint}/{Uri.EscapeDataString(jobId)}", loading: false);
-            return (result, result == null && code == HttpStatusCode.NotFound);
+            if (!string.IsNullOrEmpty(EndPoint))
+            {
+                if (http == null) return (null, false);
+                HttpStatusCode? code = null;
+                using var checker = http.AddChecker((c, _) => code = c);
+                var result = await http.GetFromJsonAsync<JobStatusResponse>($"{EndPoint}/{Uri.EscapeDataString(jobId)}", loading: false);
+                return (result, result == null && code == HttpStatusCode.NotFound);
+            }
+            //HTTP の失敗 (404 = 口に JobApi が無い、を含む) は Unknown にしない (トーストも出さない)
+            var (response, delivered) = await ExtrasTransport.CallAsync<JobStatusResponse>(http, JobApiNames.Feature, JobApiNames.Status, new JobStatusRequest { JobId = jobId }, loading: false, onError: (_, _) => { });
+            return (response, response == null && delivered);
         }
 
         //同期の応答の通知
@@ -201,13 +210,19 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             return false;
         }
 
-        //差し替え (RunCoreAsync) があればそれ、無ければ EndPoint へ POST。どちらも無いホストでは動かせない旨を例外で (呼び出し元が通知する)
+        //差し替え (RunCoreAsync) があればそれ、ジョブ専用のルート (EndPoint) があればそこへ POST、どちらも無ければ共通の口 (ExtrasTransport) の Run。
+        //送る先の無いホストでは動かせない旨を例外で (呼び出し元が通知する)
         async Task<JobRunResponse?> SendAsync(JobRunRequest request)
         {
             if (RunCoreAsync != null) return await RunCoreAsync(this, request);
             var http = Services.Provider?.GetService<IHttpService>();
-            if (http == null || string.IsNullOrEmpty(EndPoint)) throw new InvalidOperationException(Resources.JobTrigger_NotConfigured);
-            return await http.PostAsJsonAsync<JobRunRequest, JobRunResponse>(EndPoint, request);
+            if (!string.IsNullOrEmpty(EndPoint))
+            {
+                if (http == null) throw new InvalidOperationException(Resources.JobTrigger_NotConfigured);
+                return await http.PostAsJsonAsync<JobRunRequest, JobRunResponse>(EndPoint, request);
+            }
+            if (!ExtrasTransport.CanSend(http)) throw new InvalidOperationException(Resources.JobTrigger_NotConfigured);
+            return (await ExtrasTransport.CallAsync<JobRunResponse>(http, JobApiNames.Feature, JobApiNames.Run, request)).Response;
         }
 
         //画面の内容 {"data":現在値,"submit":保存ボタンが送るのと同じもの}。送るものが無ければ (変更なし・表を持たないモジュール) submit は null

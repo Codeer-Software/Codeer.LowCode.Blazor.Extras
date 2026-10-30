@@ -23,15 +23,8 @@
 - テンプレートは `MailDispatcher` 経由で送るので、`Mail.DebugRedirectAllTo` (開発環境の宛先リダイレクト) が効く。履歴モジュールには記録しない (コードを残さない)
 - コードの置き場は `IDistributedCache` (テンプレートは `CookieAuthentication.cs` で `AddDistributedMemoryCache()`)。複数インスタンスでは Redis 等の共有キャッシュに差し替える (docs/ExternalLogin.md の「複数インスタンスの注意」)
 
-```csharp
-// AccountController.Login: パスワード検証の後 (契約に TOTP 列が無いときだけ)
-if (accounts.HasTwoFactorEmail)
-{
-    var email = new EmailOtpLogin(SystemConfig.Instance.EmailOtpLogin, message => CreateMailDispatcher().SendAsync(...), _cache);
-    var result = await email.VerifyAsync(account.UserId, account.TwoFactorEmail, loginInfo.TwoFactorCode);
-    if (result.Status != EmailOtpLoginStatus.Ok) return Ok(result);   // email / invalid_code / code_expired / send_failed: サインインしない
-}
-```
+ログインの流れの中では `PasswordLogin` が、パスワードが通った後 (契約に TOTP 列が無いときだけ) `EmailOtpLogin.VerifyAsync` を呼び、
+`ok` 以外の結果 (`email` / `invalid_code` / `code_expired` / `send_failed`) をそのままクライアントへ返してサインインしません。メールの送信はテンプレートが `MailDispatcher` 経由で渡します。
 
 ## 認証アプリ (TOTP)
 
@@ -43,7 +36,7 @@ if (accounts.HasTwoFactorEmail)
   ユーザー行の 3 列 (秘密鍵 / 確認済み / 最終タイムステップ) を設定する。空に戻せば従来のログインに戻る。appsettings に列名の設定は無い
 - 3 列は契約の列名だけの宣言 (通常のモジュール読み書きには乗らない)。クライアントに秘密鍵が渡ることはない。
   ユーザーを画面で編集しても列は触られない
-- パスワードの検証とサインインはこれまでどおりテンプレートの `AccountController`。パッケージ (`TotpLogin`) は「パスワードが通った後にコードを検証する」部分だけを持ち、
+- サインイン (Cookie の発行) はこれまでどおりテンプレートの `AccountController`。検証の流れ (パスワード → コード) はパッケージの `PasswordLogin` が持ち、`TotpLogin` は「パスワードが通った後にコードを検証する」部分だけで、
   表・列名はデザインから引いて SQL で直接読み書きする (ログイン時はまだ認証済みユーザーがいないため、パスワード照合と同じ経路)
 - 登録は最初のログイン時。パスワードが通ったユーザーに QR を出し、そのコードが合ったときに登録が確定する
 - リセットは `MyTotpResetButtonField` (本人用。設定画面などどこにでも置ける) / `TotpResetButtonField` (管理者用。ユーザーモジュールの詳細画面で表示中の行のユーザーを解除。通常の保存と同じ権限で制御) か、3 列を空にする (`TotpLogin.ResetAsync`)
@@ -83,17 +76,8 @@ if (accounts.HasTwoFactorEmail)
 
 二要素認証が無効なときも応答は `{ status: "ok" }` (以前の空応答から変わっている。login.html / MAUI の Login.razor は両方を受け付ける)。
 
-テンプレート側のコード (同梱ソース):
-
-```csharp
-// AccountController.Login: パスワード検証の後
-var totp = TotpLogin.Create(designData, SystemConfig.Instance.TotpLogin, _dataService.DbAccess);   // 契約に TOTP 列が無ければ null
-if (totp != null)
-{
-    var result = await totp.VerifyAsync(account.UserId, account.LoginName, loginInfo.TwoFactorCode);
-    if (result.Status != TotpLoginStatus.Ok) return Ok(result);   // setup / totp / invalid_code: サインインしない
-}
-```
+ログインの流れの中では `PasswordLogin` が、パスワードが通った後 `TotpLogin.VerifyAsync` を呼び (契約に TOTP 列が無ければ飛ばす)、
+`ok` 以外の結果 (`setup` / `totp` / `invalid_code`) をそのままクライアントへ返してサインインしません。テンプレートの `AccountController.Login` はその結果を HTTP に写すだけです。
 
 ## リセット (認証アプリの登録の解除)
 
@@ -144,42 +128,15 @@ if (totp != null)
 
 ### サーバー API と結線 (MyTotpResetButtonField)
 
-Starter の Cookie テンプレートの `AccountController` に組み込み済みです。対象は常にログイン中のユーザーです。
+Starter の Cookie テンプレートの共通の API (`Controllers/ExtrasController.cs` = `POST api/extras`) に組み込み済みです。対応表 `Extras/ExtrasApiTable.cs` に `new TotpApi(SystemConfig.Instance.TotpLogin)` を並べます。対象は常にログイン中のユーザーです。
 
-| API | 内容 |
+| 操作 | 内容 |
 |---|---|
-| `GET api/account/totp/status` | 状態 `{ Enabled, Registered }` を返す (`Enabled` = 契約に TOTP 列がある) |
-| `POST api/account/totp/reset` | 自分の 3 列を空にし (`TotpLogin.ResetAsync`)、解除後の状態を返す |
+| `Totp.Status` | 状態 `{ Enabled, Registered }` を返す (`Enabled` = 契約に TOTP 列がある) |
+| `Totp.Reset` | 自分の 3 列を空にし (`TotpLogin.ResetAsync`)、解除後の状態を返す |
 
-```csharp
-// AccountController (どちらも [Authorize])
-[HttpGet("totp/status")]
-public async Task<IActionResult> GetTotpStatus()
-{
-    var totp = TotpLogin.Create(DesignerService.GetDesignData(), SystemConfig.Instance.TotpLogin, _dataService.DbAccess);
-    if (totp == null) return Ok(new TotpStatus());
-    var current = await totp.FindAsync(DataService.GetCurrentUserId(HttpContext));
-    return Ok(new TotpStatus { Enabled = true, Registered = current?.IsConfirmed == true });
-}
-
-[HttpPost("totp/reset")]
-public async Task<IActionResult> TotpReset()
-{
-    var totp = TotpLogin.Create(DesignerService.GetDesignData(), SystemConfig.Instance.TotpLogin, _dataService.DbAccess);
-    if (totp == null) return NotFound();
-    await totp.ResetAsync(DataService.GetCurrentUserId(HttpContext));
-    return Ok(new TotpStatus { Enabled = true, Registered = false });
-}
-```
-
-クライアントは起動時にエンドポイントを設定します (テンプレートは `ServiceInitializer`)。未設定のときは状態が取れないので、ボタンは何も表示しません。
-
-```csharp
-using Codeer.LowCode.Blazor.Extras.Fields;
-
-TotpResetClient.StatusEndPoint = "/api/account/totp/status";
-TotpResetClient.ResetEndPoint = "/api/account/totp/reset";
-```
+クライアント側の設定は不要です (共通の API `ExtrasTransport.EndPoint` = `/api/extras` に送ります)。送る先が無いときは状態が取れないので、ボタンは何も表示しません。
+専用のエンドポイントで受ける場合は、従来どおり `TotpResetClient.StatusEndPoint` (GET) / `ResetEndPoint` (POST) の両方に URL を設定すればそちらに送ります。
 
 ## 検証の既定
 

@@ -2,7 +2,6 @@
 using Codeer.LowCode.Blazor.Components.AppParts.Loading;
 using Codeer.LowCode.Blazor.RequestInterfaces;
 using Codeer.LowCode.Blazor.Extras.Fields;
-using Codeer.LowCode.Blazor.Extras.Mail;
 using Codeer.LowCode.Blazor.Extras.ScriptObjects;
 using Codeer.LowCode.Blazor.Extras.Services;
 using Microsoft.Extensions.DependencyInjection;
@@ -14,22 +13,12 @@ namespace Extras.Client.Shared.Services
     {
         public static void AddSharedServices(this IServiceCollection services)
         {
-            //Extras の組み込みサービスが使うエンドポイント。URL はアプリ(Controller を持つ側)の持ち物なのでここで一元定義する
-            MailTransport.SendMailEndPoint = "/api/mail";
-            //ジョブの実行 (JobTriggerField)。サーバーの Controllers/JobController.cs
-            JobTriggerField.EndPoint = "/api/job/run";
-            MailTransport.BulkSearchMailEndPoint = "/api/mail/bulk_search";
-            MailTransport.PreviewMailEndPoint = "/api/mail/preview";
-            MailTransport.BulkPreviewMailEndPoint = "/api/mail/bulk_preview";
-            Codeer.LowCode.Blazor.Extras.ScriptObjects.Excel.ConvertPdfEndPoint = "api/excel/pdf";
-            AITextAnalyzerField.FileToModuleDataEndPoint = "/api/ai_text_analyze/file";
-            AITextAnalyzerField.TextToModuleDataEndPoint = "/api/ai_text_analyze/text";
-            AIChatField.EndPoint = "/api/ai_chat";
-            SemanticSearchField.EndPoint = "/api/semantic_search/reindex";
+            //Extras の組み込みサービスが使うエンドポイント。
+            //メール・ジョブ・承認・AI チャット・意味検索・Excel → PDF・AI 文書解析は共通の口 (ExtrasTransport.EndPoint = /api/extras → サーバーの Controllers/ExtrasController.cs) なので設定不要。
+            //ここに並ぶのはファイル取込の API (受け口は本体の ModuleDataController)
             Codeer.LowCode.Blazor.Extras.ScriptObjects.BulkFileReader.ParseFileEndPoint = "/api/module_data/parse_file";
             Codeer.LowCode.Blazor.Extras.ScriptObjects.BulkFileTransferService.ListFileByDataEndPoint = "/api/module_data/list_file_by_data";
             Codeer.LowCode.Blazor.Extras.ScriptObjects.BulkFileTransferService.BulkSubmitEndPoint = "/api/module_data/bulk_submit";
-            Codeer.LowCode.Blazor.Extras.Approval.ApprovalTransport.EndPointBase = "/api/approval";
 
             services.AddScoped<IAppInfoService, AppInfoService>();
             services.AddScoped<IModuleDataService, ModuleDataService>();

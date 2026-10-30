@@ -38,7 +38,7 @@
 
 ### PDF 出力の前提
 
-`Format: Pdf` はサーバーの PDF 変換エンドポイント (`Excel.ConvertPdfEndPoint`、テンプレートで設定済み)
+`Format: Pdf` はサーバーの PDF 変換 (共通の API `/api/extras` の `Excel.ConvertPdf`。ホストの `ExtrasApiTable` に `ExcelApi`、テンプレートで設定済み)
 またはデスクトップのホスト側フック (`Excel.ConvertPdf`) が必要です (スクリプトの `DownloadPdf()` と同じ)。
 
 ## Script

@@ -45,14 +45,16 @@ Codeer.LowCode.Blazor 本体が持つのは**認可** (ログインしたユー�
 
 ### パスワードの保存
 
-契約の `PasswordField` を指定すると、ユーザーを保存するときにサーバー (`PasswordHashHelper.ApplyPasswordHash`、テンプレートの `CustomizedModuleDataIO` が呼ぶ) が
+契約の `PasswordField` を指定すると、ユーザーを保存するときにサーバー (`PasswordHashingModuleDataIO`。テンプレートの `CustomizedModuleDataIO` はこれを継承済み) が
 平文からハッシュ / ソルト (PBKDF2-HMAC-SHA256) を作って契約の列に書きます。ユーザーモジュールに別のフィールドは要りません。
 契約の無いモジュール (同じテーブルを参照するパスワード変更ダイアログなど) では [PasswordHashField](PasswordHashField.md) を使います。
 
-### ID/パスワードのログイン: LoginAccountStore
+### ID/パスワードのログイン: PasswordLogin / LoginAccountStore
 
-`Codeer.LowCode.Blazor.Extras.Server.Auth.LoginAccountStore` がデザインの契約からテーブル・列を引き、ログイン ID で行を探してハッシュを照合します。
-有効フラグが偽の行は拒否します。初回起動でユーザーが 0 件なら `admin` / `admin` を作ります。
+`Codeer.LowCode.Blazor.Extras.Server.Auth.PasswordLogin` がログインの検証の流れ (契約の確認 → 総当たり対策 → パスワード照合 → 二要素認証) を 1 回の呼び出しで行い、
+結果 (使えない / ロック中 / 不一致 / 二要素認証の途中 / 成功) を返します。テンプレートの `AccountController.Login` はこれを呼んで、結果を HTTP (404 / 429 / 401 / 200) と監査ログに写し、
+成功したら Cookie を発行します。パスワード照合そのものは `LoginAccountStore` がデザインの契約からテーブル・列を引いて行います (有効フラグが偽の行は拒否)。
+初回起動でユーザーが 0 件なら `admin` / `admin` を作ります (テンプレートの `CookieAuthentication.cs`)。
 
 ### 総当たり対策: LoginLockout
 
@@ -99,11 +101,11 @@ MAUI クライアントも同じサーバーの `api/account/*` を使います�
 
 | ファイル | 役割 |
 |---|---|
-| `Controllers/AccountController.cs` | `login_options` / `login` (総当たり対策の `LoginLockout` を含む) / `login/{provider}` / `logout` / `current_user` / 認証アプリの解除 |
-| `CookieAuthentication.cs` | Cookie 認証と外部 IdP の登録、初回 admin の作成 |
-| `Services/ExternalLoginTable.cs` | appsettings の IdP 設定 → プロバイダの対応表 |
-| `ExternalLoginUserResolver.cs` | 外部 IdP の本人 → ユーザー行 (事前登録制) |
-| `Services/CustomizedModuleDataIO.cs` | 保存時のパスワードハッシュ化 |
+| `Controllers/AccountController.cs` | `login_options` / `login` (検証の流れは `PasswordLogin`。結果を HTTP と監査に写して Cookie を発行する) / `login/{provider}` / `logout` / `current_user` |
+| `Infrastructure/CookieAuthentication.cs` | Cookie 認証と外部 IdP の登録、初回 admin の作成 |
+| `Extras/ExternalLoginTable.cs` | appsettings の IdP 設定 → プロバイダの対応表 |
+| `Infrastructure/ExternalLoginUserResolver.cs` | 外部 IdP の本人 → ユーザー行 (事前登録制) |
+| `Infrastructure/CustomizedModuleDataIO.cs` | 保存時のパスワードハッシュ化 (`PasswordHashingModuleDataIO` を継承) |
 | `wwwroot/login.html` + `login.js` | ログイン画面 (見た目は html を直接編集) |
 
 これらはテンプレートが生成するソースなので、必要に応じて書き換えられます。認証を外す (前段で認証済みなど) 手順は Starter の `CLAUDE.md`「認証を外す」にあります。

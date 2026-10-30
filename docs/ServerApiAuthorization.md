@@ -27,14 +27,16 @@ Codeer.LowCode.Blazor 1.3.33 / Codeer.LowCode.Blazor.Extras 0.12.0 / Codeer.LowC
 
 ## フィールドごとのルール
 
+どれも共通の API (`POST /api/extras`。テンプレートの `Controllers/ExtrasController.cs`) への要求で、表の「API」は要求の機能名.操作名です。
+
 | フィールド | API | リクエストが運ぶ場所 | 共通ルールに加えて見るもの | デザインから取る値 |
 |---|---|---|---|---|
-| MailField ([メール送信](Mail.md)) | `POST /api/mail` (送信) / `/api/mail/preview` | `SourceModule` / `FieldName` (`SourceId` は履歴の記録用) | なし。宛先・件名・本文・添付はクライアントが組む。差出人は常に送信インフラ設定のシステム送信者 | `MailInfraName` |
-| BulkMailField ([メール送信](Mail.md)) | `/api/mail/bulk_search` (送信) / `/api/mail/bulk_preview` | `SourceModule` / `FieldName` / `Condition` (宛先リストの検索条件) | 宛先の解決は本体の一覧取得 (GetListAsync) なので、**宛先モジュール**の UserReadCondition・DataReadCondition・フィールド読取権限が効く。リンク越しの値 (`{Contact.Email.Value}` 等) もリンク先モジュールの権限で読む。読めない行は宛先にならず、読めない列は空 (アドレスなら「アドレスなし」で除外) | `MailInfraName` |
-| ApprovalFlowField ([承認フロー](ApprovalFlow.md)) | `POST /api/approval` | `TargetModuleName` / `FieldName` / `FlowId` | (1) 既存フローへの操作 (承認・却下・差し戻し・取り下げ・回覧確認・再申請) では**申請書の行を読めること** (DataReadCondition) (2) 本人性: 承認・却下・差し戻しは今順番の来ている承認者本人、取り下げ・再申請は申請者本人、回覧確認は到達済みの回覧者本人 (3) フローは申請書モジュールと組で識別 (別モジュール名を添えた要求は「フローなし」) (4) 申請・再申請の保存データはそのモジュールのもの、再申請はそのフローの申請書レコードの更新に限る (5) 申請・再申請の申請書保存は通常の保存経路 (UserWrite / DataWrite / 編集ロック) | `WithdrawPolicy` 等の運用設定 |
-| AIChatField ([AI チャット](AIChatField.md)) | `POST /api/ai_chat` | `ModuleName` / `FieldName` | ジョブの取得・中断はそのジョブの所有者 (ログイン ID) だけ。**AI が何を読めるか** (RawDataAccessAgent) は AI 用 DB ユーザーの権限で決まり、ここでは決めない | `Agent` / `DocumentFolder` |
-| AITextAnalyzerField ([AI 帳票解析](AITextAnalyzerField.md)) | `POST /api/ai_text_analyze/file` / `/text` | クエリの `moduleName` / `fieldName` | なし。検査は AI 呼び出し (ファイルの読み取り) より前 | `Remarks` (補足指示) |
-| SemanticSearchField ([意味検索](SemanticSearchField.md)) | `POST /api/semantic_search/reindex` (再索引の開始) | `ModuleName` / `FieldName` | 読み取りではなく**書き込み** (モジュールの UserWriteCondition + PermissionField の書き込み条件) を見る = 索引を書き直す操作。検査を通らなければジョブは作られない。索引は保存時と同じくサーバーが権限を通さず全行を読み、書き込み専用の列だけに書く (誰が起こしても同じ文章。レコードの更新ではない)。状態の取得・中断はそのジョブを起こしたユーザー (ログイン ID。走っている間に起こして合流した人を含む) だけ | 文章にするフィールド・列 (`SourceFields` / `DbColumnText` 等) |
+| MailField ([メール送信](Mail.md)) | `Mail.Send` (送信) / `Mail.Preview` | `SourceModule` / `FieldName` (`SourceId` は履歴の記録用) | なし。宛先・件名・本文・添付はクライアントが組む。差出人は常に送信インフラ設定のシステム送信者 | `MailInfraName` |
+| BulkMailField ([メール送信](Mail.md)) | `Mail.SendBulkSearch` (送信) / `Mail.PreviewBulkSearch` | `SourceModule` / `FieldName` / `Condition` (宛先リストの検索条件) | 宛先の解決は本体の一覧取得 (GetListAsync) なので、**宛先モジュール**の UserReadCondition・DataReadCondition・フィールド読取権限が効く。リンク越しの値 (`{Contact.Email.Value}` 等) もリンク先モジュールの権限で読む。読めない行は宛先にならず、読めない列は空 (アドレスなら「アドレスなし」で除外) | `MailInfraName` |
+| ApprovalFlowField ([承認フロー](ApprovalFlow.md)) | `Approval.Execute` | `TargetModuleName` / `FieldName` / `FlowId` | (1) 既存フローへの操作 (承認・却下・差し戻し・取り下げ・回覧確認・再申請) では**申請書の行を読めること** (DataReadCondition) (2) 本人性: 承認・却下・差し戻しは今順番の来ている承認者本人、取り下げ・再申請は申請者本人、回覧確認は到達済みの回覧者本人 (3) フローは申請書モジュールと組で識別 (別モジュール名を添えた要求は「フローなし」) (4) 申請・再申請の保存データはそのモジュールのもの、再申請はそのフローの申請書レコードの更新に限る (5) 申請・再申請の申請書保存は通常の保存経路 (UserWrite / DataWrite / 編集ロック) | `WithdrawPolicy` 等の運用設定 |
+| AIChatField ([AI チャット](AIChatField.md)) | `AIChat.Send` | `ModuleName` / `FieldName` | ジョブの取得・中断はそのジョブの所有者 (ログイン ID) だけ。**AI が何を読めるか** (RawDataAccessAgent) は AI 用 DB ユーザーの権限で決まり、ここでは決めない | `Agent` / `DocumentFolder` |
+| AITextAnalyzerField ([AI 帳票解析](AITextAnalyzerField.md)) | `AITextAnalyze.AnalyzeFile` / `AITextAnalyze.AnalyzeText` | `ModuleName` / `FieldName` | なし。検査は AI 呼び出し (ファイルの読み取り) より前 | `Remarks` (補足指示) |
+| SemanticSearchField ([意味検索](SemanticSearchField.md)) | `SemanticSearch.Reindex` (再索引の開始) | `ModuleName` / `FieldName` | 読み取りではなく**書き込み** (モジュールの UserWriteCondition + PermissionField の書き込み条件) を見る = 索引を書き直す操作。検査を通らなければジョブは作られない。索引は保存時と同じくサーバーが権限を通さず全行を読み、書き込み専用の列だけに書く (誰が起こしても同じ文章。レコードの更新ではない)。状態の取得・中断はそのジョブを起こしたユーザー (ログイン ID。走っている間に起こして合流した人を含む) だけ | 文章にするフィールド・列 (`SourceFields` / `DbColumnText` 等) |
 
 ### 一斉送信で取得するデータ
 
@@ -48,7 +50,7 @@ Codeer.LowCode.Blazor 1.3.33 / Codeer.LowCode.Blazor.Extras 0.12.0 / Codeer.LowC
 
 ## ホスト側の結線
 
-各 Controller は `DataService.ModuleDataIO` (ログインユーザーで作った ModuleDataIO) を Extras.Server の入口に渡します。アプリテンプレートには結線済みです。
+`ExtrasController` は `DataService.ModuleDataIO` (ログインユーザーで作った ModuleDataIO) を Extras.Server の入口 (`ExtrasApiContext`) に渡します。アプリテンプレートには結線済みです。
 
 | 入口 | 渡し方 |
 |---|---|

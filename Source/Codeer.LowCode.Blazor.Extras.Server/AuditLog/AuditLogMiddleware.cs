@@ -1,11 +1,11 @@
 using Codeer.LowCode.Blazor;
+using Codeer.LowCode.Blazor.Extras.Server.Auth;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.Controllers;
 using Microsoft.Extensions.DependencyInjection;
-using System.Security.Claims;
 
 namespace Codeer.LowCode.Blazor.Extras.Server.AuditLog
 {
@@ -53,12 +53,17 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AuditLog
             e.DesignVersion = _logger.GetDesignVersion(context);
             var userId = await ResolveUserIdAsync(context);
 
-            //前段: 試行の記録。書けなければ (Strict) ここで例外 = 操作は実行されない
-            await _logger.WriteAsync(new AuditEvent
+            //前段: 試行の記録。書けなければ (Strict) ここで例外 = 操作は実行されない。
+            //分類を処理の中で決める Controller (AuditContext.StartAsync) が同じ形で書けるよう、書き方を渡しておく
+            Task WriteAttemptAsync(AuditEvent current) => _logger.WriteAsync(new AuditEvent
             {
-                Category = e.Category, Action = e.Action, Result = AuditResult.Attempt, UserId = userId,
+                Category = current.Category, Action = current.Action, Result = AuditResult.Attempt,
+                UserId = string.IsNullOrEmpty(current.UserId) ? userId : current.UserId,
                 ClientIp = e.ClientIp, UserAgent = e.UserAgent, RequestId = e.RequestId, DesignVersion = e.DesignVersion,
             });
+            audit.WriteAttemptAsync = WriteAttemptAsync;
+            audit.AttemptWritten = AuditLogger.HasAttempt(e.Category);
+            await WriteAttemptAsync(e);
 
             var completed = false;
             async Task CompleteAsync(Exception? exception)
@@ -67,7 +72,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AuditLog
                 completed = true;
                 //後段の時刻は操作が終わった時刻 (レコードはリクエストの最初に作られるので取り直す。前段より前の時刻にしない)
                 e.OccurredAtUtc = DateTime.UtcNow;
-                if (string.IsNullOrEmpty(e.UserId)) e.UserId = context.User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? userId;
+                if (string.IsNullOrEmpty(e.UserId)) e.UserId = LoginPrincipal.GetUserId(context.User) is { Length: > 0 } id ? id : userId;
                 //例外ハンドラ (UseExceptionHandler) がこのミドルウェアより内側にあると、例外はここまで上がらずエラー応答に変わる。
                 //その応答を書く時点では例外がフィーチャーに残っているので、そこから理由を取る (ホストの並び順に依存しない)
                 exception ??= context.Features.Get<IExceptionHandlerFeature>()?.Error;
@@ -125,7 +130,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AuditLog
                     if (result.Succeeded) context.User = result.Principal;
                 }
             }
-            return context.User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? string.Empty;
+            return LoginPrincipal.GetUserId(context.User);
         }
     }
 }

@@ -29,6 +29,24 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AuditLog
 
         public AuditEvent Event { get; } = new();
 
+        //ミドルウェアが渡す「試行の行を書く」手順と、前段で書いたかどうか
+        internal Func<AuditEvent, Task>? WriteAttemptAsync { get; set; }
+        internal bool AttemptWritten { get; set; }
+
+        /// <summary>
+        /// 分類と操作名を処理の中で決める (1 本の API で複数の操作を受ける Controller が、要求を読んでから呼ぶ)。
+        /// 試行の行がある分類 (<see cref="AuditLogger.HasAttempt"/>) で、前段 (属性の分類) で書かれていなければ、ここで試行の行を書く
+        /// (Strict で書けなければ例外 = 操作は実行されない)。操作の前に呼ぶ。
+        /// </summary>
+        public async Task StartAsync(AuditCategory category, string action)
+        {
+            Event.Category = category;
+            Event.Action = action;
+            if (AttemptWritten || WriteAttemptAsync == null || !AuditLogger.HasAttempt(category)) return;
+            AttemptWritten = true;
+            await WriteAttemptAsync(Event);
+        }
+
         public void AddTarget(string module, string? id, string operation)
             => Event.Targets.Add(new AuditTarget { Module = module, Id = string.IsNullOrEmpty(id) ? null : id, Operation = operation });
 

@@ -55,11 +55,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Auth
     /// ID/パスワード検証の後に呼ぶ、メールのワンタイムコード (6 桁・使い捨て) による二要素認証。
     /// コードはサーバー側のキャッシュ (IDistributedCache) に有効期限付きで置くので DB 列は要らない。送信先はユーザー行 (LoginAccountStore が読む)。
     /// TOTP (TotpLogin) と違いユーザー側の登録が要らないので導入が軽い。メールを受け取れる = 本人、という前提の強度。
-    /// <code>
-    /// var email = new EmailOtpLogin(SystemConfig.Instance.EmailOtpLogin, message => dispatcher.SendAsync(SystemConfig.Instance.EmailOtpLogin.MailInfraName, message), cache);
-    /// var result = await email.VerifyAsync(account.UserId, account.TwoFactorEmail, loginInfo.TwoFactorCode);
-    /// if (result.Status != EmailOtpLoginStatus.Ok) return Ok(result);   // email / invalid_code / code_expired / send_failed: サインインしない
-    /// </code>
+    /// ログインの流れ (パスワードが通った後・契約に TOTP の列が無いときに <see cref="VerifyAsync"/>、Ok 以外は結果をそのままクライアントへ返してサインインしない) は <see cref="PasswordLogin"/> が持つ。
     /// </summary>
     public class EmailOtpLogin
     {

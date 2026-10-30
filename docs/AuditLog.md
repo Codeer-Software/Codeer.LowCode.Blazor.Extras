@@ -102,7 +102,7 @@ create index "ix_audit_log_occurred_at" on "audit_log" ("occurred_at_utc");
 |---|---|
 | `OccurredAtUtc` | サーバー時刻 (UTC)。試行の行は操作の前、結果の行は操作が終わった時刻 |
 | `Category` | 分類 (下記) |
-| `Action` | 操作の名前。WebAPI は "Controller.Action" (例 `ModuleData.Submit`、`Account.Login`) |
+| `Action` | 操作の名前。WebAPI は "Controller.Action" (例 `ModuleData.Submit`、`Account.Login`)。共通の API (`/api/extras`) は "機能.操作" (例 `Mail.Send`、`SemanticSearch.Reindex`) |
 | `Result` | `Attempt` (操作前の試行) / `Success` / `Failure` / `Denied` (認証・権限で拒否された) / `Continued` (対象の続きの行) |
 | `UserId` | 操作したユーザーの Id (ユーザーモジュールの行の Id)。未認証なら空。ログインでは **Cookie を発行した (成立した) ときだけ** そのユーザー。パスワードは合ったが二要素認証のコード待ち・認証アプリの登録待ちの行は HTTP としては成功なので `Success` だが `user_id` は空 (`Detail` の `TwoFactor=...` と `LoginName=...`)。ログインの成立は「`Success` で `user_id` がある行」で数える |
 | `ClientIp` / `UserAgent` | 接続元。`ClientIp` は ASP.NET Core が見た接続元 (`RemoteIpAddress`)。Azure App Service は基盤が Forwarded Headers を解決するので利用者の IP が入るが、IIS (ARR) や nginx 等のリバースプロキシを自前で置いた構成では**プロキシの IP が入る**。その構成では `Program.cs` で `UseForwardedHeaders` (`KnownProxies` にプロキシを登録) を `UseAuditLog` より前に足す。テンプレートには入れていない (プロキシの無い構成で有効にすると `X-Forwarded-For` の偽装を信用してしまうため) |
@@ -141,7 +141,7 @@ create index "ix_audit_log_occurred_at" on "audit_log" ("occurred_at_utc");
   監査が要る環境では、AI 用 DB ユーザーに個人情報を除いたビューだけを許可して「行単位の説明責任があるデータに AI が届かない」構成にし、
   範囲 (DB ユーザーの権限) と利用の事実 (送信の行) で説明します ([AIChatField](AIChatField.md) の「監査基準への対応」)。
   ユーザーごとに見える行が違うデータは DB ユーザーでは表現できないので、AI の範囲に入れません
-- **意味検索の再索引 (`SemanticSearch.Start`) が書き直した行**。管理操作として `Admin` の行は残りますが、ジョブが書き直す行 (索引用の書き込み専用列だけ) は記録しません
+- **意味検索の再索引 (`SemanticSearch.Reindex`) が書き直した行**。管理操作として `Admin` の行は残りますが、ジョブが書き直す行 (索引用の書き込み専用列だけ) は記録しません
 
 ### 二段の記録 (試行と結果)
 
@@ -163,7 +163,7 @@ create index "ix_audit_log_occurred_at" on "audit_log" ("occurred_at_utc");
 - 200 でも業務として失敗したもの (保存結果の `ExceptionMessage`、承認の `ErrorMessage`、ログインのコード不一致) はコントローラが `Failure` / `Denied` に上書きする。保存の中で監査より内側のインターセプタ (編集履歴・意味検索の索引付け) が失敗したときも `Failure` (本体は内側の例外も保存結果の `ExceptionMessage` にして 200 で返すので、監査の側で例外からも付ける)
 - ファイルを読みながら返す応答 (添付のダウンロード・動画の再生) は、送り始めた時点で結果が決まる (ストレージから開けなければ `Failure`。送っている途中で切れても `Success` のまま)
 
-何を記録するかは appsettings ではなく **ホストのコード** (コントローラの `[Audit]`) で決まります。分類を宣言したアクションは成功も失敗も記録し、
+何を記録するかは appsettings ではなく **ホストのコード** (コントローラの `[Audit]`) で決まります。共通の API (`/api/extras`) に載る Extras の機能は、ハンドラ (Extras.Server の `XxxApi`) が操作ごとに分類を宣言します (ホストの `ExtrasController` に `[Audit]` は不要)。分類を宣言したアクションは成功も失敗も記録し、
 宣言の無いアクション (`Other`) は失敗と拒否だけが残ります。参照 (`DataRead`) も常に残り、既定は「誰が・どのモジュールを・何件読んだか」(`Targets` にモジュール名、
 `Detail` に `Rows=`) です。返した行の Id まで残す (閲覧の証跡) には、`ModuleDataController` の一覧取得で `AddRead(..., recordIds: true)` にします
 (行数ぶん大きくなるのでテンプレートの既定は false)。
@@ -362,15 +362,16 @@ Claude Code でデザインを編集している場合 (デザイナの Tools > 
 
 テンプレート (Cookie) には含まれています。既存のアプリに足す場合:
 
-1. `SystemConfig` に `AuditLogSettings` を持ち、`Program.cs` で `AuditLog` セクションを読む (出力先の `Database` / `File` は入れ子)
-2. `Services/AuditSinkTable.cs` (設定 → `IAuditSink` の並び) を置く
+1. `SystemConfig` に `AuditLogSettings` の `AuditLog` プロパティを持つ (`Program.cs` の `builder.Configuration.Bind(SystemConfig.Instance)` が `AuditLog` セクションを読む。出力先の `Database` / `File` は入れ子)
+2. `Extras/AuditSinkTable.cs` (設定 → `IAuditSink` の並び) を置く
 3. `builder.Services.AddAuditLog(SystemConfig.Instance.AuditLog, AuditSinkTable.Create(), designVersion);`
    `designVersion` はデザインの版を返す関数です。リクエストの中 (HttpContext あり) ではそのリクエストが使う版、外 (null) では今読み込んでいる版を返します。
-   テンプレートは `Services/RequestDesign` (スコープ) がリクエストの最初にデザインを 1 つに固定し、コントローラは `DataService.Design` 経由でその版だけを使います
-   (`DesignerService` から直接取ると、処理の途中で差し替わった版が混ざります)。渡さなければ版は記録されません
+   テンプレートは `Infrastructure/RequestDesign` (スコープ) がリクエストの最初にデザインを 1 つに固定し、コントローラは `DataService.Design` 経由でその版だけを使います
+   (`AppDesign.Store` (Extras.Server の `DesignDataStore`) から直接取ると、処理の途中で差し替わった版が混ざります)。
+   テンプレートは `http => http?.RequestServices.GetRequiredService<RequestDesign>().Version ?? AppDesign.Store.GetCurrent().Version` を渡します。渡さなければ版は記録されません
 4. `app.UseRouting();` の直後に `app.UseAuditLog();` (認可の前。401/403 も記録するため。認証はミドルウェアが自分で解決するので認証ミドルウェアより前でよい)
 5. `CustomizedModuleDataIO` のコンストラクタで `AddInterceptor(new AuditIOInterceptor(designData, SystemConfig.Instance.AuditLog.Database));`
-   保存の対象の記録と、監査ログのテーブルの保護を行います。保存の最終結果を記録するので、**他のインターセプタ (編集履歴など) より先に登録します**
+   保存の対象の記録と、監査ログのテーブルの保護を行います。保存の最終結果を記録するので、**他のインターセプタ (編集履歴など) より先 (最初) に登録します**
 6. 各コントローラのアクションに `[Audit(AuditCategory.Xxx)]` を付け、対象や業務上の失敗は `AuditContext` (スコープ) で足す
    (保存の対象は 5 のインターセプタが記録するので、保存のアクションで対象を足す必要はありません)
 

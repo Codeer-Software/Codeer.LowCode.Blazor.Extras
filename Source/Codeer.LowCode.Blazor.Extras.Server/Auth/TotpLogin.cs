@@ -57,14 +57,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Auth
     /// ここはコードの検証・初回登録・リプレイ防止と、ユーザー行の TOTP 列の読み書きだけを持つ。
     /// 表・列はユーザーモジュールのデザイン (<see cref="IdFieldDesign"/> の列と <see cref="LoginAccountContractFieldDesign"/> の TOTP 3 列) から引く。
     /// 列は書き込み専用なので通常のモジュール読み書きには出てこず、ここだけが SQL で直接触る (パスワードハッシュと同じ作法)。
-    /// <code>
-    /// var totp = TotpLogin.Create(designData, SystemConfig.Instance.TotpLogin, dataService.DbAccess);   // フィールドが無ければ null
-    /// if (totp != null)
-    /// {
-    ///     var result = await totp.VerifyAsync(user.Id, user.UserName, loginInfo.TotpCode);
-    ///     if (result.Status != TotpLoginStatus.Ok) return Ok(result);   // setup / totp / invalid_code: サインインしない
-    /// }
-    /// </code>
+    /// ログインの流れ (パスワードが通った後に <see cref="VerifyAsync"/>、Ok 以外は結果をそのままクライアントへ返してサインインしない) は <see cref="PasswordLogin"/> が持つ。
     /// 登録は最初のログイン時 (パスワード成功後) に行う割り切り。パスワードだけを知る第三者が先に登録できる余地があるので、
     /// それが許容できない運用では初回ログインを管理者立ち会いで行う等で補う。リセットは <see cref="ResetAsync"/> (列を空にする)。
     /// </summary>

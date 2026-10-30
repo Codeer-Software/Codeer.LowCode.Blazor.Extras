@@ -134,19 +134,20 @@ SQL の集計 (件数・合計) は従来どおり `execute_sql`、内容で探�
 }
 ```
 
-テンプレートの対応表 (`AI/EmbeddingProviderTable.cs`) が呼び名から実装を作ります。別のプロバイダ (OpenAI、Ollama などのローカルモデル、社内 API 等) は `IEmbeddingProvider` を実装して表に 1 行足すだけです (文章の配列を受けてベクトルの配列を返すメソッド 1 本)。
+テンプレートの対応表 (`Extras/SemanticSearchTable.cs` の `CreateEmbeddingProvider`) が呼び名から実装を作ります。別のプロバイダ (OpenAI、Ollama などのローカルモデル、社内 API 等) は `IEmbeddingProvider` を実装して表に 1 行足すだけです (文章の配列を受けてベクトルの配列を返すメソッド 1 本)。
 
 ```csharp
-public static IEmbeddingProvider? Create(string name) => name switch
+//Extras/SemanticSearchTable.cs
+public static IEmbeddingProvider? CreateEmbeddingProvider(string name) => name switch
 {
     "AzureOpenAI" => new AzureOpenAIEmbeddingProvider(config.AzureOpenAIEmbedding),
     // "MyLocal" => new MyLocalEmbeddingProvider(...),   // 独自実装はここに足す
     _ => null,   // 呼び名が無い = 意味検索なし (文章だけ保存)
 };
 
-//AI/SemanticSearchIndex.cs (プロセスに 1 つ)
-static readonly Lazy<IEmbeddingProvider?> _provider = new(() => EmbeddingProviderTable.Create(SystemConfig.Instance.SemanticSearch.EmbeddingProvider));
-public static SemanticSearchService Service { get; } = new(() => _provider.Value, () => DesignerService.GetDesignData());
+//同じクラスの SemanticSearchService (プロセスに 1 つ)
+static readonly Lazy<IEmbeddingProvider?> _provider = new(() => CreateEmbeddingProvider(SystemConfig.Instance.SemanticSearch.EmbeddingProvider));
+public static SemanticSearchService Service { get; } = new(() => _provider.Value, () => AppDesign.Store.GetDesignData());
 ```
 
 `IEmbeddingProvider` は `ModelId` / `Dimensions` と `EmbedAsync(texts)` だけの小さなインターフェースです。`Dimensions` を申告しておくと、返ったベクトルの長さが違うときに保存や再索引がエラーで止まり、DB の列定義との食い違いに早く気づけます。
@@ -161,7 +162,7 @@ public static SemanticSearchService Service { get; } = new(() => _provider.Value
 public CustomizedModuleDataIO(...) : base(...)
 {
     // 他のインターセプタ (監査ログ・編集履歴など) より後 = 最後に登録する
-    AddInterceptor(SemanticSearchIndex.Service.Interceptor);
+    AddInterceptor(SemanticSearchTable.Service.Interceptor);
 }
 ```
 
@@ -172,8 +173,8 @@ public CustomizedModuleDataIO(...) : base(...)
 - 止めないのは埋め込み (外部サービス) の失敗だけです。索引の列への書き込みが失敗したとき (埋め込みモデルを変えたのにベクトル列の次元を直していない等) は保存も失敗します (同じトランザクションの DB の失敗なので握れません。列を直してから保存し直してください)
 - 旧い `ApplyAsync` は何もしません (呼び出しが残っていても索引は `Interceptor` が作ります)。送信データにこのフィールドのデータが付いていても、保存後に読み直して作り直します (索引はいつもサーバーが保存した行から作ります)
 - **0.21 以前からの移行**: ホストの DbAccess を 0.2.1 以上にしてください (保存の前に同じ接続で読んでいたリクエストの保存がトランザクションの外で走っていた修正。意味検索に限らず保存全体の修正です (DbAccess のリリースノート参照)。0.2.0 のままだと「索引の列への書き込みが失敗したら保存も失敗」が成り立ちません)。`AddInterceptor(SemanticSearchIndex.Service.Interceptor)` は必須です (0.17 以前のテンプレートには無く、未登録のまま上げると保存した行の索引が作られません。旧い `ApplyAsync` の呼び出しが残っていれば、呼ばれたときにサーバーの警告ログに 1 回出ます。0.18〜0.21 の `ConditionInterceptor` は `Interceptor` に改名しました (旧名は Obsolete の別名で動きます))。`ApplyAsync` の呼び出しは全部消してください (残っていても何もしません)。一括取込の後は `ReindexMissing()` を流してください。スクリプトの `Search.Text` は無くなりました (索引はクライアントに来ません)。このフィールドを `DataOnlyFields` に置いても `SourceFields` は一緒に読み込まれなくなりました (0.21 までは依存先として申告していました。索引には関係ありませんが、その構成でスクリプトが対象フィールドの値を参照しているなら、その項目を `DataOnlyFields` に直接足してください)。再索引の API を起こせるのは「このフィールドを読める」ユーザーから「このフィールドに書ける」ユーザー (アプリアクセス条件・モジュールの UserWriteCondition・PermissionField の書き込み条件) に変わりました。0.21 で PermissionField の読み取り条件で再索引を絞っていたなら、書き込み条件に付け替えてください。警告ログ (未登録・埋め込みの失敗) は `SemanticSearchIndex.Service.LoggerFactory` (0.22 新設) を設定しないと出ません。起動時 (`Program.cs` の `var app = builder.Build();` の後) に `SemanticSearchIndex.Service.LoggerFactory = app.Services.GetRequiredService<ILoggerFactory>();` を足してください
-- 保存の中で書かれた行 (インターセプタや拡張が同じ保存の中で `AddAsync` / `UpdateAsync` を呼んだ行。編集履歴の復活など) にも付きます。`Interceptor` は最後に登録してください (一番内側で動く = 索引の列への書き込みの失敗が、先に登録した監査ログや編集履歴からも保存の失敗として見えます)。内側で動くので、先に登録したインターセプタが本体の保存より後に書いた行には付きません (保存より前に書いた行には付きます)。保存 (`SubmitAsync`) の外でホストが `AddAsync` / `UpdateAsync` を直接呼ぶ経路 (テンプレートの `AddSystemRecordAsync` など) には付きません。その経路で追加した行は `ReindexMissing()`、更新した行は `Reindex()` で揃えてください
-- 警告ログを出すには、アプリの起動時に `SemanticSearchIndex.Service.LoggerFactory` を設定します (0.22 のテンプレートは `Program.cs` で設定済み。それより前のテンプレートから上げたホストは上の移行の項)
+- 保存の中で書かれた行 (インターセプタや拡張が同じ保存の中で `AddAsync` / `UpdateAsync` を呼んだ行。編集履歴の復活など) にも付きます。`Interceptor` は最後に登録してください (一番内側で動く = 索引の列への書き込みの失敗が、先に登録した監査ログや編集履歴からも保存の失敗として見えます)。内側で動くので、先に登録したインターセプタが本体の保存より後に書いた行には付きません (保存より前に書いた行には付きます)。保存 (`SubmitAsync`) の外でホストが `AddAsync` / `UpdateAsync` を直接呼ぶ経路 (`CreateSystemAccess()` の書き込み・デスクトップホストの `AddSystemRecordAsync` など) には付きません。その経路で追加した行は `ReindexMissing()`、更新した行は `Reindex()` で揃えてください
+- 警告ログを出すには、アプリの起動時に `SemanticSearchTable.Service.LoggerFactory` を設定します (0.22 のテンプレートは `Program.cs` で設定済み。それより前のテンプレートから上げたホストは上の移行の項)
 - 同じインターセプタが、画面の検索欄の文章を検索の前に埋め込みベクトルにします ([画面の検索欄から探す](#画面の検索欄から探す-検索レイアウトに置く))
 
 ### 3. AI チャットに意味検索ツールを付ける
@@ -181,9 +182,9 @@ public CustomizedModuleDataIO(...) : base(...)
 `RawDataAccessAgent` のコンストラクタの `semanticSearch` に同じ `SemanticSearchService` を渡します。埋め込みプロバイダが設定されていて、デザインに (3 つの列が設定された) SemanticSearchField を持ち、データソースが PostgreSQL か SQL Server のモジュールがあれば、AI に `search_records(moduleName, query, top)` ツールと「内容で探す質問はこれを使う」という指示が付きます。
 
 ```csharp
-new RawDataAccessAgent(chatClientFactory, () => new DbAccessor(config.DataSources), () => DesignerService.GetDesignData(), documents,
+new RawDataAccessAgent(chatClientFactory, () => new DbAccessor(config.DataSources), () => AppDesign.Store.GetDesignData(), documents,
     new RawDataAccessOptions { DataSourceNames = config.AIChat.RawDataAccessDataSources },
-    semanticSearch: SemanticSearchIndex.Service);
+    semanticSearch: SemanticSearchTable.Service);
 ```
 
 `search_records` は質問文を埋め込みにし、DB のベクトル検索 (PostgreSQL は pgvector の `<=>`、SQL Server は `VECTOR_DISTANCE('cosine', …)`) で似ている順に上位 N 件だけを読み、Id・score (0〜1)・詳細ページの URL・文章を返します。AI は行を挙げるときに詳細リンクを付け、score が低ければ「近いものは見つからなかった」と伝えます。DB 側の検索が失敗したとき (拡張未導入・列の型違いなど) はそのエラーが AI に返ります (サーバーで代わりに計算することはしません)。
@@ -233,7 +234,7 @@ var rows = await moduleDataIO.GetListAsync(condition, 0);
 - **近い順に並べるには、一覧の並び (ListField の SearchCondition の SortConditions) に `Search.Value` を入れておきます** (例: `[Search.Value 昇順, Subject 昇順]`)。文章が空のときはこの並びは飛ばされるので、普段は次の並び (件名順) になります。列ヘッダでの並べ替えも普段どおり使えます
 - 距離の上限 `SearchMaxDistance` (コサイン距離。0 = 同じ向き〜2) を設定すると、遠い行は出ません。空なら全行 (索引のある行) が対象で、並びだけが変わります
 - 距離の上限が空で、一覧の並びにも `Search.Value` が無いと、文章を入れても一覧は変わりません。デザインチェックが指摘します (`SemanticSearchFieldDesign:3`。`KeywordSearch` が true のときは指摘しません = キーワードだけで使う構成のため)
-- 文章を埋め込みにするのはサーバーです。ホストの `CustomizedModuleDataIO` のコンストラクタで `AddInterceptor(SemanticSearchIndex.Service.Interceptor)` を登録してください (保存時の索引付けと同じインターセプタ。Cookie テンプレートは登録済み)。登録していないと「埋め込みベクトルがありません」のエラーになります
+- 文章を埋め込みにするのはサーバーです。ホストの `CustomizedModuleDataIO` のコンストラクタで `AddInterceptor(SemanticSearchTable.Service.Interceptor)` を登録してください (保存時の索引付けと同じインターセプタ。Cookie テンプレートは登録済み)。登録していないと「埋め込みベクトルがありません」のエラーになります
 - 集計 (CrossTabField・集計チャート) を表示先にした検索でも同じ条件で絞れますが、近い順の並びは集計には関係しません
 - メモリ内ページング (`IsInMemoryPaging`) の一覧では、列ヘッダで並べ替えるとメモリ上で並べ直すので近い順は失われます
 
@@ -284,8 +285,8 @@ AI チャット (`ModuleDataAccessAgent`) からは、`find_records` / `aggregat
 旧形式の Office (`.doc` / `.xls`)・メール (`.eml` / `.msg`)・画像の文字認識 (OCR) は既定に入れていません (外部のサービスに送る処理を既定では行いません)。必要ならホストが `IFileTextExtractor` を実装して対応表に足します (`Extensions` に受ける拡張子 (小文字・ドット付き) を並べ、`ExtractAsync` で中身の文字列を返す。null を返すとその添付はファイル名だけ。1 つの実装が複数の拡張子を受けてもかまいません)。同じ拡張子がすでにあれば後から `Add` したものが勝ちます。既定の実装 (`FileManagement.TextExtractors` 名前空間) は単独でも使えます。
 
 ```csharp
-//AI/SemanticSearchIndex.cs: アプリのファイル保存先を渡す (Example は SystemConfig.Instance.FileStorages)
-public static SemanticSearchService Service { get; } = new(() => _provider.Value, () => DesignerService.GetDesignData())
+//Extras/SemanticSearchTable.cs: アプリのファイル保存先を渡す (Example は SystemConfig.Instance.FileStorages)
+public static SemanticSearchService Service { get; } = new(() => _provider.Value, () => AppDesign.Store.GetDesignData())
 {
     FileStorages = () => FileStorageTable.Storages,
 };
@@ -294,7 +295,7 @@ public static SemanticSearchService Service { get; } = new(() => _provider.Value
 var extractors = FileTextExtractors.Default();
 extractors.Add(new MyMailTextExtractor()); // .msg を読む実装を足す
 extractors.Remove(".xlsx");               // Excel は索引に入れない
-SemanticSearchIndex.Service.FileTextExtractors = extractors;
+SemanticSearchTable.Service.FileTextExtractors = extractors;
 
 //.msg を読む実装 (MyMailReader はホストが用意するもの)
 public class MyMailTextExtractor : IFileTextExtractor
@@ -352,32 +353,20 @@ void Search_OnReindexCompleted()
 - 運用中に走らせると、再索引が行を読んでから書くまでの間に保存した行の索引が古い文章で上書きされることがあります (次の保存か再索引で直ります)
 - 埋め込みモデルが無いときは文章だけ書き直します。埋め込みの失敗はエラーとして返ります (保存時と違い黙って NULL にはしません)
 
-サーバー側は同じ `SemanticSearchService` の `StartReindexAsync` / `GetReindexStatus` / `CancelReindex` を、AIChat と同じ形の薄い Controller から使います (Example の `Controllers/SemanticSearchController.cs`)。ページの行数・ジョブの保持時間・保存時の埋め込みの上限時間は `ReindexPageSize` / `FinishedRetention` / `MaxRunning` / `SaveEmbeddingTimeout` プロパティ。バックグラウンドではリクエストの HttpContext が無いので、ユーザー Id を固定した DataService を開いて渡します。
+サーバー側は共通の API (`Controllers/ExtrasController.cs` = `POST api/extras`) の対応表 `Extras/ExtrasApiTable.cs` に `SemanticSearchApi` を並べます。`SemanticSearchApi` (Extras.Server) が再索引の開始・状態・中断を受け、同じ `SemanticSearchService` の `StartReindexAsync` / `GetReindexStatus` / `CancelReindex` を呼びます。ページの行数・ジョブの保持時間・保存時の埋め込みの上限時間は `ReindexPageSize` / `FinishedRetention` / `MaxRunning` / `SaveEmbeddingTimeout` プロパティ。バックグラウンドではリクエストの HttpContext が無いので、ユーザー Id を固定した DataService を開いて渡します。
 
 ```csharp
-//Controllers/SemanticSearchController.cs ([Route("api/semantic_search/reindex")])
-[HttpPost]
-public async Task<ActionResult<SemanticSearchReindexResponse>> Start([FromBody] SemanticSearchReindexRequest request)
+//Extras/ExtrasApiTable.cs
+new SemanticSearchApi(SemanticSearchTable.Service, userId =>
 {
-    var userId = await _dataService.GetCurrentUserIdAsync();
-    var requestId = await SemanticSearchIndex.Service.StartReindexAsync(Owner, request, _dataService.ModuleDataIO, () =>
-    {
-        var dataService = new DataService(userId);
-        return new SemanticSearchReindexScope(dataService.ModuleDataIO, dataService.DbAccess, dataService);
-    });
-    return Accepted(new SemanticSearchReindexResponse { RequestId = requestId });
-}
-
-[HttpGet("{requestId}")]    // → SemanticSearchReindexStatusResponse (Status / Processed / Total / Error)
-[HttpDelete("{requestId}")] // 中断
+    var dataService = new DataService(userId);
+    return new SemanticSearchReindexScope(dataService.ModuleDataIO, dataService.DbAccess, dataService);
+}),
 ```
 
-```csharp
-// クライアント (ServiceInitializer)。URL はアプリの持ち物なので起動時に一度設定する
-SemanticSearchField.EndPoint = "/api/semantic_search/reindex";
-```
+クライアント側の設定は不要です (共通の API `ExtrasTransport.EndPoint` = `/api/extras` に送ります)。再索引専用のコントローラで受ける場合は、従来どおり `SemanticSearchField.EndPoint` にその URL (POST {EndPoint} / GET・DELETE {EndPoint}/{requestId}) を設定すればそちらに送ります。
 
-Example (`Source/Example/Extras`) には索引付けの結線 (`Services/CustomizedModuleDataIO.cs`)・埋め込みプロバイダの対応表と `SemanticSearchService` の持ち物 (`AI/EmbeddingProviderTable.cs` / `AI/SemanticSearchIndex.cs`)・再索引 API (`Controllers/SemanticSearchController.cs`)・エージェントへの結線 (`AI/AIChatAgentTable.cs`) が入っています。Example のデータは SQLite なので意味検索できるモジュールは置いていません。動かすには PostgreSQL (pgvector) のデータソースに上記の構成でモジュールを作ってください。
+Example (`Source/Example/Extras`) には索引付けの結線 (`Services/CustomizedModuleDataIO.cs`)・埋め込みプロバイダの対応表と `SemanticSearchService` の持ち物 (`AI/EmbeddingProviderTable.cs` / `AI/SemanticSearchIndex.cs`)・エージェントへの結線 (`AI/AIChatAgentTable.cs`) が入っています。Example のデータは SQLite なので意味検索できるモジュールは置いていません。動かすには PostgreSQL (pgvector) のデータソースに上記の構成でモジュールを作ってください。
 
 ## 注意事項
 

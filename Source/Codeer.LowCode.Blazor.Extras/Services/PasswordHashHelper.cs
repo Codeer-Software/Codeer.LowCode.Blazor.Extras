@@ -11,9 +11,9 @@ namespace Codeer.LowCode.Blazor.Extras.Services
     /// PBKDF2-HMAC-SHA256, 100,000 iterations, 32-byte salt, 32-byte hash, base64-encoded.
     /// </summary>
     /// <remarks>
-    /// Call <see cref="ApplyPasswordHash"/> from your <see cref="ModuleDataIO"/> override
-    /// (typically <c>CustomizedModuleDataIO.AddAsync</c> / <c>UpdateAsync</c>) to hash
-    /// plain passwords before persistence.
+    /// <c>PasswordHashingModuleDataIO</c> (Codeer.LowCode.Blazor.Extras.Server) calls <see cref="ApplyPasswordHash"/>
+    /// from its <see cref="ModuleDataIO"/> overrides (AddAsync / UpdateAsync / BulkAddAsync); the app template inherits it.
+    /// Call it yourself only when you derive from <see cref="ModuleDataIO"/> directly.
     /// </remarks>
     public static class PasswordHashHelper
     {

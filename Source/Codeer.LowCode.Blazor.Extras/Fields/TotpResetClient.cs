@@ -1,3 +1,4 @@
+using Codeer.LowCode.Blazor.Extras.Api;
 using Codeer.LowCode.Blazor.Extras.Services;
 using Codeer.LowCode.Blazor.Components.Dialog;
 using Codeer.LowCode.Blazor.RequestInterfaces;
@@ -16,23 +17,32 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
 
     /// <summary>
     /// ログイン中の自分の認証アプリ (TOTP) の登録状態の取得と解除 (<see cref="MyTotpResetButtonField"/> が使う)。
-    /// 対象は常に自分なのでサーバーはログイン中のユーザーで処理する。エンドポイントはホストが結線する (テンプレートは ServiceInitializer)。
+    /// 対象は常に自分なのでサーバーはログイン中のユーザーで処理する。
+    /// 既定は共通の口 (<see cref="ExtrasTransport"/> = ホストの 1 本の API の TotpApi)。専用のエンドポイントを持つホストは <see cref="StatusEndPoint"/> / <see cref="ResetEndPoint"/> を設定する (今までの使い方)。
     /// </summary>
     public static class TotpResetClient
     {
-        /// <summary>状態取得 (GET {StatusEndPoint} → TotpStatus)。テンプレートは "api/account/totp/status"。</summary>
+        /// <summary>状態取得の専用エンドポイント (GET {StatusEndPoint} → TotpStatus。例 "api/account/totp/status")。空 (既定) なら共通の口を使う。</summary>
         public static string StatusEndPoint { get; set; } = string.Empty;
 
-        /// <summary>解除 (POST {ResetEndPoint} → TotpStatus)。テンプレートは "api/account/totp/reset"。</summary>
+        /// <summary>解除の専用エンドポイント (POST {ResetEndPoint} → TotpStatus。例 "api/account/totp/reset")。空 (既定) なら共通の口を使う。</summary>
         public static string ResetEndPoint { get; set; } = string.Empty;
 
-        public static bool IsConfigured => !string.IsNullOrEmpty(StatusEndPoint) && !string.IsNullOrEmpty(ResetEndPoint);
+        /// <summary>送る先があるか (専用のエンドポイント、または共通の口)。</summary>
+        public static bool IsConfigured
+            => (!string.IsNullOrEmpty(StatusEndPoint) && !string.IsNullOrEmpty(ResetEndPoint))
+            || ExtrasTransport.Handler != null || !string.IsNullOrEmpty(ExtrasTransport.EndPoint);
 
         internal static async Task<TotpStatus?> GetStatusAsync(Codeer.LowCode.Blazor.RequestInterfaces.Services services)
         {
             var http = services.Provider?.GetService<IHttpService>();
-            if (http == null || string.IsNullOrEmpty(StatusEndPoint)) return null;
-            return await http.GetFromJsonAsync<TotpStatus>(StatusEndPoint, loading: false);
+            if (!string.IsNullOrEmpty(StatusEndPoint))
+            {
+                if (http == null) return null;
+                return await http.GetFromJsonAsync<TotpStatus>(StatusEndPoint, loading: false);
+            }
+            //画面を開くたびに走るので、失敗は通知せず null (旧ルートで未設定のときと同じ)
+            return (await ExtrasTransport.CallAsync<TotpStatus>(http, TotpApiNames.Feature, TotpApiNames.Status, null, loading: false, onError: (_, _) => { })).Response;
         }
 
         /// <summary>確認ダイアログを出し、了承されたら解除する。解除後の状態を返す (キャンセル・失敗は null。失敗はトーストも出す)。</summary>
@@ -45,9 +55,9 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             if (answer != Properties.Resources.TotpResetButton_Action) return null;
 
             var http = services.Provider?.GetService<IHttpService>();
-            var status = http == null || string.IsNullOrEmpty(ResetEndPoint)
-                ? null
-                : await http.PostAsJsonAsync<object, TotpStatus>(ResetEndPoint, new { });
+            var status = !string.IsNullOrEmpty(ResetEndPoint)
+                ? (http == null ? null : await http.PostAsJsonAsync<object, TotpStatus>(ResetEndPoint, new { }))
+                : (await ExtrasTransport.CallAsync<TotpStatus>(http, TotpApiNames.Feature, TotpApiNames.Reset, null)).Response;
             if (status == null)
             {
                 await services.UIService.NotifyError(Properties.Resources.TotpResetButton_Failed);

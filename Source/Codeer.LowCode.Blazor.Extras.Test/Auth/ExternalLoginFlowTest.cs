@@ -38,7 +38,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Auth
         public TestAccountController(ExternalLoginService externalLogins) => _externalLogins = externalLogins;
 
         [Authorize, HttpGet("current_user")]
-        public string CurrentUser() => User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? string.Empty;
+        public string CurrentUser() => LoginPrincipal.GetUserId(User);
 
         [HttpGet("login_options")]
         public object LoginOptions() => new { Password = true, Providers = _externalLogins.Options };
@@ -52,7 +52,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Auth
         {
             var redeemed = await _externalLogins.RedeemMobileTicketAsync(ticket.Ticket);
             if (redeemed == null) return Unauthorized();
-            await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, _externalLogins.CreatePrincipal(redeemed.Value.User, redeemed.Value.Provider));
+            await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, LoginPrincipal.Create(redeemed.Value.User.UserId, redeemed.Value.User.UserName, redeemed.Value.Provider));
             return Ok();
         }
 

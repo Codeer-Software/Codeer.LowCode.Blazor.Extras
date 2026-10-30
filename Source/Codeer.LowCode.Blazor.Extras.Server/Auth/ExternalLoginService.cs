@@ -36,8 +36,8 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Auth
     /// </summary>
     public class ExternalLoginService
     {
-        /// <summary>Cookie に積む「このセッションはどのプロバイダでサインインしたか」のクレーム名。パスワードログインには付けない。</summary>
-        public const string IdpClaimType = "idp";
+        [Obsolete("Use LoginPrincipal.IdpClaimType.")]
+        public const string IdpClaimType = LoginPrincipal.IdpClaimType;
 
         internal const string MobileItem = "codeer.mobile";
         const string TicketKeyPrefix = "codeer.extlogin.ticket.";
@@ -90,7 +90,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Auth
         /// </summary>
         public async Task<string?> GetSignOutProviderAsync(ClaimsPrincipal user)
         {
-            var p = Find(user.FindFirst(IdpClaimType)?.Value);
+            var p = Find(LoginPrincipal.GetProvider(user));
             if (p == null) return null;
             return await p.HasIdpSignOutAsync(_oidcOptions.Get(SchemeOf(p.Name))) ? p.Name : null;
         }
@@ -109,15 +109,9 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Auth
             return await p.SignOutAsync(controller, SchemeOf(p.Name), redirectUri);
         }
 
-        /// <summary>Cookie に積むプリンシパル。パスワードログインと同形 (Name / NameIdentifier) に、経路のプロバイダ名を足す。</summary>
+        [Obsolete("Use LoginPrincipal.Create(user.UserId, user.UserName, provider).")]
         public ClaimsPrincipal CreatePrincipal(ExternalLoginUser user, string provider)
-        {
-            var identity = new ClaimsIdentity(CookieAuthenticationDefaults.AuthenticationScheme);
-            identity.AddClaim(new Claim(ClaimTypes.Name, user.UserName));
-            identity.AddClaim(new Claim(ClaimTypes.NameIdentifier, user.UserId));
-            identity.AddClaim(new Claim(IdpClaimType, provider));
-            return new ClaimsPrincipal(identity);
-        }
+            => LoginPrincipal.Create(user.UserId, user.UserName, provider);
 
         sealed class MobileTicket
         {

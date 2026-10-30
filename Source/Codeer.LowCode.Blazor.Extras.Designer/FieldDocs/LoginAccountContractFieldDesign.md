@@ -34,7 +34,7 @@ UI は持たない。データはハッシュ / ソルトの 2 列分だけで�
 | IsActive (有効フラグ) | 偽ならログイン拒否 (Boolean / 0・1 の数値 / "true"・"1" の文字列)。NULL は無効扱い。空なら判定しない | - |
 | DisplayName (表示名) | 画面のユーザー表示と TOTP の QR に使う名前。空なら LoginName | - |
 | TwoFactorEmail (二要素認証のメール送信先) | 設定するとパスワード成功後にワンタイムコードをこのフィールドのメールアドレスへ送り、入力を求める (メールの体裁・有効期限はサーバー設定 `EmailOtpLogin`)。TOTP の列も設定されていれば認証アプリが優先。空なら無効 | - |
-| PasswordField (パスワード入力フィールド) | 同じモジュールの `PasswordField` (平文の DB 列は持たない)。値があれば保存時にサーバーがハッシュ / ソルトを作って `DbColumnPasswordHash` / `DbColumnPasswordSalt` に書く (テンプレートの `CustomizedModuleDataIO` が `PasswordHashHelper.ApplyPasswordHash` を呼ぶ)。空なら書かない (外部 IdP 専用、または PasswordHashField で書く)。指定するときは列 2 つが必須。同じモジュールに PasswordHashField があるとエラー (同じ列を二重に書く) | - |
+| PasswordField (パスワード入力フィールド) | 同じモジュールの `PasswordField` (平文の DB 列は持たない)。値があれば保存時にサーバーがハッシュ / ソルトを作って `DbColumnPasswordHash` / `DbColumnPasswordSalt` に書く (テンプレートの `CustomizedModuleDataIO` が継承する `PasswordHashingModuleDataIO` が行を書くときに `PasswordHashHelper.ApplyPasswordHash` を呼ぶ)。空なら書かない (外部 IdP 専用、または PasswordHashField で書く)。指定するときは列 2 つが必須。同じモジュールに PasswordHashField があるとエラー (同じ列を二重に書く) | - |
 
 ### ログイン用の DB 列 (書き込み専用)
 
@@ -79,13 +79,14 @@ totp_last_timestep INTEGER NULL
 
 ## サーバ側 (テンプレートに組み込み済み)
 
-`Codeer.LowCode.Blazor.Extras.Server.Auth.LoginAccountStore`:
+`Codeer.LowCode.Blazor.Extras.Server.Auth.PasswordLogin` (ID/パスワードのログインの検証の流れ) と `LoginAccountStore` (契約から表・列を引く):
 
 ```csharp
+var login = new PasswordLogin(designData, dataService.DbAccess, cache, config.LoginLockout, config.TotpLogin, config.EmailOtpLogin, sendMail);
+var result = await login.VerifyAsync(loginInfo.Id, loginInfo.Password, loginInfo.TwoFactorCode);   // Ok なら result.Account でサインイン
 var accounts = LoginAccountStore.Create(designData, dataService.DbAccess);   // 契約が無ければ null
-var account = accounts?.HasPassword == true ? await accounts.VerifyPasswordAsync(loginInfo.Id, loginInfo.Password) : null;   // ID/パスワード
-var account2 = accounts == null ? null : await accounts.FindByExternalLoginNameAsync(identity.LoginName);                     // 外部 IdP の解決
-// account.UserId → NameIdentifier、account.DisplayName → Name、account.LoginName → TOTP の QR
+var account2 = accounts == null ? null : await accounts.FindByExternalLoginNameAsync(identity.LoginName);   // 外部 IdP の解決
+// サインインは LoginPrincipal.Create(account.UserId, account.DisplayName)。account.LoginName → TOTP の QR
 ```
 
 ## Script
