@@ -16,7 +16,7 @@
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>
 		<PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
-		<PackageReleaseNotes>JobProcess: StartAsync returns a job id and GetStatusAsync answers it from IDistributedCache (JobProcess.Cache); RunAsync / StartAsync refuse a job that is already running when allowConcurrent is false. Requires Codeer.LowCode.Blazor.Extras 0.25.0.</PackageReleaseNotes>
+		<PackageReleaseNotes>ExtrasApi dispatches the common API (one POST from the host). DesignDataStore, PasswordHashingModuleDataIO, PasswordLogin and LoginPrincipal moved in from the host template. AddLowCodeLocalization honors Accept-Language q values. Requires Codeer.LowCode.Blazor.Extras 0.26.0.</PackageReleaseNotes>
 		<PackageId>Codeer.LowCode.Blazor.Extras.Server</PackageId>
 		<!-- NU5104: Azure.AI.OpenAI has no stable release built for the OpenAI 2.9+ line yet, so the prerelease dependency is intentional -->
 		<NoWarn>$(NoWarn);NU5104</NoWarn>
