@@ -1,3 +1,5 @@
+import { sanitize } from './safe-html.js';
+
 const state = new WeakMap();
 
 function getState(editorElement) {
@@ -36,8 +38,10 @@ export function initEditor(editorElement, toolbarElement, dotNetRef) {
     });
     editorElement.addEventListener('paste', (e) => {
         e.preventDefault();
-        const text = e.clipboardData.getData('text/html') || e.clipboardData.getData('text/plain');
-        document.execCommand('insertHTML', false, text);
+        // 貼り付ける HTML は消毒する。HTML の無い貼り付けは文字として入れる
+        const html = e.clipboardData.getData('text/html');
+        if (html) document.execCommand('insertHTML', false, sanitize(html, 'richtext'));
+        else document.execCommand('insertText', false, e.clipboardData.getData('text/plain'));
     });
     editorElement.addEventListener('click', (e) => {
         const anchor = e.target.closest('a');
@@ -52,7 +56,7 @@ export function initEditor(editorElement, toolbarElement, dotNetRef) {
 }
 
 export function setContent(editorElement, html) {
-    editorElement.innerHTML = html || '';
+    editorElement.innerHTML = sanitize(html, 'richtext');
     ensureLinkTargets(editorElement);
 }
 

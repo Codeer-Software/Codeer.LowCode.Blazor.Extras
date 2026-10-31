@@ -291,6 +291,7 @@ ExtrasDesignerInitializer.Setup(DesignerEnvironment);
 |---|---|---|---|
 | Codeer.LowCode.Blazor.Extras | [Markdig](https://github.com/xoofx/markdig) | BSD-2-Clause | MarkdownField の描画 |
 | Codeer.LowCode.Blazor.Extras | [QRCoder](https://github.com/codebude/QRCoder) | MIT | QrCodeField の QR 生成 |
+| Codeer.LowCode.Blazor.Extras | [DOMPurify](https://github.com/cure53/DOMPurify) 3.4.17 | MPL-2.0 または Apache-2.0 | RichTextField / MarkdownField / AIChatField の HTML の消毒。NuGet 参照ではなく静的ファイル (wwwroot/lib/dompurify) として同梱し、ライセンス文も同じ場所に置いている |
 | Codeer.LowCode.Blazor.Extras | [Sotsera.Blazor.Toaster](https://github.com/sotsera/sotsera.blazor.toaster) | MIT | トースト通知 (ToastService) |
 | Codeer.LowCode.Blazor.Extras / .Server | [Excel.Report.PDF](https://github.com/Codeer-Software/Excel.Report.PDF) (Codeer) | MIT | Excel の読み書き・PDF 変換。推移的に [ClosedXML](https://github.com/ClosedXML/ClosedXML) (MIT)、[PdfSharp](https://github.com/empira/PDFsharp) (MIT)、[SixLabors.Fonts](https://github.com/SixLabors/Fonts) 1.0 (Apache-2.0) を含む |
 | Codeer.LowCode.Blazor.Extras.Server | [MailKit](https://github.com/jstedfast/MailKit) | MIT | SMTP 送信 |

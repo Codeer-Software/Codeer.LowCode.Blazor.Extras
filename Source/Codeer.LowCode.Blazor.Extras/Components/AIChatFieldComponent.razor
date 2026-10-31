@@ -44,7 +44,7 @@
             <div class="aichat-bubble">
               @if (!string.IsNullOrEmpty(msg.Html))
               {
-                <div class="aichat-reply" data-role="reply">@((MarkupString)msg.Html)</div>
+                <div class="aichat-reply" data-role="reply" data-safe-html="@msg.Html" data-safe-html-profile="chat"></div>
               }
               @if (msg.IsRunning)
               {
@@ -110,6 +110,7 @@
   ElementReference _inputElement;
   ElementReference _sendButton;
   IJSObjectReference? _jsModule;
+  IJSObjectReference? _safeHtmlModule;
   string _input = string.Empty;
   int _renderedVersion = -1;
   bool _ticking;
@@ -148,10 +149,18 @@
 
     if (firstRender)
     {
+      _safeHtmlModule = await JSRuntime.InvokeAsync<IJSObjectReference>(
+        "import", "./_content/Codeer.LowCode.Blazor.Extras/safe-html.js");
       _jsModule = await JSRuntime.InvokeAsync<IJSObjectReference>(
         "import", "./_content/Codeer.LowCode.Blazor.Extras/aichat-interop.js");
       await _jsModule.InvokeVoidAsync("initialize", _inputElement, Math.Max(1, Field.Design.MinInputRows), Field.Design.SendOnEnter);
       await _jsModule.InvokeVoidAsync("initializeMessages", _messagesElement);
+    }
+    //返事の HTML は消毒してから表示する (スクロール位置は入れた後の高さで決める)
+    if (_safeHtmlModule != null) await _safeHtmlModule.InvokeVoidAsync("apply", _messagesElement);
+
+    if (firstRender && _jsModule != null)
+    {
       _renderedVersion = Field.Version;
       await _jsModule.InvokeVoidAsync("scrollToBottom", _messagesElement, true);
     }
@@ -215,6 +224,10 @@
       try { await _jsModule.InvokeVoidAsync("dispose", _inputElement); } catch { }
       try { await _jsModule.InvokeVoidAsync("disposeMessages", _messagesElement); } catch { }
       try { await _jsModule.DisposeAsync(); } catch { }
+    }
+    if (_safeHtmlModule != null)
+    {
+      try { await _safeHtmlModule.DisposeAsync(); } catch { }
     }
     await base.DisposeAsync();
   }

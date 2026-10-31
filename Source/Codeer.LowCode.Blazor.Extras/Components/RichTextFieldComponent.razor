@@ -1,4 +1,3 @@
-@using System.Text.RegularExpressions
 @using Microsoft.AspNetCore.Components.Web
 @using Microsoft.JSInterop
 @using Codeer.LowCode.Blazor.Components
@@ -9,9 +8,7 @@
 
 @if (Field.IsViewOnly)
 {
-  <div class="richtext-view">
-    @((MarkupString)EnsureLinkTargetBlank(Field.Value ?? string.Empty))
-  </div>
+  <div class="richtext-view" @ref="_viewElement" data-safe-html="@(Field.Value ?? string.Empty)" data-safe-html-profile="richtext"></div>
 }
 else
 {
@@ -162,9 +159,11 @@ else
 }
 
 @code {
+  private ElementReference _viewElement;
   private ElementReference _editorElement;
   private ElementReference _toolbarElement;
   private IJSObjectReference? _jsModule;
+  private IJSObjectReference? _safeHtmlModule;
   private DotNetObjectReference<RichTextFieldComponent>? _dotNetRef;
   private bool _isUpdatingFromJs;
   private bool IsDisabled => Field.IsEnabled == false;
@@ -192,7 +191,15 @@ else
   protected override async Task OnAfterRenderAsync(bool firstRender)
   {
     await base.OnAfterRenderAsync(firstRender);
-    if (firstRender && !Field.IsViewOnly)
+    if (Field.IsViewOnly)
+    {
+      //値の HTML は消毒してから表示する
+      _safeHtmlModule ??= await JSRuntime.InvokeAsync<IJSObjectReference>(
+        "import", "./_content/Codeer.LowCode.Blazor.Extras/safe-html.js");
+      await _safeHtmlModule.InvokeVoidAsync("apply", _viewElement);
+      return;
+    }
+    if (firstRender)
     {
       _jsModule = await JSRuntime.InvokeAsync<IJSObjectReference>(
         "import", "./_content/Codeer.LowCode.Blazor.Extras/richtext-interop.js");
@@ -328,18 +335,16 @@ else
 
   private record LinkPopupPosition(double Top, double Left);
 
-  private static string EnsureLinkTargetBlank(string html)
-  {
-    if (string.IsNullOrEmpty(html)) return html;
-    return Regex.Replace(html, @"<a\b(?![^>]*\btarget\s*=)", "<a target=\"_blank\" rel=\"noopener noreferrer\" ");
-  }
-
   public override async ValueTask DisposeAsync()
   {
     if (_jsModule != null)
     {
       try { await _jsModule.InvokeVoidAsync("dispose", _editorElement); } catch { }
       try { await _jsModule.DisposeAsync(); } catch { }
+    }
+    if (_safeHtmlModule != null)
+    {
+      try { await _safeHtmlModule.DisposeAsync(); } catch { }
     }
     _dotNetRef?.Dispose();
     await base.DisposeAsync();

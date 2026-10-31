@@ -11,7 +11,7 @@
 
 @if (Field.IsViewOnly)
 {
-  <div class="markdown-view" id="@WebElementId" style="@Field.GetOwnStyleString()" data-role="view">@((MarkupString)ViewHtml)</div>
+  <div class="markdown-view" id="@WebElementId" style="@Field.GetOwnStyleString()" data-role="view" @ref="_viewElement" data-safe-html="@ViewHtml" data-safe-html-profile="markdown"></div>
 }
 else
 {
@@ -65,16 +65,16 @@ else
       }
       @if (IsSplitMode || (IsTabMode && _preview))
       {
-        <div class="markdown-view markdown-preview" data-role="preview">
-          @if (string.IsNullOrWhiteSpace(_text))
-          {
+        @if (string.IsNullOrWhiteSpace(_text))
+        {
+          <div class="markdown-view markdown-preview" data-role="preview">
             <span class="markdown-preview-empty">@Resources.MarkdownPreviewEmpty</span>
-          }
-          else
-          {
-            @((MarkupString)MarkdownRenderer.ToHtml(_text))
-          }
-        </div>
+          </div>
+        }
+        else
+        {
+          <div class="markdown-view markdown-preview" data-role="preview" data-safe-html="@MarkdownRenderer.ToHtml(_text)" data-safe-html-profile="markdown"></div>
+        }
       }
     </div>
   </div>
@@ -83,7 +83,9 @@ else
 
 @code {
   ElementReference _textarea;
+  ElementReference _viewElement;
   IJSObjectReference? _jsModule;
+  IJSObjectReference? _safeHtmlModule;
   MarkdownField? _boundField;
   string? _text;
   bool _preview;
@@ -117,6 +119,10 @@ else
   protected override async Task OnAfterRenderAsync(bool firstRender)
   {
     await base.OnAfterRenderAsync(firstRender);
+    //描画した HTML は消毒してから表示する
+    _safeHtmlModule ??= await JSRuntime.InvokeAsync<IJSObjectReference>(
+      "import", "./_content/Codeer.LowCode.Blazor.Extras/safe-html.js");
+    await _safeHtmlModule.InvokeVoidAsync("apply", Field.IsViewOnly ? _viewElement : Element);
     if (Field.IsViewOnly) return;
     if (_jsModule == null)
     {
@@ -168,6 +174,10 @@ else
     {
       try { await _jsModule.InvokeVoidAsync("detach", _textarea); } catch { }
       try { await _jsModule.DisposeAsync(); } catch { }
+    }
+    if (_safeHtmlModule != null)
+    {
+      try { await _safeHtmlModule.DisposeAsync(); } catch { }
     }
     await base.DisposeAsync();
   }

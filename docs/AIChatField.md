@@ -1,6 +1,6 @@
 # AIChatField - AI チャット
 
-AI (サーバー側の Agent) と会話するチャット UI フィールドです。ユーザーの発言を送り、返事を吹き出しで表示します。**返事は HTML をそのまま表示**するので、表・コードブロック・リンク・見出し・インラインスタイルなど、Agent が「見やすい」と判断した表現がそのまま見えます。
+AI (サーバー側の Agent) と会話するチャット UI フィールドです。ユーザーの発言を送り、返事を吹き出しで表示します。**返事は HTML として表示**するので、表・コードブロック・リンク・見出し・インラインスタイルなど、Agent が「見やすい」と判断した表現が見えます (表示の前にブラウザで消毒します)。
 
 AI の実体と会話の履歴はサーバー側の持ち物で、このフィールドは入力と表示だけを担います。返事を作る Agent はサーバーが名前を付けて登録し、フィールドの `Agent` プロパティでどれを使うかを選びます。標準で `RawDataAccessAgent` (DB を SQL で読んで集計・グラフで答える) を用意しています。サンプルアプリの既定はダミー Agent (AI 未接続) で、Azure OpenAI の設定があれば `RawDataAccess` も使えます。
 
@@ -306,7 +306,7 @@ public class MyAgent : IAIChatAgent
 ## 注意事項
 
 - このフィールド自体は DB に値を保存しません。返事を残したいときは `OnReplyReceived` で他のフィールドに入れて保存してください
-- 返事の HTML はそのまま描画されます (サーバーは信頼する前提)。利用者の入力をそのまま HTML にして返さないよう Agent 側で注意してください
+- 返事の HTML は表示の前にブラウザで消毒します ([DOMPurify](https://github.com/cure53/DOMPurify))。スクリプトが動くもの (script・イベント属性・javascript: の URL)・フォームの部品・class・位置や重なりを変える style (position・z-index 等) を落とす (グラフの `aichat-chart` は残る)
 - ページを離れると問い合わせは止まりますが、サーバー側の処理は続きます (結果は既定で 30 分保持)
 - Agent が未設定の環境 (デザイナのプレビュー等) では入力欄が無効になり、その旨を表示します
 - パッケージの組み合わせ: Extras.Server 0.12.1 以降は `Azure.AI.OpenAI` 2.9.0-beta.1 (OpenAI 2.9 以降向け) に依存し、`Microsoft.Extensions.AI.OpenAI` 10.7 が持ち込む OpenAI 2.11 と揃っています。0.12.0 以前 (`Azure.AI.OpenAI` 2.1.0) では `ChatClient` を**直接** `CompleteChatAsync` 等で呼ぶコードがこの組み合わせで `MissingMethodException` になりました。Azure OpenAI は対応表の例のように `AzureOpenAIClient…GetChatClient(model).AsIChatClient()` で IChatClient に包んで使う形を推奨します (Extras.Server の Agent と AITextAnalyzeService はそうしています)
