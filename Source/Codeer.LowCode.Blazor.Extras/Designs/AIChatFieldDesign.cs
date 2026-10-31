@@ -18,7 +18,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
     public class AIChatFieldDesign() : FieldDesignBase(typeof(AIChatFieldDesign).FullName!), IFillHeightFieldDesign
     {
         /// <summary>
-        /// 返事を作るサーバー側 Agent の名前。空なら既定の Agent。アプリがサーバーで登録した名前
+        /// 返事を作るサーバー側 Agent の名前。アプリがサーバーで登録した名前
         /// (例: "RawDataAccess" = DB を直接読んで集計とグラフで答える Agent) を指定し、同じフィールドで用途の違う Agent を使い分ける。
         /// </summary>
         [Designer(Index = 0, DisplayName = "$AIChatFieldAgent")]
