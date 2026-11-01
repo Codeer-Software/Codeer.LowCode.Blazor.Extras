@@ -115,8 +115,8 @@ namespace Extras.Server.Controllers
         //スクリプトの一括保存 (BulkFileTransferService.Submit(List<Module>)) 用。
         //クライアントで加工済みのモジュールデータ列を一括保存する (ファイル取込と同じ追加/更新判定の経路)
         [HttpPost("bulk_submit"), Audit(AuditCategory.DataWrite)]
-        public async Task<IActionResult> BulkSubmitAsync(string? moduleName)
-            => Content(await BulkFileTransfer.BulkSubmitAsync(_dataService.ModuleDataIO, moduleName, Request.Body), "application/json");
+        public async Task<List<ModuleSubmitResult>> BulkSubmitAsync(string? moduleName)
+            => await BulkFileTransfer.SubmitByDataAsync(_dataService.ModuleDataIO, moduleName, Request.Body);
 
         //スクリプトの一括ファイル取込 (BulkFileReader) 用。ファイルを解析してモジュールデータ列を返す (DB には書き込まない)。
         //ModuleData はポリモーフィックなので JsonConverterEx で直列化して返す

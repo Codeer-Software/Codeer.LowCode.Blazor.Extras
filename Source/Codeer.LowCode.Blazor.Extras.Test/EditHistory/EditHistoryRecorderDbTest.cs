@@ -880,6 +880,8 @@ namespace Codeer.LowCode.Blazor.Extras.Test.EditHistory
             var order = OrderData(tempId, "受注A", 1000);
             order.Fields["Attachment"] = new FileFieldData { FileName = "a.txt", FileGuid = guid };
             AssertNoError(await IO().SubmitWithTransactionAsync([new ModuleSubmitData { ModuleName = "Order", Id = tempId, Add = [order] }]));
+            //追加では本体が添付を確定する (fix)。ここで見るのは削除の挙動だけ
+            files.Calls.Clear();
 
             //削除: 本体は添付を一時領域へ移す (期限後に消える) が、履歴を持つモジュールでは残す
             AssertNoError(await IO().SubmitWithTransactionAsync([new ModuleSubmitData

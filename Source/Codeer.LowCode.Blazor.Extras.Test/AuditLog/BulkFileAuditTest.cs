@@ -115,7 +115,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AuditLog
             BeginRequest();
             var design = CreateDesign();
 
-            await BulkFileTransfer.BulkSubmitAsync(CreateIO(design), "Item", Body("B", "C"));
+            await BulkFileTransfer.SubmitByDataAsync(CreateIO(design), "Item", Body("B", "C"));
 
             Assert.That(await CountAsync(), Is.EqualTo(3));
             var ids = await IdsAsync("B", "C");
@@ -132,7 +132,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AuditLog
             ModuleDataIO.BulkAddThreshold = 2;
             var design = CreateDesign();
 
-            await BulkFileTransfer.BulkSubmitAsync(CreateIO(design), "Item", Body("B", "C", "D"));
+            await BulkFileTransfer.SubmitByDataAsync(CreateIO(design), "Item", Body("B", "C", "D"));
 
             Assert.That(await CountAsync(), Is.EqualTo(4), "一括 INSERT で入っている");
             Assert.That(_audit.Event.Result, Is.EqualTo(AuditResult.Success));
@@ -147,7 +147,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AuditLog
             var design = CreateDesign();
 
             //name は UNIQUE。既存の 'A' と重なるので保存は失敗し、全体がロールバックする
-            await BulkFileTransfer.BulkSubmitAsync(CreateIO(design), "Item", Body("B", "A"));
+            await BulkFileTransfer.SubmitByDataAsync(CreateIO(design), "Item", Body("B", "A"));
 
             Assert.That(await CountAsync(), Is.EqualTo(1));
             Assert.That(_audit.Event.Result, Is.EqualTo(AuditResult.Failure));

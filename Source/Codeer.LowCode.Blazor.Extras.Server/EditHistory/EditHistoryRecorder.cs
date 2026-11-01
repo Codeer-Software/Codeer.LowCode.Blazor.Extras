@@ -126,7 +126,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.EditHistory
                     //権限の拒否は型のまま外側 (監査ログのインターセプタ) へ上げる。本体の SubmitAsync が同じ形の結果にする
                     catch (Exception ex) when (ex is not LowCodeAccessDeniedException)
                     {
-                        return Fail(transactionData, ex.Message);
+                        return Fail(transactionData, ex);
                     }
                 }
             }
@@ -313,7 +313,11 @@ namespace Codeer.LowCode.Blazor.Extras.Server.EditHistory
             {
                 var message = $"Failed to record the edit history: {ex.Message}";
                 _logError?.Invoke(message);
-                foreach (var result in results) result.ExceptionMessage = message;
+                foreach (var result in results)
+                {
+                    result.ExceptionMessage = message;
+                    result.Exception = ex;
+                }
             }
             return results;
         }
@@ -450,6 +454,14 @@ namespace Codeer.LowCode.Blazor.Extras.Server.EditHistory
 
         static bool IsStandalone(ModuleDesign module, ModuleSubmitData submitData)
             => IsEmpty(submitData) && module.Fields.OfType<ExecuteSqlFieldDesign>().Any(e => e.Timing == ExecuteSqlTiming.Standalone);
+
+        //例外による失敗。ホストが利用者に返す文言を例外の型で決められるように Exception も結果に入れる
+        List<ModuleSubmitResult> Fail(List<ModuleSubmitData> transactionData, Exception ex)
+        {
+            var results = Fail(transactionData, ex.Message);
+            foreach (var result in results) result.Exception = ex;
+            return results;
+        }
 
         List<ModuleSubmitResult> Fail(List<ModuleSubmitData> transactionData, string message)
         {

@@ -93,7 +93,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
         List<ModuleSubmitResult> Fail(List<ModuleSubmitData> transactionData, Exception ex)
         {
             service.LogIndexFailed(ex);
-            return transactionData.Select(e => new ModuleSubmitResult { SourceId = e.Id, DestinationId = e.Id, ExceptionMessage = ex.Message }).ToList();
+            return transactionData.Select(e => new ModuleSubmitResult { SourceId = e.Id, DestinationId = e.Id, ExceptionMessage = ex.Message, Exception = ex }).ToList();
         }
 
         //本体が記録した変更から、作り直す行を決める

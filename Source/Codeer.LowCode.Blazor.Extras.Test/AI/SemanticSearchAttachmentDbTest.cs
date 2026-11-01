@@ -100,6 +100,8 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
             _db = new([new DataSource { Name = Ds, DataSourceType = DataSourceType.SQLite, ConnectionString = $"Data Source={_dbFile}" }]);
             await _db.ExecuteAsync(Ds, "CREATE TABLE inquiries (id INTEGER PRIMARY KEY AUTOINCREMENT, subject TEXT, file_name TEXT, file_guid TEXT, other_name TEXT, other_guid TEXT, stored_name TEXT, stored_content BLOB, search_text TEXT, search_vector TEXT)", new());
             await _db.ExecuteAsync(Ds, "INSERT INTO inquiries (subject) VALUES ('納期遅れの相談')", new());
+            //添付の確定 (一時ファイルから外す) は本体がサーバーで行うので、一時ファイルの管理表が要る
+            await _db.ExecuteAsync(Ds, "CREATE TABLE temporary_files (guid TEXT, created_date_time TEXT)", new());
             _design = CreateDesign();
             _embedding = new FakeEmbeddingProvider();
             _storage = new CountingStorage(Storage);
@@ -115,7 +117,8 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
         SemanticSearchService Service(bool withStorages = true, ILoggerFactory? log = null)
             => new(() => _embedding, () => _design, log) { FileStorages = withStorages ? () => [_storage] : null };
 
-        ModuleDataIO CreateIO(SemanticSearchService service) => new IndexingModuleDataIO(_design, this, _db, new TemporaryFileManager(_db, [], new List<IFileStorage>()), service);
+        ModuleDataIO CreateIO(SemanticSearchService service) => new IndexingModuleDataIO(_design, this, _db, new TemporaryFileManager(_db,
+            [new TemporaryFileTableInfo { DataSourceName = Ds, Table = "temporary_files", GuidColumn = "guid", CreatedDateTimeColumn = "created_date_time" }], new List<IFileStorage>()), service);
 
         async Task<string?> TextAsync(string id)
         {

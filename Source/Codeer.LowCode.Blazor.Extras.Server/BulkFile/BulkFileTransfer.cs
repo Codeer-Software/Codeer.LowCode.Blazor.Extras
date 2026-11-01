@@ -153,16 +153,19 @@ namespace Codeer.LowCode.Blazor.Extras.Server.BulkFile
         /// スクリプトの一括保存 (bulk_submit / BulkFileTransferService.Submit) 用。
         /// リクエストボディ (JsonConverterEx 直列化の List&lt;ModuleData&gt;) を復元して一括保存し
         /// (ファイル取込と同じ Id の一致で追加/更新判定・1トランザクション)、
-        /// クライアントが復元する応答 JSON (List&lt;ModuleSubmitResult&gt;) を返す。
-        /// ワイヤ形式は送信側 (BulkFileTransferService) とここで対になるため、テンプレートの Controller は移譲だけにする。
+        /// 保存の結果 (List&lt;ModuleSubmitResult&gt;) を返す。テンプレートの Controller はこれを通常の保存と同じ JSON で返す
+        /// (送信側 (BulkFileTransferService) はその JSON を復元する)。
         /// </summary>
-        public static async Task<string> BulkSubmitAsync(ModuleDataIO moduleDataIO, string? moduleName, Stream body)
+        public static async Task<List<ModuleSubmitResult>> SubmitByDataAsync(ModuleDataIO moduleDataIO, string? moduleName, Stream body)
         {
             //監査ログ: 行ごとの対象・件数・保存結果のエラーは保存の合流点 (AuditIOInterceptor) が記録する。ここではモジュールだけ足す
             AuditContext.Current?.AddTarget(moduleName ?? string.Empty, null, "BulkSubmit");
-            return JsonConverterEx.SerializeObject(
-                await moduleDataIO.SubmitWithTransactionByModuleDataAsync(moduleName, await ReadModuleDataListAsync(body)));
+            return await moduleDataIO.SubmitWithTransactionByModuleDataAsync(moduleName, await ReadModuleDataListAsync(body));
         }
+
+        [Obsolete("Use SubmitByDataAsync and return the results (the host decides the message shown to the user).")]
+        public static async Task<string> BulkSubmitAsync(ModuleDataIO moduleDataIO, string? moduleName, Stream body)
+            => JsonConverterEx.SerializeObject(await SubmitByDataAsync(moduleDataIO, moduleName, body));
 
         //監査ログ: 出力した行の Id と件数 (レコードの値は残さない)
         static void AuditExport(string moduleName, IEnumerable<string> ids, int rows)

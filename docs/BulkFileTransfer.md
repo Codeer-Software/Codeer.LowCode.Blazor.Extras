@@ -235,8 +235,8 @@ public async Task<IActionResult> GetListFileByDataAsync(string? moduleName)
 
 //BulkFileTransferService.Submit
 [HttpPost("bulk_submit")]
-public async Task<IActionResult> BulkSubmitAsync(string? moduleName)
-    => Content(await BulkFileTransfer.BulkSubmitAsync(_dataService.ModuleDataIO, moduleName, Request.Body), "application/json");
+public async Task<List<ModuleSubmitResult>> BulkSubmitAsync(string? moduleName)
+    => await BulkFileTransfer.SubmitByDataAsync(_dataService.ModuleDataIO, moduleName, Request.Body);
 
 //BulkFileReader.Read。ModuleData はポリモーフィックなので JsonConverterEx で直列化して返す
 [HttpPost("parse_file")]
