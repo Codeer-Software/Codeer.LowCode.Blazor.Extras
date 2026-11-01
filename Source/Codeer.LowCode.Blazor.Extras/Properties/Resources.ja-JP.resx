@@ -465,6 +465,9 @@
   <data name="CsvFileFormatFixedLengthWidthUnit" xml:space="preserve">
     <value>固定長の幅の単位</value>
   </data>
+  <data name="CsvFileFormatPreventFormulaInjection" xml:space="preserve">
+    <value>式インジェクション対策</value>
+  </data>
   <data name="FileColumnMappingHasHeader" xml:space="preserve">
     <value>ヘッダ行あり</value>
   </data>

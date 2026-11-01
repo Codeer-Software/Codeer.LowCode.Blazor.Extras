@@ -47,7 +47,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Auth
             for (var offset = -1; offset <= 1; offset++)
             {
                 var step = currentStep + offset;
-                if (ComputeCode(key, step) == code) return step;
+                if (CryptographicOperations.FixedTimeEquals(Encoding.ASCII.GetBytes(ComputeCode(key, step)), Encoding.ASCII.GetBytes(code))) return step;
             }
             return null;
         }

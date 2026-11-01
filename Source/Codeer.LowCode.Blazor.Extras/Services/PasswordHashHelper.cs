@@ -32,7 +32,16 @@ namespace Codeer.LowCode.Blazor.Extras.Services
         {
             var saltBytes = Convert.FromBase64String(salt);
             var hashBytes = Rfc2898DeriveBytes.Pbkdf2(password, saltBytes, 100000, HashAlgorithmName.SHA256, 32);
-            return Convert.ToBase64String(hashBytes) == hash;
+            byte[] expected;
+            try
+            {
+                expected = Convert.FromBase64String(hash);
+            }
+            catch (FormatException)
+            {
+                return false;
+            }
+            return CryptographicOperations.FixedTimeEquals(hashBytes, expected);
         }
 
         /// <summary>

@@ -28,6 +28,7 @@
 | Delimiter | enum | - | 区切り文字。`Comma` (既定) / `Tab` / `Semicolon` / `None` (区切り文字なし = **固定長形式**。`FileColumnMappingField` 併用必須) |
 | FileExtension | string | - | ダウンロードのファイル拡張子。既定 `csv` (`txt` / `dat` 等に変更可) |
 | FixedLengthWidthUnit | Byte / Char | - | 固定長形式での列幅の単位。既定 `Byte` (Shift_JIS の全角 = 2 バイト)。列幅自体は `FileColumnMappingField` の列ごと |
+| PreventFormulaInjection | bool | - | 式インジェクション対策。既定 `false` (データを加工しない)。`true` にすると Excel 等が数式として評価する先頭文字 (`=` `+` `-` `@` タブ CR) のセルの先頭にダウンロード時 `'` が付き (`-123` など数値には付かない。値自体が `'` で始まるセルは `'` が 1 つ増える)、アップロード時にセル先頭の `'` が 1 つ外れる。式を意図して出し入れする列がある場合や相手仕様 (WebEDI) のファイルでは `false` のまま。固定長形式 (`Delimiter: None`) では無効 |
 
 ### モジュール JSON 例
 
@@ -71,6 +72,7 @@ CSV の生成/パース単体は `CsvUtils` (`Codeer.LowCode.Blazor.Extras.Serve
 - RFC 4180 準拠 (カンマ・引用符・改行を含むセルは引用符で囲み、引用符は二重化)。改行コードは CRLF
 - 1 行目はヘッダ行 (xlsx の一括ダウンロードと同じ列構成)
 - アップロード時、全セルが空の行は無視される
+- 式インジェクション対策は `PreventFormulaInjection` (既定 `false`)
 
 ### スクリプトからの一括入出力
 

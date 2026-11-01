@@ -47,6 +47,14 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         [Designer(DisplayName = "$CsvFileFormatFixedLengthWidthUnit")]
         public FixedLengthWidthUnitKind FixedLengthWidthUnit { get; set; } = FixedLengthWidthUnitKind.Byte;
 
+        /// <summary>
+        /// 式インジェクション対策。Excel 等の表計算ソフトが CSV を開くとき数式として評価する先頭文字 (= + - @ タブ CR) のセルに、
+        /// 出力時に ' を付ける (負の数など数値には付けない)。取込時はセル先頭の ' を 1 つ外す。
+        /// 既定は false (データを加工しない。式を意図して出し入れする用途を妨げない)。
+        /// </summary>
+        [Designer(DisplayName = "$CsvFileFormatPreventFormulaInjection")]
+        public bool PreventFormulaInjection { get; set; }
+
         //本体クライアントが一括ダウンロードのファイル名の拡張子として参照する。未設定なら "csv"
         string IBulkFileTransferFieldDesign.Extension => string.IsNullOrEmpty(FileExtension) ? "csv" : FileExtension;
 

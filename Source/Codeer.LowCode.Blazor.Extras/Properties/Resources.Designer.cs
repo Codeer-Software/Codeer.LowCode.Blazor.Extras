@@ -1241,6 +1241,12 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
             }
         }
 
+        internal static string CsvFileFormatPreventFormulaInjection {
+            get {
+                return ResourceManager.GetString("CsvFileFormatPreventFormulaInjection", resourceCulture);
+            }
+        }
+
         internal static string FileColumnMappingHasHeader {
             get {
                 return ResourceManager.GetString("FileColumnMappingHasHeader", resourceCulture);

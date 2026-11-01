@@ -56,7 +56,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.BulkFile
                 return FixedLengthUtils.CreateFixedLengthBinary(texts, mapping!, csv!);
 
             return csv != null
-                ? CsvUtils.CreateCsvBinary(texts, csv.Encoding, csv.Delimiter.ToChar())
+                ? CsvUtils.CreateCsvBinary(texts, csv.Encoding, csv.Delimiter.ToChar(), csv.PreventFormulaInjection)
                 : ExcelUtils.CreateExcelBinary(texts, "data");
         }
 
@@ -78,7 +78,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.BulkFile
             var texts = IsFixedLength(csv, mapping)
                 ? await FixedLengthUtils.ReadAllTextsFromFileBinary(file, mapping!, csv!)
                 : csv != null
-                ? await CsvUtils.ReadAllTextsFromFileBinary(file, csv.Encoding, csv.Delimiter.ToChar())
+                ? await CsvUtils.ReadAllTextsFromFileBinary(file, csv.Encoding, csv.Delimiter.ToChar(), csv.PreventFormulaInjection)
                 : await ExcelUtils.ReadAllTextsFromExcelBinary(file);
 
             //相手仕様の列 → 型付きで ModuleData に変換して取込 (解釈できない値・引き当て失敗は行番号付きエラー)
@@ -137,7 +137,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.BulkFile
                 return FixedLengthUtils.CreateFixedLengthBinary(texts, mapping!, csv!);
 
             return csv != null
-                ? CsvUtils.CreateCsvBinary(texts, csv.Encoding, csv.Delimiter.ToChar())
+                ? CsvUtils.CreateCsvBinary(texts, csv.Encoding, csv.Delimiter.ToChar(), csv.PreventFormulaInjection)
                 : ExcelUtils.CreateExcelBinary(texts, "data");
         }
 
@@ -256,7 +256,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.BulkFile
             var texts = IsFixedLength(csv, mapping)
                 ? await FixedLengthUtils.ReadAllTextsFromFileBinary(file, mapping!, csv!)
                 : csv != null
-                ? await CsvUtils.ReadAllTextsFromFileBinary(file, csv.Encoding, csv.Delimiter.ToChar())
+                ? await CsvUtils.ReadAllTextsFromFileBinary(file, csv.Encoding, csv.Delimiter.ToChar(), csv.PreventFormulaInjection)
                 : await ExcelUtils.ReadAllTextsFromExcelBinary(file);
 
             if (mapping != null)

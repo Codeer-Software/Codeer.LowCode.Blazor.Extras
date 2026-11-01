@@ -45,11 +45,13 @@ Extras の設定用フィールドをモジュールに定義すると、同じ�
 | Delimiter | 区切り文字 | enum | `Comma` (カンマ。既定) / `Tab` (タブ) / `Semicolon` (セミコロン) / `None` (なし (固定長)。FileColumnMappingField 併用必須) |
 | FileExtension | ファイル拡張子 | string | ダウンロードの拡張子 (既定 `csv`。`txt` / `dat` 等)。一括更新もこの拡張子のファイルだけを受け付ける |
 | FixedLengthWidthUnit | 固定長の幅の単位 | enum | 固定長での列幅の単位。`Byte` (バイト。既定。Shift_JIS の全角は 2 バイト) / `Char` (文字) |
+| PreventFormulaInjection | 式インジェクション対策 | bool | 既定 false。true にすると、Excel 等が数式として評価する先頭文字 (`=` `+` `-` `@` タブ CR) のセルの先頭に出力時 `'` を付け (`-123` など数値には付けない)、取込時にセル先頭の `'` を 1 つ外す。値自体が `'` で始まるセルは出力時に `'` が 1 つ増え、取込で元に戻る (Excel で開いて保存し直しても `'` は文字として残る)。xlsx は文字列セルとして書くので対象外。固定長形式 (Delimiter = None) では無効 |
 
 CSV の仕様:
 
 - RFC 4180 準拠 (区切り文字・引用符・改行を含むセルは引用符で囲み、引用符は二重にする)。改行は CRLF
 - 取込時、全セルが空の行は無視する
+- 式インジェクション対策は `PreventFormulaInjection` (既定 false = データを加工しない)
 
 ## FileColumnMappingField (ファイル列マッピング)
 
