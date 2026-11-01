@@ -17,7 +17,7 @@
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>
 		<PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
-		<PackageReleaseNotes>Security: RichTextField, MarkdownField and AIChatField sanitize HTML with DOMPurify before display; MarkdownField links accept only http / https / mailto / tel and relative URLs, and attribute syntax ({...}) is disabled. Password hash verification uses a constant-time comparison. CsvFileFormatField gains PreventFormulaInjection (off by default): cells a spreadsheet would evaluate as formulas are prefixed with ' on download and the prefix is removed on upload.</PackageReleaseNotes>
+		<PackageReleaseNotes>RichTextField, MarkdownField and AIChatField render HTML through DOMPurify; MarkdownField links accept http / https / mailto / tel and relative URLs, and attribute syntax ({...}) is disabled. Password hash verification uses a constant-time comparison. CsvFileFormatField gains PreventFormulaInjection (off by default): cells a spreadsheet would evaluate as formulas are prefixed with ' on download and the prefix is removed on upload.</PackageReleaseNotes>
 		<PackageId>Codeer.LowCode.Blazor.Extras</PackageId>
 	</PropertyGroup>
 
