@@ -11,6 +11,8 @@ using Codeer.LowCode.Blazor.Repository.Data;
 using Codeer.LowCode.Blazor.Repository.Design;
 using Codeer.LowCode.Blazor.Repository.Match;
 using Excel.Report.PDF;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.Features;
 
 namespace Codeer.LowCode.Blazor.Extras.Server.BulkFile
 {
@@ -58,6 +60,18 @@ namespace Codeer.LowCode.Blazor.Extras.Server.BulkFile
             return csv != null
                 ? CsvUtils.CreateCsvBinary(texts, csv.Encoding, csv.Delimiter.ToChar(), csv.PreventFormulaInjection)
                 : ExcelUtils.CreateExcelBinary(texts, "data");
+        }
+
+        /// <summary>
+        /// 一括更新 (submit_by_file) のリクエストを取り込む。本文の上限を画面と同じ <see cref="ModuleDesign.BulkDataUpdateMaxAllowedSize"/> にしてから
+        /// <see cref="SubmitByFileAsync(DesignData, ModuleDataIO, string?, Stream, bool)"/> に移譲する (サーバーの既定の上限で大きなファイルが切られないように)。
+        /// </summary>
+        public static async Task<List<ModuleSubmitResult>> SubmitByFileAsync(DesignData designData, ModuleDataIO moduleDataIO, string? moduleName, HttpRequest request)
+        {
+            //本文を読む前に入れる (読み始めた後は変えられない)
+            var bodySize = request.HttpContext.Features.Get<IHttpMaxRequestBodySizeFeature>();
+            if (bodySize != null && !bodySize.IsReadOnly) bodySize.MaxRequestBodySize = ModuleDesign.BulkDataUpdateMaxAllowedSize;
+            return await SubmitByFileAsync(designData, moduleDataIO, moduleName, request.Body);
         }
 
         /// <summary>

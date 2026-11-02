@@ -97,7 +97,7 @@ namespace Extras.Server.Controllers
         public async Task<List<ModuleSubmitResult>> SubmitByFileAsync(string? moduleName)
         {
             _audit.AddTarget(moduleName ?? string.Empty, null, "Import");
-            var results = await BulkFileTransfer.SubmitByFileAsync(_dataService.Design.DesignData, _dataService.ModuleDataIO, moduleName, Request.Body);
+            var results = await BulkFileTransfer.SubmitByFileAsync(_dataService.Design.DesignData, _dataService.ModuleDataIO, moduleName, Request);
             var error = results.FirstOrDefault(e => !string.IsNullOrEmpty(e.ExceptionMessage))?.ExceptionMessage;
             if (error != null) _audit.Fail(error);
             return results;
