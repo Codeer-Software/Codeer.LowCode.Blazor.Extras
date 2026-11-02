@@ -61,6 +61,21 @@ namespace Codeer.LowCode.Blazor.Extras.Server.FileManagement
             await _dbAccessor.ExecuteAsync(dataSourceName, sql, new Dictionary<string, object?> { { p1, guid } });
         }
 
+        public async Task<bool> IsTemporaryFileAsync(string dataSourceName, Guid guid)
+        {
+            var dataSource = _dbAccessor.GetDataSource(dataSourceName);
+            if (dataSource == null) return false;
+            var parts = new SqlParts(dataSource.DataSourceType);
+            var parameterPrefix = dataSource.DataSourceType == DataSourceType.Oracle ? ":p" : "@p";
+
+            var mgr = _temporaryFilesManagements.FirstOrDefault(e => e.DataSourceName == dataSourceName);
+            if (mgr == null) throw LowCodeException.Create($"{dataSourceName} No file management settings");
+            var p1 = parameterPrefix + 1;
+            var sql = $"select count(*) from {parts.Blanket(mgr.Table)} where {parts.Blanket(mgr.GuidColumn)}={p1}";
+            var rows = await _dbAccessor.QueryAsync(dataSourceName, sql, new() { { p1, new ParamAndRawDbTypeName { Value = guid } } });
+            return rows.Count != 0 && Convert.ToInt64(rows[0].Values.First()) != 0;
+        }
+
         public async Task<DataIO.FileInfo> AddFileAsync(FileSaveInfo info, string? fileName, Stream stream)
         {
             var data = new DataIO.FileInfo

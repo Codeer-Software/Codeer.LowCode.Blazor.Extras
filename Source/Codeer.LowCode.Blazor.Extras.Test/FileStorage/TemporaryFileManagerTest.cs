@@ -56,6 +56,17 @@ namespace Codeer.LowCode.Blazor.Extras.Test.FileStorage
             Assert.That(Directory.Exists(_dir) ? Directory.GetFiles(_dir) : [], Is.Empty);
         }
 
+        [Test]
+        public async Task 一時ファイルかどうかは一時行の有無()
+        {
+            var manager = Manager();
+            var info = await manager.AddFileAsync(new FileSaveInfo { DataSourceName = Ds, StorageName = "Local" }, "a.txt", new MemoryStream(new byte[10]));
+            Assert.That(await manager.IsTemporaryFileAsync(Ds, info.FileGuid!.Value), Is.True);
+            Assert.That(await manager.IsTemporaryFileAsync(Ds, Guid.NewGuid()), Is.False);
+            await manager.FixFile(Ds, info.FileGuid);
+            Assert.That(await manager.IsTemporaryFileAsync(Ds, info.FileGuid!.Value), Is.False);
+        }
+
         //Request.Body の性質 (戻れない・長さ不明)。failAt を過ぎると切断のように例外を投げる
         class ForwardOnly(byte[] data, int failAt) : Stream
         {
