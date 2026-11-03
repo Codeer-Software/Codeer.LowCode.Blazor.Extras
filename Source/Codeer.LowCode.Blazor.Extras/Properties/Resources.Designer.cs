@@ -419,7 +419,16 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
                 return ResourceManager.GetString("LoginAccountContractDbColumnTotpLastTimestep", resourceCulture);
             }
         }
-        
+
+        /// <summary>
+        ///   LoginAccountContractDbColumnSessionStamp に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string LoginAccountContractDbColumnSessionStamp {
+            get {
+                return ResourceManager.GetString("LoginAccountContractDbColumnSessionStamp", resourceCulture);
+            }
+        }
+
         /// <summary>
         ///   TotpResetButtonText に類似しているローカライズされた文字列を検索します。
         /// </summary>
@@ -4443,6 +4452,105 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
         internal static string DesignCheck_Permission_row_conditions_are_not_applied_to_job_execution_ {
             get {
                 return ResourceManager.GetString("DesignCheck_Permission_row_conditions_are_not_applied_to_job_execution_", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Logout All Devices Button に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string SessionRevokeButtonField {
+            get {
+                return ResourceManager.GetString("SessionRevokeButtonField", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Button text に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string SessionRevokeButtonText {
+            get {
+                return ResourceManager.GetString("SessionRevokeButtonText", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Confirm message に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string SessionRevokeButtonConfirmMessage {
+            get {
+                return ResourceManager.GetString("SessionRevokeButtonConfirmMessage", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Log out from all devices に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string SessionRevokeButton_DefaultText {
+            get {
+                return ResourceManager.GetString("SessionRevokeButton_DefaultText", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   This user will be logged out from all devices. Continue? に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string SessionRevokeButton_Confirm {
+            get {
+                return ResourceManager.GetString("SessionRevokeButton_Confirm", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Log out に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string SessionRevokeButton_Action {
+            get {
+                return ResourceManager.GetString("SessionRevokeButton_Action", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Logged out from all devices. に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string SessionRevokeButton_Done {
+            get {
+                return ResourceManager.GetString("SessionRevokeButton_Done", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Failed to log out. に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string SessionRevokeButton_Failed {
+            get {
+                return ResourceManager.GetString("SessionRevokeButton_Failed", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Place SessionRevokeButtonField on the login user module (AppSettings.CurrentUserModuleDesignName). に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string SessionRevokeCheck_NotOnUserModule {
+            get {
+                return ResourceManager.GetString("SessionRevokeCheck_NotOnUserModule", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   DbColumnSessionStamp must be the same column as the DbColumnSessionStamp of the LoginAccountContractField of this module. に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string SessionRevokeCheck_ColumnsMismatch {
+            get {
+                return ResourceManager.GetString("SessionRevokeCheck_ColumnsMismatch", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   There is an invalid input に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string InvalidInput {
+            get {
+                return ResourceManager.GetString("InvalidInput", resourceCulture);
             }
         }
     }

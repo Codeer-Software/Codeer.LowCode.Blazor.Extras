@@ -36,10 +36,11 @@ Codeer.LowCode.Blazor 本体が持つのは**認可** (ログインしたユー�
 | PasswordField | パスワードの入力フィールド (PasswordField)。指定すると保存時にサーバーがハッシュ / ソルトを作って下の列に書く |
 | DbColumnPasswordHash / DbColumnPasswordSalt | パスワード照合用の列 (書き込み専用)。両方空なら外部 IdP 専用 |
 | DbColumnTotpSecret / DbColumnTotpConfirmed / DbColumnTotpLastTimestep | 認証アプリ (TOTP) の 3 列。そろえて設定すると有効 |
+| DbColumnSessionStamp | セッションの印の列 (書き込み専用。TEXT)。設定すると発行済みの Cookie をサーバー側で失効できる (下の「ログイン済みセッションの失効」)。空なら照合しない |
 
 → 詳細: [LoginAccountContractField](../Source/Codeer.LowCode.Blazor.Extras.Designer/FieldDocs/LoginAccountContractFieldDesign.md)
 
-デザイナのテンプレート (空のプロジェクト / 標準パターン集 / 業務テンプレート) の `AppUser` には配置済みです。
+デザイナのテンプレート (空のプロジェクト / 標準パターン集 / 業務テンプレート) の `AppUser` には配置済みです (`DbColumnSessionStamp` = `session_stamp` も Designer.Standard 0.8.23 以降のテンプレートでは設定済み)。
 
 <img src="images/login_account_contract.png" alt="デザイナで AppUser のログインアカウント契約を選択した状態" style="border: 1px solid #ccc;" width="800">
 
@@ -55,6 +56,47 @@ Codeer.LowCode.Blazor 本体が持つのは**認可** (ログインしたユー�
 結果 (使えない / ロック中 / 不一致 / 二要素認証の途中 / 成功) を返します。テンプレートの `AccountController.Login` はこれを呼んで、結果を HTTP (404 / 429 / 401 / 200) と監査ログに写し、
 成功したら Cookie を発行します。パスワード照合そのものは `LoginAccountStore` がデザインの契約からテーブル・列を引いて行います (有効フラグが偽の行は拒否)。
 初回起動でユーザーが 0 件なら `admin` / `admin` を作ります (テンプレートの `CookieAuthentication.cs`)。
+
+### ログイン済みセッションの失効: セッションの印
+
+パスワードの流出・退職・停止のときに、発行済みの Cookie をサーバー側でその場で全部使えなくする仕組みです。
+Cookie は状態を持たない (サーバーは発行した Cookie を覚えていない) ので、ユーザー行に「セッションの印」(乱数) を 1 つ持ち、
+ログインで Cookie に同じ値を積み、リクエストごとに今の行の値と照合します。印を新しい値に書き換えると、それまでの Cookie は全部照合に落ちます
+(ASP.NET Identity の SecurityStamp と同じ考え方)。
+
+**有効にする**: 契約の `DbColumnSessionStamp` に列を 1 本指定します (書き込み専用列なので、デザイナの DDL 生成に載ります。型は TEXT)。
+空なら照合しません (従来どおり、Cookie は有効期限まで使えます)。テンプレートは Cookie 認証の `OnValidatePrincipal` に `LoginSessionValidation.ValidatePrincipalAsync` を結線しているので、列を足すだけで動きます。
+
+**印が書き換わる (= 失効する) とき**
+
+| きっかけ | 書き換える所 |
+|---|---|
+| パスワードの変更 (契約の PasswordField / 同じ表を書く別モジュールの PasswordHashField) | 保存 (`PasswordHashingModuleDataIO`)。行の更新と同じトランザクション |
+| 停止 (ユーザーモジュールの保存で IsActive が偽) | 同上。有効に戻しても停止前の Cookie は生き返らない |
+| 全端末ログアウト (管理者が特定のユーザーを) | [SessionRevokeButtonField](../Source/Codeer.LowCode.Blazor.Extras.Designer/FieldDocs/SessionRevokeButtonFieldDesign.md)。印を NULL にする (次のログインで採番) |
+
+管理者が特定のユーザーを全端末からログアウトさせるのは、ユーザーモジュールの詳細画面に置く SessionRevokeButtonField です (テンプレートの `AppUser` に設置済み)。列は契約の `DbColumnSessionStamp` と同じ列にし、通常の保存と同じ権限 (その行を編集できる人だけ) で動きます。
+
+表示名など他の項目だけの保存では書き換えません。照合では行が無い (論理削除したユーザーを含む。ログインも通りません)・IsActive が偽・印が合わない Cookie を無効にします (`RejectPrincipal` と Cookie の削除。保護された API は 401)。
+外部 IdP のログイン・ネイティブアプリのチケットで発行した Cookie も同じ印を持つので、同じく失効の対象です。
+
+**保証の範囲と限界**
+
+- 印を書き換えた保存のコミット後の、次の認証チェックから拒否します。処理中のリクエストは止めません
+- 失効は「そのユーザーの全端末」一括です。端末ごとの一覧・個別の失効はありません
+- ブラウザ内の Cookie を遠隔で消すのではなく、届いた Cookie をサーバーが受け付けなくなる仕組みです
+- 全端末ログアウトは新しいログインを止めません。止めるなら IsActive を偽にします
+- リクエストごとにユーザー行を主キーで 1 行読みます。キャッシュしないので失効の遅れはなく、複数インスタンスでも DB が正本です。照合の読みに失敗したとき (DB の障害) はエラー (500) になり、Cookie は消しません (復旧後はそのまま使えます)
+- 印の無い Cookie (列を足す前のログイン) は無効です。列を足した時点で全員が再ログインになります。既存ユーザーの印は最初のログインで採番するので、移行スクリプトは要りません
+
+**通常のログアウトとの違い**: `api/account/logout` はその端末 (ブラウザ) の Cookie を消すだけで、印は変えません。
+その Cookie を他所に写し取られていた場合、有効期限までは使えます。パスワードの変更・停止・SessionRevokeButtonField は印を書き換えるので、他の端末と写し取られた Cookie もまとめて使えなくなります。
+
+**直接 SQL で変えるとき (契約)**: パスワードのハッシュや有効フラグをアプリの保存を通さずに SQL で書き換えるときは、印の列も新しい乱数 (他と重ならない文字列) に書き換えてください。
+書き換えなければ発行済みの Cookie は有効のままです。
+
+**外部 IdP の注意**: Entra ID 等の IdP 側でアカウントを停止したりパスワードを変えたりしても、アプリの Cookie は自動では失効しません
+(IdP は本人確認の手段で、セッションはアプリの Cookie のため)。アプリ側でも IsActive を偽にするか、SessionRevokeButtonField で失効させます。
 
 ### 総当たり対策: LoginLockout
 
@@ -102,7 +144,7 @@ MAUI クライアントも同じサーバーの `api/account/*` を使います�
 | ファイル | 役割 |
 |---|---|
 | `Controllers/AccountController.cs` | `login_options` / `login` (検証の流れは `PasswordLogin`。結果を HTTP と監査に写して Cookie を発行する) / `login/{provider}` / `logout` / `current_user` |
-| `Infrastructure/CookieAuthentication.cs` | Cookie 認証と外部 IdP の登録、初回 admin の作成 |
+| `Infrastructure/CookieAuthentication.cs` | Cookie 認証 (有効期間はスライディングで「ログイン状態を保持する」が 14 日・それ以外は 8 時間。`OnValidatePrincipal` でセッションの印を照合) と外部 IdP の登録、初回 admin の作成 |
 | `Extras/ExternalLoginTable.cs` | appsettings の IdP 設定 → プロバイダの対応表 |
 | `Infrastructure/ExternalLoginUserResolver.cs` | 外部 IdP の本人 → ユーザー行 (事前登録制) |
 | `Infrastructure/CustomizedModuleDataIO.cs` | 保存時のパスワードハッシュ化 (`PasswordHashingModuleDataIO` を継承) |

@@ -108,6 +108,7 @@ public class CustomizedModuleDataIO : PasswordHashingModuleDataIO
 - 本体のフィールド書き込み権限の検査の後に入るので、ハッシュ列の書き込み権限は見ません (ユーザーが書くのは `PasswordField`)
 - `CustomizedModuleDataIO` で `ModuleDataIO` の virtual (`AddAsync` など) を override するときは base を呼んでください (呼ばないと基底のハッシュ化が飛びます)
 - `AddAsync` / `UpdateAsync` を override して `ApplyPasswordHash` を呼ぶ従来の形でも動きます
+- ユーザーモジュールの契約にセッションの印の列 (`DbColumnSessionStamp`) があるとき、`PasswordHashingModuleDataIO` はこのフィールドでパスワードを変えた行の印も同じトランザクションで書き換えます (発行済みの Cookie の失効。[認証の全体像](Authentication.md) の「ログイン済みセッションの失効: セッションの印」)。`PasswordHashingModuleDataIO` を継承しない形 (従来の形・下の自前のアルゴリズム) ではこの失効は行われないので、印の列を新しい値に書き換える処理 (`LoginAccountStore.RevokeSessionsAsync`) を自分で足します
 
 従来の形 (override で `ApplyPasswordHash` を呼ぶ) の例は `Source/Example/Extras/Extras/Extras.Server/Services/CustomizedModuleDataIO.cs` にあります。
 

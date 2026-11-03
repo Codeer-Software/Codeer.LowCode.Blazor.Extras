@@ -47,12 +47,25 @@ namespace Codeer.LowCode.Blazor.Extras.Services
         /// <summary>
         /// 保存前にパスワードの平文をハッシュ + ソルトへ置き換える。
         /// <list type="bullet">
-        /// <item><see cref="LoginAccountContractFieldDesign"/> の <c>PasswordField</c> が指す PasswordField に値があれば、契約のデータ (ハッシュ / ソルト列) を差し込む。</item>
+        /// <item><see cref="LoginAccountContractFieldDesign"/> の <c>PasswordField</c> が指す PasswordField に値があれば、契約のデータ (ハッシュ / ソルト列。
+        /// 契約に <c>DbColumnSessionStamp</c> があれば新しいセッションの印も) を差し込む。
+        /// 印を書くときは送信に載った <see cref="SessionRevokeButtonFieldDesign"/> のデータを外す (同じ列を二重に書かない。新しい印でも全端末は失効する)。</item>
         /// <item><see cref="PasswordHashFieldDesign"/> は参照先の PasswordField に値があればハッシュ + ソルトを差し込む (契約が同じ列を書くモジュールでは飛ばす = 二重書き防止)。</item>
         /// </list>
+        /// ハッシュ / ソルト / 印の列の値はサーバーだけが作る: 送られてきたデータに契約や PasswordHashField のデータが載っていても捨てる (SessionRevokeButtonField のデータは印 NULL に揃える)
+        /// (平文が無ければ列は書かない = クライアントがハッシュや印を直接書き込むことはできない)。
+        /// 戻り値はパスワードを書き換えたか (どちらの経路でも)。
         /// </summary>
-        public static void ApplyPasswordHash(ModuleDesign moduleDesign, ModuleData data)
+        public static bool ApplyPasswordHash(ModuleDesign moduleDesign, ModuleData data)
         {
+            var written = false;
+            foreach (var e in moduleDesign.Fields.OfType<LoginAccountContractFieldDesign>()) data.Fields.Remove(e.Name);
+            foreach (var e in moduleDesign.Fields.OfType<PasswordHashFieldDesign>()) data.Fields.Remove(e.Name);
+            foreach (var e in moduleDesign.Fields.OfType<SessionRevokeButtonFieldDesign>())
+            {
+                if (data.Fields.ContainsKey(e.Name)) data.Fields[e.Name] = SessionRevokeButtonFieldData.Cleared();
+            }
+
             var contract = moduleDesign.Fields.OfType<LoginAccountContractFieldDesign>().FirstOrDefault(e => e.WritesPassword);
             if (contract != null)
             {
@@ -60,7 +73,16 @@ namespace Codeer.LowCode.Blazor.Extras.Services
                 if (password != null)
                 {
                     var hashed = CreateHash(password);
-                    data.Fields[contract.Name] = new LoginAccountContractFieldData { PasswordHash = hashed.Hash, PasswordSalt = hashed.Salt };
+                    data.Fields[contract.Name] = new LoginAccountContractFieldData
+                    {
+                        PasswordHash = hashed.Hash, PasswordSalt = hashed.Salt,
+                        SessionStamp = contract.HasSessionStamp ? SessionStamp.Create() : null,
+                    };
+                    if (contract.HasSessionStamp)
+                    {
+                        foreach (var e in moduleDesign.Fields.OfType<SessionRevokeButtonFieldDesign>()) data.Fields.Remove(e.Name);
+                    }
+                    written = true;
                 }
             }
 
@@ -70,7 +92,9 @@ namespace Codeer.LowCode.Blazor.Extras.Services
                 var password = PlainPassword(data, hashFieldDesign.PasswordFieldName);
                 if (password == null) continue;
                 data.Fields[hashFieldDesign.Name] = CreateHash(password);
+                written = true;
             }
+            return written;
         }
 
         //送られてきたデータにある PasswordField の平文 (無ければ null = 今回はパスワードを変えない)

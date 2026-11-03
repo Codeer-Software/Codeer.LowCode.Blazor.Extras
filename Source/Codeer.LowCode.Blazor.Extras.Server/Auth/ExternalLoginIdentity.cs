@@ -25,8 +25,11 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Auth
         public ClaimsPrincipal Claims { get; init; } = new();
     }
 
-    /// <summary>解決できたアプリのユーザー。Cookie にはこの 2 つ (と経路のプロバイダ名) だけを積む。</summary>
-    public record ExternalLoginUser(string UserId, string UserName);
+    /// <summary>
+    /// 解決できたアプリのユーザー。Cookie にはこれ (と経路のプロバイダ名) だけを積む。
+    /// SessionStamp は解決したユーザー行のセッションの印 (<see cref="LoginAccount.SessionStamp"/>。契約に印の列が無ければ null)。
+    /// </summary>
+    public record ExternalLoginUser(string UserId, string UserName, string? SessionStamp = null);
 
     /// <summary>
     /// 外部 IdP で確認した本人をアプリのユーザーに解決する。実装はアプリ側 (ユーザーテーブルの形とプロビジョニング方針はアプリごとに違うため)。

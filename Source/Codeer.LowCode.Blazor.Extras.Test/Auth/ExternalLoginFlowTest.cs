@@ -19,6 +19,13 @@ using System.Security.Cryptography;
 using System.Text.Json;
 using System.Web;
 using Microsoft.AspNetCore.Authentication;
+using Codeer.LowCode.Blazor.DbAccess;
+using Codeer.LowCode.Blazor.DesignLogic;
+using Codeer.LowCode.Blazor.Extras.Designs;
+using Codeer.LowCode.Blazor.Extras.Test.Harness;
+using Codeer.LowCode.Blazor.Repository.Design;
+using Codeer.LowCode.Blazor.SystemSettings;
+using Microsoft.Extensions.Caching.Distributed;
 
 namespace Codeer.LowCode.Blazor.Extras.Test.Auth
 {
@@ -40,6 +47,10 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Auth
         [Authorize, HttpGet("current_user")]
         public string CurrentUser() => LoginPrincipal.GetUserId(User);
 
+        //テスト用: Cookie に積まれたセッションの印
+        [Authorize, HttpGet("session_stamp")]
+        public string SessionStamp() => LoginPrincipal.GetSessionStamp(User) ?? string.Empty;
+
         [HttpGet("login_options")]
         public object LoginOptions() => new { Password = true, Providers = _externalLogins.Options };
 
@@ -52,7 +63,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Auth
         {
             var redeemed = await _externalLogins.RedeemMobileTicketAsync(ticket.Ticket);
             if (redeemed == null) return Unauthorized();
-            await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, LoginPrincipal.Create(redeemed.Value.User.UserId, redeemed.Value.User.UserName, redeemed.Value.Provider));
+            await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, LoginPrincipal.Create(redeemed.Value.User.UserId, redeemed.Value.User.UserName, redeemed.Value.Provider, redeemed.Value.User.SessionStamp));
             return Ok();
         }
 
@@ -89,6 +100,8 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Auth
             /// <summary>次に発行する id_token のクレーム (sub 以外)。</summary>
             public Dictionary<string, object> Claims { get; } = new();
             public string Subject { get; set; } = "sub-1";
+            /// <summary>設定すると id_token の nonce をこの値にする (認可要求の nonce と食い違わせる)。</summary>
+            public string? NonceOverride { get; set; }
             public Dictionary<string, string> LastAuthorizeQuery { get; private set; } = new();
             public Dictionary<string, string> LastLogoutQuery { get; private set; } = new();
             public Dictionary<string, string> LastTokenForm { get; private set; } = new();
@@ -139,7 +152,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Auth
                         var form = await ctx.Request.ReadFormAsync();
                         LastTokenForm = form.ToDictionary(f => f.Key, f => f.Value.ToString());
                         var accessToken = "access-" + Guid.NewGuid().ToString("N");
-                        var idToken = CreateIdToken(form["client_id"]!, _nonces[form["code"]!], accessToken);
+                        var idToken = CreateIdToken(form["client_id"]!, NonceOverride ?? _nonces[form["code"]!], accessToken);
                         await ctx.Response.WriteAsJsonAsync(new { id_token = idToken, access_token = accessToken, token_type = "Bearer", expires_in = 3600 });
                     }
                     else if (path == "/logout")
@@ -198,10 +211,17 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Auth
         {
             public static readonly Dictionary<string, string> Users = new();
             public static ExternalLoginIdentity? Last;
-            public Task<ExternalLoginUser?> ResolveAsync(ExternalLoginIdentity identity)
+            /// <summary>設定するとユーザー表 (SQLite) から解決する (テンプレートの ExternalLoginUserResolver と同じ: 印も返す)。</summary>
+            public static LoginAccountStore? Accounts;
+            public async Task<ExternalLoginUser?> ResolveAsync(ExternalLoginIdentity identity)
             {
                 Last = identity;
-                return Task.FromResult(Users.TryGetValue(identity.LoginName, out var id) ? new ExternalLoginUser(id, identity.LoginName) : null);
+                if (Accounts != null)
+                {
+                    var account = await Accounts.FindByExternalLoginNameAsync(identity.LoginName);
+                    return account == null ? null : new ExternalLoginUser(account.UserId, account.DisplayName, account.SessionStamp);
+                }
+                return Users.TryGetValue(identity.LoginName, out var id) ? new ExternalLoginUser(id, identity.LoginName) : null;
             }
         }
 
@@ -213,7 +233,9 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Auth
             public static string? LastRemoteFailure;
 
             /// <param name="auditSink">渡すと監査ログを結線する (テンプレートと同じ並び: UseRouting → UseAuditLog → 認証)。</param>
-            public async Task StartAsync(FakeIdp idp, IEnumerable<IExternalLoginProvider> providers, string mobileCallback = "", IAuditSink? auditSink = null)
+            /// <param name="sessionAccounts">渡すと Cookie の OnValidatePrincipal に LoginSessionValidation を結線する (テンプレートの CookieAuthentication.cs と同じ)。</param>
+            public async Task StartAsync(FakeIdp idp, IEnumerable<IExternalLoginProvider> providers, string mobileCallback = "", IAuditSink? auditSink = null,
+                LoginAccountStore? sessionAccounts = null, IDistributedCache? cache = null)
             {
                 var builder = WebApplication.CreateBuilder();
                 builder.WebHost.UseTestServer();
@@ -224,10 +246,12 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Auth
                     builder.Services.PostConfigure<OpenIdConnectOptions>(ExternalLoginService.SchemeOf(p.Name), o => o.Backchannel = new HttpClient(new ToFakeIdpHandler(idp.Server.CreateHandler())));
                 }
                 builder.Services.AddDistributedMemoryCache();
+                if (cache != null) builder.Services.AddSingleton(cache);   //後に登録したものが使われる
                 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
                     .AddCookie(o =>
                     {
                         o.Events.OnRedirectToLogin = c => { c.Response.StatusCode = 401; return Task.CompletedTask; };
+                        if (sessionAccounts != null) o.Events.OnValidatePrincipal = c => LoginSessionValidation.ValidatePrincipalAsync(c, sessionAccounts);
                     })
                     .AddExternalLogins(providers, o => o.MobileCallbackUrl = mobileCallback);
                 builder.Services.AddScoped<IExternalLoginUserResolver, FakeResolver>();
@@ -322,6 +346,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Auth
         {
             FakeResolver.Users.Clear();
             FakeResolver.Last = null;
+            FakeResolver.Accounts = null;
             App.LastRemoteFailure = null;
         }
 
@@ -702,6 +727,259 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Auth
             var options = await (await browser.GetAsync("/api/account/login_options")).Content.ReadFromJsonAsync<JsonElement>();
             Assert.That(options.GetProperty("providers").GetArrayLength(), Is.EqualTo(0));
             Assert.That((await browser.GetAsync("/api/account/login/Entra")).StatusCode, Is.EqualTo(HttpStatusCode.NotFound));
+        }
+
+        //---- セッションの印 (ログイン済み Cookie の失効) -------------------------------------------
+
+        /// <summary>ユーザー表 (SQLite)。契約は外部 IdP 専用 (パスワード列無し) + セッションの印の列。</summary>
+        sealed class AccountDb : IAsyncDisposable
+        {
+            const string Ds = "Main";
+            readonly string _file = Path.Combine(Path.GetTempPath(), $"extlogin_session_{Guid.NewGuid():N}.db");
+            public DbAccessor Db { get; }
+            public LoginAccountStore Accounts { get; }
+
+            AccountDb()
+            {
+                DbAccessor.ClearTableDefinitionCache();
+                Db = new DbAccessor([new DataSource { Name = Ds, DataSourceType = DataSourceType.SQLite, ConnectionString = $"Data Source={_file}" }]);
+                var d = new DesignData();
+                d.AppSettings.CurrentUserModuleDesignName = "AppUser";
+                var user = new ModuleDesign { Name = "AppUser", DataSourceName = Ds, DbTable = "app_users" };
+                user.Fields.Add(new IdFieldDesign { Name = "Id", DbColumn = "id" });
+                user.Fields.Add(new TextFieldDesign { Name = "UserName", DbColumn = "user_name" });
+                user.Fields.Add(new LoginAccountContractFieldDesign { Name = "LoginAccount", LoginName = "UserName", DbColumnSessionStamp = "session_stamp" });
+                d.AddModule(user);
+                Accounts = LoginAccountStore.Create(d, Db)!;
+            }
+
+            public static async Task<AccountDb> CreateAsync(params string[] userNames)
+            {
+                var db = new AccountDb();
+                await db.Db.ExecuteAsync(Ds, "CREATE TABLE app_users (id INTEGER PRIMARY KEY AUTOINCREMENT, user_name TEXT, session_stamp TEXT)", new());
+                foreach (var name in userNames) await db.Db.ExecuteAsync(Ds, "INSERT INTO app_users (user_name) VALUES (@p1)", new() { { "@p1", name } });
+                return db;
+            }
+
+            public async ValueTask DisposeAsync()
+            {
+                await Db.DisposeAsync();
+                SqliteTestDb.Delete(_file);
+            }
+        }
+
+        //T13: 外部 IdP のサインインで Cookie に印が積まれ、印を書き換える (全端末ログアウト) と次の要求から 401 になり Cookie も消える
+        [Test]
+        public async Task Session_ExternalSignInCarriesStamp_AndRevokeRejectsTheCookie()
+        {
+            await using var accounts = await AccountDb.CreateAsync("taro");
+            await using var idp = new FakeIdp();
+            idp.Claims["preferred_username"] = "taro";
+            await idp.StartAsync();
+            await using var app = new App();
+            await app.StartAsync(idp, [new OidcLoginProvider(new() { Name = "Test", ClientId = "client-1", Authority = "https://idp.test" })], sessionAccounts: accounts.Accounts);
+            FakeResolver.Accounts = accounts.Accounts;
+            var browser = new Browser(app, idp);
+
+            var callback = await browser.SignInThroughIdpAsync("/api/account/login/Test");
+            Assert.That(callback.Headers.Location!.ToString(), Is.EqualTo("/"), App.LastRemoteFailure);
+            Assert.That(await (await browser.GetAsync("/api/account/current_user")).Content.ReadAsStringAsync(), Is.EqualTo("1"));
+
+            //Cookie の印 = 解決で採番した行の印
+            var stamp = await (await browser.GetAsync("/api/account/session_stamp")).Content.ReadAsStringAsync();
+            Assert.That(stamp, Is.Not.Empty);
+            Assert.That(await accounts.Accounts.IsSessionValidAsync("1", stamp), Is.True);
+
+            //別のブラウザ (別端末) も同じ印でログインしている
+            var other = new Browser(app, idp);
+            await other.SignInThroughIdpAsync("/api/account/login/Test");
+            Assert.That(await (await other.GetAsync("/api/account/session_stamp")).Content.ReadAsStringAsync(), Is.EqualTo(stamp), "ログインのたびに印を変えない");
+
+            await accounts.Accounts.RevokeSessionsAsync("1");
+            var rejected = await browser.GetAsync("/api/account/current_user");
+            Assert.That(rejected.StatusCode, Is.EqualTo(HttpStatusCode.Unauthorized));
+            Assert.That(browser.HasAuthCookie, Is.False, "照合に落ちた Cookie は消す");
+            Assert.That((await other.GetAsync("/api/account/current_user")).StatusCode, Is.EqualTo(HttpStatusCode.Unauthorized), "全端末");
+
+            //新しいログインは新しい印で通る
+            await browser.SignInThroughIdpAsync("/api/account/login/Test");
+            Assert.That((await browser.GetAsync("/api/account/current_user")).StatusCode, Is.EqualTo(HttpStatusCode.OK));
+            Assert.That(await (await browser.GetAsync("/api/account/session_stamp")).Content.ReadAsStringAsync(), Is.Not.EqualTo(stamp));
+        }
+
+        //T14: モバイルのチケットは本人確認した時点の印を持つ。発行後に失効させると、交換 (200) で得た Cookie は次の要求で 401
+        [Test]
+        public async Task Session_MobileTicketIssuedBeforeRevokeGivesCookieThatIsRejected()
+        {
+            await using var accounts = await AccountDb.CreateAsync("taro");
+            await using var idp = new FakeIdp();
+            idp.Claims["preferred_username"] = "taro";
+            await idp.StartAsync();
+            await using var app = new App();
+            await app.StartAsync(idp, [new OidcLoginProvider(new() { Name = "Test", ClientId = "client-1", Authority = "https://idp.test" })], mobileCallback: "lowcodeapp://auth", sessionAccounts: accounts.Accounts);
+            FakeResolver.Accounts = accounts.Accounts;
+
+            async Task<string> TicketAsync()
+            {
+                var callback = await new Browser(app, idp).SignInThroughIdpAsync("/api/account/login/Test?mobile=true");
+                var location = callback.Headers.Location!.OriginalString;
+                Assert.That(location, Does.StartWith("lowcodeapp://auth?ticket="), App.LastRemoteFailure);
+                return location.Substring("lowcodeapp://auth?ticket=".Length);
+            }
+
+            //失効しなければチケットの Cookie は使える (印も積まれる)
+            var ok = new Browser(app, idp);
+            Assert.That((await ok.PostAsync("/api/account/login_ticket", new { Ticket = await TicketAsync() })).StatusCode, Is.EqualTo(HttpStatusCode.OK));
+            Assert.That((await ok.GetAsync("/api/account/current_user")).StatusCode, Is.EqualTo(HttpStatusCode.OK));
+            Assert.That(await (await ok.GetAsync("/api/account/session_stamp")).Content.ReadAsStringAsync(), Is.Not.Empty);
+
+            //チケット発行後に失効 → 交換は通る (交換時に最新を読み直さない) が、その Cookie は次の要求で落ちる
+            var ticket = await TicketAsync();
+            await accounts.Accounts.RevokeSessionsAsync("1");
+            var mobile = new Browser(app, idp);
+            Assert.That((await mobile.PostAsync("/api/account/login_ticket", new { Ticket = ticket })).StatusCode, Is.EqualTo(HttpStatusCode.OK));
+            Assert.That((await mobile.GetAsync("/api/account/current_user")).StatusCode, Is.EqualTo(HttpStatusCode.Unauthorized));
+            Assert.That(mobile.HasAuthCookie, Is.False);
+            Assert.That((await ok.GetAsync("/api/account/current_user")).StatusCode, Is.EqualTo(HttpStatusCode.Unauthorized), "先に交換した端末も落ちる");
+        }
+
+        //T16: nonce が合わない応答では Cookie もモバイルのチケットも出さない (発行は nonce 等の検証が終わった OnTicketReceived)
+        [Test]
+        public async Task NonceMismatch_IssuesNeitherCookieNorMobileTicket()
+        {
+            await using var idp = new FakeIdp { NonceOverride = "forged-nonce" };
+            idp.Claims["preferred_username"] = "taro";
+            await idp.StartAsync();
+            var sink = new CapturingAuditSink();
+            await using var app = new App();
+            await app.StartAsync(idp, [new OidcLoginProvider(new() { Name = "Test", ClientId = "client-1", Authority = "https://idp.test" })], mobileCallback: "lowcodeapp://auth", auditSink: sink);
+            FakeResolver.Users["taro"] = "U1";
+
+            var web = new Browser(app, idp);
+            var callback = await web.SignInThroughIdpAsync("/api/account/login/Test");
+            Assert.That(callback.StatusCode, Is.EqualTo(HttpStatusCode.Redirect));
+            Assert.That(callback.Headers.Location!.ToString(), Is.EqualTo("/login.html?error=remote_failure"));
+            Assert.That(web.HasAuthCookie, Is.False);
+            Assert.That(FakeResolver.Last, Is.Not.Null, "id_token の検証は通るので解決までは来る (nonce の検証はその後)");
+            Assert.That(sink.Events.Where(e => e.Action == "Account.ExternalLoginCallback").Select(e => e.Result), Is.EqualTo(new[] { AuditResult.Denied }), "成立は記録しない");
+
+            var mobile = new Browser(app, idp);
+            var mobileCallback = await mobile.SignInThroughIdpAsync("/api/account/login/Test?mobile=true");
+            Assert.That(mobileCallback.Headers.Location!.OriginalString, Is.EqualTo("lowcodeapp://auth?error=remote_failure"));
+            Assert.That(mobile.HasAuthCookie, Is.False);
+        }
+
+        /// <summary>書き込みが失敗するキャッシュ (共有キャッシュの障害)。モバイルのチケットを発行できない。</summary>
+        sealed class FailingCache : IDistributedCache
+        {
+            public byte[]? Get(string key) => null;
+            public Task<byte[]?> GetAsync(string key, CancellationToken token = default) => Task.FromResult<byte[]?>(null);
+            public void Refresh(string key) { }
+            public Task RefreshAsync(string key, CancellationToken token = default) => Task.CompletedTask;
+            public void Remove(string key) { }
+            public Task RemoveAsync(string key, CancellationToken token = default) => Task.CompletedTask;
+            public void Set(string key, byte[] value, DistributedCacheEntryOptions options) => throw new IOException("cache down");
+            public Task SetAsync(string key, byte[] value, DistributedCacheEntryOptions options, CancellationToken token = default) => throw new IOException("cache down");
+        }
+
+        //OnTicketReceived は認証ハンドラの try の外。そこで失敗しても (チケットの置き場の障害) 500 にせず、拒否として監査に残してアプリへ差し戻す
+        [Test]
+        public async Task Mobile_TicketIssueFailureGoesBackToAppWithError()
+        {
+            await using var idp = new FakeIdp();
+            idp.Claims["preferred_username"] = "taro";
+            await idp.StartAsync();
+            var sink = new CapturingAuditSink();
+            await using var app = new App();
+            await app.StartAsync(idp, [new OidcLoginProvider(new() { Name = "Test", ClientId = "client-1", Authority = "https://idp.test" })], mobileCallback: "lowcodeapp://auth",
+                auditSink: sink, cache: new FailingCache());
+            FakeResolver.Users["taro"] = "U1";
+            var browser = new Browser(app, idp);
+
+            var callback = await browser.SignInThroughIdpAsync("/api/account/login/Test?mobile=true");
+            Assert.That(callback.StatusCode, Is.EqualTo(HttpStatusCode.Redirect));
+            Assert.That(callback.Headers.Location!.OriginalString, Is.EqualTo("lowcodeapp://auth?error=remote_failure"));
+            Assert.That(browser.HasAuthCookie, Is.False);
+            Assert.That(FakeResolver.Last, Is.Not.Null, "解決までは済んでいる");
+            var denied = sink.Events.Single(e => e.Action == "Account.ExternalLoginCallback");
+            Assert.That(denied.Result, Is.EqualTo(AuditResult.Denied));
+            Assert.That(denied.Detail, Does.StartWith("Provider=Test; Error=remote_failure; ").And.Contain("cache down"));
+        }
+
+        /// <summary>Configure で OpenID Connect のイベントに独自処理を入れるプロバイダ (独自 IdP の継承の形)。</summary>
+        sealed class HookingProvider : OidcLoginProvider
+        {
+            public HookingProvider() : base(new OidcLoginSettings { Name = "Hook", ClientId = "client-1", Authority = "https://idp.test" }) { }
+            public List<string> Log { get; } = new();
+            public bool HandleOnTokenValidated { get; set; }
+            public bool HandleOnTicketReceived { get; set; }
+
+            public override void Configure(OpenIdConnectOptions options)
+            {
+                base.Configure(options);
+                options.Events.OnTokenValidated = ctx =>
+                {
+                    //共通処理 (ユーザー解決) より前: まだ IdP のプリンシパルで、解決も呼ばれていない
+                    Log.Add($"provider:TokenValidated user={LoginPrincipal.GetUserId(ctx.Principal)} resolved={FakeResolver.Last != null}");
+                    if (HandleOnTokenValidated) { ctx.Response.Redirect("/login.html?error=custom"); ctx.HandleResponse(); }
+                    return Task.CompletedTask;
+                };
+                options.Events.OnTicketReceived = ctx =>
+                {
+                    //共通の OnTokenValidated の後: プリンシパルはアプリのユーザーに差し替え済み
+                    Log.Add($"provider:TicketReceived user={LoginPrincipal.GetUserId(ctx.Principal)}");
+                    if (HandleOnTicketReceived) { ctx.Response.Redirect("/login.html?error=custom"); ctx.HandleResponse(); }
+                    return Task.CompletedTask;
+                };
+            }
+        }
+
+        //T17: プロバイダが Configure でイベントを設定しても共通処理は後ろで動く (順: プロバイダ → 共通)。プロバイダが応答を処理したら共通処理は走らない
+        [Test]
+        public async Task ProviderEvents_RunBeforeCommonHandling()
+        {
+            await using var idp = new FakeIdp();
+            idp.Claims["preferred_username"] = "taro";
+            await idp.StartAsync();
+            var provider = new HookingProvider();
+            await using var app = new App();
+            await app.StartAsync(idp, [provider]);
+            FakeResolver.Users["taro"] = "U1";
+
+            var browser = new Browser(app, idp);
+            var callback = await browser.SignInThroughIdpAsync("/api/account/login/Hook");
+            Assert.That(callback.Headers.Location!.ToString(), Is.EqualTo("/"), App.LastRemoteFailure);
+            Assert.That(browser.HasAuthCookie, Is.True, "共通処理が Cookie を発行する");
+            Assert.That(await (await browser.GetAsync("/api/account/current_user")).Content.ReadAsStringAsync(), Is.EqualTo("U1"));
+            Assert.That(provider.Log, Is.EqualTo(new[] { "provider:TokenValidated user= resolved=False", "provider:TicketReceived user=U1" }));
+        }
+
+        [Test]
+        public async Task ProviderEvents_HandledByProvider_SkipsCommonHandling()
+        {
+            await using var idp = new FakeIdp();
+            idp.Claims["preferred_username"] = "taro";
+            await idp.StartAsync();
+            var provider = new HookingProvider { HandleOnTokenValidated = true };
+            await using var app = new App();
+            await app.StartAsync(idp, [provider]);
+            FakeResolver.Users["taro"] = "U1";
+
+            //OnTokenValidated で処理済み: 解決も Cookie も無い
+            var browser = new Browser(app, idp);
+            var callback = await browser.SignInThroughIdpAsync("/api/account/login/Hook");
+            Assert.That(callback.Headers.Location!.ToString(), Is.EqualTo("/login.html?error=custom"));
+            Assert.That(browser.HasAuthCookie, Is.False);
+            Assert.That(FakeResolver.Last, Is.Null, "共通のユーザー解決は走らない");
+
+            //OnTicketReceived で処理済み: 解決は済んでいるが Cookie は出ない
+            provider.HandleOnTokenValidated = false;
+            provider.HandleOnTicketReceived = true;
+            var second = new Browser(app, idp);
+            var callback2 = await second.SignInThroughIdpAsync("/api/account/login/Hook");
+            Assert.That(callback2.Headers.Location!.ToString(), Is.EqualTo("/login.html?error=custom"));
+            Assert.That(second.HasAuthCookie, Is.False);
+            Assert.That(FakeResolver.Last, Is.Not.Null);
         }
     }
 }

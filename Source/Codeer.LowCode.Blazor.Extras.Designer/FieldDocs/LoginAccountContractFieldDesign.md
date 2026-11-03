@@ -5,9 +5,9 @@
 
 - 役割 (自モジュールのフィールド参照): ログイン ID / 外部 IdP の突き合わせ / 有効フラグ / 表示名 / メール二要素の送信先
 - パスワードの入力フィールド (`PasswordField`): 指定すると、保存時にサーバーがその平文からハッシュ / ソルトを作って下の列に書く。**PasswordHashField は要らない**
-- ログイン用の DB 列: パスワードのハッシュ / ソルト (書き込み専用列)、認証アプリ (TOTP) の 3 列 (列名だけの宣言。サーバーのログイン処理が直接読み書きする)
+- ログイン用の DB 列: パスワードのハッシュ / ソルト (書き込み専用列)、セッションの印 (書き込み専用列。設定すると発行済みの Cookie をサーバー側で失効できる)、認証アプリ (TOTP) の 3 列 (列名だけの宣言。サーバーのログイン処理が直接読み書きする)
 
-UI は持たない。データはハッシュ / ソルトの 2 列分だけで、保存時にサーバーが差し込む (クライアントは送受信しない)。
+UI は持たない。データはハッシュ / ソルト / 印の列分だけで、保存時にサーバーが差し込む (クライアントは送受信しない)。
 
 テンプレート (Starter の Cookie ホスト) のログインはこの契約でユーザー行を扱う:
 
@@ -16,6 +16,7 @@ UI は持たない。データはハッシュ / ソルトの 2 列分だけで�
 - `IsActive` が偽の行はどちらの経路でもログインできない (退職・停止)
 - `DisplayName` は画面のユーザー表示 (Cookie の Name) と二要素認証の QR のアカウント名
 - `TwoFactorEmail` を設定すると、メールのワンタイムコードによる二要素認証になる (TOTP の列も設定されていれば認証アプリが優先)
+- `DbColumnSessionStamp` を設定すると、ログインで Cookie にその行の印を積み、リクエストごとに照合する。パスワードの変更・`IsActive` を偽にする保存で印が書き換わり、それまでの Cookie は全部その場で使えなくなる
 - 初回起動時にユーザーが 0 件なら `admin` / `admin` を作る (パスワードの列があるときだけ。表示名・有効フラグの列があれば埋める)
 
 契約が無いとサーバーはユーザー行を解決できず、ログインできない (`LoginAccountStore.Create` が null)。
@@ -41,6 +42,7 @@ UI は持たない。データはハッシュ / ソルトの 2 列分だけで�
 | プロパティ (表示名) | 内容 |
 |---|---|
 | DbColumnPasswordHash / DbColumnPasswordSalt (パスワードのハッシュ列 / ソルト列) | ID/パスワードのログインで照合する列 (書き込み専用)。`PasswordField` を指定していれば保存時にここへ書く。両方設定するか両方空 (空 = パスワードログイン無し = 外部 IdP 専用)。デザインチェックで片方だけはエラー |
+| DbColumnSessionStamp (セッションの印の列 (発行済み Cookie の失効)) | ログイン済みセッションの失効に使う列 (書き込み専用。TEXT。DDL 生成の対象)。値はサーバーだけが作る (ログイン時に NULL なら採番。パスワードの変更・`IsActive` を偽にする保存で新しい値に書き換え。管理者が特定のユーザーを全端末からログアウトさせるボタンは [SessionRevokeButtonField](SessionRevokeButtonFieldDesign.md))。空なら照合しない (Cookie は有効期限まで使える)。列を足した時点で、それまでの Cookie (印を持たない) は無効になり全員が再ログインする。アプリの保存を通さず SQL でパスワードや有効フラグを変えるときは、この列も新しい乱数に書き換える |
 | DbColumnTotpSecret / DbColumnTotpConfirmed / DbColumnTotpLastTimestep (認証アプリ: 秘密鍵列 / 確認済み列 / 最終タイムステップ列) | 認証アプリ (TOTP) の二要素認証。3 列そろえて設定すると有効 (初回ログインで QR を登録)。空 = 無効。1〜2 列だけはエラー。列名だけの宣言で、通常の読み書きには乗らない (DDL 生成の対象外なので下の DDL で作る) |
 
 列は実テーブルに存在するかデザインチェックで検証される。
@@ -50,6 +52,7 @@ UI は持たない。データはハッシュ / ソルトの 2 列分だけで�
 ```sql
 hash               TEXT NULL,     -- パスワードのハッシュ (base64)
 salt               TEXT NULL,     -- ソルト (base64)
+session_stamp      TEXT NULL,     -- セッションの印 (発行済み Cookie を失効させるときだけ)
 totp_secret        TEXT NULL,     -- 認証アプリを使うときだけ
 totp_confirmed     INTEGER NULL,
 totp_last_timestep INTEGER NULL
@@ -67,6 +70,7 @@ totp_last_timestep INTEGER NULL
   "PasswordField": "Password",
   "DbColumnPasswordHash": "hash",
   "DbColumnPasswordSalt": "salt",
+  "DbColumnSessionStamp": "session_stamp",
   "DbColumnTotpSecret": "totp_secret",
   "DbColumnTotpConfirmed": "totp_confirmed",
   "DbColumnTotpLastTimestep": "totp_last_timestep",
@@ -86,7 +90,8 @@ var login = new PasswordLogin(designData, dataService.DbAccess, cache, config.Lo
 var result = await login.VerifyAsync(loginInfo.Id, loginInfo.Password, loginInfo.TwoFactorCode);   // Ok なら result.Account でサインイン
 var accounts = LoginAccountStore.Create(designData, dataService.DbAccess);   // 契約が無ければ null
 var account2 = accounts == null ? null : await accounts.FindByExternalLoginNameAsync(identity.LoginName);   // 外部 IdP の解決
-// サインインは LoginPrincipal.Create(account.UserId, account.DisplayName)。account.LoginName → TOTP の QR
+// サインインは LoginPrincipal.Create(account.UserId, account.DisplayName, sessionStamp: account.SessionStamp)。account.LoginName → TOTP の QR
+// Cookie 認証の OnValidatePrincipal で LoginSessionValidation.ValidatePrincipalAsync(context, accounts) (印の照合)、全端末ログアウトは accounts.RevokeSessionsAsync(userId)
 ```
 
 ## Script

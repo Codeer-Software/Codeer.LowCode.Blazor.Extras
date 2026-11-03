@@ -645,6 +645,9 @@
   <data name="LoginAccountContractDbColumnTotpLastTimestep" xml:space="preserve">
     <value>認証アプリ: 最終タイムステップ列</value>
   </data>
+  <data name="LoginAccountContractDbColumnSessionStamp" xml:space="preserve">
+    <value>セッションの印の列 (発行済み Cookie の失効)</value>
+  </data>
   <data name="LoginAccountCheck_PasswordColumnsPair" xml:space="preserve">
     <value>パスワードのハッシュ列とソルト列は両方設定するか、どちらも空にしてください。</value>
   </data>
@@ -1913,5 +1916,38 @@
   </data>
   <data name="DesignCheck_Permission_row_conditions_are_not_applied_to_job_execution_" xml:space="preserve">
     <value>PermissionField '{1}' の行データを参照する条件は、JobTriggerField '{0}' のジョブの実行可否には適用されません (画面ではその行でボタンが押せなくなるだけです)。CurrentUser を参照する条件を使用してください。</value>
+  </data>
+  <data name="SessionRevokeButtonField" xml:space="preserve">
+    <value>全端末ログアウトボタン</value>
+  </data>
+  <data name="SessionRevokeButtonText" xml:space="preserve">
+    <value>ボタンの文字</value>
+  </data>
+  <data name="SessionRevokeButtonConfirmMessage" xml:space="preserve">
+    <value>確認メッセージ</value>
+  </data>
+  <data name="SessionRevokeButton_DefaultText" xml:space="preserve">
+    <value>全端末からログアウト</value>
+  </data>
+  <data name="SessionRevokeButton_Confirm" xml:space="preserve">
+    <value>このユーザーをすべての端末からログアウトさせます。よろしいですか？</value>
+  </data>
+  <data name="SessionRevokeButton_Action" xml:space="preserve">
+    <value>ログアウトさせる</value>
+  </data>
+  <data name="SessionRevokeButton_Done" xml:space="preserve">
+    <value>全端末からログアウトさせました。</value>
+  </data>
+  <data name="SessionRevokeButton_Failed" xml:space="preserve">
+    <value>ログアウトに失敗しました。</value>
+  </data>
+  <data name="SessionRevokeCheck_NotOnUserModule" xml:space="preserve">
+    <value>SessionRevokeButtonField はログインユーザーモジュール (AppSettings.CurrentUserModuleDesignName) に置いてください。</value>
+  </data>
+  <data name="SessionRevokeCheck_ColumnsMismatch" xml:space="preserve">
+    <value>DbColumnSessionStamp はログインアカウント契約の DbColumnSessionStamp と同じ列にしてください。</value>
+  </data>
+  <data name="InvalidInput" xml:space="preserve">
+    <value>入力内容に誤りがあります。</value>
   </data>
 </root>

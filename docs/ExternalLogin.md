@@ -88,7 +88,13 @@ IdP の種類ごとに独立したセクション (メールの `Smtp` / `GraphA
    ```
 3. **ユーザー解決** (`ExternalLoginUserResolver.cs`) — IdP が確認した本人 (`ExternalLoginIdentity`: `LoginName` / `Subject` / `Email` / `DisplayName` / 全クレーム) を
    ユーザーテーブルの 1 行 (`ExternalLoginUser(UserId, UserName)`) にする。テンプレートは **事前登録制** (ユーザーモジュールの `LoginAccountContractField` の ExternalLoginName の列 (空なら LoginName の列) と一致し、IsActive が偽でない行があるときだけ許可。`LoginAccountStore.FindByExternalLoginNameAsync`)。
-   自動作成・招待制・`Subject` での紐付けはこのクラスを書き換える。`null` を返すとサインインしない
+   自動作成・招待制・`Subject` での紐付けはこのクラスを書き換える。`null` を返すとサインインしない。
+   `ExternalLoginUser` の `SessionStamp` には解決した行のセッションの印 (`LoginAccount.SessionStamp`) を渡す (テンプレートは渡している。渡さないと、契約に印の列があるときその Cookie は照合に落ちる)
+
+OpenID Connect ハンドラのイベント (`OnTokenValidated` / `OnTicketReceived` / `OnRemoteFailure`) は、プロバイダの `Configure` が設定したものを残し、その後ろに共通の処理を足す
+(順序はプロバイダ → 共通。プロバイダが応答を処理済み・失敗にしていれば共通の処理は走らない)。
+ユーザーの解決は `OnTokenValidated` (id_token の署名・発行者・期限の検証の後)、Cookie の発行・監査ログへの成立の記録・ネイティブアプリのチケット発行は
+`OnTicketReceived` (nonce・state など OpenID Connect の検証が全部終わった後) で行う。
 
 `AccountController` のエンドポイント (API 契約。login.html はこれを使う参考実装で、ブランディングで自由に触ってよい):
 
@@ -100,6 +106,9 @@ IdP の種類ごとに独立したセクション (メールの `Smtp` / `GraphA
 | `POST api/account/logout` | `{ redirect }` が返ったらそこへ遷移する (IdP セッションの終了はブラウザ遷移が要るため二段構え)。`?mobile=true` は Cookie 破棄のみ |
 | `GET api/account/logout/{provider}` | Cookie 破棄 + IdP ログアウト → `/login.html` |
 
+発行済みの Cookie の失効 (パスワード変更・停止・管理者による全端末ログアウト) は [認証の全体像](Authentication.md) の「ログイン済みセッションの失効: セッションの印」。
+IdP 側でアカウントを停止してもアプリの Cookie は自動では失効しないので、アプリ側でも停止 (IsActive を偽) か SessionRevokeButtonField で失効させる。
+
 失敗時は `/login.html?error=<理由>` に戻る: `remote_failure` (IdP 側キャンセル等) / `invalid_claims` / `guest_not_allowed` / `domain_not_allowed` / `user_not_registered`。
 
 ## セキュリティ上の既定
@@ -109,7 +118,7 @@ IdP の種類ごとに独立したセクション (メールの `Smtp` / `GraphA
 - Google / Cognito: `email_verified == true` のメールだけ。汎用 OIDC もユーザー名を `email` から取るときは `email_verified == false` を拒否する (クレームを返さない IdP は判定できないので通す)
 - `Scopes` に `openid` が無ければ自動で足す (無いと id_token が返らず OIDC として成立しない)
 - Authorization Code + PKCE。クレーム名は id_token のまま (`MapInboundClaims = false`)。IdP 側の失敗は詳細を漏らさずログイン画面へ
-- Cookie にはパスワードログインと同形の最小クレーム (`Name` / `NameIdentifier`) と経路 (`idp`) だけを積む (`LoginPrincipal`。読むときも同じクラス)。IdP のトークンは Cookie の認証プロパティに保持 (ログアウトの `id_token_hint` 用)
+- Cookie にはパスワードログインと同形の最小クレーム (`Name` / `NameIdentifier`) と経路 (`idp`)、契約に印の列があればセッションの印 (`session_stamp`) だけを積む (`LoginPrincipal`。読むときも同じクラス)。IdP のトークンは Cookie の認証プロパティに保持 (ログアウトの `id_token_hint` 用)
 
 ## ネイティブアプリ (MAUI)
 
@@ -118,6 +127,10 @@ Web と同じサーバー実装を使う。違うのは「発行された Cookie
 1. アプリは `WebAuthenticator` でシステムブラウザに `api/account/login/{provider}?mobile=true` を開く (埋め込み WebView は Google が拒否する)
 2. サーバーは通常どおり IdP で本人確認し、Cookie の代わりに使い捨てチケット (既定 2 分・1 回限り) を `MobileLoginCallbackUrl` (`lowcodeapp://auth?ticket=…`) へ返す
 3. アプリは `POST api/account/login_ticket` でチケットを Cookie に交換する
+
+チケットは本人確認した時点のセッションの印を持ち、交換で発行する Cookie にそのまま積む (交換時に読み直さない)。
+交換した Cookie も失効の対象で、チケットの発行後に失効させていれば、交換した Cookie は次の要求で落ちる。
+テンプレートのアプリは API が 401 を返すとログイン画面へ戻る。
 
 テンプレート側: `Services/ServerSettings.LoginCallbackUrl` (appsettings `Server:LoginCallbackUrl`)、Android `WebAuthenticatorCallbackActivity` の `DataScheme`、
 iOS `Info.plist` の `CFBundleURLTypes` を同じスキームにそろえる。

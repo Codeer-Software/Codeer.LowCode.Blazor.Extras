@@ -1,0 +1,20 @@
+@using Codeer.LowCode.Blazor.Components
+@using Codeer.LowCode.Blazor.Components.Fields
+@using Codeer.LowCode.Blazor.Extras.Fields
+@using Microsoft.AspNetCore.Components.Web
+@inherits FieldComponentBase<SessionRevokeButtonField>
+
+@* 印の列は書き込み専用なのでボタンだけ。新規行では出さない。デザインモードでは形だけ出す *@
+@if (IsDesignMode)
+{
+  <button type="button" class="btn btn-outline-danger btn-sm" disabled data-system="session-revoke">@Field.ButtonText</button>
+}
+else if (Field.CanRevoke)
+{
+  <button type="button" class="btn btn-outline-danger btn-sm" style="@Field.GetOwnStyleString()" disabled="@Field.IsBusy"
+          @onclick="@(async () => await Field.RevokeAsync())" data-system="session-revoke">@Field.ButtonText</button>
+}
+
+@code {
+  bool IsDesignMode => Field.Services.AppInfoService.IsDesignMode;
+}

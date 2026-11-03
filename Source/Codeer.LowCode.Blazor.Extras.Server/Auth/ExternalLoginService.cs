@@ -109,27 +109,29 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Auth
             return await p.SignOutAsync(controller, SchemeOf(p.Name), redirectUri);
         }
 
-        [Obsolete("Use LoginPrincipal.Create(user.UserId, user.UserName, provider).")]
+        [Obsolete("Use LoginPrincipal.Create(user.UserId, user.UserName, provider, user.SessionStamp).")]
         public ClaimsPrincipal CreatePrincipal(ExternalLoginUser user, string provider)
-            => LoginPrincipal.Create(user.UserId, user.UserName, provider);
+            => LoginPrincipal.Create(user.UserId, user.UserName, provider, user.SessionStamp);
 
         sealed class MobileTicket
         {
             public string UserId { get; set; } = string.Empty;
             public string UserName { get; set; } = string.Empty;
             public string Provider { get; set; } = string.Empty;
+            //本人確認した時点のセッションの印。交換で発行する Cookie に積む (交換時に最新を読み直さない = 発行後に失効したチケットは Cookie にしても次の要求で落ちる)
+            public string? SessionStamp { get; set; }
         }
 
         /// <summary>モバイル用の使い捨てチケットを発行し、コールバック URL を返す。</summary>
         internal async Task<string> IssueMobileTicketAsync(ExternalLoginUser user, string provider)
         {
             var ticket = Base64Url(RandomNumberGenerator.GetBytes(32));
-            var value = JsonSerializer.Serialize(new MobileTicket { UserId = user.UserId, UserName = user.UserName, Provider = provider });
+            var value = JsonSerializer.Serialize(new MobileTicket { UserId = user.UserId, UserName = user.UserName, Provider = provider, SessionStamp = user.SessionStamp });
             await _cache.SetStringAsync(TicketKeyPrefix + ticket, value, new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = _options.MobileTicketLifetime });
             return MobileCallback("ticket", ticket);
         }
 
-        /// <summary>チケットを 1 回だけユーザーに引き換える。期限切れ・不正・使用済みは null。アプリはこれで Cookie を発行する。</summary>
+        /// <summary>チケットを 1 回だけユーザーに引き換える。期限切れ・不正・使用済みは null。アプリはこれで Cookie を発行する (User.SessionStamp も積む)。</summary>
         public async Task<(ExternalLoginUser User, string Provider)?> RedeemMobileTicketAsync(string? ticket)
         {
             if (string.IsNullOrEmpty(ticket) || ticket.Length > 128) return null;
@@ -139,7 +141,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Auth
             await _cache.RemoveAsync(key);
             var t = JsonSerializer.Deserialize<MobileTicket>(value);
             if (t == null || string.IsNullOrEmpty(t.UserId)) return null;
-            return (new ExternalLoginUser(t.UserId, t.UserName), t.Provider);
+            return (new ExternalLoginUser(t.UserId, t.UserName, t.SessionStamp), t.Provider);
         }
 
         internal string LoginErrorUrl(string error) => $"{_options.LoginPath}?error={Uri.EscapeDataString(error)}";

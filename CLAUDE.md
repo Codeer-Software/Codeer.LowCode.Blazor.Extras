@@ -277,7 +277,9 @@ Extras の機能 (メール・ジョブ・承認・AI チャット・意味検�
 #### LoginAccountContractField - ログインアカウント契約
 - **状態**: 実装済み (Extras.Designer FieldDocs/LoginAccountContractFieldDesign.md)
 - **機能**: ユーザーモジュール (CurrentUserModule) に置き、行がログインアカウントとしてどう振る舞うかを宣言する契約フィールド。役割 (フィールド参照): LoginName (必須) / ExternalLoginName (外部 IdP の突き合わせ。空なら LoginName) / IsActive (偽なら拒否) / DisplayName (Cookie の Name と TOTP の QR) / TwoFactorEmail (メール二要素の送信先)。ログイン用の書き込み専用列: DbColumnPasswordHash + Salt (照合用。空 = パスワードログイン無し)、DbColumnTotp* 3 列 (認証アプリの二要素。空 = 無効)。テンプレートのログイン (Extras.Server `PasswordLogin` = 検証の流れ 1 回呼び: 契約の確認 → `LoginLockout` → `LoginAccountStore.VerifyPasswordAsync` → `TotpLogin` / `EmailOtpLogin` → 結果 `PasswordLoginResult{Status(NotAvailable/Locked/Unauthorized/TwoFactor/Ok), Account(Ok だけ), Response(クライアントへそのまま), Detail, IsDenied}`。HTTP・監査・Cookie はホストの AccountController。★2026-10-30 ホストの Login 80 行をここへ) はこの契約だけを見る。PasswordHashField は「書く側」として別に置く
-- **ファイル**: `Designs/LoginAccountContractFieldDesign.cs` (`ContractFieldDesignBase` 派生。UI・データ無し)
+- **セッションの印 (ログイン済み Cookie の失効。SecurityStamp と同じ考え)**: 書き込み専用列 `DbColumnSessionStamp` (`[DbColumn(SessionStamp, IsWriteOnly = true)]` = DDL 生成に載る。TEXT。空 = 照合しない = 従来どおり。デザインチェックは列の存在だけ。`HasSessionStamp`)。値は `Services/SessionStamp.Create()` (サーバーだけが作る)。ログインで `LoginAccountStore` が行の印を読み (NULL なら採番 = 移行スクリプト不要)、`LoginPrincipal.Create(..., sessionStamp)` が `session_stamp` クレームに積む。リクエストごとに `LoginSessionValidation.ValidatePrincipalAsync` (ホストが Cookie の OnValidatePrincipal から呼ぶ) が `IsSessionValidAsync` で主キー 1 行を読んで照合 (キャッシュ無し = 遅延ゼロ・複数インスタンスでも DB が正本)。行無し・停止・不一致・印の無い Cookie は RejectPrincipal + SignOut (401・Cookie 削除。列を足した時点で全員再ログイン)、DB 障害は例外のまま 500 (Cookie は消さない)
+- **印の書き換え (= 全端末の Cookie 失効)**: パスワード変更 (契約の PasswordField → `ApplyPasswordHash` が契約のデータに新しい印も入れる・戻り値 bool / 同じ表の別モジュールの PasswordHashField → `PasswordHashingModuleDataIO` が `RevokeSessionsAsync`)、ユーザーモジュールの保存で IsActive 偽 (同上。同じトランザクション)、管理者による全端末ログアウト (SessionRevokeButtonField が印を NULL に。次のログインで採番)。表示名だけの保存では変えない。保証は「書き換えた保存のコミット後の次の認証チェックから拒否」(全端末一括・処理中のリクエストは止めない・新しいログインは止めない)。外部 IdP は `ExternalLoginUser.SessionStamp`、モバイルチケットも本人確認時の印を持つ。直接 SQL でパスワード / 有効フラグを変えるときは印も新しい乱数に (契約)
+- **ファイル**: `Designs/LoginAccountContractFieldDesign.cs` (`ContractFieldDesignBase` 派生。UI 無し)、`Data/LoginAccountContractFieldData.cs` (PasswordHash / PasswordSalt / SessionStamp)、`Services/SessionStamp.cs`、Extras.Server `Auth/LoginSessionValidation.cs`
 
 #### EmailOtpLogin - 二要素認証 (メールのワンタイムコード)
 - **状態**: 実装済み (docs/TwoFactorLogin.md)。Extras.Server `Auth/EmailOtpLogin.cs` (フィールドは無し)
@@ -289,6 +291,11 @@ Extras の機能 (メール・ジョブ・承認・AI チャット・意味検�
 - **機能**: ログインユーザーモジュールの詳細画面に置き、表示中の行のユーザーの認証アプリ (TOTP) 登録を解除する。TOTP の 3 列を `DbColumn(IsWriteOnly)` で持ち、解除は「3 列を空にするデータ」を通常の Submit で書く (SubmitButtonField と同じく Module.SubmitAsync)。権限は CLB の権限モデル (UserWrite / DataWrite 条件) がそのまま効くのでサーバーに専用の入口は無い。列は契約と同じでなければならない (デザインチェック)。登録済みかは表示しない (書き込み専用列は SELECT されない)
 - **ファイル**: `Designs/TotpResetButtonFieldDesign.cs`, `Data/TotpResetButtonFieldData.cs`, `Fields/TotpResetButtonField.cs`, `Components/TotpResetButtonFieldComponent.razor`
 
+#### SessionRevokeButtonField - 全端末ログアウトボタン (管理者用)
+- **状態**: 実装済み (Extras.Designer FieldDocs/SessionRevokeButtonFieldDesign.md)
+- **機能**: ログインユーザーモジュールの詳細画面に置き、表示中の行のユーザーを全端末からログアウトさせる。セッションの印の列を `DbColumn(IsWriteOnly)` で持ち、「印を NULL にするデータ」を通常の Submit で書く (TotpResetButtonField と同じ形。Module.SubmitAsync)。印が NULL の行は照合で落ち、次のログインで採番される。権限は CLB の権限モデル (UserWrite / DataWrite 条件) がそのまま効くのでサーバーに専用の入口は無い。列は契約の DbColumnSessionStamp と同じでなければならない (デザインチェック)
+- **ファイル**: `Designs/SessionRevokeButtonFieldDesign.cs`, `Data/SessionRevokeButtonFieldData.cs`, `Fields/SessionRevokeButtonField.cs`, `Components/SessionRevokeButtonFieldComponent.razor`
+
 #### MyTotpResetButtonField - 自分の認証アプリ解除ボタン
 - **状態**: 実装済み (Extras.Designer FieldDocs/MyTotpResetButtonFieldDesign.md)
 - **機能**: ログイン中の自分の認証アプリ (TOTP) 登録を解除するボタン。表示中の行とは無関係で、どのモジュールにも置ける (設定画面・マイページ)。状態はサーバー問い合わせ (列は書き込み専用)
@@ -296,7 +303,7 @@ Extras の機能 (メール・ジョブ・承認・AI チャット・意味検�
 - **ファイル**: `Designs/MyTotpResetButtonFieldDesign.cs`, `Fields/MyTotpResetButtonField.cs`, `Fields/TotpResetClient.cs`, `Components/MyTotpResetButtonFieldComponent.razor`
 
 #### LoginAccountContractField のパスワード書き込み (2026-09-07)
-- 契約の `PasswordField` (同モジュールの PasswordField 参照) を指定すると、`PasswordHashHelper.ApplyPasswordHash` が契約のデータ (`LoginAccountContractFieldData` = PasswordHash / PasswordSalt) を差し込み、本体が契約の書き込み専用列へ書く。ユーザーモジュールに PasswordHashField は不要 (併用はデザインチェック エラー・ヘルパーも契約を優先)
+- 契約の `PasswordField` (同モジュールの PasswordField 参照) を指定すると、`PasswordHashHelper.ApplyPasswordHash` が契約のデータ (`LoginAccountContractFieldData` = PasswordHash / PasswordSalt。印の列があれば新しい SessionStamp も) を差し込み、本体が契約の書き込み専用列へ書く。ユーザーモジュールに PasswordHashField は不要 (併用はデザインチェック エラー・ヘルパーも契約を優先)
 - TOTP の 3 列は契約の列名プロパティだけ (DbColumn 属性なし)。本体の書き込みは「送られたフィールドの DbColumn メンバーを全部書く」ので、同じデータに載せるとパスワード保存で NULL 上書きされるため。`ContractFieldDesignBase.GetRoleProperties` は CandidateType.DbColumn のプロパティを役割から除外する
 
 #### PasswordHashField - パスワードハッシュ

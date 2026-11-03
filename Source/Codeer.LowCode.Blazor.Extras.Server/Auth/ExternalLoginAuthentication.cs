@@ -22,10 +22,17 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Auth
     ///     .AddExternalLogins(SystemConfig.Instance.ExternalLogins, o => o.MobileCallbackUrl = "lowcodeapp://auth");
     /// builder.Services.AddScoped&lt;IExternalLoginUserResolver, ExternalLoginUserResolver&gt;();
     /// </code>
+    /// OpenID Connect ハンドラのイベントは、プロバイダの <see cref="IExternalLoginProvider.Configure"/> が設定したものを残して後ろに足す
+    /// (順: プロバイダ → ここ。プロバイダが応答を処理済み / 失敗にしていればここは走らない)。
+    /// ユーザーの解決は OnTokenValidated (id_token の署名・発行者・期限の検証の後)、Cookie の発行とネイティブアプリのチケット発行は
+    /// OnTicketReceived (nonce・state など OpenID Connect の検証が全部終わった後) で行う。
     /// </summary>
     public static class ExternalLoginAuthentication
     {
         static readonly Regex ProviderName = new("^[A-Za-z0-9_-]+$", RegexOptions.Compiled);
+
+        //コールバックの 1 リクエストの中で OnTokenValidated → OnTicketReceived に渡す (Cookie には残さない)
+        const string LoginNameItem = "codeer.extlogin.loginname";
 
         /// <summary>
         /// プロバイダごとに OpenID Connect スキーム ("ExternalLogin.{Name}") を登録する。どのプロバイダを並べるかはアプリの対応表 (テンプレートの ExternalLoginTable) が決める。
@@ -56,15 +63,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Auth
                 {
                     ApplyDefaults(o, provider.Name);
                     provider.Configure(o);
-                    o.Events = new OpenIdConnectEvents
-                    {
-                        OnTokenValidated = ctx => OnTokenValidatedAsync(ctx, provider),
-                        OnRemoteFailure = ctx =>
-                        {
-                            //IdP 側キャンセル・state 不一致など。詳細は漏らさずログイン画面へ差し戻す (理由は監査ログにだけ残す)
-                            return FailAsync(ctx.HttpContext, ctx.HandleResponse, provider.Name, ExternalLoginError.RemoteFailure, IsMobile(ctx.Properties), ctx.Failure?.Message);
-                        },
-                    };
+                    ChainEvents(o.Events, provider);
                 });
             }
             return builder;
@@ -85,9 +84,37 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Auth
             options.SaveTokens = true;
         }
 
+        //プロバイダが設定したイベントの後ろに共通処理を足す。プロバイダが Result を決めていれば (HandleResponse / Fail / Skip) 共通処理は走らない
+        static void ChainEvents(OpenIdConnectEvents events, IExternalLoginProvider provider)
+        {
+            var tokenValidated = events.OnTokenValidated;
+            events.OnTokenValidated = async ctx =>
+            {
+                await tokenValidated(ctx);
+                if (ctx.Result != null) return;
+                await OnTokenValidatedAsync(ctx, provider);
+            };
+            var ticketReceived = events.OnTicketReceived;
+            events.OnTicketReceived = async ctx =>
+            {
+                await ticketReceived(ctx);
+                if (ctx.Result != null) return;
+                await OnTicketReceivedAsync(ctx, provider);
+            };
+            var remoteFailure = events.OnRemoteFailure;
+            events.OnRemoteFailure = async ctx =>
+            {
+                await remoteFailure(ctx);
+                if (ctx.Result != null) return;
+                //IdP 側キャンセル・state 不一致など。詳細は漏らさずログイン画面へ差し戻す (理由は監査ログにだけ残す)
+                await FailAsync(ctx.HttpContext, ctx.HandleResponse, provider.Name, ExternalLoginError.RemoteFailure, IsMobile(ctx.Properties), ctx.Failure?.Message);
+            };
+        }
+
         static bool IsMobile(AuthenticationProperties? properties)
             => properties?.Items.ContainsKey(ExternalLoginService.MobileItem) == true;
 
+        //id_token の検証が通った時点: 本人をアプリのユーザーに解決してプリンシパルを差し替える。発行はまだ (nonce 等の検証がこの後にある)
         static async Task OnTokenValidatedAsync(TokenValidatedContext ctx, IExternalLoginProvider provider)
         {
             var mobile = IsMobile(ctx.Properties);
@@ -107,20 +134,39 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Auth
                 return;
             }
 
-            var service = ctx.HttpContext.RequestServices.GetRequiredService<ExternalLoginService>();
-            if (mobile)
+            ctx.HttpContext.Items[LoginNameItem] = identity.LoginName;
+            ctx.Principal = LoginPrincipal.Create(user.UserId, user.UserName, provider.Name, user.SessionStamp);
+        }
+
+        //OpenID Connect の検証が全部通った時点: Web は監査に成立を書いて Cookie のサインインへ進む、ネイティブアプリは Cookie を発行せず使い捨てチケットをアプリへ返す
+        static async Task OnTicketReceivedAsync(TicketReceivedContext ctx, IExternalLoginProvider provider)
+        {
+            //解決を経ていない (プロバイダが OnTokenValidated で自分のプリンシパルを通した) チケットには触らない。解決済みの印は同じリクエストで自分が置いた LoginNameItem
+            if (ctx.HttpContext.Items[LoginNameItem] is not string loginName) return;
+            var mobile = IsMobile(ctx.Properties);
+
+            //TicketReceived は認証ハンドラの try の外で呼ばれる = ここで投げた例外は OnRemoteFailure に回らず未処理 (500) になるので、自分で差し戻す
+            try
             {
-                //ネイティブアプリ: システムブラウザには Cookie を発行せず、使い捨てチケットをアプリへ返す
-                ctx.Response.Redirect(await service.IssueMobileTicketAsync(user, provider.Name));
-                ctx.HandleResponse();
-                return;
+                var principal = ctx.Principal;
+                var userId = LoginPrincipal.GetUserId(principal);
+                if (mobile)
+                {
+                    var service = ctx.HttpContext.RequestServices.GetRequiredService<ExternalLoginService>();
+                    var user = new ExternalLoginUser(userId, LoginPrincipal.GetDisplayName(principal), LoginPrincipal.GetSessionStamp(principal));
+                    ctx.Response.Redirect(await service.IssueMobileTicketAsync(user, provider.Name));
+                    ctx.HandleResponse();
+                    return;
+                }
+
+                //ログインの成立を記録する。書けなければ (Strict) 例外 = サインインしない (下の catch で差し戻す)。
+                //ネイティブアプリの流れは上で抜けている (成立はチケットを Cookie に交換するアクションが記録する)
+                await AuditAsync(ctx.HttpContext, AuditResult.Success, userId, $"Provider={provider.Name}; LoginName={loginName}");
             }
-
-            //ログインの成立を記録する。書けなければ (Strict) ここで例外 = サインインしない。
-            //ネイティブアプリの流れは上で抜けている (成立はチケットを Cookie に交換するアクションが記録する)
-            await AuditAsync(ctx.HttpContext, AuditResult.Success, user.UserId, $"Provider={provider.Name}; LoginName={identity.LoginName}");
-
-            ctx.Principal = LoginPrincipal.Create(user.UserId, user.UserName, provider.Name);
+            catch (Exception ex)
+            {
+                await FailAsync(ctx.HttpContext, ctx.HandleResponse, provider.Name, ExternalLoginError.RemoteFailure, mobile, ex.Message);
+            }
         }
 
         //サインインさせずログイン画面 (モバイルはアプリ) へ差し戻す

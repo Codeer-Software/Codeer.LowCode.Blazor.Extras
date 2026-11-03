@@ -16,9 +16,10 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
     /// - パスワードの入力フィールド (<see cref="PasswordField"/>): 指定すると保存時にサーバーがその平文からハッシュ / ソルトを作り、下の列に書く
     ///   (PasswordHashField を置かなくてよい。PasswordHashField は別モジュールの変更ダイアログなど、契約の無いモジュール向けに残る)
     /// - ログイン用の DB 列: パスワードのハッシュ / ソルト (書き込み専用列。両方空 = パスワードログイン無し = 外部 IdP 専用)、
+    ///   セッションの印 (書き込み専用列。設定するとログイン済みの Cookie をサーバー側で失効できる)、
     ///   認証アプリ (TOTP) の秘密鍵 / 確認済み / 最終タイムステップ (列名だけの宣言。サーバーのログイン処理が直接読み書きし、本体の読み書きには乗せない)
     ///
-    /// UI は持たない。データはハッシュ / ソルトの 2 列分だけで、サーバーが保存時に差し込む (クライアントは送受信しない)。
+    /// UI は持たない。データはハッシュ / ソルト / 印の列分だけで、サーバーが保存時に差し込む (クライアントは送受信しない)。
     /// </summary>
     [Designer(DisplayName = "$LoginAccountContractField")]
     [ToolboxIcon(PackIconMaterialKind = "AccountKeyOutline")]
@@ -93,8 +94,20 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         [Designer(Index = 13, CandidateType = CandidateType.DbColumn, DisplayName = "$LoginAccountContractDbColumnTotpLastTimestep")]
         public string DbColumnTotpLastTimestep { get; set; } = string.Empty;
 
+        /// <summary>
+        /// セッションの印の列 (書き込み専用。TEXT)。設定すると、ログインで発行する Cookie にこの列の値を積み、リクエストごとにサーバーの値と照合する
+        /// (テンプレートの CookieAuthentication.cs が LoginSessionValidation を結線)。パスワードの変更・有効フラグを偽にする保存・全端末ログアウトで
+        /// サーバーが新しい値に書き換えるので、それまでの Cookie は全部その場で使えなくなる。空なら照合しない (Cookie は有効期限まで使える)。
+        /// 値はサーバーだけが作る (クライアントは送受信しない。ログイン時に NULL なら採番する)。
+        /// </summary>
+        [Designer(Index = 14, CandidateType = CandidateType.DbColumn, DisplayName = "$LoginAccountContractDbColumnSessionStamp"), DbColumn(nameof(LoginAccountContractFieldData.SessionStamp), IsWriteOnly = true)]
+        public string DbColumnSessionStamp { get; set; } = string.Empty;
+
         /// <summary>パスワードログイン (ハッシュ / ソルトの列) が宣言されているか。</summary>
         public bool HasPassword => !string.IsNullOrWhiteSpace(DbColumnPasswordHash) && !string.IsNullOrWhiteSpace(DbColumnPasswordSalt);
+
+        /// <summary>セッションの印の列が宣言されているか (= ログイン済み Cookie の失効が有効か)。</summary>
+        public bool HasSessionStamp => !string.IsNullOrWhiteSpace(DbColumnSessionStamp);
 
         /// <summary>保存時にハッシュを書く (PasswordField と列がそろっている) か。</summary>
         public bool WritesPassword => HasPassword && !string.IsNullOrWhiteSpace(PasswordField);
@@ -116,6 +129,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
             {
                 (nameof(DbColumnPasswordHash), DbColumnPasswordHash), (nameof(DbColumnPasswordSalt), DbColumnPasswordSalt),
                 (nameof(DbColumnTotpSecret), DbColumnTotpSecret), (nameof(DbColumnTotpConfirmed), DbColumnTotpConfirmed), (nameof(DbColumnTotpLastTimestep), DbColumnTotpLastTimestep),
+                (nameof(DbColumnSessionStamp), DbColumnSessionStamp),
             })
             {
                 if (!string.IsNullOrEmpty(column)) context.CheckFieldDbColumnExistence(Name, member, column).AddTo(result);

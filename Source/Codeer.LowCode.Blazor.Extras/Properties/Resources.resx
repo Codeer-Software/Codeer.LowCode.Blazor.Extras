@@ -645,6 +645,9 @@ Recipients: {1}</value>
   <data name="LoginAccountContractDbColumnTotpLastTimestep" xml:space="preserve">
     <value>Authenticator app: last time step column</value>
   </data>
+  <data name="LoginAccountContractDbColumnSessionStamp" xml:space="preserve">
+    <value>Session stamp column (revokes issued cookies)</value>
+  </data>
   <data name="LoginAccountCheck_PasswordColumnsPair" xml:space="preserve">
     <value>Set both the password hash column and the salt column, or neither.</value>
   </data>
@@ -1913,5 +1916,38 @@ Recipients: {1}</value>
   </data>
   <data name="DesignCheck_Permission_row_conditions_are_not_applied_to_job_execution_" xml:space="preserve">
     <value>Conditions of PermissionField '{1}' that reference row data are not applied when the server decides whether the job of JobTriggerField '{0}' can run (they only make the button unavailable on that row). Use conditions that reference CurrentUser.</value>
+  </data>
+  <data name="SessionRevokeButtonField" xml:space="preserve">
+    <value>Logout All Devices Button</value>
+  </data>
+  <data name="SessionRevokeButtonText" xml:space="preserve">
+    <value>Button text</value>
+  </data>
+  <data name="SessionRevokeButtonConfirmMessage" xml:space="preserve">
+    <value>Confirm message</value>
+  </data>
+  <data name="SessionRevokeButton_DefaultText" xml:space="preserve">
+    <value>Log out from all devices</value>
+  </data>
+  <data name="SessionRevokeButton_Confirm" xml:space="preserve">
+    <value>This user will be logged out from all devices. Continue?</value>
+  </data>
+  <data name="SessionRevokeButton_Action" xml:space="preserve">
+    <value>Log out</value>
+  </data>
+  <data name="SessionRevokeButton_Done" xml:space="preserve">
+    <value>Logged out from all devices.</value>
+  </data>
+  <data name="SessionRevokeButton_Failed" xml:space="preserve">
+    <value>Failed to log out.</value>
+  </data>
+  <data name="SessionRevokeCheck_NotOnUserModule" xml:space="preserve">
+    <value>Place SessionRevokeButtonField on the login user module (AppSettings.CurrentUserModuleDesignName).</value>
+  </data>
+  <data name="SessionRevokeCheck_ColumnsMismatch" xml:space="preserve">
+    <value>DbColumnSessionStamp must be the same column as the DbColumnSessionStamp of the LoginAccountContractField of this module.</value>
+  </data>
+  <data name="InvalidInput" xml:space="preserve">
+    <value>There is an invalid input</value>
   </data>
 </root>

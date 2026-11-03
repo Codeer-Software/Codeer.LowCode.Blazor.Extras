@@ -49,7 +49,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
 
         /// <summary>新規行 (まだユーザーが無い) では出さない。</summary>
         [ScriptHide]
-        public bool CanReset => Module != null && !Module.IsNewData && IsEnabled;
+        public bool CanReset => Module != null && !Module.IsNewData && IsEnabled && !IsViewOnly;
 
         [ScriptHide]
         public string ButtonText => string.IsNullOrEmpty(Design.Text) ? Properties.Resources.TotpResetButton_DefaultText : Design.Text;
@@ -62,6 +62,11 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         public async Task<bool> ResetAsync()
         {
             if (Services.AppInfoService.IsDesignMode || _isBusy || !CanReset) return false;
+            if (!await Module!.ValidateInput())
+            {
+                await Services.UIService.NotifyError(Properties.Resources.InvalidInput);
+                return false;
+            }
 
             var message = string.IsNullOrEmpty(Design.ConfirmMessage) ? Properties.Resources.TotpResetButton_Confirm : Design.ConfirmMessage;
             var answer = await Services.UIService.ShowMessageBox(string.Empty, message,
