@@ -67,6 +67,20 @@ namespace Codeer.LowCode.Blazor.Extras.Test.FileStorage
             Assert.That(await manager.IsTemporaryFileAsync(Ds, info.FileGuid!.Value), Is.False);
         }
 
+        [Test]
+        public async Task 複製は同じ中身の新しい一時ファイル()
+        {
+            var manager = Manager();
+            var src = await manager.AddFileAsync(new FileSaveInfo { DataSourceName = Ds, StorageName = "Local" }, "a.txt", new MemoryStream([1, 2, 3]));
+            await manager.FixFile(Ds, src.FileGuid);
+
+            var copied = await manager.CopyFileAsync(new FileSaveInfo { DataSourceName = Ds, StorageName = "Local" }, src.FileGuid!.Value);
+            Assert.That(copied, Is.Not.EqualTo(src.FileGuid));
+            Assert.That(File.ReadAllBytes(Path.Combine(_dir, copied.ToString())), Is.EqualTo(new byte[] { 1, 2, 3 }));
+            Assert.That(await manager.IsTemporaryFileAsync(Ds, copied), Is.True, "行に入るまでは一時ファイル");
+            Assert.That(await manager.IsTemporaryFileAsync(Ds, src.FileGuid!.Value), Is.False, "元はそのまま");
+        }
+
         //Request.Body の性質 (戻れない・長さ不明)。failAt を過ぎると切断のように例外を投げる
         class ForwardOnly(byte[] data, int failAt) : Stream
         {

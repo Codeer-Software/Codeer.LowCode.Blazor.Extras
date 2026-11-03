@@ -863,6 +863,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.EditHistory
             public Task ToTemporaryFile(string dataSourceName, Guid guid) { Calls.Add("temp:" + guid); return Task.CompletedTask; }
             public Task FixFile(string dataSourceName, Guid? guid) { Calls.Add("fix:" + guid); return Task.CompletedTask; }
             public Task<bool> IsTemporaryFileAsync(string dataSourceName, Guid guid) => Task.FromResult(true);
+            public Task<Guid> CopyFileAsync(FileSaveInfo info, Guid source) => throw new NotSupportedException();
         }
 
         [Test]

@@ -142,6 +142,16 @@ namespace Extras.Server.Controllers
             return this.FileWithETag((await StorageAccess.ReadFileAsync(SystemConfig.Instance.FileStorages, location)).ToArray(), "application/octet-stream");
         }
 
+        //未保存の添付 (今アップロードした一時ファイル・レコードのコピーの複製) の保存前のプレビュー・ダウンロード
+        [HttpGet("download_temporary"), Audit(AuditCategory.Export)]
+        public async Task<IActionResult> DownloadTemporaryFileAsync(string? moduleName, string? fieldName, Guid guid, string? fileName)
+        {
+            _audit.AddTarget(moduleName ?? string.Empty, null, $"DownloadTemporary:{fieldName}");
+            var location = await _dataService.ModuleDataIO.FileFieldDataIO.GetTemporaryFileLocation(moduleName ?? string.Empty, fieldName ?? string.Empty, guid, fileName);
+            await _dataService.DbAccess.ClearAsync();
+            return this.FileWithETag((await StorageAccess.ReadFileAsync(SystemConfig.Instance.FileStorages, location)).ToArray(), "application/octet-stream");
+        }
+
         [HttpPost("upload"), Audit(AuditCategory.DataWrite)]
         public async Task<Codeer.LowCode.Blazor.DataIO.FileInfo> UploadFileAsync(string? moduleName, string? fieldName, string? fileName)
         {
@@ -151,6 +161,14 @@ namespace Extras.Server.Controllers
             var bodySize = HttpContext.Features.Get<IHttpMaxRequestBodySizeFeature>();
             if (bodySize != null && !bodySize.IsReadOnly) bodySize.MaxRequestBodySize = info.MaxAllowedSize;
             return await _dataService.TemporaryFileManager.AddFileAsync(info, fileName, Request.Body);
+        }
+
+        //レコードのコピー (CopyModule) の添付: 元の行の添付をダウンロードと同じ権限で読み、実体を複製した新しい一時ファイルにする
+        [HttpPost("copy_file"), Audit(AuditCategory.DataWrite)]
+        public async Task<Codeer.LowCode.Blazor.DataIO.FileInfo> CopyFileAsync(string? moduleName, string? fieldName, string? id)
+        {
+            _audit.AddTarget(moduleName ?? string.Empty, id, $"CopyFile:{fieldName}");
+            return await _dataService.ModuleDataIO.FileFieldDataIO.CopyFileAsync(moduleName ?? string.Empty, id ?? string.Empty, fieldName ?? string.Empty);
         }
     }
 }

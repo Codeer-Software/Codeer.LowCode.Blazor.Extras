@@ -76,6 +76,27 @@ namespace Codeer.LowCode.Blazor.Extras.Server.FileManagement
             return rows.Count != 0 && Convert.ToInt64(rows[0].Values.First()) != 0;
         }
 
+        public async Task<Guid> CopyFileAsync(FileSaveInfo info, Guid source)
+        {
+            var storage = _fileStorages.Find(info.StorageName);
+            var guid = Guid.NewGuid();
+            await ToTemporaryFile(info.DataSourceName, guid);
+            try
+            {
+                using var content = await storage.OpenReadAsync(source);
+                await storage.WriteAsync(guid, content);
+            }
+            catch
+            {
+                //途中で失敗: 途中までの実体と一時行を残さない (AddFileAsync と同じ)
+                var deleted = false;
+                try { await storage.DeleteAsync(guid); deleted = true; } catch { }
+                if (deleted) try { await RemoveTmpFiles(info.DataSourceName, [guid]); } catch { }
+                throw;
+            }
+            return guid;
+        }
+
         public async Task<DataIO.FileInfo> AddFileAsync(FileSaveInfo info, string? fileName, Stream stream)
         {
             var data = new DataIO.FileInfo

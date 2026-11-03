@@ -54,6 +54,17 @@ namespace Extras.Client.Shared.Services
             return (MemoryStream)await result.Content.ReadAsStreamAsync();
         }
 
+        //レコードのコピー (CopyModule) の添付: サーバーで実体を複製した新しい一時ファイルを受け取る
+        public async Task<Codeer.LowCode.Blazor.DataIO.FileInfo?> CopyFile(string moduleName, string fieldName, string id)
+            => await _http.PostContentAsJsonAsync<Codeer.LowCode.Blazor.DataIO.FileInfo>($"/api/module_data/copy_file?moduleName={Uri.EscapeDataString(moduleName)}&fieldName={Uri.EscapeDataString(fieldName)}&id={Uri.EscapeDataString(id)}", null);
+
+        public async Task<MemoryStream?> DownloadTemporaryFile(string moduleName, string fieldName, Guid guid, string? fileName)
+        {
+            var result = await _http.GetAsync($"/api/module_data/download_temporary?moduleName={Uri.EscapeDataString(moduleName)}&fieldName={Uri.EscapeDataString(fieldName)}&guid={guid}&fileName={Uri.EscapeDataString(fileName ?? string.Empty)}", false);
+            if (result == null) return null;
+            return (MemoryStream)await result.Content.ReadAsStreamAsync();
+        }
+
         public async Task<MemoryStream?> GetListFileAsync(SearchCondition condition)
         {
             var result = await _http.PostAsJsonReturnHttpResponseAsync($"/api/module_data/list_file", condition);

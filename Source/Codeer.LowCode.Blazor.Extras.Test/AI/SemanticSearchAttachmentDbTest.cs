@@ -126,11 +126,12 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
             return value is null or DBNull ? null : value.ToString();
         }
 
-        //ストレージに置いた添付を FileField に付ける更新 (アップロード済みの添付を保存するのと同じ形)
-        FileFieldData PutFile(string fileName, string content)
+        //ストレージに置いた添付を FileField に付ける更新 (アップロード済みの添付を保存するのと同じ形 = 一時ファイルの管理表にも登録する)
+        async Task<FileFieldData> PutFileAsync(string fileName, string content)
         {
             var guid = Guid.NewGuid();
             _storage.Put(guid, Encoding.UTF8.GetBytes(content));
+            await _db.ExecuteAsync(Ds, "INSERT INTO temporary_files (guid, created_date_time) VALUES (@p1, @p2)", new() { ["@p1"] = guid, ["@p2"] = DateTime.UtcNow });
             return new FileFieldData { FileName = fileName, FileGuid = guid };
         }
 
@@ -148,7 +149,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
         [Test]
         public async Task SourceFieldsの添付は中身を読んで文章に入れる()
         {
-            AssertNoError(await CreateIO(Service()).SubmitWithTransactionAsync([Update("1", ("Attachment", PutFile("memo.txt", "\r\n部品 A-100 の欠品について\r\n")))]));
+            AssertNoError(await CreateIO(Service()).SubmitWithTransactionAsync([Update("1", ("Attachment", await PutFileAsync("memo.txt", "\r\n部品 A-100 の欠品について\r\n")))]));
             Assert.That(await TextAsync("1"), Is.EqualTo("件名: 納期遅れの相談\n添付: memo.txt\n\n添付: memo.txt\n部品 A-100 の欠品について"));
             Assert.That(_storage.Reads, Is.EqualTo(1));
             Assert.That(_embedding.Inputs.Single(), Does.Contain("部品 A-100"), "埋め込みにも先頭 MaxTextLength まで渡る");
@@ -158,7 +159,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
         public async Task FileStoragesが無ければファイル名だけでストレージを読まない()
         {
             var log = new CapturingLoggerFactory();
-            AssertNoError(await CreateIO(Service(withStorages: false, log)).SubmitWithTransactionAsync([Update("1", ("Attachment", PutFile("memo.txt", "中身")))]));
+            AssertNoError(await CreateIO(Service(withStorages: false, log)).SubmitWithTransactionAsync([Update("1", ("Attachment", await PutFileAsync("memo.txt", "中身")))]));
             Assert.That(await TextAsync("1"), Is.EqualTo("件名: 納期遅れの相談\n添付: memo.txt"));
             Assert.That(_storage.Reads, Is.EqualTo(0));
             Assert.That(log.Entries.Where(e => e.Level >= LogLevel.Warning), Is.Empty, "未設定は警告しない");
@@ -168,7 +169,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
         public async Task SourceFieldsに無いFileFieldの添付は読まない()
         {
             //Other は SourceFields に無い (Other を書いたこの更新は対象フィールドを書いていないので、索引も作り直さない)
-            AssertNoError(await CreateIO(Service()).SubmitWithTransactionAsync([Update("1", ("Subject", new TextFieldData { Value = "件名を変更" }), ("Other", PutFile("other.txt", "その他の中身")))]));
+            AssertNoError(await CreateIO(Service()).SubmitWithTransactionAsync([Update("1", ("Subject", new TextFieldData { Value = "件名を変更" }), ("Other", await PutFileAsync("other.txt", "その他の中身")))]));
             Assert.That(await TextAsync("1"), Is.EqualTo("件名: 件名を変更"));
             Assert.That(_storage.Reads, Is.EqualTo(0));
         }
@@ -185,7 +186,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
         [Test]
         public async Task 対応表に無い拡張子の添付はストレージを読まない()
         {
-            AssertNoError(await CreateIO(Service()).SubmitWithTransactionAsync([Update("1", ("Attachment", PutFile("old.doc", "旧形式")))]));
+            AssertNoError(await CreateIO(Service()).SubmitWithTransactionAsync([Update("1", ("Attachment", await PutFileAsync("old.doc", "旧形式")))]));
             Assert.That(await TextAsync("1"), Is.EqualTo("件名: 納期遅れの相談\n添付: old.doc"));
             Assert.That(_storage.Reads, Is.EqualTo(0));
 
@@ -193,10 +194,10 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
             var service = Service();
             service.FileTextExtractors.Remove(".txt");
             service.FileTextExtractors.Add(new DelegateExtractor(".log", async (content, ct) => "ログ: " + await new StreamReader(content).ReadToEndAsync(ct)));
-            AssertNoError(await CreateIO(service).SubmitWithTransactionAsync([Update("1", ("Attachment", PutFile("memo.txt", "中身")))]));
+            AssertNoError(await CreateIO(service).SubmitWithTransactionAsync([Update("1", ("Attachment", await PutFileAsync("memo.txt", "中身")))]));
             Assert.That(await TextAsync("1"), Is.EqualTo("件名: 納期遅れの相談\n添付: memo.txt"));
             Assert.That(_storage.Reads, Is.EqualTo(0));
-            AssertNoError(await CreateIO(service).SubmitWithTransactionAsync([Update("1", ("Attachment", PutFile("app.log", "起動しました")))]));
+            AssertNoError(await CreateIO(service).SubmitWithTransactionAsync([Update("1", ("Attachment", await PutFileAsync("app.log", "起動しました")))]));
             Assert.That(await TextAsync("1"), Is.EqualTo("件名: 納期遅れの相談\n添付: app.log\n\n添付: app.log\nログ: 起動しました"));
             Assert.That(_storage.Reads, Is.EqualTo(1));
         }
@@ -207,14 +208,14 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
             var log = new CapturingLoggerFactory();
             var service = Service(log: log);
             service.FileTextExtractors.Add(new DelegateExtractor(".txt", (content, ct) => throw new InvalidDataException("壊れたファイル (fake)")));
-            AssertNoError(await CreateIO(service).SubmitWithTransactionAsync([Update("1", ("Subject", new TextFieldData { Value = "件名を変更" }), ("Attachment", PutFile("broken.txt", "x")))]));
+            AssertNoError(await CreateIO(service).SubmitWithTransactionAsync([Update("1", ("Subject", new TextFieldData { Value = "件名を変更" }), ("Attachment", await PutFileAsync("broken.txt", "x")))]));
             Assert.That(await TextAsync("1"), Is.EqualTo("件名: 件名を変更\n添付: broken.txt"), "保存は通り、文章はファイル名だけ");
             var warning = log.Entries.Single(e => e.Level == LogLevel.Warning);
             Assert.That(warning.Message, Does.StartWith("SemanticSearch: ").And.Contain("Inquiry").And.Contain("Attachment").And.Contain("broken.txt"));
 
             //置き場所の名前が合わない (読めない) のも同じ
             _design.Modules.Find("Inquiry")!.Fields.OfType<FileFieldDesign>().First(f => f.Name == "Attachment").StorageName = "Missing";
-            AssertNoError(await CreateIO(Service(log: log)).SubmitWithTransactionAsync([Update("1", ("Attachment", PutFile("memo.txt", "中身")))]));
+            AssertNoError(await CreateIO(Service(log: log)).SubmitWithTransactionAsync([Update("1", ("Attachment", await PutFileAsync("memo.txt", "中身")))]));
             Assert.That(await TextAsync("1"), Is.EqualTo("件名: 件名を変更\n添付: memo.txt"));
             Assert.That(log.Entries.Count(e => e.Level == LogLevel.Warning), Is.EqualTo(2));
         }
@@ -225,7 +226,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
             var field = _design.Modules.Find("Inquiry")!.Fields.OfType<SemanticSearchFieldDesign>().Single();
             field.MaxFileTextLength = 6;
             field.MaxTextLength = 10;
-            AssertNoError(await CreateIO(Service()).SubmitWithTransactionAsync([Update("1", ("Attachment", PutFile("memo.txt", "0123456789")))]));
+            AssertNoError(await CreateIO(Service()).SubmitWithTransactionAsync([Update("1", ("Attachment", await PutFileAsync("memo.txt", "0123456789")))]));
             var text = await TextAsync("1");
             Assert.That(text, Is.EqualTo("件名: 納期遅れの相談\n添付: memo.txt\n\n添付: memo.txt\n012345"));
             Assert.That(_embedding.Inputs.Single(), Is.EqualTo(text![..10]), "埋め込みは行全体で MaxTextLength まで");
@@ -234,7 +235,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
         [Test]
         public async Task 再索引で行から作る文章にも添付の中身が入る()
         {
-            var file = PutFile("memo.txt", "再索引で読む中身");
+            var file = await PutFileAsync("memo.txt", "再索引で読む中身");
             await _db.ExecuteAsync(Ds, "INSERT INTO inquiries (subject, file_name, file_guid) VALUES ('取込の行', 'memo.txt', @p1)", new() { ["@p1"] = file.FileGuid!.Value.ToString() });
             var service = Service();
             var io = CreateIO(service);
