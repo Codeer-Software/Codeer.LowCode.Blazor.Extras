@@ -234,6 +234,32 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Auth
         }
 
         [Test]
+        public async Task メール_再送は1回分に数え_続けるとロックされる()
+        {
+            //再送 (コード無しでもう一度) を繰り返すと、メールの大量送信と再送ごとのコードの総当たりになるのでロックで止める
+            var login = Create(CreateDesign(withTwoFactorEmail: true));
+            for (var i = 0; i < MaxFailed; i++)
+            {
+                Assert.That((await login.VerifyAsync("taro", "p@ss", null)).Status, Is.EqualTo(PasswordLoginStatus.TwoFactor));
+            }
+            Assert.That(_sent, Has.Count.EqualTo(MaxFailed));
+            Assert.That((await login.VerifyAsync("taro", "p@ss", null)).Status, Is.EqualTo(PasswordLoginStatus.Locked));
+            Assert.That(_sent, Has.Count.EqualTo(MaxFailed), "ロック中は送らない");
+        }
+
+        [Test]
+        public async Task メール_コードでサインインできたら再送の回数も数え直す()
+        {
+            var login = Create(CreateDesign(withTwoFactorEmail: true));
+            for (var i = 0; i < MaxFailed - 1; i++) await login.VerifyAsync("taro", "p@ss", null);
+            Assert.That((await login.VerifyAsync("taro", "p@ss", CodeIn(_sent[^1]))).Status, Is.EqualTo(PasswordLoginStatus.Ok));
+            for (var i = 0; i < MaxFailed; i++)
+            {
+                Assert.That((await login.VerifyAsync("taro", "p@ss", null)).Status, Is.EqualTo(PasswordLoginStatus.TwoFactor), "数え直されている");
+            }
+        }
+
+        [Test]
         public async Task 照合中の例外は投げ直し_失敗に数えない()
         {
             //契約は TOTP の列を指すが表に無い: パスワードの照合は通り、その後の TOTP の読みで DB が例外になる
