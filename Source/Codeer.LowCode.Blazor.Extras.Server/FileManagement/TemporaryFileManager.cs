@@ -9,6 +9,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.FileManagement
         readonly IDbAccessor _dbAccessor;
         readonly TemporaryFileTableInfo[] _temporaryFilesManagements;
         readonly IReadOnlyList<IFileStorage> _fileStorages;
+        readonly IAuthenticationContext? _authentication;
 
         class SqlParts
         {
@@ -19,14 +20,29 @@ namespace Codeer.LowCode.Blazor.Extras.Server.FileManagement
         }
 
         public TemporaryFileManager(IDbAccessor db, TemporaryFileTableInfo[] temporaryFilesManagements, IEnumerable<IFileStorage> fileStorages)
+            : this(db, temporaryFilesManagements, fileStorages, null) { }
+
+        public TemporaryFileManager(IDbAccessor db, TemporaryFileTableInfo[] temporaryFilesManagements, FileStorage[] fileStorages)
+            : this(db, temporaryFilesManagements, fileStorages.ToFileStorages(), null) { }
+
+        //authentication: 所有者列 (TemporaryFileTableInfo.OwnerColumn) に記録する今のユーザー
+        public TemporaryFileManager(IDbAccessor db, TemporaryFileTableInfo[] temporaryFilesManagements, IEnumerable<IFileStorage> fileStorages, IAuthenticationContext? authentication)
         {
             _dbAccessor = db;
             _temporaryFilesManagements = temporaryFilesManagements;
             _fileStorages = fileStorages.ToList();
+            _authentication = authentication;
         }
 
-        public TemporaryFileManager(IDbAccessor db, TemporaryFileTableInfo[] temporaryFilesManagements, FileStorage[] fileStorages)
-            : this(db, temporaryFilesManagements, fileStorages.ToFileStorages()) { }
+        public TemporaryFileManager(IDbAccessor db, TemporaryFileTableInfo[] temporaryFilesManagements, FileStorage[] fileStorages, IAuthenticationContext? authentication)
+            : this(db, temporaryFilesManagements, fileStorages.ToFileStorages(), authentication) { }
+
+        async Task<string?> GetOwnerAsync()
+        {
+            if (_authentication == null) return null;
+            var id = await _authentication.GetCurrentUserIdAsync();
+            return string.IsNullOrEmpty(id) ? null : id;
+        }
 
         public async Task ToTemporaryFile(string dataSourceName, Guid guid)
         {
@@ -43,8 +59,15 @@ namespace Codeer.LowCode.Blazor.Extras.Server.FileManagement
             //Make it a temporary file and wait for it to be deleted
             var p1 = parameterPrefix + 1;
             var p2 = parameterPrefix + 2;
+            var parameters = new Dictionary<string, object?> { { p1, guid }, { p2, dateTime } };
             var sql = $"insert into {parts.Blanket(mgr.Table)}({parts.Blanket(mgr.GuidColumn)},{parts.Blanket(mgr.CreatedDateTimeColumn)}) values({p1}, {p2})";
-            await _dbAccessor.ExecuteAsync(dataSourceName, sql, new Dictionary<string, object?> { { p1, guid }, { p2, dateTime } });
+            if (!string.IsNullOrEmpty(mgr.OwnerColumn))
+            {
+                var p3 = parameterPrefix + 3;
+                parameters[p3] = await GetOwnerAsync();
+                sql = $"insert into {parts.Blanket(mgr.Table)}({parts.Blanket(mgr.GuidColumn)},{parts.Blanket(mgr.CreatedDateTimeColumn)},{parts.Blanket(mgr.OwnerColumn)}) values({p1}, {p2}, {p3})";
+            }
+            await _dbAccessor.ExecuteAsync(dataSourceName, sql, parameters);
         }
 
         public async Task FixFile(string dataSourceName, Guid? guid)
@@ -72,7 +95,23 @@ namespace Codeer.LowCode.Blazor.Extras.Server.FileManagement
             if (mgr == null) throw LowCodeException.Create($"{dataSourceName} No file management settings");
             var p1 = parameterPrefix + 1;
             var sql = $"select count(*) from {parts.Blanket(mgr.Table)} where {parts.Blanket(mgr.GuidColumn)}={p1}";
-            var rows = await _dbAccessor.QueryAsync(dataSourceName, sql, new() { { p1, new ParamAndRawDbTypeName { Value = guid } } });
+            var parameters = new Dictionary<string, ParamAndRawDbTypeName> { { p1, new ParamAndRawDbTypeName { Value = guid } } };
+            if (!string.IsNullOrEmpty(mgr.OwnerColumn))
+            {
+                //アップロードした人だけが使える (ユーザーの無いホストでは所有者 null 同士で一致)
+                var owner = await GetOwnerAsync();
+                if (owner == null)
+                {
+                    sql += $" and ({parts.Blanket(mgr.OwnerColumn)} is null)";
+                }
+                else
+                {
+                    var p2 = parameterPrefix + 2;
+                    sql += $" and ({parts.Blanket(mgr.OwnerColumn)}={p2})";
+                    parameters[p2] = new ParamAndRawDbTypeName { Value = owner };
+                }
+            }
+            var rows = await _dbAccessor.QueryAsync(dataSourceName, sql, parameters);
             return rows.Count != 0 && Convert.ToInt64(rows[0].Values.First()) != 0;
         }
 

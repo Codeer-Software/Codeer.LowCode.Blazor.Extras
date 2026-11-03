@@ -21,7 +21,7 @@ namespace Extras.Server.Services
             _httpContextAccessor = httpContextAccessor;
             Design = design ?? new RequestDesign();
             DbAccess = new DbAccessor(SystemConfig.Instance.DataSources);
-            TemporaryFileManager = new TemporaryFileManager(DbAccess, SystemConfig.Instance.TemporaryFileTableInfo, SystemConfig.Instance.FileStorages);
+            TemporaryFileManager = new TemporaryFileManager(DbAccess, SystemConfig.Instance.TemporaryFileTableInfo, SystemConfig.Instance.FileStorages, this);
             ModuleDataIO = new CustomizedModuleDataIO(Design.DesignData, this, DbAccess, TemporaryFileManager);
         }
 
