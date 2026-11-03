@@ -132,7 +132,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Auth
 
         /// <summary>
         /// ログイン ID でアカウントを探す (パスワードは照合しない)。無い・停止中は null。
-        /// 総当たり対策 (LoginLockout) がアカウントごとに数えるために使う。
+        /// 総当たり対策 (LoginLockout) がアカウントの Id でも数えるために使う。
         /// </summary>
         public async Task<LoginAccount?> FindByLoginNameAsync(string? loginName)
         {
@@ -193,7 +193,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Auth
             return count > 0 ? stamp : null;
         }
 
-        /// <summary>ユーザーが 1 人でもいるか (初回起動時の管理者作成の判定)。</summary>
+        /// <summary>ユーザーが 1 人でもいるか。</summary>
         public async Task<bool> AnyAsync()
         {
             var (q, _) = Sql();
@@ -202,7 +202,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Auth
         }
 
         /// <summary>
-        /// ログイン ID・パスワード (ハッシュ化して保存) でユーザー行を作る。初回起動時の管理者作成用。
+        /// ログイン ID・パスワード (ハッシュ化して保存) でユーザー行を作る (ホストが最初のユーザーを入れるとき用)。
         /// 表示名の列があれば同じ値、有効フラグの列があれば 1 を入れる。他の列は DB の既定値 (印は最初のログインで採番する)。
         /// 戻り値は作った行の Id (監査ログの対象に使う)。
         /// </summary>
@@ -271,7 +271,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Auth
         }
 
         //ログインの成立 (本人確認が通った行) で使う。印の列があるのに行の印が空なら採番して書き、その値を返す
-        //(印を使い始める前からいるユーザー・LoginAccountStore.AddAsync で作った初回の管理者。印の無い Cookie は照合に落ちるので、採番前の Cookie が生き返ることはない)
+        //(印を使い始める前からいるユーザー・LoginAccountStore.AddAsync や SQL で入れた行。印の無い Cookie は照合に落ちるので、採番前の Cookie が生き返ることはない)
         async Task<LoginAccount> ToLoginAccountAsync(IDictionary<string, object> row)
         {
             var account = ToAccount(row);

@@ -104,7 +104,7 @@ OpenID Connect ハンドラのイベント (`OnTokenValidated` / `OnTicketReceiv
 | `GET api/account/login/{provider}?returnUrl=` | IdP へのチャレンジ (ブラウザ遷移)。`&persistent=true` でブラウザを閉じても残る Cookie (「ログイン状態を保持する」)、`&mobile=true` はネイティブアプリ用 |
 | `POST api/account/login_ticket` | ネイティブアプリ: 使い捨てチケットを Cookie に交換 |
 | `POST api/account/logout` | `{ redirect }` が返ったらそこへ遷移する (IdP セッションの終了はブラウザ遷移が要るため二段構え)。`?mobile=true` は Cookie 破棄のみ |
-| `GET api/account/logout/{provider}` | Cookie 破棄 + IdP ログアウト → `/login.html` |
+| `GET api/account/logout/{provider}` | Cookie 破棄 + IdP ログアウト → `/login.html`。他のサイトからの遷移 (`Sec-Fetch-Site: cross-site`) は `/` へ戻すだけ |
 
 発行済みの Cookie の失効 (パスワード変更・停止・管理者による全端末ログアウト) は [認証の全体像](Authentication.md) の「ログイン済みセッションの失効: セッションの印」。
 IdP 側でアカウントを停止してもアプリの Cookie は自動では失効しないので、アプリ側でも停止 (IsActive を偽) か SessionRevokeButtonField で失効させる。

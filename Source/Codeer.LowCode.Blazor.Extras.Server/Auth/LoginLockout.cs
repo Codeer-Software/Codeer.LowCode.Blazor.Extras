@@ -1,4 +1,6 @@
 using Microsoft.Extensions.Caching.Distributed;
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 
 namespace Codeer.LowCode.Blazor.Extras.Server.Auth
@@ -19,25 +21,29 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Auth
     }
 
     /// <summary>
-    /// ID/パスワードのログインの総当たり対策。アカウントごとにログインの失敗 (パスワード・二要素認証のコードの不一致) を数え、
-    /// MaxFailedAttempts 回続いたら、最後の失敗から一定時間そのアカウントのログインを受け付けない (正しいパスワードでも)。
+    /// ID/パスワードのログインの総当たり対策。ログインの失敗 (パスワード・二要素認証のコードの不一致) を数え、
+    /// MaxFailedAttempts 回続いたら、最後の失敗から一定時間ログインを受け付けない (正しいパスワードでも)。
     /// ロックの長さは LockoutMinutes から始まり、ロックが繰り返されるたびに倍になる (上限 MaxLockoutMinutes)。サインインできたら全部数え直す。
-    /// 鍵はアカウントの Id (LoginAccountStore.FindByLoginNameAsync で引く)。存在しないログイン名は <see cref="UnknownLoginNameKey"/> を鍵に同じように数える
-    /// (実在するアカウントだけがロックされると、ロックの応答でアカウントの有無が分かるため)。null / 空を渡すと何もしない。
+    /// 鍵は 2 つ: 入力されたログイン名 (前後の空白と大文字小文字を区別しない) と、その名前で引けたアカウントの Id。両方で数え、どちらかがロック中なら断る。
+    /// 名前で数えるのはアカウントの有無でロックの応答を変えないため (実在するアカウントだけがロックされると、応答で有無が分かる)。
+    /// Id で数えるのは DB の照合順序で同じ行に当たる別表記 (全角半角など) をまとめて数えるため。null / 空白だけの名前・null / 空の Id は数えない。
     /// 照合の前に 1 回分を数えておき、失敗でなければ取り消す。こうすると同時に大量に送られても、1 つのプロセスの中では回数を超えて照合させない
     /// (読んで書くまでの排他はプロセスの中だけ。複数インスタンスで共有キャッシュを使っても、インスタンスをまたいだ同時送信には回数を保証しない)。
-    /// 回数の置き場はサーバー側のキャッシュ (IDistributedCache) で DB 列は要らない。記録は最後の試行から 30 日 (MaxLockoutMinutes の 2 倍の方が長ければそれ) で消える。
+    /// 回数の置き場はサーバー側のキャッシュ (IDistributedCache) で DB 列は要らない (名前のキーはハッシュ = 長さを固定し名前を残さない)。
+    /// 記録は最後の試行から 1 日 (MaxLockoutMinutes の 2 倍の方が長ければそれ) で消え、一度でもロックされた記録は 30 日残す
+    /// (黙って待てばロックの繰り返しが忘れられる、とならない。存在しない名前を大量に送られても、ロックに至らない記録は長く残らない)。
     /// 呼ぶ順 (TryStartAttempt → 照合 → 不一致は残す / コードを求めた・例外は Cancel / サインインの直前に Reset) は <see cref="PasswordLogin"/> が持つ。
     /// </summary>
     public class LoginLockout
     {
         const string CacheKeyPrefix = "codeer.loginlockout.";
 
-        //記録を残す期間。黙って待てばロックの繰り返しが忘れられる、とならないよう長めに持つ
-        static readonly TimeSpan MinRetention = TimeSpan.FromDays(30);
+        //記録を残す期間。ロックに至らない記録は短く (名前の大量送信で積み上がらない)、一度でもロックされた記録は長く (黙って待てばロックの繰り返しが忘れられる、とならない)
+        static readonly TimeSpan UnlockedRetention = TimeSpan.FromDays(1);
+        static readonly TimeSpan LockedRetention = TimeSpan.FromDays(30);
 
-        //読んで書くまでを 1 つずつにする (同じプロセスの中で同じアカウントに同時に来た試行を取りこぼさない)。
-        //Id のハッシュで分けるので、別のアカウントどうしはほとんど待たない
+        //読んで書くまでを 1 つずつにする (同じプロセスの中で同じ鍵に同時に来た試行を取りこぼさない)。
+        //鍵のハッシュで分けるので、別のアカウントどうしはほとんど待たない
         static readonly SemaphoreSlim[] Gates = Enumerable.Range(0, 64).Select(_ => new SemaphoreSlim(1, 1)).ToArray();
 
         readonly LoginLockoutSettings _settings;
@@ -54,8 +60,18 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Auth
             _now = now;
         }
 
-        /// <summary>存在しないログイン名を数えるときの鍵 (アカウントの Id と重ならない形。大文字小文字・前後の空白は区別しない)。</summary>
-        public static string UnknownLoginNameKey(string loginName) => "name:" + loginName.Trim().ToUpperInvariant();
+        //ログイン名 → キャッシュのキー (前後の空白と大文字小文字を区別しない。ハッシュで長さを固定する)
+        internal static string CacheKey(string loginName)
+            => CacheKeyPrefix + Convert.ToBase64String(SHA256.HashData(Encoding.UTF8.GetBytes(loginName.Trim().ToUpperInvariant())));
+
+        //アカウントの Id → キャッシュのキー
+        internal static string IdKey(string userId) => CacheKeyPrefix + "id:" + userId;
+
+        static IEnumerable<string> Keys(string? loginName, string? userId)
+        {
+            if (!string.IsNullOrWhiteSpace(loginName)) yield return CacheKey(loginName);
+            if (!string.IsNullOrEmpty(userId)) yield return IdKey(userId);
+        }
 
         sealed class Entry
         {
@@ -67,12 +83,40 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Auth
 
         /// <summary>
         /// ログインの試行を 1 回分数えておく (失敗でなければ CancelAttemptAsync / ResetAsync で外す)。
-        /// ロック中なら数えずに false (照合せずに断る)。userId が null / 空 (存在しないログイン名) なら数えずに true。
+        /// どちらかの鍵がロック中なら数えずに false (照合せずに断る)。userId はログイン名で引けたアカウントの Id (無ければ null)。
         /// </summary>
-        public async Task<bool> TryStartAttemptAsync(string? userId)
+        public async Task<bool> TryStartAttemptAsync(string? loginName, string? userId = null)
+        {
+            var started = new List<string>();
+            foreach (var key in Keys(loginName, userId))
+            {
+                if (await TryStartKeyAsync(key))
+                {
+                    started.Add(key);
+                    continue;
+                }
+                foreach (var e in started) await CancelKeyAsync(e);
+                return false;
+            }
+            return true;
+        }
+
+        /// <summary>数えておいた回を取り消す。失敗でもサインインでもなく終わった回 (二要素認証のコードを求めた・メールを送れなかった・照合中の例外) に呼ぶ。</summary>
+        public async Task CancelAttemptAsync(string? loginName, string? userId = null)
+        {
+            foreach (var key in Keys(loginName, userId)) await CancelKeyAsync(key);
+        }
+
+        /// <summary>サインインできたので数え直す (ロックの長さも最初に戻す)。</summary>
+        public async Task ResetAsync(string? loginName, string? userId = null)
+        {
+            foreach (var key in Keys(loginName, userId)) await UpdateAsync(key, _ => null);
+        }
+
+        async Task<bool> TryStartKeyAsync(string key)
         {
             var allowed = true;
-            await UpdateAsync(userId, entry =>
+            await UpdateAsync(key, entry =>
             {
                 var now = _now();
                 if (entry.LockedUntil > now)
@@ -99,17 +143,12 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Auth
             return allowed;
         }
 
-        /// <summary>数えておいた回を取り消す。失敗でもサインインでもなく終わった回 (二要素認証のコードを求めた・メールを送れなかった・照合中の例外) に呼ぶ。</summary>
-        public Task CancelAttemptAsync(string? userId)
-            => UpdateAsync(userId, entry =>
+        Task CancelKeyAsync(string key)
+            => UpdateAsync(key, entry =>
             {
                 if (entry.Failures > 0) entry.Failures--;
                 return entry;
             });
-
-        /// <summary>サインインできたので数え直す (ロックの長さも最初に戻す)。</summary>
-        public Task ResetAsync(string? userId)
-            => UpdateAsync(userId, _ => null);
 
         TimeSpan LockoutLength(int lockouts)
         {
@@ -121,10 +160,9 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Auth
         int MaxLockoutMinutes => Math.Max(Math.Max(1, _settings.LockoutMinutes), _settings.MaxLockoutMinutes);
 
         //update が null を返したら記録を消す
-        async Task UpdateAsync(string? userId, Func<Entry, Entry?> update)
+        async Task UpdateAsync(string key, Func<Entry, Entry?> update)
         {
-            if (_settings.MaxFailedAttempts <= 0 || string.IsNullOrEmpty(userId)) return;
-            var key = CacheKeyPrefix + userId;
+            if (_settings.MaxFailedAttempts <= 0) return;
             var gate = Gates[(key.GetHashCode() & int.MaxValue) % Gates.Length];
             await gate.WaitAsync();
             try
@@ -136,8 +174,9 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Auth
                     return;
                 }
                 var retention = TimeSpan.FromMinutes(MaxLockoutMinutes * 2.0);
-                await _cache.SetStringAsync(key, JsonSerializer.Serialize(entry),
-                    new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = retention > MinRetention ? retention : MinRetention });
+                var minimum = entry.Lockouts > 0 ? LockedRetention : UnlockedRetention;
+                if (retention < minimum) retention = minimum;
+                await _cache.SetStringAsync(key, JsonSerializer.Serialize(entry), new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = retention });
             }
             finally
             {

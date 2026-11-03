@@ -101,6 +101,18 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Auth
             Assert.That(await totp.FindAsync("U2"), Is.Null);
         }
 
+        //ボタンのデータに載った鍵の値はクライアントに決めさせない (何が来ても未登録の値)
+        [Test]
+        public async Task 送られた鍵の値は使わず未登録にする()
+        {
+            var submit = ResetSubmit("U2");
+            submit.Update[0].Fields["TotpReset"] = new TotpResetButtonFieldData { TotpSecret = "ATTACKER", TotpConfirmed = 1, TotpLastTimestep = 0 };
+            var io = new PasswordHashingModuleDataIO(_design, this, _db, new TemporaryFileManager(_db, [], new List<IFileStorage>()));
+            var results = await io.SubmitWithTransactionAsync([submit]);
+            Assert.That(results.Any(e => !string.IsNullOrEmpty(e.ExceptionMessage)), Is.False, string.Join(Environment.NewLine, results.Select(e => e.ExceptionMessage)));
+            Assert.That(await RowAsync("U2"), Is.EqualTo(((string?)null, 0L, 0L)));
+        }
+
         [Test]
         public async Task 書き込み専用列は読み込みで来ない()
         {

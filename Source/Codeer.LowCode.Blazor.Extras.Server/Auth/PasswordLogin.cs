@@ -53,7 +53,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Auth
     /// 流れ: 契約の確認 (<see cref="LoginAccountStore"/>) → 総当たり対策で 1 回分を数える (<see cref="LoginLockout.TryStartAttemptAsync"/>) → パスワード照合 →
     /// 二要素認証 (契約に TOTP の列があれば認証アプリ <see cref="TotpLogin"/>、無くて TwoFactorEmail があればメール <see cref="EmailOtpLogin"/>) → 全部通ったら数え直す (<see cref="LoginLockout.ResetAsync"/>)。
     /// 数えておいた 1 回の扱い: パスワード・コードの不一致 = 失敗として残す / コードを求めた・送れなかった・期限切れ = 取り消す (失敗ではない) / 照合中の例外 (DB の障害など) = 取り消して投げる。
-    /// 存在しないログイン名は数えない (<see cref="LoginLockout"/> の約束)。
+    /// 失敗は入力されたログイン名と、その名前で引けたアカウントの Id の両方で数える (<see cref="LoginLockout"/> の約束)。
     /// </summary>
     public class PasswordLogin
     {
@@ -87,10 +87,8 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Auth
             if (accounts == null || !accounts.HasPassword) return new() { Status = PasswordLoginStatus.NotAvailable };
 
             var lockout = new LoginLockout(_lockout, _cache);
-            //存在しないログイン名もログイン名で数える (実在するアカウントだけロックされると、429 で有無が分かってしまう)
-            var lockId = (await accounts.FindByLoginNameAsync(loginName))?.UserId
-                ?? (string.IsNullOrWhiteSpace(loginName) ? null : LoginLockout.UnknownLoginNameKey(loginName));
-            if (!await lockout.TryStartAttemptAsync(lockId)) return new() { Status = PasswordLoginStatus.Locked, Detail = "Locked", IsDenied = true };
+            var userId = (await accounts.FindByLoginNameAsync(loginName))?.UserId;
+            if (!await lockout.TryStartAttemptAsync(loginName, userId)) return new() { Status = PasswordLoginStatus.Locked, Detail = "Locked", IsDenied = true };
 
             LoginAccount account;
             try
@@ -103,33 +101,33 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Auth
                 if (totp != null)
                 {
                     var result = await totp.VerifyAsync(account.UserId, account.LoginName, twoFactorCode);
-                    if (result.Status != TotpLoginStatus.Ok) return await TwoFactorAsync(lockout, lockId, result, result.Status, result.Status == TotpLoginStatus.InvalidCode, keepAttempt: false);
+                    if (result.Status != TotpLoginStatus.Ok) return await TwoFactorAsync(lockout, loginName, userId, result, result.Status, result.Status == TotpLoginStatus.InvalidCode, keepAttempt: false);
                 }
                 else if (accounts.HasTwoFactorEmail)
                 {
                     var email = new EmailOtpLogin(_emailOtp, _sendMail, _cache);
                     var result = await email.VerifyAsync(account.UserId, account.TwoFactorEmail ?? string.Empty, twoFactorCode);
                     //メールを送った回も 1 回分として残す (再送を繰り返すとロックにかかる = メールの大量送信と、再送ごとのコードの総当たりを止める)
-                    if (result.Status != EmailOtpLoginStatus.Ok) return await TwoFactorAsync(lockout, lockId, result, result.Status, result.Status == EmailOtpLoginStatus.InvalidCode,
+                    if (result.Status != EmailOtpLoginStatus.Ok) return await TwoFactorAsync(lockout, loginName, userId, result, result.Status, result.Status == EmailOtpLoginStatus.InvalidCode,
                         keepAttempt: result.Status == EmailOtpLoginStatus.CodeRequired);
                 }
             }
             catch
             {
                 //照合できずに終わった回は失敗に数えない。取り消し自体の失敗 (キャッシュの障害) で元の例外を隠さない
-                try { await lockout.CancelAttemptAsync(lockId); } catch { }
+                try { await lockout.CancelAttemptAsync(loginName, userId); } catch { }
                 throw;
             }
 
-            await lockout.ResetAsync(lockId);
+            await lockout.ResetAsync(loginName, userId);
             //クライアントは status だけを見る (形は二要素認証の結果と同じ)
             return new() { Status = PasswordLoginStatus.Ok, Account = account, Response = new TotpLoginResult { Status = TotpLoginStatus.Ok } };
         }
 
         //二要素認証の途中。コードの不一致とメールを送った回は数えたまま残す。認証アプリのコードを求めた・送れなかった・期限切れは取り消す
-        static async Task<PasswordLoginResult> TwoFactorAsync(LoginLockout lockout, string? lockId, object response, string status, bool isInvalidCode, bool keepAttempt)
+        static async Task<PasswordLoginResult> TwoFactorAsync(LoginLockout lockout, string? loginName, string? userId, object response, string status, bool isInvalidCode, bool keepAttempt)
         {
-            if (!isInvalidCode && !keepAttempt) await lockout.CancelAttemptAsync(lockId);
+            if (!isInvalidCode && !keepAttempt) await lockout.CancelAttemptAsync(loginName, userId);
             return new() { Status = PasswordLoginStatus.TwoFactor, Response = response, Detail = $"TwoFactor={status}", IsDenied = isInvalidCode };
         }
     }

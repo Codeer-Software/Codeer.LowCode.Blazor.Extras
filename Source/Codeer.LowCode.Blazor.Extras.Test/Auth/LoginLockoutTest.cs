@@ -81,7 +81,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Auth
         {
             var lockout = Create();
             await lockout.TryStartAttemptAsync("taro");
-            var key = "codeer.loginlockout.taro";
+            var key = LoginLockout.CacheKey("taro");
             Assert.That(await _cache.GetStringAsync(key), Is.Not.Null);
             await _cache.SetStringAsync(key, "not json");
             Assert.That(await lockout.TryStartAttemptAsync("taro"), Is.True);
@@ -137,10 +137,60 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Auth
         }
 
         [Test]
-        public void UnknownLoginNameKeyDoesNotCollideWithIds()
+        public async Task LoginNameIgnoresCaseAndSurroundingSpaces()
         {
-            Assert.That(LoginLockout.UnknownLoginNameKey(" taro "), Is.EqualTo(LoginLockout.UnknownLoginNameKey("TARO")));
-            Assert.That(LoginLockout.UnknownLoginNameKey("taro"), Does.StartWith("name:"));
+            var lockout = Create();
+            await lockout.TryStartAttemptAsync("taro");
+            await lockout.TryStartAttemptAsync(" TARO ");
+            Assert.That(await lockout.TryStartAttemptAsync("Taro"), Is.True);
+            Assert.That(await lockout.TryStartAttemptAsync("taro"), Is.False, "同じ名前として数える");
+            Assert.That(await lockout.TryStartAttemptAsync("taro2"), Is.True);
+            for (var i = 0; i < 20; i++) Assert.That(await lockout.TryStartAttemptAsync("   "), Is.True, "空白だけの名前は数えない");
+        }
+
+        [Test]
+        public async Task CountsByAccountIdToo()
+        {
+            //DB の照合順序で同じ行に当たる別表記 (全角半角など) は Id でまとめて数える。どちらかの鍵がロックなら断る
+            var lockout = Create();
+            await lockout.TryStartAttemptAsync("admin", "U1");
+            await lockout.TryStartAttemptAsync("ａｄｍｉｎ", "U1");
+            Assert.That(await lockout.TryStartAttemptAsync("ADMIN ", "U1"), Is.True);
+            Assert.That(await lockout.TryStartAttemptAsync("Ａｄｍｉｎ", "U1"), Is.False, "名前の鍵は別でも Id の鍵でロック");
+            Assert.That(await lockout.TryStartAttemptAsync("admin", null), Is.True, "名前の鍵は 2 回 (admin / ADMIN) なのでまだ");
+            Assert.That(await lockout.TryStartAttemptAsync("admin", null), Is.False, "名前の鍵もロック");
+            Assert.That(await lockout.TryStartAttemptAsync("ｘ", "U1"), Is.False);
+            Assert.That(await lockout.TryStartAttemptAsync("ｘ", "U2"), Is.True, "Id のロックで断った名前の鍵は数えていない");
+            await lockout.ResetAsync("admin", "U1");
+            Assert.That(await lockout.TryStartAttemptAsync("Ａｄｍｉｎ", "U1"), Is.True, "サインインで両方数え直す");
+        }
+
+        [Test]
+        public async Task RecordsExpireSoonerUntilLocked()
+        {
+            //ロックに至らない記録は 1 日 (MaxLockoutMinutes の 2 倍の方が長ければそれ) で消え、一度ロックされた記録は 30 日残る (存在しない名前を大量に送られても長く残らない)
+            var cache = new RecordingCache(_cache);
+            var lockout = new LoginLockout(new LoginLockoutSettings { MaxFailedAttempts = 2, LockoutMinutes = 5, MaxLockoutMinutes = 60 }, cache);
+            await lockout.TryStartAttemptAsync("taro");
+            Assert.That(cache.LastExpiration, Is.EqualTo(TimeSpan.FromDays(1)));
+            await lockout.TryStartAttemptAsync("taro");
+            Assert.That(cache.LastExpiration, Is.EqualTo(TimeSpan.FromDays(1)));
+            Assert.That(await lockout.TryStartAttemptAsync("taro"), Is.False);
+            Assert.That(cache.LastExpiration, Is.EqualTo(TimeSpan.FromDays(30)));
+        }
+
+        sealed class RecordingCache(IDistributedCache inner) : IDistributedCache
+        {
+            public TimeSpan? LastExpiration { get; private set; }
+            public byte[]? Get(string key) => inner.Get(key);
+            public Task<byte[]?> GetAsync(string key, CancellationToken token = default) => inner.GetAsync(key, token);
+            public void Refresh(string key) => inner.Refresh(key);
+            public Task RefreshAsync(string key, CancellationToken token = default) => inner.RefreshAsync(key, token);
+            public void Remove(string key) => inner.Remove(key);
+            public Task RemoveAsync(string key, CancellationToken token = default) => inner.RemoveAsync(key, token);
+            public void Set(string key, byte[] value, DistributedCacheEntryOptions options) { LastExpiration = options.AbsoluteExpirationRelativeToNow; inner.Set(key, value, options); }
+            public Task SetAsync(string key, byte[] value, DistributedCacheEntryOptions options, CancellationToken token = default)
+            { LastExpiration = options.AbsoluteExpirationRelativeToNow; return inner.SetAsync(key, value, options, token); }
         }
 
         [Test]
@@ -151,7 +201,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Auth
             var lockout = new LoginLockout(new LoginLockoutSettings { MaxFailedAttempts = 1, LockoutMinutes = 60, MaxLockoutMinutes = 60 }, _cache, () => now);
             await lockout.TryStartAttemptAsync("taro");
             Assert.That(await lockout.TryStartAttemptAsync("taro"), Is.False);
-            var key = "codeer.loginlockout.taro";
+            var key = LoginLockout.CacheKey("taro");
             Assert.That(await _cache.GetStringAsync(key), Is.Not.Null);
             now = now.AddMinutes(60);
             Assert.That(await lockout.TryStartAttemptAsync("taro"), Is.True);

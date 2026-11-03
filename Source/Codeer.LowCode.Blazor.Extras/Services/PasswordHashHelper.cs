@@ -11,6 +11,11 @@ namespace Codeer.LowCode.Blazor.Extras.Services
     /// PBKDF2-HMAC-SHA256, 100,000 iterations, 32-byte salt, 32-byte hash, base64-encoded.
     /// </summary>
     /// <remarks>
+    /// <para>
+    /// 反復回数は 10 万回で固定し、値に回数を持たせない (仕様。2026-11-04 決定)。回数を上げると版を戻したとき・自前の照合で既存のハッシュが通らなくなる。
+    /// セキュリティ要件の厳しいアプリはパスワードでなく外部 IdP (Entra ID 等) を使う前提。
+    /// </para>
+    /// <para>
     /// <c>PasswordHashingModuleDataIO</c> (Codeer.LowCode.Blazor.Extras.Server) calls <see cref="ApplyPasswordHash"/>
     /// from its <see cref="ModuleDataIO"/> overrides (AddAsync / UpdateAsync / BulkAddAsync); the app template inherits it.
     /// Call it yourself only when you derive from <see cref="ModuleDataIO"/> directly.
@@ -52,8 +57,9 @@ namespace Codeer.LowCode.Blazor.Extras.Services
         /// 印を書くときは送信に載った <see cref="SessionRevokeButtonFieldDesign"/> のデータを外す (同じ列を二重に書かない。新しい印でも全端末は失効する)。</item>
         /// <item><see cref="PasswordHashFieldDesign"/> は参照先の PasswordField に値があればハッシュ + ソルトを差し込む (契約が同じ列を書くモジュールでは飛ばす = 二重書き防止)。</item>
         /// </list>
-        /// ハッシュ / ソルト / 印の列の値はサーバーだけが作る: 送られてきたデータに契約や PasswordHashField のデータが載っていても捨てる (SessionRevokeButtonField のデータは印 NULL に揃える)
-        /// (平文が無ければ列は書かない = クライアントがハッシュや印を直接書き込むことはできない)。
+        /// ハッシュ / ソルト / 印 / TOTP の列の値はサーバーだけが作る: 送られてきたデータに契約や PasswordHashField のデータが載っていても捨てる
+        /// (SessionRevokeButtonField のデータは印 NULL に、TotpResetButtonField のデータは未登録の値に揃える = ボタンが送る値そのもの)
+        /// (平文が無ければ列は書かない = クライアントがハッシュ・印・TOTP の鍵を直接書き込むことはできない)。
         /// 戻り値はパスワードを書き換えたか (どちらの経路でも)。
         /// </summary>
         public static bool ApplyPasswordHash(ModuleDesign moduleDesign, ModuleData data)
@@ -64,6 +70,10 @@ namespace Codeer.LowCode.Blazor.Extras.Services
             foreach (var e in moduleDesign.Fields.OfType<SessionRevokeButtonFieldDesign>())
             {
                 if (data.Fields.ContainsKey(e.Name)) data.Fields[e.Name] = SessionRevokeButtonFieldData.Cleared();
+            }
+            foreach (var e in moduleDesign.Fields.OfType<TotpResetButtonFieldDesign>())
+            {
+                if (data.Fields.ContainsKey(e.Name)) data.Fields[e.Name] = TotpResetButtonFieldData.Cleared();
             }
 
             var contract = moduleDesign.Fields.OfType<LoginAccountContractFieldDesign>().FirstOrDefault(e => e.WritesPassword);

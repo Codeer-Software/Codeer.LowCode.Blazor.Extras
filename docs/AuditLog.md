@@ -121,7 +121,7 @@ create index "ix_audit_log_occurred_at" on "audit_log" ("occurred_at_utc");
 | `DataWrite` | 保存・一括取込・スクリプトの一括保存 (行ごとに Add / Update / Delete と件数)、アップロード、承認フローの操作 |
 | `Export` | 一括ファイル出力 (出した行ごとに Export と件数)、Excel → PDF、添付ファイルのダウンロード (レコードとフィールド名。動画の再生も同じ API なので、再生欄を開いた・シークした要求ごとに 1 行残り、要求された範囲が Detail の `Range=` に入る)、メール送信・一斉送信 (送信元のレコード・件数・一斉送信は宛先の行)。画面に表示するだけの参照 (DataRead) と違い、ファイルとして持ち出す操作は既定で記録される |
 | `Admin` | 意味検索の再索引 |
-| `System` | アプリの起動 (有効な設定を Detail に残す)・停止、デザインの版の切替 (`Design.Loaded`)、初期管理者の作成 (`Account.InitialUserCreated`。ユーザーが 0 件のときテンプレートが作る admin。作った行の Id が対象) |
+| `System` | アプリの起動 (有効な設定を Detail に残す)・停止、デザインの版の切替 (`Design.Loaded`) |
 | `Other` | `[Audit]` を付けていない API (設計の取得、リソース、TOTP 状態、AI チャットのポーリング・中断など)。失敗と拒否だけが残る |
 
 外部 IdP (Entra / Google / Cognito / OIDC) のログインは、IdP からの戻りを `Account.ExternalLoginCallback` として記録します。成立なら `Success` と解決したユーザー、

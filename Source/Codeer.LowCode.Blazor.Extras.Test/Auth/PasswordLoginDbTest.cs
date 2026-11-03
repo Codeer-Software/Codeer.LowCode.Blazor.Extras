@@ -139,6 +139,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Auth
             Assert.That((await login.VerifyAsync("taro", "wrong", null)).Status, Is.EqualTo(PasswordLoginStatus.Locked));
             Assert.That((await login.VerifyAsync("nobody", "wrong", null)).Status, Is.EqualTo(PasswordLoginStatus.Locked));
             Assert.That((await login.VerifyAsync(" NoBody ", "wrong", null)).Status, Is.EqualTo(PasswordLoginStatus.Locked), "大文字小文字・前後の空白は同じ名前");
+            Assert.That((await login.VerifyAsync(" TARO ", "wrong", null)).Status, Is.EqualTo(PasswordLoginStatus.Locked), "実在するアカウントも入力した名前で数える (有無で鍵が変わらない)");
 
             //空のログイン名は数えない
             for (var i = 0; i < MaxFailed + 2; i++)
