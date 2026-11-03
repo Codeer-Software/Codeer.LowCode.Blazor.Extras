@@ -17,7 +17,6 @@ UI は持たない。データはハッシュ / ソルト / 印の列分だけ�
 - `DisplayName` は画面のユーザー表示 (Cookie の Name) と二要素認証の QR のアカウント名
 - `TwoFactorEmail` を設定すると、メールのワンタイムコードによる二要素認証になる (TOTP の列も設定されていれば認証アプリが優先)
 - `DbColumnSessionStamp` を設定すると、ログインで Cookie にその行の印を積み、リクエストごとに照合する。パスワードの変更・`IsActive` を偽にする保存で印が書き換わり、それまでの Cookie は全部その場で使えなくなる
-- 初回起動時にユーザーが 0 件なら `admin` / `admin` を作る (パスワードの列があるときだけ。表示名・有効フラグの列があれば埋める)
 
 契約が無いとサーバーはユーザー行を解決できず、ログインできない (`LoginAccountStore.Create` が null)。
 パスワードを「書く」のも契約 (`PasswordField` を指定したとき。ユーザー登録・編集画面の PasswordField から)。契約の無いモジュール (別モジュールのパスワード変更ダイアログなど) では [PasswordHashField](PasswordHashFieldDesign.md) を使う。

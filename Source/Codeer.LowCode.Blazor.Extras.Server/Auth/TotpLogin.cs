@@ -59,7 +59,8 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Auth
     /// 列は書き込み専用なので通常のモジュール読み書きには出てこず、ここだけが SQL で直接触る (パスワードハッシュと同じ作法)。
     /// ログインの流れ (パスワードが通った後に <see cref="VerifyAsync"/>、Ok 以外は結果をそのままクライアントへ返してサインインしない) は <see cref="PasswordLogin"/> が持つ。
     /// 登録は最初のログイン時 (パスワード成功後) に行う割り切り。パスワードだけを知る第三者が先に登録できる余地があるので、
-    /// それが許容できない運用では初回ログインを管理者立ち会いで行う等で補う。リセットは <see cref="ResetAsync"/> (列を空にする)。
+    /// それが許容できない運用では初回ログインを管理者立ち会いで行う等で補う。
+    /// 未確認の鍵は登録情報を返すたびに作り直す (前に見せた鍵は使えなくなる。先に鍵を見た第三者と本人が同じ鍵を持ち続けないため)。リセットは <see cref="ResetAsync"/> (列を空にする)。
     /// </summary>
     public class TotpLogin
     {
@@ -114,9 +115,9 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Auth
             {
                 if (current?.IsConfirmed == true) return new TotpLoginResult { Status = TotpLoginStatus.CodeRequired };
 
-                //未登録 (または登録が未確認のまま): 秘密鍵を発行して登録用情報を返す。確認まで同じ鍵を使い回す
-                var secret = current?.Secret ?? Totp.CreateSecret();
-                if (current == null) await SaveNewAsync(userId, secret);
+                //未登録 (または登録が未確認のまま): 毎回新しい秘密鍵を発行して登録用情報を返す。前に返した鍵は無効になる
+                var secret = Totp.CreateSecret();
+                await SaveNewAsync(userId, secret);
 
                 var uri = Totp.CreateOtpauthUri(_issuer, accountName, secret);
                 return new TotpLoginResult

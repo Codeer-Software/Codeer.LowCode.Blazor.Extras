@@ -93,10 +93,12 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Auth
             Assert.That(row["user_name"], Is.EqualTo("taro"), "他の列はそのまま");
             Assert.That(row["totp_secret"], Is.EqualTo(setup.Secret));
 
-            //2. 確認前にもう一度パスワードを通すと、同じ鍵で QR を再表示する (登録し直しにならない)
+            //2. 確認前にもう一度パスワードを通すと、新しい鍵を発行し直す (前に見せた鍵は使えなくなる)
             var again = await _totp.VerifyAsync("U1", "taro", "");
             Assert.That(again.Status, Is.EqualTo(TotpLoginStatus.Setup));
-            Assert.That(again.Secret, Is.EqualTo(setup.Secret));
+            Assert.That(again.Secret, Is.Not.EqualTo(setup.Secret));
+            Assert.That((await _totp.VerifyAsync("U1", "taro", CurrentCode(setup.Secret!))).Status, Is.EqualTo(TotpLoginStatus.InvalidCode), "先に見せた鍵のコードは通らない");
+            setup = again;
 
             //3. 間違ったコードでは確定しない
             Assert.That((await _totp.VerifyAsync("U1", "taro", "000000")).Status, Is.EqualTo(TotpLoginStatus.InvalidCode));
