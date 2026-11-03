@@ -127,13 +127,20 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Auth
         }
 
         [Test]
-        public async Task NoAccountIsNotCounted()
+        public async Task EmptyKeyIsNotCounted()
         {
-            //存在しないログイン名 (Id が引けない) は数えない
+            //鍵が無い (空のログイン名) ときは数えない
             var lockout = Create();
             for (var i = 0; i < 20; i++) Assert.That(await lockout.TryStartAttemptAsync(null), Is.True);
             await lockout.CancelAttemptAsync(null);
             await lockout.ResetAsync("");
+        }
+
+        [Test]
+        public void UnknownLoginNameKeyDoesNotCollideWithIds()
+        {
+            Assert.That(LoginLockout.UnknownLoginNameKey(" taro "), Is.EqualTo(LoginLockout.UnknownLoginNameKey("TARO")));
+            Assert.That(LoginLockout.UnknownLoginNameKey("taro"), Does.StartWith("name:"));
         }
 
         [Test]

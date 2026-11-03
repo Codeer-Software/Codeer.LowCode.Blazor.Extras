@@ -87,7 +87,9 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Auth
             if (accounts == null || !accounts.HasPassword) return new() { Status = PasswordLoginStatus.NotAvailable };
 
             var lockout = new LoginLockout(_lockout, _cache);
-            var lockId = (await accounts.FindByLoginNameAsync(loginName))?.UserId;
+            //存在しないログイン名もログイン名で数える (実在するアカウントだけロックされると、429 で有無が分かってしまう)
+            var lockId = (await accounts.FindByLoginNameAsync(loginName))?.UserId
+                ?? (string.IsNullOrWhiteSpace(loginName) ? null : LoginLockout.UnknownLoginNameKey(loginName));
             if (!await lockout.TryStartAttemptAsync(lockId)) return new() { Status = PasswordLoginStatus.Locked, Detail = "Locked", IsDenied = true };
 
             LoginAccount account;

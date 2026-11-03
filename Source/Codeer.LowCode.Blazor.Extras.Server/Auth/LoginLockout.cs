@@ -22,7 +22,8 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Auth
     /// ID/パスワードのログインの総当たり対策。アカウントごとにログインの失敗 (パスワード・二要素認証のコードの不一致) を数え、
     /// MaxFailedAttempts 回続いたら、最後の失敗から一定時間そのアカウントのログインを受け付けない (正しいパスワードでも)。
     /// ロックの長さは LockoutMinutes から始まり、ロックが繰り返されるたびに倍になる (上限 MaxLockoutMinutes)。サインインできたら全部数え直す。
-    /// 鍵はアカウントの Id (LoginAccountStore.FindByLoginNameAsync で引く)。存在しないログイン名は数えない (null を渡すと何もしない)。
+    /// 鍵はアカウントの Id (LoginAccountStore.FindByLoginNameAsync で引く)。存在しないログイン名は <see cref="UnknownLoginNameKey"/> を鍵に同じように数える
+    /// (実在するアカウントだけがロックされると、ロックの応答でアカウントの有無が分かるため)。null / 空を渡すと何もしない。
     /// 照合の前に 1 回分を数えておき、失敗でなければ取り消す。こうすると同時に大量に送られても、1 つのプロセスの中では回数を超えて照合させない
     /// (読んで書くまでの排他はプロセスの中だけ。複数インスタンスで共有キャッシュを使っても、インスタンスをまたいだ同時送信には回数を保証しない)。
     /// 回数の置き場はサーバー側のキャッシュ (IDistributedCache) で DB 列は要らない。記録は最後の試行から 30 日 (MaxLockoutMinutes の 2 倍の方が長ければそれ) で消える。
@@ -32,7 +33,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Auth
     {
         const string CacheKeyPrefix = "codeer.loginlockout.";
 
-        //記録を残す期間。黙って待てばロックの繰り返しが忘れられる、とならないよう長めに持つ (数えるのは実在するアカウントだけなので件数は増えない)
+        //記録を残す期間。黙って待てばロックの繰り返しが忘れられる、とならないよう長めに持つ
         static readonly TimeSpan MinRetention = TimeSpan.FromDays(30);
 
         //読んで書くまでを 1 つずつにする (同じプロセスの中で同じアカウントに同時に来た試行を取りこぼさない)。
@@ -52,6 +53,9 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Auth
             _cache = cache;
             _now = now;
         }
+
+        /// <summary>存在しないログイン名を数えるときの鍵 (アカウントの Id と重ならない形。大文字小文字・前後の空白は区別しない)。</summary>
+        public static string UnknownLoginNameKey(string loginName) => "name:" + loginName.Trim().ToUpperInvariant();
 
         sealed class Entry
         {

@@ -127,14 +127,24 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Auth
         }
 
         [Test]
-        public async Task 存在しないログイン名は数えない()
+        public async Task 存在しないログイン名も実在するアカウントと同じ回数でロックされる()
         {
+            //ロックの応答 (429) でアカウントの有無が分からないこと
             var login = Create();
+            for (var i = 0; i < MaxFailed; i++)
+            {
+                Assert.That((await login.VerifyAsync("taro", "wrong", null)).Status, Is.EqualTo(PasswordLoginStatus.Unauthorized));
+                Assert.That((await login.VerifyAsync("nobody", "wrong", null)).Status, Is.EqualTo(PasswordLoginStatus.Unauthorized));
+            }
+            Assert.That((await login.VerifyAsync("taro", "wrong", null)).Status, Is.EqualTo(PasswordLoginStatus.Locked));
+            Assert.That((await login.VerifyAsync("nobody", "wrong", null)).Status, Is.EqualTo(PasswordLoginStatus.Locked));
+            Assert.That((await login.VerifyAsync(" NoBody ", "wrong", null)).Status, Is.EqualTo(PasswordLoginStatus.Locked), "大文字小文字・前後の空白は同じ名前");
+
+            //空のログイン名は数えない
             for (var i = 0; i < MaxFailed + 2; i++)
             {
-                Assert.That((await login.VerifyAsync("nobody", "wrong", null)).Status, Is.EqualTo(PasswordLoginStatus.Unauthorized), "ロックにはならない");
+                Assert.That((await login.VerifyAsync("", "wrong", null)).Status, Is.EqualTo(PasswordLoginStatus.Unauthorized));
             }
-            Assert.That((await login.VerifyAsync("", "wrong", null)).Status, Is.EqualTo(PasswordLoginStatus.Unauthorized));
         }
 
         [Test]
