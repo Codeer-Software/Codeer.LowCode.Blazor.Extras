@@ -88,17 +88,26 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Auth
         public async Task<bool> TryStartAttemptAsync(string? loginName, string? userId = null)
         {
             var started = new List<string>();
-            foreach (var key in Keys(loginName, userId))
+            try
             {
-                if (await TryStartKeyAsync(key))
+                foreach (var key in Keys(loginName, userId))
                 {
-                    started.Add(key);
-                    continue;
+                    if (await TryStartKeyAsync(key))
+                    {
+                        started.Add(key);
+                        continue;
+                    }
+                    foreach (var e in started) await CancelKeyAsync(e);
+                    return false;
                 }
-                foreach (var e in started) await CancelKeyAsync(e);
-                return false;
+                return true;
             }
-            return true;
+            catch
+            {
+                //片方を数えた後の障害: 数えた分を残さない (取り消しの失敗で元の例外を隠さない)
+                try { foreach (var e in started) await CancelKeyAsync(e); } catch { }
+                throw;
+            }
         }
 
         /// <summary>数えておいた回を取り消す。失敗でもサインインでもなく終わった回 (二要素認証のコードを求めた・メールを送れなかった・照合中の例外) に呼ぶ。</summary>

@@ -149,6 +149,18 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Auth
         }
 
         [Test]
+        public async Task 実在するアカウントは名前とIdの両方で数えサインインで両方消える()
+        {
+            var login = Create();
+            await login.VerifyAsync("taro", "wrong", null);
+            Assert.That(await _cache.GetStringAsync(LoginLockout.CacheKey("taro")), Is.Not.Null);
+            Assert.That(await _cache.GetStringAsync(LoginLockout.IdKey("U1")), Is.Not.Null);
+            Assert.That((await login.VerifyAsync("taro", "p@ss", null)).Status, Is.EqualTo(PasswordLoginStatus.Ok));
+            Assert.That(await _cache.GetStringAsync(LoginLockout.CacheKey("taro")), Is.Null);
+            Assert.That(await _cache.GetStringAsync(LoginLockout.IdKey("U1")), Is.Null);
+        }
+
+        [Test]
         public async Task 成功すると失敗の数は消える()
         {
             var login = Create();

@@ -91,25 +91,35 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Auth
             if (!await lockout.TryStartAttemptAsync(loginName, userId)) return new() { Status = PasswordLoginStatus.Locked, Detail = "Locked", IsDenied = true };
 
             LoginAccount account;
+            PasswordLoginResult? twoFactor = null;   //二要素認証の途中で返す結果
+            var cancelAttempt = false;               //失敗でもサインインでもなく終わった回 (数えた 1 回を取り消す)
             try
             {
                 var verified = await accounts.VerifyPasswordAsync(loginName, password);
                 if (verified == null) return new() { Status = PasswordLoginStatus.Unauthorized };   //数えた 1 回は失敗として残す
                 account = verified;
 
+                //二要素認証の途中: コードの不一致とメールを送った回は数えたまま残す。認証アプリのコードを求めた・送れなかった・期限切れは取り消す
                 var totp = TotpLogin.Create(_designData, _totp, _db);
                 if (totp != null)
                 {
                     var result = await totp.VerifyAsync(account.UserId, account.LoginName, twoFactorCode);
-                    if (result.Status != TotpLoginStatus.Ok) return await TwoFactorAsync(lockout, loginName, userId, result, result.Status, result.Status == TotpLoginStatus.InvalidCode, keepAttempt: false);
+                    if (result.Status != TotpLoginStatus.Ok)
+                    {
+                        twoFactor = TwoFactor(result, result.Status, result.Status == TotpLoginStatus.InvalidCode);
+                        cancelAttempt = !twoFactor.IsDenied;
+                    }
                 }
                 else if (accounts.HasTwoFactorEmail)
                 {
                     var email = new EmailOtpLogin(_emailOtp, _sendMail, _cache);
                     var result = await email.VerifyAsync(account.UserId, account.TwoFactorEmail ?? string.Empty, twoFactorCode);
-                    //メールを送った回も 1 回分として残す (再送を繰り返すとロックにかかる = メールの大量送信と、再送ごとのコードの総当たりを止める)
-                    if (result.Status != EmailOtpLoginStatus.Ok) return await TwoFactorAsync(lockout, loginName, userId, result, result.Status, result.Status == EmailOtpLoginStatus.InvalidCode,
-                        keepAttempt: result.Status == EmailOtpLoginStatus.CodeRequired);
+                    if (result.Status != EmailOtpLoginStatus.Ok)
+                    {
+                        twoFactor = TwoFactor(result, result.Status, result.Status == EmailOtpLoginStatus.InvalidCode);
+                        //メールを送った回も 1 回分として残す (再送を繰り返すとロックにかかる = メールの大量送信と、再送ごとのコードの総当たりを止める)
+                        cancelAttempt = !twoFactor.IsDenied && result.Status != EmailOtpLoginStatus.CodeRequired;
+                    }
                 }
             }
             catch
@@ -119,16 +129,19 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Auth
                 throw;
             }
 
+            //取り消しは照合の try の外 (取り消しの途中の障害で catch がもう一度取り消さない)
+            if (twoFactor != null)
+            {
+                if (cancelAttempt) await lockout.CancelAttemptAsync(loginName, userId);
+                return twoFactor;
+            }
+
             await lockout.ResetAsync(loginName, userId);
             //クライアントは status だけを見る (形は二要素認証の結果と同じ)
             return new() { Status = PasswordLoginStatus.Ok, Account = account, Response = new TotpLoginResult { Status = TotpLoginStatus.Ok } };
         }
 
-        //二要素認証の途中。コードの不一致とメールを送った回は数えたまま残す。認証アプリのコードを求めた・送れなかった・期限切れは取り消す
-        static async Task<PasswordLoginResult> TwoFactorAsync(LoginLockout lockout, string? loginName, string? userId, object response, string status, bool isInvalidCode, bool keepAttempt)
-        {
-            if (!isInvalidCode && !keepAttempt) await lockout.CancelAttemptAsync(loginName, userId);
-            return new() { Status = PasswordLoginStatus.TwoFactor, Response = response, Detail = $"TwoFactor={status}", IsDenied = isInvalidCode };
-        }
+        static PasswordLoginResult TwoFactor(object response, string status, bool isInvalidCode)
+            => new() { Status = PasswordLoginStatus.TwoFactor, Response = response, Detail = $"TwoFactor={status}", IsDenied = isInvalidCode };
     }
 }
