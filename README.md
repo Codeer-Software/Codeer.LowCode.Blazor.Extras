@@ -1,5 +1,7 @@
 ﻿# Codeer.LowCode.Blazor.Extras
 
+> **セキュリティのお知らせ (2026-11):** 旧版の問題を修正した版 (Extras 0.29.0 / Extras.Server 0.30.0) を公開しています。詳細は [GHSA-xc7q-chrv-mc7m](https://github.com/Codeer-Software/Codeer.LowCode.Blazor.Manual/security/advisories/GHSA-xc7q-chrv-mc7m) を参照してください。
+
 [Codeer.LowCode.Blazor](https://github.com/Codeer-Software/Codeer.LowCode.Blazor) に高機能UIコンポーネントと、
 アプリケーション開発でよく使うクライアント/サーバーサービスを追加する拡張ライブラリです。
 ソースは MIT で公開しているため、動作を変えたい場合はクラスを丸ごと差し替えたり、ソースをコピーして改変できます。
