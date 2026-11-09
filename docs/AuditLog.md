@@ -355,7 +355,7 @@ headless CLI:
 <designer.exe> audit-log-setup "<projectDir>" [--module-name AuditLog] [--table audit_log] [--data-source <name>] [--user-module AppUser] [--user-name-field <表示名フィールド>] [--no-pageframe] [--ddl-out "<path.sql>"]
 ```
 
-Claude Code でデザインを編集している場合 (デザイナの Tools > Claude Code Workspace)、この手順は `ClaudeCodeForDesigner/_specs/AuditLog.md` として展開されます。
+Claude Code でデザインを編集している場合 (デザイナの Tools > AI Workspace)、この手順は `AIForDesigner/_specs/AuditLog.md` として展開されます。
 「監査ログを入れて」と頼めば、Claude Code がセットアップの実行・DDL の適用・閲覧条件の設定まで行い、appsettings の有効化 (ホスト側) を案内します。
 
 ### ホストの結線
