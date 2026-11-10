@@ -11,6 +11,7 @@ using Extras.Server.AI;
 using Codeer.LowCode.Blazor.Extras.Server.Excel;
 using Codeer.LowCode.Blazor.Extras.Server.Mail;
 using Codeer.LowCode.Blazor.Extras.Server.Web;
+using Codeer.LowCode.Blazor.Extras.Server.WebApi;
 using Extras.Server.Jobs;
 using Codeer.LowCode.Blazor.Extras.Server.Jobs;
 using Microsoft.AspNetCore.SignalR;
@@ -66,6 +67,8 @@ SystemConfig.Instance.SemanticSearch = builder.Configuration.GetSection("Semanti
 SystemConfig.Instance.AzureOpenAIEmbedding = builder.Configuration.GetSection("AzureOpenAIEmbedding").Get<AzureOpenAIEmbeddingSettings>() ?? new();
 //監査ログ: AuditLog セクション 1 つ (有効化・失敗時の扱い・出力先 Database / File。使う出力先だけ書けばよい)
 SystemConfig.Instance.AuditLog = builder.Configuration.GetSection("AuditLog").Get<AuditLogSettings>() ?? new();
+//外部 Web API (WebApiField) の接続先: WebApi セクション (接続先ごとの認証の設定は接続先の中に置く)
+SystemConfig.Instance.WebApi = WebApiSettings.Load(builder.Configuration.GetSection("WebApi"));
 SystemConfig.Instance.DataSources.ToList().ForEach(e => e.ConnectionString = builder.Configuration.GetConnectionString(e.Name) ?? string.Empty);
 
 GlobalFontSettings.FontResolver = new CustomFontResolver(SystemConfig.Instance.FontFileDirectory);

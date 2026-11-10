@@ -4553,5 +4553,185 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
                 return ResourceManager.GetString("InvalidInput", resourceCulture);
             }
         }
+        
+        /// <summary>
+        ///   WebApi に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string WebApiField {
+            get {
+                return ResourceManager.GetString("WebApiField", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Connection Name に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string WebApiConnectionName {
+            get {
+                return ResourceManager.GetString("WebApiConnectionName", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Method に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string WebApiMethod {
+            get {
+                return ResourceManager.GetString("WebApiMethod", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Path に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string WebApiPath {
+            get {
+                return ResourceManager.GetString("WebApiPath", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Show Button に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string WebApiShowButton {
+            get {
+                return ResourceManager.GetString("WebApiShowButton", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Text に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string WebApiButtonText {
+            get {
+                return ResourceManager.GetString("WebApiButtonText", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Send Names in UpperCamelCase に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string WebApiUseUpperCamelCaseNames {
+            get {
+                return ResourceManager.GetString("WebApiUseUpperCamelCaseNames", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   On Completed に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string WebApiOnCompleted {
+            get {
+                return ResourceManager.GetString("WebApiOnCompleted", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Set the connection name. に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string DesignCheck_WebApiConnectionNameRequired {
+            get {
+                return ResourceManager.GetString("DesignCheck_WebApiConnectionNameRequired", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Arguments Field に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string WebApiArgumentsField {
+            get {
+                return ResourceManager.GetString("WebApiArgumentsField", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Result Field に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string WebApiResultField {
+            get {
+                return ResourceManager.GetString("WebApiResultField", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   &apos;{1}&apos; in {0} is not the name of a JsonField in the same module. に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string DesignCheck_WebApiJsonFieldNameInvalid {
+            get {
+                return ResourceManager.GetString("DesignCheck_WebApiJsonFieldNameInvalid", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   The path &apos;{0}&apos; is invalid. Write each insertion as {{name}} with matching braces. に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string DesignCheck_WebApiPathInvalid {
+            get {
+                return ResourceManager.GetString("DesignCheck_WebApiPathInvalid", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   DataReadCondition and DataWriteCondition are not applied when the server decides whether the Web API of WebApiField &apos;{0}&apos; can be called (they only make the button unavailable on that row). に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string DesignCheck_Data_conditions_are_not_applied_to_web_api_ {
+            get {
+                return ResourceManager.GetString("DesignCheck_Data_conditions_are_not_applied_to_web_api_", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Conditions of PermissionField &apos;{1}&apos; that reference row data are not applied when the server decides whether the Web API of WebApiField &apos;{0}&apos; can be called (they only make the button unavailable on that row). Use conditions that reference CurrentUser. に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string DesignCheck_Permission_row_conditions_are_not_applied_to_web_api_ {
+            get {
+                return ResourceManager.GetString("DesignCheck_Permission_row_conditions_are_not_applied_to_web_api_", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Run に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string WebApi_DefaultButtonText {
+            get {
+                return ResourceManager.GetString("WebApi_DefaultButtonText", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   The Web API call failed (HTTP {0}). に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string WebApi_FailedFormat {
+            get {
+                return ResourceManager.GetString("WebApi_FailedFormat", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   The request did not reach the server. に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string WebApi_NotDelivered {
+            get {
+                return ResourceManager.GetString("WebApi_NotDelivered", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   This app cannot call Web APIs (no route to the server is configured). に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string WebApi_NotConfigured {
+            get {
+                return ResourceManager.GetString("WebApi_NotConfigured", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Not called because the field cannot run now (running, read-only, or disabled). に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string WebApi_NotExecuted {
+            get {
+                return ResourceManager.GetString("WebApi_NotExecuted", resourceCulture);
+            }
+        }
     }
 }

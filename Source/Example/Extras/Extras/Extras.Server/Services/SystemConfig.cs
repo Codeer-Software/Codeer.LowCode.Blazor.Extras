@@ -7,6 +7,7 @@ using Codeer.LowCode.Blazor.Extras.Server.FileManagement;
 
 using Codeer.LowCode.Blazor.Extras.Server.AI.Embedding;
 using Codeer.LowCode.Blazor.Extras.Server.AuditLog;
+using Codeer.LowCode.Blazor.Extras.Server.WebApi;
 
 namespace Extras.Server.Services
 {
@@ -35,6 +36,8 @@ namespace Extras.Server.Services
         public Extras.Server.AI.AIChatSettings AIChat { get; set; } = new();
         //監査ログ (Extras.Server の AuditLog)。有効・失敗時の扱いと出力先 (Database / File) が 1 セクション。実体 (IAuditSink) は Services/AuditSinkTable が組み立てる
         public AuditLogSettings AuditLog { get; set; } = new();
+        //外部 Web API (WebApiField) の接続先。WebApiApi に渡す (Services/ExtrasApiTable)
+        public WebApiSettings WebApi { get; set; } = new();
         public SystemConfigForFront ForFront() => new SystemConfigForFront { CanScriptDebug = CanScriptDebug, UseHotReload = UseHotReload };
     }
 }

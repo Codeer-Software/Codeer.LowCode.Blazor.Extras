@@ -1950,4 +1950,64 @@
   <data name="InvalidInput" xml:space="preserve">
     <value>入力内容に誤りがあります。</value>
   </data>
+  <data name="WebApiField" xml:space="preserve">
+    <value>Web API</value>
+  </data>
+  <data name="WebApiConnectionName" xml:space="preserve">
+    <value>接続先</value>
+  </data>
+  <data name="WebApiMethod" xml:space="preserve">
+    <value>メソッド</value>
+  </data>
+  <data name="WebApiPath" xml:space="preserve">
+    <value>パス</value>
+  </data>
+  <data name="WebApiShowButton" xml:space="preserve">
+    <value>ボタンを表示</value>
+  </data>
+  <data name="WebApiButtonText" xml:space="preserve">
+    <value>テキスト</value>
+  </data>
+  <data name="WebApiUseUpperCamelCaseNames" xml:space="preserve">
+    <value>名前を先頭大文字で送る</value>
+  </data>
+  <data name="WebApiOnCompleted" xml:space="preserve">
+    <value>呼び出した後</value>
+  </data>
+  <data name="DesignCheck_WebApiConnectionNameRequired" xml:space="preserve">
+    <value>接続先を設定してください。</value>
+  </data>
+  <data name="DesignCheck_WebApiPathInvalid" xml:space="preserve">
+    <value>パス &apos;{0}&apos; の書き方が正しくありません。差し込みは {{名前}} の形で、{{ と }} を対にしてください。</value>
+  </data>
+  <data name="DesignCheck_Data_conditions_are_not_applied_to_web_api_" xml:space="preserve">
+    <value>読み取り/書き込みできる行の条件 (DataReadCondition / DataWriteCondition) は、WebApiField &apos;{0}&apos; の Web API の呼び出し可否には適用されません (画面ではその行でボタンが押せなくなるだけです)。</value>
+  </data>
+  <data name="DesignCheck_Permission_row_conditions_are_not_applied_to_web_api_" xml:space="preserve">
+    <value>PermissionField &apos;{1}&apos; の行データを参照する条件は、WebApiField &apos;{0}&apos; の Web API の呼び出し可否には適用されません (画面ではその行でボタンが押せなくなるだけです)。CurrentUser を参照する条件を使用してください。</value>
+  </data>
+  <data name="WebApi_DefaultButtonText" xml:space="preserve">
+    <value>実行</value>
+  </data>
+  <data name="WebApi_FailedFormat" xml:space="preserve">
+    <value>Web API の呼び出しに失敗しました (HTTP {0})。</value>
+  </data>
+  <data name="WebApi_NotDelivered" xml:space="preserve">
+    <value>サーバーに届きませんでした。</value>
+  </data>
+  <data name="WebApi_NotConfigured" xml:space="preserve">
+    <value>このアプリでは Web API を呼び出せません (サーバーへの口が設定されていません)。</value>
+  </data>
+  <data name="WebApi_NotExecuted" xml:space="preserve">
+    <value>実行できない状態のため呼び出しませんでした (実行中・書き込み不可・無効)。</value>
+  </data>
+  <data name="WebApiArgumentsField" xml:space="preserve">
+    <value>引数の JsonField</value>
+  </data>
+  <data name="WebApiResultField" xml:space="preserve">
+    <value>結果の JsonField</value>
+  </data>
+  <data name="DesignCheck_WebApiJsonFieldNameInvalid" xml:space="preserve">
+    <value>{0} の &apos;{1}&apos; は同じモジュールの JsonField の名前ではありません。</value>
+  </data>
 </root>

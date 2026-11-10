@@ -22,6 +22,8 @@ namespace Codeer.LowCode.Blazor.Extras
             //JobTriggerField.GetJobStatus の戻り値と、その Status の enum
             app.GetScriptRuntimeTypeManager().AddType<Jobs.JobStatusResponse>();
             app.GetScriptRuntimeTypeManager().AddType<Jobs.JobStatus>();
+            //WebApiField.Execute の戻り値 (WebApiService と共用)
+            app.GetScriptRuntimeTypeManager().AddType<WebApiResult>();
         }
 
         /// <summary>
@@ -39,7 +41,6 @@ namespace Codeer.LowCode.Blazor.Extras
             manager.AddType(typeof(ScriptObjects.Excel));
             manager.AddType(typeof(ExcelCellIndex));
             manager.AddModuleGenericType(typeof(ScriptObjects.BulkFileReader));
-            manager.AddType<WebApiResult>();
             manager.AddType<Codeer.LowCode.Blazor.Extras.Mail.MailSendResult>();
             manager.AddType<Codeer.LowCode.Blazor.Extras.Mail.MailSendFailure>();
             //承認フロー (経路のスクリプト組み立てと command API の応答)

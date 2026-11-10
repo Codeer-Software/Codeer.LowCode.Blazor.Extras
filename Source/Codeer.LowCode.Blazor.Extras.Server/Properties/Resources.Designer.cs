@@ -230,5 +230,122 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Properties {
                 return ResourceManager.GetString("SemanticSearchField_NotFound", resourceCulture);
             }
         }
+        
+        /// <summary>
+        ///   The Web API connection &apos;{0}&apos; is not in the settings. に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string WebApi_ConnectionNotFound {
+            get {
+                return ResourceManager.GetString("WebApi_ConnectionNotFound", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   The authentication &apos;{1}&apos; of the Web API connection &apos;{0}&apos; is not available. に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string WebApi_UnknownAuthentication {
+            get {
+                return ResourceManager.GetString("WebApi_UnknownAuthentication", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   The authentication settings of the Web API connection &apos;{0}&apos; are incomplete. に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string WebApi_AuthenticationSettingsInvalid {
+            get {
+                return ResourceManager.GetString("WebApi_AuthenticationSettingsInvalid", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Authentication to the Web API connection &apos;{0}&apos; failed. に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string WebApi_AuthenticationFailed {
+            get {
+                return ResourceManager.GetString("WebApi_AuthenticationFailed", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   The BaseUrl of the Web API connection is invalid. に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string WebApi_InvalidBaseUrl {
+            get {
+                return ResourceManager.GetString("WebApi_InvalidBaseUrl", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   The path of the WebApiField is invalid. に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string WebApi_InvalidPath {
+            get {
+                return ResourceManager.GetString("WebApi_InvalidPath", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   There is no value for &apos;{0}&apos; in the path. に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string WebApi_PathValueMissing {
+            get {
+                return ResourceManager.GetString("WebApi_PathValueMissing", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   The URL points outside the BaseUrl of the connection. に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string WebApi_OutsideBaseUrl {
+            get {
+                return ResourceManager.GetString("WebApi_OutsideBaseUrl", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   The arguments are not valid JSON. に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string WebApi_ArgumentsNotObject {
+            get {
+                return ResourceManager.GetString("WebApi_ArgumentsNotObject", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   The Web API connection &apos;{0}&apos; did not respond in time. に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string WebApi_Timeout {
+            get {
+                return ResourceManager.GetString("WebApi_Timeout", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Could not connect to the Web API connection &apos;{0}&apos;. に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string WebApi_ConnectFailed {
+            get {
+                return ResourceManager.GetString("WebApi_ConnectFailed", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   The response from the Web API connection &apos;{0}&apos; is too large. に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string WebApi_ResponseTooLarge {
+            get {
+                return ResourceManager.GetString("WebApi_ResponseTooLarge", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   The call to the Web API connection &apos;{0}&apos; failed. に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string WebApi_CallFailed {
+            get {
+                return ResourceManager.GetString("WebApi_CallFailed", resourceCulture);
+            }
+        }
     }
 }

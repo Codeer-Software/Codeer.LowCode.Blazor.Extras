@@ -32,6 +32,7 @@
 | [MarkerListField](docs/MarkerListField.md) | 画像上にマーカー(ピン)を配置・操作するフィールド |
 | [QrCodeField](docs/QrCodeField.md) | 文字列をQRコード画像として表示する表示専用フィールド (外部ライブラリ QRCoder を使用) |
 | [JobTriggerField](docs/JobTriggerField.md) | ジョブトリガー。ボタン (またはスクリプトの `Run()`) でサーバーのジョブ (C# のバッチ処理) を実行し、画面の内容を渡して結果を通知する。同期 / 非同期 (起動したらすぐ戻り、結果はスクリプトの `GetJobStatus` で問い合わせる)。同じジョブを重ねて動かすかをデザインで決める (`AllowsConcurrentRuns`)。実行できるのはこのフィールドに書けるユーザー。サーバー側は Extras.Server の JobProcess ([ジョブ](docs/Jobs.md)) |
+| [WebApiField](docs/WebApiField.md) | 外部の Web API の呼び出し。ボタン (またはスクリプトの `Execute()`) でサーバーが接続先 (appsettings の `WebApi`) の API を呼び、結果 (状態コード・JSON) を返す。URL と認証のキーはサーバーだけが持つ。認証は None / ApiKey / Bearer / Basic / OAuth2 クライアントクレデンシャルと独自の方式 (IWebApiAuthenticator)。呼べるのはこのフィールドに書けるユーザー |
 | [ProgressField](docs/ProgressField.md) | 進捗率を横バー / 半円メーターで表示する表示専用フィールド。値・色を別フィールドから参照 |
 | [ExcelReportButtonField](docs/ExcelReportButtonField.md) | テンプレート Excel のセル (`$フィールド名.Value`) を自モジュールの値で置き換えて xlsx / PDF でダウンロードするボタン。スクリプト不要 |
 | [BulkFileTransferButtonField](docs/BulkFileTransfer.md#bulkfiletransferbuttonfield-一括ファイル転送ボタン) | 詳細画面に置く一括ダウンロード / 一括更新ボタン。対象は同じ画面の検索フィールドか一覧の条件 |
@@ -126,6 +127,7 @@ Codeer.LowCode.Blazor 本体が持つのは認可だけで、認証 (ログイ�
 - ホストの部品 — DesignDataStore (配置された App.zip の読み込み・差し替えの検知・版 (SHA-256))、AddLowCodeLocalization (Accept-Language で ja-JP / 中立を切り替えるリクエストローカライズの登録)
 - 監査ログ — AuditLogger (いつ・誰が・どこから・何に・何をして・どうなったかを WebAPI ごとに 1 レコード記録。DB / JSON Lines ファイルへ。Strict/BestEffort・保持期限・追記専用の保護)。appsettings だけで有効化。[監査ログ](docs/AuditLog.md)
 - ジョブ (バッチ) — JobProcess / JobMode (ホストのジョブを別プロセスで動かす親と子。画面のボタン (JobTriggerField) とコマンドライン `job <ジョブ名>` の両方の土台。約束 = 引数・標準入力・環境変数・終了コード・UTF-8。非同期のジョブの状態は IDistributedCache)。[ジョブ](docs/Jobs.md)
+- 外部 Web API — WebApiApi (WebApiField のサーバー側。接続先の設定 WebApiSettings で外部の API を呼ぶ。送り先は BaseUrl の配下だけ・リダイレクトは追わない。認証は IWebApiAuthenticator で差し替え)。[WebApiField](docs/WebApiField.md)
 - Web ヘルパ — ETag 付きファイル応答 (FileWithETag)、ホットリロード (HotReloadHub / FileWatcherService)
 
 ## セットアップ
@@ -157,7 +159,7 @@ ExtrasClientInitializer.Initialize(this);
 ExtrasClientInitializer.Initialize(this, http, logger, toaster);
 ```
 
-メール送信・ジョブ・承認フロー・AI チャット・意味検索の再索引・自分の認証アプリ解除ボタン・Excel PDF 変換・AI 解析は、サーバーの共通の API
+メール送信・ジョブ・外部 Web API・承認フロー・AI チャット・意味検索の再索引・自分の認証アプリ解除ボタン・Excel PDF 変換・AI 解析は、サーバーの共通の API
 (`ExtrasTransport.EndPoint`。既定 `/api/extras`) に送るので、クライアント側の設定は要りません。
 
 スクリプトの一括ファイル入出力を使う場合は、エンドポイント URL を起動時に設定します
@@ -183,7 +185,7 @@ using Codeer.LowCode.Blazor.Extras;
 ExtrasServerInitializer.Initialize();
 ```
 
-メール送信・ジョブ・承認フロー・AI チャット・意味検索の再索引・自分の認証アプリ解除ボタン・Excel PDF 変換・AI 解析を使う場合は、共通の API の受け口
+メール送信・ジョブ・外部 Web API・承認フロー・AI チャット・意味検索の再索引・自分の認証アプリ解除ボタン・Excel PDF 変換・AI 解析を使う場合は、共通の API の受け口
 `Controllers/ExtrasController.cs` (`POST api/extras`) と、出す機能の対応表 `Extras/ExtrasApiTable.cs` が必要です。
 新しいアプリテンプレート (Cookie) には含まれています。対応表には Extras.Server の機能を 1 行ずつ並べ、並べていない機能の要求は 404 になります。
 
@@ -195,6 +197,7 @@ public static ExtrasApi Create() => new()
     {
         new MailApi(SystemConfig.Instance.Mail, MailSenderTable.Create),       //メール (送信インフラの対応表 MailSenderTable)
         new JobApi(JobRunner.Names),                                           //ジョブ
+        new WebApiApi(SystemConfig.Instance.WebApi),                           //外部 Web API (接続先は appsettings の WebApi)
         new ApprovalApi(SystemConfig.Instance.Mail, MailSenderTable.Create),   //承認フロー (通知メール)
         new AIChatApi(AIChatAgentTable.Service),                               //AI チャット
         new SemanticSearchApi(SemanticSearchTable.Service, userId => ...),     //意味検索の再索引

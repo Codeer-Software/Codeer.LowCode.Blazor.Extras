@@ -69,4 +69,43 @@
   <data name="SemanticSearch_ReindexMissingRunning" xml:space="preserve">
     <value>モジュール '{0}' では欠損分の再索引が走っています。終わってから全行の再索引を起こしてください。</value>
   </data>
+  <data name="WebApi_ConnectionNotFound" xml:space="preserve">
+    <value>接続先 &apos;{0}&apos; が設定にありません。</value>
+  </data>
+  <data name="WebApi_UnknownAuthentication" xml:space="preserve">
+    <value>接続先 &apos;{0}&apos; の認証方式 &apos;{1}&apos; がありません。</value>
+  </data>
+  <data name="WebApi_AuthenticationSettingsInvalid" xml:space="preserve">
+    <value>接続先 &apos;{0}&apos; の認証の設定が足りません。</value>
+  </data>
+  <data name="WebApi_AuthenticationFailed" xml:space="preserve">
+    <value>接続先 &apos;{0}&apos; の認証に失敗しました。</value>
+  </data>
+  <data name="WebApi_InvalidBaseUrl" xml:space="preserve">
+    <value>接続先の BaseUrl が正しくありません。</value>
+  </data>
+  <data name="WebApi_InvalidPath" xml:space="preserve">
+    <value>WebApiField のパスの書き方が正しくありません。</value>
+  </data>
+  <data name="WebApi_PathValueMissing" xml:space="preserve">
+    <value>パスの差し込み &apos;{0}&apos; の値がありません。</value>
+  </data>
+  <data name="WebApi_OutsideBaseUrl" xml:space="preserve">
+    <value>組み立てた URL が接続先の BaseUrl の外を指しています。</value>
+  </data>
+  <data name="WebApi_ArgumentsNotObject" xml:space="preserve">
+    <value>引数が JSON として読めません。</value>
+  </data>
+  <data name="WebApi_Timeout" xml:space="preserve">
+    <value>接続先 &apos;{0}&apos; から時間内に応答がありませんでした。</value>
+  </data>
+  <data name="WebApi_ConnectFailed" xml:space="preserve">
+    <value>接続先 &apos;{0}&apos; に接続できませんでした。</value>
+  </data>
+  <data name="WebApi_ResponseTooLarge" xml:space="preserve">
+    <value>接続先 &apos;{0}&apos; の応答が大きすぎます。</value>
+  </data>
+  <data name="WebApi_CallFailed" xml:space="preserve">
+    <value>接続先 &apos;{0}&apos; の呼び出しに失敗しました。</value>
+  </data>
 </root>

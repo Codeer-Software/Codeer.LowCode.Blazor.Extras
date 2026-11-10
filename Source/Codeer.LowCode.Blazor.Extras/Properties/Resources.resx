@@ -1950,4 +1950,64 @@ Recipients: {1}</value>
   <data name="InvalidInput" xml:space="preserve">
     <value>There is an invalid input</value>
   </data>
+  <data name="WebApiField" xml:space="preserve">
+    <value>WebApi</value>
+  </data>
+  <data name="WebApiConnectionName" xml:space="preserve">
+    <value>Connection Name</value>
+  </data>
+  <data name="WebApiMethod" xml:space="preserve">
+    <value>Method</value>
+  </data>
+  <data name="WebApiPath" xml:space="preserve">
+    <value>Path</value>
+  </data>
+  <data name="WebApiShowButton" xml:space="preserve">
+    <value>Show Button</value>
+  </data>
+  <data name="WebApiButtonText" xml:space="preserve">
+    <value>Text</value>
+  </data>
+  <data name="WebApiUseUpperCamelCaseNames" xml:space="preserve">
+    <value>Send Names in UpperCamelCase</value>
+  </data>
+  <data name="WebApiOnCompleted" xml:space="preserve">
+    <value>On Completed</value>
+  </data>
+  <data name="DesignCheck_WebApiConnectionNameRequired" xml:space="preserve">
+    <value>Set the connection name.</value>
+  </data>
+  <data name="DesignCheck_WebApiPathInvalid" xml:space="preserve">
+    <value>The path &apos;{0}&apos; is invalid. Write each insertion as {{name}} with matching braces.</value>
+  </data>
+  <data name="DesignCheck_Data_conditions_are_not_applied_to_web_api_" xml:space="preserve">
+    <value>DataReadCondition and DataWriteCondition are not applied when the server decides whether the Web API of WebApiField &apos;{0}&apos; can be called (they only make the button unavailable on that row).</value>
+  </data>
+  <data name="DesignCheck_Permission_row_conditions_are_not_applied_to_web_api_" xml:space="preserve">
+    <value>Conditions of PermissionField &apos;{1}&apos; that reference row data are not applied when the server decides whether the Web API of WebApiField &apos;{0}&apos; can be called (they only make the button unavailable on that row). Use conditions that reference CurrentUser.</value>
+  </data>
+  <data name="WebApi_DefaultButtonText" xml:space="preserve">
+    <value>Run</value>
+  </data>
+  <data name="WebApi_FailedFormat" xml:space="preserve">
+    <value>The Web API call failed (HTTP {0}).</value>
+  </data>
+  <data name="WebApi_NotDelivered" xml:space="preserve">
+    <value>The request did not reach the server.</value>
+  </data>
+  <data name="WebApi_NotConfigured" xml:space="preserve">
+    <value>This app cannot call Web APIs (no route to the server is configured).</value>
+  </data>
+  <data name="WebApi_NotExecuted" xml:space="preserve">
+    <value>Not called because the field cannot run now (running, read-only, or disabled).</value>
+  </data>
+  <data name="WebApiArgumentsField" xml:space="preserve">
+    <value>Arguments Field</value>
+  </data>
+  <data name="WebApiResultField" xml:space="preserve">
+    <value>Result Field</value>
+  </data>
+  <data name="DesignCheck_WebApiJsonFieldNameInvalid" xml:space="preserve">
+    <value>&apos;{1}&apos; in {0} is not the name of a JsonField in the same module.</value>
+  </data>
 </root>

@@ -69,4 +69,43 @@
   <data name="SemanticSearch_ReindexMissingRunning" xml:space="preserve">
     <value>A reindex of missing rows is running for module '{0}'. Start the full reindex after it finishes.</value>
   </data>
+  <data name="WebApi_ConnectionNotFound" xml:space="preserve">
+    <value>The Web API connection &apos;{0}&apos; is not in the settings.</value>
+  </data>
+  <data name="WebApi_UnknownAuthentication" xml:space="preserve">
+    <value>The authentication &apos;{1}&apos; of the Web API connection &apos;{0}&apos; is not available.</value>
+  </data>
+  <data name="WebApi_AuthenticationSettingsInvalid" xml:space="preserve">
+    <value>The authentication settings of the Web API connection &apos;{0}&apos; are incomplete.</value>
+  </data>
+  <data name="WebApi_AuthenticationFailed" xml:space="preserve">
+    <value>Authentication to the Web API connection &apos;{0}&apos; failed.</value>
+  </data>
+  <data name="WebApi_InvalidBaseUrl" xml:space="preserve">
+    <value>The BaseUrl of the Web API connection is invalid.</value>
+  </data>
+  <data name="WebApi_InvalidPath" xml:space="preserve">
+    <value>The path of the WebApiField is invalid.</value>
+  </data>
+  <data name="WebApi_PathValueMissing" xml:space="preserve">
+    <value>There is no value for &apos;{0}&apos; in the path.</value>
+  </data>
+  <data name="WebApi_OutsideBaseUrl" xml:space="preserve">
+    <value>The URL points outside the BaseUrl of the connection.</value>
+  </data>
+  <data name="WebApi_ArgumentsNotObject" xml:space="preserve">
+    <value>The arguments are not valid JSON.</value>
+  </data>
+  <data name="WebApi_Timeout" xml:space="preserve">
+    <value>The Web API connection &apos;{0}&apos; did not respond in time.</value>
+  </data>
+  <data name="WebApi_ConnectFailed" xml:space="preserve">
+    <value>Could not connect to the Web API connection &apos;{0}&apos;.</value>
+  </data>
+  <data name="WebApi_ResponseTooLarge" xml:space="preserve">
+    <value>The response from the Web API connection &apos;{0}&apos; is too large.</value>
+  </data>
+  <data name="WebApi_CallFailed" xml:space="preserve">
+    <value>The call to the Web API connection &apos;{0}&apos; failed.</value>
+  </data>
 </root>
