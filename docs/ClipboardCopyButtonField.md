@@ -62,6 +62,17 @@ MarkupStringField (と `IsHtml` の LabelField) は、HTML のタグを取り除
 
 どちらも、コピーできたら通知を出して `OnCopied` を呼び、`true` を返します。コピーできなかったときはエラーを通知して `false` を返します。
 
+ボタンを置かずにスクリプトだけでコピーしたいときは、スクリプトの `Clipboard` サービスを使います (`ExtrasClientInitializer.Initialize` で登録済み)。
+`Clipboard.Copy(string)` は成功なら `true` を返し、通知は出しません。書き込みの仕組みはこのフィールドと同じです。
+
+```csharp
+void CopyButton_OnClick()
+{
+    if (Clipboard.Copy($"注文番号: {OrderNo.Value}")) Toaster.Success("コピーしました");
+    else Toaster.Error("コピーできませんでした");
+}
+```
+
 ```csharp
 void OtherButton_OnClick()
 {

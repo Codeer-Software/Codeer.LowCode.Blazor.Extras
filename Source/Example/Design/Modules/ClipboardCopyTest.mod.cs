@@ -19,3 +19,9 @@ void ScriptCopy_OnClick()
 {
     CopyInput.Copy();
 }
+
+void ServiceCopy_OnClick()
+{
+    if (Clipboard.Copy("Clipboard サービスから: " + Input.Value)) Toaster.Success("Clipboard.Copy でコピーしました");
+    else Toaster.Error("Clipboard.Copy でコピーできませんでした");
+}

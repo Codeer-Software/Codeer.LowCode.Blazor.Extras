@@ -13,7 +13,7 @@
 
 | パッケージ | 内容 |
 |---|---|
-| Codeer.LowCode.Blazor.Extras | 拡張フィールド (メール送信・承認フロー・編集履歴・一括ファイル入出力を含む)、スクリプトオブジェクト (Excel / WebApi / Toaster / BulkFileReader / BulkFileTransferService)、クライアントサービス |
+| Codeer.LowCode.Blazor.Extras | 拡張フィールド (メール送信・承認フロー・編集履歴・一括ファイル入出力を含む)、スクリプトオブジェクト (Excel / WebApi / Toaster / BulkFileReader / BulkFileTransferService / Clipboard)、クライアントサービス |
 | Codeer.LowCode.Blazor.Extras.Designer | デザイナ統合 (ツールボックス登録・AI 用ドキュメント登録) |
 | Codeer.LowCode.Blazor.Extras.Server | サーバーサービス (認証: ID/パスワード照合・外部 IdP・二要素認証 / メール送信 / 承認フローエンジン / 編集履歴の記録 / 一括ファイル入出力 (CSV・固定長・列マッピング・値の変換) / AI チャット・意味検索 / AI ドキュメント解析 / ファイルストレージ (ファイルシステム / Azure Blob / Amazon S3) / 監査ログ / ASP.NET Core ヘルパ) |
 
@@ -96,6 +96,7 @@ Codeer.LowCode.Blazor 本体が持つのは認可だけで、認証 (ログイ�
 | Excel | Excel ファイルの読み書き・テンプレートへの値書き込み・xlsx / PDF ダウンロード |
 | WebApiService | 外部 API への HTTP リクエスト (Get / Post / Put / Delete) |
 | Toaster | トースト通知の表示 (Success / Info / Warn / Error) |
+| Clipboard | `Clipboard.Copy(文字列)` で文字列をクリップボードにコピー (成功なら true)。HTTPS か localhost で、ユーザー操作の中から呼んだときだけ成功する。[ClipboardCopyButtonField](docs/ClipboardCopyButtonField.md#スクリプト-api) |
 | BulkFileReader | `new BulkFileReader<モジュール名>()`。ファイルを選ばせ、そのモジュールの一括ファイル入出力の定義 (CSV / 固定長 / 列マッピング / 値の変換) で解析して行を返す (DB には書かない)。[一括ファイル入出力](docs/BulkFileTransfer.md#スクリプト) |
 | BulkFileTransferService | 検索条件や加工済みの行で一括ダウンロード (Download)、加工済みの行を 1 トランザクションで一括保存 (Submit)。[一括ファイル入出力](docs/BulkFileTransfer.md#スクリプト) |
 

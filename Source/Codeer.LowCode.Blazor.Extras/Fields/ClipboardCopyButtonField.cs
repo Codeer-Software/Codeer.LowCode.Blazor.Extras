@@ -5,15 +5,13 @@ using Codeer.LowCode.Blazor.OperatingModel;
 using Codeer.LowCode.Blazor.Repository.Data;
 using Codeer.LowCode.Blazor.Repository.Design;
 using Codeer.LowCode.Blazor.Script;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.JSInterop;
 
 namespace Codeer.LowCode.Blazor.Extras.Fields
 {
     /// <summary>
     /// 押すと文字列をクリップボードにコピーするボタン。
     /// コピーする文字列はコピー元フィールド (MarkupStringField / LabelField / TextField) か固定文字列から取る。
-    /// クリップボードへの書き込みはブラウザーの navigator.clipboard.writeText を使う (HTTPS か localhost で、クリック操作の中でのみ動く)。
+    /// クリップボードへの書き込みはスクリプトの Clipboard と同じ (ブラウザーの navigator.clipboard.writeText。HTTPS か localhost で、クリック操作の中でのみ動く)。
     /// </summary>
     public class ClipboardCopyButtonField(ClipboardCopyButtonFieldDesign design)
         : FieldBase<ClipboardCopyButtonFieldDesign>(design)
@@ -82,18 +80,12 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
 
         async Task<bool> CopyCoreAsync(string text)
         {
-            var js = Services.Provider.GetService<IJSRuntime>();
-            if (js == null) return false;
-
             _isCopying = true;
             NotifyStateChanged();
             try
             {
-                try
-                {
-                    await js.InvokeVoidAsync("navigator.clipboard.writeText", text);
-                }
-                catch (JSException)
+                //書き込みはスクリプトの Clipboard と共通
+                if (!await new ScriptObjects.Clipboard { Services = Services }.CopyAsync(text))
                 {
                     //HTTPS でない / 権限が拒否された / ページにフォーカスが無い など
                     await Services.UIService.NotifyError(Properties.Resources.ClipboardCopyButton_Failed);
