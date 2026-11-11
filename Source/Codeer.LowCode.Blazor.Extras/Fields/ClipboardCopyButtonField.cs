@@ -62,20 +62,13 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         /// <summary>
         /// デザインで指定したコピー元 (コピー元フィールド / コピーする文字列) の文字列をクリップボードにコピーする。
         /// 成功したら通知を出して OnCopied を呼ぶ。成功なら true。
+        /// 任意の文字列をコピーしたいときはスクリプトの Clipboard.Copy を使う。
         /// </summary>
         [ScriptName("Copy")]
         public async Task<bool> CopyAsync()
         {
             if (Services.AppInfoService.IsDesignMode || _isCopying) return false;
             return await CopyCoreAsync(await GetSourceTextAsync());
-        }
-
-        /// <summary>指定した文字列をクリップボードにコピーする (コピー元の設定は使わない)。成功なら true。</summary>
-        [ScriptName("CopyText")]
-        public async Task<bool> CopyTextAsync(string text)
-        {
-            if (Services.AppInfoService.IsDesignMode || _isCopying) return false;
-            return await CopyCoreAsync(text ?? string.Empty);
         }
 
         async Task<bool> CopyCoreAsync(string text)

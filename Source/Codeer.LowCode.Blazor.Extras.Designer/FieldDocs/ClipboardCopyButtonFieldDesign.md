@@ -46,12 +46,13 @@ HTTPS でも localhost でもない環境や、クリック操作の外から呼
 | メソッド | 戻り値 | 説明 |
 |---|---|---|
 | `Copy()` | `bool` | デザインのコピー元をコピーする (ボタンを押したときと同じ) |
-| `CopyText(string text)` | `bool` | 指定した文字列をコピーする |
+
+任意の文字列をコピーするときは、このフィールドではなくスクリプトの `Clipboard.Copy(string)` を使う (通知は出さないので結果を見て `Toaster` で知らせる)。
 
 ```csharp
 void OtherButton_OnClick()
 {
-    CopyButton.CopyText($"注文番号: {OrderNo.Value}");
+    CopyButton.Copy();
 }
 ```
 

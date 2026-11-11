@@ -12,7 +12,7 @@
   - LabelField は表示文字列 (`IsHtml` のときはテキストにする)
   - TextField は入力中の値
 - コピーできた後にスクリプトイベント (`OnCopied`) を呼べる
-- スクリプトから `Copy()` / `CopyText("...")` でもコピーできる
+- スクリプトから `Copy()` でもコピーできる (任意の文字列はスクリプトの `Clipboard.Copy("...")`)
 
 ## デザイナー設定プロパティ
 
@@ -58,11 +58,17 @@ MarkupStringField (と `IsHtml` の LabelField) は、HTML のタグを取り除
 | メソッド | 戻り値 | 説明 |
 |---|---|---|
 | `Copy()` | `bool` | デザインのコピー元 (コピー元フィールド / コピーする文字列) をコピーする。ボタンを押したときと同じ |
-| `CopyText(string text)` | `bool` | 指定した文字列をコピーする (デザインのコピー元は使わない) |
 
-どちらも、コピーできたら通知を出して `OnCopied` を呼び、`true` を返します。コピーできなかったときはエラーを通知して `false` を返します。
+コピーできたら通知を出して `OnCopied` を呼び、`true` を返します。コピーできなかったときはエラーを通知して `false` を返します。
 
-ボタンを置かずにスクリプトだけでコピーしたいときは、スクリプトの `Clipboard` サービスを使います (`ExtrasClientInitializer.Initialize` で登録済み)。
+```csharp
+void OtherButton_OnClick()
+{
+    CopyButton.Copy();
+}
+```
+
+任意の文字列をコピーしたいときや、ボタンを置かずにスクリプトだけでコピーしたいときは、スクリプトの `Clipboard` サービスを使います (`ExtrasClientInitializer.Initialize` で登録済み)。
 `Clipboard.Copy(string)` は成功なら `true` を返し、通知は出しません。書き込みの仕組みはこのフィールドと同じです。
 
 ```csharp
@@ -73,19 +79,12 @@ void CopyButton_OnClick()
 }
 ```
 
-```csharp
-void OtherButton_OnClick()
-{
-    CopyButton.CopyText($"注文番号: {OrderNo.Value}");
-}
-```
-
 ## 使える環境の注意
 
 クリップボードへの書き込みにはブラウザーの `navigator.clipboard.writeText` を使います。ブラウザーの制限により、次の場合はコピーできずにエラーを通知します。
 
 - HTTPS でも localhost でもない (http の IP アドレスなど) で開いている
-- ユーザーのクリック操作の外から呼んだ (スクリプトの `Copy()` / `CopyText()` は、ボタンのクリックなどの操作の中から呼んでください)
+- ユーザーのクリック操作の外から呼んだ (スクリプトの `Copy()` / `Clipboard.Copy()` は、ボタンのクリックなどの操作の中から呼んでください)
 - 埋め込み先 (iframe や WebView) でクリップボードの書き込みが許可されていない
 
 ## CSS カスタマイズ

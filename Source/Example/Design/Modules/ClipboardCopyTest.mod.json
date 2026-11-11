@@ -169,7 +169,7 @@
       "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.TextFieldDesign"
     },
     {
-      "Text": "スクリプトから呼ぶ (普通の ButtonField の OnClick で CopyMarkup.CopyText(...) / CopyInput.Copy())",
+      "Text": "スクリプトから呼ぶ (普通の ButtonField の OnClick で CopyInput.Copy())",
       "Icon": "",
       "IsHtml": false,
       "Style": "Default",
@@ -182,29 +182,6 @@
       "NextFocusField": "",
       "OnFocusMoving": "",
       "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.LabelFieldDesign"
-    },
-    {
-      "Text": "CopyText(...) を呼ぶ",
-      "ImageResourcePath": "",
-      "ImageResourceSet": {
-        "Default": "",
-        "Focus": "",
-        "Active": "",
-        "Hover": "",
-        "Disabled": ""
-      },
-      "Icon": "",
-      "Variant": "Secondary",
-      "OnClick": "ScriptCopyText_OnClick",
-      "ShowTextInToolTip": false,
-      "IsHtml": false,
-      "Name": "ScriptCopyText",
-      "IgnoreModification": false,
-      "OnValidateInput": "",
-      "IsFocusSkip": false,
-      "NextFocusField": "",
-      "OnFocusMoving": "",
-      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.ButtonFieldDesign"
     },
     {
       "Text": "Copy() を呼ぶ",
@@ -687,30 +664,6 @@
             "IsProportionalScale": false,
             "IsRowMarginRemoved": false,
             "Columns": [
-              {
-                "Layout": {
-                  "FieldName": "ScriptCopyText",
-                  "ContextMenu": "",
-                  "ClassName": "",
-                  "FontFamily": "",
-                  "Color": "",
-                  "Name": "",
-                  "BackgroundColor": "",
-                  "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.FieldLayoutDesign"
-                },
-                "IgnoreContentWidth": false,
-                "Padding": {},
-                "BackgroundColor": "",
-                "BorderStyle": {
-                  "LeftColor": "",
-                  "TopColor": "",
-                  "RightColor": "",
-                  "BottomColor": ""
-                },
-                "CanResize": false,
-                "AllowOverflow": false,
-                "Border": "None"
-              },
               {
                 "Layout": {
                   "FieldName": "ScriptCopy",

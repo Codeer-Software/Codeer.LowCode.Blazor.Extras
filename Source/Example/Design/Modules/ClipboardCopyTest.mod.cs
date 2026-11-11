@@ -10,11 +10,6 @@ void CopyFixed_OnCopied()
     OnCopiedLog.Value = "OnCopied が呼ばれました";
 }
 
-void ScriptCopyText_OnClick()
-{
-    CopyMarkup.CopyText("スクリプトから: " + Input.Value);
-}
-
 void ScriptCopy_OnClick()
 {
     CopyInput.Copy();
