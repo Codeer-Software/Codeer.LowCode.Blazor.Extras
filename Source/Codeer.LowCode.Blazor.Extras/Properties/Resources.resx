@@ -2010,4 +2010,37 @@ Recipients: {1}</value>
   <data name="DesignCheck_WebApiJsonFieldNameInvalid" xml:space="preserve">
     <value>&apos;{1}&apos; in {0} is not the name of a JsonField in the same module.</value>
   </data>
+  <data name="ClipboardCopyButtonField" xml:space="preserve">
+    <value>Clipboard Copy Button</value>
+  </data>
+  <data name="ClipboardCopyButtonText" xml:space="preserve">
+    <value>Button Text</value>
+  </data>
+  <data name="ClipboardCopyButtonVariant" xml:space="preserve">
+    <value>Button Variant</value>
+  </data>
+  <data name="ClipboardCopyButtonSourceField" xml:space="preserve">
+    <value>Source Field</value>
+  </data>
+  <data name="ClipboardCopyButtonCopyText" xml:space="preserve">
+    <value>Copy Text</value>
+  </data>
+  <data name="ClipboardCopyButtonCopiedMessage" xml:space="preserve">
+    <value>Copied Message</value>
+  </data>
+  <data name="ClipboardCopyButtonOnCopied" xml:space="preserve">
+    <value>On Copied</value>
+  </data>
+  <data name="ClipboardCopyButton_DefaultText" xml:space="preserve">
+    <value>Copy</value>
+  </data>
+  <data name="ClipboardCopyButton_Copied" xml:space="preserve">
+    <value>Copied.</value>
+  </data>
+  <data name="ClipboardCopyButton_Failed" xml:space="preserve">
+    <value>Could not copy to the clipboard.</value>
+  </data>
+  <data name="ClipboardCopyButtonSourceInvalid" xml:space="preserve">
+    <value>Set either Source Field or Copy Text (only one of them).</value>
+  </data>
 </root>

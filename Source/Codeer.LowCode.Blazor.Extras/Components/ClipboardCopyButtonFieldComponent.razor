@@ -1,0 +1,16 @@
+@using Codeer.LowCode.Blazor.Components
+@using Codeer.LowCode.Blazor.Extras.Fields
+@using Microsoft.AspNetCore.Components.Web
+@inherits FieldComponentBase<ClipboardCopyButtonField>
+
+@* デザインモードでは形だけ出す (押せない) *@
+<button type="button" class="@Field.ButtonClass" style="@Field.GetOwnStyleString()"
+        disabled="@(IsDesignMode || Field.IsCopying || !Field.IsEnabled)"
+        @onclick="@(async () => await Field.CopyAsync())"
+        data-system="clipboard-copy">
+  <i class="bi bi-clipboard" aria-hidden="true"></i> @Field.ButtonText
+</button>
+
+@code {
+  bool IsDesignMode => Field.Services.AppInfoService.IsDesignMode;
+}
