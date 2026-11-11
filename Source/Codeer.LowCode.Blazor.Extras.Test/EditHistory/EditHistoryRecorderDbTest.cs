@@ -327,14 +327,17 @@ namespace Codeer.LowCode.Blazor.Extras.Test.EditHistory
         }
 
         [Test]
-        public async Task 履歴フィールドの無いモジュールの保存は記録しない()
+        public async Task 履歴にも親の版にも関係しないモジュールの保存は記録しない()
         {
+            //AppUser は EditHistoryField を持たず、履歴を持つモジュールの従属レコードでもない
+            //(OrderItem の単独の送信は Order の版になる: EditHistoryOwnerVersionDbTest)
             await CreateOrderAsync();
-            AssertNoError(await CreateIO().SubmitWithTransactionAsync([new ModuleSubmitData
-            {
-                ModuleName = "OrderItem", Id = "1", Update = [ItemData("1", "1", "品X", 4)],
-            }]));
+            var user = new ModuleData { Name = "AppUser" };
+            user.Fields["Id"] = new IdFieldData { Value = "7" };
+            user.Fields["Name"] = new TextFieldData { Value = "石川改" };
+            AssertNoError(await CreateIO().SubmitWithTransactionAsync([new ModuleSubmitData { ModuleName = "AppUser", Id = "7", Update = [user] }]));
             Assert.That((await HistoriesAsync()).Count, Is.EqualTo(1));
+            Assert.That(_errors, Is.Empty);
         }
 
         [Test]

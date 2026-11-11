@@ -3098,6 +3098,15 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
         }
 
         /// <summary>
+        ///   Record rows saved on other pages に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string EditHistoryRecordRowsSavedElsewhere {
+            get {
+                return ResourceManager.GetString("EditHistoryRecordRowsSavedElsewhere", resourceCulture);
+            }
+        }
+
+        /// <summary>
         ///   Allow restore に類似しているローカライズされた文字列を検索します。
         /// </summary>
         internal static string EditHistoryCanRestore {
@@ -3502,6 +3511,15 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
         internal static string EditHistoryCheck_ChildHasOwnHistoryFormat {
             get {
                 return ResourceManager.GetString("EditHistoryCheck_ChildHasOwnHistoryFormat", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to The rows of module '{1}' (owned records '{0}') are also included in the versions of '{2}'....
+        /// </summary>
+        internal static string EditHistoryCheck_ChildHasMultipleOwnersFormat {
+            get {
+                return ResourceManager.GetString("EditHistoryCheck_ChildHasMultipleOwnersFormat", resourceCulture);
             }
         }
 

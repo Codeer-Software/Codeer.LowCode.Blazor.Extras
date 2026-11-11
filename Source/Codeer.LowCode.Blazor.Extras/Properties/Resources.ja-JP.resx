@@ -1392,6 +1392,9 @@
   <data name="EditHistoryCanRestore" xml:space="preserve">
     <value>復元を許可</value>
   </data>
+  <data name="EditHistoryRecordRowsSavedElsewhere" xml:space="preserve">
+    <value>別の画面で保存した行も版にする</value>
+  </data>
   <data name="EditHistoryExcludedOwnedRecords" xml:space="preserve">
     <value>履歴に含めない従属レコード</value>
   </data>
@@ -1577,6 +1580,9 @@
   </data>
   <data name="EditHistoryCheck_ChildHasOwnHistoryFormat" xml:space="preserve">
     <value>従属レコード '{0}' のモジュール '{1}' は自分の EditHistoryField を持っていますが、このモジュール経由の編集はこのモジュールの版にだけ記録され、'{1}' の履歴には残りません。'{0}' を {2} (このモジュール経由では記録しない) か {3} ('{1}' の履歴に行ごとに記録する) に指定してください。</value>
+  </data>
+  <data name="EditHistoryCheck_ChildHasMultipleOwnersFormat" xml:space="preserve">
+    <value>モジュール '{1}' の行 (従属レコード '{0}') は、'{2}' の版 (従属レコード '{3}') にも含まれています。別の画面で保存した行はその行を含む親の版になるので、そう記録する親は 1 つだけにしてください。1 つを残して、ほかの親は {4} を外してください (または従属レコードを {5} か {6} に指定)。</value>
   </data>
   <data name="EditHistoryCountFormat" xml:space="preserve">
     <value>履歴 {0} 件</value>

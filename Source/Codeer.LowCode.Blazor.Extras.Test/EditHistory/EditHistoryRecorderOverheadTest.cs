@@ -8,13 +8,16 @@ using Codeer.LowCode.Blazor.Repository.Data;
 using Codeer.LowCode.Blazor.Repository.Design;
 using Codeer.LowCode.Blazor.Repository.Match;
 using Codeer.LowCode.Blazor.SystemSettings;
+using Codeer.LowCode.Blazor.Utils;
+using Codeer.LowCode.Blazor.Extras.Server.FileManagement;
+using Codeer.LowCode.Blazor.Extras.Test.Harness;
 
 namespace Codeer.LowCode.Blazor.Extras.Test.EditHistory
 {
     /// <summary>
     /// EditHistoryRecorder はテンプレートで常に登録されるので、編集履歴を使わないモジュール・使わないアプリの保存に影響しないこと。
     /// - 設計に編集履歴が無ければ素通し
-    /// - 履歴の無いモジュールの保存は送信を書き換えない (一括 INSERT の申告 NoTemporaryIdResolution もそのまま)
+    /// - 履歴にも履歴つきの親の版にも関係しないモジュールの保存は送信を書き換えない (一括 INSERT の申告 NoTemporaryIdResolution もそのまま)
     /// - 明細で互いに繋がったモジュールが多い設計でも、従属の宣言の列挙が経路の数だけ膨らまない
     /// </summary>
     public class EditHistoryRecorderOverheadTest
@@ -41,6 +44,11 @@ namespace Codeer.LowCode.Blazor.Extras.Test.EditHistory
                 }
                 d.AddModule(mod);
             }
+            //どの明細からも辿られない (履歴つきの親の版に含まれない) モジュール
+            var free = new ModuleDesign { Name = "Free", DataSourceName = "Main", DbTable = "free" };
+            free.Fields.Add(new IdFieldDesign { Name = "Id", DbColumn = "id" });
+            free.Fields.Add(new TextFieldDesign { Name = "F0", DbColumn = "f0" });
+            d.AddModule(free);
             if (!withHistory) return d;
 
             var history = new ModuleDesign { Name = "EditHistory", DataSourceName = "Main", DbTable = "edit_histories", CanCreate = false, CanUpdate = false };
@@ -49,7 +57,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.EditHistory
                 history.Fields.Add(new TextFieldDesign { Name = name, DbColumn = name.ToLowerInvariant() });
             history.Fields.Add(new EditHistoryContractFieldDesign { Name = "Contract", UserId = string.Empty, DateTime = string.Empty });
             d.AddModule(history);
-            //履歴を持つのは M1 だけ。M0 は持たない
+            //履歴を持つのは M1 だけ。M0 は持たないが、明細で繋がっているので M1 の版に含まれる (Free は含まれない)
             d.Modules.Find("M1")!.Fields.Add(new EditHistoryFieldDesign { Name = "History", HistoryModuleName = "EditHistory" });
             return d;
         }
@@ -72,30 +80,71 @@ namespace Codeer.LowCode.Blazor.Extras.Test.EditHistory
             return task.Result;
         }
 
+        sealed class User : IAuthenticationContext
+        {
+            public Task<string> GetCurrentUserIdAsync() => Task.FromResult(string.Empty);
+        }
+
+        //インターセプタの鎖のどこかに置いて、渡ってきた送信と、内側から返ってきた結果を取っておく
+        sealed class Probe : IModuleDataIOInterceptor
+        {
+            public List<ModuleSubmitData>? Seen { get; private set; }
+            public List<(bool NoTemporaryIdResolution, string Id, string[] Fields)> SeenState { get; } = new();
+            public List<ModuleSubmitResult>? Returned { get; private set; }
+            public int Calls { get; private set; }
+            public async Task<List<ModuleSubmitResult>> SubmitAsync(ModuleDataIO io, SubmitContext context, List<ModuleSubmitData> transactionData, Func<Task<List<ModuleSubmitResult>>> next)
+            {
+                Calls++;
+                Seen = transactionData;
+                SeenState.AddRange(transactionData.Select(e => (e.NoTemporaryIdResolution, e.Id, e.Add.Single().Fields.Keys.ToArray())));
+                Returned = await next();
+                return Returned;
+            }
+            public Task GetListAsync(ModuleDataIO io, SearchCondition condition, Paging<ModuleData> result) => Task.CompletedTask;
+        }
+
         [TestCase(false)]
         [TestCase(true)]
-        public async Task 履歴の無いモジュールの保存は送信を書き換えず本体の保存の結果をそのまま返す(bool withHistory)
+        public async Task 履歴にも親の版にも関係しないモジュールの保存は送信を書き換えず本体の保存の結果をそのまま返す(bool withHistory)
         {
             var design = DenseDesign(withHistory);
-            var recorder = new EditHistoryRecorder(design);
-            var transaction = BulkAdd("M0", 10000);
-            var expected = transaction.Select(e => new ModuleSubmitResult()).ToList();
-            var nextCalls = 0;
-
-            //履歴の無いモジュールの保存では内部操作を使わない (io はデータソースを持たない = 内部読み・書きをすれば例外)
-            await using var db = new DbAccessor(Array.Empty<DataSource>());
-            var io = new ModuleDataIO(design, null!, db, null!);
-            var results = WithinSeconds(20, () => recorder.SubmitAsync(io, null!, transaction, () =>
+            //DB には Free の表しか無い (履歴の表・他のモジュールの表を読み書きすれば保存が失敗する = 内部操作をしていない)
+            var dbFile = Path.Combine(Path.GetTempPath(), $"edit_history_overhead_{Guid.NewGuid():N}.db");
+            var db = new DbAccessor([new DataSource { Name = "Main", DataSourceType = DataSourceType.SQLite, ConnectionString = $"Data Source={dbFile}" }]);
+            var threshold = ModuleDataIO.BulkAddThreshold;
+            try
             {
-                nextCalls++;
-                return Task.FromResult(expected);
-            }).GetAwaiter().GetResult());
+                DbAccessor.ClearTableDefinitionCache();
+                await db.ExecuteAsync("Main", "CREATE TABLE free (id INTEGER PRIMARY KEY AUTOINCREMENT, f0 TEXT)", new());
+                //レコーダーの外側 (返す結果) と内側 (本体に渡る送信と本体の結果) で見る
+                var outer = new Probe();
+                var inner = new Probe();
+                var io = new ModuleDataIO(design, new User(), db, new TemporaryFileManager(db, [], new List<IFileStorage>()));
+                io.AddInterceptor(outer);
+                io.AddInterceptor(new EditHistoryRecorder(design));
+                io.AddInterceptor(inner);
 
-            Assert.That(results, Is.SameAs(expected));
-            Assert.That(nextCalls, Is.EqualTo(1));
-            Assert.That(transaction.All(e => e.NoTemporaryIdResolution), Is.True, "一括 INSERT の申告を外さない");
-            Assert.That(transaction.All(e => string.IsNullOrEmpty(e.Id)), Is.True, "仮 Id を付けない");
-            Assert.That(transaction.All(e => e.Add.Single().Fields.Keys.SequenceEqual(new[] { "F0" })), Is.True);
+                ModuleDataIO.BulkAddThreshold = 2;
+                var transaction = BulkAdd("Free", 10000);
+                var submit = io.SubmitWithTransactionAsync(transaction);
+                Assert.That(await Task.WhenAny(submit, Task.Delay(TimeSpan.FromSeconds(60))), Is.SameAs(submit), "時間内に終わる");
+                var results = await submit;
+
+                Assert.That(results.All(e => string.IsNullOrEmpty(e.ExceptionMessage)), Is.True, string.Join("\n", results.Select(e => e.ExceptionMessage).Distinct()));
+                Assert.That(inner.Calls, Is.EqualTo(1));
+                Assert.That(outer.Returned, Is.SameAs(inner.Returned), "本体の保存の結果をそのまま返す");
+                Assert.That(inner.Seen, Is.SameAs(outer.Seen));
+                Assert.That(inner.SeenState.All(e => e.NoTemporaryIdResolution), Is.True, "一括 INSERT の申告を外さない");
+                Assert.That(inner.SeenState.All(e => string.IsNullOrEmpty(e.Id)), Is.True, "仮 Id を付けない");
+                Assert.That(inner.SeenState.All(e => e.Fields.SequenceEqual(new[] { "F0" })), Is.True);
+                Assert.That((await db.QueryAsync("Main", "SELECT COUNT(*) AS c FROM free", new())).Single()["c"], Is.EqualTo(10000));
+            }
+            finally
+            {
+                ModuleDataIO.BulkAddThreshold = threshold;
+                await db.DisposeAsync();
+                SqliteTestDb.Delete(dbFile);
+            }
         }
 
         [Test]
