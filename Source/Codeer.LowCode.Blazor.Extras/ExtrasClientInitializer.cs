@@ -27,7 +27,7 @@ namespace Codeer.LowCode.Blazor.Extras
         }
 
         /// <summary>
-        /// 組み込みスクリプトオブジェクト (Excel, WebApiService, Toaster, BulkFileReader, BulkFileTransferService) 込みの初期化。
+        /// 組み込みスクリプトオブジェクト (Excel, WebApiService, Toaster, BulkFileReader, BulkFileTransferService, Clipboard) 込みの初期化。
         /// エンドポイント URL はアプリの持ち物なので、各機能の静的プロパティで起動時に一度設定する
         /// (MailTransport の *EndPoint、Excel.ConvertPdfEndPoint、AITextAnalyzerField / AIChatField / SemanticSearchField の *EndPoint、
         /// BulkFileReader.ParseFileEndPoint、BulkFileTransferService の *EndPoint、TotpResetClient の *EndPoint)。
@@ -51,6 +51,8 @@ namespace Codeer.LowCode.Blazor.Extras
             manager.AddService(new WebApiService(http, logger));
             manager.AddService(new Toaster(toaster));
             manager.AddService(new BulkFileTransferService());
+            //IJSRuntime は [ScriptInject] の Services から取るので引数は要らない (スクリプトでは Clipboard.Copy("..."))
+            manager.AddService(new Clipboard());
         }
     }
 }

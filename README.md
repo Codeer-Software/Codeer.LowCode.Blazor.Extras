@@ -13,7 +13,7 @@
 
 | パッケージ | 内容 |
 |---|---|
-| Codeer.LowCode.Blazor.Extras | 拡張フィールド (メール送信・承認フロー・編集履歴・一括ファイル入出力を含む)、スクリプトオブジェクト (Excel / WebApi / Toaster / BulkFileReader / BulkFileTransferService)、クライアントサービス |
+| Codeer.LowCode.Blazor.Extras | 拡張フィールド (メール送信・承認フロー・編集履歴・一括ファイル入出力を含む)、スクリプトオブジェクト (Excel / WebApi / Toaster / BulkFileReader / BulkFileTransferService / Clipboard)、クライアントサービス |
 | Codeer.LowCode.Blazor.Extras.Designer | デザイナ統合 (ツールボックス登録・AI 用ドキュメント登録) |
 | Codeer.LowCode.Blazor.Extras.Server | サーバーサービス (認証: ID/パスワード照合・外部 IdP・二要素認証 / メール送信 / 承認フローエンジン / 編集履歴の記録 / 一括ファイル入出力 (CSV・固定長・列マッピング・値の変換) / AI チャット・意味検索 / AI ドキュメント解析 / ファイルストレージ (ファイルシステム / Azure Blob / Amazon S3) / 監査ログ / ASP.NET Core ヘルパ) |
 
@@ -35,6 +35,7 @@
 | [WebApiField](docs/WebApiField.md) | 外部の Web API の呼び出し。ボタン (またはスクリプトの `Execute()`) でサーバーが接続先 (appsettings の `WebApi`) の API を呼び、結果 (状態コード・JSON) を返す。URL と認証のキーはサーバーだけが持つ。認証は None / ApiKey / Bearer / Basic / OAuth2 クライアントクレデンシャルと独自の方式 (IWebApiAuthenticator)。呼べるのはこのフィールドに書けるユーザー |
 | [ProgressField](docs/ProgressField.md) | 進捗率を横バー / 半円メーターで表示する表示専用フィールド。値・色を別フィールドから参照 |
 | [ExcelReportButtonField](docs/ExcelReportButtonField.md) | テンプレート Excel のセル (`$フィールド名.Value`) を自モジュールの値で置き換えて xlsx / PDF でダウンロードするボタン。スクリプト不要 |
+| [ClipboardCopyButtonField](docs/ClipboardCopyButtonField.md) | 押すと文字列をクリップボードにコピーするボタン。コピー元は同じモジュールの TextField の値か固定文字列。スクリプト不要 |
 | [BulkFileTransferButtonField](docs/BulkFileTransfer.md#bulkfiletransferbuttonfield-一括ファイル転送ボタン) | 詳細画面に置く一括ダウンロード / 一括更新ボタン。対象は同じ画面の検索フィールドか一覧の条件 |
 | [CsvFileFormatField](docs/BulkFileTransfer.md#csvfileformatfield-csvファイル形式) | 一括ダウンロード / 一括更新のファイル形式を CSV (エンコーディング・区切り文字指定) や固定長にする設定用フィールド (UI なし) |
 | [FileColumnMappingField](docs/BulkFileTransfer.md#filecolumnmappingfield-ファイル列マッピング) | 一括ダウンロード / 一括更新の列構成を相手仕様 (列の並び・列名・固定値・固定長の列幅) にする設定用フィールド (UI なし) |
@@ -95,6 +96,7 @@ Codeer.LowCode.Blazor 本体が持つのは認可だけで、認証 (ログイ�
 | Excel | Excel ファイルの読み書き・テンプレートへの値書き込み・xlsx / PDF ダウンロード |
 | WebApiService | 外部 API への HTTP リクエスト (Get / Post / Put / Delete) |
 | Toaster | トースト通知の表示 (Success / Info / Warn / Error) |
+| Clipboard | `Clipboard.Copy(文字列)` で文字列をクリップボードにコピー (成功なら true)。HTTPS か localhost で、ユーザー操作の中から呼んだときだけ成功する。[ClipboardCopyButtonField](docs/ClipboardCopyButtonField.md#スクリプト-api) |
 | BulkFileReader | `new BulkFileReader<モジュール名>()`。ファイルを選ばせ、そのモジュールの一括ファイル入出力の定義 (CSV / 固定長 / 列マッピング / 値の変換) で解析して行を返す (DB には書かない)。[一括ファイル入出力](docs/BulkFileTransfer.md#スクリプト) |
 | BulkFileTransferService | 検索条件や加工済みの行で一括ダウンロード (Download)、加工済みの行を 1 トランザクションで一括保存 (Submit)。[一括ファイル入出力](docs/BulkFileTransfer.md#スクリプト) |
 
@@ -264,6 +266,7 @@ ExtrasDesignerInitializer.Setup(DesignerEnvironment);
 - [ProgressField - 進捗バー / メーター](docs/ProgressField.md)
 - [EnterFocusMoveField - Enterキーでフォーカス移動](docs/EnterFocusMoveField.md)
 - [ExcelReportButtonField - Excel 帳票ボタン](docs/ExcelReportButtonField.md)
+- [ClipboardCopyButtonField - クリップボードコピーボタン](docs/ClipboardCopyButtonField.md)
 - [一括ファイル入出力 (CsvFileFormatField / FileColumnMappingField / FileValueConversionField / BulkFileTransferButtonField)](docs/BulkFileTransfer.md)
 - [FileStorage - ファイルの保存先](docs/FileStorage.md)
 - [認証の全体像 (ログインアカウント契約 / パスワード / 外部 IdP / 二要素認証)](docs/Authentication.md)

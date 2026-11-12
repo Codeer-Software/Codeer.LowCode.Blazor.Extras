@@ -56,6 +56,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designer
             DesignerApp.ScriptRuntimeTypeManager.AddType<Codeer.LowCode.Blazor.Extras.Mail.MailSendResult>();
             DesignerApp.ScriptRuntimeTypeManager.AddType<Codeer.LowCode.Blazor.Extras.Mail.MailSendFailure>();
             DesignerApp.ScriptRuntimeTypeManager.AddService(new ScriptObjects.BulkFileTransferService());
+            DesignerApp.ScriptRuntimeTypeManager.AddService(new ScriptObjects.Clipboard());
             //new BulkFileReader<XXXModule>() のイディオム (モジュール名が ctor に渡る) で使える
             DesignerApp.ScriptRuntimeTypeManager.AddModuleGenericType(typeof(ScriptObjects.BulkFileReader));
             //承認フロー (経路のスクリプト組み立てと command API の応答)

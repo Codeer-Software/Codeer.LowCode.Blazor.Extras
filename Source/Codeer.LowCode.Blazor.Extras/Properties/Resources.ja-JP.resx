@@ -2016,4 +2016,34 @@
   <data name="DesignCheck_WebApiJsonFieldNameInvalid" xml:space="preserve">
     <value>{0} の &apos;{1}&apos; は同じモジュールの JsonField の名前ではありません。</value>
   </data>
+  <data name="ClipboardCopyButtonField" xml:space="preserve">
+    <value>クリップボードコピーボタン</value>
+  </data>
+  <data name="ClipboardCopyButtonText" xml:space="preserve">
+    <value>ボタンの文字</value>
+  </data>
+  <data name="ClipboardCopyButtonSourceField" xml:space="preserve">
+    <value>コピー元フィールド</value>
+  </data>
+  <data name="ClipboardCopyButtonCopyText" xml:space="preserve">
+    <value>コピーする文字列</value>
+  </data>
+  <data name="ClipboardCopyButtonCopiedMessage" xml:space="preserve">
+    <value>コピー後のメッセージ</value>
+  </data>
+  <data name="ClipboardCopyButtonOnCopied" xml:space="preserve">
+    <value>コピー後イベント</value>
+  </data>
+  <data name="ClipboardCopyButton_DefaultText" xml:space="preserve">
+    <value>コピー</value>
+  </data>
+  <data name="ClipboardCopyButton_Copied" xml:space="preserve">
+    <value>コピーしました</value>
+  </data>
+  <data name="ClipboardCopyButton_Failed" xml:space="preserve">
+    <value>クリップボードにコピーできませんでした。</value>
+  </data>
+  <data name="ClipboardCopyButtonSourceInvalid" xml:space="preserve">
+    <value>コピー元フィールドとコピーする文字列は、どちらか一方だけを設定してください。</value>
+  </data>
 </root>
