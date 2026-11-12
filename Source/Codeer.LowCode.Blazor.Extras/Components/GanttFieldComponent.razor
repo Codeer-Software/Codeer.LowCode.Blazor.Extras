@@ -697,7 +697,7 @@
   {
     var newStart = mode switch
     {
-      GanttViewMode.Day => DateTime.Today,
+      GanttViewMode.Day => Field.ViewStart.Date,
       GanttViewMode.Month => new DateTime(MonthAnchor().Year, MonthAnchor().Month, 1),
       _ => Field.ViewStart.Date.AddDays(-(int)Field.ViewStart.DayOfWeek),
     };
