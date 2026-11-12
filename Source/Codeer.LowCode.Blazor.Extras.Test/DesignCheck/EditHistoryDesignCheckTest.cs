@@ -3,7 +3,9 @@ using Codeer.LowCode.Blazor.DesignLogic.Check;
 using Codeer.LowCode.Blazor.DesignLogic.Refactor;
 using Codeer.LowCode.Blazor.Extras.Designs;
 using Codeer.LowCode.Blazor.Extras.Test.EditHistory;
+using Codeer.LowCode.Blazor.Json;
 using Codeer.LowCode.Blazor.Repository.Design;
+using Codeer.LowCode.Blazor.Repository.Match;
 
 namespace Codeer.LowCode.Blazor.Extras.Test.DesignCheck
 {
@@ -308,5 +310,46 @@ namespace Codeer.LowCode.Blazor.Extras.Test.DesignCheck
             Assert.That(contract.DataId, Is.EqualTo("DataId"));
         }
 
+        [Test]
+        public void 別の画面で保存した行を版にする設定は既定でtrue_JSONに無ければtrue_往復でfalseが保たれる()
+        {
+            Assert.That(new EditHistoryFieldDesign().RecordRowsSavedElsewhere, Is.True);
+
+            var old = (EditHistoryFieldDesign)JsonConverterEx.DeserializeObject<FieldDesignBase>(
+                "{\"Name\":\"History\",\"HistoryModuleName\":\"EditHistory\",\"TypeFullName\":\"Codeer.LowCode.Blazor.Extras.Designs.EditHistoryFieldDesign\"}")!;
+            Assert.That(old.RecordRowsSavedElsewhere, Is.True, "このプロパティの無い既存の設計");
+
+            var json = JsonConverterEx.SerializeObject(new EditHistoryFieldDesign { Name = "History", HistoryModuleName = "EditHistory", RecordRowsSavedElsewhere = false });
+            var back = (EditHistoryFieldDesign)JsonConverterEx.DeserializeObject<FieldDesignBase>(json)!;
+            Assert.That(back.RecordRowsSavedElsewhere, Is.False);
+        }
+
+        [Test]
+        public void 同じ行モジュールを2つの親が版に含める指摘はRecordRowsSavedElsewhereを示す()
+        {
+            var d = Create();
+            //見積 (Quote) も OrderItem を従属レコードとして版に含める
+            var quote = new ModuleDesign { Name = "Quote", DataSourceName = EditHistoryTestDesigns.Ds, DbTable = "quotes" };
+            quote.Fields.Add(new IdFieldDesign { Name = "Id", DbColumn = "id" });
+            quote.Fields.Add(new ListFieldDesign
+            {
+                Name = "Items",
+                DeleteTogether = true,
+                SearchCondition = new SearchCondition("OrderItem")
+                {
+                    Condition = new FieldVariableMatchCondition { SearchTargetVariable = "Quote.Value", Comparison = MatchComparison.Equal, Variable = "Id.Value" },
+                },
+            });
+            quote.Fields.Add(new EditHistoryFieldDesign { Name = "History", HistoryModuleName = "EditHistory" });
+            quote.ListLayouts[""] = new ListLayoutDesign();
+            d.AddModule(quote);
+            Module(d, "OrderItem").Fields.Add(new LinkFieldDesign { Name = "Quote", SearchCondition = new SearchCondition("Quote"), DbColumn = "quote_id" });
+
+            var code = DesignCheckCode.Create(typeof(EditHistoryFieldDesign), 12);
+            var ret = Check(d, "Order", Field<EditHistoryFieldDesign>(d, "Order", "History")).Where(e => e.Code == code).ToList();
+            Assert.That(ret.Count, Is.EqualTo(1));
+            Assert.That(ret[0].Message, Does.Contain(nameof(EditHistoryFieldDesign.RecordRowsSavedElsewhere)));
+            ret[0].AssertFieldLocation("Order", "History", nameof(EditHistoryFieldDesign.RecordRowsSavedElsewhere));
+        }
     }
 }

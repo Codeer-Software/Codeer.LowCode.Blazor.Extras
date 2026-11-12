@@ -1,5 +1,6 @@
 using Codeer.LowCode.Blazor;
 using Codeer.LowCode.Blazor.DataIO;
+using Codeer.LowCode.Blazor.DataLogic;
 using Codeer.LowCode.Blazor.DesignLogic;
 using Codeer.LowCode.Blazor.Extras.Designs;
 using Codeer.LowCode.Blazor.Extras.EditHistory;
@@ -41,6 +42,14 @@ namespace Codeer.LowCode.Blazor.Extras.Server.EditHistory
         readonly bool _usesHistory;
         //行ごとに記録する先 (モジュール名 → 記録先)。設計から決まるので、1 回の保存の中でモジュールごとに 1 回だけ求める
         readonly Dictionary<string, (Dictionary<string, (ModuleDesign HistoryModule, EditHistoryContractFieldDesign Names, ModuleDesign Row)> Targets, string? Error)> _individualTargets = new();
+
+        //親の版に含める従属レコードの持ち主 (行のモジュール名 → 持ち主)。設計から決まるので、使うときに 1 回だけ求める
+        Dictionary<string, List<EditHistoryPolicy.IncludedOwner>>? _includedOwners;
+        //行から親を引くときに、1 回の In で読む行の数 (DB のパラメータ数の上限に掛からない大きさ)
+        const int OwnerSearchChunkSize = 500;
+        static readonly string IdVariable = $"{SystemFieldNames.Id}.Value";
+        //そのモジュールの従属レコードの行に、どれかの親の版に含まれる行があるか (モジュール名 → 有無)
+        readonly Dictionary<string, bool> _ownsIncludedRows = new();
 
         /// <param name="logError">記録をスキップした理由・復活の失敗理由などを出すログ (ILogger の Warning 等)。</param>
         public EditHistoryRecorder(DesignData designData, Action<string>? logError = null)
@@ -239,6 +248,29 @@ namespace Codeer.LowCode.Blazor.Extras.Server.EditHistory
                 }
             }
 
+            //親の版に含める従属レコードの行を、親の画面以外 (行のモジュールの画面・取込・他のモジュールの送信) で保存したときも、その行を含む親の版にする。
+            //保存の前に、これから変わる・消える行が今入っている親を引いておく (保存の後では、消えた行・別の親へ付け替えた行の元の親が引けない)
+            var owners = new HashSet<(string Module, string Id)>();
+            var ownersError = await AddOwnersAsync(access, await RowsBeforeAsync(io, access, transactionData), owners);
+            if (ownersError != null) return Fail(transactionData, ownersError);
+            //保存の前に引いた親の、保存の前の内容。保存の後の内容と比べて、この保存で変わった親だけを版にする
+            var baselines = new Dictionary<(string Module, string Id), string>();
+            foreach (var owner in owners)
+            {
+                //この保存で自分の版を作るレコードは比べない (その版が 1 つできる)
+                if (plans.Any(e => e.RowId == null && e.RowTempId == null && e.Module.Name == owner.Module && transactionData[e.Index].Id == owner.Id)) continue;
+                var (target, targetError) = OwnerTarget(owner.Module);
+                if (targetError != null) return Fail(transactionData, targetError);
+                if (target == null) continue;
+                if (await LoadAsync(access, owner.Module, owner.Id) is { } current) baselines[owner] = EditHistorySnapshot.Serialize(current);
+            }
+            foreach (var submitData in transactionData)
+            {
+                //行の追加は保存の後に採番 Id から親を引く。本体の一括 INSERT 経路は採番 Id が残らないので、1 行ずつの経路に落とす
+                //(親と結び付く項目が空の行だけなら、どの親の版にもならないのでそのまま)
+                if (submitData.Add.Any(HasOwnerValues)) submitData.NoTemporaryIdResolution = false;
+            }
+
             var results = await next();
             if (results.Any(e => !string.IsNullOrEmpty(e.ExceptionMessage))) return results;
             //物理削除からの復活は作り直した Id をクライアントに返す (復活後の遷移先)
@@ -246,14 +278,21 @@ namespace Codeer.LowCode.Blazor.Extras.Server.EditHistory
             {
                 if (restored.IsRecreated && index < results.Count) results[index].DestinationId = restored.RestoredId;
             }
-            if (plans.Count == 0) return results;
 
             try
             {
+                //保存の後は、この保存で追加・更新・取り消しした行が今入っている親を引く (本体が実際に書いた行。送信に乗らない内部書き込みも入る)
+                var rowsAfter = context.ChangedRecords.Where(e => e.Kind != ChangedRecordKind.Delete).Select(e => (Module: e.ModuleName, e.Id)).ToHashSet();
+                ownersError = await AddOwnersAsync(access, rowsAfter, owners);
+                if (ownersError != null) throw new InvalidOperationException(ownersError);
+                if (plans.Count == 0 && owners.Count == 0) return results;
+
                 var user = await io.AuthorizationChecker.GetCurrentUserAsync();
                 var userId = user == null ? string.Empty : ModuleDataValues.GetId(user);
                 var localNow = DateTime.Now;
                 var utcNow = DateTime.UtcNow;
+                //この保存で版を扱ったレコード (親の画面からの保存など)。行から引いた親と重なったら、版は 1 つだけにする
+                var recorded = new HashSet<(string Module, string Id)>();
                 foreach (var plan in plans)
                 {
                     string id;
@@ -301,12 +340,30 @@ namespace Codeer.LowCode.Blazor.Extras.Server.EditHistory
                         if (plan.Before != null && plan.Snapshot != null &&
                             EditHistorySnapshot.Serialize(plan.Before) == EditHistorySnapshot.Serialize(plan.Snapshot)) continue;
                     }
+                    recorded.Add((plan.Module.Name, id));
                     if (plan.Snapshot == null)
                     {
                         _logError?.Invoke($"Edit history of '{plan.Module.Name}' ({id}) was not recorded: the record could not be read.");
                         continue;
                     }
                     await WriteAsync(access, plan, id, userId, localNow, utcNow);
+                }
+
+                //行から引いた親: 保存の後の内容が保存の前と違うときだけ、更新の版にする (親が消えている・内容が変わっていないなら版にしない)
+                foreach (var owner in owners)
+                {
+                    if (recorded.Contains(owner)) continue;
+                    var (plan, error) = OwnerTarget(owner.Module);
+                    if (error != null) throw new InvalidOperationException(error);
+                    if (plan == null) continue;
+                    plan.Snapshot = await LoadAsync(access, owner.Module, owner.Id);
+                    if (plan.Snapshot == null) continue;
+                    //保存の後に初めて引けた親 (行が新しく入った・付け替えで入ってきた) は、この保存で書いた行が親の内容に入っていれば変わっている
+                    var changed = baselines.TryGetValue(owner, out var before)
+                        ? before != EditHistorySnapshot.Serialize(plan.Snapshot)
+                        : OwnedRows(plan.Module, plan.Snapshot, string.Empty).Any(e => rowsAfter.Contains((e.RowDesign.Name, EditHistorySnapshot.GetId(e.Row))));
+                    if (!changed) continue;
+                    await WriteAsync(access, plan, owner.Id, userId, localNow, utcNow);
                 }
             }
             catch (Exception ex)
@@ -338,6 +395,184 @@ namespace Codeer.LowCode.Blazor.Extras.Server.EditHistory
         {
             var field = EditHistoryContracts.Field(_designData.Modules.Find(moduleName));
             return EditHistorySnapshot.FillNulls(_designData, await io.GetWithOwnedRecordsAsync(moduleName, id, path => !EditHistoryPolicy.IsExcluded(field, path)));
+        }
+
+        // ===== 行を含む親 (従属レコードの行を親の画面以外で保存したとき) =====
+
+        Dictionary<string, List<EditHistoryPolicy.IncludedOwner>> IncludedOwners => _includedOwners ??= EditHistoryPolicy.IncludedOwners(_designData);
+
+        //保存の前に親を引く行: 送信に乗った更新・削除の行、検索条件での削除で消える行、削除するレコードの従属レコードの行 (一緒に消える行)。
+        //多めに拾ってよい (実際には変わらなかった行の親は、保存後の内容が最新の版と同じなので版にならない)
+        async Task<List<(string Module, string Id)>> RowsBeforeAsync(ModuleDataIO userIo, ModuleDataIOSystemAccess io, List<ModuleSubmitData> transactionData)
+        {
+            var rows = new List<(string Module, string Id)>();
+            if (IncludedOwners.Count == 0) return rows;
+            foreach (var submitData in transactionData)
+            {
+                //送信のレコード自身 (その行が Update に無い・Id を変える更新で行の Id が差し替えの形でも、送信の Id で引く)
+                rows.Add((submitData.ModuleName, submitData.Id));
+                rows.AddRange(submitData.Update.Select(e => (e.Name, ModuleDataValues.GetId(e))));
+
+                var deletes = submitData.Delete.Select(e => (Module: e.ModuleName, e.Id)).ToList();
+                foreach (var condition in submitData.SearchDelete)
+                {
+                    //条件の無い検索削除は本体が拒否する
+                    if (condition.Condition == null || !TouchesIncludedRows(condition.ModuleName)) continue;
+                    var copy = condition.JsonClone();
+                    copy.SelectFields = new List<string> { SystemFieldNames.Id };
+                    //本体の検索削除と同じく、利用者の権限で読む (読めない要求はここで拒否される)
+                    deletes.AddRange((await userIo.GetListAsync(copy, 0)).Items.Select(e => (condition.ModuleName, ModuleDataValues.GetId(e))));
+                }
+                foreach (var (moduleName, id) in deletes)
+                {
+                    rows.Add((moduleName, id));
+                    var design = _designData.Modules.Find(moduleName);
+                    if (design == null || !OwnsIncludedRows(design) || !IsStoredId(id)) continue;
+                    var full = await io.GetWithOwnedRecordsAsync(moduleName, id);
+                    if (full == null) continue;
+                    rows.AddRange(OwnedRows(design, full, string.Empty).Select(e => (e.RowDesign.Name, EditHistorySnapshot.GetId(e.Row))));
+                }
+            }
+            return rows;
+        }
+
+        //そのモジュールの行か、その従属レコードの行 (子・孫) が、どれかの親の版に含まれるか
+        bool TouchesIncludedRows(string moduleName)
+            => IncludedOwners.ContainsKey(moduleName) || (_designData.Modules.Find(moduleName) is { } design && OwnsIncludedRows(design));
+
+        //そのモジュールの従属レコードの行 (子・孫) に、どれかの親の版に含まれるモジュールの行があるか (設計から決まる)
+        bool OwnsIncludedRows(ModuleDesign design)
+        {
+            if (!_ownsIncludedRows.TryGetValue(design.Name, out var owns))
+            {
+                owns = EditHistoryPolicy.Walk(_designData, design, null, descendIntoNotIncluded: true).Any(e => e.Child != null && IncludedOwners.ContainsKey(e.Child.Name));
+                _ownsIncludedRows[design.Name] = owns;
+            }
+            return owns;
+        }
+
+        //DB にある行の Id か (空・仮 Id・差し替えの形のままの Id は、まだその Id の行が無い)
+        static bool IsStoredId(string id) => !string.IsNullOrEmpty(id) && !id.StartsWith('@');
+
+        //行 (モジュール名, Id) を版に含める親のレコードを owners に足す。孫の行は上の親までたどる (自己参照の従属は祖先すべて)。
+        //親は宣言の結び付き (行の項目 = 親の項目) を使って、行の値から引く。フィールドの型は見ない。
+        //宣言の条件のうち結び付き以外 (行の絞り込み) は見ないので、親の一部でない行の親も入る (保存後の内容が最新の版と同じなので版にはならない)。
+        //行のモジュールを版に含める親 (履歴を持つモジュール) が 2 つ以上ある設計は、どちらの版にするか決まらないのでエラー (戻り値が理由)
+        async Task<string?> AddOwnersAsync(ModuleDataIOSystemAccess io, IEnumerable<(string Module, string Id)> rows, HashSet<(string Module, string Id)> owners)
+        {
+            var visited = new HashSet<(string, string)>();
+            var pending = rows.ToList();
+            while (pending.Count != 0)
+            {
+                var next = new List<(string Module, string Id)>();
+                foreach (var group in pending.GroupBy(e => e.Module))
+                {
+                    if (!IncludedOwners.TryGetValue(group.Key, out var found)) continue;
+                    if (EditHistoryPolicy.HasMultipleRoots(found))
+                    {
+                        var other = found.First(e => e.Root.Name != found[0].Root.Name);
+                        return $"The rows of module '{group.Key}' are included in the versions of more than one parent ('{found[0].Path}' of '{found[0].Root.Name}' and '{other.Path}' of '{other.Root.Name}'). The edit history cannot decide which parent's version to record.";
+                    }
+                    var ids = group.Select(e => e.Id).Where(e => IsStoredId(e) && visited.Add((group.Key, e))).ToList();
+                    //読むのは結び付きに使う行の項目だけ
+                    var fields = found.SelectMany(e => e.Bindings).Select(e => new VariableName(e.SearchTargetVariable).FieldName.FullName)
+                        .Append(SystemFieldNames.Id).Distinct().ToList();
+                    foreach (var chunk in ids.Chunk(OwnerSearchChunkSize))
+                    {
+                        var loaded = await ReadRowsAsync(io, group.Key, chunk, fields);
+                        //同じ親の中に持ち主が複数あれば (明細と付属品が同じモジュール等)、それぞれの宣言で親を引く
+                        foreach (var owner in found)
+                        {
+                            foreach (var parentId in await FindParentIdsAsync(io, owner, loaded))
+                            {
+                                if (owner.Owner.Name == owner.Root.Name) owners.Add((owner.Root.Name, parentId));
+                                next.Add((owner.Owner.Name, parentId));
+                            }
+                        }
+                    }
+                }
+                pending = next;
+            }
+            return null;
+        }
+
+        //行を Id で読む (結び付きに使う項目だけ)。複合 Id のモジュールは Id を条件に書けないので 1 行ずつ読む
+        async Task<List<ModuleData>> ReadRowsAsync(ModuleDataIOSystemAccess io, string moduleName, string[] ids, List<string> fields)
+        {
+            var idField = _designData.Modules.Find(moduleName)?.Fields.OfType<IdFieldDesign>().FirstOrDefault(e => e.Name == SystemFieldNames.Id);
+            if (idField != null && idField.CompositeIdVariables.Count != 0)
+            {
+                var rows = new List<ModuleData>();
+                foreach (var id in ids)
+                {
+                    if (await io.GetWithOwnedRecordsAsync(moduleName, id, _ => false) is { } row) rows.Add(row);
+                }
+                return rows;
+            }
+            var condition = new SearchCondition
+            {
+                ModuleName = moduleName,
+                Condition = new FieldValueMatchCondition { SearchTargetVariable = IdVariable, Comparison = MatchComparison.In, Value = MultiTypeValue.Create(ids.ToList()) },
+                SelectFields = fields,
+            };
+            return (await io.GetListAsync(condition)).Items;
+        }
+
+        //行の値から、その宣言で行を持つ親のレコードの Id を引く
+        static async Task<HashSet<string>> FindParentIdsAsync(ModuleDataIOSystemAccess io, EditHistoryPolicy.IncludedOwner owner, List<ModuleData> rows)
+        {
+            var result = new HashSet<string>();
+            //行ごとの、親と結び付く項目の値 (空の項目がある行は、どの親にも入っていない)
+            var keys = rows
+                .Select(row => owner.Bindings.Select(e => row.TryGetVariableValue(e.SearchTargetVariable, out var value) ? value : null).ToList())
+                .Where(values => values.All(e => !string.IsNullOrEmpty(e?.ToString())))
+                .DistinctBy(values => string.Join('\u001f', values)).ToList();
+            if (keys.Count == 0) return result;
+
+            //親の Id で結び付く宣言 (明細が親の Id を持つ形) は、行の値がそのまま親の Id
+            if (owner.Bindings.Count == 1 && owner.Bindings[0].Variable == IdVariable)
+            {
+                foreach (var values in keys) result.Add(values[0]!.ToString()!);
+                return result;
+            }
+            //それ以外は親を検索する。結び付きが 1 項目ならまとめて、複数なら値の組ごとに
+            var conditions = owner.Bindings.Count == 1
+                ? new List<MatchConditionBase>
+                {
+                    new FieldValueMatchCondition
+                    {
+                        SearchTargetVariable = owner.Bindings[0].Variable, Comparison = MatchComparison.In, Value = MultiTypeValue.Create(keys.Select(e => e[0]).ToList()),
+                    },
+                }
+                : keys.Select(values => MultiMatchCondition.And(owner.Bindings.Select((e, i) => (MatchConditionBase)new FieldValueMatchCondition
+                {
+                    SearchTargetVariable = e.Variable, Comparison = MatchComparison.Equal, Value = MultiTypeValue.Create(values[i]),
+                }).ToArray())).ToList();
+            foreach (var condition in conditions)
+            {
+                var search = new SearchCondition { ModuleName = owner.Owner.Name, Condition = condition, SelectFields = new List<string> { SystemFieldNames.Id } };
+                foreach (var parent in (await io.GetListAsync(search)).Items)
+                {
+                    var parentId = ModuleDataValues.GetId(parent);
+                    if (!string.IsNullOrEmpty(parentId)) result.Add(parentId);
+                }
+            }
+            return result;
+        }
+
+        //追加する行が、どれかの親と結び付く値を持っているか (持っていなければ、どの親の版にもならない)
+        bool HasOwnerValues(ModuleData row)
+            => IncludedOwners.TryGetValue(row.Name, out var found)
+                && found.Any(owner => owner.Bindings.All(e => row.TryGetVariableValue(e.SearchTargetVariable, out var value) && !string.IsNullOrEmpty(value?.ToString())));
+
+        //行から引いた親の版の書き先 (履歴モジュール・契約)。履歴を持たないモジュールなら null
+        (Plan? Plan, string? Error) OwnerTarget(string moduleName)
+        {
+            var module = _designData.Modules.Find(moduleName);
+            if (module == null) return (null, null);
+            var resolved = EditHistoryContracts.Resolve(_designData, module, out var error);
+            if (error != null || resolved == null) return (null, error);
+            return (new Plan { Module = module, HistoryModule = resolved.Value.HistoryModule, Names = resolved.Value.Names, ChangeType = EditHistoryChangeType.Update }, null);
         }
 
         //行ごとに記録する宣言の先のモジュール → 記録先 (履歴モジュール・契約)。
@@ -444,10 +679,10 @@ namespace Codeer.LowCode.Blazor.Extras.Server.EditHistory
             submitData.Id = tempId.Value!;
         }
 
-        //送信が履歴を持つモジュールのレコードに触るか (ルートのほか、追加・更新・削除する行のモジュール)
+        //送信が履歴を持つモジュールのレコードか、どれかの親の版に含まれる行に触るか (ルートのほか、追加・更新・削除する行のモジュール)
         bool TouchesHistoryModule(ModuleSubmitData submitData)
             => submitData.Add.Concat(submitData.Update).Select(e => e.Name).Concat(submitData.Delete.Select(e => e.ModuleName))
-                .Any(name => EditHistoryContracts.Field(_designData.Modules.Find(name)) != null);
+                .Any(name => EditHistoryContracts.Field(_designData.Modules.Find(name)) != null || IncludedOwners.ContainsKey(name));
 
         static bool IsEmpty(ModuleSubmitData submitData)
             => submitData.Add.Count == 0 && submitData.Update.Count == 0 && submitData.Delete.Count == 0 && submitData.SearchDelete.Count == 0;

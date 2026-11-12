@@ -1392,6 +1392,9 @@ Recipients: {1}</value>
   <data name="EditHistoryCanRestore" xml:space="preserve">
     <value>Allow restore</value>
   </data>
+  <data name="EditHistoryRecordRowsSavedElsewhere" xml:space="preserve">
+    <value>Record rows saved on other pages</value>
+  </data>
   <data name="EditHistoryExcludedOwnedRecords" xml:space="preserve">
     <value>Owned records left out of the history</value>
   </data>
@@ -1577,6 +1580,9 @@ Recipients: {1}</value>
   </data>
   <data name="EditHistoryCheck_ChildHasOwnHistoryFormat" xml:space="preserve">
     <value>The module '{1}' of the owned records '{0}' has its own EditHistoryField, but edits made through this module are recorded only in this module's version, not in the history of '{1}'. Put '{0}' in {2} (not recorded through this module) or in {3} (recorded per row in the history of '{1}').</value>
+  </data>
+  <data name="EditHistoryCheck_ChildHasMultipleOwnersFormat" xml:space="preserve">
+    <value>The rows of module '{1}' (owned records '{0}') are also included in the versions of '{2}' (owned records '{3}'). A row saved on another page is recorded as a version of its parent, so only one parent can record such rows. Keep one and turn off {4} on the others (or put the owned records in {5} or {6}).</value>
   </data>
   <data name="EditHistoryCountFormat" xml:space="preserve">
     <value>{0} version(s)</value>
@@ -2009,5 +2015,35 @@ Recipients: {1}</value>
   </data>
   <data name="DesignCheck_WebApiJsonFieldNameInvalid" xml:space="preserve">
     <value>&apos;{1}&apos; in {0} is not the name of a JsonField in the same module.</value>
+  </data>
+  <data name="ClipboardCopyButtonField" xml:space="preserve">
+    <value>Clipboard Copy Button</value>
+  </data>
+  <data name="ClipboardCopyButtonText" xml:space="preserve">
+    <value>Button Text</value>
+  </data>
+  <data name="ClipboardCopyButtonSourceField" xml:space="preserve">
+    <value>Source Field</value>
+  </data>
+  <data name="ClipboardCopyButtonCopyText" xml:space="preserve">
+    <value>Copy Text</value>
+  </data>
+  <data name="ClipboardCopyButtonCopiedMessage" xml:space="preserve">
+    <value>Copied Message</value>
+  </data>
+  <data name="ClipboardCopyButtonOnCopied" xml:space="preserve">
+    <value>On Copied</value>
+  </data>
+  <data name="ClipboardCopyButton_DefaultText" xml:space="preserve">
+    <value>Copy</value>
+  </data>
+  <data name="ClipboardCopyButton_Copied" xml:space="preserve">
+    <value>Copied.</value>
+  </data>
+  <data name="ClipboardCopyButton_Failed" xml:space="preserve">
+    <value>Could not copy to the clipboard.</value>
+  </data>
+  <data name="ClipboardCopyButtonSourceInvalid" xml:space="preserve">
+    <value>Set either Source Field or Copy Text (only one of them).</value>
   </data>
 </root>

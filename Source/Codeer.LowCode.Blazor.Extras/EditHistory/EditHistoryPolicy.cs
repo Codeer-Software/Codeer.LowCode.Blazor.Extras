@@ -2,6 +2,7 @@ using Codeer.LowCode.Blazor.DesignLogic;
 using Codeer.LowCode.Blazor.Extras.Designs;
 using Codeer.LowCode.Blazor.Repository.Data;
 using Codeer.LowCode.Blazor.Repository.Design;
+using Codeer.LowCode.Blazor.Repository.Match;
 
 namespace Codeer.LowCode.Blazor.Extras.EditHistory
 {
@@ -56,6 +57,86 @@ namespace Codeer.LowCode.Blazor.Extras.EditHistory
                     yield return e;
             }
         }
+
+        /// <summary>
+        /// 親の版に含める従属レコードの持ち主 1 つ: 履歴を持つモジュール (Root) の、宣言のパス (Path)。行を直接持つのは Owner の Field。
+        /// Bindings は宣言の結び付き (行の項目 SearchTargetVariable = 親の項目 Variable)。行の値から親を引くのに使う。
+        /// </summary>
+        internal sealed record IncludedOwner(ModuleDesign Root, string Path, ModuleDesign Owner, FieldDesignBase Field, OwnedRecordsDesign Owned,
+            List<FieldVariableMatchCondition> Bindings);
+
+        /// <summary>
+        /// 親の版に含める従属レコードのうち、行が親を指す宣言を、行のモジュール名 → 持ち主 で引く表
+        /// (親は、別の画面で保存した行も版にする設定 RecordRowsSavedElsewhere の履歴つきのモジュールだけ)。
+        /// 行のモジュールの画面などで行を保存したときに、その行を含む親の版を作るために使う。
+        /// 見るのは宣言だけ (フィールドの型は見ない): 宣言の条件が「行の項目 = 親の項目」の結び付きを持っていれば、行の値から親を引ける。
+        /// 同じ親 (Root) の中に持ち主が複数あるのはよい (明細と付属品が同じモジュール等)。
+        /// 別の親 (Root) にも持ち主があるモジュールは設計の不備 (<see cref="HasMultipleRoots"/>。設計チェックが指摘し、保存も失敗にする)。
+        /// 入らない宣言: 親が行を参照する宣言 (IsReferencedByOwner = 埋め込みモジュール。行は親の外にも居る別のレコードで、参照する親が何件あるか分からない)、
+        /// 結び付きが無い・等しい以外の比較を含む宣言、リンク越し (ドット名) のフィールドの宣言、
+        /// 親まで行をたどれない宣言 (途中に入らない宣言がある。埋め込みモジュールの中の一覧等)。
+        /// </summary>
+        internal static Dictionary<string, List<IncludedOwner>> IncludedOwners(DesignData designData)
+        {
+            var result = new Dictionary<string, List<IncludedOwner>>();
+            foreach (var root in designData.Modules.ToList())
+            {
+                var field = EditHistoryContracts.Field(root);
+                //別の画面で保存した行を版にしない親は、行から引かない (その親の画面からの保存だけが版になる)
+                if (field == null || !field.RecordRowsSavedElsewhere) continue;
+                var candidates = new List<(string Child, IncludedOwner Owner)>();
+                foreach (var (path, module, f, owned, child) in Walk(designData, root, field))
+                {
+                    if (child == null || !IsIncluded(field, path)) continue;
+                    if (owned.IsReferencedByOwner || EditHistoryContracts.IsExcludedField(f.Name)) continue;
+                    var bindings = Bindings(owned.Condition);
+                    if (bindings == null) continue;
+                    if (candidates.Any(e => e.Owner.Owner.Name == module.Name && e.Owner.Owned.Name == owned.Name)) continue;
+                    candidates.Add((child.Name, new IncludedOwner(root, path, module, f, owned, bindings)));
+                }
+                //持ち主のモジュールが Root までたどれる宣言だけを残す (Root の宣言から順に、たどれると分かったモジュールを広げる。Walk の列挙順には頼らない)
+                var reachable = new HashSet<string> { root.Name };
+                var rest = candidates;
+                while (true)
+                {
+                    var found = rest.Where(e => reachable.Contains(e.Owner.Owner.Name)).ToList();
+                    if (found.Count == 0) break;
+                    rest = rest.Except(found).ToList();
+                    foreach (var (childName, owner) in found)
+                    {
+                        if (!result.TryGetValue(childName, out var owners)) result[childName] = owners = new();
+                        owners.Add(owner);
+                        reachable.Add(childName);
+                    }
+                }
+            }
+            return result;
+        }
+
+        /// <summary>
+        /// 宣言の条件から、行の項目と親の項目の結び付き (And で並んだ「行の項目 = 親の項目」) を取り出す。
+        /// 現在のユーザーの値を当てる条件 (CurrentUser.〜) は結び付きではないので除く。
+        /// 結び付きが無い、または結び付きとして読めない条件 (Or や否定の中の変数条件・等しい以外の比較) があれば null (行から親を引けない宣言)。
+        /// </summary>
+        static List<FieldVariableMatchCondition>? Bindings(SearchCondition condition)
+        {
+            static bool IsParentVariable(FieldVariableMatchCondition e) => !e.Variable.StartsWith(SystemFieldNames.CurrentUser + ".", StringComparison.Ordinal);
+            var bindings = new List<FieldVariableMatchCondition>();
+            Collect(condition.Condition);
+            bindings = bindings.Where(IsParentVariable).ToList();
+            if (bindings.Count == 0 || bindings.Any(e => e.Comparison != MatchComparison.Equal)) return null;
+            return bindings.Count == condition.GetFieldVariableConditions().Count(IsParentVariable) ? bindings : null;
+
+            void Collect(MatchConditionBase? node)
+            {
+                if (node is FieldVariableMatchCondition variable) bindings.Add(variable);
+                else if (node is MultiMatchCondition { IsOrMatch: false, IsNot: false } multi) multi.Children.ForEach(Collect);
+            }
+        }
+
+        /// <summary>行のモジュールを版に含める親 (Root) が 2 つ以上あるか (行を保存したとき、どの親の版にするか決まらない)。</summary>
+        internal static bool HasMultipleRoots(List<IncludedOwner> owners)
+            => owners.Select(e => e.Root.Name).Distinct().Skip(1).Any();
 
         /// <summary>
         /// 親の版に含めない宣言 (除外・行ごと) の先のモジュールと、その従属の子孫のモジュール名。

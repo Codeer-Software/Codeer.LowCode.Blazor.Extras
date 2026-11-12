@@ -34,6 +34,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         private const int CodeOnQueryModule = 9;
         private const int CodeOnListLayout = 10;
         private const int CodeChildHasOwnHistory = 11;
+        private const int CodeChildHasMultipleOwners = 12;
 
         public EditHistoryFieldDesign() : base(typeof(EditHistoryFieldDesign).FullName!) { }
 
@@ -69,6 +70,13 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         /// </summary>
         [Designer(Index = 8, DisplayName = "$EditHistoryCanRestore")]
         public bool CanRestore { get; set; } = true;
+
+        /// <summary>
+        /// 親の版に含める従属レコードの行を、このモジュールの画面以外 (行のモジュールの画面・取込など) で保存したときも、このモジュールの版にするか。
+        /// false なら版にするのはこのモジュールの保存だけ (このモジュールの画面から従属レコードを変えた保存は、どちらでも版になる)。
+        /// </summary>
+        [Designer(Index = 9, DisplayName = "$EditHistoryRecordRowsSavedElsewhere")]
+        public bool RecordRowsSavedElsewhere { get; set; } = true;
 
         public override string GetWebComponentTypeFullName() => typeof(EditHistoryFieldComponent).FullName!;
 
@@ -195,6 +203,23 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
                     Location = new FieldDesignDataLocation { Module = context.OwnerModule, Field = Name, Member = nameof(IndividuallyRecordedOwnedRecords) },
                     Message = string.Format(Properties.Resources.EditHistoryCheck_IndividualRowModuleNoHistoryFormat, path, child.Name, nameof(EditHistoryFieldDesign)),
                 });
+            }
+            //行が親を指す従属レコードを、別の画面で保存したときも版にする親 (RecordRowsSavedElsewhere の履歴つきのモジュール) は 1 つだけ。
+            //行のモジュールの画面などで保存した行は、その行を含む親の版になるので、親が 2 つあるとどちらの版か決まらない
+            foreach (var (childName, owners) in EditHistoryPolicy.IncludedOwners(context.DesignData))
+            {
+                if (!EditHistoryPolicy.HasMultipleRoots(owners)) continue;
+                foreach (var mine in owners.Where(e => e.Root.Name == ownModule.Name))
+                {
+                    var other = owners.First(e => e.Root.Name != ownModule.Name);
+                    result.Add(new FieldDesignCheckInfo
+                    {
+                        Code = DesignCheckCode.Create(typeof(EditHistoryFieldDesign), CodeChildHasMultipleOwners),
+                        Location = new FieldDesignDataLocation { Module = context.OwnerModule, Field = Name, Member = nameof(RecordRowsSavedElsewhere) },
+                        Message = string.Format(Properties.Resources.EditHistoryCheck_ChildHasMultipleOwnersFormat, mine.Path, childName, other.Root.Name, other.Path,
+                            nameof(RecordRowsSavedElsewhere), nameof(ExcludedOwnedRecords), nameof(IndividuallyRecordedOwnedRecords)),
+                    });
+                }
             }
             //「この版に置き換える」は従属レコードを版の全件で差し替える (本体の IOwnedRecordsField は持っている行に対して行う) ので、
             //全件を持たない宣言 (サーバーページングの一覧等。宣言の HoldsAllRecords) は親の版に含められない。含めるものだけ見る (除外・行ごとは対象外)。

@@ -3098,6 +3098,15 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
         }
 
         /// <summary>
+        ///   Record rows saved on other pages に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string EditHistoryRecordRowsSavedElsewhere {
+            get {
+                return ResourceManager.GetString("EditHistoryRecordRowsSavedElsewhere", resourceCulture);
+            }
+        }
+
+        /// <summary>
         ///   Allow restore に類似しているローカライズされた文字列を検索します。
         /// </summary>
         internal static string EditHistoryCanRestore {
@@ -3502,6 +3511,15 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
         internal static string EditHistoryCheck_ChildHasOwnHistoryFormat {
             get {
                 return ResourceManager.GetString("EditHistoryCheck_ChildHasOwnHistoryFormat", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to The rows of module '{1}' (owned records '{0}') are also included in the versions of '{2}'....
+        /// </summary>
+        internal static string EditHistoryCheck_ChildHasMultipleOwnersFormat {
+            get {
+                return ResourceManager.GetString("EditHistoryCheck_ChildHasMultipleOwnersFormat", resourceCulture);
             }
         }
 
@@ -4731,6 +4749,96 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
         internal static string WebApi_NotExecuted {
             get {
                 return ResourceManager.GetString("WebApi_NotExecuted", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Clipboard Copy Button に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string ClipboardCopyButtonField {
+            get {
+                return ResourceManager.GetString("ClipboardCopyButtonField", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Button Text に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string ClipboardCopyButtonText {
+            get {
+                return ResourceManager.GetString("ClipboardCopyButtonText", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Source Field に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string ClipboardCopyButtonSourceField {
+            get {
+                return ResourceManager.GetString("ClipboardCopyButtonSourceField", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Copy Text に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string ClipboardCopyButtonCopyText {
+            get {
+                return ResourceManager.GetString("ClipboardCopyButtonCopyText", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Copied Message に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string ClipboardCopyButtonCopiedMessage {
+            get {
+                return ResourceManager.GetString("ClipboardCopyButtonCopiedMessage", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   On Copied に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string ClipboardCopyButtonOnCopied {
+            get {
+                return ResourceManager.GetString("ClipboardCopyButtonOnCopied", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Copy に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string ClipboardCopyButton_DefaultText {
+            get {
+                return ResourceManager.GetString("ClipboardCopyButton_DefaultText", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Copied. に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string ClipboardCopyButton_Copied {
+            get {
+                return ResourceManager.GetString("ClipboardCopyButton_Copied", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Could not copy to the clipboard. に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string ClipboardCopyButton_Failed {
+            get {
+                return ResourceManager.GetString("ClipboardCopyButton_Failed", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Set either Source Field or Copy Text (only one of them). に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string ClipboardCopyButtonSourceInvalid {
+            get {
+                return ResourceManager.GetString("ClipboardCopyButtonSourceInvalid", resourceCulture);
             }
         }
     }
