@@ -2016,9 +2016,6 @@ Recipients: {1}</value>
   <data name="ClipboardCopyButtonText" xml:space="preserve">
     <value>Button Text</value>
   </data>
-  <data name="ClipboardCopyButtonVariant" xml:space="preserve">
-    <value>Button Variant</value>
-  </data>
   <data name="ClipboardCopyButtonSourceField" xml:space="preserve">
     <value>Source Field</value>
   </data>

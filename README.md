@@ -35,7 +35,7 @@
 | [WebApiField](docs/WebApiField.md) | 外部の Web API の呼び出し。ボタン (またはスクリプトの `Execute()`) でサーバーが接続先 (appsettings の `WebApi`) の API を呼び、結果 (状態コード・JSON) を返す。URL と認証のキーはサーバーだけが持つ。認証は None / ApiKey / Bearer / Basic / OAuth2 クライアントクレデンシャルと独自の方式 (IWebApiAuthenticator)。呼べるのはこのフィールドに書けるユーザー |
 | [ProgressField](docs/ProgressField.md) | 進捗率を横バー / 半円メーターで表示する表示専用フィールド。値・色を別フィールドから参照 |
 | [ExcelReportButtonField](docs/ExcelReportButtonField.md) | テンプレート Excel のセル (`$フィールド名.Value`) を自モジュールの値で置き換えて xlsx / PDF でダウンロードするボタン。スクリプト不要 |
-| [ClipboardCopyButtonField](docs/ClipboardCopyButtonField.md) | 押すと文字列をクリップボードにコピーするボタン。コピー元は同じモジュールの MarkupStringField (HTML はテキストにする) / LabelField / TextField か固定文字列。スクリプト不要 |
+| [ClipboardCopyButtonField](docs/ClipboardCopyButtonField.md) | 押すと文字列をクリップボードにコピーするボタン。コピー元は同じモジュールの TextField の値か固定文字列。スクリプト不要 |
 | [BulkFileTransferButtonField](docs/BulkFileTransfer.md#bulkfiletransferbuttonfield-一括ファイル転送ボタン) | 詳細画面に置く一括ダウンロード / 一括更新ボタン。対象は同じ画面の検索フィールドか一覧の条件 |
 | [CsvFileFormatField](docs/BulkFileTransfer.md#csvfileformatfield-csvファイル形式) | 一括ダウンロード / 一括更新のファイル形式を CSV (エンコーディング・区切り文字指定) や固定長にする設定用フィールド (UI なし) |
 | [FileColumnMappingField](docs/BulkFileTransfer.md#filecolumnmappingfield-ファイル列マッピング) | 一括ダウンロード / 一括更新の列構成を相手仕様 (列の並び・列名・固定値・固定長の列幅) にする設定用フィールド (UI なし) |

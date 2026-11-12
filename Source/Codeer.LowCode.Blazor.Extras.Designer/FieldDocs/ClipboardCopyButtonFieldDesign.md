@@ -1,19 +1,20 @@
 ## Design
 
 押すと文字列をクリップボードにコピーするボタンです。
-コピーする文字列は、同じモジュールの別のフィールド (`SourceField`) か固定文字列 (`CopyText`) のどちらか一方から取ります。
+コピーする文字列は、同じモジュールの TextField (`SourceField`) の値か固定文字列 (`CopyText`) のどちらか一方から取ります。
 
 ### 動作
 
 1. コピーする文字列を決める
-   - `SourceField` が MarkupStringField: HTML をテキストにする (`RawHtml` が優先。空なら `ResourcePath` のリソースの HTML)
-   - `SourceField` が LabelField: 表示文字列 (`IsHtml` のときはテキストにする)
-   - `SourceField` が TextField: 入力中の値
+   - `SourceField` が設定されている: その TextField の値そのまま (null は空文字)
    - `SourceField` が空: `CopyText`
 2. ブラウザーの `navigator.clipboard.writeText` でクリップボードに書き込む
 3. 成功したら `CopiedMessage` (空なら「コピーしました」) を通知して `OnCopied` を呼ぶ。失敗したらエラーを通知する
 
 HTTPS でも localhost でもない環境や、クリック操作の外から呼んだ場合はブラウザーの制限でコピーできません。
+
+コマンドや URL を見せてコピーさせたいときは、参照モードの (複数行の) TextField に入れて表示し、それをコピー元にする。
+凝った表示 (MarkupStringField / LabelField など) から組み立てた文字列をコピーしたいときは、スクリプトで組み立てて `Clipboard.Copy(...)` に渡す。
 
 ### デザイナー設定プロパティ
 
@@ -21,13 +22,15 @@ HTTPS でも localhost でもない環境や、クリック操作の外から呼
 |---|---|---|---|
 | Name | string | ○ | フィールド名 |
 | Text | string | - | ボタンの文字。空なら「コピー」 |
-| Variant | enum | - | ボタンの見た目 (Bootstrap のボタンの種類)。既定は `OutlineSecondary` |
-| SourceField | string | △ | コピー元のフィールド名 (MarkupStringField / LabelField / TextField)。`CopyText` とどちらか一方 |
+| SourceField | string | △ | コピー元のフィールド名 (同じモジュールの TextField)。`CopyText` とどちらか一方 |
 | CopyText | string | △ | コピーする固定文字列。`SourceField` とどちらか一方 |
 | CopiedMessage | string | - | コピーできたときの通知。空なら「コピーしました」 |
 | OnCopied | string | - | コピーできた後に呼ぶスクリプトの関数 |
 
 `SourceField` と `CopyText` が両方空・両方設定のときはデザインチェックが指摘します (`ClipboardCopyButtonFieldDesign:1`)。
+`SourceField` が TextField 以外のときも指摘します。
+
+見た目は固定 (`btn btn-outline-secondary`)。見た目を選びたいときは本体の ButtonField + スクリプトの `Clipboard.Copy(...)` を使う。
 
 ### モジュール JSON 例
 
@@ -60,5 +63,5 @@ void OtherButton_OnClick()
 
 ### CSS カスタマイズ
 
-Bootstrap のボタン (`Variant` に応じた `btn btn-...` クラス) として、クリップボードのアイコン (`bi-clipboard`) と文字で描画されます。
+Bootstrap のボタン (`btn btn-outline-secondary`) として、クリップボードのアイコン (`bi-clipboard`) と文字で描画されます。
 `data-system="clipboard-copy"` 属性を持ちます。

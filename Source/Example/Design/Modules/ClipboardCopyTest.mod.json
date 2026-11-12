@@ -22,7 +22,7 @@
       "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.LabelFieldDesign"
     },
     {
-      "Text": "コピー元 = MarkupStringField。HTML はテキストにしてコピーする (文字参照は元の文字、<br> は改行)",
+      "Text": "コピー元 = 参照モードの複数行 TextField。コマンドを表示して、その値をそのままコピーする",
       "Icon": "",
       "IsHtml": false,
       "Style": "Default",
@@ -37,24 +37,35 @@
       "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.LabelFieldDesign"
     },
     {
-      "ResourcePath": "",
-      "RawHtml": "<code>echo &quot;a &amp; b&quot;<br>2行目</code>",
-      "Name": "Prompt",
+      "DbColumn": "",
+      "IsMultiline": true,
+      "IsAutoFitRows": true,
+      "Placeholder": "",
+      "TextEditEmptyType": "StringEmpty",
+      "ShouldTrimAfterEdit": false,
+      "AutoTab": false,
+      "IsUpdateProtected": false,
+      "IsSimpleSearchParameter": false,
+      "AllowEmptySearch": false,
+      "OnSearchDataChanged": "",
+      "DisplayName": "",
+      "IsRequired": false,
+      "OnDataChanged": "",
+      "Name": "Command",
       "IgnoreModification": false,
       "OnValidateInput": "",
       "IsFocusSkip": false,
       "NextFocusField": "",
       "OnFocusMoving": "",
-      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.MarkupStringFieldDesign"
+      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.TextFieldDesign"
     },
     {
       "Text": "",
-      "Variant": "OutlineSecondary",
-      "SourceField": "Prompt",
+      "SourceField": "Command",
       "CopyText": "",
       "CopiedMessage": "",
       "OnCopied": "",
-      "Name": "CopyMarkup",
+      "Name": "CopyCommand",
       "IgnoreModification": false,
       "OnValidateInput": "",
       "IsFocusSkip": false,
@@ -63,7 +74,7 @@
       "TypeFullName": "Codeer.LowCode.Blazor.Extras.Designs.ClipboardCopyButtonFieldDesign"
     },
     {
-      "Text": "コピー元 = TextField。入力中の値をコピーする (Variant = Primary、ボタンの文字を変更)",
+      "Text": "コピー元 = TextField。入力中の値をコピーする (ボタンの文字を変更)",
       "Icon": "",
       "IsHtml": false,
       "Style": "Default",
@@ -102,7 +113,6 @@
     },
     {
       "Text": "入力をコピー",
-      "Variant": "Primary",
       "SourceField": "Input",
       "CopyText": "",
       "CopiedMessage": "",
@@ -132,7 +142,6 @@
     },
     {
       "Text": "",
-      "Variant": "OutlineSecondary",
       "SourceField": "",
       "CopyText": "固定の文字列",
       "CopiedMessage": "固定文字列をコピーしました",
@@ -372,7 +381,7 @@
             "Columns": [
               {
                 "Layout": {
-                  "FieldName": "Prompt",
+                  "FieldName": "Command",
                   "ContextMenu": "",
                   "ClassName": "",
                   "FontFamily": "",
@@ -396,7 +405,7 @@
               },
               {
                 "Layout": {
-                  "FieldName": "CopyMarkup",
+                  "FieldName": "CopyCommand",
                   "ContextMenu": "",
                   "ClassName": "",
                   "FontFamily": "",

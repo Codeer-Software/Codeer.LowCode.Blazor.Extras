@@ -2016,9 +2016,6 @@
   <data name="ClipboardCopyButtonText" xml:space="preserve">
     <value>ボタンの文字</value>
   </data>
-  <data name="ClipboardCopyButtonVariant" xml:space="preserve">
-    <value>ボタンの種類</value>
-  </data>
   <data name="ClipboardCopyButtonSourceField" xml:space="preserve">
     <value>コピー元フィールド</value>
   </data>

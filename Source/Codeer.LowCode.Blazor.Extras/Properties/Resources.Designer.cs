@@ -4753,15 +4753,6 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
         }
 
         /// <summary>
-        ///   Button Variant に類似しているローカライズされた文字列を検索します。
-        /// </summary>
-        internal static string ClipboardCopyButtonVariant {
-            get {
-                return ResourceManager.GetString("ClipboardCopyButtonVariant", resourceCulture);
-            }
-        }
-
-        /// <summary>
         ///   Source Field に類似しているローカライズされた文字列を検索します。
         /// </summary>
         internal static string ClipboardCopyButtonSourceField {

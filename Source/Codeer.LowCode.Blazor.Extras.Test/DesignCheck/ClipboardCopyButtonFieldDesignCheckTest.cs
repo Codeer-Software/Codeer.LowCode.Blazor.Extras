@@ -15,6 +15,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.DesignCheck
             var (designData, module) = Utilities.CreateDesignData();
             module.Fields.Add(new MarkupStringFieldDesign { Name = "Prompt", RawHtml = "<code>hello</code>" });
             module.Fields.Add(new LabelFieldDesign { Name = "Caption", Text = "caption" });
+            module.Fields.Add(new TextFieldDesign { Name = "Command" });
             module.Fields.Add(new ButtonFieldDesign { Name = "OtherButton" });
             return (designData, module);
         }
@@ -26,19 +27,31 @@ namespace Codeer.LowCode.Blazor.Extras.Test.DesignCheck
         }
 
         [Test]
-        public void SuccessMarkupStringSource()
+        public void SuccessTextSource()
         {
             var (designData, module) = CreateDesignDataWithSources();
-            var ret = Check(designData, module, new ClipboardCopyButtonFieldDesign { Name = "Copy", SourceField = "Prompt" });
+            var ret = Check(designData, module, new ClipboardCopyButtonFieldDesign { Name = "Copy", SourceField = "Command" });
             Assert.That(ret.Count, Is.EqualTo(0));
         }
 
         [Test]
-        public void SuccessLabelSource()
+        public void MarkupStringSourceIsTypeMismatch()
         {
             var (designData, module) = CreateDesignDataWithSources();
+            //MarkupStringField はコピー元にできない (表示を組み立て直さない)
+            var ret = Check(designData, module, new ClipboardCopyButtonFieldDesign { Name = "Copy", SourceField = "Prompt" });
+            Assert.That(ret.Count, Is.EqualTo(1));
+            ret[0].AssertFieldLocation("mod", "Copy", "SourceField");
+        }
+
+        [Test]
+        public void LabelSourceIsTypeMismatch()
+        {
+            var (designData, module) = CreateDesignDataWithSources();
+            //LabelField はコピー元にできない (表示を組み立て直さない)
             var ret = Check(designData, module, new ClipboardCopyButtonFieldDesign { Name = "Copy", SourceField = "Caption" });
-            Assert.That(ret.Count, Is.EqualTo(0));
+            Assert.That(ret.Count, Is.EqualTo(1));
+            ret[0].AssertFieldLocation("mod", "Copy", "SourceField");
         }
 
         [Test]
@@ -63,7 +76,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.DesignCheck
         public void BothSources()
         {
             var (designData, module) = CreateDesignDataWithSources();
-            var ret = Check(designData, module, new ClipboardCopyButtonFieldDesign { Name = "Copy", SourceField = "Prompt", CopyText = "hello" });
+            var ret = Check(designData, module, new ClipboardCopyButtonFieldDesign { Name = "Copy", SourceField = "Command", CopyText = "hello" });
             Assert.That(ret.Count, Is.EqualTo(1));
             Assert.That(ret[0].Message, Is.EqualTo(SourceInvalidMessage));
         }

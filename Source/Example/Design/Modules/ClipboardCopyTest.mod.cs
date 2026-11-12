@@ -1,5 +1,7 @@
 void DetailLayoutDesign_OnAfterInitialization()
 {
+    Command.Value = "このURLを見て指示に従って https://github.com/Codeer-Software/Codeer.LowCode.Blazor.Starter";
+    Command.IsViewOnly = true;
     Input.Value = "入力した値 123";
     OnCopiedLog.Value = "(OnCopied はまだ呼ばれていません)";
     OnCopiedLog.IsViewOnly = true;
