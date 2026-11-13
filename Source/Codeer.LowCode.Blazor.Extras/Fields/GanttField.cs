@@ -120,6 +120,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
                 : null;
             if (focus != null)
             {
+                _baseDate = focus.Start.Date;
                 ViewStart = focus.Start.Date;
                 RebuildItemsInView();
             }
@@ -163,6 +164,11 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
 
         internal bool IsDateOnly { get; private set; }
 
+        //基準日。表示するのは基準日を含む日 / 週 / 月 (CalendarField の SelectedDate と同じ持ち方)。
+        //初期表示と「今日」で今日、前へ / 次へで表示の単位ぶん動く。表示モードの切り替えでは変えない
+        private DateTime _baseDate = DateTime.Today;
+
+        //表示の開始日。基準日と表示モードから決まる (GetViewStartOf)。スクリプトで設定したときは設定した日そのまま
         public DateTime ViewStart { get; private set; } = DateTime.Today.AddDays(-(int)DateTime.Today.DayOfWeek);
 
         public GanttViewMode ViewMode { get; private set; } = GanttViewMode.Week;
@@ -195,6 +201,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             else
             {
                 ViewMode = GetDefaultViewMode();
+                ViewStart = GetViewStartOf(_baseDate);
             }
             if (this.IsInLayout()) await ReloadAsync();
         }
@@ -335,6 +342,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         public async Task SetViewStartAsync(DateTime date)
         {
             if (!await ConfirmDiscardChangesAsync()) return;
+            _baseDate = date.Date;
             ViewStart = date;
             NotifyStateChanged();
             await ReloadAsync();
@@ -346,9 +354,38 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             if (!IsViewModeEnabled(mode)) return;
             if (!await ConfirmDiscardChangesAsync()) return;
             ViewMode = mode;
+            ViewStart = GetViewStartOf(_baseDate);
             NotifyStateChanged();
             await ReloadAsync();
         }
+
+        //「今日」ボタン: 基準日を今日に
+        internal Task GoTodayAsync() => MoveBaseDateAsync(DateTime.Today);
+
+        //前へ (-1) / 次へ (1): 基準日を表示の単位ぶん動かす
+        internal Task MovePageAsync(int direction) => MoveBaseDateAsync(ViewMode switch
+        {
+            GanttViewMode.Day => _baseDate.AddDays(direction),
+            GanttViewMode.Month => _baseDate.AddMonths(direction),
+            _ => _baseDate.AddDays(7 * direction),
+        });
+
+        private async Task MoveBaseDateAsync(DateTime baseDate)
+        {
+            if (!await ConfirmDiscardChangesAsync()) return;
+            _baseDate = baseDate.Date;
+            ViewStart = GetViewStartOf(_baseDate);
+            NotifyStateChanged();
+            await ReloadAsync();
+        }
+
+        //基準日を含む日 / 週 / 月の開始日 (日 = 基準日、週 = 基準日を含む週の日曜、月 = 基準日の月の 1 日)
+        private DateTime GetViewStartOf(DateTime baseDate) => ViewMode switch
+        {
+            GanttViewMode.Day => baseDate.Date,
+            GanttViewMode.Month => new DateTime(baseDate.Year, baseDate.Month, 1),
+            _ => baseDate.Date.AddDays(-(int)baseDate.DayOfWeek),
+        };
 
         internal bool IsViewModeEnabled(GanttViewMode mode) => mode switch
         {
@@ -382,6 +419,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             CustomRangeStart = start;
             CustomRangeEnd = end;
             ViewMode = GanttViewMode.CustomRange;
+            _baseDate = start.Date;
             ViewStart = start;
             NotifyStateChanged();
             await ReloadAsync();

@@ -660,60 +660,15 @@
     };
   }
 
-  private async Task GoToday()
-  {
-    var start = Field.ViewMode switch
-    {
-      GanttViewMode.Day => DateTime.Today,
-      GanttViewMode.Month => new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1),
-      _ => DateTime.Today.AddDays(-(int)DateTime.Today.DayOfWeek),
-    };
-    await Field.SetViewStartAsync(start);
-  }
+  // 画面の操作は基準日を動かすだけ。開始日は Field が基準日と表示モードから決める
+  private Task GoToday() => Field.GoTodayAsync();
 
-  private async Task GoPrev()
-  {
-    var next = Field.ViewMode switch
-    {
-      GanttViewMode.Day => Field.ViewStart.AddDays(-1),
-      GanttViewMode.Month => Field.ViewStart.AddMonths(-1),
-      _ => Field.ViewStart.AddDays(-7),
-    };
-    await Field.SetViewStartAsync(next);
-  }
+  private Task GoPrev() => Field.MovePageAsync(-1);
 
-  private async Task GoNext()
-  {
-    var next = Field.ViewMode switch
-    {
-      GanttViewMode.Day => Field.ViewStart.AddDays(1),
-      GanttViewMode.Month => Field.ViewStart.AddMonths(1),
-      _ => Field.ViewStart.AddDays(7),
-    };
-    await Field.SetViewStartAsync(next);
-  }
+  private Task GoNext() => Field.MovePageAsync(1);
 
-  private async Task SetViewMode(GanttViewMode mode)
-  {
-    var newStart = mode switch
-    {
-      GanttViewMode.Day => Field.ViewStart.Date,
-      GanttViewMode.Month => new DateTime(MonthAnchor().Year, MonthAnchor().Month, 1),
-      _ => Field.ViewStart.Date.AddDays(-(int)Field.ViewStart.DayOfWeek),
-    };
-    await Field.SetViewModeAsync(mode);
-    await Field.SetViewStartAsync(newStart);
-  }
-
-  // 月表示に切り替えたときに表示する月の基準日。
-  // 表示中の範囲に今日が含まれるなら今日(週の先頭が前月でも今月を開く)。
-  // 含まれないなら、週表示は週の中日(月をまたぐ週は日数の多い側の月)、それ以外は表示開始日。
-  private DateTime MonthAnchor()
-  {
-    var (start, end) = Field.GetViewDateRange();
-    if (DateTime.Today >= start && DateTime.Today < end) return DateTime.Today;
-    return Field.ViewMode == GanttViewMode.Week ? Field.ViewStart.Date.AddDays(3) : Field.ViewStart.Date;
-  }
+  // 表示モードを変えるだけ (基準日は変えない)
+  private Task SetViewMode(GanttViewMode mode) => Field.SetViewModeAsync(mode);
 
   bool _rangePopupOpen;
   DateTime _rangeEditStart;
