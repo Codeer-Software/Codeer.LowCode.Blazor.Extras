@@ -205,7 +205,8 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
                 if (rows.Count > 0) await AddAsNewAsync(data!);
                 return;
             }
-            if (rows.Count > 0 || (data != null && ModuleLayoutType != ModuleLayoutType.Detail))
+            //サーバーが同梱した行 (IsLoaded) は 0 件でもそれが全部なので読み直さない (行ごとの問い合わせを出さない)
+            if (rows.Count > 0 || data?.IsLoaded == true || (data != null && ModuleLayoutType != ModuleLayoutType.Detail))
             {
                 await ApplyRowsAsync(rows);
                 return;

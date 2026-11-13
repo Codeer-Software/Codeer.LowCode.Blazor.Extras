@@ -4,7 +4,9 @@ using Codeer.LowCode.Blazor.DesignLogic.Check;
 using Codeer.LowCode.Blazor.Extras.Designs;
 using Codeer.LowCode.Blazor.Extras.Fields;
 using Codeer.LowCode.Blazor.Extras.Test.Harness;
+using Codeer.LowCode.Blazor.OperatingModel;
 using Codeer.LowCode.Blazor.Repository;
+using Codeer.LowCode.Blazor.Repository.Data;
 using Codeer.LowCode.Blazor.Repository.Design;
 using Codeer.LowCode.Blazor.Repository.Match;
 
@@ -137,6 +139,25 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Tag
         {
             Assert.That(TagField.Separators, Is.EqualTo(new[] { ' ', '　' }), "区切りの集合は 1 か所");
             Assert.That(TagField.Normalize(["a,b、c，d 100%"]), Is.EqualTo(new[] { "a,b、c，d", "100%" }));
+        }
+
+        [TestCase(true, 0)]
+        [TestCase(false, 1)]
+        public async Task 親と一緒に届いた空のタグは読み直さない(bool isLoaded, int expectedRequests)
+        {
+            //一覧のカード (詳細扱い) にタグが 0 件で届く形。サーバーが同梱した 0 件 (IsLoaded) はそれが全部
+            var services = new TestServices(TagTestDesigns.Create());
+            var module = await ModuleCreationService.CreateModuleAsync(services.Core, new ModuleData
+            {
+                Name = "Contact",
+                Fields =
+                {
+                    ["Id"] = new IdFieldData { Value = "1" },
+                    ["Tags"] = new ListFieldData { IsLoaded = isLoaded },
+                },
+            }, ModuleLayoutType.Detail);
+            Assert.That(services.App.ListRequests, Has.Count.EqualTo(expectedRequests));
+            Assert.That(((TagField)module.GetField("Tags")!).Tags, Is.Empty);
         }
 
         #region デザインチェック
