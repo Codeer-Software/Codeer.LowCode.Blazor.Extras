@@ -75,7 +75,7 @@ Extras の機能 (メール・ジョブ・承認・AI チャット・意味検�
 
 #### GanttField - ガントチャート
 - **状態**: 実装済み (docs/GanttField.md)
-- **機能**: SVGベースのガントチャート。タスクのドラッグ移動・リサイズ、依存関係の管理
+- **機能**: SVGベースのガントチャート。タスクのドラッグ移動・リサイズ、依存関係の管理。表示は基準日 (`_baseDate`) を含む日/週/月 = CalendarField と同じ持ち方 (今日/前へ/次へ は基準日を動かし、表示の切り替えは変えない。開始日の計算は `GetViewStartOf` の 1 か所。スクリプトの ViewStart はそのまま開始日 + 基準日。テスト `Test/Fields/GanttViewStartTest`)
 - **インターフェース**: `IDisplayName`, `ISearchResultsViewFieldDesign`, `IFillHeightFieldDesign`
 - **ファイル**: `Designs/GanttFieldDesign.cs`, `Fields/GanttField.cs`, `Components/GanttFieldComponent.razor`
 
