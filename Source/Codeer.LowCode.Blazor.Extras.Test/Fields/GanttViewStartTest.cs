@@ -43,14 +43,28 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Fields
             return d;
         }
 
-        static async Task<GanttField> CreateGanttAsync()
+        static async Task<GanttField> CreateGanttAsync() => (await CreateGanttWithServicesAsync()).Gantt;
+
+        static async Task<(GanttField Gantt, TestServices Services)> CreateGanttWithServicesAsync()
         {
             var services = new TestServices(CreateDesign());
             services.App.ListProvider = _ => new Paging<ModuleData>();
             var data = new ModuleData { Name = "Project" };
             data.Fields["Id"] = new IdFieldData { Value = "1" };
             var module = await ModuleCreationService.CreateModuleAsync(services.Core, data, ModuleLayoutType.None);
-            return module.GetField<GanttField>("Gantt")!;
+            return (module.GetField<GanttField>("Gantt")!, services);
+        }
+
+        //未保存の変更 (タスクを 1 つ足した状態) があるガントを、基準日 2026/11/12 (木) の週表示で用意する
+        static async Task<(GanttField Gantt, TestServices Services)> CreateModifiedAt1112Async()
+        {
+            var (gantt, services) = await CreateGanttWithServicesAsync();
+            await gantt.SetViewStartAsync(new DateTime(2026, 11, 12));
+            await gantt.SetViewModeAsync(GanttViewMode.Week);
+            await ((IOwnedRecordsField)gantt).AddOwnedRecordAsync("Gantt", null);
+            Assert.That(gantt.IsModified, Is.True);
+            services.App.ListRequests.Clear();
+            return (gantt, services);
         }
 
         static DateTime SundayOf(DateTime d) => d.Date.AddDays(-(int)d.DayOfWeek);
@@ -141,6 +155,53 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Fields
             await gantt.SetViewModeAsync(GanttViewMode.Day);
             await gantt.GoTodayAsync();
             Assert.That(gantt.ViewStart, Is.EqualTo(DateTime.Today));
+        }
+
+        [Test]
+        public async Task 未保存の変更があるときの切り替えで破棄を断ると確認は1回だけで何も変わらない()
+        {
+            var (gantt, services) = await CreateModifiedAt1112Async();
+            services.UI.MessageBoxAnswer = _ => Properties.Resources.No;
+
+            await gantt.SetViewModeAsync(GanttViewMode.Day);
+
+            Assert.That(services.UI.MessageBoxes, Is.EqualTo(new[] { Properties.Resources.DiscardChangesConfirmation }), "確認は 1 回だけ");
+            Assert.That(gantt.ViewMode, Is.EqualTo(GanttViewMode.Week));
+            Assert.That(gantt.ViewStart, Is.EqualTo(new DateTime(2026, 11, 8)));
+            Assert.That(gantt.IsModified, Is.True, "変更は残る");
+            Assert.That(services.App.ListRequests, Is.Empty, "読み直さない");
+        }
+
+        [Test]
+        public async Task 未保存の変更があるときの切り替えで破棄を選ぶと確認も読み込みも1回で切り替わる()
+        {
+            var (gantt, services) = await CreateModifiedAt1112Async();
+            services.UI.MessageBoxAnswer = _ => Properties.Resources.Yes;
+
+            await gantt.SetViewModeAsync(GanttViewMode.Day);
+
+            Assert.That(services.UI.MessageBoxes, Has.Count.EqualTo(1), "確認は 1 回だけ");
+            Assert.That(gantt.ViewMode, Is.EqualTo(GanttViewMode.Day));
+            Assert.That(gantt.ViewStart, Is.EqualTo(new DateTime(2026, 11, 12)));
+            Assert.That(gantt.IsModified, Is.False, "変更は破棄される");
+            Assert.That(services.App.ListRequests, Has.Count.EqualTo(1), "読み込みは 1 回だけ");
+        }
+
+        [Test]
+        public async Task 未保存の変更があるときの前へと今日で破棄を断ると基準日は動かない()
+        {
+            var (gantt, services) = await CreateModifiedAt1112Async();
+            services.UI.MessageBoxAnswer = _ => Properties.Resources.No;
+
+            await gantt.MovePageAsync(-1);
+            await gantt.GoTodayAsync();
+            Assert.That(services.UI.MessageBoxes, Has.Count.EqualTo(2), "操作ごとに 1 回");
+            Assert.That(gantt.ViewStart, Is.EqualTo(new DateTime(2026, 11, 8)));
+
+            //基準日が動いていないので、破棄して日へ切り替えると元の 11/12
+            services.UI.MessageBoxAnswer = _ => Properties.Resources.Yes;
+            await gantt.SetViewModeAsync(GanttViewMode.Day);
+            Assert.That(gantt.ViewStart, Is.EqualTo(new DateTime(2026, 11, 12)));
         }
     }
 }
