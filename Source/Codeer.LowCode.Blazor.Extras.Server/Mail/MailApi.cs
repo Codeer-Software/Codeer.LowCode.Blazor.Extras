@@ -1,6 +1,8 @@
+using Codeer.LowCode.Blazor.DesignLogic;
 using Codeer.LowCode.Blazor.Extras.Mail;
 using Codeer.LowCode.Blazor.Extras.Server.Api;
 using Codeer.LowCode.Blazor.Extras.Server.AuditLog;
+using Codeer.LowCode.Blazor.Repository.Data;
 using Microsoft.Extensions.Logging;
 
 namespace Codeer.LowCode.Blazor.Extras.Server.Mail
@@ -59,13 +61,18 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
             => new(CreateDispatcher(context), context.ModuleDataIO, context.DesignData);
 
         MailDispatcher CreateDispatcher(ExtrasApiContext context)
-        {
             //履歴はシステムの記録なので、操作ユーザーの書き込み権限に依存しない口で書く
-            var historyWriter = string.IsNullOrEmpty(_mail.HistoryModuleName)
+            => CreateDispatcher(_mail, _createSender, data => context.ModuleDataIO.CreateSystemAccess().AddAsync(data),
+                context.DesignData, e => LogError(context, e));
+
+        //Job スクリプトの MailService (JobScripts.UseMail) と共用。addHistory = 履歴の行の追加 (採番した Id を返す)・logError = 履歴を書けなかった理由
+        internal static MailDispatcher CreateDispatcher(MailConfig mail, Func<string, IMailSender?> createSender,
+            Func<ModuleData, Task<string>> addHistory, DesignData designData, Action<string> logError)
+        {
+            var historyWriter = string.IsNullOrEmpty(mail.HistoryModuleName)
                 ? null
-                : new MailHistoryWriter(_mail.HistoryModuleName, context.DesignData,
-                    data => context.ModuleDataIO.CreateSystemAccess().AddAsync(data), e => LogError(context, e));
-            return new MailDispatcher(_mail, _createSender, historyWriter);
+                : new MailHistoryWriter(mail.HistoryModuleName, designData, addHistory, logError);
+            return new MailDispatcher(mail, createSender, historyWriter);
         }
 
         static void LogError(ExtrasApiContext context, string message)

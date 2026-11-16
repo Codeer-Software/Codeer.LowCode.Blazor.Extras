@@ -19,7 +19,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Jobs
         readonly Func<string, bool>? _runsInServer;
         readonly Func<string, string[], string, Task<string?>>? _runInServer;
 
-        /// <param name="jobNames">ホストが動かせるジョブの名前 (テンプレの JobRunner.Names)。無い名前は起動しない。</param>
+        /// <param name="jobNames">ホストが動かせるジョブの名前。無い名前は起動しない。渡した一覧をそのまま持つ (起動後に増減するジョブがあるなら Func を取るほうを使う)。</param>
         public JobApi(IReadOnlyCollection<string> jobNames) => _jobNames = () => jobNames;
 
         /// <param name="jobNames">ホストが動かせるジョブの名前 (テンプレの JobRunner.Names)。無い名前は起動しない。デザインの差し替えで変わるジョブがあるので、起動のたびに今の一覧を聞く。</param>

@@ -4,6 +4,9 @@ using ClosedXML.Excel;
 using Codeer.LowCode.Blazor.Utils;
 using Codeer.LowCode.Blazor.Script;
 using Codeer.LowCode.Blazor.Extras.Services;
+using Codeer.LowCode.Blazor.Extras.Mail;
+using Codeer.LowCode.Blazor.DesignLogic;
+using Codeer.LowCode.Blazor.Repository.Data;
 
 namespace Codeer.LowCode.Blazor.Extras.ScriptObjects
 {
@@ -56,6 +59,102 @@ namespace Codeer.LowCode.Blazor.Extras.ScriptObjects
                 => value is DateOnly d ? d.ToDateTime(TimeOnly.MinValue) : value;
         }
 
+        //OverWrite(ModuleData) の記号の解決。Module 版 (DataGetter) と同じ記法を、ModuleData の項目と FieldData のプロパティで辿る。
+        //解決できない記号は null を返す (セルは書き換わらず、記号がそのまま残る = Module 版と同じ)
+        private class ModuleDataGetter : IExcelSymbolConverter
+        {
+            readonly ModuleData? _data;
+            readonly string _name = string.Empty;
+            readonly DesignData? _designData;
+
+            internal ModuleDataGetter(ModuleData data, DesignData? designData)
+            {
+                _data = data;
+                _designData = designData;
+            }
+
+            ModuleDataGetter(ModuleData? data, string name, DesignData? designData)
+            {
+                _data = data;
+                _name = name;
+                _designData = designData;
+            }
+
+            //Module 版と同じく、繰り返しの中では要素 (行) が記号の解決先になる
+            public IExcelSymbolConverter CreateChildExcelSymbolConverter(object? obj, string name)
+                => new ModuleDataGetter(obj as ModuleData, name, _designData);
+
+            public Task<ExcelOverWriteCell?> GetData(string text)
+            {
+                if (_data == null) return Task.FromResult<ExcelOverWriteCell?>(null);
+                var path = !string.IsNullOrEmpty(_name) && text.StartsWith(_name + ".") ? text.Substring(_name.Length + 1) : text;
+                return Task.FromResult(TryResolve(_data, path.Split('.'), out var value) ? new ExcelOverWriteCell { Value = Adjust(value) } : null);
+            }
+
+            bool TryResolve(ModuleData data, string[] names, out object? value)
+            {
+                value = null;
+                object? obj = data;
+                for (var i = 0; i < names.Length;)
+                {
+                    if (obj == null) return false;
+                    if (obj is ModuleData moduleData)
+                    {
+                        //項目名はドットを含むことがある (リンク越しの項目) ので長い名前から当てる
+                        var next = FindField(moduleData, names, i, out var field);
+                        if (next != i)
+                        {
+                            obj = field;
+                            i = next;
+                            continue;
+                        }
+                    }
+                    if (!TryGetMember(obj, names[i], out obj)) return false;
+                    i++;
+                }
+                value = obj;
+                return true;
+            }
+
+            //見つかれば次の位置。データに無い項目は、デザインにあれば空の値 (Module 版の未入力の項目と同じ) にする
+            int FindField(ModuleData data, string[] names, int start, out object? field)
+            {
+                for (var end = names.Length; start < end; end--)
+                {
+                    if (data.Fields.TryGetValue(string.Join(".", names[start..end]), out var found))
+                    {
+                        field = found;
+                        return end;
+                    }
+                }
+                field = _designData?.Modules.Find(data.Name)?.Fields.FirstOrDefault(e => e.Name == names[start])?.CreateData();
+                return field == null ? start : start + 1;
+            }
+
+            //Module 版でフィールドのメンバーとして書く名前のうち、ModuleData では別の名前のもの (一覧の行・子モジュール)
+            static bool TryGetMember(object obj, string name, out object? value)
+            {
+                value = null;
+                if (obj is ListFieldData list && name == "Rows")
+                {
+                    value = list.Children;
+                    return true;
+                }
+                if (obj is ModuleFieldData child && name == "ChildModule")
+                {
+                    value = child.Data;
+                    return true;
+                }
+                var property = obj.GetType().GetProperty(name, System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
+                if (property == null || property.GetIndexParameters().Length != 0 || System.Reflection.CustomAttributeExtensions.GetCustomAttribute<ScriptHideAttribute>(property) != null) return false;
+                value = property.GetValue(obj);
+                return true;
+            }
+
+            static object? Adjust(object? value)
+                => value is DateOnly d ? d.ToDateTime(TimeOnly.MinValue) : value;
+        }
+
         XLWorkbook _book;
         string _fileName;
 
@@ -88,6 +187,28 @@ namespace Codeer.LowCode.Blazor.Extras.ScriptObjects
 
         public async Task OverWrite(Module data)
             => await _book.OverWrite(new DataGetter(data));
+
+        /// <summary>
+        /// テンプレートを検索で読んだデータ (ModuleSearcher の ExecuteRaw 等) で埋める。記法は Module 版と同じ
+        /// ($項目名.Value・#LoopRow($一覧.Rows, row) と $row.項目名.Value・$子.ChildModule.項目名.Value)。
+        /// 解決するのはデータに載っている項目と FieldData のプロパティだけ (モジュールのスクリプトの変数・関数、サービス、画面のフィールドだけが持つメンバーは解決しない = 記号がそのまま残る)。
+        /// </summary>
+        public async Task OverWrite(ModuleData data)
+            => await _book.OverWrite(new ModuleDataGetter(data, Services?.AppInfoService.GetDesignData()));
+
+        /// <summary>xlsx のメールの添付にする。</summary>
+        public MailAttachment ToAttachment(string fileName)
+            => new() { FileName = fileName, ContentBase64 = Convert.ToBase64String(GetBytes()) };
+
+        /// <summary>PDF に変換してメールの添付にする。変換は <see cref="ConvertPdf"/> (サーバーのホストが設定する)。設定されていなければ例外。</summary>
+        public MailAttachment ToPdfAttachment(string fileName)
+        {
+            var convert = ConvertPdf ?? throw new InvalidOperationException("このアプリでは PDF に変換できません (Excel.ConvertPdf が設定されていません)");
+            //変換は渡したストリームを閉じることがあるので、本の保存先ではなく写しを渡す
+            using var stream = new MemoryStream(GetBytes());
+            using var pdf = convert(stream);
+            return new() { FileName = fileName, ContentBase64 = Convert.ToBase64String(pdf.ToArray()) };
+        }
 
         public ExcelCellIndex? FindCellByText(string text)
         {
@@ -163,8 +284,8 @@ namespace Codeer.LowCode.Blazor.Extras.ScriptObjects
         [ScriptHide]
         public byte[] GetBytes()
         {
-            using var stream = GetStream();
-            return stream?.ToArray() ?? Array.Empty<byte>();
+            //保存先のストリームは閉じない (ClosedXML は保存した後の本をそのストリームから読むので、閉じると 2 回目の保存が失敗する)
+            return GetStream()?.ToArray() ?? Array.Empty<byte>();
         }
 
         MemoryStream? GetStream()

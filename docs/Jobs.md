@@ -41,7 +41,7 @@ if (isJob) return await JobMode.RunAsync(args[1..], JobRunner.Names, (name, jobA
 
 ### 親側: JobApi と Program.cs
 
-画面のボタン (JobTriggerField) の受け口は Extras.Server の `JobApi` です。ホストは共通の API の対応表 (テンプレートの `Extras/ExtrasApiTable.cs`) に `new JobApi(JobRunner.Names)` (動かせるジョブの名前。無い名前は起動しない) を並べます。
+画面のボタン (JobTriggerField) の受け口は Extras.Server の `JobApi` です。ホストは共通の API の対応表 (テンプレートの `Extras/ExtrasApiTable.cs`) に `new JobApi(jobNames)` (動かせるジョブの名前。無い名前は起動しない) を並べます。この形は渡した一覧をそのまま持つので、動かしている間に増減するジョブ (「デザインの Job スクリプト」) があるときは、一覧を返す関数を渡す形 (「実行先」) を使います。
 `JobApi` はフィールドへの書き込み権限を確かめてから、デザインの JobTriggerField に従って `JobProcess` を呼びます。サーバー内実行にするジョブがあるときは、実行先を決める口と実行の口も渡します (「実行先」)。下は別プロセスの呼び方です。
 
 ```csharp
@@ -131,9 +131,103 @@ new JobApi(jobNames, runsInServer, runInServer)
 | メソッド | 内容 |
 |---|---|
 | `GetNames(getDesignData)` | デザインにある Job スクリプトの名前。デザインを読めない (デリゲートが例外) ときは空。ホストのジョブの名前と合わせて `jobNames` に渡す |
-| `RunAsync(moduleDataIO, designData, jobName, args)` | Job スクリプトを 1 つ動かし、Run の戻り値を返す (void なら null)。名前は大文字小文字を区別しない。無い名前・スクリプトのエラー・`Fail` は `InvalidOperationException` (メッセージが画面のエラーの文言)。読み書きは渡した `ModuleDataIO` を通る (権限はそのユーザー。実行ごとに作ったものを渡す) |
+| `RunAsync(moduleDataIO, designData, jobName, args, getResource)` | Job スクリプトを 1 つ動かし、Run の戻り値を返す (void なら null)。名前は大文字小文字を区別しない。無い名前・スクリプトのエラー・`Fail` は `InvalidOperationException` (メッセージが画面のエラーの文言)。読み書きは渡した `ModuleDataIO` を通る (権限はそのユーザー。実行ごとに作ったものを渡す)。`getResource` (省略可) はスクリプトの `Resources` の読み出し (デザインのリソースのパス → 内容。無ければ null)。渡さなければ `Resources` は何も読めない |
+| `UseMail(mail, createSender)` | Job スクリプトに `MailService` (メールの送信) を足す。プロセスの起動時に 1 回呼ぶ (何度呼んでも登録は 1 回・設定は最後に渡したもの)。引数は `MailApi` と同じ (`MailConfig` と、呼び名 → 送信インフラの対応表)。呼ばなければ Job スクリプトに `MailService` は無い |
+| `UseExcel()` | Job スクリプトに `Excel` を足す。`Excel.ConvertPdf` が未設定ならサーバーの変換 (Excel.Report.PDF) を入れる (PDF のフォントはホストが `GlobalFontSettings.FontResolver` で設定する)。呼ばなければ Job スクリプトに `Excel` は無い |
 
 スクリプトの `Logger` は実行先に合わせて出ます。別プロセス (`JobMode`) では標準出力 (`Warn` は `warn: `、`Error` は `error: ` が先頭)、サーバーの中では `JobProcess.LoggerFactory` (カテゴリは `JobScripts` の型名) にレベルどおり出ます。
+
+### Job スクリプトで使えるもの (MailService / Excel / Resources)
+
+本体の Job スクリプトで使えるもの (検索・保存・`DBService.Commit()` 等) に加えて、`UseMail` / `UseExcel` を呼んだホストでは次が使えます。デザイナ (Extras.Designer) は同じものを設計チェック・入力補完に出します。
+
+| 名前 | 内容 |
+|---|---|
+| `MailService.Send(message)` | メールを送る (`UseMail`)。戻り値は `MailSendResult` (`IsSuccess` / `TotalCount` / `SuccessCount` / `Failures` (宛先 `To` と理由 `Error`))。送れなくても例外にならない |
+| `MailMessage` / `MailAttachment` | 送るメッセージ (`To` / `Cc` / `Bcc` / `Subject` / `Body` / `IsBodyHtml` / `ReplyTo` / `Attachments`) と添付 (`FileName` / `ContentBase64`) |
+| `Excel` | 画面のスクリプトと同じ Excel オブジェクト (`UseExcel`)。Job では `OverWrite(ModuleData)` / `ToAttachment(fileName)` / `ToPdfAttachment(fileName)` を使う |
+| `Resources.GetMemoryStream(path)` / `GetText(path)` | デザインのリソース (`RunAsync` の `getResource` で読む) |
+
+メールの送り方は `MailDispatcher` のシステムメールと同じです。送信インフラは `MailConfig.DefaultInfraName`、`DebugRedirectAllTo` が効き、`HistoryModuleName` があれば送信履歴を書きます。差出人は送信インフラ設定のシステム送信者です (`From` を入れても使われない)。
+
+- **送ったメールは取り消せません**。Job が後で失敗する (`Fail`・実行時エラー) と、Job のトランザクションの書き込みは取り消されますが、送ったメールは戻りません。送信履歴も Job のトランザクションで書くので、一緒に取り消されます
+- そのため、データを書く Job では **書き込みを `DBService.Commit()` で確定してから送ります**。送った後にも `DBService.Commit()` を呼ぶと、その後で失敗しても送信履歴が残ります
+- **送信履歴を書けなかったら Job は失敗します** (「メールは送信しましたが、送信履歴を書けませんでした: 理由」)。最後の `DBService.Commit()` 以降の書き込みは取り消され、メールは送られています
+- `Excel` の `Download()` / `DownloadPdf()` は Job では使えません (ダウンロードするブラウザが無い)。ファイルはメールの添付にします
+
+期限が近いレコードを検索して、担当者ごとにメールを送る:
+
+```csharp
+// Jobs/RemindTasks.job.cs
+string Run(JobArguments args)
+{
+    var search = new ModuleSearcher<TaskItem>();
+    search.AddEquals(e => e.Status.Value, "Open");
+    search.AddLessThanOrEqual(e => e.DueDate.Value, DateOnly.FromDateTime(DateTime.Today.AddDays(3)));
+    var rows = search.ExecuteRaw();
+    var failed = 0;
+    foreach (var row in rows)
+    {
+        var mail = new MailMessage();
+        mail.To.Add(row.AssigneeEmail.Value);
+        mail.Subject = "期限が近いタスク: " + row.Title.Value;
+        mail.Body = row.Title.Value + " の期限は " + row.DueDate.Value + " です。(" + CurrentUser.Name.Value + ")";
+        var result = MailService.Send(mail);
+        if (!result.IsSuccess)
+        {
+            failed++;
+            Logger.Error(result.Failures[0].To + ": " + result.Failures[0].Error);
+        }
+    }
+    return $"{rows.Count} 件 (失敗 {failed} 件)";
+}
+```
+
+テンプレート (リソースの xlsx) に注文と明細を書き込み、PDF にして添付する:
+
+```csharp
+// Jobs/SendOrderSheet.job.cs
+string Run(JobArguments args)
+{
+    var search = new ModuleSearcher<Order>();
+    search.AddEquals(e => e.Id.Value, args.Options[0]);
+    // 一覧 (明細) の行は、読む項目に一覧と Id を入れたときだけ親と一緒に読まれる
+    search.Select(e => e.Id, e => e.Title, e => e.OrderedOn, e => e.Customer, e => e.Lines);
+    var order = search.ExecuteRawFirstOrDefault();
+    if (order == null) Fail("注文がありません");
+
+    var mail = new MailMessage();
+    mail.To.Add(CurrentUser.Email.Value);
+    mail.Subject = "注文書 " + order.Title.Value;
+    using (var excel = new Excel(Resources.GetMemoryStream("Reports/Order.xlsx"), "Order.xlsx"))
+    {
+        excel.OverWrite(order);
+        mail.Attachments.Add(excel.ToPdfAttachment("注文書.pdf"));
+    }
+    var result = MailService.Send(mail);
+    if (!result.IsSuccess) Fail(result.Failures[0].Error);
+    return "送りました";
+}
+```
+
+#### Excel の追加分
+
+| メソッド | 内容 |
+|---|---|
+| `OverWrite(ModuleData data)` | テンプレートを検索で読んだデータ (`ExecuteRaw` 等) で埋める。記法は `OverWrite(Module)` と同じ ([ExcelReportButtonField](ExcelReportButtonField.md) の「テンプレートの書き方」) |
+| `ToAttachment(fileName)` | 書き込んだ xlsx を `MailAttachment` にする |
+| `ToPdfAttachment(fileName)` | PDF に変換して `MailAttachment` にする。変換は `Excel.ConvertPdf` (`UseExcel` が入れる)。無ければ例外 |
+
+`OverWrite(ModuleData)` が解決する記号 (`$` の後ろ):
+
+| 記号 | 書き込まれる値 |
+|---|---|
+| `$項目名.Value` など FieldData のプロパティ | データに載っている項目の値 (`$Customer.DisplayText` のように FieldData が持つプロパティは同じ名前で読める)。デザインにあってデータに載っていない項目は空 |
+| `$Customer.Name.Value` (リンク越しの項目) | データに載っていれば (読む項目に入れたとき) その値 |
+| `#LoopRow($Lines.Rows, row)` と `$row.項目名.Value` | 一覧の行の繰り返し (`Rows` は `Children` と同じ) |
+| `$子.ChildModule.項目名.Value` | ModuleField の子モジュールの値 (`ChildModule` は `Data` と同じ) |
+
+`OverWrite(Module)` で書けて `OverWrite(ModuleData)` では解決しないもの (セルは書き換わらず記号が残ります): モジュールのスクリプトの変数・関数、先頭がサービスの名前の記号 (`$Resources.…` 等)、画面のフィールドだけが持つメンバー (FieldData に無いもの)。
 
 ---
 

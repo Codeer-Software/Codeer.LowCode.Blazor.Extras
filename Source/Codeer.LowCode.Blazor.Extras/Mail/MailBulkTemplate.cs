@@ -6,7 +6,7 @@
     /// </summary>
     public class MailBulkTemplate
     {
-        /// <summary>差出人アドレス (任意)。空 = 送信者設定の差出人。AllowedFromDomains の検証は単発送信と同じ。</summary>
+        /// <summary>差出人アドレス (任意)。空 = 送信者設定の差出人。画面からの一斉送信ではサーバーが組み立て、入れない (差出人は常にシステム送信者)。</summary>
         public string From { get; set; } = string.Empty;
 
         /// <summary>差出人表示名 (From 指定時のみ使われる)。</summary>
