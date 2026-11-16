@@ -101,6 +101,7 @@
     },
     {
       "DbColumn": "",
+      "EnableMention": true,
       "DisplayName": "",
       "IsRequired": false,
       "OnDataChanged": "",
