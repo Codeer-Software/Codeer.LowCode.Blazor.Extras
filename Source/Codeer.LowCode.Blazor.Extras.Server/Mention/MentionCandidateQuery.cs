@@ -23,6 +23,9 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mention
         /// <summary>返す候補の数。</summary>
         internal const int Limit = 10;
 
+        /// <summary>問い合わせる文字の長さの上限 (画面の richtext-interop.js の MAX_MENTION_QUERY と同じ)。超えたら候補なし。</summary>
+        internal const int MaxTextLength = 50;
+
         //有効フラグは条件にせず読んでから判定する (列の型が Boolean / 数値 / 文字列のどれでもログインと同じ読み方にするため)。
         //判定で落ちる行があっても Limit 件をそろえられるよう、ページで読み進める
         const int PageSize = 50;
@@ -46,6 +49,8 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mention
             var conditions = new List<MatchConditionBase>();
             if (appAccess != null) conditions.Add(appAccess);
             text = text?.Trim() ?? string.Empty;
+            //画面はこの長さを超えた文字では問い合わせない。API を直接呼んだ長い文字では DB を読まない
+            if (text.Length > MaxTextLength) return new();
             if (text.Length > 0)
             {
                 //打った文字は表示名かログイン ID のどちらかに含まれていればよい (% _ は本体がエスケープする)

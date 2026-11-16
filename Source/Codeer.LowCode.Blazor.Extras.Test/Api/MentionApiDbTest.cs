@@ -146,6 +146,15 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Api
         }
 
         [Test]
+        public async Task 上限を超える長さの文字では候補を出さない()
+        {
+            var name = new string('a', MentionCandidateQuery.MaxTextLength + 1);
+            await _db.ExecuteAsync(Ds, $"INSERT INTO AppUsers VALUES ('9', 'long', '{name}', 10, 1)", new());
+            Assert.That((await CandidatesAsync(name[..MentionCandidateQuery.MaxTextLength])).Select(e => e.Id), Is.EqualTo(new[] { "9" }));
+            Assert.That(await CandidatesAsync(name), Is.Empty);
+        }
+
+        [Test]
         public async Task アプリアクセス条件を満たす人だけ_ユーザーのモジュールの項目()
         {
             _designData.AppSettings.AppAccessConditions.ModuleName = "AppUser";
