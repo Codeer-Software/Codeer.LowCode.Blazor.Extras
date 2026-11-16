@@ -92,7 +92,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Jobs
 
         //InServerJob はサーバー内実行・Echo は別プロセス
         JobApi CreateApi(Func<string, string[], string, Task<string?>>? run = null)
-            => new(["InServerJob", "Echo"],
+            => new(() => ["InServerJob", "Echo"],
                 name => string.Equals(name, "InServerJob", StringComparison.OrdinalIgnoreCase),
                 run ?? ((name, args, userId) =>
                 {
@@ -171,6 +171,33 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Jobs
             ret = (JobRunResponse?)await api.ExecuteAsync(JobApiNames.Run, Payload("InServer", "{}"), CreateContext("7"));
             Assert.That(ret!.Succeeded, Is.False);
             Assert.That(ret.Error, Is.EqualTo("ジョブ 'InServerJob' がありません"));
+        }
+
+        [Test]
+        public async Task ジョブ名の一覧は起動のたびに聞かれ構築後の変更が反映される()
+        {
+            var names = new List<string>();
+            var asked = 0;
+            var api = new JobApi(() => { asked++; return names.ToList(); },
+                _ => true,
+                (name, _, _) => Task.FromResult<string?>($"ran {name}"));
+
+            //構築した時点では一覧に無い
+            var ret = (JobRunResponse?)await api.ExecuteAsync(JobApiNames.Run, Payload("InServer", "{}"), CreateContext("7"));
+            Assert.That(ret!.Succeeded, Is.False);
+            Assert.That(ret.Error, Is.EqualTo("ジョブ 'InServerJob' がありません"));
+
+            //後から増えたジョブは次の起動から動く (大文字小文字は区別しない)
+            names.Add("inserverjob");
+            ret = (JobRunResponse?)await api.ExecuteAsync(JobApiNames.Run, Payload("InServer", "{}"), CreateContext("7"));
+            Assert.That(ret!.Succeeded, Is.True, ret.Error);
+            Assert.That(ret.Message, Is.EqualTo("ran InServerJob"));
+
+            //無くなれば起動しない
+            names.Clear();
+            ret = (JobRunResponse?)await api.ExecuteAsync(JobApiNames.Run, Payload("InServer", "{}"), CreateContext("7"));
+            Assert.That(ret!.Succeeded, Is.False);
+            Assert.That(asked, Is.EqualTo(3));
         }
 
         //テスト用ホスト (Test.csproj の ProjectReference でこのテストの bin に写る)

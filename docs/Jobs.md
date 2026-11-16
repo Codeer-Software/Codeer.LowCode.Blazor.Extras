@@ -103,7 +103,7 @@ new JobApi(jobNames, runsInServer, runInServer)
 
 | 引数 | 内容 |
 |---|---|
-| `jobNames` | 動かせるジョブの名前 (`new JobApi(jobNames)` と同じ)。サーバー内実行のジョブもここに含める (無い名前は起動しない) |
+| `jobNames` | `Func<IEnumerable<string>>`。動かせるジョブの名前を返す (`new JobApi(jobNames)` と同じ名前)。サーバー内実行のジョブもここに含める (無い名前は起動しない)。デザインの差し替えで変わるジョブ (「デザインの Job スクリプト」) があるので、起動のたびに呼んで今の一覧を聞く |
 | `runsInServer` | `Func<string, bool>`。そのジョブ (デザインの `JobName`) をサーバー内実行にするか。`false` のジョブは別プロセスで起動する |
 | `runInServer` | `Func<string, string[], string, Task<string?>>`。サーバー内実行の口 (ジョブ名・ジョブの引数・実行するユーザーの Id → 成功の文言。失敗は例外)。約束は `JobMode.RunAsync` に渡す `runJob` と同じ |
 
@@ -123,6 +123,17 @@ new JobApi(jobNames, runsInServer, runInServer)
 
 実行中のジョブはジョブ名 (大文字小文字は区別しない) で数えています。同期 (`RunAsync`) と非同期 (`StartAsync`) のどちらも、実行先 (別プロセス・サーバー内実行) をまたいで数えます。
 `allowConcurrent` が `false` のとき、同じ名前のジョブが実行中 (誰が起動したものでも) なら起動しません。JobApi はデザインの JobTriggerField の `AllowsConcurrentRuns` を渡します。
+
+### デザインの Job スクリプト
+
+`JobScripts` は、デザインの Job スクリプト (`Jobs/名前.job.cs`) をジョブとして動かす口です。約束はホストのジョブと同じ (戻り値 = 成功の文言・失敗は例外) なので、ホストは自分のジョブに無い名前をこれに渡すだけです (`JobMode.RunAsync` の `runJob`・`JobApi` の `runInServer` のどちらからでも)。
+
+| メソッド | 内容 |
+|---|---|
+| `GetNames(getDesignData)` | デザインにある Job スクリプトの名前。デザインを読めない (デリゲートが例外) ときは空。ホストのジョブの名前と合わせて `jobNames` に渡す |
+| `RunAsync(moduleDataIO, designData, jobName, args)` | Job スクリプトを 1 つ動かし、Run の戻り値を返す (void なら null)。名前は大文字小文字を区別しない。無い名前・スクリプトのエラー・`Fail` は `InvalidOperationException` (メッセージが画面のエラーの文言)。読み書きは渡した `ModuleDataIO` を通る (権限はそのユーザー。実行ごとに作ったものを渡す) |
+
+スクリプトの `Logger` は実行先に合わせて出ます。別プロセス (`JobMode`) では標準出力 (`Warn` は `warn: `、`Error` は `error: ` が先頭)、サーバーの中では `JobProcess.LoggerFactory` (カテゴリは `JobScripts` の型名) にレベルどおり出ます。
 
 ---
 
