@@ -55,7 +55,9 @@ purify.addHook('afterSanitizeAttributes', node => {
   }
 
   if (node.hasAttribute('class')) {
-    const kept = Array.from(node.classList).filter(c => current.classes.includes(c) || current.classPrefixes.some(p => c.startsWith(p)));
+    //class mention はメンションの部品 (属性の付いた span) だけ。リンクなどをメンションに見せかけさせない
+    const isMention = node.tagName === 'SPAN' && MENTION_ATTRIBUTES.some(name => node.hasAttribute(name));
+    const kept = Array.from(node.classList).filter(c => (c !== 'mention' || isMention) && (current.classes.includes(c) || current.classPrefixes.some(p => c.startsWith(p))));
     if (kept.length === 0) node.removeAttribute('class');
     else node.setAttribute('class', kept.join(' '));
   }
