@@ -4841,5 +4841,41 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
                 return ResourceManager.GetString("ClipboardCopyButtonSourceInvalid", resourceCulture);
             }
         }
+        
+        /// <summary>
+        ///   Mention に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string RichTextFieldEnableMention {
+            get {
+                return ResourceManager.GetString("RichTextFieldEnableMention", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   everyone に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string RichTextMentionAll {
+            get {
+                return ResourceManager.GetString("RichTextMentionAll", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   To use mentions, set the login user module (AppSettings.CurrentUserModuleDesignName). に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string RichTextMentionCheck_NoUserModule {
+            get {
+                return ResourceManager.GetString("RichTextMentionCheck_NoUserModule", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   To use mentions, place a LoginAccountContractField on the login user module '{0}'. に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string RichTextMentionCheck_NoLoginContract {
+            get {
+                return ResourceManager.GetString("RichTextMentionCheck_NoLoginContract", resourceCulture);
+            }
+        }
     }
 }

@@ -2046,4 +2046,16 @@ Recipients: {1}</value>
   <data name="ClipboardCopyButtonSourceInvalid" xml:space="preserve">
     <value>Set either Source Field or Copy Text (only one of them).</value>
   </data>
+  <data name="RichTextFieldEnableMention" xml:space="preserve">
+    <value>Mention</value>
+  </data>
+  <data name="RichTextMentionAll" xml:space="preserve">
+    <value>everyone</value>
+  </data>
+  <data name="RichTextMentionCheck_NoUserModule" xml:space="preserve">
+    <value>To use mentions, set the login user module (AppSettings.CurrentUserModuleDesignName).</value>
+  </data>
+  <data name="RichTextMentionCheck_NoLoginContract" xml:space="preserve">
+    <value>To use mentions, place a LoginAccountContractField on the login user module '{0}'.</value>
+  </data>
 </root>
