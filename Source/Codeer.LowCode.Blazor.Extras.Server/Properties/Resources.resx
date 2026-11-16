@@ -108,4 +108,7 @@
   <data name="WebApi_CallFailed" xml:space="preserve">
     <value>The call to the Web API connection &apos;{0}&apos; failed.</value>
   </data>
+  <data name="RichTextMention_NotFound" xml:space="preserve">
+    <value>Module '{0}' has no RichTextField named '{1}' with mentions enabled.</value>
+  </data>
 </root>
