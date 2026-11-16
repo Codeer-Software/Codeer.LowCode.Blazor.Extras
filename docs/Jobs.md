@@ -6,6 +6,7 @@
 - 親側 `JobProcess`: このプロセス自身を `job <ジョブ名> --stdin` で起動し、入力を標準入力で渡して結果 (`JobResult`) を受け取る。待たずに起動したジョブは Id で状態を問い合わせられる
 - 子側 `JobMode`: `job` より後ろの引数を受けてジョブを 1 つ実行し、終了コードを返す
 - 親と子の約束 (引数の並び・標準入力・環境変数・終了コード・UTF-8・結果の文言の取り出し) はこの 2 つの中に閉じています。ホストはジョブの一覧と DB アクセスの組み立てだけを書きます
+- 画面のボタンから起動するジョブは、ジョブ名ごとにホストが実行先を決められます。別プロセス (上の 2 つ。既定) か、サーバー内実行 (このプロセスの中でそのまま動かす。「実行先」)
 
 Codeer.LowCode.Blazor.Extras.Server 0.23.0 以降。名前空間 `Codeer.LowCode.Blazor.Extras.Server.Jobs`。
 ジョブの書き方・起動の仕方 (タスクスケジューラ・Azure WebJobs) はアプリのテンプレート (Codeer.LowCode.Blazor.Starter) の `Server/Jobs/README.md` にあります。
@@ -41,7 +42,7 @@ if (isJob) return await JobMode.RunAsync(args[1..], JobRunner.Names, (name, jobA
 ### 親側: JobApi と Program.cs
 
 画面のボタン (JobTriggerField) の受け口は Extras.Server の `JobApi` です。ホストは共通の API の対応表 (テンプレートの `Extras/ExtrasApiTable.cs`) に `new JobApi(JobRunner.Names)` (動かせるジョブの名前。無い名前は起動しない) を並べます。
-`JobApi` はフィールドへの書き込み権限を確かめてから、デザインの JobTriggerField に従って `JobProcess` を呼びます。
+`JobApi` はフィールドへの書き込み権限を確かめてから、デザインの JobTriggerField に従って `JobProcess` を呼びます。サーバー内実行にするジョブがあるときは、実行先を決める口と実行の口も渡します (「実行先」)。下は別プロセスの呼び方です。
 
 ```csharp
 //JobApi の中 (自分の Controller で受けるときも同じ呼び方)
@@ -94,9 +95,33 @@ JobProcess.Cache = app.Services.GetRequiredService<IDistributedCache>();
 
 状態は `JobProcess.Cache` (`IDistributedCache`) に置きます。テンプレートはメモリキャッシュなので、サーバーを再起動すると消えます (JobTriggerField の `GetJobStatus` は null を返します)。サーバーを複数インスタンスで動かすときは、Redis などの共有キャッシュに差し替えます。実行中にサーバーが落ちたジョブは `running` のまま残ります。
 
+### 実行先
+
+```csharp
+new JobApi(jobNames, runsInServer, runInServer)
+```
+
+| 引数 | 内容 |
+|---|---|
+| `jobNames` | 動かせるジョブの名前 (`new JobApi(jobNames)` と同じ)。サーバー内実行のジョブもここに含める (無い名前は起動しない) |
+| `runsInServer` | `Func<string, bool>`。そのジョブ (デザインの `JobName`) をサーバー内実行にするか。`false` のジョブは別プロセスで起動する |
+| `runInServer` | `Func<string, string[], string, Task<string?>>`。サーバー内実行の口 (ジョブ名・ジョブの引数・実行するユーザーの Id → 成功の文言。失敗は例外)。約束は `JobMode.RunAsync` に渡す `runJob` と同じ |
+
+`new JobApi(jobNames)` (口を渡さない) なら全部のジョブが別プロセスです。
+
+サーバー内実行の約束:
+
+- ジョブの引数は画面の内容の JSON 1 つ (`[request.Arguments]`。別プロセスで `--stdin` が置き換わったものと同じ)。ユーザーは押したユーザーの Id
+- 非同期では要求が終わった後も動くので、ホストは要求のもの (DB 接続・`ModuleDataIO`) を使わず、受け取ったユーザーの Id で DB アクセスを組み立てる。`JobApi` は実行の前に要求の DB 接続をプールへ返す
+- 成功の文言は戻り値 (改行は空白に。null なら空)。失敗の文言は例外のメッセージ
+- 待つかどうか・同時実行の判定・非同期の状態 (`JobProcess.Cache` / `GetStatusAsync`)・失敗の記録 (`JobProcess.LoggerFactory` に Error。例外の全文) は別プロセスと同じ。`runInServer` が `Task` を返す前に投げた例外もジョブの失敗になる (呼び出しの例外にはならない)
+- 要求の実行コンテキスト (監査ログの `AuditContext.Current` などの AsyncLocal) は引き継がずに動かす (同期・非同期とも)。引き継ぐのはカルチャ (`CurrentCulture` / `CurrentUICulture`) だけ
+- 非同期はスレッドプールで動かす。このプロセスが止まれば (再起動・デプロイ) 実行中のジョブも止まる
+- 標準出力は使わない。ジョブの中のログはホストが自分のログに出す
+
 ### 同時実行
 
-実行中のジョブはジョブ名 (大文字小文字は区別しない) で数えています。同期 (`RunAsync`) と非同期 (`StartAsync`) のどちらも数えます。
+実行中のジョブはジョブ名 (大文字小文字は区別しない) で数えています。同期 (`RunAsync`) と非同期 (`StartAsync`) のどちらも、実行先 (別プロセス・サーバー内実行) をまたいで数えます。
 `allowConcurrent` が `false` のとき、同じ名前のジョブが実行中 (誰が起動したものでも) なら起動しません。JobApi はデザインの JobTriggerField の `AllowsConcurrentRuns` を渡します。
 
 ---
@@ -134,4 +159,4 @@ JobProcess.Cache = app.Services.GetRequiredService<IDistributedCache>();
 - ジョブが起動した別のプロセスが標準出力を引き継いだまま残ると、ジョブが終わっても出力の終わりを待ち続けます。ジョブから長く動くプロセスを起動するときは、標準出力・標準エラーをリダイレクトして切り離します
 - 非同期の結果は終了から `FinishedRetention` の間だけ `JobProcess.Cache` に残ります。共有キャッシュにすれば複数台でもどのサーバーからでも問い合わせられますが、同時実行の判定 (`AllowsConcurrentRuns`) だけは 1 台の中です。長く残したい結果はジョブ自身が DB 等に残します
 - 成功したジョブの標準出力はどこにも残りません (使うのは最後の 1 行だけ)。失敗したときは全文がログに出るので、ジョブは受け取った内容や秘密情報を標準出力に出さないようにします
-- 子プロセスの書き込みは、親のリクエストの監査ログ (AuditLog) には載りません。記録されるのは親の呼び出し 1 件です
+- ジョブの中の書き込みは、実行先によらず起動したリクエストの監査ログ (AuditLog) には載りません。記録されるのは JobApi の呼び出し 1 件です

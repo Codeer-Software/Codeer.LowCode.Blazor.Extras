@@ -2,6 +2,7 @@ using Codeer.LowCode.Blazor.Extras.Jobs;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Logging;
 using System.Diagnostics;
+using System.Globalization;
 using System.Reflection;
 using System.Text;
 using System.Text.Json;
@@ -83,6 +84,64 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Jobs
             }
         }
 
+        //サーバー内実行 (このプロセスの中でそのまま動かす) の同期版。実行中の数え方・失敗の記録は別プロセスと同じ。null = 同じ名前が実行中で動かさなかった
+        internal static async Task<JobOutcome?> RunInServerAsync(string jobName, Func<Task<string?>> run, bool allowConcurrent)
+        {
+            if (!TryEnter(jobName, allowConcurrent)) return null;
+            try
+            {
+                var outcome = await InvokeDetached(jobName, run);
+                if (!outcome.Succeeded) LogFailure(outcome.Log);
+                return outcome;
+            }
+            finally
+            {
+                Exit(jobName);
+            }
+        }
+
+        //サーバー内実行の非同期版。要求から切り離して動かし、状態は別プロセスと同じ置き場に書く (GetStatusAsync で問い合わせる)
+        internal static Task<string?> StartInServerAsync(string jobName, Func<Task<string?>> run, string userId, bool allowConcurrent)
+            => StartAsync(jobName, () => InvokeDetached(jobName, run), userId, allowConcurrent);
+
+        //要求の実行コンテキスト (監査ログの AuditContext.Current など AsyncLocal) をジョブに引き継がない (別プロセスと同じく、ジョブの中の書き込みを起動した要求の記録に混ぜない)。カルチャだけ引き継ぐ
+        static Task<JobOutcome> InvokeDetached(string jobName, Func<Task<string?>> run)
+        {
+            var culture = CultureInfo.CurrentCulture;
+            var uiCulture = CultureInfo.CurrentUICulture;
+            using (ExecutionContext.SuppressFlow())
+            {
+                return Task.Run(() =>
+                {
+                    CultureInfo.CurrentCulture = culture;
+                    CultureInfo.CurrentUICulture = uiCulture;
+                    return InvokeAsync(jobName, run);
+                });
+            }
+        }
+
+        //ホストの実行の口の約束は JobMode と同じ (戻り値 = 成功の文言・失敗は例外)
+        static async Task<JobOutcome> InvokeAsync(string jobName, Func<Task<string?>> run)
+        {
+            try
+            {
+                var message = await run();
+                return new JobOutcome(true, message?.ReplaceLineEndings(" ").Trim() ?? string.Empty, string.Empty, string.Empty);
+            }
+            catch (Exception e)
+            {
+                //画面に出す文言は別プロセスと同じく、例外のメッセージの最初の空でない行
+                var error = e.Message.Split('\n').Select(x => x.Trim()).FirstOrDefault(x => x.Length != 0) ?? $"ジョブ {jobName} が失敗しました";
+                return new JobOutcome(false, string.Empty, error, $"ジョブ {jobName} が失敗しました: {e}");
+            }
+        }
+
+        static async Task<JobOutcome> ToOutcomeAsync(Task<JobResult> completion)
+        {
+            var result = await completion;
+            return new JobOutcome(result.Succeeded, result.Succeeded ? result.Message : string.Empty, result.Succeeded ? string.Empty : result.ErrorMessage, result.ToString());
+        }
+
         /// <summary>
         /// ジョブを起動したら待たずに返す (起動できなければ例外)。戻り値はジョブの Id で、<see cref="GetStatusAsync"/> で状態を問い合わせられる。
         /// 戻り値が null = 同時実行を許さず (<paramref name="allowConcurrent"/> が false)、同じ名前のジョブが実行中なので起動しなかった。
@@ -92,13 +151,17 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Jobs
         /// <param name="input">ジョブに渡す内容 (標準入力。ジョブの引数の <c>--stdin</c> がこれになる)。</param>
         /// <param name="userId">ジョブを実行するユーザーの Id (<see cref="GetStatusAsync"/> で同じ Id のユーザーだけが状態を見られる)。</param>
         /// <param name="allowConcurrent">同じ名前のジョブが実行中でも起動する。</param>
-        public static async Task<string?> StartAsync(string jobName, string input, string userId, bool allowConcurrent = true)
+        public static Task<string?> StartAsync(string jobName, string input, string userId, bool allowConcurrent = true)
+            => StartAsync(jobName, () => ToOutcomeAsync(Launch(jobName, input, CreateStartInfo(jobName, userId))), userId, allowConcurrent);
+
+        //launch は起動まで済ませて終了を待つ Task を返す (起動の失敗はその場で例外)
+        static async Task<string?> StartAsync(string jobName, Func<Task<JobOutcome>> launch, string userId, bool allowConcurrent)
         {
             if (!TryEnter(jobName, allowConcurrent)) return null;
-            Task<JobResult> completion;
+            Task<JobOutcome> completion;
             try
             {
-                completion = Launch(jobName, input, CreateStartInfo(jobName, userId));
+                completion = launch();
             }
             catch
             {
@@ -233,11 +296,11 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Jobs
             }
         }
 
-        static async Task WatchAsync(string jobName, IDistributedCache? cache, string jobId, Entry entry, Task<JobResult> completion)
+        static async Task WatchAsync(string jobName, IDistributedCache? cache, string jobId, Entry entry, Task<JobOutcome> completion)
         {
             try
             {
-                JobResult result;
+                JobOutcome result;
                 try
                 {
                     result = await completion;
@@ -255,7 +318,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Jobs
                 {
                     entry.Status = JobStatus.Error;
                     entry.Error = result.ErrorMessage;
-                    LogFailure(result.ToString());
+                    LogFailure(result.Log);
                 }
             }
             catch (Exception e)
@@ -288,6 +351,9 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Jobs
             {
             }
         }
+
+        //ジョブ 1 回の結果 (実行先によらない形)。Log は失敗したときにサーバーのログへ出す全文
+        internal sealed record JobOutcome(bool Succeeded, string Message, string ErrorMessage, string Log);
 
         //待たずに起動したジョブ 1 つの状態 (キャッシュに置く JSON)
         sealed class Entry
