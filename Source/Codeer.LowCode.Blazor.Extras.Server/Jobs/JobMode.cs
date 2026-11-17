@@ -25,9 +25,6 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Jobs
         /// <summary>引数のこの値を標準入力の内容に置き換える。</summary>
         public const string StandardInputArgument = "--stdin";
 
-        //このプロセスがジョブモード (別プロセス実行の子側) か。出力の行き先を実行先で分けるものが見る
-        internal static bool IsRunning { get; private set; }
-
         /// <summary>
         /// ジョブを 1 つ実行する。
         /// </summary>
@@ -37,7 +34,6 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Jobs
         /// <returns>プロセスの終了コード。</returns>
         public static async Task<int> RunAsync(string[] args, IEnumerable<string> jobNames, Func<string, string[], Task<string?>> runJob)
         {
-            IsRunning = true;
             Console.OutputEncoding = Encoding.UTF8;
             var names = jobNames.OrderBy(e => e, StringComparer.OrdinalIgnoreCase).ToList();
             if (args.Length == 0)

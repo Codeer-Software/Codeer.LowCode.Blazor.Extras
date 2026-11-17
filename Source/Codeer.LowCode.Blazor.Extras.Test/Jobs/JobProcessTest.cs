@@ -276,6 +276,51 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Jobs
             Assert.ThrowsAsync<System.ComponentModel.Win32Exception>(async () => await JobProcess.RunAsync("Echo", "{}", "u", allowConcurrent: false));
         }
 
+        [Test]
+        public async Task RunInNewProcessAsync_成功はジョブの戻り値の文言が返る()
+        {
+            var message = await JobProcess.RunInNewProcessAsync("Echo", "入力", "user-7");
+            Assert.That(message, Is.EqualTo("user-7|1|入力"));
+            Assert.That(_logs, Is.Empty);
+        }
+
+        [Test]
+        public async Task RunInNewProcessAsync_ジョブがnullを返したら空の文言()
+        {
+            Assert.That(await JobProcess.RunInNewProcessAsync("Silent", "{}", "u"), Is.EqualTo(string.Empty));
+        }
+
+        //失敗の記録は呼び出し側 (JobApi) が行うので、ここでは記録しない
+        [Test]
+        public void RunInNewProcessAsync_失敗は例外でメッセージが標準エラーの最初の行になり記録しない()
+        {
+            Assert.That(async () => await JobProcess.RunInNewProcessAsync("Fail", "{}", "u"),
+                Throws.Exception.With.Message.EqualTo("わざと失敗 (日本語)"));
+            Assert.That(async () => await JobProcess.RunInNewProcessAsync("Nope", "{}", "u"),
+                Throws.Exception.With.Message.EqualTo("ジョブ 'Nope' がありません"));
+            Assert.That(_logs, Is.Empty);
+        }
+
+        [Test]
+        public void RunInNewProcessAsync_起動できなければ起動の例外()
+        {
+            JobProcess.DotnetPath = Path.Combine(Path.GetTempPath(), "no_such_dotnet_" + Guid.NewGuid());
+            Assert.ThrowsAsync<System.ComponentModel.Win32Exception>(async () => await JobProcess.RunInNewProcessAsync("Echo", "{}", "u"));
+        }
+
+        //実行中として数えるのは呼び出し側 (JobApi)。動いている間も同時実行を許さない起動は止まらない
+        [Test]
+        public async Task RunInNewProcessAsync_実行中として数えない()
+        {
+            var running = JobProcess.RunInNewProcessAsync("Sleep", "5000", "u");
+            Assert.That(await JobProcess.RunAsync("Sleep", "10", "u", allowConcurrent: false), Is.Not.Null);
+            var started = await JobProcess.StartAsync("Sleep", "10", "u", allowConcurrent: false);
+            Assert.That(started, Is.Not.Null);
+            Assert.That(running.IsCompleted, Is.False, "Sleep 5000 が先に終わっていては確かめたことにならない");
+            await WaitFinishedAsync(started!, "u");
+            Assert.That(await running, Is.EqualTo("slept"));
+        }
+
         //終わるまで状態を問い合わせる (最大 30 秒)
         static async Task<JobStatusResponse> WaitFinishedAsync(string jobId, string userId)
         {

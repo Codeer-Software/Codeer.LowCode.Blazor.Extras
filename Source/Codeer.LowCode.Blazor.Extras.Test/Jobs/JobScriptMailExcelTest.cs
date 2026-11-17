@@ -7,6 +7,7 @@ using Codeer.LowCode.Blazor.DbAccess;
 using Codeer.LowCode.Blazor.DesignLogic;
 using Codeer.LowCode.Blazor.DesignLogic.Check;
 using Codeer.LowCode.Blazor.Extras.Mail;
+using Codeer.LowCode.Blazor.Extras.Server.Excel;
 using Codeer.LowCode.Blazor.Extras.Server.FileManagement;
 using Codeer.LowCode.Blazor.Extras.Server.Jobs;
 using Codeer.LowCode.Blazor.Extras.Server.Mail;
@@ -20,9 +21,9 @@ using ExcelObject = Codeer.LowCode.Blazor.Extras.ScriptObjects.Excel;
 namespace Codeer.LowCode.Blazor.Extras.Test.Jobs
 {
     /// <summary>
-    /// Job スクリプトからメール (MailService) と Excel (OverWrite(ModuleData) / ToAttachment / ToPdfAttachment) を使う (DesignJobs.UseMail / UseExcel)。
+    /// Job スクリプトからメール (MailService) と Excel (OverWrite(ModuleData) / ToAttachment / ToPdfAttachment) を使う (MailApi.UseInJobScripts / ExcelApi.UseInJobScripts)。
     /// DB は SQLite のファイル (Job のトランザクションの取り消しを確かめるため)。メールは実際には送らない (記録するだけの IMailSender)。
-    /// 登録は static (本体の JobExecutor と DesignJobs) なので、テストごとに消して戻す。Excel.ConvertPdf も元に戻す。
+    /// 登録は static (本体の JobExecutor と MailApi / ExcelApi) なので、テストごとに消して戻す。Excel.ConvertPdf も元に戻す。
     /// </summary>
     [TestFixture, NonParallelizable]
     public class JobScriptMailExcelTest : IAuthenticationContext
@@ -64,7 +65,8 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Jobs
         static void ClearScriptTypes()
         {
             typeof(JobExecutor).GetMethod("ClearScriptTypes", BindingFlags.Static | BindingFlags.NonPublic)!.Invoke(null, null);
-            DesignJobs.ResetForTest();
+            MailApi.ResetJobScriptsForTest();
+            ExcelApi.ResetJobScriptsForTest();
         }
 
         [SetUp]
@@ -181,15 +183,19 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Jobs
         Task<string?> RunAsync(string script)
         {
             _designData.JobScripts["TestJob"] = script;
-            return DesignJobs.RunAsync(CreateModuleDataIO(), _designData, "TestJob", [],
-                path => _resources.TryGetValue(path, out var bytes) ? new MemoryStream(bytes) : null);
+            return JobScripts.RunAsync(new JobExecutionContext
+            {
+                ModuleDataIO = CreateModuleDataIO(),
+                DesignData = _designData,
+                GetResource = path => _resources.TryGetValue(path, out var bytes) ? new MemoryStream(bytes) : null,
+            }, "TestJob", []);
         }
 
         void UseMail(Action<MailConfig>? configure = null)
         {
             var config = new MailConfig { DefaultInfraName = "Main" };
             configure?.Invoke(config);
-            DesignJobs.UseMail(config, name => name == "Main" ? _sender : null);
+            MailApi.UseInJobScripts(config, name => name == "Main" ? _sender : null);
         }
 
         async Task<List<IDictionary<string, object>>> HistoryAsync() => await _db.QueryAsync(Ds, "SELECT * FROM MailHistory ORDER BY Id", new());
@@ -448,9 +454,9 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Jobs
         }
 
         [Test]
-        public void UseMailを呼んでいなければMailServiceを使うJobは失敗する()
+        public void MailApiのUseInJobScriptsを呼んでいなければMailServiceを使うJobは失敗する()
         {
-            DesignJobs.UseExcel();
+            ExcelApi.UseInJobScripts();
             var ex = Assert.ThrowsAsync<InvalidOperationException>(() => RunAsync(SendOneScript + """
 
                 void Run(JobArguments args)
@@ -463,7 +469,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Jobs
         }
 
         [Test]
-        public async Task UseMailは何度呼んでも登録は1回で設定は後勝ち()
+        public async Task MailApiのUseInJobScriptsは何度呼んでも登録は1回で設定は後勝ち()
         {
             UseMail(c => c.DebugRedirectAllTo = "first@example.com");
             UseMail(c => c.DebugRedirectAllTo = "second@example.com");
@@ -525,7 +531,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Jobs
             PdfSharp.Fonts.GlobalFontSettings.FontResolver ??= new ArialFontResolver();
             _resources["templates/order.xlsx"] = CreateOrderTemplate();
             UseMail();
-            DesignJobs.UseExcel();
+            ExcelApi.UseInJobScripts();
             Assert.That(ExcelObject.ConvertPdf, Is.Not.Null);
 
             Assert.That(await RunAsync(ExcelMailScript), Is.EqualTo("True"));
@@ -560,14 +566,14 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Jobs
         {
             _resources["templates/order.xlsx"] = CreateOrderTemplate();
             UseMail();
-            //UseExcel は設定済みのフックを上書きしない
+            //ExcelApi.UseInJobScripts は設定済みのフックを上書きしない
             var converted = new List<byte[]>();
             ExcelObject.ConvertPdf = stream =>
             {
                 converted.Add(stream.ToArray());
                 return new MemoryStream(Encoding.ASCII.GetBytes("PDF!"));
             };
-            DesignJobs.UseExcel();
+            ExcelApi.UseInJobScripts();
 
             Assert.That(await RunAsync(ExcelMailScript), Is.EqualTo("True"));
             Assert.That(converted, Has.Count.EqualTo(1));
@@ -584,7 +590,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Jobs
         {
             _resources["templates/order.xlsx"] = CreateOrderTemplate();
             UseMail();
-            DesignJobs.UseExcel();
+            ExcelApi.UseInJobScripts();
             ExcelObject.ConvertPdf = null;
             var ex = Assert.ThrowsAsync<InvalidOperationException>(() => RunAsync(ExcelMailScript));
             Assert.That(ex!.Message, Does.Contain("Excel.ConvertPdf"));
@@ -629,7 +635,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Jobs
         }
 
         [Test]
-        public void UseExcelを呼んでいなければExcelを使うJobは失敗する()
+        public void ExcelApiのUseInJobScriptsを呼んでいなければExcelを使うJobは失敗する()
         {
             _resources["templates/order.xlsx"] = CreateOrderTemplate();
             UseMail();

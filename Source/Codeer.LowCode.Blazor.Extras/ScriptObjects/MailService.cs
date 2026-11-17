@@ -5,7 +5,7 @@ namespace Codeer.LowCode.Blazor.Extras.ScriptObjects
 {
     /// <summary>
     /// Job スクリプトからメールを送るサービス (スクリプトでは <c>MailService.Send(message)</c>)。
-    /// 送信の実体はサーバーのホストが渡す (Extras.Server の DesignJobs.UseMail)。引数なしで作ったものは設計チェック・入力補完用で、送ると例外。
+    /// 送信の実体はサーバーのホストが渡す (Extras.Server の MailApi.UseInJobScripts)。引数なしで作ったものは設計チェック・入力補完用で、送ると例外。
     /// </summary>
     public class MailService
     {

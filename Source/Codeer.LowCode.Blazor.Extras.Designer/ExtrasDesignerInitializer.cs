@@ -66,7 +66,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designer
             DesignerApp.ScriptRuntimeTypeManager.AddType<Extras.Approval.ApprovalMemberData>();
             DesignerApp.ScriptRuntimeTypeManager.AddType<Extras.Approval.ApprovalActionResult>();
 
-            //Job スクリプト (Jobs/名前.job.cs) の設計チェック・入力補完・script-catalog 用。サーバー (DesignJobs.UseMail / UseExcel) と同じ登録。
+            //Job スクリプト (Jobs/名前.job.cs) の設計チェック・入力補完・script-catalog 用。サーバー (MailApi.UseInJobScripts / ExcelApi.UseInJobScripts) と同じ登録。
             //デザイナでは送らないので MailService は未結線のもの
             JobExecutor.AddScriptTypes(m => Extras.Jobs.JobScriptTypes.Register(m, new ScriptObjects.MailService()));
 

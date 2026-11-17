@@ -84,8 +84,23 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Jobs
             }
         }
 
-        //サーバー内実行 (このプロセスの中でそのまま動かす) の同期版。実行中の数え方・失敗の記録は別プロセスと同じ。null = 同じ名前が実行中で動かさなかった
-        internal static async Task<JobOutcome?> RunInServerAsync(string jobName, Func<Task<string?>> run, bool allowConcurrent)
+        /// <summary>
+        /// ジョブを別プロセスで動かして終わるまで待つ。戻り値は成功の文言 (ジョブの戻り値)、失敗は例外 (メッセージ = 画面に出す文言)。
+        /// <see cref="JobApi"/> に渡す実行の口の形 (ホストが「このジョブは別プロセスで」と決めたときに呼ぶ)。
+        /// <see cref="RunAsync"/> との違い: 実行中として数えない・失敗を記録しない (どちらも実行の口を呼ぶ <see cref="JobApi"/> が行う)。
+        /// </summary>
+        /// <param name="jobName">ジョブの名前。</param>
+        /// <param name="input">ジョブに渡す内容 (標準入力。ジョブの引数の <c>--stdin</c> がこれになる)。</param>
+        /// <param name="userId">ジョブを起動したユーザーの Id。</param>
+        public static async Task<string?> RunInNewProcessAsync(string jobName, string input, string userId)
+        {
+            var result = await Launch(jobName, input, CreateStartInfo(jobName, userId));
+            if (!result.Succeeded) throw new JobProcessFailedException(result);
+            return result.Message;
+        }
+
+        //JobApi の実行の口 (ホストが渡す。動く場所はホストが決める) を、実行中として数えて動かす同期版。失敗は記録する。null = 同じ名前が実行中で動かさなかった
+        internal static async Task<JobOutcome?> RunTrackedAsync(string jobName, Func<Task<string?>> run, bool allowConcurrent)
         {
             if (!TryEnter(jobName, allowConcurrent)) return null;
             try
@@ -100,11 +115,11 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Jobs
             }
         }
 
-        //サーバー内実行の非同期版。要求から切り離して動かし、状態は別プロセスと同じ置き場に書く (GetStatusAsync で問い合わせる)
-        internal static Task<string?> StartInServerAsync(string jobName, Func<Task<string?>> run, string userId, bool allowConcurrent)
+        //実行の口の非同期版。要求から切り離して動かし、状態を置き場に書く (GetStatusAsync で問い合わせる)
+        internal static Task<string?> StartTrackedAsync(string jobName, Func<Task<string?>> run, string userId, bool allowConcurrent)
             => StartAsync(jobName, () => InvokeDetached(jobName, run), userId, allowConcurrent);
 
-        //要求の実行コンテキスト (監査ログの AuditContext.Current など AsyncLocal) をジョブに引き継がない (別プロセスと同じく、ジョブの中の書き込みを起動した要求の記録に混ぜない)。カルチャだけ引き継ぐ
+        //要求の実行コンテキスト (監査ログの AuditContext.Current など AsyncLocal) をジョブに引き継がない (このプロセスの中で動くジョブの書き込みを、起動した要求の記録に混ぜない)。カルチャだけ引き継ぐ
         static Task<JobOutcome> InvokeDetached(string jobName, Func<Task<string?>> run)
         {
             var culture = CultureInfo.CurrentCulture;
@@ -127,6 +142,11 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Jobs
             {
                 var message = await run();
                 return new JobOutcome(true, message?.ReplaceLineEndings(" ").Trim() ?? string.Empty, string.Empty, string.Empty);
+            }
+            //別プロセスの失敗 (RunInNewProcessAsync)。記録は標準エラーと標準出力の全文
+            catch (JobProcessFailedException e)
+            {
+                return new JobOutcome(false, string.Empty, e.Result.ErrorMessage, e.Result.ToString());
             }
             catch (Exception e)
             {
@@ -350,6 +370,12 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Jobs
             catch (Exception)
             {
             }
+        }
+
+        //別プロセスで動かしたジョブの失敗 (RunInNewProcessAsync が投げる)。メッセージは画面に出す文言で、全文は Result が持つ
+        sealed class JobProcessFailedException(JobResult result) : Exception(result.ErrorMessage)
+        {
+            public JobResult Result { get; } = result;
         }
 
         //ジョブ 1 回の結果 (実行先によらない形)。Log は失敗したときにサーバーのログへ出す全文

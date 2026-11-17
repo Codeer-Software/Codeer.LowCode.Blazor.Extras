@@ -4,9 +4,11 @@ using Codeer.LowCode.Blazor.DataIO.Db;
 using Codeer.LowCode.Blazor.DbAccess;
 using Codeer.LowCode.Blazor.DesignLogic;
 using Codeer.LowCode.Blazor.Extras.Mail;
+using Codeer.LowCode.Blazor.Extras.Server.Excel;
 using Codeer.LowCode.Blazor.Extras.Server.FileManagement;
 using Codeer.LowCode.Blazor.Extras.Server.Jobs;
 using Codeer.LowCode.Blazor.Extras.Server.Mail;
+using Codeer.LowCode.Blazor.Extras.Test.Harness;
 using Codeer.LowCode.Blazor.Jobs;
 using Codeer.LowCode.Blazor.Repository.Design;
 using Codeer.LowCode.Blazor.SystemSettings;
@@ -48,7 +50,8 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Jobs
         static void ClearScriptTypes()
         {
             typeof(JobExecutor).GetMethod("ClearScriptTypes", BindingFlags.Static | BindingFlags.NonPublic)!.Invoke(null, null);
-            DesignJobs.ResetForTest();
+            MailApi.ResetJobScriptsForTest();
+            ExcelApi.ResetJobScriptsForTest();
         }
 
         [SetUp]
@@ -108,7 +111,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Jobs
         [Test]
         public async Task 送信履歴を書けなければJobは失敗し確定前の書き込みは消える_メールは送られている()
         {
-            DesignJobs.UseMail(new MailConfig { DefaultInfraName = "Main", HistoryModuleName = "MailHistory" },
+            MailApi.UseInJobScripts(new MailConfig { DefaultInfraName = "Main", HistoryModuleName = "MailHistory" },
                 name => name == "Main" ? new FakeMailSender(_sent) : null);
             _designData.JobScripts["TestJob"] = """
                 bool AddTask(string title)
@@ -141,8 +144,11 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Jobs
             Exception? error = null;
             try
             {
-                message = await DesignJobs.RunAsync(new ModuleDataIO(_designData, this, _db, new TemporaryFileManager(_db, [], new List<IFileStorage>())),
-                    _designData, "TestJob", []);
+                message = await JobScripts.RunAsync(new JobExecutionContext
+                {
+                    ModuleDataIO = new ModuleDataIO(_designData, this, _db, new TemporaryFileManager(_db, [], new List<IFileStorage>())),
+                    DesignData = _designData,
+                }, "TestJob", []);
             }
             catch (Exception ex)
             {

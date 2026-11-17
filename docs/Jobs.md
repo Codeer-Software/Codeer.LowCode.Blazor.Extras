@@ -6,7 +6,7 @@
 - 親側 `JobProcess`: このプロセス自身を `job <ジョブ名> --stdin` で起動し、入力を標準入力で渡して結果 (`JobResult`) を受け取る。待たずに起動したジョブは Id で状態を問い合わせられる
 - 子側 `JobMode`: `job` より後ろの引数を受けてジョブを 1 つ実行し、終了コードを返す
 - 親と子の約束 (引数の並び・標準入力・環境変数・終了コード・UTF-8・結果の文言の取り出し) はこの 2 つの中に閉じています。ホストはジョブの一覧と DB アクセスの組み立てだけを書きます
-- 画面のボタンから起動するジョブは、ジョブ名ごとにホストが実行先を決められます。別プロセス (上の 2 つ。既定) か、サーバー内実行 (このプロセスの中でそのまま動かす。「実行先」)
+- 画面のボタンから起動するジョブは、どこで動かすかをホストが実行の口で決められます。別プロセス (上の 2 つ。既定) か、Web サーバーのプロセスの中 (「実行先」)
 
 Codeer.LowCode.Blazor.Extras.Server 0.23.0 以降。名前空間 `Codeer.LowCode.Blazor.Extras.Server.Jobs`。
 ジョブの書き方・起動の仕方 (タスクスケジューラ・Azure WebJobs) はアプリのテンプレート (Codeer.LowCode.Blazor.Starter) の `Server/Jobs/README.md` にあります。
@@ -41,11 +41,21 @@ if (isJob) return await JobMode.RunAsync(args[1..], JobRunner.Names, (name, jobA
 
 ### 親側: JobApi と Program.cs
 
-画面のボタン (JobTriggerField) の受け口は Extras.Server の `JobApi` です。ホストは共通の API の対応表 (テンプレートの `Extras/ExtrasApiTable.cs`) に `new JobApi(jobNames)` (動かせるジョブの名前。無い名前は起動しない) を並べます。この形は渡した一覧をそのまま持つので、動かしている間に増減するジョブ (「デザインの Job スクリプト」) があるときは、一覧を返す関数を渡す形 (「実行先」) を使います。
-`JobApi` はフィールドへの書き込み権限を確かめてから、デザインの JobTriggerField に従って `JobProcess` を呼びます。サーバー内実行にするジョブがあるときは、実行先を決める口と実行の口も渡します (「実行先」)。下は別プロセスの呼び方です。
+画面のボタン (JobTriggerField) の受け口は Extras.Server の `JobApi` です。ホストは共通の API の対応表 (テンプレートの `Extras/ExtrasApiTable.cs`) に `new JobApi(jobNames)` (動かせるジョブの名前。無い名前は起動しない) を並べます。この形は全部のジョブを別プロセスで動かし、渡した一覧をそのまま持ちます。動かしている間に増減するジョブ (「デザインの Job スクリプト」) があるときや、ジョブによって動かす場所を変えるときは、一覧を返す関数と実行の口を渡す形 (「実行先」) を使います。
+`JobApi` はフィールドへの書き込み権限を確かめてから、デザインの JobTriggerField に従って実行の口を動かします。待つかどうか・同時実行の判定・非同期の状態・失敗の記録は `JobApi` が実行の口を包んで行うので、どこで動かしても同じです。
 
 ```csharp
-//JobApi の中 (自分の Controller で受けるときも同じ呼び方)
+//Program.cs (失敗の記録先と、非同期のジョブの状態の置き場)
+builder.Services.AddDistributedMemoryCache();
+...
+JobProcess.LoggerFactory = app.Services.GetRequiredService<ILoggerFactory>();
+JobProcess.Cache = app.Services.GetRequiredService<IDistributedCache>();
+```
+
+`JobApi` を使わずに自分の Controller で受けるときは、公開の `JobProcess.RunAsync` / `StartAsync` (別プロセス。同時実行の判定・状態・失敗の記録つき) を呼びます。
+
+```csharp
+//自分の Controller で受けるとき
 if (design.IsAsynchronous)
 {
     var jobId = await JobProcess.StartAsync(design.JobName, request.Arguments, userId, design.AllowsConcurrentRuns);   // 起動したら Id を返す
@@ -65,12 +75,6 @@ JobRunResponse Failure(string error)
 
 //非同期で起動したジョブの状態 (JobTriggerField の GetJobStatus が問い合わせる)。起動したユーザーにだけ返す (null = 応答なし)
 var status = await JobProcess.GetStatusAsync(jobId, userId);
-
-//Program.cs (失敗の記録先と、非同期のジョブの状態の置き場)
-builder.Services.AddDistributedMemoryCache();
-...
-JobProcess.LoggerFactory = app.Services.GetRequiredService<ILoggerFactory>();
-JobProcess.Cache = app.Services.GetRequiredService<IDistributedCache>();
 ```
 
 `JobProcess.RunAsync(jobName, input, userId, allowConcurrent = true)` は終わるまで待って `JobResult` を返します。`allowConcurrent` が `false` で同じ名前のジョブが実行中なら、起動せずに null を返します。
@@ -98,56 +102,65 @@ JobProcess.Cache = app.Services.GetRequiredService<IDistributedCache>();
 ### 実行先
 
 ```csharp
-new JobApi(jobNames, runsInServer, runInServer)
+new JobApi(jobNames, run)
 ```
 
 | 引数 | 内容 |
 |---|---|
-| `jobNames` | `Func<IEnumerable<string>>`。動かせるジョブの名前を返す (`new JobApi(jobNames)` と同じ名前)。サーバー内実行のジョブもここに含める (無い名前は起動しない)。デザインの差し替えで変わるジョブ (「デザインの Job スクリプト」) があるので、起動のたびに呼んで今の一覧を聞く |
-| `runsInServer` | `Func<string, bool>`。そのジョブ (デザインの `JobName`) をサーバー内実行にするか。`false` のジョブは別プロセスで起動する |
-| `runInServer` | `Func<string, string[], string, Task<string?>>`。サーバー内実行の口 (ジョブ名・ジョブの引数・起動したユーザーの Id → 成功の文言。失敗は例外)。約束は `JobMode.RunAsync` に渡す `runJob` と同じ |
+| `jobNames` | `Func<IEnumerable<string>>`。動かせるジョブの名前を返す (`new JobApi(jobNames)` と同じ名前)。このプロセスの中で動かすジョブもここに含める (無い名前は起動しない)。デザインの差し替えで変わるジョブ (「デザイナで作った Job」) があるので、起動のたびに呼んで今の一覧を聞く |
+| `run` | `Func<string, string, string, Task<string?>>`。実行の口 (ジョブ名 (デザインの `JobName`)・画面の内容の JSON・起動したユーザーの Id → 成功の文言。失敗は例外)。どこで動かすかは、この中でホストが決める |
 
-`new JobApi(jobNames)` (口を渡さない) なら全部のジョブが別プロセスです。
+`new JobApi(jobNames)` は `new JobApi(() => jobNames, JobProcess.RunInNewProcessAsync)` と同じです (全部のジョブが別プロセス)。
 
-サーバー内実行の約束:
+`JobProcess.RunInNewProcessAsync(jobName, input, userId)` は、別プロセスで動かす実行の口です。ジョブを `job <ジョブ名> --stdin` で起動して終わるまで待ち、成功なら文言 (`JobResult.Message`。ジョブが null を返したら空) を返し、失敗なら例外 (メッセージ = `JobResult.ErrorMessage`) を投げます。起動できなければ起動の例外です。実行中として数えず、失敗も記録しません (どちらも `JobApi` が行う)。
+ジョブによって動かす場所を変えるときは、実行の口の中で別プロセスにするジョブだけこれを呼びます。
 
-- ジョブの引数は画面の内容の JSON 1 つ (`[request.Arguments]`。別プロセスで `--stdin` が置き換わったものと同じ)。ユーザーは押したユーザーの Id
-- 非同期では要求が終わった後も動くので、ホストは要求のもの (DB 接続・`ModuleDataIO`) を使わず、受け取ったユーザーの Id で DB アクセスを組み立てる。`JobApi` は実行の前に要求の DB 接続をプールへ返す
-- 成功の文言は戻り値 (改行は空白に。null なら空)。失敗の文言は例外のメッセージ
-- 待つかどうか・同時実行の判定・非同期の状態 (`JobProcess.Cache` / `GetStatusAsync`)・失敗の記録 (`JobProcess.LoggerFactory` に Error。例外の全文) は別プロセスと同じ。`runInServer` が `Task` を返す前に投げた例外もジョブの失敗になる (呼び出しの例外にはならない)
-- 要求の実行コンテキスト (監査ログの `AuditContext.Current` などの AsyncLocal) は引き継がずに動かす (同期・非同期とも)。引き継ぐのはカルチャ (`CurrentCulture` / `CurrentUICulture`) だけ
-- 非同期はスレッドプールで動かす。このプロセスが止まれば (再起動・デプロイ) 実行中のジョブも止まる
-- 標準出力は使わない。ジョブの中のログはホストが自分のログに出す
+```csharp
+new JobApi(() => jobNames, (name, input, userId) => runsHere(name)
+    ? RunHereAsync(name, input, userId)                     // このプロセスの中 (ホストが DB アクセスを組み立てて動かす)
+    : JobProcess.RunInNewProcessAsync(name, input, userId)); // 別プロセス
+```
+
+実行の口の約束:
+
+- 入力は画面の内容の JSON (`JobRunRequest.Arguments`。別プロセスでは標準入力で渡り、ジョブの引数の `--stdin` がこれに置き換わる)。ユーザーは押したユーザーの Id
+- 要求とは切り離して呼ばれ、非同期では要求が終わった後も動く。このプロセスの中で動かすなら、ホストは要求のもの (DB 接続・`ModuleDataIO`) を使わず、受け取ったユーザーの Id で DB アクセスを組み立てる。`JobApi` は呼ぶ前に要求の DB 接続をプールへ返す
+- 成功の文言は戻り値 (改行は空白に。null なら空)。失敗の文言は例外のメッセージの最初の空でない行 (`RunInNewProcessAsync` の失敗は `JobResult.ErrorMessage`)
+- 待つかどうか・同時実行の判定・非同期の状態 (`JobProcess.Cache` / `GetStatusAsync`)・失敗の記録 (`JobProcess.LoggerFactory` に Error) は `JobApi` が実行の口を包んで行う。記録の中身は例外の全文 (`RunInNewProcessAsync` の失敗は標準エラーと標準出力の全文 = `JobResult` の記録用の文言)
+- 実行の口が `Task` を返す前に投げた例外もジョブの失敗になる (API の呼び出しの例外にはならない)
+- 要求の実行コンテキスト (監査ログの `AuditContext.Current` などの AsyncLocal) は引き継がずに呼ぶ (同期・非同期とも)。引き継ぐのはカルチャ (`CurrentCulture` / `CurrentUICulture`) だけ
+- 非同期はスレッドプールで呼ぶ。このプロセスの中で動かすジョブは、このプロセスが止まれば (再起動・デプロイ) 止まる
+- このプロセスの中で動かすジョブは標準出力を使わない。ジョブの中のログはホストが自分のログに出す
+
+別プロセスの起動自体の失敗 (実行ファイルが無い等) も、`JobApi` からはジョブの失敗です。同期では画面のエラー、非同期では起動済み (Id が返る) の後に状態が `Error` になります (どちらも失敗としてサーバーのログに記録される。非同期では監査ログの 1 件は受け付けた時点の成功のまま)。0.33.0 までの `JobApi` では、同期・非同期とも API の呼び出しが例外になっていました。
 
 ### 同時実行
 
-実行中のジョブはジョブ名 (大文字小文字は区別しない) で数えています。同期 (`RunAsync`) と非同期 (`StartAsync`) のどちらも、実行先 (別プロセス・サーバー内実行) をまたいで数えます。
+実行中のジョブはジョブ名 (大文字小文字は区別しない) で数えています。`JobApi` の同期・非同期と、公開の `RunAsync` / `StartAsync` のどれもが同じ数を使い、実行の口がどこで動かしても (別プロセス・このプロセスの中) 同じジョブ名として数えます。
 `allowConcurrent` が `false` のとき、同じ名前のジョブが実行中 (誰が起動したものでも) なら起動しません。JobApi はデザインの JobTriggerField の `AllowsConcurrentRuns` を渡します。
 
-### デザインの Job スクリプト
+### デザイナで作った Job
 
-`DesignJobs` は、デザインの Job スクリプト (`Jobs/名前.job.cs`) をジョブとして動かす口です。約束はホストのジョブと同じ (戻り値 = 成功の文言・失敗は例外) なので、ホストは自分のジョブに無い名前をこれに渡すだけです (`JobMode.RunAsync` の `runJob`・`JobApi` の `runInServer` のどちらからでも)。
-
-| メソッド | 内容 |
-|---|---|
-| `GetNames(getDesignData)` | デザインにある Job スクリプトの名前。デザインを読めない (デリゲートが例外) ときは空。ホストのジョブの名前と合わせて `jobNames` に渡す |
-| `RunAsync(moduleDataIO, designData, jobName, args, getResource, invokerUserId, fileStorage)` | Job スクリプトを 1 つ動かし、Run の戻り値を返す (void なら null)。名前は大文字小文字を区別しない。無い名前・スクリプトのエラー・`Fail` は `InvalidOperationException` (メッセージが画面のエラーの文言)。読み書きは渡した `ModuleDataIO` を通る (権限はそのユーザー = スクリプトの `CurrentUser`。実行ごとに作ったものを渡す)。`getResource` (省略可) はスクリプトの `Resources` の読み出し (デザインのリソースのパス → 内容。無ければ null)。渡さなければ `Resources` は何も読めない。`invokerUserId` (省略可) は起動したユーザーの Id (スクリプトの `Invoker`)。起動したユーザーとは別のユーザーの `ModuleDataIO` で動かすときに渡す。渡さなければ `Invoker` は `CurrentUser` と同じ。権限の判定には使わない。`fileStorage` (省略可) はスクリプトの `FileService` (レコードの添付ファイルの読み書き) が実体を読み書きする先。画面のアップロード・ダウンロードと同じ `TemporaryFileManager` を渡す。渡さなければ、置き場所に保存する添付は `FileService` で読み書きできない |
-| `UseMail(mail, createSender)` | Job スクリプトに `MailService` (メールの送信) を足す。プロセスの起動時に 1 回呼ぶ (何度呼んでも登録は 1 回・設定は最後に渡したもの)。引数は `MailApi` と同じ (`MailConfig` と、呼び名 → 送信インフラの対応表)。呼ばなければ Job スクリプトに `MailService` は無い |
-| `UseExcel()` | Job スクリプトに `Excel` を足す。`Excel.ConvertPdf` が未設定ならサーバーの変換 (Excel.Report.PDF) を入れる (PDF のフォントはホストが `GlobalFontSettings.FontResolver` で設定する)。呼ばなければ Job スクリプトに `Excel` は無い |
-
-スクリプトの `Logger` は実行先に合わせて出ます。別プロセス (`JobMode`) では標準出力 (`Warn` は `warn: `、`Error` は `error: ` が先頭)、サーバーの中では `JobProcess.LoggerFactory` (カテゴリは `DesignJobs` の型名) にレベルどおり出ます。
+デザイナで作った Job (`Jobs/名前.job.cs`) は本体の `JobExecutor` が動かします (名前の一覧は `JobExecutor.GetJobNames`、実行は `JobExecutor.RunAsync(context, jobName, args, logger)`)。ホストは `JobExecutor.RunAsync` を呼び、結果 (`JobExecutionResult`) を自分のジョブの約束 (戻り値 = 成功の文言・失敗は例外) に変えて、`JobMode.RunAsync` の `runJob`・`JobApi` の実行の口 `run` から動かします。スクリプトの `Logger` の出し先もホストが `logger` で渡します。
 
 ### Job スクリプトで使えるもの (MailService / Excel / Resources / FileService)
 
-本体の Job スクリプトで使えるもの (検索・保存・`DBService.Commit()` 等) に加えて、`UseMail` / `UseExcel` を呼んだホストでは次が使えます。デザイナ (Extras.Designer) は同じものを設計チェック・入力補完に出します。
+Job スクリプトで使える機能は、各機能の登録口で足します。プロセスの起動時に 1 回呼びます (何度呼んでも登録は 1 回)。中では本体の `JobExecutor.AddScriptTypes` に登録します。
+
+| 登録口 | 内容 |
+|---|---|
+| `MailApi.UseInJobScripts(mail, createSender)` | Job スクリプトに `MailService` (メールの送信) を足す。設定は最後に渡したもの。引数は `MailApi` と同じ (`MailConfig` と、呼び名 → 送信インフラの対応表)。呼ばなければ Job スクリプトに `MailService` は無い |
+| `ExcelApi.UseInJobScripts()` | Job スクリプトに `Excel` を足す。`Excel.ConvertPdf` が未設定ならサーバーの変換 (Excel.Report.PDF) を入れる (PDF のフォントはホストが `GlobalFontSettings.FontResolver` で設定する)。呼ばなければ Job スクリプトに `Excel` は無い |
+
+本体の Job スクリプトで使えるもの (検索・保存・`DBService.Commit()` 等) に加えて、上の登録口を呼んだホストでは次が使えます。デザイナ (Extras.Designer) は同じものを設計チェック・入力補完に出します。
 
 | 名前 | 内容 |
 |---|---|
-| `MailService.Send(message)` | メールを送る (`UseMail`)。戻り値は `MailSendResult` (`IsSuccess` / `TotalCount` / `SuccessCount` / `Failures` (宛先 `To` と理由 `Error`))。送れなくても例外にならない |
+| `MailService.Send(message)` | メールを送る (`MailApi.UseInJobScripts`)。戻り値は `MailSendResult` (`IsSuccess` / `TotalCount` / `SuccessCount` / `Failures` (宛先 `To` と理由 `Error`))。送れなくても例外にならない |
 | `MailMessage` / `MailAttachment` | 送るメッセージ (`To` / `Cc` / `Bcc` / `Subject` / `Body` / `IsBodyHtml` / `ReplyTo` / `Attachments`) と添付 (`FileName` / `ContentBase64`) |
-| `Excel` | 画面のスクリプトと同じ Excel オブジェクト (`UseExcel`)。Job では `OverWrite(ModuleData)` / `ToAttachment(fileName)` / `ToPdfAttachment(fileName)` / `ToMemoryStream()` / `ToPdfMemoryStream()` を使う |
-| `Resources.GetMemoryStream(path)` / `GetText(path)` | デザインのリソース (`RunAsync` の `getResource` で読む) |
-| `FileService.Save(moduleName, fieldName, fileName, content)` / `GetMemoryStream(moduleName, fieldName, id)` | レコードの添付ファイル (FileField の項目) の読み書き (`RunAsync` の `fileStorage` の置き場所)。`Save` の戻り値をレコードの添付の項目に入れて保存すると行に入る |
+| `Excel` | 画面のスクリプトと同じ Excel オブジェクト (`ExcelApi.UseInJobScripts`)。Job では `OverWrite(ModuleData)` / `ToAttachment(fileName)` / `ToPdfAttachment(fileName)` / `ToMemoryStream()` / `ToPdfMemoryStream()` を使う |
+| `Resources.GetMemoryStream(path)` / `GetText(path)` | デザインのリソース (`JobExecutionContext.GetResource` で読む) |
+| `FileService.Save(moduleName, fieldName, fileName, content)` / `GetMemoryStream(moduleName, fieldName, id)` | レコードの添付ファイル (FileField の項目) の読み書き (`JobExecutionContext.FileStorage` の置き場所)。`Save` の戻り値をレコードの添付の項目に入れて保存すると行に入る |
 
 メールの送り方は `MailDispatcher` のシステムメールと同じです。送信インフラは `MailConfig.DefaultInfraName`、`DebugRedirectAllTo` が効き、`HistoryModuleName` があれば送信履歴を書きます。差出人は送信インフラ設定のシステム送信者です (`From` を入れても使われない)。
 
@@ -272,7 +285,7 @@ string Run(JobArguments args)
 |---|---|
 | `OverWrite(ModuleData data)` | テンプレートを検索で読んだデータ (`ExecuteRaw` 等) で埋める。記法は `OverWrite(Module)` と同じ ([ExcelReportButtonField](ExcelReportButtonField.md) の「テンプレートの書き方」) |
 | `ToAttachment(fileName)` | 書き込んだ xlsx を `MailAttachment` にする |
-| `ToPdfAttachment(fileName)` | PDF に変換して `MailAttachment` にする。変換は `Excel.ConvertPdf` (`UseExcel` が入れる)。無ければ例外 |
+| `ToPdfAttachment(fileName)` | PDF に変換して `MailAttachment` にする。変換は `Excel.ConvertPdf` (`ExcelApi.UseInJobScripts` が入れる)。無ければ例外 |
 | `ToMemoryStream()` | 書き込んだ xlsx の内容。`FileService.Save` に渡してレコードの添付ファイルにする |
 | `ToPdfMemoryStream()` | PDF に変換した内容。`FileService.Save` に渡してレコードの添付ファイルにする。変換は `ToPdfAttachment` と同じ (無ければ例外) |
 
@@ -311,7 +324,7 @@ string Run(JobArguments args)
 | `JobProcess.EntryDll` | このプロセスの入口の dll (`LowCodeApp.Server.dll`)。`HostExecutable` が空のとき `dotnet <dll>` で起動する |
 | `JobProcess.DotnetPath` | `HostExecutable` が空のときの `dotnet` (このプロセスを起動した dotnet。dotnet から起動されていなければ PATH の `dotnet`) |
 
-起動できないとき (実行ファイルが無い等) は `RunAsync` / `StartAsync` が例外を投げます (ジョブの失敗ではなく環境の不備)。
+起動できないとき (実行ファイルが無い等) は `RunAsync` / `StartAsync` / `RunInNewProcessAsync` が例外を投げます (ジョブの失敗ではなく環境の不備)。`JobApi` から起動したときは、ジョブの失敗として返ります (「実行先」)。
 
 ---
 

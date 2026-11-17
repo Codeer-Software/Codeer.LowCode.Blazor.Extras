@@ -5,6 +5,7 @@ using Codeer.LowCode.Blazor.DataIO;
 using Codeer.LowCode.Blazor.DbAccess;
 using Codeer.LowCode.Blazor.DesignLogic;
 using Codeer.LowCode.Blazor.Extras.Mail;
+using Codeer.LowCode.Blazor.Extras.Server.Excel;
 using Codeer.LowCode.Blazor.Extras.Server.FileManagement;
 using Codeer.LowCode.Blazor.Extras.Server.Jobs;
 using Codeer.LowCode.Blazor.Extras.Server.Mail;
@@ -17,11 +18,11 @@ using ExcelObject = Codeer.LowCode.Blazor.Extras.ScriptObjects.Excel;
 namespace Codeer.LowCode.Blazor.Extras.Test.Jobs
 {
     /// <summary>
-    /// Job スクリプトの FileService (添付ファイルの読み書き) を、画面と同じ TemporaryFileManager (SQLite の一時ファイル表 + フォルダの置き場所) につないで動かす (DesignJobs.RunAsync の fileStorage)。
-    /// 登録は static (本体の JobExecutor と DesignJobs) なので、テストごとに消して戻す。
+    /// Job スクリプトの FileService (添付ファイルの読み書き) を、画面と同じ TemporaryFileManager (SQLite の一時ファイル表 + フォルダの置き場所) につないで動かす (JobExecutionContext.FileStorage)。
+    /// 登録は static (本体の JobExecutor と MailApi / ExcelApi) なので、テストごとに消して戻す。
     /// </summary>
     [TestFixture, NonParallelizable]
-    public class DesignJobsFileTest : IAuthenticationContext
+    public class JobScriptFileTest : IAuthenticationContext
     {
         const string Ds = "Main";
 
@@ -51,7 +52,8 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Jobs
         static void ClearScriptTypes()
         {
             typeof(JobExecutor).GetMethod("ClearScriptTypes", BindingFlags.Static | BindingFlags.NonPublic)!.Invoke(null, null);
-            DesignJobs.ResetForTest();
+            MailApi.ResetJobScriptsForTest();
+            ExcelApi.ResetJobScriptsForTest();
         }
 
         [SetUp]
@@ -92,9 +94,13 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Jobs
         Task<string?> RunAsync(string script, Dictionary<string, byte[]>? resources = null)
         {
             _designData.JobScripts["TestJob"] = script;
-            return DesignJobs.RunAsync(new ModuleDataIO(_designData, this, _db, _files), _designData, "TestJob", [],
-                path => resources != null && resources.TryGetValue(path, out var bytes) ? new MemoryStream(bytes) : null,
-                fileStorage: _files);
+            return JobScripts.RunAsync(new JobExecutionContext
+            {
+                ModuleDataIO = new ModuleDataIO(_designData, this, _db, _files),
+                DesignData = _designData,
+                GetResource = path => resources != null && resources.TryGetValue(path, out var bytes) ? new MemoryStream(bytes) : null,
+                FileStorage = _files,
+            }, "TestJob", []);
         }
 
         async Task<List<IDictionary<string, object>>> DocsAsync() => await _db.QueryAsync(Ds, "SELECT * FROM Docs ORDER BY Id", new());
@@ -161,8 +167,8 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Jobs
         [Test]
         public async Task GetMemoryStreamで読んだ添付のテンプレートを埋めてメールに添付できる()
         {
-            DesignJobs.UseMail(new MailConfig { DefaultInfraName = "Main" }, name => name == "Main" ? new FakeMailSender(_sent) : null);
-            DesignJobs.UseExcel();
+            MailApi.UseInJobScripts(new MailConfig { DefaultInfraName = "Main" }, name => name == "Main" ? new FakeMailSender(_sent) : null);
+            ExcelApi.UseInJobScripts();
 
             //テンプレートを添付に持つレコード (置き場所の実体は画面のアップロードと同じ経路で書いて確定する)
             var info = await _files.AddFileAsync(new FileSaveInfo { DataSourceName = Ds, StorageName = "Local" }, "template.xlsx", new MemoryStream(CreateTemplate()));
@@ -227,7 +233,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Jobs
 
         async Task<byte[]> RunSaveExcelAsync(string fileName, string toStream)
         {
-            DesignJobs.UseExcel();
+            ExcelApi.UseInJobScripts();
             await _db.ExecuteAsync(Ds, "INSERT INTO Docs (Id, Name) VALUES (1, '見積書')", new());
             var message = await RunAsync(SaveExcelScript(fileName, toStream), new() { ["template.xlsx"] = CreateTemplate() });
             Assert.That(message, Is.EqualTo("ok"));
