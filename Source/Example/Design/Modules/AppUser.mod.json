@@ -462,8 +462,13 @@
       "SortDescending": false,
       "ModuleName": ""
     },
+    "DbColumn": "",
     "IsInMemoryPaging": false,
+    "PagingGroupField": "",
+    "PagingGroupRowCount": 0,
+    "ConfirmBeforePageChange": true,
     "PagerPosition": "Top",
+    "PagerAlignment": "Right",
     "ReplaceMode": "None",
     "DeleteTogether": false,
     "CanCreate": false,

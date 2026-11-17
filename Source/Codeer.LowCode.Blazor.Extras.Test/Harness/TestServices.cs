@@ -22,12 +22,13 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Harness
         public Codeer.LowCode.Blazor.RequestInterfaces.Services Core { get; }
         public HarnessAppService App { get; }
         public ListLogger Logger { get; } = new();
+        public DummyUIService UI { get; } = new();
 
         public TestServices(DesignData designData)
         {
             App = new HarnessAppService(designData);
             Core = new Codeer.LowCode.Blazor.RequestInterfaces.Services(new NullServiceProvider(), App, App,
-                new DummyNavigationService(), new DummyUIService(), Logger);
+                new DummyNavigationService(), UI, Logger);
         }
 
         public async Task<Module> CreateModuleAsync(string moduleName,
@@ -163,6 +164,16 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Harness
         public Task<string> ShowDialog(Module moduleData, DialogButton[] buttons) => Task.FromResult(string.Empty);
         public Task<string> ShowPopup(Module moduleData, int x, int y, DialogButton[] buttons) => Task.FromResult(string.Empty);
         public Task<string> ShowPanel(Module moduleData, DialogButton[] buttons, PanelAlignment alignment) => Task.FromResult(string.Empty);
-        public Task<string> ShowMessageBox(string title, string message, DialogButton[] buttons) => Task.FromResult(string.Empty);
+        /// <summary>ShowMessageBox に渡されたメッセージ (出た回数の検証用)。</summary>
+        public List<string> MessageBoxes { get; } = new();
+
+        /// <summary>ShowMessageBox で押すボタンの文言を返す (null = 何も押さない = 空文字)。</summary>
+        public Func<string, string>? MessageBoxAnswer { get; set; }
+
+        public Task<string> ShowMessageBox(string title, string message, DialogButton[] buttons)
+        {
+            MessageBoxes.Add(message);
+            return Task.FromResult(MessageBoxAnswer?.Invoke(message) ?? string.Empty);
+        }
     }
 }
