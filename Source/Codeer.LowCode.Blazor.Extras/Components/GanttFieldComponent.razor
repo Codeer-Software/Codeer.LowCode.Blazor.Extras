@@ -647,16 +647,9 @@
     }
     return Field.ViewMode switch
     {
-      GanttViewMode.Day => s.ToString(Resources.DateFormatMonthDayShort, _culture),
-      GanttViewMode.Month when s.Month == e.Month => s.ToString(Resources.DateFormatMonthNameFull, _culture),
-      GanttViewMode.Month => string.Format(Resources.RangeTitleFormat,
-        s.ToString(Resources.DateFormatMonthNameShort, _culture),
-        e.ToString(Resources.DateFormatMonthNameFull, _culture)),
-      _ when s.Month == e.Month => string.Format(Resources.WeekTitleSameMonth,
-        s.ToString(Resources.DateFormatMonthNameFull, _culture), s.Day, e.Day, ""),
-      _ => string.Format(Resources.RangeTitleFormat,
-        s.ToString(Resources.DateFormatMonthDayShort, _culture),
-        e.ToString(Resources.DateFormatMonthDayShort, _culture)),
+      GanttViewMode.Day => GanttTitle.Day(s, _culture),
+      GanttViewMode.Month => GanttTitle.Month(s, e, _culture),
+      _ => GanttTitle.Week(s, e, _culture),
     };
   }
 
