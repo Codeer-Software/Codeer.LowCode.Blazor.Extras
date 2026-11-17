@@ -2046,4 +2046,16 @@
   <data name="ClipboardCopyButtonSourceInvalid" xml:space="preserve">
     <value>コピー元フィールドとコピーする文字列は、どちらか一方だけを設定してください。</value>
   </data>
+  <data name="RichTextFieldEnableMention" xml:space="preserve">
+    <value>メンション</value>
+  </data>
+  <data name="RichTextMentionAll" xml:space="preserve">
+    <value>全員</value>
+  </data>
+  <data name="RichTextMentionCheck_NoUserModule" xml:space="preserve">
+    <value>メンションを使うには、ログインユーザーのモジュール (AppSettings.CurrentUserModuleDesignName) を設定してください。</value>
+  </data>
+  <data name="RichTextMentionCheck_NoLoginContract" xml:space="preserve">
+    <value>メンションを使うには、ログインユーザーのモジュール '{0}' にログインアカウント契約 (LoginAccountContractField) を置いてください。</value>
+  </data>
 </root>

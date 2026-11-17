@@ -102,6 +102,31 @@
       "NextFocusField": "",
       "OnFocusMoving": "",
       "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.TextFieldDesign"
+    },
+    {
+      "LoginName": "Email",
+      "ExternalLoginName": "",
+      "IsActive": "",
+      "DisplayName": "Name",
+      "TwoFactorEmail": "",
+      "PasswordField": "",
+      "DbColumnPasswordHash": "",
+      "DbColumnPasswordSalt": "",
+      "DbColumnTotpSecret": "",
+      "DbColumnTotpConfirmed": "",
+      "DbColumnTotpLastTimestep": "",
+      "DbColumnSessionStamp": "",
+      "HasPassword": false,
+      "HasSessionStamp": false,
+      "WritesPassword": false,
+      "HasTotp": false,
+      "Name": "LoginAccount",
+      "IgnoreModification": false,
+      "OnValidateInput": "",
+      "IsFocusSkip": false,
+      "NextFocusField": "",
+      "OnFocusMoving": "",
+      "TypeFullName": "Codeer.LowCode.Blazor.Extras.Designs.LoginAccountContractFieldDesign"
     }
   ],
   "UserWriteCondition": {

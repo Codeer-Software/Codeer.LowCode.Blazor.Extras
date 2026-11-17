@@ -7,12 +7,16 @@
 import createDOMPurify from './lib/dompurify/purify.es.js';
 
 // 用途ごとの許可。classes = 残す class (完全一致) / classPrefixes = 残す class の接頭辞 / checkbox = 表示専用のチェックボックス (タスクリスト) を残す /
-// newTab = target の無いリンクを別タブで開く / svg = SVG を残す (グラフ) / embeds = 動画サイトの埋め込み (Markdown の動画リンクが作る iframe) を残す
+// newTab = target の無いリンクを別タブで開く / svg = SVG を残す (グラフ) / embeds = 動画サイトの埋め込み (Markdown の動画リンクが作る iframe) を残す /
+// mentions = メンションの部品 (span の data-mention-id / data-mention-all) を残す
 const PROFILES = {
-  richtext: { classes: [], classPrefixes: [], checkbox: false, newTab: true, svg: false, embeds: false },
-  markdown: { classes: ['contains-task-list', 'task-list-item', 'task-list-item-checkbox'], classPrefixes: ['language-'], checkbox: true, newTab: false, svg: false, embeds: true },
-  chat: { classes: ['aichat-chart', 'contains-task-list', 'task-list-item', 'task-list-item-checkbox'], classPrefixes: ['language-'], checkbox: true, newTab: false, svg: true, embeds: true },
+  richtext: { classes: ['mention'], classPrefixes: [], checkbox: false, newTab: true, svg: false, embeds: false, mentions: true },
+  markdown: { classes: ['contains-task-list', 'task-list-item', 'task-list-item-checkbox'], classPrefixes: ['language-'], checkbox: true, newTab: false, svg: false, embeds: true, mentions: false },
+  chat: { classes: ['aichat-chart', 'contains-task-list', 'task-list-item', 'task-list-item-checkbox'], classPrefixes: ['language-'], checkbox: true, newTab: false, svg: true, embeds: true, mentions: false },
 };
+
+// メンションの部品の属性 (span に付いたものだけ残す)
+const MENTION_ATTRIBUTES = ['data-mention-id', 'data-mention-all'];
 
 // 残す埋め込みの src (Markdown の動画リンクが作るもの)
 const EMBED_SOURCES = ['https://www.youtube.com/embed/', 'https://www.youtube-nocookie.com/embed/', 'https://player.vimeo.com/video/'];
@@ -46,8 +50,14 @@ purify.addHook('afterSanitizeAttributes', node => {
     if (style.length === 0) node.removeAttribute('style');
   }
 
+  if (node.tagName !== 'SPAN') {
+    for (const name of MENTION_ATTRIBUTES) node.removeAttribute(name);
+  }
+
   if (node.hasAttribute('class')) {
-    const kept = Array.from(node.classList).filter(c => current.classes.includes(c) || current.classPrefixes.some(p => c.startsWith(p)));
+    //class mention はメンションの部品 (属性の付いた span) だけ。リンクなどをメンションに見せかけさせない
+    const isMention = node.tagName === 'SPAN' && MENTION_ATTRIBUTES.some(name => node.hasAttribute(name));
+    const kept = Array.from(node.classList).filter(c => (c !== 'mention' || isMention) && (current.classes.includes(c) || current.classPrefixes.some(p => c.startsWith(p))));
     if (kept.length === 0) node.removeAttribute('class');
     else node.setAttribute('class', kept.join(' '));
   }
@@ -89,7 +99,7 @@ export function sanitize(html, profile) {
       USE_PROFILES: { html: true, svg: current.svg },
       FORBID_TAGS,
       ADD_TAGS: current.embeds ? ['iframe'] : [],
-      ADD_ATTR: current.embeds ? ['target', 'frameborder', 'allowfullscreen'] : ['target'],
+      ADD_ATTR: [...(current.embeds ? ['target', 'frameborder', 'allowfullscreen'] : ['target']), ...(current.mentions ? MENTION_ATTRIBUTES : [])],
       ALLOW_DATA_ATTR: false,
     });
   } finally {

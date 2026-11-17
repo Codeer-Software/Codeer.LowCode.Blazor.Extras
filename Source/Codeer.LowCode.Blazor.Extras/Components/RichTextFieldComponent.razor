@@ -155,6 +155,27 @@ else
         <button type="button" class="richtext-link-popup-btn richtext-link-popup-cancel" @onclick="CancelLink">&#215;</button>
       </div>
     }
+
+    @if (_showMention)
+    {
+      @* 候補のクリックで編集欄からフォーカスを外さないのは richtext-interop.js (枠の mousedown を止める) *@
+      <div class="richtext-mention-popup" role="listbox" style="top: @Px(_mentionTop); left: @Px(_mentionLeft);">
+        @for (var i = 0; i < _mentionItems.Count; i++)
+        {
+          var index = i;
+          var item = _mentionItems[i];
+          <div class="richtext-mention-item @(index == _mentionIndex ? "active" : "") @(item.IsAll ? "richtext-mention-item-all" : "")"
+               role="option" aria-selected="@(index == _mentionIndex ? "true" : "false")" data-mention-candidate="@(item.IsAll ? "*" : item.Id)"
+               @onmouseenter="() => _mentionIndex = index" @onclick="() => SelectMentionAsync(item)">
+            <span class="richtext-mention-name">@item.DisplayName</span>
+            @if (!string.IsNullOrEmpty(item.LoginName) && item.LoginName != item.DisplayName)
+            {
+              <span class="richtext-mention-login">@item.LoginName</span>
+            }
+          </div>
+        }
+      </div>
+    }
   </div>
 }
 
@@ -204,7 +225,7 @@ else
       _jsModule = await JSRuntime.InvokeAsync<IJSObjectReference>(
         "import", "./_content/Codeer.LowCode.Blazor.Extras/richtext-interop.js");
       _dotNetRef = DotNetObjectReference.Create(this);
-      await _jsModule.InvokeVoidAsync("initEditor", _editorElement, _toolbarElement, _dotNetRef);
+      await _jsModule.InvokeVoidAsync("initEditor", _editorElement, _toolbarElement, _dotNetRef, new { mention = Field.Design.EnableMention });
 
       if (!string.IsNullOrEmpty(Field.Value))
       {
@@ -334,6 +355,93 @@ else
      : Task.CompletedTask;
 
   private record LinkPopupPosition(double Top, double Left);
+
+  // ===== Mention =====
+
+  //打った文字が止まってから問い合わせるまで (TagField と同じ)
+  private const int MentionQueryDelayMs = 200;
+
+  private record MentionItem(string Id, string DisplayName, string LoginName, bool IsAll);
+
+  private bool _showMention;
+  private double _mentionTop;
+  private double _mentionLeft;
+  private int _mentionIndex;
+  private List<MentionItem> _mentionItems = new();
+  //問い合わせの番号。後から打った文字の結果だけを使う (前の問い合わせの結果は捨てる)
+  private int _mentionSeq;
+
+  private static string Px(double v) => v.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture) + "px";
+
+  [JSInvokable]
+  public async Task OnMentionQuery(string query, double top, double left)
+  {
+    var seq = ++_mentionSeq;
+    if (IsDisabled || !Field.Design.EnableMention) return;
+    await Task.Delay(MentionQueryDelayMs);
+    if (seq != _mentionSeq) return;
+
+    var candidates = await Field.GetMentionCandidatesAsync(query);
+    if (seq != _mentionSeq) return;
+
+    var items = new List<MentionItem>();
+    //「全員」は打った文字が表記の先頭と一致するときだけ (何も打っていないときを含む)
+    var allLabel = Resources.RichTextMentionAll;
+    if (allLabel.StartsWith(query, StringComparison.CurrentCultureIgnoreCase)) items.Add(new MentionItem(string.Empty, allLabel, string.Empty, true));
+    items.AddRange(candidates.Select(e => new MentionItem(e.Id, e.DisplayName, e.LoginName, false)));
+
+    _mentionItems = items;
+    _mentionIndex = 0;
+    _mentionTop = top;
+    _mentionLeft = left;
+    await SetMentionVisibleAsync(items.Count > 0);
+  }
+
+  [JSInvokable]
+  public async Task OnMentionClose()
+  {
+    _mentionSeq++;
+    if (!_showMention) return;
+    await SetMentionVisibleAsync(false);
+  }
+
+  [JSInvokable]
+  public async Task OnMentionKey(string key)
+  {
+    if (!_showMention || _mentionItems.Count == 0) return;
+    switch (key)
+    {
+      case "ArrowDown":
+        _mentionIndex = (_mentionIndex + 1) % _mentionItems.Count;
+        StateHasChanged();
+        break;
+      case "ArrowUp":
+        _mentionIndex = (_mentionIndex - 1 + _mentionItems.Count) % _mentionItems.Count;
+        StateHasChanged();
+        break;
+      case "Enter":
+      case "Tab":
+        await SelectMentionAsync(_mentionItems[_mentionIndex]);
+        break;
+    }
+  }
+
+  private async Task SetMentionVisibleAsync(bool visible)
+  {
+    _showMention = visible;
+    if (_jsModule != null) await _jsModule.InvokeVoidAsync("setMentionVisible", _editorElement, visible);
+    StateHasChanged();
+  }
+
+  private async Task SelectMentionAsync(MentionItem item)
+  {
+    _mentionSeq++;
+    _showMention = false;
+    StateHasChanged();
+    if (_jsModule == null || IsDisabled) return;
+    var html = await _jsModule.InvokeAsync<string?>("insertMention", _editorElement, item.Id, item.DisplayName, item.IsAll);
+    if (html != null) await UpdateFieldValueAsync(html);
+  }
 
   public override async ValueTask DisposeAsync()
   {
