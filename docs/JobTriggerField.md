@@ -1,8 +1,8 @@
 # JobTriggerField - ジョブトリガー
 
-**ボタンを押すと、サーバーのジョブ（C# で書いたバッチ処理）を実行するフィールド**です。画面の内容をジョブに渡し、結果を通知で表示します。
+**ボタンを押すと、サーバーのジョブ（バッチ処理）を実行するフィールド**です。画面の内容をジョブに渡し、結果を通知で表示します。
 
-ジョブ本体は C# で書きます（デザインファイルでは作れません）。ジョブの書き方・定期実行はマニュアルの [バッチ処理（ジョブ）](https://github.com/Codeer-Software/Codeer.LowCode.Blazor.Manual/blob/main/JP/user_code/batch_job.md)、ホスト側の仕組みは [ジョブ (バッチ)](Jobs.md) を参照してください。
+ジョブは、ホストのアプリに C# で書くことも、デザイナで Job（`Jobs/名前.job.cs`）として作ることもできます。ジョブの書き方・定期実行はマニュアルの [バッチ処理（ジョブ）](https://github.com/Codeer-Software/Codeer.LowCode.Blazor.Manual/blob/main/JP/user_code/batch_job.md)、ホスト側の仕組みは [ジョブ (バッチ)](Jobs.md) を参照してください。
 
 Codeer.LowCode.Blazor.Extras 0.23.0 以降（Codeer.LowCode.Blazor 1.3.53 以降）。アプリのテンプレートでは Web サーバーのアプリ（MAUI はそのサーバー経由）で動きます。WPF / WinForms のアプリでは使えません（押すと「このアプリではジョブを実行できません」の通知が出ます）。
 
@@ -23,6 +23,7 @@ Codeer.LowCode.Blazor.Extras 0.23.0 以降（Codeer.LowCode.Blazor 1.3.53 以降
 | **UseSubmitData** | 画面の内容を渡す | bool | `true` | 画面の内容をジョブに渡す。`false` なら何も渡さない |
 | **IsAsynchronous** | 非同期で実行 | bool | `false` | `true` ならジョブを起動したらすぐ戻り、「開始しました」を通知する。結果はスクリプトの `GetJobStatus` で問い合わせる |
 | **AllowsConcurrentRuns** | 同時実行を許す | bool | `false` | 同じジョブ（ジョブ名）を重ねて動かすことを許す。`false` なら、そのジョブが実行中（誰が起動したものでも・同期と非同期のどちらでも）に実行すると失敗の通知になる |
+| **ProcessType** | 実行するプロセス | JobTriggerProcessType | `NewProcess` | ジョブを別プロセス（`NewProcess`）で動かすか、Web サーバーのプロセス内（`InProcess`）で動かすかの指定。サーバーがデザインから読んでホストの実行の口に渡す値で、どう動かすかはホストが決める（[ジョブ (バッチ)](Jobs.md) の「実行先」） |
 
 ## 動作
 
@@ -47,7 +48,8 @@ Codeer.LowCode.Blazor.Extras 0.23.0 以降（Codeer.LowCode.Blazor 1.3.53 以降
 | `true` | `{"data": 画面の現在の値, "submit": 保存ボタンが送るのと同じ内容 (変更が無ければ null)}` |
 | `false` | `{}` |
 
-- ジョブの `args[0]` に JSON の文字列として渡ります
+- C# で書いたジョブには、引数の `args[0]` に JSON の文字列として渡ります。デザイナで作った Job では、解いた形の `args.Data`（画面の現在値。`ModuleData`）と `args.Submit`（保存ボタンが送るのと同じ内容。`List<ModuleSubmitData>`、無ければ `null`）で受け取ります
+- 「画面の内容を渡す」が `false` なら、サーバーがデザインを見て `{}` を渡します（画面から何が送られてきても使いません）
 - DB 列に格納するモードのファイル（FileField）は、ファイルの中身ごと JSON に入ります。大きいファイルのある画面では「画面の内容を渡す」を `false` にして、ジョブで Id から読み直してください
 
 ## 権限
@@ -114,7 +116,7 @@ void CheckJob()
 アプリのテンプレート（Cookie）には入っています。自分で組むときは次の 2 つです。
 
 - クライアント: 設定は不要です（共通の API `ExtrasTransport.EndPoint` = `/api/extras` に送ります）。HTTP を使わないホストは `JobTriggerField.RunCoreAsync` に送り方を、`JobTriggerField.GetJobStatusCoreAsync` に非同期のジョブの状態の問い合わせ方を設定します（`GetJobStatusCoreAsync` が無ければ `GetJobStatus` は `null`）
-- サーバー: 共通の API（`Controllers/ExtrasController.cs`）の対応表 `Extras/ExtrasApiTable.cs` に `JobApi` を並べます（全部のジョブを別プロセスで動かすなら `new JobApi(JobRunner.Names)`）。Extras.Server の `JobApi` が `JobRunRequest`（`Codeer.LowCode.Blazor.Extras.Jobs`）を受け、このフィールドへの書き込み権限を確かめて、ジョブを動かします。既定は別プロセスで、ホストが実行の口を渡せば Web サーバーのプロセスの中でも動かせます（[ジョブ (バッチ)](Jobs.md) の「実行先」）。非同期では `JobRunResponse` の `JobId` を返し、状態の問い合わせに `JobStatusResponse` を返します。同時実行を許さないジョブが実行中なら起動せずに失敗を返します
+- サーバー: 共通の API（`Controllers/ExtrasController.cs`）の対応表 `Extras/ExtrasApiTable.cs` に `JobApi` を並べます（全部のジョブを別プロセスで動かすなら `new JobApi(JobRunner.Names)`）。Extras.Server の `JobApi` が `JobRunRequest`（`Codeer.LowCode.Blazor.Extras.Jobs`）を受け、このフィールドへの書き込み権限を確かめて、ジョブを動かします。既定は別プロセスで、ホストが実行の口を渡せば Web サーバーのプロセスの中でも動かせます（[ジョブ (バッチ)](Jobs.md) の「実行先」。デザインの `ProcessType` は実行の口に渡り、`new JobApi(JobRunner.Names)` では見ません）。非同期では `JobRunResponse` の `JobId` を返し、状態の問い合わせに `JobStatusResponse` を返します。同時実行を許さないジョブが実行中なら起動せずに失敗を返します
 
 ジョブ専用のコントローラで受ける場合は、従来どおり `JobTriggerField.EndPoint` にその URL を設定すればそちらに送ります（状態は `GET {EndPoint}/{jobId}`）。
 

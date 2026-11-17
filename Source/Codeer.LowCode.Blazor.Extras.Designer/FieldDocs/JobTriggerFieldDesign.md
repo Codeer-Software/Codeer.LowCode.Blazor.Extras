@@ -2,9 +2,9 @@
 
 **TypeFullName:** `Codeer.LowCode.Blazor.Extras.Designs.JobTriggerFieldDesign`
 
-ボタンを押す (またはスクリプトで `Run()`) と、画面の内容の JSON をホストに渡してジョブ (サーバーの C# の処理) の実行を頼み、結果を通知 (トースト) で出すフィールド。動かすジョブは `JobName` で、ホストがこのデザインから読む (クライアントからジョブ名は送らない)。このフィールド自体は保存しない (保存ボタンは別に置ける)。
+ボタンを押す (またはスクリプトで `Run()`) と、画面の内容の JSON をホストに渡してジョブ (サーバーの処理) の実行を頼み、結果を通知 (トースト) で出すフィールド。動かすジョブは `JobName` で、ホストがこのデザインから読む (クライアントからジョブ名は送らない)。このフィールド自体は保存しない (保存ボタンは別に置ける)。
 
-- **ホストの実装が要る** (ジョブ本体も含めて C# で書く。デザインファイルでは作れない)。Starter テンプレートでは Web サーバー (Cookie。MAUI はそのサーバー経由) だけで、WPF / WinForms は未対応 (押すと「このアプリではジョブを実行できません」の通知が出る)。仕組みは Codeer.LowCode.Blazor.Extras の `docs/Jobs.md`、ジョブの書き方はテンプレートの `Jobs/README.md`
+- **ジョブは 2 通りで作れる**: ホストの実装 (C#) か、デザインの Job (`Jobs/名前.job.cs`。デザイナで作る)。`JobName` はどちらの名前でもよい。ホスト側の結線 (`JobApi`) は要る。Starter テンプレートでは Web サーバー (Cookie。MAUI はそのサーバー経由) だけで、WPF / WinForms は未対応 (押すと「このアプリではジョブを実行できません」の通知が出る)。仕組みは Codeer.LowCode.Blazor.Extras の `docs/Jobs.md`、ジョブの書き方はテンプレートの `Jobs/README.md`
 - **このフィールドに書けるユーザーが実行でき、ジョブはそのユーザーの権限で動く** (`ExecuteSqlField` の実行と同じ)。書けない (PermissionField の書き込み条件・閲覧モード・`CanCreate` / `CanUpdate` が `false` の読み取り専用のモジュール) ときは他のボタンと同じく押せず、`Run()` も何もせず `false` (読み取り専用のモジュールで使うなら OnLoad のスクリプトでこのフィールドの `IsViewOnly` を `false` にする)。絞るなら **CurrentUser だけで決まる** PermissionField の書き込み条件を使う。行の値を見る条件は、画面ではその行でボタンが押せなくなるが、**サーバーの実行可否の判定には使われない** (対象行が無い。モジュールの `DataReadCondition` / `DataWriteCondition` は設計チェック `JobTriggerFieldDesign:2`、このフィールドを対象にした PermissionField の行条件は `JobTriggerFieldDesign:3` で検出)。行の状態で実行を止めたいなら、ジョブが受け取った `data` や DB を見て自分で確かめる
 - ジョブが DB に保存しても画面には反映されない (新規の画面は仮 Id のまま。そのまま保存ボタンを押すと二重に登録される)。DB に書く用途は「保存ボタン → スクリプトから `Run()`」の順にするか、ジョブは画面の内容を読むだけにする
 - 見た目は固定 (枠線のボタン)。凝るときは `ShowButton` を `false` にして ButtonField の OnClick から `Run()` を呼ぶ
@@ -23,7 +23,9 @@
 | `UseSubmitData` | JSON |
 |---|---|
 | `true` | `{"data": ModuleData, "submit": [ModuleSubmitData] または null}` — `data` は画面の現在値、`submit` は保存ボタンが送るのと同じ内容 (変更なし・表を持たないモジュールなど送るものが無ければ `null`) |
-| `false` | `{}` |
+| `false` | `{}` (サーバーがデザインを見て `{}` にする。クライアントが何を送っても渡らない) |
+
+C# のジョブは引数の `args[0]` にこの JSON の文字列を受け取る。デザインの Job (`Jobs/名前.job.cs`) は解いた形を `args.Data` (`ModuleData`。画面の現在値) / `args.Submit` (`List<ModuleSubmitData>`。無ければ `null`) で受け取る。
 
 `data` はボタン (`Run()`) 起点のときだけ渡る。将来の別の起点 (保存時・スケジュール) では無いことがあるので、ジョブは `data` の有無を見て書く。
 
@@ -50,6 +52,7 @@ public class JobTriggerFieldDesign : FieldDesignBase
     public bool UseSubmitData { get; set; } = true;
     public bool IsAsynchronous { get; set; }
     public bool AllowsConcurrentRuns { get; set; }
+    public JobTriggerProcessType ProcessType { get; set; } = JobTriggerProcessType.NewProcess;
     // 親 FieldDesignBase から継承: Name（IgnoreModification / OnValidateInput はデザイナ非表示）
 }
 ```
@@ -66,6 +69,7 @@ public class JobTriggerFieldDesign : FieldDesignBase
 | `UseSubmitData` | bool | `true` | 画面の内容をジョブに渡す (上の表)。`false` なら `{}` |
 | `IsAsynchronous` | bool | `false` | 非同期で実行する (起動したらすぐ戻り「開始しました」を通知する。結果は `JobId` / `JobIds` と `GetJobStatus` で問い合わせる) |
 | `AllowsConcurrentRuns` | bool | `false` | 同じジョブ (`JobName`) を重ねて動かすことを許す。`false` なら、そのジョブが実行中 (誰が起動したものでも・同期と非同期のどちらでも) に起動すると失敗の通知になる (判定はサーバーがジョブ名で行う。1 台のサーバーの中だけ) |
+| `ProcessType` | JobTriggerProcessType | `NewProcess` | `NewProcess` (別プロセス) / `InProcess` (Web サーバーのプロセス内)。ホストの実行関数に渡る値で、どう動かすかはホストが決める (ホストによっては見ない) |
 
 ### JSON例
 
@@ -77,6 +81,7 @@ public class JobTriggerFieldDesign : FieldDesignBase
   "UseSubmitData": true,
   "IsAsynchronous": false,
   "AllowsConcurrentRuns": false,
+  "ProcessType": "NewProcess",
   "Name": "ImportJob",
   "TypeFullName": "Codeer.LowCode.Blazor.Extras.Designs.JobTriggerFieldDesign"
 }
@@ -89,7 +94,7 @@ public class JobTriggerFieldDesign : FieldDesignBase
 ### ホストの結線 (ユーザーの作業。テンプレートには入っている)
 
 - クライアント: 設定不要 (共通の API `ExtrasTransport.EndPoint` = `/api/extras` に送る。`GetJobStatus` も同じ口で問い合わせる)。ジョブ専用のエンドポイントで受けるホストは `JobTriggerField.EndPoint` を設定する (状態は `GET {EndPoint}/{jobId}`)。HTTP を使わないホストは `JobTriggerField.RunCoreAsync` と `JobTriggerField.GetJobStatusCoreAsync` (非同期のジョブの状態の問い合わせ) を差し替える
-- サーバー: ホストの共通の API (テンプレートの `Controllers/ExtrasController.cs`) の対応表 `Extras/ExtrasApiTable.cs` に `JobApi` が載っていること (テンプレートは載せ済み: `new JobApi(() => JobRunner.Names, JobRunner.RunFromScreenAsync)`。動かせるジョブは `Jobs/JobRunner`)。`JobApi` が `JobRunRequest` を受け、書き込み権限を確かめてホストが渡した実行の口でジョブを動かす (既定は Extras.Server の `JobProcess` で別プロセス。Web サーバーのプロセスの中でも動かせる)。非同期では `JobId` を返し、状態の問い合わせに `JobStatusResponse` を返す。`AllowsConcurrentRuns` が `false` で同じジョブが実行中なら起動せず失敗を返す
+- サーバー: ホストの共通の API (テンプレートの `Controllers/ExtrasController.cs`) の対応表 `Extras/ExtrasApiTable.cs` に `JobApi` が載っていること (テンプレートは載せ済み: `new JobApi(() => JobRunner.Names, JobRunner.RunFromScreenAsync)`。`RunFromScreenAsync` はジョブ名・画面の内容の JSON・ユーザーの Id・`ProcessType` を受ける。動かせるジョブは `Jobs/JobRunner`)。`JobApi` が `JobRunRequest` を受け、書き込み権限を確かめてホストが渡した実行の口でジョブを動かす (既定は Extras.Server の `JobProcess` で別プロセス。Web サーバーのプロセスの中でも動かせる)。非同期では `JobId` を返し、状態の問い合わせに `JobStatusResponse` を返す。`AllowsConcurrentRuns` が `false` で同じジョブが実行中なら起動せず失敗を返す
 
 ## Script
 

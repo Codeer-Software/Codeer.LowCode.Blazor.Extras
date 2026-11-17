@@ -39,7 +39,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Jobs
         string _dotnetPath = null!;
         ILoggerFactory? _loggerFactory;
         List<string> _logs = null!;
-        List<(string Name, string Input, string UserId)> _calls = null!;
+        List<(string Name, string Input, string UserId, JobTriggerProcessType ProcessType)> _calls = null!;
         //途中で失敗しても、このプロセスの中で待たせたジョブを後始末で終わらせる (実行中に数えたまま次のテストに残さない)
         TaskCompletionSource<string?>? _gate;
 
@@ -92,6 +92,8 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Jobs
             item.Fields.Add(new TextFieldDesign { Name = "Title", DbColumn = "Title" });
             item.Fields.Add(new JobTriggerFieldDesign { Name = "InProcess", JobName = "InProcessJob" });
             item.Fields.Add(new JobTriggerFieldDesign { Name = "InProcessAsync", JobName = "InProcessJob", IsAsynchronous = true });
+            item.Fields.Add(new JobTriggerFieldDesign { Name = "NoSubmit", JobName = "InProcessJob", UseSubmitData = false });
+            item.Fields.Add(new JobTriggerFieldDesign { Name = "InProcessType", JobName = "InProcessJob", ProcessType = JobTriggerProcessType.InProcess });
             item.Fields.Add(new JobTriggerFieldDesign { Name = "Process", JobName = "Echo" });
             item.Fields.Add(new JobTriggerFieldDesign { Name = "EchoAsync", JobName = "Echo", IsAsynchronous = true });
             item.Fields.Add(new JobTriggerFieldDesign { Name = "Fail", JobName = "Fail" });
@@ -111,15 +113,15 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Jobs
         };
 
         //実行の口: InProcessJob はこのプロセスの中 (inProcess のデリゲート)・それ以外は別プロセス
-        JobApi CreateApi(Func<string, string, string, Task<string?>>? inProcess = null)
+        JobApi CreateApi(Func<string, string, string, JobTriggerProcessType, Task<string?>>? inProcess = null)
             => new(() => ["InProcessJob", "Echo", "Fail", "Sleep"],
-                (name, input, userId) => string.Equals(name, "InProcessJob", StringComparison.OrdinalIgnoreCase)
-                    ? (inProcess ?? RecordCall)(name, input, userId)
+                (name, input, userId, processType) => string.Equals(name, "InProcessJob", StringComparison.OrdinalIgnoreCase)
+                    ? (inProcess ?? RecordCall)(name, input, userId, processType)
                     : JobProcess.RunInNewProcessAsync(name, input, userId));
 
-        Task<string?> RecordCall(string name, string input, string userId)
+        Task<string?> RecordCall(string name, string input, string userId, JobTriggerProcessType processType)
         {
-            lock (_calls) _calls.Add((name, input, userId));
+            lock (_calls) _calls.Add((name, input, userId, processType));
             return Task.FromResult<string?>($"in process {userId}");
         }
 
@@ -143,12 +145,29 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Jobs
             Assert.That(_calls[0].Name, Is.EqualTo("InProcessJob"));
             Assert.That(_calls[0].Input, Is.EqualTo("""{"data":{}}"""));
             Assert.That(_calls[0].UserId, Is.EqualTo("7"));
+            Assert.That(_calls[0].ProcessType, Is.EqualTo(JobTriggerProcessType.NewProcess));
+        }
+
+        [Test]
+        public async Task 実行の口にはデザインのProcessTypeが渡る()
+        {
+            var ret = await RunAsync(CreateApi(), "InProcessType", "{}", CreateContext("7"));
+            Assert.That(ret.Succeeded, Is.True, ret.Error);
+            Assert.That(_calls.Single().ProcessType, Is.EqualTo(JobTriggerProcessType.InProcess));
+        }
+
+        [Test]
+        public async Task UseSubmitDataがfalseならクライアントが送った内容に関わらず空のJSONを渡す()
+        {
+            var ret = await RunAsync(CreateApi(), "NoSubmit", """{"data":{"Title":"x"}}""", CreateContext("7"));
+            Assert.That(ret.Succeeded, Is.True, ret.Error);
+            Assert.That(_calls.Single().Input, Is.EqualTo("{}"));
         }
 
         [Test]
         public async Task 実行の口の失敗は例外のメッセージが画面のエラーになる()
         {
-            var api = CreateApi((_, _, _) => throw new InvalidOperationException("締められません"));
+            var api = CreateApi((_, _, _, _) => throw new InvalidOperationException("締められません"));
             var ret = await RunAsync(api, "InProcess", "{}", CreateContext("7"));
             Assert.That(ret.Succeeded, Is.False);
             Assert.That(ret.Error, Is.EqualTo("締められません"));
@@ -190,6 +209,10 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Jobs
             //InProcessJob もテスト用ホストに渡る (ホストに無いジョブなので子が「ありません」で終わる)
             ret = await RunAsync(api, "InProcess", "{}", CreateContext("7"));
             Assert.That(ret.Succeeded, Is.False);
+            Assert.That(ret.Error, Is.EqualTo("ジョブ 'InProcessJob' がありません"));
+
+            //デザインの ProcessType が InProcess でも別プロセス
+            ret = await RunAsync(api, "InProcessType", "{}", CreateContext("7"));
             Assert.That(ret.Error, Is.EqualTo("ジョブ 'InProcessJob' がありません"));
         }
 
@@ -253,7 +276,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Jobs
             //実行の口は (非同期では要求から切り離して) 後から呼ばれるので、振り分けは呼ばれた時の引数で決める: 画面の内容が "in-process" ならこのプロセスの中、それ以外は別プロセス
             var gate = _gate = new TaskCompletionSource<string?>(TaskCreationOptions.RunContinuationsAsynchronously);
             var inProcessCalls = 0;
-            var api = new JobApi(() => ["Sleep"], (name, input, userId) =>
+            var api = new JobApi(() => ["Sleep"], (name, input, userId, _) =>
             {
                 if (input != "in-process") return JobProcess.RunInNewProcessAsync(name, input, userId);
                 Interlocked.Increment(ref inProcessCalls);
@@ -336,7 +359,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Jobs
             var names = new List<string>();
             var asked = 0;
             var api = new JobApi(() => { asked++; return names.ToList(); },
-                (name, _, _) => Task.FromResult<string?>($"ran {name}"));
+                (name, _, _, _) => Task.FromResult<string?>($"ran {name}"));
 
             //構築した時点では一覧に無い
             var ret = await RunAsync(api, "InProcess", "{}", CreateContext("7"));

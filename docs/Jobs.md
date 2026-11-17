@@ -6,7 +6,7 @@
 - 親側 `JobProcess`: このプロセス自身を `job <ジョブ名> --stdin` で起動し、入力を標準入力で渡して結果 (`JobResult`) を受け取る。待たずに起動したジョブは Id で状態を問い合わせられる
 - 子側 `JobMode`: `job` より後ろの引数を受けてジョブを 1 つ実行し、終了コードを返す
 - 親と子の約束 (引数の並び・標準入力・環境変数・終了コード・UTF-8・結果の文言の取り出し) はこの 2 つの中に閉じています。ホストはジョブの一覧と DB アクセスの組み立てだけを書きます
-- 画面のボタンから起動するジョブは、どこで動かすかをホストが実行の口で決められます。別プロセス (上の 2 つ。既定) か、Web サーバーのプロセスの中 (「実行先」)
+- 画面のボタンから起動するジョブは、どこで動かすかをホストが実行の口で決められます。別プロセス (上の 2 つ。既定) か、Web サーバーのプロセスの中 (「実行先」)。JobTriggerField の `ProcessType` (`NewProcess` / `InProcess`) が実行の口に渡るので、デザインで指定できます (どう動かすかはホスト)
 
 Codeer.LowCode.Blazor.Extras.Server 0.23.0 以降。名前空間 `Codeer.LowCode.Blazor.Extras.Server.Jobs`。
 ジョブの書き方・起動の仕方 (タスクスケジューラ・Azure WebJobs) はアプリのテンプレート (Codeer.LowCode.Blazor.Starter) の `Server/Jobs/README.md` にあります。
@@ -41,8 +41,8 @@ if (isJob) return await JobMode.RunAsync(args[1..], JobRunner.Names, (name, jobA
 
 ### 親側: JobApi と Program.cs
 
-画面のボタン (JobTriggerField) の受け口は Extras.Server の `JobApi` です。ホストは共通の API の対応表 (テンプレートの `Extras/ExtrasApiTable.cs`) に `new JobApi(jobNames)` (動かせるジョブの名前。無い名前は起動しない) を並べます。この形は全部のジョブを別プロセスで動かし、渡した一覧をそのまま持ちます。動かしている間に増減するジョブ (「デザインの Job スクリプト」) があるときや、ジョブによって動かす場所を変えるときは、一覧を返す関数と実行の口を渡す形 (「実行先」) を使います。
-`JobApi` はフィールドへの書き込み権限を確かめてから、デザインの JobTriggerField に従って実行の口を動かします。待つかどうか・同時実行の判定・非同期の状態・失敗の記録は `JobApi` が実行の口を包んで行うので、どこで動かしても同じです。
+画面のボタン (JobTriggerField) の受け口は Extras.Server の `JobApi` です。ホストは共通の API の対応表 (テンプレートの `Extras/ExtrasApiTable.cs`) に `new JobApi(jobNames)` (動かせるジョブの名前。無い名前は起動しない) を並べます。この形は全部のジョブを別プロセスで動かし、渡した一覧をそのまま持ちます。動かしている間に増減するジョブ (「デザインの Job スクリプト」) があるときや、ジョブによって動かす場所を変えるとき (JobTriggerField の `ProcessType` を効かせるとき) は、一覧を返す関数と実行の口を渡す形 (「実行先」) を使います。
+`JobApi` はフィールドへの書き込み権限を確かめてから、デザインの JobTriggerField に従って実行の口を動かします。デザインの `UseSubmitData` が `false` なら、クライアントが何を送ってきても実行の口には `{}` を渡します。待つかどうか・同時実行の判定・非同期の状態・失敗の記録は `JobApi` が実行の口を包んで行うので、どこで動かしても同じです。
 
 ```csharp
 //Program.cs (失敗の記録先と、非同期のジョブの状態の置き場)
@@ -56,13 +56,14 @@ JobProcess.Cache = app.Services.GetRequiredService<IDistributedCache>();
 
 ```csharp
 //自分の Controller で受けるとき
+var input = design.UseSubmitData ? request.Arguments : "{}";   // 画面の内容を渡さないデザインなら、送られてきたものは使わない
 if (design.IsAsynchronous)
 {
-    var jobId = await JobProcess.StartAsync(design.JobName, request.Arguments, userId, design.AllowsConcurrentRuns);   // 起動したら Id を返す
+    var jobId = await JobProcess.StartAsync(design.JobName, input, userId, design.AllowsConcurrentRuns);   // 起動したら Id を返す
     if (jobId == null) return Failure($"ジョブ '{design.JobName}' は実行中です");                               // 同時実行を許さないジョブが実行中
     return new JobRunResponse { Started = true, JobId = jobId };
 }
-var result = await JobProcess.RunAsync(design.JobName, request.Arguments, userId, design.AllowsConcurrentRuns);   // 終わるまで待つ
+var result = await JobProcess.RunAsync(design.JobName, input, userId, design.AllowsConcurrentRuns);   // 終わるまで待つ
 if (result == null) return Failure($"ジョブ '{design.JobName}' は実行中です");
 return result.Succeeded ? new JobRunResponse { Succeeded = true, Message = result.Message } : Failure(result.ErrorMessage);
 
@@ -108,22 +109,24 @@ new JobApi(jobNames, run)
 | 引数 | 内容 |
 |---|---|
 | `jobNames` | `Func<IEnumerable<string>>`。動かせるジョブの名前を返す (`new JobApi(jobNames)` と同じ名前)。このプロセスの中で動かすジョブもここに含める (無い名前は起動しない)。デザインの差し替えで変わるジョブ (「デザイナで作った Job」) があるので、起動のたびに呼んで今の一覧を聞く |
-| `run` | `Func<string, string, string, Task<string?>>`。実行の口 (ジョブ名 (デザインの `JobName`)・画面の内容の JSON・起動したユーザーの Id → 成功の文言。失敗は例外)。どこで動かすかは、この中でホストが決める |
+| `run` | `Func<string, string, string, JobTriggerProcessType, Task<string?>>`。実行の口 (ジョブ名 (デザインの `JobName`)・画面の内容の JSON・起動したユーザーの Id・デザインの `ProcessType` → 成功の文言。失敗は例外)。どこで動かすかは、この中でホストが決める |
 
-`new JobApi(jobNames)` は `new JobApi(() => jobNames, JobProcess.RunInNewProcessAsync)` と同じです (全部のジョブが別プロセス)。
+`ProcessType` (`JobTriggerProcessType`。名前空間 `Codeer.LowCode.Blazor.Extras.Designs`) は JobTriggerField のデザインの値 (`NewProcess` (既定) / `InProcess`) をそのまま渡すだけです。クライアントの要求からは読みません。`JobApi` はこの値で分岐しないので、どう動かすか (値に従うか・ジョブによって決めるか) はホストの実行の口が決めます。
+
+`new JobApi(jobNames)` は `new JobApi(() => jobNames, (name, input, userId, _) => JobProcess.RunInNewProcessAsync(name, input, userId))` と同じです (全部のジョブが別プロセス。`ProcessType` は見ません)。
 
 `JobProcess.RunInNewProcessAsync(jobName, input, userId)` は、別プロセスで動かす実行の口です。ジョブを `job <ジョブ名> --stdin` で起動して終わるまで待ち、成功なら文言 (`JobResult.Message`。ジョブが null を返したら空) を返し、失敗なら例外 (メッセージ = `JobResult.ErrorMessage`) を投げます。起動できなければ起動の例外です。実行中として数えず、失敗も記録しません (どちらも `JobApi` が行う)。
-ジョブによって動かす場所を変えるときは、実行の口の中で別プロセスにするジョブだけこれを呼びます。
+ジョブによって動かす場所を変えるときは、実行の口の中で別プロセスにするジョブだけこれを呼びます。デザインの `ProcessType` に従うなら次のようになります。
 
 ```csharp
-new JobApi(() => jobNames, (name, input, userId) => runsHere(name)
+new JobApi(() => jobNames, (name, input, userId, processType) => processType == JobTriggerProcessType.InProcess
     ? RunHereAsync(name, input, userId)                     // このプロセスの中 (ホストが DB アクセスを組み立てて動かす)
     : JobProcess.RunInNewProcessAsync(name, input, userId)); // 別プロセス
 ```
 
 実行の口の約束:
 
-- 入力は画面の内容の JSON (`JobRunRequest.Arguments`。別プロセスでは標準入力で渡り、ジョブの引数の `--stdin` がこれに置き換わる)。ユーザーは押したユーザーの Id
+- 入力は画面の内容の JSON (`JobRunRequest.Arguments`。デザインの `UseSubmitData` が `false` なら `{}`。別プロセスでは標準入力で渡り、ジョブの引数の `--stdin` がこれに置き換わる)。ユーザーは押したユーザーの Id
 - 要求とは切り離して呼ばれ、非同期では要求が終わった後も動く。このプロセスの中で動かすなら、ホストは要求のもの (DB 接続・`ModuleDataIO`) を使わず、受け取ったユーザーの Id で DB アクセスを組み立てる。`JobApi` は呼ぶ前に要求の DB 接続をプールへ返す
 - 成功の文言は戻り値 (改行は空白に。null なら空)。失敗の文言は例外のメッセージの最初の空でない行 (`RunInNewProcessAsync` の失敗は `JobResult.ErrorMessage`)
 - 待つかどうか・同時実行の判定・非同期の状態 (`JobProcess.Cache` / `GetStatusAsync`)・失敗の記録 (`JobProcess.LoggerFactory` に Error) は `JobApi` が実行の口を包んで行う。記録の中身は例外の全文 (`RunInNewProcessAsync` の失敗は標準エラーと標準出力の全文 = `JobResult` の記録用の文言)

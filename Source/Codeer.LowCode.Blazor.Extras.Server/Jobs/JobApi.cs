@@ -7,28 +7,29 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Jobs
 {
     /// <summary>
     /// 共通の API で受けるジョブの操作 (JobTriggerField の実行と、非同期で起動したジョブの状態)。
-    /// 動かすジョブ・待つかどうか・同じジョブを重ねて動かすかはデザインの JobTriggerField (JobName / IsAsynchronous / AllowsConcurrentRuns) で決める (クライアントからは受け取らない)。
-    /// そのフィールドに書けるユーザーが、自分の権限で起動する。ジョブをどこで動かすかはホストが渡す実行の口の持ち物で、ここでは知らない
-    /// (別プロセスで動かす口は <see cref="JobProcess.RunInNewProcessAsync"/>)。
+    /// 動かすジョブ・待つかどうか・同じジョブを重ねて動かすか・画面の内容を渡すかはデザインの JobTriggerField (JobName / IsAsynchronous / AllowsConcurrentRuns / UseSubmitData) で決める (クライアントからは受け取らない)。
+    /// そのフィールドに書けるユーザーが、自分の権限で起動する。ジョブをどこで動かすかはホストが渡す実行の口の持ち物で、ここでは分岐しない
+    /// (デザインの ProcessType を実行の口に渡すだけ。別プロセスで動かす口は <see cref="JobProcess.RunInNewProcessAsync"/>)。
     /// 待つかどうか・同時実行の判定・非同期の状態の問い合わせは、どこで動かしても同じ。
     /// 監査にはこの呼び出し 1 件 (誰が・どのモジュールのどのジョブを・成否。非同期では受け付けたかどうか = 起動した後の失敗は載らず、状態とサーバーのログに出る) が載る。ジョブの中で何をしたかはジョブ本体の持ち物。
     /// </summary>
     public sealed class JobApi : IExtrasApiHandler
     {
         readonly Func<IEnumerable<string>> _jobNames;
-        readonly Func<string, string, string, Task<string?>> _run;
+        readonly Func<string, string, string, JobTriggerProcessType, Task<string?>> _run;
 
-        /// <summary>全部のジョブを別プロセスで動かす (<see cref="JobProcess.RunInNewProcessAsync"/>)。</summary>
+        /// <summary>全部のジョブを別プロセスで動かす (<see cref="JobProcess.RunInNewProcessAsync"/>)。デザインの ProcessType は見ない (InProcess でも別プロセス)。</summary>
         /// <param name="jobNames">ホストが動かせるジョブの名前。無い名前は起動しない。渡した一覧をそのまま持つ (起動後に増減するジョブがあるなら Func を取るほうを使う)。</param>
-        public JobApi(IReadOnlyCollection<string> jobNames) : this(() => jobNames, JobProcess.RunInNewProcessAsync) { }
+        public JobApi(IReadOnlyCollection<string> jobNames) : this(() => jobNames, (name, input, userId, _) => JobProcess.RunInNewProcessAsync(name, input, userId)) { }
 
         /// <param name="jobNames">ホストが動かせるジョブの名前 (テンプレの JobRunner.Names)。無い名前は起動しない。デザインの差し替えで変わるジョブがあるので、起動のたびに今の一覧を聞く。</param>
         /// <param name="run">
-        /// 実行の口 (ジョブ名・画面の内容の JSON・起動したユーザーの Id → 成功の文言。失敗は例外で、メッセージの最初の行が画面に出る)。
-        /// どこで動かすかはこの中でホストが決める (別プロセスなら <see cref="JobProcess.RunInNewProcessAsync"/> を呼ぶ)。
+        /// 実行の口 (ジョブ名・画面の内容の JSON・起動したユーザーの Id・デザインの ProcessType → 成功の文言。失敗は例外で、メッセージの最初の行が画面に出る)。
+        /// どこで動かすかはこの中でホストが決める (ProcessType はデザインの指定。別プロセスなら <see cref="JobProcess.RunInNewProcessAsync"/> を呼ぶ)。
+        /// 画面の内容の JSON は、デザインの UseSubmitData が false ならクライアントが何を送っても <c>{}</c>。
         /// 要求とは切り離して呼ばれ、非同期では要求が終わった後も動く。このプロセスの中で動かすなら、要求のものを使わず、受け取ったユーザーの Id で DB アクセスを組み立てる。
         /// </param>
-        public JobApi(Func<IEnumerable<string>> jobNames, Func<string, string, string, Task<string?>> run)
+        public JobApi(Func<IEnumerable<string>> jobNames, Func<string, string, string, JobTriggerProcessType, Task<string?>> run)
         {
             _jobNames = jobNames;
             _run = run;
@@ -82,7 +83,10 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Jobs
             await context.DbAccess.DisposeAsync();
 
             var userId = context.UserId;
-            Func<Task<string?>> run = () => _run(design.JobName, request.Arguments, userId);
+            //画面の内容を渡さないデザインなら、クライアントが何を送ってきても渡さない (クライアントも {} を送るが、要求は手で作れる)
+            var arguments = design.UseSubmitData ? request.Arguments : "{}";
+            var processType = design.ProcessType;
+            Func<Task<string?>> run = () => _run(design.JobName, arguments, userId, processType);
 
             //非同期: 起動したらすぐ Id を返す (結果は Status で問い合わせる。失敗は JobProcess.LoggerFactory = サーバーのログにも出る)
             //同時実行を許さないジョブが実行中なら (null) 起動しない

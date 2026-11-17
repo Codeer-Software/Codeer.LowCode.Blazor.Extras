@@ -11,7 +11,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
 {
     /// <summary>
     /// ボタン (またはスクリプトの Run()) で、ホストにジョブの実行を頼むフィールド (POST JobTriggerField.EndPoint)。
-    /// ホストに渡すのはモジュール名・フィールド名・画面の内容の JSON で、どのジョブを動かすか (JobName)・待つかどうか (IsAsynchronous) はホストがこのデザインから読む。
+    /// ホストに渡すのはモジュール名・フィールド名・画面の内容の JSON で、どのジョブを動かすか (JobName)・待つかどうか (IsAsynchronous)・どこで動かすか (ProcessType) はホストがこのデザインから読む。
     /// ジョブをどう動かすかはホストの実装 (Extras.Server の JobProcess とテンプレの Jobs/README.md)。保存はしない。データは持たない。
     /// 実行の可否はサーバーがこのフィールドの書き込み権限で判定する (行を持たないので、ユーザーだけで確定する条件しか適用されない)。
     /// </summary>
@@ -54,6 +54,13 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         /// </summary>
         [Designer(Index = 8, DisplayName = "$JobTriggerAllowsConcurrentRuns")]
         public bool AllowsConcurrentRuns { get; set; }
+
+        /// <summary>
+        /// ジョブを Web サーバーのプロセスの中で動かすか、別のプロセスで動かすか。既定は NewProcess。
+        /// サーバーがこのデザインから読んでホストの実行関数に渡すだけで、どう動かすかはホストが決める。
+        /// </summary>
+        [Designer(Index = 9, DisplayName = "$JobTriggerProcessType")]
+        public JobTriggerProcessType ProcessType { get; set; } = JobTriggerProcessType.NewProcess;
 
         public override string GetWebComponentTypeFullName() => typeof(JobTriggerFieldComponent).FullName!;
 
