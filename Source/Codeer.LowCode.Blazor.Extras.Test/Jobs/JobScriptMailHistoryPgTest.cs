@@ -47,8 +47,8 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Jobs
 
         static void ClearScriptTypes()
         {
-            typeof(JobScriptRunner).GetMethod("ClearScriptTypes", BindingFlags.Static | BindingFlags.NonPublic)!.Invoke(null, null);
-            JobScripts.ResetForTest();
+            typeof(JobExecutor).GetMethod("ClearScriptTypes", BindingFlags.Static | BindingFlags.NonPublic)!.Invoke(null, null);
+            DesignJobs.ResetForTest();
         }
 
         [SetUp]
@@ -108,7 +108,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Jobs
         [Test]
         public async Task 送信履歴を書けなければJobは失敗し確定前の書き込みは消える_メールは送られている()
         {
-            JobScripts.UseMail(new MailConfig { DefaultInfraName = "Main", HistoryModuleName = "MailHistory" },
+            DesignJobs.UseMail(new MailConfig { DefaultInfraName = "Main", HistoryModuleName = "MailHistory" },
                 name => name == "Main" ? new FakeMailSender(_sent) : null);
             _designData.JobScripts["TestJob"] = """
                 bool AddTask(string title)
@@ -141,7 +141,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Jobs
             Exception? error = null;
             try
             {
-                message = await JobScripts.RunAsync(new ModuleDataIO(_designData, this, _db, new TemporaryFileManager(_db, [], new List<IFileStorage>())),
+                message = await DesignJobs.RunAsync(new ModuleDataIO(_designData, this, _db, new TemporaryFileManager(_db, [], new List<IFileStorage>())),
                     _designData, "TestJob", []);
             }
             catch (Exception ex)

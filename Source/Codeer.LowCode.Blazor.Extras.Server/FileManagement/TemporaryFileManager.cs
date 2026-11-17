@@ -1,10 +1,11 @@
 using Codeer.LowCode.Blazor.DataIO;
 using Codeer.LowCode.Blazor.DataIO.Db;
+using Codeer.LowCode.Blazor.Jobs;
 using Codeer.LowCode.Blazor.SystemSettings;
 
 namespace Codeer.LowCode.Blazor.Extras.Server.FileManagement
 {
-    public class TemporaryFileManager : ITemporaryFileManager
+    public class TemporaryFileManager : ITemporaryFileManager, IJobFileStorage
     {
         readonly IDbAccessor _dbAccessor;
         readonly TemporaryFileTableInfo[] _temporaryFilesManagements;
@@ -138,6 +139,18 @@ namespace Codeer.LowCode.Blazor.Extras.Server.FileManagement
 
         public async Task<DataIO.FileInfo> AddFileAsync(FileSaveInfo info, string? fileName, Stream stream)
         {
+            var data = await AddFileCoreAsync(info, fileName, stream);
+            await DeleteTmpFiles(info.DataSourceName, info.StorageName);
+            return data;
+        }
+
+        //Job スクリプトの FileService.Save。Job は全体が 1 つのトランザクションなので、古い一時ファイルの掃除はしない
+        //(掃除の削除が Job の終わりまで確定せず、その間の画面のアップロードの掃除を待たせる。掃除は画面のアップロードに任せる)
+        async Task<DataIO.FileInfo> IJobFileStorage.AddFileAsync(FileSaveInfo info, string? fileName, Stream content)
+            => await AddFileCoreAsync(info, fileName, content);
+
+        async Task<DataIO.FileInfo> AddFileCoreAsync(FileSaveInfo info, string? fileName, Stream stream)
+        {
             var data = new DataIO.FileInfo
             {
                 FileName = fileName,
@@ -162,9 +175,11 @@ namespace Codeer.LowCode.Blazor.Extras.Server.FileManagement
                 throw;
             }
             data.FileSize = counting.BytesRead;
-            await DeleteTmpFiles(info.DataSourceName, info.StorageName);
             return data;
         }
+
+        public async Task<Stream> OpenReadAsync(FileLocation location)
+            => await StorageAccess.OpenReadAsync(_fileStorages, location);
 
         async Task DeleteTmpFiles(string dataSourceName, string storageName)
         {

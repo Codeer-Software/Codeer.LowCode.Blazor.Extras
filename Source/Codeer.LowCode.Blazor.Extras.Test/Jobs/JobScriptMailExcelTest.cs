@@ -20,9 +20,9 @@ using ExcelObject = Codeer.LowCode.Blazor.Extras.ScriptObjects.Excel;
 namespace Codeer.LowCode.Blazor.Extras.Test.Jobs
 {
     /// <summary>
-    /// Job スクリプトからメール (MailService) と Excel (OverWrite(ModuleData) / ToAttachment / ToPdfAttachment) を使う (JobScripts.UseMail / UseExcel)。
+    /// Job スクリプトからメール (MailService) と Excel (OverWrite(ModuleData) / ToAttachment / ToPdfAttachment) を使う (DesignJobs.UseMail / UseExcel)。
     /// DB は SQLite のファイル (Job のトランザクションの取り消しを確かめるため)。メールは実際には送らない (記録するだけの IMailSender)。
-    /// 登録は static (本体の JobScriptRunner と JobScripts) なので、テストごとに消して戻す。Excel.ConvertPdf も元に戻す。
+    /// 登録は static (本体の JobExecutor と DesignJobs) なので、テストごとに消して戻す。Excel.ConvertPdf も元に戻す。
     /// </summary>
     [TestFixture, NonParallelizable]
     public class JobScriptMailExcelTest : IAuthenticationContext
@@ -60,11 +60,11 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Jobs
             public PdfSharp.Fonts.FontResolverInfo ResolveTypeface(string familyName, bool isBold, bool isItalic) => new("Arial");
         }
 
-        //本体の JobScriptRunner.ClearScriptTypes (internal・テスト用)。本体は Extras のテストに IVT を出していないのでリフレクションで呼ぶ
+        //本体の JobExecutor.ClearScriptTypes (internal・テスト用)。本体は Extras のテストに IVT を出していないのでリフレクションで呼ぶ
         static void ClearScriptTypes()
         {
-            typeof(JobScriptRunner).GetMethod("ClearScriptTypes", BindingFlags.Static | BindingFlags.NonPublic)!.Invoke(null, null);
-            JobScripts.ResetForTest();
+            typeof(JobExecutor).GetMethod("ClearScriptTypes", BindingFlags.Static | BindingFlags.NonPublic)!.Invoke(null, null);
+            DesignJobs.ResetForTest();
         }
 
         [SetUp]
@@ -181,7 +181,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Jobs
         Task<string?> RunAsync(string script)
         {
             _designData.JobScripts["TestJob"] = script;
-            return JobScripts.RunAsync(CreateModuleDataIO(), _designData, "TestJob", [],
+            return DesignJobs.RunAsync(CreateModuleDataIO(), _designData, "TestJob", [],
                 path => _resources.TryGetValue(path, out var bytes) ? new MemoryStream(bytes) : null);
         }
 
@@ -189,7 +189,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Jobs
         {
             var config = new MailConfig { DefaultInfraName = "Main" };
             configure?.Invoke(config);
-            JobScripts.UseMail(config, name => name == "Main" ? _sender : null);
+            DesignJobs.UseMail(config, name => name == "Main" ? _sender : null);
         }
 
         async Task<List<IDictionary<string, object>>> HistoryAsync() => await _db.QueryAsync(Ds, "SELECT * FROM MailHistory ORDER BY Id", new());
@@ -450,7 +450,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Jobs
         [Test]
         public void UseMailを呼んでいなければMailServiceを使うJobは失敗する()
         {
-            JobScripts.UseExcel();
+            DesignJobs.UseExcel();
             var ex = Assert.ThrowsAsync<InvalidOperationException>(() => RunAsync(SendOneScript + """
 
                 void Run(JobArguments args)
@@ -525,7 +525,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Jobs
             PdfSharp.Fonts.GlobalFontSettings.FontResolver ??= new ArialFontResolver();
             _resources["templates/order.xlsx"] = CreateOrderTemplate();
             UseMail();
-            JobScripts.UseExcel();
+            DesignJobs.UseExcel();
             Assert.That(ExcelObject.ConvertPdf, Is.Not.Null);
 
             Assert.That(await RunAsync(ExcelMailScript), Is.EqualTo("True"));
@@ -567,7 +567,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Jobs
                 converted.Add(stream.ToArray());
                 return new MemoryStream(Encoding.ASCII.GetBytes("PDF!"));
             };
-            JobScripts.UseExcel();
+            DesignJobs.UseExcel();
 
             Assert.That(await RunAsync(ExcelMailScript), Is.EqualTo("True"));
             Assert.That(converted, Has.Count.EqualTo(1));
@@ -584,7 +584,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Jobs
         {
             _resources["templates/order.xlsx"] = CreateOrderTemplate();
             UseMail();
-            JobScripts.UseExcel();
+            DesignJobs.UseExcel();
             ExcelObject.ConvertPdf = null;
             var ex = Assert.ThrowsAsync<InvalidOperationException>(() => RunAsync(ExcelMailScript));
             Assert.That(ex!.Message, Does.Contain("Excel.ConvertPdf"));
@@ -597,7 +597,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Jobs
         List<DesignCheckInfo> DesignCheck(string script)
         {
             _designData.JobScripts["TestJob"] = script;
-            var type = typeof(JobScriptRunner).Assembly.GetType("Codeer.LowCode.Blazor.DesignLogic.Check.JobScriptDesignCheck")!;
+            var type = typeof(JobExecutor).Assembly.GetType("Codeer.LowCode.Blazor.DesignLogic.Check.JobScriptDesignCheck")!;
             var result = (List<DesignCheckInfo>)type.GetMethod("Check", BindingFlags.Static | BindingFlags.NonPublic, [typeof(DesignData), typeof(string), typeof(string)])!
                 .Invoke(null, [_designData, "TestJob", script])!;
             foreach (var e in result) TestContext.Out.WriteLine($"{e.Code}: {e.Message}");
@@ -610,14 +610,14 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Jobs
             //登録なしでは型が無い
             Assert.That(DesignCheck(ExcelMailScript), Is.Not.Empty);
 
-            JobScriptRunner.AddScriptTypes(m => Extras.Jobs.JobScriptTypes.Register(m, new Extras.ScriptObjects.MailService()));
+            JobExecutor.AddScriptTypes(m => Extras.Jobs.JobScriptTypes.Register(m, new Extras.ScriptObjects.MailService()));
             Assert.That(DesignCheck(ExcelMailScript), Is.Empty);
         }
 
         [Test]
         public void 未結線のMailServiceは分かる文言で失敗する()
         {
-            JobScriptRunner.AddScriptTypes(m => Extras.Jobs.JobScriptTypes.Register(m, new Extras.ScriptObjects.MailService()));
+            JobExecutor.AddScriptTypes(m => Extras.Jobs.JobScriptTypes.Register(m, new Extras.ScriptObjects.MailService()));
             var ex = Assert.ThrowsAsync<InvalidOperationException>(() => RunAsync(SendOneScript + """
 
                 void Run(JobArguments args)

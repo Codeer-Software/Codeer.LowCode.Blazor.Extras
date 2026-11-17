@@ -27,7 +27,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Jobs
     /// </summary>
     public static class JobProcess
     {
-        /// <summary>ジョブを実行するユーザーの Id を子に渡す環境変数 (設定の <c>Jobs:UserId</c> を上書きする)。</summary>
+        /// <summary>ジョブを起動したユーザーの Id を子に渡す環境変数 (設定の <c>Jobs:UserId</c> を上書きする)。</summary>
         public const string UserIdEnvironmentVariable = "Jobs__UserId";
 
         /// <summary>ジョブモードを持つホストの dll (既定はこのプロセスの入口の dll。single-file 発行では空)。</summary>
@@ -67,7 +67,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Jobs
         /// </summary>
         /// <param name="jobName">ジョブの名前。</param>
         /// <param name="input">ジョブに渡す内容 (標準入力。ジョブの引数の <c>--stdin</c> がこれになる)。</param>
-        /// <param name="userId">ジョブを実行するユーザーの Id。</param>
+        /// <param name="userId">ジョブを起動したユーザーの Id。</param>
         /// <param name="allowConcurrent">同じ名前のジョブが実行中でも起動する。</param>
         public static async Task<JobResult?> RunAsync(string jobName, string input, string userId, bool allowConcurrent = true)
         {
@@ -149,7 +149,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Jobs
         /// </summary>
         /// <param name="jobName">ジョブの名前。</param>
         /// <param name="input">ジョブに渡す内容 (標準入力。ジョブの引数の <c>--stdin</c> がこれになる)。</param>
-        /// <param name="userId">ジョブを実行するユーザーの Id (<see cref="GetStatusAsync"/> で同じ Id のユーザーだけが状態を見られる)。</param>
+        /// <param name="userId">ジョブを起動したユーザーの Id (<see cref="GetStatusAsync"/> で同じ Id のユーザーだけが状態を見られる)。</param>
         /// <param name="allowConcurrent">同じ名前のジョブが実行中でも起動する。</param>
         public static Task<string?> StartAsync(string jobName, string input, string userId, bool allowConcurrent = true)
             => StartAsync(jobName, () => ToOutcomeAsync(Launch(jobName, input, CreateStartInfo(jobName, userId))), userId, allowConcurrent);

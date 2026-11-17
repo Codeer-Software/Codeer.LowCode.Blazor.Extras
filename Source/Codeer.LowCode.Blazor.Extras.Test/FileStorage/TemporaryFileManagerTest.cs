@@ -2,6 +2,7 @@ using Codeer.LowCode.Blazor.DataIO;
 using Codeer.LowCode.Blazor.DbAccess;
 using Codeer.LowCode.Blazor.Extras.Server.FileManagement;
 using Codeer.LowCode.Blazor.Extras.Test.Harness;
+using Codeer.LowCode.Blazor.Jobs;
 using Codeer.LowCode.Blazor.SystemSettings;
 
 namespace Codeer.LowCode.Blazor.Extras.Test.FileStorage
@@ -131,6 +132,27 @@ namespace Codeer.LowCode.Blazor.Extras.Test.FileStorage
         {
             var info = await Manager().AddFileAsync(new FileSaveInfo { DataSourceName = Ds, StorageName = "Local" }, "a.txt", new MemoryStream(new byte[10]));
             Assert.That(await ManagerWithoutOwnerColumn("B").IsTemporaryFileAsync(Ds, info.FileGuid!.Value), Is.True);
+        }
+
+        //1 日より古い一時ファイルの掃除は画面のアップロード (public の AddFileAsync) だけ。Job の FileService.Save (IJobFileStorage) では掃除しない
+        [Test]
+        public async Task 古い一時ファイルの掃除は画面のアップロードだけでJobの保存ではしない()
+        {
+            var manager = Manager();
+            var saveInfo = new FileSaveInfo { DataSourceName = Ds, StorageName = "Local" };
+            var old = await manager.AddFileAsync(saveInfo, "old.txt", new MemoryStream(new byte[10]));
+            await _db.ExecuteAsync(Ds, "update temporary_files set created_date_time = @p1 where guid = @p2",
+                new() { { "@p1", DateTime.UtcNow.AddDays(-2) }, { "@p2", old.FileGuid } });
+            var oldPath = Path.Combine(_dir, old.FileGuid.ToString()!);
+
+            await ((IJobFileStorage)manager).AddFileAsync(saveInfo, "job.txt", new MemoryStream(new byte[10]));
+            Assert.That(await manager.IsTemporaryFileAsync(Ds, old.FileGuid!.Value), Is.True, "Job の保存では古い記録を消さない");
+            Assert.That(File.Exists(oldPath), Is.True, "Job の保存では古い実体を消さない");
+
+            await manager.AddFileAsync(saveInfo, "upload.txt", new MemoryStream(new byte[10]));
+            Assert.That(await manager.IsTemporaryFileAsync(Ds, old.FileGuid!.Value), Is.False, "画面のアップロードで古い記録を消す");
+            Assert.That(File.Exists(oldPath), Is.False, "画面のアップロードで古い実体を消す");
+            Assert.That(await RowCount(), Is.EqualTo(2));
         }
 
         //Request.Body の性質 (戻れない・長さ不明)。failAt を過ぎると切断のように例外を投げる

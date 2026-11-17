@@ -65,7 +65,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
             => CreateDispatcher(_mail, _createSender, data => context.ModuleDataIO.CreateSystemAccess().AddAsync(data),
                 context.DesignData, e => LogError(context, e));
 
-        //Job スクリプトの MailService (JobScripts.UseMail) と共用。addHistory = 履歴の行の追加 (採番した Id を返す)・logError = 履歴を書けなかった理由
+        //Job スクリプトの MailService (DesignJobs.UseMail) と共用。addHistory = 履歴の行の追加 (採番した Id を返す)・logError = 履歴を書けなかった理由
         internal static MailDispatcher CreateDispatcher(MailConfig mail, Func<string, IMailSender?> createSender,
             Func<ModuleData, Task<string>> addHistory, DesignData designData, Action<string> logError)
         {

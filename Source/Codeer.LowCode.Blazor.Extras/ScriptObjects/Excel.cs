@@ -203,11 +203,22 @@ namespace Codeer.LowCode.Blazor.Extras.ScriptObjects
         /// <summary>PDF に変換してメールの添付にする。変換は <see cref="ConvertPdf"/> (サーバーのホストが設定する)。設定されていなければ例外。</summary>
         public MailAttachment ToPdfAttachment(string fileName)
         {
+            using var pdf = ToPdfMemoryStream();
+            return new() { FileName = fileName, ContentBase64 = Convert.ToBase64String(pdf.ToArray()) };
+        }
+
+        /// <summary>xlsx の内容 (Job スクリプトの FileService.Save でレコードの添付ファイルにする等)。</summary>
+        public MemoryStream ToMemoryStream() => new(GetBytes());
+
+        /// <summary>PDF に変換した内容。変換は <see cref="ConvertPdf"/> (サーバーのホストが設定する)。設定されていなければ例外。</summary>
+        public MemoryStream ToPdfMemoryStream()
+        {
             var convert = ConvertPdf ?? throw new InvalidOperationException("このアプリでは PDF に変換できません (Excel.ConvertPdf が設定されていません)");
             //変換は渡したストリームを閉じることがあるので、本の保存先ではなく写しを渡す
             using var stream = new MemoryStream(GetBytes());
+            //変換が返すストリームの位置や状態によらず、先頭から読める写しを返す
             using var pdf = convert(stream);
-            return new() { FileName = fileName, ContentBase64 = Convert.ToBase64String(pdf.ToArray()) };
+            return new MemoryStream(pdf.ToArray());
         }
 
         public ExcelCellIndex? FindCellByText(string text)

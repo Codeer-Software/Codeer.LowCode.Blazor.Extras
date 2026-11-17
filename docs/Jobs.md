@@ -105,7 +105,7 @@ new JobApi(jobNames, runsInServer, runInServer)
 |---|---|
 | `jobNames` | `Func<IEnumerable<string>>`。動かせるジョブの名前を返す (`new JobApi(jobNames)` と同じ名前)。サーバー内実行のジョブもここに含める (無い名前は起動しない)。デザインの差し替えで変わるジョブ (「デザインの Job スクリプト」) があるので、起動のたびに呼んで今の一覧を聞く |
 | `runsInServer` | `Func<string, bool>`。そのジョブ (デザインの `JobName`) をサーバー内実行にするか。`false` のジョブは別プロセスで起動する |
-| `runInServer` | `Func<string, string[], string, Task<string?>>`。サーバー内実行の口 (ジョブ名・ジョブの引数・実行するユーザーの Id → 成功の文言。失敗は例外)。約束は `JobMode.RunAsync` に渡す `runJob` と同じ |
+| `runInServer` | `Func<string, string[], string, Task<string?>>`。サーバー内実行の口 (ジョブ名・ジョブの引数・起動したユーザーの Id → 成功の文言。失敗は例外)。約束は `JobMode.RunAsync` に渡す `runJob` と同じ |
 
 `new JobApi(jobNames)` (口を渡さない) なら全部のジョブが別プロセスです。
 
@@ -126,18 +126,18 @@ new JobApi(jobNames, runsInServer, runInServer)
 
 ### デザインの Job スクリプト
 
-`JobScripts` は、デザインの Job スクリプト (`Jobs/名前.job.cs`) をジョブとして動かす口です。約束はホストのジョブと同じ (戻り値 = 成功の文言・失敗は例外) なので、ホストは自分のジョブに無い名前をこれに渡すだけです (`JobMode.RunAsync` の `runJob`・`JobApi` の `runInServer` のどちらからでも)。
+`DesignJobs` は、デザインの Job スクリプト (`Jobs/名前.job.cs`) をジョブとして動かす口です。約束はホストのジョブと同じ (戻り値 = 成功の文言・失敗は例外) なので、ホストは自分のジョブに無い名前をこれに渡すだけです (`JobMode.RunAsync` の `runJob`・`JobApi` の `runInServer` のどちらからでも)。
 
 | メソッド | 内容 |
 |---|---|
 | `GetNames(getDesignData)` | デザインにある Job スクリプトの名前。デザインを読めない (デリゲートが例外) ときは空。ホストのジョブの名前と合わせて `jobNames` に渡す |
-| `RunAsync(moduleDataIO, designData, jobName, args, getResource)` | Job スクリプトを 1 つ動かし、Run の戻り値を返す (void なら null)。名前は大文字小文字を区別しない。無い名前・スクリプトのエラー・`Fail` は `InvalidOperationException` (メッセージが画面のエラーの文言)。読み書きは渡した `ModuleDataIO` を通る (権限はそのユーザー。実行ごとに作ったものを渡す)。`getResource` (省略可) はスクリプトの `Resources` の読み出し (デザインのリソースのパス → 内容。無ければ null)。渡さなければ `Resources` は何も読めない |
+| `RunAsync(moduleDataIO, designData, jobName, args, getResource, invokerUserId, fileStorage)` | Job スクリプトを 1 つ動かし、Run の戻り値を返す (void なら null)。名前は大文字小文字を区別しない。無い名前・スクリプトのエラー・`Fail` は `InvalidOperationException` (メッセージが画面のエラーの文言)。読み書きは渡した `ModuleDataIO` を通る (権限はそのユーザー = スクリプトの `CurrentUser`。実行ごとに作ったものを渡す)。`getResource` (省略可) はスクリプトの `Resources` の読み出し (デザインのリソースのパス → 内容。無ければ null)。渡さなければ `Resources` は何も読めない。`invokerUserId` (省略可) は起動したユーザーの Id (スクリプトの `Invoker`)。起動したユーザーとは別のユーザーの `ModuleDataIO` で動かすときに渡す。渡さなければ `Invoker` は `CurrentUser` と同じ。権限の判定には使わない。`fileStorage` (省略可) はスクリプトの `FileService` (レコードの添付ファイルの読み書き) が実体を読み書きする先。画面のアップロード・ダウンロードと同じ `TemporaryFileManager` を渡す。渡さなければ、置き場所に保存する添付は `FileService` で読み書きできない |
 | `UseMail(mail, createSender)` | Job スクリプトに `MailService` (メールの送信) を足す。プロセスの起動時に 1 回呼ぶ (何度呼んでも登録は 1 回・設定は最後に渡したもの)。引数は `MailApi` と同じ (`MailConfig` と、呼び名 → 送信インフラの対応表)。呼ばなければ Job スクリプトに `MailService` は無い |
 | `UseExcel()` | Job スクリプトに `Excel` を足す。`Excel.ConvertPdf` が未設定ならサーバーの変換 (Excel.Report.PDF) を入れる (PDF のフォントはホストが `GlobalFontSettings.FontResolver` で設定する)。呼ばなければ Job スクリプトに `Excel` は無い |
 
-スクリプトの `Logger` は実行先に合わせて出ます。別プロセス (`JobMode`) では標準出力 (`Warn` は `warn: `、`Error` は `error: ` が先頭)、サーバーの中では `JobProcess.LoggerFactory` (カテゴリは `JobScripts` の型名) にレベルどおり出ます。
+スクリプトの `Logger` は実行先に合わせて出ます。別プロセス (`JobMode`) では標準出力 (`Warn` は `warn: `、`Error` は `error: ` が先頭)、サーバーの中では `JobProcess.LoggerFactory` (カテゴリは `DesignJobs` の型名) にレベルどおり出ます。
 
-### Job スクリプトで使えるもの (MailService / Excel / Resources)
+### Job スクリプトで使えるもの (MailService / Excel / Resources / FileService)
 
 本体の Job スクリプトで使えるもの (検索・保存・`DBService.Commit()` 等) に加えて、`UseMail` / `UseExcel` を呼んだホストでは次が使えます。デザイナ (Extras.Designer) は同じものを設計チェック・入力補完に出します。
 
@@ -145,15 +145,16 @@ new JobApi(jobNames, runsInServer, runInServer)
 |---|---|
 | `MailService.Send(message)` | メールを送る (`UseMail`)。戻り値は `MailSendResult` (`IsSuccess` / `TotalCount` / `SuccessCount` / `Failures` (宛先 `To` と理由 `Error`))。送れなくても例外にならない |
 | `MailMessage` / `MailAttachment` | 送るメッセージ (`To` / `Cc` / `Bcc` / `Subject` / `Body` / `IsBodyHtml` / `ReplyTo` / `Attachments`) と添付 (`FileName` / `ContentBase64`) |
-| `Excel` | 画面のスクリプトと同じ Excel オブジェクト (`UseExcel`)。Job では `OverWrite(ModuleData)` / `ToAttachment(fileName)` / `ToPdfAttachment(fileName)` を使う |
+| `Excel` | 画面のスクリプトと同じ Excel オブジェクト (`UseExcel`)。Job では `OverWrite(ModuleData)` / `ToAttachment(fileName)` / `ToPdfAttachment(fileName)` / `ToMemoryStream()` / `ToPdfMemoryStream()` を使う |
 | `Resources.GetMemoryStream(path)` / `GetText(path)` | デザインのリソース (`RunAsync` の `getResource` で読む) |
+| `FileService.Save(moduleName, fieldName, fileName, content)` / `GetMemoryStream(moduleName, fieldName, id)` | レコードの添付ファイル (FileField の項目) の読み書き (`RunAsync` の `fileStorage` の置き場所)。`Save` の戻り値をレコードの添付の項目に入れて保存すると行に入る |
 
 メールの送り方は `MailDispatcher` のシステムメールと同じです。送信インフラは `MailConfig.DefaultInfraName`、`DebugRedirectAllTo` が効き、`HistoryModuleName` があれば送信履歴を書きます。差出人は送信インフラ設定のシステム送信者です (`From` を入れても使われない)。
 
 - **送ったメールは取り消せません**。Job が後で失敗する (`Fail`・実行時エラー) と、Job のトランザクションの書き込みは取り消されますが、送ったメールは戻りません。送信履歴も Job のトランザクションで書くので、一緒に取り消されます
 - そのため、データを書く Job では **書き込みを `DBService.Commit()` で確定してから送ります**。送った後にも `DBService.Commit()` を呼ぶと、その後で失敗しても送信履歴が残ります
 - **送信履歴を書けなかったら Job は失敗します** (「メールは送信しましたが、送信履歴を書けませんでした: 理由」)。最後の `DBService.Commit()` 以降の書き込みは取り消され、メールは送られています
-- `Excel` の `Download()` / `DownloadPdf()` は Job では使えません (ダウンロードするブラウザが無い)。ファイルはメールの添付にします
+- `Excel` の `Download()` / `DownloadPdf()` は Job では使えません (ダウンロードするブラウザが無い)。ファイルはメールの添付にするか、`FileService.Save` でレコードの添付ファイルにします
 
 期限が近いレコードを検索して、担当者ごとにメールを送る:
 
@@ -210,6 +211,61 @@ string Run(JobArguments args)
 }
 ```
 
+同じ帳票を PDF にして、注文の添付ファイル (FileField の項目 `Sheet`) に付ける:
+
+```csharp
+// Jobs/AttachOrderSheet.job.cs
+string Run(JobArguments args)
+{
+    var search = new ModuleSearcher<Order>();
+    search.AddEquals(e => e.Id.Value, args.Options[0]);
+    search.Select(e => e.Id, e => e.Title, e => e.OrderedOn, e => e.Customer, e => e.Lines);
+    var order = search.ExecuteRawFirstOrDefault();
+    if (order == null) Fail("注文がありません");
+
+    var change = new Order.Data();
+    change.Id = new IdFieldData();
+    change.Id.Value = order.Id.Value;
+    using (var excel = new Excel(Resources.GetMemoryStream("Reports/Order.xlsx"), "Order.xlsx"))
+    {
+        excel.OverWrite(order);
+        change.Sheet = FileService.Save("Order", "Sheet", "注文書.pdf", excel.ToPdfMemoryStream());
+    }
+    var submit = new ModuleSubmitter();
+    submit.Update(change);
+    var result = submit.Execute();
+    if (!result.Succeeded) Fail(result.Error);
+    return "付けました";
+}
+```
+
+レコードの添付にあるテンプレート (xlsx) を `FileService.GetMemoryStream` で読み、レコードの値で埋めて添付する:
+
+```csharp
+// Jobs/SendQuote.job.cs
+string Run(JobArguments args)
+{
+    var search = new ModuleSearcher<Quote>();
+    search.AddEquals(e => e.Id.Value, args.Options[0]);
+    var quote = search.ExecuteRawFirstOrDefault();
+    if (quote == null) Fail("見積がありません");
+    var template = FileService.GetMemoryStream("Quote", "Template", quote.Id.Value);
+    if (template == null) Fail("テンプレートがありません");
+
+    var mail = new MailMessage();
+    mail.To.Add(CurrentUser.Email.Value);
+    mail.Subject = "見積書 " + quote.Title.Value;
+    using (var excel = new Excel(template, "Template.xlsx"))
+    {
+        excel.OverWrite(quote);
+        mail.Attachments.Add(excel.ToAttachment("見積書.xlsx"));
+    }
+    var result = MailService.Send(mail);
+    if (!result.IsSuccess) Fail(result.Failures[0].Error);
+    return "送りました";
+}
+```
+
 #### Excel の追加分
 
 | メソッド | 内容 |
@@ -217,6 +273,8 @@ string Run(JobArguments args)
 | `OverWrite(ModuleData data)` | テンプレートを検索で読んだデータ (`ExecuteRaw` 等) で埋める。記法は `OverWrite(Module)` と同じ ([ExcelReportButtonField](ExcelReportButtonField.md) の「テンプレートの書き方」) |
 | `ToAttachment(fileName)` | 書き込んだ xlsx を `MailAttachment` にする |
 | `ToPdfAttachment(fileName)` | PDF に変換して `MailAttachment` にする。変換は `Excel.ConvertPdf` (`UseExcel` が入れる)。無ければ例外 |
+| `ToMemoryStream()` | 書き込んだ xlsx の内容。`FileService.Save` に渡してレコードの添付ファイルにする |
+| `ToPdfMemoryStream()` | PDF に変換した内容。`FileService.Save` に渡してレコードの添付ファイルにする。変換は `ToPdfAttachment` と同じ (無ければ例外) |
 
 `OverWrite(ModuleData)` が解決する記号 (`$` の後ろ):
 
@@ -237,7 +295,7 @@ string Run(JobArguments args)
 |---|---|---|
 | 引数 | `job <ジョブ名> --stdin` | `--stdin` を標準入力の内容に置き換える (`JobMode.StandardInputArgument`) |
 | 入力 | 標準入力に UTF-8 で書いて閉じる (コマンドラインの長さの上限に掛からない) | 標準入力を UTF-8 で読み切ってからジョブを動かす |
-| 実行ユーザー | 環境変数 `Jobs__UserId` (`JobProcess.UserIdEnvironmentVariable`) | 設定の `Jobs:UserId` として読める (環境変数が appsettings を上書きする) |
+| 起動したユーザー | 環境変数 `Jobs__UserId` (`JobProcess.UserIdEnvironmentVariable`) | 設定の `Jobs:UserId` として読める (環境変数が appsettings を上書きする) |
 | 出力 | 標準出力・標準エラーを UTF-8 で読み切る (パイプが詰まらないように、終了を待つ前に読み始める) | `Console.OutputEncoding` を UTF-8 にする |
 | 成功 | 終了コード 0。文言は標準出力の最後の行 | ジョブの戻り値を最後に 1 行書く (改行は空白に。null なら空行) |
 | 失敗 | 終了コード 0 以外。文言は標準エラーの最初の空でない行 | 例外のメッセージを標準エラーに、例外の全文を標準出力に書いて 1。ジョブが無ければ標準エラーに「ジョブ 'X' がありません」を書いて 2 |

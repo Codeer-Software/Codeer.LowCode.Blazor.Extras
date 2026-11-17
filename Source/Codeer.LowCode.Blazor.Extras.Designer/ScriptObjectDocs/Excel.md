@@ -42,11 +42,12 @@ void CustomExport_OnClick()
 
 ## Job スクリプト (Jobs/名前.job.cs) での使い方
 
-Job では Module が無いので、検索で読んだデータ (`ModuleData`) で埋めて、メールの添付にする (Job ではダウンロードできない = `Download()` / `DownloadPdf()` は使えない)。
+Job では Module が無いので、検索で読んだデータ (`ModuleData`) で埋めて、メールの添付かレコードの添付ファイルにする (Job ではダウンロードできない = `Download()` / `DownloadPdf()` は使えない)。
 
 - `OverWrite(ModuleData data)`: `OverWrite(Module)` と同じ記法。解決するのはデータに載っている項目と FieldData のプロパティだけ (モジュールのスクリプトの変数・関数、`$Resources.…` などサービスで始まる記号、画面のフィールドだけが持つメンバーは記号のまま残る)。デザインにあってデータに載っていない項目は空。`$一覧.Rows` は一覧の行、`$子.ChildModule.項目.Value` は ModuleField の子
 - 一覧 (明細) の行は、検索の `Select` に一覧と `Id` を入れたときだけ親と一緒に読まれる
 - `ToAttachment(fileName)` / `ToPdfAttachment(fileName)`: `MailAttachment` を返す。`MailService.Send` の `MailMessage.Attachments` に足す
+- `ToMemoryStream()` / `ToPdfMemoryStream()`: xlsx / PDF の内容 (`MemoryStream`) を返す。`FileService.Save` に渡し、戻り値をレコードの添付の項目に入れて保存する (例: `change.Sheet = FileService.Save("Order", "Sheet", "注文書.pdf", excel.ToPdfMemoryStream());`)。PDF の変換は `ToPdfAttachment` と同じ
 
 ```csharp
 string Run(JobArguments args)

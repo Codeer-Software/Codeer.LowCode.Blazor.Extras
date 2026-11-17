@@ -11,20 +11,20 @@ using Microsoft.Extensions.Logging;
 namespace Codeer.LowCode.Blazor.Extras.Server.Jobs
 {
     /// <summary>
-    /// デザインの Job スクリプト (Jobs/名前.job.cs) を、ここのジョブの約束 (戻り値 = 成功の文言・失敗は例外) で動かす。
+    /// デザインの Job (Jobs/名前.job.cs) を、ここのジョブの約束 (戻り値 = 成功の文言・失敗は例外) で動かす。
     /// ホストは、自分のジョブに無い名前をここへ渡すだけでよい (<see cref="JobMode.RunAsync"/> に渡す口・<see cref="JobApi"/> のサーバー内実行の口のどちらからでも)。
     /// スクリプトの Logger は実行先に合わせて出す: ジョブモード (別プロセス) では標準出力、サーバーの中では <see cref="JobProcess.LoggerFactory"/>。
     /// </summary>
-    public static class JobScripts
+    public static class DesignJobs
     {
         /// <summary>
-        /// デザインにある Job スクリプトの名前。デザインを読めないとき (まだ配置されていない・差し替え中) は空を返す (ジョブの一覧を出すところでは落とさない)。
+        /// デザインにある Job の名前。デザインを読めないとき (まだ配置されていない・差し替え中) は空を返す (ジョブの一覧を出すところでは落とさない)。
         /// </summary>
         public static IReadOnlyList<string> GetNames(Func<DesignData> getDesignData)
         {
             try
             {
-                return JobScriptRunner.GetJobNames(getDesignData());
+                return JobExecutor.GetJobNames(getDesignData());
             }
             catch
             {
@@ -33,17 +33,24 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Jobs
         }
 
         /// <summary>
-        /// Job スクリプトを 1 つ動かす。読み書きは渡した ModuleDataIO を通る (権限はその ModuleDataIO のユーザー。実行ごとに作ったものを渡す)。
+        /// Job を 1 つ動かす。読み書きは渡した ModuleDataIO を通る (権限はその ModuleDataIO のユーザー = スクリプトの CurrentUser。実行ごとに作ったものを渡す)。
         /// </summary>
-        /// <param name="jobName">Job スクリプトの名前 (大文字小文字は区別しない)。</param>
+        /// <param name="jobName">Job の名前 (大文字小文字は区別しない)。</param>
         /// <param name="args">ジョブの引数 (ジョブ名の後ろ)。</param>
         /// <param name="getResource">スクリプトの Resources の読み出し (デザインのリソースのパス → 内容。無ければ null)。渡さなければ Resources は何も読めない。</param>
+        /// <param name="invokerUserId">
+        /// 起動したユーザーの Id (スクリプトの Invoker)。起動したユーザーとは別のユーザーの ModuleDataIO で動かすときに渡す。渡さなければ ModuleDataIO のユーザーが起動したユーザー。
+        /// </param>
+        /// <param name="fileStorage">
+        /// スクリプトの FileService が添付ファイルの実体を読み書きする先 (画面のアップロード・ダウンロードと同じ <see cref="FileManagement.TemporaryFileManager"/> を渡す)。渡さなければ、置き場所に保存する添付は FileService で読み書きできない。
+        /// </param>
         /// <returns>成功したときの文言 (スクリプトの Run の戻り値)。失敗 (デザインに無い名前・スクリプトのエラー・Fail) は例外。</returns>
-        public static async Task<string?> RunAsync(ModuleDataIO moduleDataIO, DesignData designData, string jobName, string[] args, Func<string, MemoryStream?>? getResource = null)
+        public static async Task<string?> RunAsync(ModuleDataIO moduleDataIO, DesignData designData, string jobName, string[] args, Func<string, MemoryStream?>? getResource = null, string? invokerUserId = null,
+            IJobFileStorage? fileStorage = null)
         {
-            var name = JobScriptRunner.GetJobNames(designData).FirstOrDefault(e => string.Equals(e, jobName, StringComparison.OrdinalIgnoreCase))
+            var name = JobExecutor.GetJobNames(designData).FirstOrDefault(e => string.Equals(e, jobName, StringComparison.OrdinalIgnoreCase))
                 ?? throw new InvalidOperationException($"ジョブ '{jobName}' がありません");
-            var result = await JobScriptRunner.RunAsync(moduleDataIO, designData, name, JobArguments.Parse(args), new ScriptLogger(), getResource);
+            var result = await JobExecutor.RunAsync(moduleDataIO, designData, name, JobArguments.Parse(args), new ScriptLogger(), getResource, invokerUserId, fileStorage);
             if (!result.Succeeded) throw new InvalidOperationException(result.Error);
             return result.Message;
         }
@@ -72,7 +79,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Jobs
                 if (_mailRegistered) return;
                 _mailRegistered = true;
             }
-            JobScriptRunner.AddScriptTypes(m => JobScriptTypes.AddMail(m, new MailService(SendMailAsync)));
+            JobExecutor.AddScriptTypes(m => JobScriptTypes.AddMail(m, new MailService(SendMailAsync)));
         }
 
         /// <summary>
@@ -87,7 +94,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Jobs
                 if (_excelRegistered) return;
                 _excelRegistered = true;
             }
-            JobScriptRunner.AddScriptTypes(JobScriptTypes.AddExcel);
+            JobExecutor.AddScriptTypes(JobScriptTypes.AddExcel);
         }
 
         //テスト用: UseMail / UseExcel を呼ぶ前に戻す (本体の登録は本体の側で消す)
@@ -105,7 +112,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Jobs
         {
             MailSettings settings;
             lock (_sync) settings = _mailSettings!;
-            var moduleDataIO = JobScriptRunner.GetModuleDataIO(services)
+            var moduleDataIO = JobExecutor.GetModuleDataIO(services)
                 ?? throw new InvalidOperationException("MailService は Job スクリプトの実行の中でだけ使えます");
             //差出人は送信インフラ設定のシステム送信者 (画面からの送信と同じ。スクリプトの From は使わない)
             message.From = string.Empty;
@@ -145,7 +152,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Jobs
         class ScriptLogger : RequestInterfaces.ILogger
         {
             //ジョブモードの標準出力は親 (JobProcess) がログとして受ける。サーバーの中ではアプリのログへ
-            readonly ILogger? _logger = JobMode.IsRunning ? null : JobProcess.LoggerFactory?.CreateLogger(typeof(JobScripts).FullName!);
+            readonly ILogger? _logger = JobMode.IsRunning ? null : JobProcess.LoggerFactory?.CreateLogger(typeof(DesignJobs).FullName!);
 
             public Task Log(string message) => Write(LogLevel.Information, message, message);
             public Task Warn(string message) => Write(LogLevel.Warning, message, $"warn: {message}");

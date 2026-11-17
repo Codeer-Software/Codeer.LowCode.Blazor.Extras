@@ -13,13 +13,13 @@ using Microsoft.Extensions.Logging;
 namespace Codeer.LowCode.Blazor.Extras.Test.Jobs
 {
     /// <summary>
-    /// デザインの Job スクリプトをジョブの約束 (戻り値 = 成功の文言・失敗は例外) で動かす JobScripts。
+    /// デザインの Job スクリプトをジョブの約束 (戻り値 = 成功の文言・失敗は例外) で動かす DesignJobs。
     /// モジュール Order (Id / Name) を SQLite のファイル DB に置き、読み書きは渡した ModuleDataIO を通す。
     /// スクリプトの Logger の行き先は JobMode.IsRunning (internal・プロセスで一度 true になると戻らない。JobModeTest が同じプロセスで JobMode.RunAsync を呼ぶ) で分かれるので、
     /// テストごとにリフレクションで決めて後始末で戻す。JobProcess.LoggerFactory も static なので直列で動かし後始末で戻す。
     /// </summary>
     [TestFixture, NonParallelizable]
-    public class JobScriptsTest : IAuthenticationContext
+    public class DesignJobsTest : IAuthenticationContext
     {
         const string Ds = "Main";
 
@@ -37,7 +37,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Jobs
         public async Task SetUp()
         {
             DbAccessor.ClearTableDefinitionCache();
-            _dbFile = Path.Combine(Path.GetTempPath(), $"job_scripts_test_{Guid.NewGuid():N}.db");
+            _dbFile = Path.Combine(Path.GetTempPath(), $"design_jobs_test_{Guid.NewGuid():N}.db");
             _db = new DbAccessor(new[]
             {
                 new DataSource { Name = Ds, DataSourceType = DataSourceType.SQLite, ConnectionString = $"Data Source={_dbFile}" }
@@ -76,7 +76,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Jobs
 
         ModuleDataIO CreateModuleDataIO() => new(_designData, this, _db, new TemporaryFileManager(_db, [], new List<IFileStorage>()));
 
-        Task<string?> RunAsync(string jobName, params string[] args) => JobScripts.RunAsync(CreateModuleDataIO(), _designData, jobName, args);
+        Task<string?> RunAsync(string jobName, params string[] args) => DesignJobs.RunAsync(CreateModuleDataIO(), _designData, jobName, args);
 
         //JobMode.IsRunning (internal・setter は private)。テストの中で実行先を切り替えるためだけに使う
         static readonly PropertyInfo IsRunningProperty = typeof(JobMode).GetProperty("IsRunning", BindingFlags.Static | BindingFlags.NonPublic)!;
@@ -260,14 +260,46 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Jobs
         {
             _designData.JobScripts["A"] = "void Run(JobArguments args) { }";
             _designData.JobScripts["B"] = "void Run(JobArguments args) { }";
-            Assert.That(JobScripts.GetNames(() => _designData), Is.EquivalentTo(new[] { "A", "B" }));
-            Assert.That(JobScripts.GetNames(() => new DesignData()), Is.Empty);
+            Assert.That(DesignJobs.GetNames(() => _designData), Is.EquivalentTo(new[] { "A", "B" }));
+            Assert.That(DesignJobs.GetNames(() => new DesignData()), Is.Empty);
         }
 
         [Test]
         public void GetNamesはデザインを読めなければ空()
         {
-            Assert.That(JobScripts.GetNames(() => throw new IOException("まだ配置されていません")), Is.Empty);
+            Assert.That(DesignJobs.GetNames(() => throw new IOException("まだ配置されていません")), Is.Empty);
+        }
+
+        //ユーザーのモジュール (1 = 佐藤 / 2 = 鈴木) を置き、「実行ユーザー/起動したユーザー」の名前を返す Job を置く。ModuleDataIO のユーザーは 1
+        async Task SetUpWhoJobAsync()
+        {
+            await _db.ExecuteAsync(Ds, "CREATE TABLE Users (Id TEXT PRIMARY KEY, Name TEXT)", new());
+            await _db.ExecuteAsync(Ds, "INSERT INTO Users (Id, Name) VALUES ('1', '佐藤'), ('2', '鈴木')", new());
+            var user = new ModuleDesign { Name = "AppUser", DataSourceName = Ds, DbTable = "Users" };
+            user.Fields.Add(new IdFieldDesign { Name = "Id", DbColumn = "Id" });
+            user.Fields.Add(new TextFieldDesign { Name = "Name", DbColumn = "Name" });
+            _designData.AddModule(user);
+            _designData.AppSettings.CurrentUserModuleDesignName = "AppUser";
+            _designData.JobScripts["Who"] = """
+                string Run(JobArguments args)
+                {
+                    return CurrentUser.Name.Value + "/" + Invoker.Name.Value;
+                }
+                """;
+        }
+
+        [Test]
+        public async Task 起動したユーザーを渡さなければInvokerはCurrentUserと同じ()
+        {
+            await SetUpWhoJobAsync();
+            Assert.That(await RunAsync("Who"), Is.EqualTo("佐藤/佐藤"));
+        }
+
+        [Test]
+        public async Task 起動したユーザーを渡すとInvokerは起動したユーザーでCurrentUserはModuleDataIOのユーザー()
+        {
+            await SetUpWhoJobAsync();
+            Assert.That(await DesignJobs.RunAsync(CreateModuleDataIO(), _designData, "Who", [], invokerUserId: "2"), Is.EqualTo("佐藤/鈴木"));
         }
 
         class ListLoggerProvider(List<string> logs, List<LogLevel> levels) : ILoggerProvider
@@ -281,8 +313,8 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Jobs
                 public bool IsEnabled(LogLevel logLevel) => true;
                 public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
                 {
-                    //スクリプトの Logger はカテゴリ JobScripts で出る
-                    Assert.That(categoryName, Is.EqualTo(typeof(JobScripts).FullName));
+                    //スクリプトの Logger はカテゴリ DesignJobs で出る
+                    Assert.That(categoryName, Is.EqualTo(typeof(DesignJobs).FullName));
                     lock (logs)
                     {
                         logs.Add(formatter(state, exception));

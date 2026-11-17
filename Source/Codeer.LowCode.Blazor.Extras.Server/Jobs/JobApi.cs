@@ -25,7 +25,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Jobs
         /// <param name="jobNames">ホストが動かせるジョブの名前 (テンプレの JobRunner.Names)。無い名前は起動しない。デザインの差し替えで変わるジョブがあるので、起動のたびに今の一覧を聞く。</param>
         /// <param name="runsInServer">そのジョブ (デザインの JobName) をサーバー内実行にするか。false のジョブは別プロセスで起動する。</param>
         /// <param name="runInServer">
-        /// サーバー内実行の口 (ジョブ名・ジョブの引数・実行するユーザーの Id → 成功の文言。失敗は例外 = <see cref="JobMode.RunAsync"/> に渡す口と同じ約束)。
+        /// サーバー内実行の口 (ジョブ名・ジョブの引数・起動したユーザーの Id → 成功の文言。失敗は例外 = <see cref="JobMode.RunAsync"/> に渡す口と同じ約束)。
         /// 引数は画面の内容の JSON 1 つ。非同期では要求が終わった後も動くので、要求のものを使わず、受け取ったユーザーの Id で DB アクセスを組み立てる。
         /// </param>
         public JobApi(Func<IEnumerable<string>> jobNames, Func<string, bool> runsInServer, Func<string, string[], string, Task<string?>> runInServer)

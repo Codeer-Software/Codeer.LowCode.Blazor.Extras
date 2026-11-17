@@ -6,8 +6,8 @@ namespace Codeer.LowCode.Blazor.Extras.Jobs
 {
     /// <summary>
     /// Job スクリプト (サーバーで動くスクリプト) で使える Extras の型・サービス。
-    /// サーバー (Extras.Server の JobScripts.UseMail / UseExcel) とデザイナ (ExtrasDesignerInitializer) が同じものを登録するための 1 か所。
-    /// 本体の JobScriptRunner.AddScriptTypes に渡す処理の中で呼ぶ (Job の登録表は実行ごとに作るので、MailService もその都度作って渡す)。
+    /// サーバー (Extras.Server の DesignJobs.UseMail / UseExcel) とデザイナ (ExtrasDesignerInitializer) が同じものを登録するための 1 か所。
+    /// 本体の JobExecutor.AddScriptTypes に渡す処理の中で呼ぶ (Job の登録表は実行ごとに作るので、MailService もその都度作って渡す)。
     /// </summary>
     public static class JobScriptTypes
     {
