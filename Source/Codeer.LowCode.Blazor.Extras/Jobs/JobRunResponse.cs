@@ -23,5 +23,8 @@ namespace Codeer.LowCode.Blazor.Extras.Jobs
 
         /// <summary>成功したときに画面に出す文言 (空ならフィールドの既定の文言)。</summary>
         public string Message { get; set; } = string.Empty;
+
+        /// <summary>待って成功したときに、ジョブが返したデータの JSON (Job スクリプトの args.Result)。無ければ null。フィールドの Result になる。</summary>
+        public string? ResultJson { get; set; }
     }
 }

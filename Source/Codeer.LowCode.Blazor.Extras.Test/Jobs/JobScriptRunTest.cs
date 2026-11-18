@@ -69,13 +69,10 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Jobs
                 {
                     var search = new ModuleSearcher<Order>();
                     var rows = search.ExecuteRaw();
-                    var submit = new ModuleSubmitter();
                     var add = new Order.Data();
                     add.Name = new TextFieldData();
                     add.Name.Value = args.Options[0];
-                    submit.Add(add);
-                    var result = submit.Execute();
-                    if (!result.Succeeded) return result.Error;
+                    DBService.Add(add);
                     return $"{rows.Count} 件";
                 }
                 """;
@@ -114,12 +111,10 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Jobs
             _designData.JobScripts["Close"] = """
                 string Run(JobArguments args)
                 {
-                    var submit = new ModuleSubmitter();
                     var add = new Order.Data();
                     add.Name = new TextFieldData();
                     add.Name.Value = "X";
-                    submit.Add(add);
-                    submit.Execute();
+                    DBService.Add(add);
                     Fail("対象がありません");
                     return "ok";
                 }

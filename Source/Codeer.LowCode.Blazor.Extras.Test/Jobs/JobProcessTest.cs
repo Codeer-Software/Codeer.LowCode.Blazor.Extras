@@ -145,6 +145,32 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Jobs
         }
 
         [Test]
+        public async Task 同期_返したデータはResultJsonで文言は最後の行()
+        {
+            var result = (await JobProcess.RunAsync("Result", "{}", "u"))!;
+            Assert.That(result.Succeeded, Is.True, result.ToString());
+            Assert.That(result.Message, Is.EqualTo(JobMode.ResultJsonPrefix + "作りました"));
+            Assert.That(result.ResultJson, Is.EqualTo("{\"Total\":12800,\"Name\":\"山田\"}"));
+        }
+
+        [Test]
+        public async Task 非同期_返したデータは状態のResultJsonで返る()
+        {
+            var jobId = (await JobProcess.StartAsync("Result", "{}", "u"))!;
+            var status = await WaitFinishedAsync(jobId, "u");
+            Assert.That(status.Status, Is.EqualTo(JobStatus.Done));
+            Assert.That(status.ResultJson, Is.EqualTo("{\"Total\":12800,\"Name\":\"山田\"}"));
+            Assert.That(status.Result!["Total"], Is.EqualTo(12800m));
+
+            //返さないジョブ・失敗したジョブは null
+            Assert.That((await WaitFinishedAsync((await JobProcess.StartAsync("Echo", "{}", "u"))!, "u")).ResultJson, Is.Null);
+            var failed = await WaitFinishedAsync((await JobProcess.StartAsync("Fail", "{}", "u"))!, "u");
+            Assert.That(failed.Status, Is.EqualTo(JobStatus.Error));
+            Assert.That(failed.ResultJson, Is.Null);
+            Assert.That(failed.Result, Is.Null);
+        }
+
+        [Test]
         public async Task 非同期_知らないIdと別ユーザーはnull()
         {
             var jobId = (await JobProcess.StartAsync("Echo", "{}", "u"))!;
@@ -279,15 +305,24 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Jobs
         [Test]
         public async Task RunInNewProcessAsync_成功はジョブの戻り値の文言が返る()
         {
-            var message = await JobProcess.RunInNewProcessAsync("Echo", "入力", "user-7");
-            Assert.That(message, Is.EqualTo("user-7|1|入力"));
+            var result = await JobProcess.RunInNewProcessAsync("Echo", "入力", "user-7");
+            Assert.That(result.Message, Is.EqualTo("user-7|1|入力"));
+            Assert.That(result.ResultJson, Is.Null);
             Assert.That(_logs, Is.Empty);
+        }
+
+        [Test]
+        public async Task RunInNewProcessAsync_返したデータはResultJsonで返る()
+        {
+            var result = await JobProcess.RunInNewProcessAsync("Result", "{}", "u");
+            Assert.That(result.Message, Is.EqualTo(JobMode.ResultJsonPrefix + "作りました"));
+            Assert.That(result.ResultJson, Is.EqualTo("{\"Total\":12800,\"Name\":\"山田\"}"));
         }
 
         [Test]
         public async Task RunInNewProcessAsync_ジョブがnullを返したら空の文言()
         {
-            Assert.That(await JobProcess.RunInNewProcessAsync("Silent", "{}", "u"), Is.EqualTo(string.Empty));
+            Assert.That((await JobProcess.RunInNewProcessAsync("Silent", "{}", "u")).Message, Is.EqualTo(string.Empty));
         }
 
         //失敗の記録は呼び出し側 (JobApi) が行うので、ここでは記録しない
@@ -318,7 +353,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Jobs
             Assert.That(started, Is.Not.Null);
             Assert.That(running.IsCompleted, Is.False, "Sleep 5000 が先に終わっていては確かめたことにならない");
             await WaitFinishedAsync(started!, "u");
-            Assert.That(await running, Is.EqualTo("slept"));
+            Assert.That((await running).Message, Is.EqualTo("slept"));
         }
 
         //終わるまで状態を問い合わせる (最大 30 秒)

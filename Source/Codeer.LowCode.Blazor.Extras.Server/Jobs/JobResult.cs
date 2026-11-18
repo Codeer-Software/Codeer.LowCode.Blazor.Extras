@@ -2,7 +2,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Jobs
 {
     /// <summary>
     /// 別プロセスで動かしたジョブ 1 回の結果 (<see cref="JobProcess.RunAsync"/> の戻り値)。
-    /// 終了コード 0 が成功。成功の文言は標準出力の最後の行 (<see cref="JobMode"/> がジョブの戻り値を書く)、失敗の文言は標準エラーの最初の行 (例外のメッセージ)。
+    /// 終了コード 0 が成功。成功の文言は標準出力の最後の行 (<see cref="JobMode"/> がジョブの戻り値を書く)、返したデータはその直前の行、失敗の文言は標準エラーの最初の行 (例外のメッセージ)。
     /// </summary>
     public sealed class JobResult
     {
@@ -35,6 +35,25 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Jobs
             {
                 var text = Output.EndsWith('\n') ? Output[..^1] : Output;
                 return text[(text.LastIndexOf('\n') + 1)..].Trim();
+            }
+        }
+
+        /// <summary>
+        /// 成功したときに返したデータの JSON (標準出力の最後から 2 行目が <see cref="JobMode.ResultJsonPrefix"/> で始まるとき、その後ろ)。無い・失敗なら null。
+        /// </summary>
+        public string? ResultJson
+        {
+            get
+            {
+                if (!Succeeded) return null;
+                var text = Output.EndsWith('\n') ? Output[..^1] : Output;
+                var end = text.LastIndexOf('\n');
+                if (end < 0) return null;
+                var before = text[..end].TrimEnd('\r');
+                var line = before[(before.LastIndexOf('\n') + 1)..];
+                if (!line.StartsWith(JobMode.ResultJsonPrefix, StringComparison.Ordinal)) return null;
+                var json = line[JobMode.ResultJsonPrefix.Length..].Trim();
+                return json.Length == 0 ? null : json;
             }
         }
 

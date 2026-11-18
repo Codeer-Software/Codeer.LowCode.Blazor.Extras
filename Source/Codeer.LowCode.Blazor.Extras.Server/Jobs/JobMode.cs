@@ -9,6 +9,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Jobs
     /// <para>
     /// 親側 (<see cref="JobProcess"/>) との約束: 引数の <c>--stdin</c> は標準入力の内容 (UTF-8) に置き換える。
     /// 標準出力・標準エラーは UTF-8。成功したときは最後にジョブの戻り値を 1 行 (null なら空行) 標準出力に書く (画面に出る文言)。
+    /// 返すデータ (<see cref="JobRunResult.ResultJson"/>) があるときは、その直前に <see cref="ResultJsonPrefix"/> + JSON の 1 行を書く。
     /// 失敗したときは標準エラーに例外のメッセージだけ (画面に出る文言)、例外の全文は標準出力に出す。
     /// 手で動かすときは <c>echo {"data":{},"submit":null} | dotnet &lt;ホスト&gt;.dll job Sample --stdin</c>。
     /// </para>
@@ -25,14 +26,27 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Jobs
         /// <summary>引数のこの値を標準入力の内容に置き換える。</summary>
         public const string StandardInputArgument = "--stdin";
 
+        /// <summary>成功して返すデータがあるとき、標準出力の最後から 2 行目に書く行の先頭 (この後ろが 1 行の JSON)。</summary>
+        public const string ResultJsonPrefix = "#job-result:";
+
         /// <summary>
-        /// ジョブを 1 つ実行する。
+        /// ジョブを 1 つ実行する (ジョブが返すのは成功の文言だけ)。
         /// </summary>
         /// <param name="args"><c>job</c> より後ろの引数 (ジョブ名・ジョブの引数)。</param>
         /// <param name="jobNames">ホストが持つジョブの名前 (大文字小文字は区別しない)。</param>
         /// <param name="runJob">ジョブを動かす (ジョブ名・ジョブの引数 → 成功の文言。失敗は例外)。ホストがここで DB アクセスとジョブを組み立てる。</param>
         /// <returns>プロセスの終了コード。</returns>
-        public static async Task<int> RunAsync(string[] args, IEnumerable<string> jobNames, Func<string, string[], Task<string?>> runJob)
+        public static Task<int> RunAsync(string[] args, IEnumerable<string> jobNames, Func<string, string[], Task<string?>> runJob)
+            => RunAsync(args, jobNames, async (name, jobArgs) => new JobRunResult { Message = await runJob(name, jobArgs) });
+
+        /// <summary>
+        /// ジョブを 1 つ実行する。
+        /// </summary>
+        /// <param name="args"><c>job</c> より後ろの引数 (ジョブ名・ジョブの引数)。</param>
+        /// <param name="jobNames">ホストが持つジョブの名前 (大文字小文字は区別しない)。</param>
+        /// <param name="runJob">ジョブを動かす (ジョブ名・ジョブの引数 → 成功の文言と返すデータ。失敗は例外)。ホストがここで DB アクセスとジョブを組み立てる。</param>
+        /// <returns>プロセスの終了コード。</returns>
+        public static async Task<int> RunAsync(string[] args, IEnumerable<string> jobNames, Func<string, string[], Task<JobRunResult>> runJob)
         {
             Console.OutputEncoding = Encoding.UTF8;
             var names = jobNames.OrderBy(e => e, StringComparer.OrdinalIgnoreCase).ToList();
@@ -58,10 +72,10 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Jobs
                 return Failure;
             }
 
-            string? message;
+            JobRunResult? result;
             try
             {
-                message = await runJob(name, ReadStandardInput(args[1..]));
+                result = await runJob(name, ReadStandardInput(args[1..]));
             }
             catch (Exception e)
             {
@@ -71,8 +85,10 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Jobs
             }
 
             //ジョブの出力の後に、行を改めてから書く (ジョブが改行で終わらない出力を残していても混ざらない)。標準出力の最後の行が画面の成功の通知になる (null なら空行 = 既定の文言)
+            //返すデータはその直前の 1 行 (JSON の文字列の中に改行は無いので、改行を空白にしても内容は変わらない)
             Console.WriteLine();
-            Console.WriteLine(message?.ReplaceLineEndings(" ") ?? string.Empty);
+            if (!string.IsNullOrEmpty(result?.ResultJson)) Console.WriteLine(ResultJsonPrefix + result.ResultJson.ReplaceLineEndings(" "));
+            Console.WriteLine(result?.Message?.ReplaceLineEndings(" ") ?? string.Empty);
             return Success;
         }
 

@@ -65,6 +65,7 @@ Codeer.LowCode.Blazor.Extras 0.23.0 以降（Codeer.LowCode.Blazor 1.3.53 以降
 |---|---|---|
 | `Run()` | bool | ジョブを実行する（ボタンを押したのと同じ）。終わるまで待ち、成功なら `true`。非同期では起動できたら `true`（終わるのは待たない） |
 | `IsRunning` | bool | ジョブを頼んでいる間 `true`（同期は終わるまで・非同期は起動するまで） |
+| `Result` | JsonObject | 最後に `Run()` したジョブが返したデータ（下の「ジョブが返したデータ」）。`Run()` を始めると `null` に戻り、同期で成功してジョブがデータを返したときだけ入る。失敗・データを返さないジョブ・非同期では `null` |
 | `JobId` | string | 終わったことをまだ確かめていないジョブのうち、最後に起動したものの Id（`JobIds` の最後。無ければ空）。`GetJobStatus` で終わったと分かると `JobIds` から外れるので、同じジョブを二度問い合わせない |
 | `JobIds` | string[] | 非同期で起動して、終わったことをまだ確かめていないジョブの Id（起動順）。`GetJobStatus` で終わったと分かったら外れる |
 | `GetJobStatus(jobId)` | JobStatusResponse | 非同期のジョブの状態を 1 回問い合わせる。終わっていれば `JobIds` から外す。分からない（サーバーが再起動した・終わってから 30 分以上たった・通信できなかった）ときは `null`（サーバーが忘れたものは `JobIds` から外れ、通信できなかっただけなら残る）。終わるまで待つ機能はありません（確かめたいときに呼びます） |
@@ -77,6 +78,37 @@ Codeer.LowCode.Blazor.Extras 0.23.0 以降（Codeer.LowCode.Blazor 1.3.53 以降
 | `Status` | JobStatus | `JobStatus.Running` (まだ実行中) / `JobStatus.Done` (成功して終わった) / `JobStatus.Error` (失敗して終わった) |
 | `Message` | string | 成功したときのジョブの戻り値の文言 |
 | `Error` | string | 失敗したときのエラーの文言 |
+| `Result` | JsonObject | 成功したときにジョブが返したデータ（下の「ジョブが返したデータ」）。無ければ `null` |
+
+### ジョブが返したデータ
+
+デザイナで作った Job が `args.Result` に入れたデータは、同期ではこのフィールドの `Result`、非同期では `GetJobStatus` が返すものの `Result` で読めます（`JsonObject`。`r.Total` のように読む）。
+
+```csharp
+void CreateButton_OnClick()
+{
+    if (!CreateJob.Run()) return;
+    var r = CreateJob.Result;
+    Total.Value = r.Total;
+}
+```
+
+- 返るのはジョブが成功したときだけです。データを返さないジョブでは `null` です
+- キーは大文字で始まります（Job で `result.total` と入れても `r.Total` で読む）。読むキーは Job で必ず入れてください（値が無いときは `null` を入れる。入れていないキーを読むと `null` ではなく空の `JsonObject` になります）
+- 数値は `decimal`、`Guid`・日付は文字列で届きます
+
+Job が `FileService.SaveTemporary` で作ったファイルは、返ってきた Guid とファイル名を FileField の `SetTemporaryFile` に渡すと、その項目に入ります（画面でアップロードして保存していないファイルと同じ扱い。レコードを保存すると行に入ります）。
+
+```csharp
+void ReportButton_OnClick()
+{
+    if (!ReportJob.Run()) return;
+    var r = ReportJob.Result;
+    File.SetTemporaryFile(r.FileGuid, r.FileName);
+}
+```
+
+保存せずダウンロードだけするときは、`FileService.DownloadTemporaryFile("モジュール名", "項目名", r.FileGuid, r.FileName)` を呼びます（モジュール名・項目名は `SaveTemporary` に渡したもの）。
 
 見た目を変えたいとき・保存してから実行したいときは、「ボタンを表示」を `false` にし、このフィールドをレイアウトの「表示しないデータ項目」に入れて、ButtonField から呼び出します。
 
@@ -116,7 +148,7 @@ void CheckJob()
 アプリのテンプレート（Cookie）には入っています。自分で組むときは次の 2 つです。
 
 - クライアント: 設定は不要です（共通の API `ExtrasTransport.EndPoint` = `/api/extras` に送ります）。HTTP を使わないホストは `JobTriggerField.RunCoreAsync` に送り方を、`JobTriggerField.GetJobStatusCoreAsync` に非同期のジョブの状態の問い合わせ方を設定します（`GetJobStatusCoreAsync` が無ければ `GetJobStatus` は `null`）
-- サーバー: 共通の API（`Controllers/ExtrasController.cs`）の対応表 `Extras/ExtrasApiTable.cs` に `JobApi` を並べます（全部のジョブを別プロセスで動かすなら `new JobApi(JobRunner.Names)`）。Extras.Server の `JobApi` が `JobRunRequest`（`Codeer.LowCode.Blazor.Extras.Jobs`）を受け、このフィールドへの書き込み権限を確かめて、ジョブを動かします。既定は別プロセスで、ホストが実行の口を渡せば Web サーバーのプロセスの中でも動かせます（[ジョブ (バッチ)](Jobs.md) の「実行先」。デザインの `ProcessType` は実行の口に渡り、`new JobApi(JobRunner.Names)` では見ません）。非同期では `JobRunResponse` の `JobId` を返し、状態の問い合わせに `JobStatusResponse` を返します。同時実行を許さないジョブが実行中なら起動せずに失敗を返します
+- サーバー: 共通の API（`Controllers/ExtrasController.cs`）の対応表 `Extras/ExtrasApiTable.cs` に `JobApi` を並べます（全部のジョブを別プロセスで動かすなら `new JobApi(JobRunner.Names)`）。Extras.Server の `JobApi` が `JobRunRequest`（`Codeer.LowCode.Blazor.Extras.Jobs`）を受け、このフィールドへの書き込み権限を確かめて、ジョブを動かします。既定は別プロセスで、ホストが実行の口を渡せば Web サーバーのプロセスの中でも動かせます（[ジョブ (バッチ)](Jobs.md) の「実行先」。デザインの `ProcessType` は実行の口に渡り、`new JobApi(JobRunner.Names)` では見ません）。非同期では `JobRunResponse` の `JobId` を返し、状態の問い合わせに `JobStatusResponse` を返します。ジョブが返したデータは `JobRunResponse.ResultJson`（同期）/ `JobStatusResponse.ResultJson`（非同期）の JSON で返します（`RunCoreAsync` / `GetJobStatusCoreAsync` を使うホストも同じ）。同時実行を許さないジョブが実行中なら起動せずに失敗を返します
 
 ジョブ専用のコントローラで受ける場合は、従来どおり `JobTriggerField.EndPoint` にその URL を設定すればそちらに送ります（状態は `GET {EndPoint}/{jobId}`）。
 

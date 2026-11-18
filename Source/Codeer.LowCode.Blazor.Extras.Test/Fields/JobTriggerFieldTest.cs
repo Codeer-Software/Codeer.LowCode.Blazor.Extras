@@ -261,6 +261,68 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Fields
         }
 
         [Test]
+        public async Task 同期で成功して返したデータがあればResultで読める()
+        {
+            var (_, job, host) = await CreateAsync(withTable: false);
+            host.OnRunJob = _ => Task.FromResult<JobRunResponse?>(new JobRunResponse { Succeeded = true, ResultJson = "{\"Total\":12800,\"Name\":\"山田\",\"FileGuid\":null}" });
+
+            Assert.That(job.Result, Is.Null);
+            Assert.That(await job.RunAsync(), Is.True);
+
+            Assert.That(job.Result!["Total"], Is.EqualTo(12800m));
+            Assert.That(job.Result["Name"], Is.EqualTo("山田"));
+            Assert.That(job.Result["FileGuid"], Is.Null);
+        }
+
+        [Test]
+        public async Task Resultは次の実行の開始でnullに戻り返さないジョブと失敗ではnull()
+        {
+            var (_, job, host) = await CreateAsync(withTable: false);
+            host.OnRunJob = _ => Task.FromResult<JobRunResponse?>(new JobRunResponse { Succeeded = true, ResultJson = "{\"Total\":1}" });
+            await job.RunAsync();
+            Assert.That(job.Result, Is.Not.Null);
+
+            //実行中 (ホストに頼んでいる間) は前の結果が残っていない
+            JsonObject? during = new();
+            host.OnRunJob = _ => { during = job.Result; return Task.FromResult<JobRunResponse?>(new JobRunResponse { Succeeded = true }); };
+            Assert.That(await job.RunAsync(), Is.True);
+            Assert.That(during, Is.Null);
+            Assert.That(job.Result, Is.Null);
+
+            //失敗の応答にデータが入っていても使わない
+            host.OnRunJob = _ => Task.FromResult<JobRunResponse?>(new JobRunResponse { Succeeded = true, ResultJson = "{\"Total\":1}" });
+            await job.RunAsync();
+            host.OnRunJob = _ => Task.FromResult<JobRunResponse?>(new JobRunResponse { Succeeded = false, Error = "失敗", ResultJson = "{\"Total\":2}" });
+            Assert.That(await job.RunAsync(), Is.False);
+            Assert.That(job.Result, Is.Null);
+
+            //ホストの例外・通信の失敗
+            host.OnRunJob = _ => Task.FromResult<JobRunResponse?>(new JobRunResponse { Succeeded = true, ResultJson = "{\"Total\":1}" });
+            await job.RunAsync();
+            host.OnRunJob = _ => throw new InvalidOperationException("落ちた");
+            Assert.That(await job.RunAsync(), Is.False);
+            Assert.That(job.Result, Is.Null);
+        }
+
+        [Test]
+        public async Task 非同期ではResultはnullで状態のResultで読め通信のJSONには載らない()
+        {
+            var (_, job, host) = await CreateAsync(withTable: false, isAsynchronous: true);
+            host.OnRunJob = _ => Task.FromResult<JobRunResponse?>(new JobRunResponse { Started = true, JobId = "job-1" });
+            host.OnGetJobStatus = _ => Task.FromResult<JobStatusResponse?>(new JobStatusResponse { Status = JobStatus.Done, ResultJson = "{\"Total\":5}" });
+            Assert.That(await job.RunAsync(), Is.True);
+            Assert.That(job.Result, Is.Null);
+
+            var status = await job.GetJobStatusAsync("job-1");
+            Assert.That(status!.Result!["Total"], Is.EqualTo(5m));
+            Assert.That(new JobStatusResponse().Result, Is.Null);
+
+            var json = JsonConverterEx.SerializeObject(status, indented: false);
+            Assert.That(json, Does.Not.Contain("\"Result\""));
+            Assert.That(JsonConverterEx.DeserializeObject<JobStatusResponse>(json)!.Result!["Total"], Is.EqualTo(5m));
+        }
+
+        [Test]
         public async Task 失敗ならエラーの文言を通知してfalse()
         {
             var (_, job, host) = await CreateAsync(withTable: false);

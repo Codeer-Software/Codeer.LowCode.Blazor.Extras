@@ -11,6 +11,7 @@ using Codeer.LowCode.Blazor.Extras.Server.Jobs;
 using Codeer.LowCode.Blazor.Extras.Server.Mail;
 using Codeer.LowCode.Blazor.Extras.Test.Harness;
 using Codeer.LowCode.Blazor.Jobs;
+using Codeer.LowCode.Blazor.Json;
 using Codeer.LowCode.Blazor.Repository.Design;
 using Codeer.LowCode.Blazor.SystemSettings;
 using ExcelObject = Codeer.LowCode.Blazor.Extras.ScriptObjects.Excel;
@@ -110,15 +111,13 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Jobs
         static readonly Dictionary<string, byte[]> Report = new() { ["report.txt"] = Encoding.UTF8.GetBytes("report") };
 
         const string AddReportScript = """
-            ModuleSubmitterResult AddReport()
+            void AddReport()
             {
-                var submit = new ModuleSubmitter();
                 var add = new Doc.Data();
                 add.Name = new TextFieldData();
                 add.Name.Value = "A";
                 add.File = FileService.Save("Doc", "File", "report.txt", Resources.GetMemoryStream("report.txt"));
-                submit.Add(add);
-                return submit.Execute();
+                DBService.Add(add);
             }
 
             """;
@@ -129,8 +128,8 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Jobs
             var message = await RunAsync(AddReportScript + """
                 string Run(JobArguments args)
                 {
-                    var r = AddReport();
-                    return r.Succeeded ? "ok" : "ng:" + r.Error;
+                    AddReport();
+                    return "ok";
                 }
                 """, Report);
             Assert.That(message, Is.EqualTo("ok"));
@@ -150,8 +149,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Jobs
             var ex = Assert.ThrowsAsync<InvalidOperationException>(() => RunAsync(AddReportScript + """
                 string Run(JobArguments args)
                 {
-                    var r = AddReport();
-                    if (!r.Succeeded) return "ng:" + r.Error;
+                    AddReport();
                     Fail("x");
                     return "x";
                 }
@@ -161,6 +159,54 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Jobs
             Assert.That(await DocsAsync(), Is.Empty);
             var stored = StoredFiles().Single();
             Assert.That(await _files.IsTemporaryFileAsync(Ds, Guid.Parse(Path.GetFileName(stored))), Is.True);
+        }
+
+        //画面に渡すファイル: 一時ファイルの所有者はジョブの実行ユーザー ("1") でなく起動したユーザー (InvokerUserId)。Guid は結果 (args.Result) で返る
+        [Test]
+        public async Task SaveTemporaryは起動したユーザーの一時ファイルになり結果で渡せる()
+        {
+            await _db.ExecuteAsync(Ds, "ALTER TABLE temporary_files ADD COLUMN owner TEXT", new());
+            TemporaryFileManager Owned(string userId) => new(_db,
+                [new TemporaryFileTableInfo { DataSourceName = Ds, Table = "temporary_files", GuidColumn = "guid", CreatedDateTimeColumn = "created_date_time", OwnerColumn = "owner" }],
+                new List<IFileStorage> { new FileSystemFileStorage(new FileSystemStorageSettings { Name = "Local", Directory = _dir }) },
+                new UserContext(userId));
+
+            var files = Owned("1");
+            _designData.JobScripts["TestJob"] = """
+                string Run(JobArguments args)
+                {
+                    var file = FileService.SaveTemporary("Doc", "File", "report.txt", Resources.GetMemoryStream("report.txt"));
+                    var result = new JsonObject();
+                    result.FileGuid = file.FileGuid;
+                    result.FileName = file.FileName;
+                    result.FileSize = file.FileSize;
+                    args.Result = result;
+                    return "ok";
+                }
+                """;
+            var result = await JobExecutor.RunAsync(new JobExecutionContext
+            {
+                ModuleDataIO = new ModuleDataIO(_designData, this, _db, files),
+                DesignData = _designData,
+                GetResource = path => Report.TryGetValue(path, out var bytes) ? new MemoryStream(bytes) : null,
+                InvokerUserId = "A",
+                FileStorage = files,
+            }, "TestJob", [], new ListLogger());
+            Assert.That(result.Succeeded, Is.True, result.Error);
+
+            var r = JsonObject.ToJsonObject(result.ResultJson);
+            var guid = Guid.Parse((string)r["FileGuid"]!);
+            Assert.That(r["FileName"], Is.EqualTo("report.txt"));
+            Assert.That(r["FileSize"], Is.EqualTo(6m));
+            Assert.That(File.ReadAllBytes(Path.Combine(_dir, guid.ToString())), Is.EqualTo(Report["report.txt"]));
+            Assert.That(await Owned("A").IsTemporaryFileAsync(Ds, guid), Is.True, "起動した人の一時ファイル");
+            Assert.That(await Owned("1").IsTemporaryFileAsync(Ds, guid), Is.False, "ジョブの実行ユーザーのものではない");
+            Assert.That(await DocsAsync(), Is.Empty);
+        }
+
+        class UserContext(string userId) : IAuthenticationContext
+        {
+            public Task<string> GetCurrentUserIdAsync() => Task.FromResult(userId);
         }
 
         //レコードの添付にあるテンプレート (xlsx) を読み、レコードの値で埋めてメールに添付する
@@ -224,10 +270,8 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Jobs
                     excel.OverWrite(doc);
                     add.File = FileService.Save("Doc", "File", "{{fileName}}", excel.{{toStream}}());
                 }
-                var submit = new ModuleSubmitter();
-                submit.Add(add);
-                var r = submit.Execute();
-                return r.Succeeded ? "ok" : "ng:" + r.Error;
+                DBService.Add(add);
+                return "ok";
             }
             """;
 

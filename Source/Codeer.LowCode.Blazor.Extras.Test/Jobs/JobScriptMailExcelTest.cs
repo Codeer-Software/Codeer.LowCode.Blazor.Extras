@@ -349,13 +349,10 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Jobs
         const string AddTaskAndSendScript = """
             void AddTask(string title)
             {
-                var submit = new ModuleSubmitter();
                 var data = new TaskItem.Data();
                 data.Title = new TextFieldData();
                 data.Title.Value = title;
-                submit.Add(data);
-                var saved = submit.Execute();
-                if (!saved.Succeeded) Fail(saved.Error);
+                DBService.Add(data);
             }
 
             void Run(JobArguments args)

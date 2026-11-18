@@ -1,3 +1,7 @@
+using System.Text.Json.Serialization;
+using Codeer.LowCode.Blazor.Json;
+using Codeer.LowCode.Blazor.Script;
+
 namespace Codeer.LowCode.Blazor.Extras.Jobs
 {
     /// <summary>
@@ -13,5 +17,13 @@ namespace Codeer.LowCode.Blazor.Extras.Jobs
 
         /// <summary>Error のときのエラーの文言。</summary>
         public string Error { get; set; } = string.Empty;
+
+        /// <summary>Done のときに、ジョブが返したデータの JSON (Job スクリプトの args.Result)。無ければ null。</summary>
+        [ScriptHide]
+        public string? ResultJson { get; set; }
+
+        /// <summary>ジョブが返したデータ (<see cref="ResultJson"/> を読んだもの。スクリプトで <c>status.Result.Total</c> のように読む)。無ければ null。通信には載せない。</summary>
+        [JsonIgnore]
+        public JsonObject? Result => string.IsNullOrEmpty(ResultJson) ? null : JsonObject.ToJsonObject(ResultJson);
     }
 }

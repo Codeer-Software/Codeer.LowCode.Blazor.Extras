@@ -20,6 +20,25 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Jobs
         public void ErrorMessageは標準エラーの最初の空でない行(string error, string expected)
             => Assert.That(new JobResult("X", 1, "", error).ErrorMessage, Is.EqualTo(expected));
 
+        [TestCase("a\r\n#job-result:{\"A\":1}\r\nmsg\r\n", "{\"A\":1}")]
+        [TestCase("#job-result:{\"A\":1}\nmsg", "{\"A\":1}")]
+        [TestCase("a\r\n\r\nmsg\r\n", null)]
+        [TestCase("#job-result:{\"A\":1}\r\n\r\nmsg\r\n", null)]
+        [TestCase("\r\n#job-result:{\"A\":1}\r\n", null)]
+        [TestCase("#job-result:\r\nmsg\r\n", null)]
+        [TestCase("only", null)]
+        [TestCase("", null)]
+        public void ResultJsonは標準出力の最後から2行目の印の後ろ(string output, string? expected)
+            => Assert.That(new JobResult("X", 0, output, "").ResultJson, Is.EqualTo(expected));
+
+        [Test]
+        public void 失敗したらResultJsonはnull()
+            => Assert.That(new JobResult("X", 1, "#job-result:{\"A\":1}\r\nmsg\r\n", "err").ResultJson, Is.Null);
+
+        [Test]
+        public void 印は約束の定数()
+            => Assert.That(JobMode.ResultJsonPrefix, Is.EqualTo("#job-result:"));
+
         [Test]
         public void Succeededは終了コード0()
         {

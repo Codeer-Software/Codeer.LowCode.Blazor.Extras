@@ -46,6 +46,10 @@ namespace Codeer.LowCode.Blazor.Extras.Server.FileManagement
         }
 
         public async Task ToTemporaryFile(string dataSourceName, Guid guid)
+            => await ToTemporaryFile(dataSourceName, guid, GetOwnerAsync);
+
+        //getOwner: 所有者列に記録する人 (所有者列の設定があるときだけ呼ぶ)
+        async Task ToTemporaryFile(string dataSourceName, Guid guid, Func<Task<string?>> getOwner)
         {
             var dataSource = _dbAccessor.GetDataSource(dataSourceName);
             if (dataSource == null) return;
@@ -65,7 +69,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.FileManagement
             if (!string.IsNullOrEmpty(mgr.OwnerColumn))
             {
                 var p3 = parameterPrefix + 3;
-                parameters[p3] = await GetOwnerAsync();
+                parameters[p3] = await getOwner();
                 sql = $"insert into {parts.Blanket(mgr.Table)}({parts.Blanket(mgr.GuidColumn)},{parts.Blanket(mgr.CreatedDateTimeColumn)},{parts.Blanket(mgr.OwnerColumn)}) values({p1}, {p2}, {p3})";
             }
             await _dbAccessor.ExecuteAsync(dataSourceName, sql, parameters);
@@ -149,7 +153,14 @@ namespace Codeer.LowCode.Blazor.Extras.Server.FileManagement
         async Task<DataIO.FileInfo> IJobFileStorage.AddFileAsync(FileSaveInfo info, string? fileName, Stream content)
             => await AddFileCoreAsync(info, fileName, content);
 
+        //Job スクリプトの FileService.SaveTemporary (起動したユーザーに渡す一時ファイル)。Job 版の AddFile との違いは、所有者列に今のユーザーでなく ownerUserId を入れることだけ
+        async Task<DataIO.FileInfo> IJobFileStorage.AddTemporaryFileAsync(FileSaveInfo info, string? fileName, Stream content, string? ownerUserId)
+            => await AddFileCoreAsync(info, fileName, content, () => Task.FromResult(ownerUserId));
+
         async Task<DataIO.FileInfo> AddFileCoreAsync(FileSaveInfo info, string? fileName, Stream stream)
+            => await AddFileCoreAsync(info, fileName, stream, GetOwnerAsync);
+
+        async Task<DataIO.FileInfo> AddFileCoreAsync(FileSaveInfo info, string? fileName, Stream stream, Func<Task<string?>> getOwner)
         {
             var data = new DataIO.FileInfo
             {
@@ -160,7 +171,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.FileManagement
             //本文を読みながら置き場所へ書く (全部をメモリに置かない。大きさは流しながら数える)
             var storage = _fileStorages.Find(info.StorageName);
             var counting = new CountingReadStream(stream);
-            await ToTemporaryFile(info.DataSourceName, data.FileGuid.Value);
+            await ToTemporaryFile(info.DataSourceName, data.FileGuid.Value, getOwner);
             try
             {
                 await storage.WriteAsync(data.FileGuid.Value, counting);

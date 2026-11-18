@@ -94,7 +94,7 @@ public class JobTriggerFieldDesign : FieldDesignBase
 ### ホストの結線 (ユーザーの作業。テンプレートには入っている)
 
 - クライアント: 設定不要 (共通の API `ExtrasTransport.EndPoint` = `/api/extras` に送る。`GetJobStatus` も同じ口で問い合わせる)。ジョブ専用のエンドポイントで受けるホストは `JobTriggerField.EndPoint` を設定する (状態は `GET {EndPoint}/{jobId}`)。HTTP を使わないホストは `JobTriggerField.RunCoreAsync` と `JobTriggerField.GetJobStatusCoreAsync` (非同期のジョブの状態の問い合わせ) を差し替える
-- サーバー: ホストの共通の API (テンプレートの `Controllers/ExtrasController.cs`) の対応表 `Extras/ExtrasApiTable.cs` に `JobApi` が載っていること (テンプレートは載せ済み: `new JobApi(() => JobRunner.Names, JobRunner.RunFromScreenAsync)`。`RunFromScreenAsync` はジョブ名・画面の内容の JSON・ユーザーの Id・`ProcessType` を受ける。動かせるジョブは `Jobs/JobRunner`)。`JobApi` が `JobRunRequest` を受け、書き込み権限を確かめてホストが渡した実行の口でジョブを動かす (既定は Extras.Server の `JobProcess` で別プロセス。Web サーバーのプロセスの中でも動かせる)。非同期では `JobId` を返し、状態の問い合わせに `JobStatusResponse` を返す。`AllowsConcurrentRuns` が `false` で同じジョブが実行中なら起動せず失敗を返す
+- サーバー: ホストの共通の API (テンプレートの `Controllers/ExtrasController.cs`) の対応表 `Extras/ExtrasApiTable.cs` に `JobApi` が載っていること (テンプレートは載せ済み: `new JobApi(() => JobRunner.Names, JobRunner.RunFromScreenAsync)`。`RunFromScreenAsync` はジョブ名・画面の内容の JSON・ユーザーの Id・`ProcessType` を受ける。動かせるジョブは `Jobs/JobRunner`)。`JobApi` が `JobRunRequest` を受け、書き込み権限を確かめてホストが渡した実行の口でジョブを動かす (既定は Extras.Server の `JobProcess` で別プロセス。Web サーバーのプロセスの中でも動かせる)。非同期では `JobId` を返し、状態の問い合わせに `JobStatusResponse` を返す。ジョブが返したデータは `JobRunResponse.ResultJson` (同期) / `JobStatusResponse.ResultJson` (非同期) の JSON。`AllowsConcurrentRuns` が `false` で同じジョブが実行中なら起動せず失敗を返す
 
 ## Script
 
@@ -102,12 +102,37 @@ public class JobTriggerFieldDesign : FieldDesignBase
 |---|---|---|
 | `Run()` | bool | ジョブを実行する (ボタンを押したのと同じ)。同期は終わるまで待ち、成功なら `true`。非同期は起動できたら `true` (終わるのは待たない)。入力エラー・失敗・実行中・書けない (ViewOnly) か無効のときは `false` |
 | `IsRunning` | bool | ジョブを頼んでいる間 `true` (同期は終わるまで・非同期は起動するまで) |
+| `Result` | JsonObject | 最後に `Run()` したジョブが返したデータ (Job スクリプトの `args.Result`)。`Run()` を始めると `null` に戻り、同期で成功してジョブがデータを返したときだけ入る。失敗・データを返さないジョブ・非同期では `null` (非同期は `GetJobStatus` の `Result`) |
 | `JobId` | string | 終わったことをまだ確かめていないジョブのうち、最後に起動したものの Id (`JobIds` の最後。無ければ空)。`GetJobStatus` で終わったと分かると `JobIds` から外れるので、同じジョブを二度問い合わせない |
 | `JobIds` | string[] | 非同期で起動して、終わったことをまだ確かめていないジョブの Id (起動順)。`GetJobStatus` で終わったと分かったら外れる |
 | `GetJobStatus(jobId)` | JobStatusResponse | 非同期のジョブの状態を 1 回問い合わせる (自動では呼ばれない)。終わっていれば `JobIds` から外す。分からない (知らない Id = サーバーの再起動・終了から 30 分以上・通信できない・問い合わせる口が無いホスト) なら `null`。サーバーが知らない Id も `JobIds` から外す (通信できなかっただけなら残る)。通信の失敗は通知しない |
 | `GetJobStatus()` | JobStatusResponse | 引数を省く (空文字も同じ) と `JobIds` の先頭 (一番古いもの) を問い合わせる。`JobIds` が空なら問い合わせずに `null`。`JobId` (`JobIds` の最後) とは違うものを指す (同時実行を許さないなら同じもの) |
 
-`JobStatusResponse`: `Status` (JobStatus。`JobStatus.Running` = まだ実行中 / `JobStatus.Done` = 成功して終わった / `JobStatus.Error` = 失敗して終わった) / `Message` (string。成功したときのジョブの戻り値の文言) / `Error` (string。失敗したときのエラーの文言)
+`JobStatusResponse`: `Status` (JobStatus。`JobStatus.Running` = まだ実行中 / `JobStatus.Done` = 成功して終わった / `JobStatus.Error` = 失敗して終わった) / `Message` (string。成功したときのジョブの戻り値の文言) / `Error` (string。失敗したときのエラーの文言) / `Result` (JsonObject。成功したときにジョブが返したデータ (Job スクリプトの `args.Result`)。無ければ `null`)
+
+ジョブが返したデータを項目に入れる例 (同期。Job スクリプトは `args.Result` に `JsonObject` を入れる。キーは大文字始まりで届く。読むキーは Job で必ず入れる (値が無いときは `null` を入れる。入れていないキーを読むと `null` ではなく空の `JsonObject`)。数値は `decimal`、`Guid`・日付は文字列で届く):
+
+```csharp
+void CreateButton_OnClick()
+{
+    if (!CreateJob.Run()) return;
+    var r = CreateJob.Result;
+    Total.Value = r.Total;
+}
+```
+
+Job が `FileService.SaveTemporary` で作ったファイルを FileField に入れる例 (Job は `FileGuid` / `FileName` を `args.Result` に入れて返す):
+
+```csharp
+void ReportButton_OnClick()
+{
+    if (!ReportJob.Run()) return;
+    var r = ReportJob.Result;
+    File.SetTemporaryFile(r.FileGuid, r.FileName);
+}
+```
+
+保存せずダウンロードだけするときは `FileService.DownloadTemporaryFile("モジュール名", "項目名", r.FileGuid, r.FileName)` (モジュール名・項目名は `SaveTemporary` に渡したもの)。
 
 ButtonField から実行する例 (`ShowButton` を `false` にしてこのフィールドを `DataOnlyFields` に入れる):
 

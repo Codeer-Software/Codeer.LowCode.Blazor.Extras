@@ -5,7 +5,7 @@
 
 - 親側 `JobProcess`: このプロセス自身を `job <ジョブ名> --stdin` で起動し、入力を標準入力で渡して結果 (`JobResult`) を受け取る。待たずに起動したジョブは Id で状態を問い合わせられる
 - 子側 `JobMode`: `job` より後ろの引数を受けてジョブを 1 つ実行し、終了コードを返す
-- 親と子の約束 (引数の並び・標準入力・環境変数・終了コード・UTF-8・結果の文言の取り出し) はこの 2 つの中に閉じています。ホストはジョブの一覧と DB アクセスの組み立てだけを書きます
+- 親と子の約束 (引数の並び・標準入力・環境変数・終了コード・UTF-8・結果の文言と返したデータの取り出し) はこの 2 つの中に閉じています。ホストはジョブの一覧と DB アクセスの組み立てだけを書きます
 - 画面のボタンから起動するジョブは、どこで動かすかをホストが実行の口で決められます。別プロセス (上の 2 つ。既定) か、Web サーバーのプロセスの中 (「実行先」)。JobTriggerField の `ProcessType` (`NewProcess` / `InProcess`) が実行の口に渡るので、デザインで指定できます (どう動かすかはホスト)
 
 Codeer.LowCode.Blazor.Extras.Server 0.23.0 以降。名前空間 `Codeer.LowCode.Blazor.Extras.Server.Jobs`。
@@ -35,9 +35,16 @@ if (isJob) return await JobMode.RunAsync(args[1..], JobRunner.Names, (name, jobA
 |---|---|
 | `args` | `job` より後ろの引数 (ジョブ名・ジョブの引数) |
 | `jobNames` | ホストが持つジョブの名前 (大文字小文字は区別しない) |
-| `runJob` | ジョブを動かす (登録した名前・ジョブの引数 → 成功の文言。失敗は例外)。ホストはここで DB アクセスとジョブを組み立てる (テンプレートの `Jobs/JobRunner.cs`) |
+| `runJob` | ジョブを動かす (登録した名前・ジョブの引数 → 成功の文言と返すデータ (`JobRunResult`)。失敗は例外)。ホストはここで DB アクセスとジョブを組み立てる (テンプレートの `Jobs/JobRunner.cs`)。成功の文言 (`string?`) だけを返す形も使える (返すデータなし) |
 
 戻り値はプロセスの終了コード (`JobMode.Success` = 0 / `Failure` = 1 / `JobNotFound` = 2)。
+
+`JobRunResult` (ジョブが成功したときに実行の口が返すもの。失敗は例外で返す):
+
+| メンバー | 内容 |
+|---|---|
+| `Message` | 成功の文言 (画面の成功の通知に出る)。null なら既定の文言 |
+| `ResultJson` | 起動した側に返すデータの JSON。デザイナで作った Job の `args.Result` (本体の `JobExecutionResult.ResultJson`) を入れる。無ければ null。画面では JobTriggerField の `Result` (同期) / `GetJobStatus` の `Result` (非同期) になる ([JobTriggerField](JobTriggerField.md)) |
 
 ### 親側: JobApi と Program.cs
 
@@ -65,7 +72,7 @@ if (design.IsAsynchronous)
 }
 var result = await JobProcess.RunAsync(design.JobName, input, userId, design.AllowsConcurrentRuns);   // 終わるまで待つ
 if (result == null) return Failure($"ジョブ '{design.JobName}' は実行中です");
-return result.Succeeded ? new JobRunResponse { Succeeded = true, Message = result.Message } : Failure(result.ErrorMessage);
+return result.Succeeded ? new JobRunResponse { Succeeded = true, Message = result.Message, ResultJson = result.ResultJson } : Failure(result.ErrorMessage);
 
 //HTTP としては成功 (200) で返す業務上の失敗。監査ログ (AuditLog) にも失敗として残す
 JobRunResponse Failure(string error)
@@ -86,6 +93,7 @@ var status = await JobProcess.GetStatusAsync(jobId, userId);
 |---|---|
 | `Succeeded` | 終了コードが 0 |
 | `Message` | 成功したときの文言 = 標準出力の最後の行 (ジョブの戻り値。null なら空) |
+| `ResultJson` | 成功したときに返したデータの JSON = 標準出力の最後から 2 行目が `JobMode.ResultJsonPrefix` で始まるときのその後ろ。無い・失敗なら null |
 | `ErrorMessage` | 失敗したときの文言 = 標準エラーの最初の空でない行 (例外のメッセージ)。無ければ「ジョブ X が失敗しました (終了コード N)」 |
 | `ExitCode` / `Output` / `Error` | 終了コード・標準出力の全文・標準エラーの全文 |
 
@@ -94,7 +102,7 @@ var status = await JobProcess.GetStatusAsync(jobId, userId);
 | メンバー | 内容 |
 |---|---|
 | `JobProcess.StartAsync(jobName, input, userId, allowConcurrent = true)` | 起動したら待たずにジョブの Id (文字列) を返す。`allowConcurrent` が `false` で同じ名前のジョブが実行中なら、起動せずに null。起動できなければ例外 |
-| `JobProcess.GetStatusAsync(jobId, userId)` | `JobStatusResponse` (`Status` = `JobStatus` の `Running` / `Done` / `Error`、成功の文言 `Message` = `JobResult.Message`、失敗の文言 `Error` = `JobResult.ErrorMessage`)。知らない Id・別のユーザーが起動したジョブ・`Cache` が未設定なら null |
+| `JobProcess.GetStatusAsync(jobId, userId)` | `JobStatusResponse` (`Status` = `JobStatus` の `Running` / `Done` / `Error`、成功の文言 `Message` = `JobResult.Message`、返したデータ `ResultJson` = `JobResult.ResultJson` (成功したときだけ。無ければ null)、失敗の文言 `Error` = `JobResult.ErrorMessage`)。知らない Id・別のユーザーが起動したジョブ・`Cache` が未設定なら null |
 | `JobProcess.Cache` | 状態の置き場 (`IDistributedCache`)。ホストが起動時に設定する。未設定なら `StartAsync` は Id を返すが状態を残さない |
 | `JobProcess.FinishedRetention` | 終わった結果を持っておく時間 (終了からの経過。既定 30 分)。過ぎたら `GetStatusAsync` は null |
 
@@ -109,13 +117,13 @@ new JobApi(jobNames, run)
 | 引数 | 内容 |
 |---|---|
 | `jobNames` | `Func<IEnumerable<string>>`。動かせるジョブの名前を返す (`new JobApi(jobNames)` と同じ名前)。このプロセスの中で動かすジョブもここに含める (無い名前は起動しない)。デザインの差し替えで変わるジョブ (「デザイナで作った Job」) があるので、起動のたびに呼んで今の一覧を聞く |
-| `run` | `Func<string, string, string, JobTriggerProcessType, Task<string?>>`。実行の口 (ジョブ名 (デザインの `JobName`)・画面の内容の JSON・起動したユーザーの Id・デザインの `ProcessType` → 成功の文言。失敗は例外)。どこで動かすかは、この中でホストが決める |
+| `run` | `Func<string, string, string, JobTriggerProcessType, Task<JobRunResult>>`。実行の口 (ジョブ名 (デザインの `JobName`)・画面の内容の JSON・起動したユーザーの Id・デザインの `ProcessType` → 成功の文言と返すデータ。失敗は例外)。どこで動かすかは、この中でホストが決める |
 
 `ProcessType` (`JobTriggerProcessType`。名前空間 `Codeer.LowCode.Blazor.Extras.Designs`) は JobTriggerField のデザインの値 (`NewProcess` (既定) / `InProcess`) をそのまま渡すだけです。クライアントの要求からは読みません。`JobApi` はこの値で分岐しないので、どう動かすか (値に従うか・ジョブによって決めるか) はホストの実行の口が決めます。
 
 `new JobApi(jobNames)` は `new JobApi(() => jobNames, (name, input, userId, _) => JobProcess.RunInNewProcessAsync(name, input, userId))` と同じです (全部のジョブが別プロセス。`ProcessType` は見ません)。
 
-`JobProcess.RunInNewProcessAsync(jobName, input, userId)` は、別プロセスで動かす実行の口です。ジョブを `job <ジョブ名> --stdin` で起動して終わるまで待ち、成功なら文言 (`JobResult.Message`。ジョブが null を返したら空) を返し、失敗なら例外 (メッセージ = `JobResult.ErrorMessage`) を投げます。起動できなければ起動の例外です。実行中として数えず、失敗も記録しません (どちらも `JobApi` が行う)。
+`JobProcess.RunInNewProcessAsync(jobName, input, userId)` は、別プロセスで動かす実行の口です。ジョブを `job <ジョブ名> --stdin` で起動して終わるまで待ち、成功なら `JobRunResult` (文言 = `JobResult.Message`。ジョブが null を返したら空。返したデータ = `JobResult.ResultJson`) を返し、失敗なら例外 (メッセージ = `JobResult.ErrorMessage`) を投げます。起動できなければ起動の例外です。実行中として数えず、失敗も記録しません (どちらも `JobApi` が行う)。
 ジョブによって動かす場所を変えるときは、実行の口の中で別プロセスにするジョブだけこれを呼びます。デザインの `ProcessType` に従うなら次のようになります。
 
 ```csharp
@@ -128,7 +136,7 @@ new JobApi(() => jobNames, (name, input, userId, processType) => processType == 
 
 - 入力は画面の内容の JSON (`JobRunRequest.Arguments`。デザインの `UseSubmitData` が `false` なら `{}`。別プロセスでは標準入力で渡り、ジョブの引数の `--stdin` がこれに置き換わる)。ユーザーは押したユーザーの Id
 - 要求とは切り離して呼ばれ、非同期では要求が終わった後も動く。このプロセスの中で動かすなら、ホストは要求のもの (DB 接続・`ModuleDataIO`) を使わず、受け取ったユーザーの Id で DB アクセスを組み立てる。`JobApi` は呼ぶ前に要求の DB 接続をプールへ返す
-- 成功の文言は戻り値 (改行は空白に。null なら空)。失敗の文言は例外のメッセージの最初の空でない行 (`RunInNewProcessAsync` の失敗は `JobResult.ErrorMessage`)
+- 成功の文言は戻り値の `Message` (改行は空白に。null なら空)。返すデータは戻り値の `ResultJson` (同期は `JobRunResponse.ResultJson`、非同期は状態の `ResultJson` になる。失敗では返らない)。失敗の文言は例外のメッセージの最初の空でない行 (`RunInNewProcessAsync` の失敗は `JobResult.ErrorMessage`)
 - 待つかどうか・同時実行の判定・非同期の状態 (`JobProcess.Cache` / `GetStatusAsync`)・失敗の記録 (`JobProcess.LoggerFactory` に Error) は `JobApi` が実行の口を包んで行う。記録の中身は例外の全文 (`RunInNewProcessAsync` の失敗は標準エラーと標準出力の全文 = `JobResult` の記録用の文言)
 - 実行の口が `Task` を返す前に投げた例外もジョブの失敗になる (API の呼び出しの例外にはならない)
 - 要求の実行コンテキスト (監査ログの `AuditContext.Current` などの AsyncLocal) は引き継がずに呼ぶ (同期・非同期とも)。引き継ぐのはカルチャ (`CurrentCulture` / `CurrentUICulture`) だけ
@@ -144,7 +152,7 @@ new JobApi(() => jobNames, (name, input, userId, processType) => processType == 
 
 ### デザイナで作った Job
 
-デザイナで作った Job (`Jobs/名前.job.cs`) は本体の `JobExecutor` が動かします (名前の一覧は `JobExecutor.GetJobNames`、実行は `JobExecutor.RunAsync(context, jobName, args, logger)`)。ホストは `JobExecutor.RunAsync` を呼び、結果 (`JobExecutionResult`) を自分のジョブの約束 (戻り値 = 成功の文言・失敗は例外) に変えて、`JobMode.RunAsync` の `runJob`・`JobApi` の実行の口 `run` から動かします。スクリプトの `Logger` の出し先もホストが `logger` で渡します。
+デザイナで作った Job (`Jobs/名前.job.cs`) は本体の `JobExecutor` が動かします (名前の一覧は `JobExecutor.GetJobNames`、実行は `JobExecutor.RunAsync(context, jobName, args, logger)`)。ホストは `JobExecutor.RunAsync` を呼び、結果 (`JobExecutionResult`) を自分のジョブの約束 (戻り値 = `JobRunResult` (`Message` に `Message`、`ResultJson` に `ResultJson`)・失敗は例外) に変えて、`JobMode.RunAsync` の `runJob`・`JobApi` の実行の口 `run` から動かします。スクリプトの `Logger` の出し先もホストが `logger` で渡します。
 
 ### Job スクリプトで使えるもの (MailService / Excel / Resources / FileService)
 
@@ -164,6 +172,7 @@ Job スクリプトで使える機能は、各機能の登録口で足します�
 | `Excel` | 画面のスクリプトと同じ Excel オブジェクト (`ExcelApi.UseInJobScripts`)。Job では `OverWrite(ModuleData)` / `ToAttachment(fileName)` / `ToPdfAttachment(fileName)` / `ToMemoryStream()` / `ToPdfMemoryStream()` を使う |
 | `Resources.GetMemoryStream(path)` / `GetText(path)` | デザインのリソース (`JobExecutionContext.GetResource` で読む) |
 | `FileService.Save(moduleName, fieldName, fileName, content)` / `GetMemoryStream(moduleName, fieldName, id)` | レコードの添付ファイル (FileField の項目) の読み書き (`JobExecutionContext.FileStorage` の置き場所)。`Save` の戻り値をレコードの添付の項目に入れて保存すると行に入る |
+| `FileService.SaveTemporary(moduleName, fieldName, fileName, content)` | 起動したユーザーに渡す一時ファイルを作る。戻り値の `FileGuid` / `FileName` / `FileSize` を `args.Result` に入れて返すと、画面のスクリプトが FileField の `SetTemporaryFile` でその項目に入れられる ([JobTriggerField](JobTriggerField.md))。保存せずダウンロードだけなら画面のスクリプトの `FileService.DownloadTemporaryFile(moduleName, fieldName, guid, fileName)`。`TemporaryFileManager` を置き場所に渡したホストでは、一時ファイルの所有者 (`TemporaryFileTableInfo.OwnerColumn`) は起動したユーザー (`JobExecutionContext.InvokerUserId`) になる。古い一時ファイルの掃除は `Save` と同じくしない |
 
 メールの送り方は `MailDispatcher` のシステムメールと同じです。送信インフラは `MailConfig.DefaultInfraName`、`DebugRedirectAllTo` が効き、`HistoryModuleName` があれば送信履歴を書きます。差出人は送信インフラ設定のシステム送信者です (`From` を入れても使われない)。
 
@@ -247,10 +256,7 @@ string Run(JobArguments args)
         excel.OverWrite(order);
         change.Sheet = FileService.Save("Order", "Sheet", "注文書.pdf", excel.ToPdfMemoryStream());
     }
-    var submit = new ModuleSubmitter();
-    submit.Update(change);
-    var result = submit.Execute();
-    if (!result.Succeeded) Fail(result.Error);
+    DBService.Update(change);
     return "付けました";
 }
 ```
@@ -314,10 +320,11 @@ string Run(JobArguments args)
 | 起動したユーザー | 環境変数 `Jobs__UserId` (`JobProcess.UserIdEnvironmentVariable`) | 設定の `Jobs:UserId` として読める (環境変数が appsettings を上書きする) |
 | 出力 | 標準出力・標準エラーを UTF-8 で読み切る (パイプが詰まらないように、終了を待つ前に読み始める) | `Console.OutputEncoding` を UTF-8 にする |
 | 成功 | 終了コード 0。文言は標準出力の最後の行 | ジョブの戻り値を最後に 1 行書く (改行は空白に。null なら空行) |
+| 返すデータ | 標準出力の最後から 2 行目が `#job-result:` (`JobMode.ResultJsonPrefix`) で始まれば、その後ろを JSON として取り出す (`JobResult.ResultJson`) | 成功して返すデータ (`JobRunResult.ResultJson`) があるときだけ、最後の行の直前に `#job-result:` + JSON を 1 行書く (改行は空白に)。無ければ書かない (出力は今までと同じ)。失敗したときは書かない |
 | 失敗 | 終了コード 0 以外。文言は標準エラーの最初の空でない行 | 例外のメッセージを標準エラーに、例外の全文を標準出力に書いて 1。ジョブが無ければ標準エラーに「ジョブ 'X' がありません」を書いて 2 |
 | 失敗の記録 | 同期・非同期とも、終了コードが 0 以外なら標準エラーと標準出力の全文を `LoggerFactory` に Error で書く | — |
 
-手で同じことをするには `echo {"data":{},"submit":null} | dotnet LowCodeApp.Server.dll job <ジョブ名> --stdin`。
+手で同じことをするには `echo {"data":{},"submit":null} | dotnet LowCodeApp.Server.dll job <ジョブ名> --stdin`。データを返すジョブは、手で動かしたときも最後の行の前に `#job-result:` で始まる行が出ます。
 
 ### 起動する実行ファイル
 

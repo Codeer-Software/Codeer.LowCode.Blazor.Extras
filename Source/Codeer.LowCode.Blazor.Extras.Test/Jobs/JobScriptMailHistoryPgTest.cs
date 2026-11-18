@@ -114,16 +114,12 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Jobs
             MailApi.UseInJobScripts(new MailConfig { DefaultInfraName = "Main", HistoryModuleName = "MailHistory" },
                 name => name == "Main" ? new FakeMailSender(_sent) : null);
             _designData.JobScripts["TestJob"] = """
-                bool AddTask(string title)
+                void AddTask(string title)
                 {
-                    var submit = new ModuleSubmitter();
                     var data = new TaskItem.Data();
                     data.Title = new TextFieldData();
                     data.Title.Value = title;
-                    submit.Add(data);
-                    var saved = submit.Execute();
-                    if (!saved.Succeeded) Logger.Log("書き込み失敗: " + saved.Error);
-                    return saved.Succeeded;
+                    DBService.Add(data);
                 }
 
                 string Run(JobArguments args)
@@ -135,8 +131,8 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Jobs
                     m.To.Add("a@example.com");
                     m.Subject = "お知らせ";
                     MailService.Send(m);
-                    var after = AddTask("送信後");
-                    return after ? "送信後の書き込み成功" : "送信後の書き込み失敗";
+                    AddTask("送信後");
+                    return "送信後の書き込み成功";
                 }
                 """;
 

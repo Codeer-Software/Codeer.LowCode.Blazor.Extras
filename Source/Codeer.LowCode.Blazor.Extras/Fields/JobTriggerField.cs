@@ -62,6 +62,12 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         /// </summary>
         public string[] JobIds => _jobIds.ToArray();
 
+        /// <summary>
+        /// 最後に待って (同期で) 動かしたジョブが返したデータ (Job スクリプトの args.Result)。スクリプトで <c>Result.Total</c> のように読む。
+        /// <see cref="RunAsync"/> (Run) を始めると null に戻り、成功してジョブがデータを返したときだけ入る (失敗・データを返さないジョブ・非同期では null。非同期の結果は GetJobStatus の Result)。
+        /// </summary>
+        public JsonObject? Result { get; private set; }
+
         /// <summary>ボタンの文言 (デザインが空なら既定)。</summary>
         [ScriptHide]
         public string ButtonText => string.IsNullOrEmpty(Design.ButtonText) ? Resources.JobTrigger_DefaultButtonText : Services.AppInfoService.Localize(Design.ButtonText);
@@ -90,8 +96,9 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             //他のボタンと同じく、書けない (ViewOnly) か無効なら動かさない (ホストも書き込み権限で判定する)
             if (Services.AppInfoService.IsDesignMode || IsRunning || Module == null || IsViewOnly || IsEnabled == false) return false;
 
-            //入力チェックの間も二重に押されないよう、先に実行中にする
+            //入力チェックの間も二重に押されないよう、先に実行中にする。前の実行の結果は残さない
             IsRunning = true;
+            Result = null;
             NotifyStateChanged();
             try
             {
@@ -124,7 +131,11 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
                 }
                 //null はホストが通知済み
                 if (response == null) return false;
-                if (!response.Started) return await NotifyResultAsync(response.Succeeded, response.Message, response.Error);
+                if (!response.Started)
+                {
+                    if (response.Succeeded && !string.IsNullOrEmpty(response.ResultJson)) Result = JsonObject.ToJsonObject(response.ResultJson);
+                    return await NotifyResultAsync(response.Succeeded, response.Message, response.Error);
+                }
 
                 await Services.UIService.NotifySuccess(string.Format(Resources.JobTrigger_StartedFormat, Design.JobName));
                 if (!string.IsNullOrEmpty(response.JobId)) _jobIds.Add(response.JobId);

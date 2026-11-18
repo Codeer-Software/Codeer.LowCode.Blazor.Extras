@@ -41,7 +41,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Jobs
         List<string> _logs = null!;
         List<(string Name, string Input, string UserId, JobTriggerProcessType ProcessType)> _calls = null!;
         //途中で失敗しても、このプロセスの中で待たせたジョブを後始末で終わらせる (実行中に数えたまま次のテストに残さない)
-        TaskCompletionSource<string?>? _gate;
+        TaskCompletionSource<JobRunResult>? _gate;
 
         public Task<string> GetCurrentUserIdAsync() => Task.FromResult("1");
 
@@ -72,7 +72,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Jobs
         [TearDown]
         public void TearDown()
         {
-            _gate?.TrySetResult(null);
+            _gate?.TrySetResult(new JobRunResult());
             _gate = null;
             JobProcess.LoggerFactory?.Dispose();
             JobProcess.EntryDll = _entryDll;
@@ -100,6 +100,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Jobs
             item.Fields.Add(new JobTriggerFieldDesign { Name = "FailAsync", JobName = "Fail", IsAsynchronous = true });
             item.Fields.Add(new JobTriggerFieldDesign { Name = "Sleep", JobName = "Sleep" });
             item.Fields.Add(new JobTriggerFieldDesign { Name = "SleepAsync", JobName = "Sleep", IsAsynchronous = true });
+            item.Fields.Add(new JobTriggerFieldDesign { Name = "Result", JobName = "Result" });
             d.AddModule(item);
             return d;
         }
@@ -113,16 +114,16 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Jobs
         };
 
         //実行の口: InProcessJob はこのプロセスの中 (inProcess のデリゲート)・それ以外は別プロセス
-        JobApi CreateApi(Func<string, string, string, JobTriggerProcessType, Task<string?>>? inProcess = null)
+        JobApi CreateApi(Func<string, string, string, JobTriggerProcessType, Task<JobRunResult>>? inProcess = null)
             => new(() => ["InProcessJob", "Echo", "Fail", "Sleep"],
                 (name, input, userId, processType) => string.Equals(name, "InProcessJob", StringComparison.OrdinalIgnoreCase)
                     ? (inProcess ?? RecordCall)(name, input, userId, processType)
                     : JobProcess.RunInNewProcessAsync(name, input, userId));
 
-        Task<string?> RecordCall(string name, string input, string userId, JobTriggerProcessType processType)
+        Task<JobRunResult> RecordCall(string name, string input, string userId, JobTriggerProcessType processType)
         {
             lock (_calls) _calls.Add((name, input, userId, processType));
-            return Task.FromResult<string?>($"in process {userId}");
+            return Task.FromResult(new JobRunResult { Message = $"in process {userId}" });
         }
 
         static string Payload(string field, string arguments)
@@ -146,6 +147,38 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Jobs
             Assert.That(_calls[0].Input, Is.EqualTo("""{"data":{}}"""));
             Assert.That(_calls[0].UserId, Is.EqualTo("7"));
             Assert.That(_calls[0].ProcessType, Is.EqualTo(JobTriggerProcessType.NewProcess));
+        }
+
+        [Test]
+        public async Task 同期で成功したら返したデータが応答のResultJsonに入り失敗と非同期の応答には無い()
+        {
+            var api = CreateApi((_, _, _, _) => Task.FromResult(new JobRunResult { Message = "作りました", ResultJson = "{\"Total\":12800}" }));
+            var ret = await RunAsync(api, "InProcess", "{}", CreateContext("7"));
+            Assert.That(ret.Succeeded, Is.True, ret.Error);
+            Assert.That(ret.Message, Is.EqualTo("作りました"));
+            Assert.That(ret.ResultJson, Is.EqualTo("{\"Total\":12800}"));
+
+            //非同期: 起動の応答には無く、状態の問い合わせで返る
+            ret = await RunAsync(api, "InProcessAsync", "{}", CreateContext("7"));
+            Assert.That(ret.Started, Is.True);
+            Assert.That(ret.ResultJson, Is.Null);
+            var status = await WaitFinishedAsync(api, ret.JobId, "7");
+            Assert.That(status.ResultJson, Is.EqualTo("{\"Total\":12800}"));
+
+            //返さないジョブ・失敗したジョブ
+            Assert.That((await RunAsync(CreateApi(), "InProcess", "{}", CreateContext("7"))).ResultJson, Is.Null);
+            ret = await RunAsync(CreateApi((_, _, _, _) => throw new InvalidOperationException("締められません")), "InProcess", "{}", CreateContext("7"));
+            Assert.That(ret.Succeeded, Is.False);
+            Assert.That(ret.ResultJson, Is.Null);
+        }
+
+        [Test]
+        public async Task 別プロセスで動かしたジョブの返したデータも応答のResultJsonに入る()
+        {
+            var api = new JobApi(["Result"]);
+            var ret = await RunAsync(api, "Result", "{}", CreateContext("7"));
+            Assert.That(ret.Succeeded, Is.True, ret.Error);
+            Assert.That(ret.ResultJson, Is.EqualTo("{\"Total\":12800,\"Name\":\"山田\"}"));
         }
 
         [Test]
@@ -274,7 +307,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Jobs
         public async Task 実行の口の中で別プロセスとこのプロセスに振り分けても同じジョブ名の実行中は実行先をまたいで数える()
         {
             //実行の口は (非同期では要求から切り離して) 後から呼ばれるので、振り分けは呼ばれた時の引数で決める: 画面の内容が "in-process" ならこのプロセスの中、それ以外は別プロセス
-            var gate = _gate = new TaskCompletionSource<string?>(TaskCreationOptions.RunContinuationsAsynchronously);
+            var gate = _gate = new TaskCompletionSource<JobRunResult>(TaskCreationOptions.RunContinuationsAsynchronously);
             var inProcessCalls = 0;
             var api = new JobApi(() => ["Sleep"], (name, input, userId, _) =>
             {
@@ -302,7 +335,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Jobs
             ret = await RunAsync(api, "SleepAsync", "10", CreateContext("7"));
             Assert.That(ret.Error, Is.EqualTo("ジョブ 'Sleep' は実行中です"));
 
-            gate.SetResult("in process done");
+            gate.SetResult(new JobRunResult { Message = "in process done" });
             var status = await WaitFinishedAsync(api, tracked.JobId, "7");
             Assert.That(status.Status, Is.EqualTo(JobStatus.Done));
             Assert.That(status.Message, Is.EqualTo("in process done"));
@@ -359,7 +392,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Jobs
             var names = new List<string>();
             var asked = 0;
             var api = new JobApi(() => { asked++; return names.ToList(); },
-                (name, _, _, _) => Task.FromResult<string?>($"ran {name}"));
+                (name, _, _, _) => Task.FromResult(new JobRunResult { Message = $"ran {name}" }));
 
             //構築した時点では一覧に無い
             var ret = await RunAsync(api, "InProcess", "{}", CreateContext("7"));

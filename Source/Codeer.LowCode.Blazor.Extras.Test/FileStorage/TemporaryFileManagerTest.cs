@@ -134,6 +134,50 @@ namespace Codeer.LowCode.Blazor.Extras.Test.FileStorage
             Assert.That(await ManagerWithoutOwnerColumn("B").IsTemporaryFileAsync(Ds, info.FileGuid!.Value), Is.True);
         }
 
+        //Job の FileService.SaveTemporary: 所有者は今のユーザー (ジョブの実行ユーザー) でなく渡したユーザー (起動したユーザー)
+        [Test]
+        public async Task Jobの一時ファイルは渡したユーザーのもの()
+        {
+            var info = await ((IJobFileStorage)ManagerWithOwner("Service")).AddTemporaryFileAsync(new FileSaveInfo { DataSourceName = Ds, StorageName = "Local" }, "a.txt", new MemoryStream(new byte[10]), "A");
+            Assert.That(info.FileSize, Is.EqualTo(10));
+            Assert.That(File.Exists(Path.Combine(_dir, info.FileGuid.ToString()!)), Is.True);
+            Assert.That(await ManagerWithOwner("A").IsTemporaryFileAsync(Ds, info.FileGuid!.Value), Is.True, "起動した人");
+            Assert.That(await ManagerWithOwner("B").IsTemporaryFileAsync(Ds, info.FileGuid!.Value), Is.False, "他の人");
+            Assert.That(await ManagerWithOwner("Service").IsTemporaryFileAsync(Ds, info.FileGuid!.Value), Is.False, "ジョブの実行ユーザー");
+        }
+
+        [Test]
+        public async Task Jobの一時ファイルは所有者nullなら所有者なし()
+        {
+            var info = await ((IJobFileStorage)ManagerWithOwner("Service")).AddTemporaryFileAsync(new FileSaveInfo { DataSourceName = Ds, StorageName = "Local" }, "a.txt", new MemoryStream(new byte[10]), null);
+            Assert.That(await ManagerWithOwner("").IsTemporaryFileAsync(Ds, info.FileGuid!.Value), Is.True, "ユーザーの無いホスト (所有者 null 同士)");
+            Assert.That(await ManagerWithOwner("Service").IsTemporaryFileAsync(Ds, info.FileGuid!.Value), Is.False);
+            Assert.That(await ManagerWithOwner("A").IsTemporaryFileAsync(Ds, info.FileGuid!.Value), Is.False);
+        }
+
+        [Test]
+        public async Task Jobの一時ファイルは所有者列の設定が無ければ所有者なしで誰でも認める()
+        {
+            var info = await ((IJobFileStorage)ManagerWithoutOwnerColumn("Service")).AddTemporaryFileAsync(new FileSaveInfo { DataSourceName = Ds, StorageName = "Local" }, "a.txt", new MemoryStream(new byte[10]), "A");
+            var owners = await _db.QueryAsync(Ds, "select owner from temporary_files", new());
+            Assert.That(owners.Single()["owner"], Is.Null.Or.EqualTo(DBNull.Value));
+            Assert.That(await ManagerWithoutOwnerColumn("B").IsTemporaryFileAsync(Ds, info.FileGuid!.Value), Is.True);
+        }
+
+        [Test]
+        public async Task Jobの一時ファイルでは古い一時ファイルを掃除しない()
+        {
+            var manager = Manager();
+            var saveInfo = new FileSaveInfo { DataSourceName = Ds, StorageName = "Local" };
+            var old = await manager.AddFileAsync(saveInfo, "old.txt", new MemoryStream(new byte[10]));
+            await _db.ExecuteAsync(Ds, "update temporary_files set created_date_time = @p1 where guid = @p2",
+                new() { { "@p1", DateTime.UtcNow.AddDays(-2) }, { "@p2", old.FileGuid } });
+
+            await ((IJobFileStorage)manager).AddTemporaryFileAsync(saveInfo, "job.txt", new MemoryStream(new byte[10]), "A");
+            Assert.That(await manager.IsTemporaryFileAsync(Ds, old.FileGuid!.Value), Is.True);
+            Assert.That(File.Exists(Path.Combine(_dir, old.FileGuid.ToString()!)), Is.True);
+        }
+
         //1 日より古い一時ファイルの掃除は画面のアップロード (public の AddFileAsync) だけ。Job の FileService.Save (IJobFileStorage) では掃除しない
         [Test]
         public async Task 古い一時ファイルの掃除は画面のアップロードだけでJobの保存ではしない()

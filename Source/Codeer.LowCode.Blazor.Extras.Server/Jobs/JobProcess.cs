@@ -85,22 +85,22 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Jobs
         }
 
         /// <summary>
-        /// ジョブを別プロセスで動かして終わるまで待つ。戻り値は成功の文言 (ジョブの戻り値)、失敗は例外 (メッセージ = 画面に出す文言)。
+        /// ジョブを別プロセスで動かして終わるまで待つ。戻り値は成功の文言 (ジョブの戻り値) と返したデータ、失敗は例外 (メッセージ = 画面に出す文言)。
         /// <see cref="JobApi"/> に渡す実行の口の形 (ホストが「このジョブは別プロセスで」と決めたときに呼ぶ)。
         /// <see cref="RunAsync"/> との違い: 実行中として数えない・失敗を記録しない (どちらも実行の口を呼ぶ <see cref="JobApi"/> が行う)。
         /// </summary>
         /// <param name="jobName">ジョブの名前。</param>
         /// <param name="input">ジョブに渡す内容 (標準入力。ジョブの引数の <c>--stdin</c> がこれになる)。</param>
         /// <param name="userId">ジョブを起動したユーザーの Id。</param>
-        public static async Task<string?> RunInNewProcessAsync(string jobName, string input, string userId)
+        public static async Task<JobRunResult> RunInNewProcessAsync(string jobName, string input, string userId)
         {
             var result = await Launch(jobName, input, CreateStartInfo(jobName, userId));
             if (!result.Succeeded) throw new JobProcessFailedException(result);
-            return result.Message;
+            return new JobRunResult { Message = result.Message, ResultJson = result.ResultJson };
         }
 
         //JobApi の実行の口 (ホストが渡す。動く場所はホストが決める) を、実行中として数えて動かす同期版。失敗は記録する。null = 同じ名前が実行中で動かさなかった
-        internal static async Task<JobOutcome?> RunTrackedAsync(string jobName, Func<Task<string?>> run, bool allowConcurrent)
+        internal static async Task<JobOutcome?> RunTrackedAsync(string jobName, Func<Task<JobRunResult>> run, bool allowConcurrent)
         {
             if (!TryEnter(jobName, allowConcurrent)) return null;
             try
@@ -116,11 +116,11 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Jobs
         }
 
         //実行の口の非同期版。要求から切り離して動かし、状態を置き場に書く (GetStatusAsync で問い合わせる)
-        internal static Task<string?> StartTrackedAsync(string jobName, Func<Task<string?>> run, string userId, bool allowConcurrent)
+        internal static Task<string?> StartTrackedAsync(string jobName, Func<Task<JobRunResult>> run, string userId, bool allowConcurrent)
             => StartAsync(jobName, () => InvokeDetached(jobName, run), userId, allowConcurrent);
 
         //要求の実行コンテキスト (監査ログの AuditContext.Current など AsyncLocal) をジョブに引き継がない (このプロセスの中で動くジョブの書き込みを、起動した要求の記録に混ぜない)。カルチャだけ引き継ぐ
-        static Task<JobOutcome> InvokeDetached(string jobName, Func<Task<string?>> run)
+        static Task<JobOutcome> InvokeDetached(string jobName, Func<Task<JobRunResult>> run)
         {
             var culture = CultureInfo.CurrentCulture;
             var uiCulture = CultureInfo.CurrentUICulture;
@@ -135,31 +135,31 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Jobs
             }
         }
 
-        //ホストの実行の口の約束は JobMode と同じ (戻り値 = 成功の文言・失敗は例外)
-        static async Task<JobOutcome> InvokeAsync(string jobName, Func<Task<string?>> run)
+        //ホストの実行の口の約束は JobMode と同じ (戻り値 = 成功の文言と返すデータ・失敗は例外)
+        static async Task<JobOutcome> InvokeAsync(string jobName, Func<Task<JobRunResult>> run)
         {
             try
             {
-                var message = await run();
-                return new JobOutcome(true, message?.ReplaceLineEndings(" ").Trim() ?? string.Empty, string.Empty, string.Empty);
+                var result = await run();
+                return new JobOutcome(true, result?.Message?.ReplaceLineEndings(" ").Trim() ?? string.Empty, string.IsNullOrEmpty(result?.ResultJson) ? null : result.ResultJson, string.Empty, string.Empty);
             }
             //別プロセスの失敗 (RunInNewProcessAsync)。記録は標準エラーと標準出力の全文
             catch (JobProcessFailedException e)
             {
-                return new JobOutcome(false, string.Empty, e.Result.ErrorMessage, e.Result.ToString());
+                return new JobOutcome(false, string.Empty, null, e.Result.ErrorMessage, e.Result.ToString());
             }
             catch (Exception e)
             {
                 //画面に出す文言は別プロセスと同じく、例外のメッセージの最初の空でない行
                 var error = e.Message.Split('\n').Select(x => x.Trim()).FirstOrDefault(x => x.Length != 0) ?? $"ジョブ {jobName} が失敗しました";
-                return new JobOutcome(false, string.Empty, error, $"ジョブ {jobName} が失敗しました: {e}");
+                return new JobOutcome(false, string.Empty, null, error, $"ジョブ {jobName} が失敗しました: {e}");
             }
         }
 
         static async Task<JobOutcome> ToOutcomeAsync(Task<JobResult> completion)
         {
             var result = await completion;
-            return new JobOutcome(result.Succeeded, result.Succeeded ? result.Message : string.Empty, result.Succeeded ? string.Empty : result.ErrorMessage, result.ToString());
+            return new JobOutcome(result.Succeeded, result.Succeeded ? result.Message : string.Empty, result.ResultJson, result.Succeeded ? string.Empty : result.ErrorMessage, result.ToString());
         }
 
         /// <summary>
@@ -217,7 +217,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Jobs
             if (string.IsNullOrEmpty(json)) return null;
             var entry = JsonSerializer.Deserialize<Entry>(json);
             if (entry == null || entry.UserId != (userId ?? string.Empty)) return null;
-            return new JobStatusResponse { Status = entry.Status, Message = entry.Message, Error = entry.Error };
+            return new JobStatusResponse { Status = entry.Status, Message = entry.Message, Error = entry.Error, ResultJson = entry.ResultJson };
         }
 
         //実行中として数える。同時実行を許さず同じ名前が実行中なら数えずに false (確認と数えるのを 1 つの lock で)
@@ -333,6 +333,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Jobs
                 {
                     entry.Status = JobStatus.Done;
                     entry.Message = result.Message;
+                    entry.ResultJson = result.ResultJson;
                 }
                 else
                 {
@@ -378,8 +379,8 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Jobs
             public JobResult Result { get; } = result;
         }
 
-        //ジョブ 1 回の結果 (実行先によらない形)。Log は失敗したときにサーバーのログへ出す全文
-        internal sealed record JobOutcome(bool Succeeded, string Message, string ErrorMessage, string Log);
+        //ジョブ 1 回の結果 (実行先によらない形)。ResultJson は成功して返したデータがあるときだけ。Log は失敗したときにサーバーのログへ出す全文
+        internal sealed record JobOutcome(bool Succeeded, string Message, string? ResultJson, string ErrorMessage, string Log);
 
         //待たずに起動したジョブ 1 つの状態 (キャッシュに置く JSON)
         sealed class Entry
@@ -388,6 +389,8 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Jobs
             public JobStatus Status { get; set; }
             public string Message { get; set; } = string.Empty;
             public string Error { get; set; } = string.Empty;
+            //成功したときに返したデータの JSON (無ければ null)
+            public string? ResultJson { get; set; }
         }
     }
 }
