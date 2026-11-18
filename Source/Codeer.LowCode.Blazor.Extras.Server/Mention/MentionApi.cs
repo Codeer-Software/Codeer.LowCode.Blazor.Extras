@@ -26,7 +26,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mention
             if (!design.EnableMention) throw LowCodeException.Create(Resources.RichTextMention_NotFound, request.ModuleName, request.FieldName);
             return new MentionCandidatesResponse
             {
-                Candidates = await MentionCandidateQuery.FindAsync(context.ModuleDataIO, context.DesignData, request.Text, context.Logger),
+                Candidates = await MentionCandidateQuery.FindAsync(context.ModuleDataIO, context.DesignData, request.Text, design.MentionCandidateCondition, context.Logger),
             };
         }
     }

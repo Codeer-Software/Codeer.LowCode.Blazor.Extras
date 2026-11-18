@@ -230,5 +230,104 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Api
             _designData.Modules.Find("AppUser")!.Fields.RemoveAll(e => e is LoginAccountContractFieldDesign);
             Assert.That(await CandidatesAsync(string.Empty), Is.Empty);
         }
+
+        #region 段階 2 (設計者が書く候補の条件)
+
+        RichTextFieldDesign Body => (RichTextFieldDesign)_designData.Modules.Find("Item")!.Fields.First(e => e.Name == "Body");
+
+        //部署: 山田・佐藤・鈴木 (停止) = A、tanaka = B、加藤 = なし
+        async Task AddDeptAsync()
+        {
+            await _db.ExecuteAsync(Ds, "ALTER TABLE AppUsers ADD COLUMN Dept TEXT", new());
+            await _db.ExecuteAsync(Ds, "UPDATE AppUsers SET Dept = 'A' WHERE Id IN ('1', '2', '3')", new());
+            await _db.ExecuteAsync(Ds, "UPDATE AppUsers SET Dept = 'B' WHERE Id = '4'", new());
+            DbAccessor.ClearTableDefinitionCache();
+            _designData.Modules.Find("AppUser")!.Fields.Add(new TextFieldDesign { Name = "Dept", DbColumn = "Dept" });
+        }
+
+        static FieldVariableMatchCondition SameAsCurrentUser(string field) => new()
+        {
+            SearchTargetVariable = $"{field}.Value",
+            Comparison = MatchComparison.Equal,
+            Variable = $"CurrentUser.{field}.Value",
+        };
+
+        [Test]
+        public async Task 候補の条件_値との比較で絞る()
+        {
+            Body.MentionCandidateCondition.ModuleName = "AppUser";
+            Body.MentionCandidateCondition.Condition = Match("Rank.Value", MatchComparison.GreaterThanOrEqual, MultiTypeValue.Create(5));
+            Assert.That((await CandidatesAsync(string.Empty)).Select(e => e.Id), Is.EqualTo(new[] { "4", "2", "1" }));
+        }
+
+        [Test]
+        public async Task 候補の条件_モジュール名が空でもユーザーのモジュールの項目として絞る()
+        {
+            Body.MentionCandidateCondition.Condition = MultiMatchCondition.And(
+                Match("Rank.Value", MatchComparison.GreaterThanOrEqual, MultiTypeValue.Create(5)));
+            Assert.That((await CandidatesAsync(string.Empty)).Select(e => e.Id), Is.EqualTo(new[] { "4", "2", "1" }));
+        }
+
+        [Test]
+        public async Task 候補の条件_CurrentUserは問い合わせた人の値()
+        {
+            await AddDeptAsync();
+            Body.MentionCandidateCondition.Condition = SameAsCurrentUser("Dept");
+            //山田 (A) には A の人 (停止した鈴木は出ない)。自分も条件を満たすので出る
+            Assert.That((await CandidatesAsync(string.Empty, userId: "1")).Select(e => e.Id), Is.EqualTo(new[] { "2", "1" }));
+            //tanaka (B) には B の人
+            Assert.That((await CandidatesAsync(string.Empty, userId: "4")).Select(e => e.Id), Is.EqualTo(new[] { "4" }));
+        }
+
+        [Test]
+        public async Task 候補の条件_打った文字やアプリアクセス条件とANDになる()
+        {
+            await AddDeptAsync();
+            Body.MentionCandidateCondition.Condition = SameAsCurrentUser("Dept");
+            Assert.That((await CandidatesAsync("sat", userId: "1")).Select(e => e.Id), Is.EqualTo(new[] { "2" }));
+            Assert.That(await CandidatesAsync("tanaka", userId: "1"), Is.Empty);
+
+            _designData.AppSettings.AppAccessConditions.ModuleName = "AppUser";
+            _designData.AppSettings.AppAccessConditions.Condition = Match("LoginName.Value", MatchComparison.NotEqual, MultiTypeValue.Create("sato"));
+            Assert.That((await CandidatesAsync(string.Empty, userId: "1")).Select(e => e.Id), Is.EqualTo(new[] { "1" }));
+        }
+
+        [Test]
+        public async Task 候補の条件_問い合わせた人の項目が空なら同じく空の人()
+        {
+            await AddDeptAsync();
+            await _db.ExecuteAsync(Ds, "INSERT INTO AppUsers VALUES ('6', 'ito', '伊藤 三郎', 10, 1, NULL)", new());
+            Body.MentionCandidateCondition.Condition = SameAsCurrentUser("Dept");
+            //部署が空の人には、部署が空の人 (加藤と自分) が出る。条件が外れて全員が出ることはない
+            Assert.That((await CandidatesAsync(string.Empty, userId: "6")).Select(e => e.Id), Is.EqualTo(new[] { "6", "5" }));
+        }
+
+        //別のモジュールを対象にした条件 / 左辺が CurrentUser / 候補になる人の項目どうしの比較 (設計チェックが指摘する形)
+        [TestCase("Item", "Rank.Value", "")]
+        [TestCase("AppUser", "CurrentUser.Rank.Value", "")]
+        [TestCase("AppUser", "DisplayName.Value", "LoginName.Value")]
+        public async Task 候補の条件_検索に足せない形なら候補を出さない(string moduleName, string left, string right)
+        {
+            //条件を外して全員を出すことはしない
+            Body.MentionCandidateCondition.ModuleName = moduleName;
+            Body.MentionCandidateCondition.Condition = string.IsNullOrEmpty(right)
+                ? Match(left, MatchComparison.GreaterThanOrEqual, MultiTypeValue.Create(5))
+                : new FieldVariableMatchCondition { SearchTargetVariable = left, Comparison = MatchComparison.Equal, Variable = right };
+            Assert.That(MentionCandidateQuery.TryCreateCandidateCondition(Body.MentionCandidateCondition, "AppUser", out _), Is.False);
+            Assert.That(await CandidatesAsync(string.Empty), Is.Empty);
+        }
+
+        [Test]
+        public void 候補の条件_空なら絞らない()
+        {
+            Assert.That(MentionCandidateQuery.TryCreateCandidateCondition(null, "AppUser", out var none), Is.True);
+            Assert.That(none, Is.Null);
+            //デザイナが作る中身の無い複合条件
+            Body.MentionCandidateCondition.Condition = new MultiMatchCondition();
+            Assert.That(MentionCandidateQuery.TryCreateCandidateCondition(Body.MentionCandidateCondition, "AppUser", out var empty), Is.True);
+            Assert.That(empty, Is.Null);
+        }
+
+        #endregion
     }
 }

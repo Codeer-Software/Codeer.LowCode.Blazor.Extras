@@ -2058,4 +2058,13 @@ Recipients: {1}</value>
   <data name="RichTextMentionCheck_NoLoginContract" xml:space="preserve">
     <value>To use mentions, place a LoginAccountContractField on the login user module '{0}'.</value>
   </data>
+  <data name="RichTextFieldMentionCandidateCondition" xml:space="preserve">
+    <value>Mention candidate condition</value>
+  </data>
+  <data name="RichTextMentionCheck_ConditionModule" xml:space="preserve">
+    <value>The mention candidate condition targets the module '{0}'. It must target the login user module '{1}'.</value>
+  </data>
+  <data name="RichTextMentionCheck_ConditionVariable" xml:space="preserve">
+    <value>The variable '{0}' in the mention candidate condition is not a field of the login user module '{1}'. Write the candidate's field on the left side, and a value or CurrentUser.* on the right side.</value>
+  </data>
 </root>

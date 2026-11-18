@@ -1,11 +1,15 @@
+using Codeer.LowCode.Blazor.DesignLogic;
 using Codeer.LowCode.Blazor.DesignLogic.Check;
 using Codeer.LowCode.Blazor.DesignLogic.Location;
+using Codeer.LowCode.Blazor.DesignLogic.Refactor;
 using Codeer.LowCode.Blazor.Extras.Components;
 using Codeer.LowCode.Blazor.Extras.Data;
 using Codeer.LowCode.Blazor.Extras.Fields;
 using Codeer.LowCode.Blazor.OperatingModel;
+using Codeer.LowCode.Blazor.Repository;
 using Codeer.LowCode.Blazor.Repository.Data;
 using Codeer.LowCode.Blazor.Repository.Design;
+using Codeer.LowCode.Blazor.Repository.Match;
 
 namespace Codeer.LowCode.Blazor.Extras.Designs
 {
@@ -15,6 +19,8 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         /// <summary>デザインチェック指摘の番号。DesignCheckCode.Create で発行クラス名と結合して "クラス名:番号" になる。番号は固定(追加は末尾・欠番は再利用しない)。</summary>
         private const int CodeMentionNoUserModule = 1;
         private const int CodeMentionNoLoginContract = 2;
+        private const int CodeMentionConditionModule = 3;
+        private const int CodeMentionConditionVariable = 4;
 
         [Designer(Index = 0, CandidateType = CandidateType.DbColumn, DisplayName = "$RichTextFieldDbColumn"), DbColumn(nameof(RichTextFieldData.Value))]
         public string DbColumn { get; set; } = string.Empty;
@@ -25,6 +31,14 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         /// </summary>
         [Designer(Index = 1, DisplayName = "$RichTextFieldEnableMention")]
         public bool EnableMention { get; set; }
+
+        /// <summary>
+        /// メンションの候補にする人の条件 (同じ部署の人だけ、など)。対象はログインユーザーのモジュールで、左辺は候補になる人の項目。
+        /// 右辺の CurrentUser.〜 は @ を打っている人の値。空なら絞らない。
+        /// 絞り込みであって権限ではない (条件の外の人がこのフィールドを見られなくなるわけではない)。
+        /// </summary>
+        [Designer(Index = 2, DisplayName = "$RichTextFieldMentionCandidateCondition")]
+        public ModuleMatchCondition MentionCandidateCondition { get; set; } = new();
 
         public override string GetWebComponentTypeFullName() => typeof(RichTextFieldComponent).FullName!;
 
@@ -70,6 +84,74 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
                     Location = new FieldDesignDataLocation { Module = context.OwnerModule, Field = Name, Member = nameof(EnableMention) },
                     Message = string.Format(Properties.Resources.RichTextMentionCheck_NoLoginContract, userModuleName),
                 });
+            }
+            CheckMentionCandidateCondition(context, userModuleName, result);
+        }
+
+        //候補の条件はユーザーのモジュールの検索にそのまま足す。左辺は候補になる人の項目、右辺の CurrentUser.〜 は @ を打っている人の項目
+        void CheckMentionCandidateCondition(DesignCheckContext context, string userModuleName, List<DesignCheckInfo> result)
+        {
+            var conditionModuleName = MentionCandidateCondition.ModuleName;
+            if (!string.IsNullOrEmpty(conditionModuleName) && conditionModuleName != userModuleName)
+            {
+                result.Add(new FieldDesignCheckInfo
+                {
+                    Code = DesignCheckCode.Create(typeof(RichTextFieldDesign), CodeMentionConditionModule),
+                    Location = new FieldDesignDataLocation { Module = context.OwnerModule, Field = Name, Member = nameof(MentionCandidateCondition) },
+                    Message = string.Format(Properties.Resources.RichTextMentionCheck_ConditionModule, conditionModuleName, userModuleName),
+                });
+                return;
+            }
+
+            foreach (var variable in MissingVariables(MentionCandidateCondition.Condition).Distinct().ToList())
+            {
+                result.Add(new FieldDesignCheckInfo
+                {
+                    Code = DesignCheckCode.Create(typeof(RichTextFieldDesign), CodeMentionConditionVariable),
+                    Location = new FieldDesignDataLocation { Module = context.OwnerModule, Field = Name, Member = nameof(MentionCandidateCondition) },
+                    Message = string.Format(Properties.Resources.RichTextMentionCheck_ConditionVariable, variable, userModuleName),
+                });
+            }
+
+            IEnumerable<string> MissingVariables(MatchConditionBase? node)
+            {
+                if (node is MultiMatchCondition multi)
+                {
+                    foreach (var e in multi.Children.SelectMany(MissingVariables)) yield return e;
+                }
+                if (node is IFieldMatchCondition field)
+                {
+                    //左辺は候補になる人の項目。CurrentUser.〜 は書けない (@ を打っている人の値は右辺に書く)
+                    var left = field.SearchTargetVariable;
+                    if (IsCurrentUserVariable(left) || IsMissing(left)) yield return left;
+                }
+                //右辺の変数は CurrentUser.〜 だけ (候補になる人の項目どうしの比較は、本体の検索ができない)
+                if (node is FieldVariableMatchCondition { Variable: var right } && !string.IsNullOrEmpty(right) &&
+                    (!IsCurrentUserVariable(right) || IsMissing(right))) yield return right;
+            }
+
+            //CurrentUser.〜 は、本体がユーザーのモジュールの項目として確かめる
+            bool IsMissing(string variable)
+                => context.CheckFieldRelativeVariableExistence(Name, nameof(MentionCandidateCondition), userModuleName, variable) != null;
+        }
+
+        /// <summary>CurrentUser.〜 (今のユーザーの値) の変数か。</summary>
+        internal static bool IsCurrentUserVariable(string variable) => variable.StartsWith(SystemFieldNames.CurrentUser + ".", StringComparison.Ordinal);
+
+        public override RenameResult ChangeName(RenameContext context)
+        {
+            var builder = context.Builder(base.ChangeName(context));
+            //条件の項目は左辺も右辺 (CurrentUser.〜) もユーザーのモジュールの項目 (本体の AddMatchCondition は右辺をこのフィールドのモジュールの項目として扱うので使わない)
+            var userModuleName = context.DesignData.AppSettings.CurrentUserModuleDesignName;
+            builder.AddModule(MentionCandidateCondition.ModuleName, x => MentionCandidateCondition.ModuleName = x);
+            if (!string.IsNullOrEmpty(userModuleName)) AddVariables(MentionCandidateCondition.Condition);
+            return builder.Build();
+
+            void AddVariables(MatchConditionBase? node)
+            {
+                if (node is MultiMatchCondition multi) multi.Children.ForEach(AddVariables);
+                if (node is IFieldMatchCondition field) builder.AddVariable(userModuleName, field.SearchTargetVariable, x => field.SearchTargetVariable = x);
+                if (node is FieldVariableMatchCondition variable) builder.AddVariable(userModuleName, variable.Variable, x => variable.Variable = x);
             }
         }
     }

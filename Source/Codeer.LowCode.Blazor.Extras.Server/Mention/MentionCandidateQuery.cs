@@ -15,7 +15,8 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mention
 {
     /// <summary>
     /// メンションの候補 = アプリを使える人 (ログインユーザーのモジュールの行のうち、アプリアクセス条件を満たし、ログインアカウント契約の有効フラグが偽でないもの)。
-    /// 誰を候補にするかはここだけで決める (段階 2 でページの権限による絞り込みに差し替える場所)。
+    /// 設計者が候補の条件 (RichTextFieldDesign.MentionCandidateCondition) を書いていれば、それも満たす人に絞る (絞り込みであって権限ではない)。
+    /// 誰を候補にするかはここだけで決める (段階 3 で「このフィールドを見られる人」の判定を足す場所)。
     /// 行はシステムの権限で読む (問い合わせた人がユーザーのモジュールを読めなくても候補は出す。返すのは Id・表示名・ログイン ID だけ)。
     /// </summary>
     internal static class MentionCandidateQuery
@@ -31,7 +32,9 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mention
         const int PageSize = 50;
         const int MaxPages = 20;
 
-        internal static async Task<List<MentionCandidate>> FindAsync(ModuleDataIO moduleDataIO, DesignData designData, string? text, ILogger? logger = null)
+        /// <param name="candidateCondition">設計者が書いた候補の条件 (RichTextFieldDesign.MentionCandidateCondition)。無ければ絞らない。</param>
+        internal static async Task<List<MentionCandidate>> FindAsync(ModuleDataIO moduleDataIO, DesignData designData, string? text,
+            ModuleMatchCondition? candidateCondition = null, ILogger? logger = null)
         {
             var userModule = designData.Modules.Find(designData.AppSettings.CurrentUserModuleDesignName);
             var contract = userModule?.Fields.OfType<LoginAccountContractFieldDesign>().FirstOrDefault();
@@ -48,7 +51,14 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mention
             var displayNameField = string.IsNullOrEmpty(contract.DisplayName) ? contract.LoginName : contract.DisplayName;
             var conditions = new List<MatchConditionBase>();
             if (appAccess != null) conditions.Add(appAccess);
-            text = text?.Trim() ?? string.Empty;
+            if (!TryCreateCandidateCondition(candidateCondition, userModule.Name, out var candidate))
+            {
+                //設計チェック (RichTextFieldDesign:3 / :4) が指摘する形。条件を外して全員を出すことはしない
+                logger?.LogWarning("Mention candidates are not available: the mention candidate condition cannot be applied to the user module '{Module}'.", userModule.Name);
+                return new();
+            }
+            if (candidate != null) conditions.Add(candidate);
+            text =text?.Trim() ?? string.Empty;
             //画面はこの長さを超えた文字では問い合わせない。API を直接呼んだ長い文字では DB を読まない
             if (text.Length > MaxTextLength) return new();
             if (text.Length > 0)
@@ -120,6 +130,31 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mention
             FieldValueMatchCondition value => IsUserField(value.SearchTargetVariable),
             FieldVariableMatchCondition variable => IsUserField(variable.SearchTargetVariable) && IsUserField(variable.Variable),
             _ => false,
+        };
+
+        /// <summary>
+        /// 設計者が書いた候補の条件をユーザーのモジュールの検索条件にする。条件が無ければ null (絞らない)。
+        /// 条件はそのまま検索に足す (Extras では解釈しない)。右辺の CurrentUser.〜 は、本体がシステムの権限の検索でも問い合わせた人の行の値で埋める。
+        /// 検索に足せない形は false (候補を出さない): 別のモジュールを対象にした条件、左辺が CurrentUser.〜 の条件 (候補になる人の項目ではない)、
+        /// 右辺が CurrentUser.〜 でない変数の条件 (候補になる人の項目どうしの比較。本体の検索は同じ行の項目どうしを比べられない)。
+        /// </summary>
+        internal static bool TryCreateCandidateCondition(ModuleMatchCondition? source, string userModuleName, out MatchConditionBase? condition)
+        {
+            condition = null;
+            if (source == null || !source.HasEffectiveCondition()) return true;
+            if (!string.IsNullOrEmpty(source.ModuleName) && source.ModuleName != userModuleName) return false;
+            if (!IsSearchable(source.Condition)) return false;
+            condition = JsonConverterEx.JsonClone(source.Condition);
+            return true;
+        }
+
+        static bool IsSearchable(MatchConditionBase? node) => node switch
+        {
+            MultiMatchCondition multi => multi.Children.All(IsSearchable),
+            //変数が空の比較は本体が刈る (無いものとして扱う)
+            FieldVariableMatchCondition variable => IsUserField(variable.SearchTargetVariable) && (string.IsNullOrEmpty(variable.Variable) || !IsUserField(variable.Variable)),
+            IFieldMatchCondition field => IsUserField(field.SearchTargetVariable),
+            _ => true,
         };
 
         static bool IsUserField(string variable) => !variable.StartsWith(SystemFieldNames.CurrentUser + ".", StringComparison.Ordinal);

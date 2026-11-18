@@ -4877,5 +4877,32 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
                 return ResourceManager.GetString("RichTextMentionCheck_NoLoginContract", resourceCulture);
             }
         }
+
+        /// <summary>
+        ///   Mention candidate condition に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string RichTextFieldMentionCandidateCondition {
+            get {
+                return ResourceManager.GetString("RichTextFieldMentionCandidateCondition", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   The mention candidate condition targets the module &apos;{0}&apos;. It must target the login user module &apos;{1}&apos;. に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string RichTextMentionCheck_ConditionModule {
+            get {
+                return ResourceManager.GetString("RichTextMentionCheck_ConditionModule", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   The variable &apos;{0}&apos; in the mention candidate condition is not a field of the login user module &apos;{1}&apos;. に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string RichTextMentionCheck_ConditionVariable {
+            get {
+                return ResourceManager.GetString("RichTextMentionCheck_ConditionVariable", resourceCulture);
+            }
+        }
     }
 }

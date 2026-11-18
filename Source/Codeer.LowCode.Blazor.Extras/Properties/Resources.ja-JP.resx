@@ -2058,4 +2058,13 @@
   <data name="RichTextMentionCheck_NoLoginContract" xml:space="preserve">
     <value>メンションを使うには、ログインユーザーのモジュール '{0}' にログインアカウント契約 (LoginAccountContractField) を置いてください。</value>
   </data>
+  <data name="RichTextFieldMentionCandidateCondition" xml:space="preserve">
+    <value>メンションの候補の条件</value>
+  </data>
+  <data name="RichTextMentionCheck_ConditionModule" xml:space="preserve">
+    <value>メンションの候補の条件のモジュールが '{0}' になっています。ログインユーザーのモジュール '{1}' にしてください。</value>
+  </data>
+  <data name="RichTextMentionCheck_ConditionVariable" xml:space="preserve">
+    <value>メンションの候補の条件の '{0}' は、ログインユーザーのモジュール '{1}' の項目ではありません。左辺には候補になる人の項目を、右辺には値か CurrentUser.〜 を書いてください。</value>
+  </data>
 </root>
