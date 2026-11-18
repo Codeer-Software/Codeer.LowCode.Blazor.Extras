@@ -31,10 +31,10 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Fields
             => In(cultureName, c => GanttTitle.Month(start, lastDay, c));
 
         [Test]
-        public void 日表示は年月日を出す()
+        public void 日表示は年月日と曜日を出す()
         {
-            Assert.That(In("ja-JP", c => GanttTitle.Day(new DateTime(2026, 11, 15), c)), Is.EqualTo("2026年11月15日"));
-            Assert.That(In("en-US", c => GanttTitle.Day(new DateTime(2026, 11, 15), c)), Is.EqualTo("November 15, 2026"));
+            Assert.That(In("ja-JP", c => GanttTitle.Day(new DateTime(2026, 11, 15), c)), Is.EqualTo("2026年11月15日(日)"));
+            Assert.That(In("en-US", c => GanttTitle.Day(new DateTime(2026, 11, 15), c)), Is.EqualTo("Sunday, November 15, 2026"));
         }
 
         [Test]

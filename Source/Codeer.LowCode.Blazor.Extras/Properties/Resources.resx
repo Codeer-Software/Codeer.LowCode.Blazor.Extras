@@ -105,6 +105,9 @@
   <data name="DateFormatDayTitle" xml:space="preserve">
     <value>MMMM d, yyyy</value>
   </data>
+  <data name="DateFormatDayTitleWithWeekday" xml:space="preserve">
+    <value>dddd, MMMM d, yyyy</value>
+  </data>
   <data name="DateFormatMonthTitle" xml:space="preserve">
     <value>MMMM yyyy</value>
   </data>

@@ -6,9 +6,9 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
     //ガントのツールバーに出す表示範囲のタイトル。どの表示でも年を出す
     internal static class GanttTitle
     {
-        //日表示のタイトル
+        //日表示のタイトル。日表示のヘッダーは時刻だけなので、曜日もここに出す
         internal static string Day(DateTime date, CultureInfo culture)
-            => date.ToString(Resources.DateFormatDayTitle, culture);
+            => date.ToString(Resources.DateFormatDayTitleWithWeekday, culture);
 
         //月表示のタイトル。lastDay は表示範囲の最後の日 (幅に合わせない表示は 42 日ぶんで、月をまたぐ)
         internal static string Month(DateTime start, DateTime lastDay, CultureInfo culture)

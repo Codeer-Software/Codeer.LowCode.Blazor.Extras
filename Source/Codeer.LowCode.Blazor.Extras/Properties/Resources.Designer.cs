@@ -534,6 +534,12 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
             }
         }
 
+        internal static string DateFormatDayTitleWithWeekday {
+            get {
+                return ResourceManager.GetString("DateFormatDayTitleWithWeekday", resourceCulture);
+            }
+        }
+
         internal static string DateFormatMonthTitle {
             get {
                 return ResourceManager.GetString("DateFormatMonthTitle", resourceCulture);
