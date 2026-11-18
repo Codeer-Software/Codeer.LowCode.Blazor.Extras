@@ -71,12 +71,12 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Jobs
                     var rows = search.ExecuteRaw();
                     var add = new Order.Data();
                     add.Name = new TextFieldData();
-                    add.Name.Value = args.Options[0];
+                    add.Name.Value = "C";
                     DBService.Add(add);
                     return $"{rows.Count} 件";
                 }
                 """;
-            Assert.That(await RunAsync("Count", "C"), Is.EqualTo("2 件"));
+            Assert.That(await RunAsync("Count"), Is.EqualTo("2 件"));
             var names = (await _db.QueryAsync(Ds, "SELECT Name FROM Orders ORDER BY Id", new())).Select(e => e["Name"]?.ToString()).ToList();
             Assert.That(names, Is.EqualTo(new[] { "A", "B", "C" }));
         }

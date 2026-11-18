@@ -48,7 +48,7 @@ Codeer.LowCode.Blazor.Extras 0.23.0 以降（Codeer.LowCode.Blazor 1.3.53 以降
 | `true` | `{"data": 画面の現在の値, "submit": 保存ボタンが送るのと同じ内容 (変更が無ければ null)}` |
 | `false` | `{}` |
 
-- C# で書いたジョブには、引数の `args[0]` に JSON の文字列として渡ります。デザイナで作った Job では、解いた形の `args.Data`（画面の現在値。`ModuleData`）と `args.Submit`（保存ボタンが送るのと同じ内容。`List<ModuleSubmitData>`、無ければ `null`）で受け取ります
+- C# で書いたジョブには、引数の `args[0]` に JSON の文字列として渡ります。デザイナで作った Job では、`data` を解いた `args.Data`（画面の現在値。`ModuleData`）で受け取ります（`submit` は受け取りません）
 - 「画面の内容を渡す」が `false` なら、サーバーがデザインを見て `{}` を渡します（画面から何が送られてきても使いません）
 - DB 列に格納するモードのファイル（FileField）は、ファイルの中身ごと JSON に入ります。大きいファイルのある画面では「画面の内容を渡す」を `false` にして、ジョブで Id から読み直してください
 

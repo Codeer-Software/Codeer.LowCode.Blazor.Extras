@@ -53,7 +53,7 @@ Job では Module が無いので、検索で読んだデータ (`ModuleData`) �
 string Run(JobArguments args)
 {
     var search = new ModuleSearcher<Order>();
-    search.AddEquals(e => e.Id.Value, args.Options[0]);
+    search.AddEquals(e => e.Id.Value, args.Data.Id.Value);
     search.Select(e => e.Id, e => e.Title, e => e.Customer, e => e.Lines);
     var order = search.ExecuteRawFirstOrDefault();
     if (order == null) Fail("注文がありません");

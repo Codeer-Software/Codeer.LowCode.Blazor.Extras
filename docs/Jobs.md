@@ -216,7 +216,7 @@ string Run(JobArguments args)
 string Run(JobArguments args)
 {
     var search = new ModuleSearcher<Order>();
-    search.AddEquals(e => e.Id.Value, args.Options[0]);
+    search.AddEquals(e => e.Id.Value, args.Data.Id.Value);
     // 一覧 (明細) の行は、読む項目に一覧と Id を入れたときだけ親と一緒に読まれる
     search.Select(e => e.Id, e => e.Title, e => e.OrderedOn, e => e.Customer, e => e.Lines);
     var order = search.ExecuteRawFirstOrDefault();
@@ -243,7 +243,7 @@ string Run(JobArguments args)
 string Run(JobArguments args)
 {
     var search = new ModuleSearcher<Order>();
-    search.AddEquals(e => e.Id.Value, args.Options[0]);
+    search.AddEquals(e => e.Id.Value, args.Data.Id.Value);
     search.Select(e => e.Id, e => e.Title, e => e.OrderedOn, e => e.Customer, e => e.Lines);
     var order = search.ExecuteRawFirstOrDefault();
     if (order == null) Fail("注文がありません");
@@ -268,7 +268,7 @@ string Run(JobArguments args)
 string Run(JobArguments args)
 {
     var search = new ModuleSearcher<Quote>();
-    search.AddEquals(e => e.Id.Value, args.Options[0]);
+    search.AddEquals(e => e.Id.Value, args.Data.Id.Value);
     var quote = search.ExecuteRawFirstOrDefault();
     if (quote == null) Fail("見積がありません");
     var template = FileService.GetMemoryStream("Quote", "Template", quote.Id.Value);
