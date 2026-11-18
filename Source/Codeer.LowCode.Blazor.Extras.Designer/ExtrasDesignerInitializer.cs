@@ -43,8 +43,8 @@ namespace Codeer.LowCode.Blazor.Extras.Designer
             DesignerApp.ScriptRuntimeTypeManager.AddType<CrossTabCell>();
             DesignerApp.ScriptRuntimeTypeManager.AddType<TagSearchMatch>();
             //JobTriggerField.GetJobStatus の戻り値と、その Status の enum (クライアントの ExtrasClientInitializer と同じ)
-            DesignerApp.ScriptRuntimeTypeManager.AddType<Codeer.LowCode.Blazor.Extras.Jobs.JobStatusResponse>();
-            DesignerApp.ScriptRuntimeTypeManager.AddType<Codeer.LowCode.Blazor.Extras.Jobs.JobStatus>();
+            DesignerApp.ScriptRuntimeTypeManager.AddType<Codeer.LowCode.Blazor.Extras.Jobs.JobTriggerStatusResponse>();
+            DesignerApp.ScriptRuntimeTypeManager.AddType<Codeer.LowCode.Blazor.Extras.Jobs.JobTriggerStatus>();
 
             //Extras のスクリプトオブジェクト/サービス (スクリプト補完・script-catalog 用)。
             //デザイナでは実行されないため依存はダミーでよい。差し替えたいアプリは

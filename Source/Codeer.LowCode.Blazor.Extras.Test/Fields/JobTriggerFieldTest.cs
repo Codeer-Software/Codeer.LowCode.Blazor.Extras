@@ -43,14 +43,14 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Fields
         {
             public HarnessAppService App { get; init; } = null!;
             public RecordingUIService UI { get; init; } = null!;
-            public List<JobRunRequest> Requests { get; } = new();
-            public Func<JobRunRequest, Task<JobRunResponse?>> OnRunJob { get; set; } = _ => Task.FromResult<JobRunResponse?>(new JobRunResponse { Succeeded = true });
+            public List<JobTriggerRunRequest> Requests { get; } = new();
+            public Func<JobTriggerRunRequest, Task<JobTriggerRunResponse?>> OnRunJob { get; set; } = _ => Task.FromResult<JobTriggerRunResponse?>(new JobTriggerRunResponse { Succeeded = true });
             public List<string> StatusRequests { get; } = new();
-            public Func<string, Task<JobStatusResponse?>> OnGetJobStatus { get; set; } = _ => Task.FromResult<JobStatusResponse?>(new JobStatusResponse { Status = JobStatus.Done });
+            public Func<string, Task<JobTriggerStatusResponse?>> OnGetJobStatus { get; set; } = _ => Task.FromResult<JobTriggerStatusResponse?>(new JobTriggerStatusResponse { Status = JobTriggerStatus.Done });
         }
 
-        Func<JobTriggerField, JobRunRequest, Task<JobRunResponse?>>? _runCore;
-        Func<JobTriggerField, string, Task<JobStatusResponse?>>? _getJobStatusCore;
+        Func<JobTriggerField, JobTriggerRunRequest, Task<JobTriggerRunResponse?>>? _runCore;
+        Func<JobTriggerField, string, Task<JobTriggerStatusResponse?>>? _getJobStatusCore;
         string _endPoint = string.Empty;
 
         [SetUp]
@@ -112,13 +112,13 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Fields
             readonly List<Action<HttpStatusCode, string>> _checkers = new();
             public List<string> Urls { get; } = new();
             public List<HttpStatusCode> Toasts { get; } = new();
-            public Queue<(HttpStatusCode? Failure, JobStatusResponse? Status)> Responses { get; } = new();
+            public Queue<(HttpStatusCode? Failure, JobTriggerStatusResponse? Status)> Responses { get; } = new();
             public object? GetService(Type serviceType) => serviceType == typeof(IHttpService) ? this : null;
 
             public Task<TResult?> PostAsJsonAsync<TValue, TResult>(string url, TValue data, bool loading = true) where TResult : class
             {
                 Urls.Add("POST " + url);
-                return Task.FromResult((TResult?)(object)new JobRunResponse { Started = true, JobId = "job-1" });
+                return Task.FromResult((TResult?)(object)new JobTriggerRunResponse { Started = true, JobId = "job-1" });
             }
 
             public Task<TValue?> GetFromJsonAsync<TValue>(string url, bool loading = true) where TValue : class
@@ -241,7 +241,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Fields
         public async Task 成功なら既定の文言で成功の通知をしてtrue()
         {
             var (_, job, host) = await CreateAsync(withTable: false);
-            host.OnRunJob = _ => Task.FromResult<JobRunResponse?>(new JobRunResponse { Succeeded = true });
+            host.OnRunJob = _ => Task.FromResult<JobTriggerRunResponse?>(new JobTriggerRunResponse { Succeeded = true });
 
             Assert.That(await job.RunAsync(), Is.True);
 
@@ -253,7 +253,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Fields
         public async Task 成功でMessageがあればそれを通知()
         {
             var (_, job, host) = await CreateAsync(withTable: false);
-            host.OnRunJob = _ => Task.FromResult<JobRunResponse?>(new JobRunResponse { Succeeded = true, Message = "10 件を取り込みました" });
+            host.OnRunJob = _ => Task.FromResult<JobTriggerRunResponse?>(new JobTriggerRunResponse { Succeeded = true, Message = "10 件を取り込みました" });
 
             Assert.That(await job.RunAsync(), Is.True);
 
@@ -264,7 +264,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Fields
         public async Task 同期で成功して返したデータがあればResultで読める()
         {
             var (_, job, host) = await CreateAsync(withTable: false);
-            host.OnRunJob = _ => Task.FromResult<JobRunResponse?>(new JobRunResponse { Succeeded = true, ResultJson = "{\"Total\":12800,\"Name\":\"山田\",\"FileGuid\":null}" });
+            host.OnRunJob = _ => Task.FromResult<JobTriggerRunResponse?>(new JobTriggerRunResponse { Succeeded = true, ResultJson = "{\"Total\":12800,\"Name\":\"山田\",\"FileGuid\":null}" });
 
             Assert.That(job.Result, Is.Null);
             Assert.That(await job.RunAsync(), Is.True);
@@ -278,26 +278,26 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Fields
         public async Task Resultは次の実行の開始でnullに戻り返さないジョブと失敗ではnull()
         {
             var (_, job, host) = await CreateAsync(withTable: false);
-            host.OnRunJob = _ => Task.FromResult<JobRunResponse?>(new JobRunResponse { Succeeded = true, ResultJson = "{\"Total\":1}" });
+            host.OnRunJob = _ => Task.FromResult<JobTriggerRunResponse?>(new JobTriggerRunResponse { Succeeded = true, ResultJson = "{\"Total\":1}" });
             await job.RunAsync();
             Assert.That(job.Result, Is.Not.Null);
 
             //実行中 (ホストに頼んでいる間) は前の結果が残っていない
             JsonObject? during = new();
-            host.OnRunJob = _ => { during = job.Result; return Task.FromResult<JobRunResponse?>(new JobRunResponse { Succeeded = true }); };
+            host.OnRunJob = _ => { during = job.Result; return Task.FromResult<JobTriggerRunResponse?>(new JobTriggerRunResponse { Succeeded = true }); };
             Assert.That(await job.RunAsync(), Is.True);
             Assert.That(during, Is.Null);
             Assert.That(job.Result, Is.Null);
 
             //失敗の応答にデータが入っていても使わない
-            host.OnRunJob = _ => Task.FromResult<JobRunResponse?>(new JobRunResponse { Succeeded = true, ResultJson = "{\"Total\":1}" });
+            host.OnRunJob = _ => Task.FromResult<JobTriggerRunResponse?>(new JobTriggerRunResponse { Succeeded = true, ResultJson = "{\"Total\":1}" });
             await job.RunAsync();
-            host.OnRunJob = _ => Task.FromResult<JobRunResponse?>(new JobRunResponse { Succeeded = false, Error = "失敗", ResultJson = "{\"Total\":2}" });
+            host.OnRunJob = _ => Task.FromResult<JobTriggerRunResponse?>(new JobTriggerRunResponse { Succeeded = false, Error = "失敗", ResultJson = "{\"Total\":2}" });
             Assert.That(await job.RunAsync(), Is.False);
             Assert.That(job.Result, Is.Null);
 
             //ホストの例外・通信の失敗
-            host.OnRunJob = _ => Task.FromResult<JobRunResponse?>(new JobRunResponse { Succeeded = true, ResultJson = "{\"Total\":1}" });
+            host.OnRunJob = _ => Task.FromResult<JobTriggerRunResponse?>(new JobTriggerRunResponse { Succeeded = true, ResultJson = "{\"Total\":1}" });
             await job.RunAsync();
             host.OnRunJob = _ => throw new InvalidOperationException("落ちた");
             Assert.That(await job.RunAsync(), Is.False);
@@ -308,25 +308,25 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Fields
         public async Task 非同期ではResultはnullで状態のResultで読め通信のJSONには載らない()
         {
             var (_, job, host) = await CreateAsync(withTable: false, isAsynchronous: true);
-            host.OnRunJob = _ => Task.FromResult<JobRunResponse?>(new JobRunResponse { Started = true, JobId = "job-1" });
-            host.OnGetJobStatus = _ => Task.FromResult<JobStatusResponse?>(new JobStatusResponse { Status = JobStatus.Done, ResultJson = "{\"Total\":5}" });
+            host.OnRunJob = _ => Task.FromResult<JobTriggerRunResponse?>(new JobTriggerRunResponse { Started = true, JobId = "job-1" });
+            host.OnGetJobStatus = _ => Task.FromResult<JobTriggerStatusResponse?>(new JobTriggerStatusResponse { Status = JobTriggerStatus.Done, ResultJson = "{\"Total\":5}" });
             Assert.That(await job.RunAsync(), Is.True);
             Assert.That(job.Result, Is.Null);
 
             var status = await job.GetJobStatusAsync("job-1");
             Assert.That(status!.Result!["Total"], Is.EqualTo(5m));
-            Assert.That(new JobStatusResponse().Result, Is.Null);
+            Assert.That(new JobTriggerStatusResponse().Result, Is.Null);
 
             var json = JsonConverterEx.SerializeObject(status, indented: false);
             Assert.That(json, Does.Not.Contain("\"Result\""));
-            Assert.That(JsonConverterEx.DeserializeObject<JobStatusResponse>(json)!.Result!["Total"], Is.EqualTo(5m));
+            Assert.That(JsonConverterEx.DeserializeObject<JobTriggerStatusResponse>(json)!.Result!["Total"], Is.EqualTo(5m));
         }
 
         [Test]
         public async Task 失敗ならエラーの文言を通知してfalse()
         {
             var (_, job, host) = await CreateAsync(withTable: false);
-            host.OnRunJob = _ => Task.FromResult<JobRunResponse?>(new JobRunResponse { Succeeded = false, Error = "在庫が足りません" });
+            host.OnRunJob = _ => Task.FromResult<JobTriggerRunResponse?>(new JobTriggerRunResponse { Succeeded = false, Error = "在庫が足りません" });
 
             Assert.That(await job.RunAsync(), Is.False);
 
@@ -338,7 +338,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Fields
         public async Task 失敗でエラーが空なら既定の文言()
         {
             var (_, job, host) = await CreateAsync(withTable: false);
-            host.OnRunJob = _ => Task.FromResult<JobRunResponse?>(new JobRunResponse { Succeeded = false, Message = "成功の文言は使わない" });
+            host.OnRunJob = _ => Task.FromResult<JobTriggerRunResponse?>(new JobTriggerRunResponse { Succeeded = false, Message = "成功の文言は使わない" });
 
             Assert.That(await job.RunAsync(), Is.False);
 
@@ -349,13 +349,13 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Fields
         public async Task HTTPの経路でGetJobStatusがdoneを返す()
         {
             var (job, http, ui) = await CreateHttpAsync();
-            http.Responses.Enqueue((null, new JobStatusResponse { Status = JobStatus.Done, Message = "完了" }));
+            http.Responses.Enqueue((null, new JobTriggerStatusResponse { Status = JobTriggerStatus.Done, Message = "完了" }));
 
             Assert.That(await job.RunAsync(), Is.True);
             var status = await job.GetJobStatusAsync(job.JobId);
 
             Assert.That(http.Urls, Is.EqualTo(new[] { "POST /api/job/run", "GET /api/job/run/job-1" }));
-            Assert.That(status!.Status, Is.EqualTo(JobStatus.Done));
+            Assert.That(status!.Status, Is.EqualTo(JobTriggerStatus.Done));
             Assert.That(status.Message, Is.EqualTo("完了"));
             Assert.That(job.JobIds, Is.Empty);
             //開始の通知だけ。結果は通知しない
@@ -396,7 +396,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Fields
         public async Task 非同期でJobIdがあれば開始の通知だけでtrueになりJobIdとJobIdsに入る()
         {
             var (_, job, host) = await CreateAsync(withTable: false, isAsynchronous: true);
-            host.OnRunJob = _ => Task.FromResult<JobRunResponse?>(new JobRunResponse { Started = true, JobId = "job-1" });
+            host.OnRunJob = _ => Task.FromResult<JobTriggerRunResponse?>(new JobTriggerRunResponse { Started = true, JobId = "job-1" });
 
             Assert.That(await job.RunAsync(), Is.True);
 
@@ -412,7 +412,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Fields
         public async Task 非同期でJobIdが無ければ開始の通知だけでtrueでJobIdは空のまま()
         {
             var (_, job, host) = await CreateAsync(withTable: false, isAsynchronous: true);
-            host.OnRunJob = _ => Task.FromResult<JobRunResponse?>(new JobRunResponse { Started = true });
+            host.OnRunJob = _ => Task.FromResult<JobTriggerRunResponse?>(new JobTriggerRunResponse { Started = true });
 
             Assert.That(await job.RunAsync(), Is.True);
 
@@ -425,7 +425,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Fields
         public async Task 二回起動するとJobIdsは二つでJobIdは後の方()
         {
             var (_, job, host) = await CreateAsync(withTable: false, isAsynchronous: true);
-            host.OnRunJob = _ => Task.FromResult<JobRunResponse?>(new JobRunResponse { Started = true, JobId = $"job-{host.Requests.Count}" });
+            host.OnRunJob = _ => Task.FromResult<JobTriggerRunResponse?>(new JobTriggerRunResponse { Started = true, JobId = $"job-{host.Requests.Count}" });
 
             Assert.That(await job.RunAsync(), Is.True);
             Assert.That(await job.RunAsync(), Is.True);
@@ -438,14 +438,14 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Fields
         public async Task GetJobStatusが実行中ならJobIdsに残る()
         {
             var (_, job, host) = await CreateAsync(withTable: false, isAsynchronous: true);
-            host.OnRunJob = _ => Task.FromResult<JobRunResponse?>(new JobRunResponse { Started = true, JobId = "job-1" });
-            host.OnGetJobStatus = _ => Task.FromResult<JobStatusResponse?>(new JobStatusResponse { Status = JobStatus.Running });
+            host.OnRunJob = _ => Task.FromResult<JobTriggerRunResponse?>(new JobTriggerRunResponse { Started = true, JobId = "job-1" });
+            host.OnGetJobStatus = _ => Task.FromResult<JobTriggerStatusResponse?>(new JobTriggerStatusResponse { Status = JobTriggerStatus.Running });
             await job.RunAsync();
 
             var status = await job.GetJobStatusAsync("job-1");
 
             Assert.That(host.StatusRequests, Is.EqualTo(new[] { "job-1" }));
-            Assert.That(status!.Status, Is.EqualTo(JobStatus.Running));
+            Assert.That(status!.Status, Is.EqualTo(JobTriggerStatus.Running));
             Assert.That(job.JobIds, Is.EqualTo(new[] { "job-1" }));
         }
 
@@ -453,13 +453,13 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Fields
         public async Task GetJobStatusがdoneならJobIdsから外れSucceededがtrue()
         {
             var (_, job, host) = await CreateAsync(withTable: false, isAsynchronous: true);
-            host.OnRunJob = _ => Task.FromResult<JobRunResponse?>(new JobRunResponse { Started = true, JobId = "job-1" });
-            host.OnGetJobStatus = _ => Task.FromResult<JobStatusResponse?>(new JobStatusResponse { Status = JobStatus.Done, Message = "10 件を取り込みました" });
+            host.OnRunJob = _ => Task.FromResult<JobTriggerRunResponse?>(new JobTriggerRunResponse { Started = true, JobId = "job-1" });
+            host.OnGetJobStatus = _ => Task.FromResult<JobTriggerStatusResponse?>(new JobTriggerStatusResponse { Status = JobTriggerStatus.Done, Message = "10 件を取り込みました" });
             await job.RunAsync();
 
             var status = await job.GetJobStatusAsync("job-1");
 
-            Assert.That(status!.Status, Is.EqualTo(JobStatus.Done));
+            Assert.That(status!.Status, Is.EqualTo(JobTriggerStatus.Done));
             Assert.That(status.Message, Is.EqualTo("10 件を取り込みました"));
             Assert.That(job.JobIds, Is.Empty);
             //確かめ済みなので JobId も空 (同じジョブを二度問い合わせない)
@@ -472,13 +472,13 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Fields
         public async Task GetJobStatusがerrorでもJobIdsから外れる()
         {
             var (_, job, host) = await CreateAsync(withTable: false, isAsynchronous: true);
-            host.OnRunJob = _ => Task.FromResult<JobRunResponse?>(new JobRunResponse { Started = true, JobId = "job-1" });
-            host.OnGetJobStatus = _ => Task.FromResult<JobStatusResponse?>(new JobStatusResponse { Status = JobStatus.Error, Error = "在庫が足りません" });
+            host.OnRunJob = _ => Task.FromResult<JobTriggerRunResponse?>(new JobTriggerRunResponse { Started = true, JobId = "job-1" });
+            host.OnGetJobStatus = _ => Task.FromResult<JobTriggerStatusResponse?>(new JobTriggerStatusResponse { Status = JobTriggerStatus.Error, Error = "在庫が足りません" });
             await job.RunAsync();
 
             var status = await job.GetJobStatusAsync("job-1");
 
-            Assert.That(status!.Status, Is.EqualTo(JobStatus.Error));
+            Assert.That(status!.Status, Is.EqualTo(JobTriggerStatus.Error));
             Assert.That(status.Error, Is.EqualTo("在庫が足りません"));
             Assert.That(job.JobIds, Is.Empty);
             Assert.That(host.UI.Errors, Is.Empty);
@@ -489,8 +489,8 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Fields
         {
             //null = 知らない Id (サーバーが結果を忘れた)。二度と分からないので外す
             var (_, job, host) = await CreateAsync(withTable: false, isAsynchronous: true);
-            host.OnRunJob = _ => Task.FromResult<JobRunResponse?>(new JobRunResponse { Started = true, JobId = "job-1" });
-            host.OnGetJobStatus = _ => Task.FromResult<JobStatusResponse?>(null);
+            host.OnRunJob = _ => Task.FromResult<JobTriggerRunResponse?>(new JobTriggerRunResponse { Started = true, JobId = "job-1" });
+            host.OnGetJobStatus = _ => Task.FromResult<JobTriggerStatusResponse?>(null);
             await job.RunAsync();
 
             Assert.That(await job.GetJobStatusAsync("job-1"), Is.Null);
@@ -501,7 +501,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Fields
         public async Task GetJobStatusCoreAsyncが無ければnull()
         {
             var (_, job, host) = await CreateAsync(withTable: false, isAsynchronous: true);
-            host.OnRunJob = _ => Task.FromResult<JobRunResponse?>(new JobRunResponse { Started = true, JobId = "job-1" });
+            host.OnRunJob = _ => Task.FromResult<JobTriggerRunResponse?>(new JobTriggerRunResponse { Started = true, JobId = "job-1" });
             await job.RunAsync();
             JobTriggerField.GetJobStatusCoreAsync = null;
 
@@ -513,7 +513,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Fields
         public async Task GetJobStatusは引数なしならJobIdsの先頭を問い合わせる()
         {
             var (_, job, host) = await CreateAsync(withTable: false, isAsynchronous: true);
-            host.OnRunJob = _ => Task.FromResult<JobRunResponse?>(new JobRunResponse { Started = true, JobId = $"job-{host.Requests.Count}" });
+            host.OnRunJob = _ => Task.FromResult<JobTriggerRunResponse?>(new JobTriggerRunResponse { Started = true, JobId = $"job-{host.Requests.Count}" });
             await job.RunAsync();
             await job.RunAsync();
 
@@ -539,7 +539,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Fields
         {
             //null はホストが通知済み
             var (_, job, host) = await CreateAsync(withTable: false);
-            host.OnRunJob = _ => Task.FromResult<JobRunResponse?>(null);
+            host.OnRunJob = _ => Task.FromResult<JobTriggerRunResponse?>(null);
 
             Assert.That(await job.RunAsync(), Is.False);
 
@@ -579,7 +579,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Fields
         public async Task 実行中は二重に頼まない()
         {
             var (_, job, host) = await CreateAsync(withTable: false);
-            var gate = new TaskCompletionSource<JobRunResponse?>();
+            var gate = new TaskCompletionSource<JobTriggerRunResponse?>();
             host.OnRunJob = _ => gate.Task;
 
             var first = job.RunAsync();
@@ -588,7 +588,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Fields
             Assert.That(await job.RunAsync(), Is.False);
             Assert.That(host.Requests, Has.Count.EqualTo(1));
 
-            gate.SetResult(new JobRunResponse { Succeeded = true });
+            gate.SetResult(new JobTriggerRunResponse { Succeeded = true });
             Assert.That(await first, Is.True);
             Assert.That(job.IsRunning, Is.False);
         }

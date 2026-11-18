@@ -1,10 +1,10 @@
 namespace Codeer.LowCode.Blazor.Extras.Server.Jobs
 {
     /// <summary>
-    /// ジョブが成功したときにホストの実行の口が返すもの (<see cref="JobMode"/> の runJob・<see cref="JobApi"/> の run・<see cref="JobProcess.RunInNewProcessAsync"/>)。
+    /// ジョブが成功したときにホストの実行の口が返すもの (<see cref="JobRuntime"/> の runJob・<see cref="JobTriggerApi"/> の run・<see cref="JobRuntime.RunInNewProcessAsync"/>)。
     /// 失敗は例外で返す (この型には失敗を入れない)。
     /// </summary>
-    public sealed class JobRunResult
+    public sealed class JobRuntimeResult
     {
         /// <summary>成功の文言 (画面の成功の通知に出る)。null なら既定の文言。</summary>
         public string? Message { get; init; }

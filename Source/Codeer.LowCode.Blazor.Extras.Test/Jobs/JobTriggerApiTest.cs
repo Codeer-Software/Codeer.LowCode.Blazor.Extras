@@ -19,15 +19,15 @@ using Microsoft.Extensions.Options;
 namespace Codeer.LowCode.Blazor.Extras.Test.Jobs
 {
     /// <summary>
-    /// 共通の API の Job.Run (JobApi)。ジョブをどこで動かすかはホストが渡す実行の口が決める。
-    /// このテストの実行の口は、InProcessJob をこのプロセスの中のデリゲートで、それ以外を JobProcess.RunInNewProcessAsync (テスト用ホスト Codeer.LowCode.Blazor.Extras.Test.JobHost) で動かす。
-    /// 名前だけ渡すコンストラクタは全部 JobProcess.RunInNewProcessAsync。
+    /// 共通の API の Job.Run (JobTriggerApi)。ジョブをどこで動かすかはホストが渡す実行の口が決める。
+    /// このテストの実行の口は、InProcessJob をこのプロセスの中のデリゲートで、それ以外を JobRuntime.RunInNewProcessAsync (テスト用ホスト Codeer.LowCode.Blazor.Extras.Test.JobHost) で動かす。
+    /// 名前だけ渡すコンストラクタは全部 JobRuntime.RunInNewProcessAsync。
     /// モジュール Item の JobTriggerField: "InProcess" (ジョブ InProcessJob・同期) / "InProcessAsync" (同じジョブ・非同期) / "Process" (ジョブ Echo・同期) / "EchoAsync" (Echo・非同期) /
     /// "Fail" (ジョブ Fail・同期) / "FailAsync" (Fail・非同期) / "Sleep" (ジョブ Sleep・同期) / "SleepAsync" (Sleep・非同期)。どれも同時実行を許さない (既定)。権限の条件は無し。
-    /// JobProcess の static (Cache・LoggerFactory・実行中の数) を使うので直列で動かす。
+    /// JobTriggerTracker の static (Cache・LoggerFactory・実行中の数) を使うので直列で動かす。
     /// </summary>
     [TestFixture, NonParallelizable]
-    public class JobApiTest : IAuthenticationContext
+    public class JobTriggerApiTest : IAuthenticationContext
     {
         const string Ds = "Main";
 
@@ -41,7 +41,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Jobs
         List<string> _logs = null!;
         List<(string Name, string Input, string UserId, JobTriggerProcessType ProcessType)> _calls = null!;
         //途中で失敗しても、このプロセスの中で待たせたジョブを後始末で終わらせる (実行中に数えたまま次のテストに残さない)
-        TaskCompletionSource<JobRunResult>? _gate;
+        TaskCompletionSource<JobRuntimeResult>? _gate;
 
         public Task<string> GetCurrentUserIdAsync() => Task.FromResult("1");
 
@@ -59,27 +59,27 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Jobs
             _calls = [];
             _logs = [];
 
-            _entryDll = JobProcess.EntryDll;
-            _hostExecutable = JobProcess.HostExecutable;
-            _dotnetPath = JobProcess.DotnetPath;
-            _loggerFactory = JobProcess.LoggerFactory;
-            JobProcess.EntryDll = HostDll;
-            JobProcess.HostExecutable = string.Empty;
-            JobProcess.LoggerFactory = LoggerFactory.Create(builder => builder.AddProvider(new ListLoggerProvider(_logs)));
-            JobProcess.Cache = new MemoryDistributedCache(Options.Create(new MemoryDistributedCacheOptions()));
+            _entryDll = JobRuntime.EntryDll;
+            _hostExecutable = JobRuntime.HostExecutable;
+            _dotnetPath = JobRuntime.DotnetPath;
+            _loggerFactory = JobTriggerTracker.LoggerFactory;
+            JobRuntime.EntryDll = HostDll;
+            JobRuntime.HostExecutable = string.Empty;
+            JobTriggerTracker.LoggerFactory = LoggerFactory.Create(builder => builder.AddProvider(new ListLoggerProvider(_logs)));
+            JobTriggerTracker.Cache = new MemoryDistributedCache(Options.Create(new MemoryDistributedCacheOptions()));
         }
 
         [TearDown]
         public void TearDown()
         {
-            _gate?.TrySetResult(new JobRunResult());
+            _gate?.TrySetResult(new JobRuntimeResult());
             _gate = null;
-            JobProcess.LoggerFactory?.Dispose();
-            JobProcess.EntryDll = _entryDll;
-            JobProcess.HostExecutable = _hostExecutable;
-            JobProcess.DotnetPath = _dotnetPath;
-            JobProcess.LoggerFactory = _loggerFactory;
-            JobProcess.Cache = null;
+            JobTriggerTracker.LoggerFactory?.Dispose();
+            JobRuntime.EntryDll = _entryDll;
+            JobRuntime.HostExecutable = _hostExecutable;
+            JobRuntime.DotnetPath = _dotnetPath;
+            JobTriggerTracker.LoggerFactory = _loggerFactory;
+            JobTriggerTracker.Cache = null;
             _db.Dispose();
             SqliteTestDb.Delete(_dbFile);
         }
@@ -114,30 +114,30 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Jobs
         };
 
         //実行の口: InProcessJob はこのプロセスの中 (inProcess のデリゲート)・それ以外は別プロセス
-        JobApi CreateApi(Func<string, string, string, JobTriggerProcessType, Task<JobRunResult>>? inProcess = null)
+        JobTriggerApi CreateApi(Func<string, string, string, JobTriggerProcessType, Task<JobRuntimeResult>>? inProcess = null)
             => new(() => ["InProcessJob", "Echo", "Fail", "Sleep"],
                 (name, input, userId, processType) => string.Equals(name, "InProcessJob", StringComparison.OrdinalIgnoreCase)
                     ? (inProcess ?? RecordCall)(name, input, userId, processType)
-                    : JobProcess.RunInNewProcessAsync(name, input, userId));
+                    : JobRuntime.RunInNewProcessAsync(name, input, userId));
 
-        Task<JobRunResult> RecordCall(string name, string input, string userId, JobTriggerProcessType processType)
+        Task<JobRuntimeResult> RecordCall(string name, string input, string userId, JobTriggerProcessType processType)
         {
             lock (_calls) _calls.Add((name, input, userId, processType));
-            return Task.FromResult(new JobRunResult { Message = $"in process {userId}" });
+            return Task.FromResult(new JobRuntimeResult { Message = $"in process {userId}" });
         }
 
         static string Payload(string field, string arguments)
-            => JsonConverterEx.SerializeObject(new JobRunRequest { ModuleName = "Item", FieldName = field, Arguments = arguments }, indented: false);
+            => JsonConverterEx.SerializeObject(new JobTriggerRunRequest { ModuleName = "Item", FieldName = field, Arguments = arguments }, indented: false);
 
-        static async Task<JobRunResponse> RunAsync(JobApi api, string field, string arguments, ExtrasApiContext context)
-            => (JobRunResponse)(await api.ExecuteAsync(JobApiNames.Run, Payload(field, arguments), context))!;
+        static async Task<JobTriggerRunResponse> RunAsync(JobTriggerApi api, string field, string arguments, ExtrasApiContext context)
+            => (JobTriggerRunResponse)(await api.ExecuteAsync(JobTriggerApiNames.Run, Payload(field, arguments), context))!;
 
         [Test]
         public async Task 実行の口はジョブ名と画面の内容とユーザーIdで呼ばれ口が別プロセスにしなければ子プロセスを起動しない()
         {
             //別プロセスを起動しようとすれば例外になるようにしておく
-            JobProcess.EntryDll = Path.Combine(Path.GetTempPath(), "no_such_host_" + Guid.NewGuid() + ".dll");
-            JobProcess.DotnetPath = Path.Combine(Path.GetTempPath(), "no_such_dotnet_" + Guid.NewGuid());
+            JobRuntime.EntryDll = Path.Combine(Path.GetTempPath(), "no_such_host_" + Guid.NewGuid() + ".dll");
+            JobRuntime.DotnetPath = Path.Combine(Path.GetTempPath(), "no_such_dotnet_" + Guid.NewGuid());
 
             var ret = await RunAsync(CreateApi(), "InProcess", """{"data":{}}""", CreateContext("7"));
             Assert.That(ret.Succeeded, Is.True, ret.Error);
@@ -152,7 +152,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Jobs
         [Test]
         public async Task 同期で成功したら返したデータが応答のResultJsonに入り失敗と非同期の応答には無い()
         {
-            var api = CreateApi((_, _, _, _) => Task.FromResult(new JobRunResult { Message = "作りました", ResultJson = "{\"Total\":12800}" }));
+            var api = CreateApi((_, _, _, _) => Task.FromResult(new JobRuntimeResult { Message = "作りました", ResultJson = "{\"Total\":12800}" }));
             var ret = await RunAsync(api, "InProcess", "{}", CreateContext("7"));
             Assert.That(ret.Succeeded, Is.True, ret.Error);
             Assert.That(ret.Message, Is.EqualTo("作りました"));
@@ -175,7 +175,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Jobs
         [Test]
         public async Task 別プロセスで動かしたジョブの返したデータも応答のResultJsonに入る()
         {
-            var api = new JobApi(["Result"]);
+            var api = new JobTriggerApi(["Result"]);
             var ret = await RunAsync(api, "Result", "{}", CreateContext("7"));
             Assert.That(ret.Succeeded, Is.True, ret.Error);
             Assert.That(ret.ResultJson, Is.EqualTo("{\"Total\":12800,\"Name\":\"山田\"}"));
@@ -215,10 +215,10 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Jobs
             Assert.That(ret.JobId, Is.Not.Empty);
 
             var status = await WaitFinishedAsync(api, ret.JobId, "7");
-            Assert.That(status.Status, Is.EqualTo(JobStatus.Done));
+            Assert.That(status.Status, Is.EqualTo(JobTriggerStatus.Done));
             Assert.That(status.Message, Is.EqualTo("in process 7"));
-            var statusPayload = JsonConverterEx.SerializeObject(new JobStatusRequest { JobId = ret.JobId }, indented: false);
-            Assert.That(await api.ExecuteAsync(JobApiNames.Status, statusPayload, CreateContext("8")), Is.Null);
+            var statusPayload = JsonConverterEx.SerializeObject(new JobTriggerStatusRequest { JobId = ret.JobId }, indented: false);
+            Assert.That(await api.ExecuteAsync(JobTriggerApiNames.Status, statusPayload, CreateContext("8")), Is.Null);
             Assert.That(_calls.Single().UserId, Is.EqualTo("7"));
         }
 
@@ -234,7 +234,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Jobs
         [Test]
         public async Task 名前だけ渡すコンストラクタは全部別プロセスで動く()
         {
-            var api = new JobApi(["InProcessJob", "Echo"]);
+            var api = new JobTriggerApi(["InProcessJob", "Echo"]);
             var ret = await RunAsync(api, "Process", "入力", CreateContext("7"));
             Assert.That(ret.Succeeded, Is.True, ret.Error);
             Assert.That(ret.Message, Is.EqualTo("7|1|入力"));
@@ -252,30 +252,30 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Jobs
         [Test]
         public async Task 名前だけ渡すコンストラクタ_同期の失敗は標準エラーの最初の行が画面のエラーになり標準エラーと標準出力の全文が記録される()
         {
-            var api = new JobApi(["Fail"]);
+            var api = new JobTriggerApi(["Fail"]);
             var ret = await RunAsync(api, "Fail", "{}", CreateContext("7"));
             Assert.That(ret.Succeeded, Is.False);
             Assert.That(ret.Error, Is.EqualTo("わざと失敗 (日本語)"));
             Assert.That(_logs, Has.Count.EqualTo(1));
-            //JobProcess.RunAsync の記録と同じ (JobResult.ToString())
+            //JobTriggerTracker.RunAsync の記録と同じ (JobRuntimeProcessResult.ToString())
             Assert.That(_logs[0], Does.StartWith("ジョブ Fail が失敗しました (終了コード 1): わざと失敗 (日本語)").And.Contain("before failure"));
         }
 
         [Test]
         public async Task 名前だけ渡すコンストラクタ_非同期は成功がDoneで失敗がErrorになり失敗は全文が記録される()
         {
-            var api = new JobApi(["Echo", "Fail"]);
+            var api = new JobTriggerApi(["Echo", "Fail"]);
             var ok = await RunAsync(api, "EchoAsync", "入力", CreateContext("7"));
             Assert.That(ok.Started, Is.True);
             var status = await WaitFinishedAsync(api, ok.JobId, "7");
-            Assert.That(status.Status, Is.EqualTo(JobStatus.Done));
+            Assert.That(status.Status, Is.EqualTo(JobTriggerStatus.Done));
             Assert.That(status.Message, Is.EqualTo("7|1|入力"));
             Assert.That(status.Error, Is.Empty);
 
             var ng = await RunAsync(api, "FailAsync", "{}", CreateContext("7"));
             Assert.That(ng.Started, Is.True);
             status = await WaitFinishedAsync(api, ng.JobId, "7");
-            Assert.That(status.Status, Is.EqualTo(JobStatus.Error));
+            Assert.That(status.Status, Is.EqualTo(JobTriggerStatus.Error));
             Assert.That(status.Error, Is.EqualTo("わざと失敗 (日本語)"));
             Assert.That(status.Message, Is.Empty);
             await WaitAsync(() => _logs.Count == 1);
@@ -285,7 +285,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Jobs
         [Test]
         public async Task 名前だけ渡すコンストラクタ_同時実行を許さないジョブは実行中なら同期も非同期も起動せず終わった後は動く()
         {
-            var api = new JobApi(["Sleep"]);
+            var api = new JobTriggerApi(["Sleep"]);
             var running = await RunAsync(api, "SleepAsync", "3000", CreateContext("7"));
             Assert.That(running.Started, Is.True);
 
@@ -297,7 +297,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Jobs
             Assert.That(ret.Started, Is.False);
             Assert.That(ret.Error, Is.EqualTo("ジョブ 'Sleep' は実行中です"));
 
-            Assert.That((await WaitFinishedAsync(api, running.JobId, "7")).Status, Is.EqualTo(JobStatus.Done));
+            Assert.That((await WaitFinishedAsync(api, running.JobId, "7")).Status, Is.EqualTo(JobTriggerStatus.Done));
             ret = await RunAsync(api, "Sleep", "10", CreateContext("7"));
             Assert.That(ret.Succeeded, Is.True, ret.Error);
             Assert.That(ret.Message, Is.EqualTo("slept"));
@@ -307,11 +307,11 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Jobs
         public async Task 実行の口の中で別プロセスとこのプロセスに振り分けても同じジョブ名の実行中は実行先をまたいで数える()
         {
             //実行の口は (非同期では要求から切り離して) 後から呼ばれるので、振り分けは呼ばれた時の引数で決める: 画面の内容が "in-process" ならこのプロセスの中、それ以外は別プロセス
-            var gate = _gate = new TaskCompletionSource<JobRunResult>(TaskCreationOptions.RunContinuationsAsynchronously);
+            var gate = _gate = new TaskCompletionSource<JobRuntimeResult>(TaskCreationOptions.RunContinuationsAsynchronously);
             var inProcessCalls = 0;
-            var api = new JobApi(() => ["Sleep"], (name, input, userId, _) =>
+            var api = new JobTriggerApi(() => ["Sleep"], (name, input, userId, _) =>
             {
-                if (input != "in-process") return JobProcess.RunInNewProcessAsync(name, input, userId);
+                if (input != "in-process") return JobRuntime.RunInNewProcessAsync(name, input, userId);
                 Interlocked.Increment(ref inProcessCalls);
                 return gate.Task;
             });
@@ -324,7 +324,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Jobs
             ret = await RunAsync(api, "SleepAsync", "in-process", CreateContext("7"));
             Assert.That(ret.Error, Is.EqualTo("ジョブ 'Sleep' は実行中です"));
             Assert.That(inProcessCalls, Is.EqualTo(0));
-            Assert.That((await WaitFinishedAsync(api, process.JobId, "7")).Status, Is.EqualTo(JobStatus.Done));
+            Assert.That((await WaitFinishedAsync(api, process.JobId, "7")).Status, Is.EqualTo(JobTriggerStatus.Done));
 
             //このプロセスの中が実行中 → 別プロセスも起動しない
             var tracked = await RunAsync(api, "SleepAsync", "in-process", CreateContext("7"));
@@ -335,9 +335,9 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Jobs
             ret = await RunAsync(api, "SleepAsync", "10", CreateContext("7"));
             Assert.That(ret.Error, Is.EqualTo("ジョブ 'Sleep' は実行中です"));
 
-            gate.SetResult(new JobRunResult { Message = "in process done" });
+            gate.SetResult(new JobRuntimeResult { Message = "in process done" });
             var status = await WaitFinishedAsync(api, tracked.JobId, "7");
-            Assert.That(status.Status, Is.EqualTo(JobStatus.Done));
+            Assert.That(status.Status, Is.EqualTo(JobTriggerStatus.Done));
             Assert.That(status.Message, Is.EqualTo("in process done"));
 
             //終われば別プロセスで動く
@@ -350,8 +350,8 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Jobs
         [Test]
         public async Task 起動の失敗_同期はジョブの失敗として画面のエラーになり記録される()
         {
-            JobProcess.DotnetPath = Path.Combine(Path.GetTempPath(), "no_such_dotnet_" + Guid.NewGuid());
-            var api = new JobApi(["Echo"]);
+            JobRuntime.DotnetPath = Path.Combine(Path.GetTempPath(), "no_such_dotnet_" + Guid.NewGuid());
+            var api = new JobTriggerApi(["Echo"]);
 
             var ret = await RunAsync(api, "Process", "{}", CreateContext("7"));
             Assert.That(ret.Succeeded, Is.False);
@@ -368,14 +368,14 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Jobs
         [Test]
         public async Task 起動の失敗_非同期はIdが返り状態がErrorになり記録される()
         {
-            JobProcess.DotnetPath = Path.Combine(Path.GetTempPath(), "no_such_dotnet_" + Guid.NewGuid());
-            var api = new JobApi(["Echo"]);
+            JobRuntime.DotnetPath = Path.Combine(Path.GetTempPath(), "no_such_dotnet_" + Guid.NewGuid());
+            var api = new JobTriggerApi(["Echo"]);
 
             var ret = await RunAsync(api, "EchoAsync", "{}", CreateContext("7"));
             Assert.That(ret.Started, Is.True);
             Assert.That(ret.JobId, Is.Not.Empty);
             var status = await WaitFinishedAsync(api, ret.JobId, "7");
-            Assert.That(status.Status, Is.EqualTo(JobStatus.Error));
+            Assert.That(status.Status, Is.EqualTo(JobTriggerStatus.Error));
             Assert.That(status.Error, Does.Contain("no_such_dotnet_"));
             await WaitAsync(() => _logs.Count == 1);
             Assert.That(_logs[0], Does.StartWith("ジョブ Echo が失敗しました: ").And.Contain("Win32Exception"));
@@ -383,7 +383,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Jobs
             //実行中に数えたままにしない
             ret = await RunAsync(api, "EchoAsync", "{}", CreateContext("7"));
             Assert.That(ret.Started, Is.True, ret.Error);
-            Assert.That((await WaitFinishedAsync(api, ret.JobId, "7")).Status, Is.EqualTo(JobStatus.Error));
+            Assert.That((await WaitFinishedAsync(api, ret.JobId, "7")).Status, Is.EqualTo(JobTriggerStatus.Error));
         }
 
         [Test]
@@ -391,8 +391,8 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Jobs
         {
             var names = new List<string>();
             var asked = 0;
-            var api = new JobApi(() => { asked++; return names.ToList(); },
-                (name, _, _, _) => Task.FromResult(new JobRunResult { Message = $"ran {name}" }));
+            var api = new JobTriggerApi(() => { asked++; return names.ToList(); },
+                (name, _, _, _) => Task.FromResult(new JobRuntimeResult { Message = $"ran {name}" }));
 
             //構築した時点では一覧に無い
             var ret = await RunAsync(api, "InProcess", "{}", CreateContext("7"));
@@ -413,15 +413,15 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Jobs
         }
 
         //終わるまで状態を問い合わせる (最大 30 秒)
-        async Task<JobStatusResponse> WaitFinishedAsync(JobApi api, string jobId, string userId)
+        async Task<JobTriggerStatusResponse> WaitFinishedAsync(JobTriggerApi api, string jobId, string userId)
         {
-            var statusPayload = JsonConverterEx.SerializeObject(new JobStatusRequest { JobId = jobId }, indented: false);
+            var statusPayload = JsonConverterEx.SerializeObject(new JobTriggerStatusRequest { JobId = jobId }, indented: false);
             var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(30);
             while (true)
             {
-                var status = (JobStatusResponse?)await api.ExecuteAsync(JobApiNames.Status, statusPayload, CreateContext(userId));
+                var status = (JobTriggerStatusResponse?)await api.ExecuteAsync(JobTriggerApiNames.Status, statusPayload, CreateContext(userId));
                 Assert.That(status, Is.Not.Null, "状態が取れない");
-                if (status!.Status != JobStatus.Running) return status;
+                if (status!.Status != JobTriggerStatus.Running) return status;
                 if (DateTime.UtcNow > deadline) Assert.Fail("timeout");
                 await Task.Delay(20);
             }
@@ -438,7 +438,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Jobs
         {
             get
             {
-                var dll = Path.Combine(Path.GetDirectoryName(typeof(JobApiTest).Assembly.Location)!, "Codeer.LowCode.Blazor.Extras.Test.JobHost.dll");
+                var dll = Path.Combine(Path.GetDirectoryName(typeof(JobTriggerApiTest).Assembly.Location)!, "Codeer.LowCode.Blazor.Extras.Test.JobHost.dll");
                 Assert.That(File.Exists(dll), Is.True, dll);
                 return dll;
             }

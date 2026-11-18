@@ -34,7 +34,7 @@ ExtrasServerInitializer.Initialize();
 //Web ホストは立てず、同じ appsettings でジョブを 1 つ実行して終了コードを返す。
 //設定は exe の隣から読む (タスクスケジューラ等ではカレントフォルダが exe の場所とは限らない)。ジョブの引数は設定に混ぜない
 var isJob = args is ["job", ..];
-//ジョブモードの標準出力・標準エラーは UTF-8 (起動した側の JobProcess がそのつもりで読む。JobMode より前 = 設定の読み込みで失敗したときの出力も含める)
+//ジョブモードの標準出力・標準エラーは UTF-8 (起動した側の JobRuntime がそのつもりで読む。JobRuntime.RunAsync より前 = 設定の読み込みで失敗したときの出力も含める)
 if (isJob) Console.OutputEncoding = Encoding.UTF8;
 var builder = isJob
     ? WebApplication.CreateBuilder(new WebApplicationOptions { Args = [], ContentRootPath = AppContext.BaseDirectory })
@@ -73,7 +73,7 @@ SystemConfig.Instance.DataSources.ToList().ForEach(e => e.ConnectionString = bui
 
 GlobalFontSettings.FontResolver = new CustomFontResolver(SystemConfig.Instance.FontFileDirectory);
 
-if (isJob) return await JobMode.RunAsync(args[1..], JobRunner.Names, (name, jobArgs) => JobRunner.RunAsync(builder.Configuration, name, jobArgs));
+if (isJob) return await JobRuntime.RunAsync(args[1..], JobRuntimeHost.Names, (name, jobArgs) => JobRuntimeHost.RunAsync(builder.Configuration, name, jobArgs));
 
 builder.Services.AddControllersWithViews();
 builder.Services.AddRazorPages();
@@ -149,9 +149,9 @@ var app = builder.Build();
 //意味検索の警告ログ (埋め込みの失敗など) をアプリのログに出す
 Extras.Server.AI.SemanticSearchIndex.Service.LoggerFactory = app.Services.GetRequiredService<ILoggerFactory>();
 //画面のボタン (JobTriggerField) から起動したジョブの失敗をアプリのログに出す
-JobProcess.LoggerFactory = app.Services.GetRequiredService<ILoggerFactory>();
+JobTriggerTracker.LoggerFactory = app.Services.GetRequiredService<ILoggerFactory>();
 //非同期のジョブの状態の置き場 (複数インスタンスでは共有キャッシュ)
-JobProcess.Cache = app.Services.GetRequiredService<IDistributedCache>();
+JobTriggerTracker.Cache = app.Services.GetRequiredService<IDistributedCache>();
 
 app.UseResponseCompression();
 app.UseRequestLocalization();

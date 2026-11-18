@@ -3,10 +3,10 @@
 ホストのアプリが持つジョブ (C# の処理) を、同じアプリの別プロセスで動かす部品です。画面のボタン ([JobTriggerField](JobTriggerField.md)) から起動するときも、
 コマンドライン (`dotnet LowCodeApp.Server.dll job <ジョブ名>`) から起動するときも、同じ経路を通ります。
 
-- 親側 `JobProcess`: このプロセス自身を `job <ジョブ名> --stdin` で起動し、入力を標準入力で渡して結果 (`JobResult`) を受け取る。待たずに起動したジョブは Id で状態を問い合わせられる
-- 子側 `JobMode`: `job` より後ろの引数を受けてジョブを 1 つ実行し、終了コードを返す
-- 親と子の約束 (引数の並び・標準入力・環境変数・終了コード・UTF-8・結果の文言と返したデータの取り出し) はこの 2 つの中に閉じています。ホストはジョブの一覧と DB アクセスの組み立てだけを書きます
-- 画面のボタンから起動するジョブは、どこで動かすかをホストが実行の口で決められます。別プロセス (上の 2 つ。既定) か、Web サーバーのプロセスの中 (「実行先」)。JobTriggerField の `ProcessType` (`NewProcess` / `InProcess`) が実行の口に渡るので、デザインで指定できます (どう動かすかはホスト)
+- `JobRuntime` (ジョブを動かす): 親側 (`RunInNewProcessAsync`) はこのプロセス自身を `job <ジョブ名> --stdin` で起動し、入力を標準入力で渡して結果を受け取る。子側 (`RunAsync`) は `job` より後ろの引数を受けてジョブを 1 つ実行し、終了コードを返す
+- `JobTriggerApi` / `JobTriggerTracker` (画面から起動を頼む・受ける・状態を返す): 画面のボタンからの起動を受け、同時実行の判定・待たずに起動したジョブの状態 (Id で問い合わせる)・失敗の記録を持つ
+- 親と子の約束 (引数の並び・標準入力・環境変数・終了コード・UTF-8・結果の文言と返したデータの取り出し) は `JobRuntime` の中に閉じています。ホストはジョブの一覧と DB アクセスの組み立てだけを書きます
+- 画面のボタンから起動するジョブは、どこで動かすかをホストが実行の口で決められます。別プロセス (`JobRuntime`。既定) か、Web サーバーのプロセスの中 (「実行先」)。JobTriggerField の `ProcessType` (`NewProcess` / `InProcess`) が実行の口に渡るので、デザインで指定できます (どう動かすかはホスト)
 
 Codeer.LowCode.Blazor.Extras.Server 0.23.0 以降。名前空間 `Codeer.LowCode.Blazor.Extras.Server.Jobs`。
 ジョブの書き方・起動の仕方 (タスクスケジューラ・Azure WebJobs) はアプリのテンプレート (Codeer.LowCode.Blazor.Starter) の `Server/Jobs/README.md` にあります。
@@ -21,79 +21,79 @@ Codeer.LowCode.Blazor.Extras.Server 0.23.0 以降。名前空間 `Codeer.LowCode
 
 ```csharp
 var isJob = args is ["job", ..];
-if (isJob) Console.OutputEncoding = Encoding.UTF8;           // JobMode より前の出力 (設定の読み込みの失敗など) も UTF-8 で
+if (isJob) Console.OutputEncoding = Encoding.UTF8;           // JobRuntime より前の出力 (設定の読み込みの失敗など) も UTF-8 で
 var builder = isJob
     ? WebApplication.CreateBuilder(new WebApplicationOptions { Args = [], ContentRootPath = AppContext.BaseDirectory })
     : WebApplication.CreateBuilder(args);
 //...設定の読み込み (Web と同じ)...
-if (isJob) return await JobMode.RunAsync(args[1..], JobRunner.Names, (name, jobArgs) => JobRunner.RunAsync(builder.Configuration, name, jobArgs));
+if (isJob) return await JobRuntime.RunAsync(args[1..], JobRuntimeHost.Names, (name, jobArgs) => JobRuntimeHost.RunAsync(builder.Configuration, name, jobArgs));
 ```
 
-`JobMode.RunAsync(args, jobNames, runJob)`:
+`JobRuntime.RunAsync(args, jobNames, runJob)`:
 
 | 引数 | 内容 |
 |---|---|
 | `args` | `job` より後ろの引数 (ジョブ名・ジョブの引数) |
 | `jobNames` | ホストが持つジョブの名前 (大文字小文字は区別しない) |
-| `runJob` | ジョブを動かす (登録した名前・ジョブの引数 → 成功の文言と返すデータ (`JobRunResult`)。失敗は例外)。ホストはここで DB アクセスとジョブを組み立てる (テンプレートの `Jobs/JobRunner.cs`)。成功の文言 (`string?`) だけを返す形も使える (返すデータなし) |
+| `runJob` | ジョブを動かす (登録した名前・ジョブの引数 → 成功の文言と返すデータ (`JobRuntimeResult`)。失敗は例外)。ホストはここで DB アクセスとジョブを組み立てる (テンプレートの `Jobs/JobRuntimeHost.cs`)。成功の文言 (`string?`) だけを返す形も使える (返すデータなし) |
 
-戻り値はプロセスの終了コード (`JobMode.Success` = 0 / `Failure` = 1 / `JobNotFound` = 2)。
+戻り値はプロセスの終了コード (`JobRuntime.Success` = 0 / `Failure` = 1 / `JobNotFound` = 2)。
 
-`JobRunResult` (ジョブが成功したときに実行の口が返すもの。失敗は例外で返す):
+`JobRuntimeResult` (ジョブが成功したときに実行の口が返すもの。失敗は例外で返す):
 
 | メンバー | 内容 |
 |---|---|
 | `Message` | 成功の文言 (画面の成功の通知に出る)。null なら既定の文言 |
 | `ResultJson` | 起動した側に返すデータの JSON。デザイナで作った Job の `args.Result` (本体の `JobExecutionResult.ResultJson`) を入れる。無ければ null。画面では JobTriggerField の `Result` (同期) / `GetJobStatus` の `Result` (非同期) になる ([JobTriggerField](JobTriggerField.md)) |
 
-### 親側: JobApi と Program.cs
+### 親側: JobTriggerApi と Program.cs
 
-画面のボタン (JobTriggerField) の受け口は Extras.Server の `JobApi` です。ホストは共通の API の対応表 (テンプレートの `Extras/ExtrasApiTable.cs`) に `new JobApi(jobNames)` (動かせるジョブの名前。無い名前は起動しない) を並べます。この形は全部のジョブを別プロセスで動かし、渡した一覧をそのまま持ちます。動かしている間に増減するジョブ (「デザインの Job スクリプト」) があるときや、ジョブによって動かす場所を変えるとき (JobTriggerField の `ProcessType` を効かせるとき) は、一覧を返す関数と実行の口を渡す形 (「実行先」) を使います。
-`JobApi` はフィールドへの書き込み権限を確かめてから、デザインの JobTriggerField に従って実行の口を動かします。デザインの `UseSubmitData` が `false` なら、クライアントが何を送ってきても実行の口には `{}` を渡します。待つかどうか・同時実行の判定・非同期の状態・失敗の記録は `JobApi` が実行の口を包んで行うので、どこで動かしても同じです。
+画面のボタン (JobTriggerField) の受け口は Extras.Server の `JobTriggerApi` です。ホストは共通の API の対応表 (テンプレートの `Extras/ExtrasApiTable.cs`) に `new JobTriggerApi(jobNames)` (動かせるジョブの名前。無い名前は起動しない) を並べます。この形は全部のジョブを別プロセスで動かし、渡した一覧をそのまま持ちます。動かしている間に増減するジョブ (「デザインの Job スクリプト」) があるときや、ジョブによって動かす場所を変えるとき (JobTriggerField の `ProcessType` を効かせるとき) は、一覧を返す関数と実行の口を渡す形 (「実行先」) を使います。
+`JobTriggerApi` はフィールドへの書き込み権限を確かめてから、デザインの JobTriggerField に従って実行の口を動かします。デザインの `UseSubmitData` が `false` なら、クライアントが何を送ってきても実行の口には `{}` を渡します。待つかどうか・同時実行の判定・非同期の状態・失敗の記録は `JobTriggerApi` が実行の口を包んで行うので、どこで動かしても同じです。
 
 ```csharp
 //Program.cs (失敗の記録先と、非同期のジョブの状態の置き場)
 builder.Services.AddDistributedMemoryCache();
 ...
-JobProcess.LoggerFactory = app.Services.GetRequiredService<ILoggerFactory>();
-JobProcess.Cache = app.Services.GetRequiredService<IDistributedCache>();
+JobTriggerTracker.LoggerFactory = app.Services.GetRequiredService<ILoggerFactory>();
+JobTriggerTracker.Cache = app.Services.GetRequiredService<IDistributedCache>();
 ```
 
-`JobApi` を使わずに自分の Controller で受けるときは、公開の `JobProcess.RunAsync` / `StartAsync` (別プロセス。同時実行の判定・状態・失敗の記録つき) を呼びます。
+`JobTriggerApi` を使わずに自分の Controller で受けるときは、`JobTriggerTracker.RunAsync` / `StartAsync` (別プロセス。同時実行の判定・状態・失敗の記録つき) を呼びます。
 
 ```csharp
 //自分の Controller で受けるとき
 var input = design.UseSubmitData ? request.Arguments : "{}";   // 画面の内容を渡さないデザインなら、送られてきたものは使わない
 if (design.IsAsynchronous)
 {
-    var jobId = await JobProcess.StartAsync(design.JobName, input, userId, design.AllowsConcurrentRuns);   // 起動したら Id を返す
+    var jobId = await JobTriggerTracker.StartAsync(design.JobName, input, userId, design.AllowsConcurrentRuns);   // 起動したら Id を返す
     if (jobId == null) return Failure($"ジョブ '{design.JobName}' は実行中です");                               // 同時実行を許さないジョブが実行中
-    return new JobRunResponse { Started = true, JobId = jobId };
+    return new JobTriggerRunResponse { Started = true, JobId = jobId };
 }
-var result = await JobProcess.RunAsync(design.JobName, input, userId, design.AllowsConcurrentRuns);   // 終わるまで待つ
+var result = await JobTriggerTracker.RunAsync(design.JobName, input, userId, design.AllowsConcurrentRuns);   // 終わるまで待つ
 if (result == null) return Failure($"ジョブ '{design.JobName}' は実行中です");
-return result.Succeeded ? new JobRunResponse { Succeeded = true, Message = result.Message, ResultJson = result.ResultJson } : Failure(result.ErrorMessage);
+return result.Succeeded ? new JobTriggerRunResponse { Succeeded = true, Message = result.Message, ResultJson = result.ResultJson } : Failure(result.ErrorMessage);
 
 //HTTP としては成功 (200) で返す業務上の失敗。監査ログ (AuditLog) にも失敗として残す
-JobRunResponse Failure(string error)
+JobTriggerRunResponse Failure(string error)
 {
     audit?.Fail(error);
-    return new JobRunResponse { Succeeded = false, Error = error };
+    return new JobTriggerRunResponse { Succeeded = false, Error = error };
 }
 
 //非同期で起動したジョブの状態 (JobTriggerField の GetJobStatus が問い合わせる)。起動したユーザーにだけ返す (null = 応答なし)
-var status = await JobProcess.GetStatusAsync(jobId, userId);
+var status = await JobTriggerTracker.GetStatusAsync(jobId, userId);
 ```
 
-`JobProcess.RunAsync(jobName, input, userId, allowConcurrent = true)` は終わるまで待って `JobResult` を返します。`allowConcurrent` が `false` で同じ名前のジョブが実行中なら、起動せずに null を返します。
+`JobTriggerTracker.RunAsync(jobName, input, userId, allowConcurrent = true)` は終わるまで待って `JobRuntimeProcessResult` を返します。`allowConcurrent` が `false` で同じ名前のジョブが実行中なら、起動せずに null を返します。
 
-`JobResult`:
+`JobRuntimeProcessResult`:
 
 | メンバー | 内容 |
 |---|---|
 | `Succeeded` | 終了コードが 0 |
 | `Message` | 成功したときの文言 = 標準出力の最後の行 (ジョブの戻り値。null なら空) |
-| `ResultJson` | 成功したときに返したデータの JSON = 標準出力の最後から 2 行目が `JobMode.ResultJsonPrefix` で始まるときのその後ろ。無い・失敗なら null |
+| `ResultJson` | 成功したときに返したデータの JSON = 標準出力の最後から 2 行目が `JobRuntime.ResultJsonPrefix` で始まるときのその後ろ。無い・失敗なら null |
 | `ErrorMessage` | 失敗したときの文言 = 標準エラーの最初の空でない行 (例外のメッセージ)。無ければ「ジョブ X が失敗しました (終了コード N)」 |
 | `ExitCode` / `Output` / `Error` | 終了コード・標準出力の全文・標準エラーの全文 |
 
@@ -101,58 +101,58 @@ var status = await JobProcess.GetStatusAsync(jobId, userId);
 
 | メンバー | 内容 |
 |---|---|
-| `JobProcess.StartAsync(jobName, input, userId, allowConcurrent = true)` | 起動したら待たずにジョブの Id (文字列) を返す。`allowConcurrent` が `false` で同じ名前のジョブが実行中なら、起動せずに null。起動できなければ例外 |
-| `JobProcess.GetStatusAsync(jobId, userId)` | `JobStatusResponse` (`Status` = `JobStatus` の `Running` / `Done` / `Error`、成功の文言 `Message` = `JobResult.Message`、返したデータ `ResultJson` = `JobResult.ResultJson` (成功したときだけ。無ければ null)、失敗の文言 `Error` = `JobResult.ErrorMessage`)。知らない Id・別のユーザーが起動したジョブ・`Cache` が未設定なら null |
-| `JobProcess.Cache` | 状態の置き場 (`IDistributedCache`)。ホストが起動時に設定する。未設定なら `StartAsync` は Id を返すが状態を残さない |
-| `JobProcess.FinishedRetention` | 終わった結果を持っておく時間 (終了からの経過。既定 30 分)。過ぎたら `GetStatusAsync` は null |
+| `JobTriggerTracker.StartAsync(jobName, input, userId, allowConcurrent = true)` | 起動したら待たずにジョブの Id (文字列) を返す。`allowConcurrent` が `false` で同じ名前のジョブが実行中なら、起動せずに null。起動できなければ例外 |
+| `JobTriggerTracker.GetStatusAsync(jobId, userId)` | `JobTriggerStatusResponse` (`Status` = `JobTriggerStatus` の `Running` / `Done` / `Error`、成功の文言 `Message` = `JobRuntimeProcessResult.Message`、返したデータ `ResultJson` = `JobRuntimeProcessResult.ResultJson` (成功したときだけ。無ければ null)、失敗の文言 `Error` = `JobRuntimeProcessResult.ErrorMessage`)。知らない Id・別のユーザーが起動したジョブ・`Cache` が未設定なら null |
+| `JobTriggerTracker.Cache` | 状態の置き場 (`IDistributedCache`)。ホストが起動時に設定する。未設定なら `StartAsync` は Id を返すが状態を残さない |
+| `JobTriggerTracker.FinishedRetention` | 終わった結果を持っておく時間 (終了からの経過。既定 30 分)。過ぎたら `GetStatusAsync` は null |
 
-状態は `JobProcess.Cache` (`IDistributedCache`) に置きます。テンプレートはメモリキャッシュなので、サーバーを再起動すると消えます (JobTriggerField の `GetJobStatus` は null を返します)。サーバーを複数インスタンスで動かすときは、Redis などの共有キャッシュに差し替えます。実行中にサーバーが落ちたジョブは `running` のまま残ります。
+状態は `JobTriggerTracker.Cache` (`IDistributedCache`) に置きます。テンプレートはメモリキャッシュなので、サーバーを再起動すると消えます (JobTriggerField の `GetJobStatus` は null を返します)。サーバーを複数インスタンスで動かすときは、Redis などの共有キャッシュに差し替えます。実行中にサーバーが落ちたジョブは `running` のまま残ります。
 
 ### 実行先
 
 ```csharp
-new JobApi(jobNames, run)
+new JobTriggerApi(jobNames, run)
 ```
 
 | 引数 | 内容 |
 |---|---|
-| `jobNames` | `Func<IEnumerable<string>>`。動かせるジョブの名前を返す (`new JobApi(jobNames)` と同じ名前)。このプロセスの中で動かすジョブもここに含める (無い名前は起動しない)。デザインの差し替えで変わるジョブ (「デザイナで作った Job」) があるので、起動のたびに呼んで今の一覧を聞く |
-| `run` | `Func<string, string, string, JobTriggerProcessType, Task<JobRunResult>>`。実行の口 (ジョブ名 (デザインの `JobName`)・画面の内容の JSON・起動したユーザーの Id・デザインの `ProcessType` → 成功の文言と返すデータ。失敗は例外)。どこで動かすかは、この中でホストが決める |
+| `jobNames` | `Func<IEnumerable<string>>`。動かせるジョブの名前を返す (`new JobTriggerApi(jobNames)` と同じ名前)。このプロセスの中で動かすジョブもここに含める (無い名前は起動しない)。デザインの差し替えで変わるジョブ (「デザイナで作った Job」) があるので、起動のたびに呼んで今の一覧を聞く |
+| `run` | `Func<string, string, string, JobTriggerProcessType, Task<JobRuntimeResult>>`。実行の口 (ジョブ名 (デザインの `JobName`)・画面の内容の JSON・起動したユーザーの Id・デザインの `ProcessType` → 成功の文言と返すデータ。失敗は例外)。どこで動かすかは、この中でホストが決める |
 
-`ProcessType` (`JobTriggerProcessType`。名前空間 `Codeer.LowCode.Blazor.Extras.Designs`) は JobTriggerField のデザインの値 (`NewProcess` (既定) / `InProcess`) をそのまま渡すだけです。クライアントの要求からは読みません。`JobApi` はこの値で分岐しないので、どう動かすか (値に従うか・ジョブによって決めるか) はホストの実行の口が決めます。
+`ProcessType` (`JobTriggerProcessType`。名前空間 `Codeer.LowCode.Blazor.Extras.Designs`) は JobTriggerField のデザインの値 (`NewProcess` (既定) / `InProcess`) をそのまま渡すだけです。クライアントの要求からは読みません。`JobTriggerApi` はこの値で分岐しないので、どう動かすか (値に従うか・ジョブによって決めるか) はホストの実行の口が決めます。
 
-`new JobApi(jobNames)` は `new JobApi(() => jobNames, (name, input, userId, _) => JobProcess.RunInNewProcessAsync(name, input, userId))` と同じです (全部のジョブが別プロセス。`ProcessType` は見ません)。
+`new JobTriggerApi(jobNames)` は `new JobTriggerApi(() => jobNames, (name, input, userId, _) => JobRuntime.RunInNewProcessAsync(name, input, userId))` と同じです (全部のジョブが別プロセス。`ProcessType` は見ません)。
 
-`JobProcess.RunInNewProcessAsync(jobName, input, userId)` は、別プロセスで動かす実行の口です。ジョブを `job <ジョブ名> --stdin` で起動して終わるまで待ち、成功なら `JobRunResult` (文言 = `JobResult.Message`。ジョブが null を返したら空。返したデータ = `JobResult.ResultJson`) を返し、失敗なら例外 (メッセージ = `JobResult.ErrorMessage`) を投げます。起動できなければ起動の例外です。実行中として数えず、失敗も記録しません (どちらも `JobApi` が行う)。
+`JobRuntime.RunInNewProcessAsync(jobName, input, userId)` は、別プロセスで動かす実行の口です。ジョブを `job <ジョブ名> --stdin` で起動して終わるまで待ち、成功なら `JobRuntimeResult` (文言 = `JobRuntimeProcessResult.Message`。ジョブが null を返したら空。返したデータ = `JobRuntimeProcessResult.ResultJson`) を返し、失敗なら例外 (メッセージ = `JobRuntimeProcessResult.ErrorMessage`) を投げます。起動できなければ起動の例外です。実行中として数えず、失敗も記録しません (どちらも `JobTriggerApi` が行う)。
 ジョブによって動かす場所を変えるときは、実行の口の中で別プロセスにするジョブだけこれを呼びます。デザインの `ProcessType` に従うなら次のようになります。
 
 ```csharp
-new JobApi(() => jobNames, (name, input, userId, processType) => processType == JobTriggerProcessType.InProcess
+new JobTriggerApi(() => jobNames, (name, input, userId, processType) => processType == JobTriggerProcessType.InProcess
     ? RunHereAsync(name, input, userId)                     // このプロセスの中 (ホストが DB アクセスを組み立てて動かす)
-    : JobProcess.RunInNewProcessAsync(name, input, userId)); // 別プロセス
+    : JobRuntime.RunInNewProcessAsync(name, input, userId)); // 別プロセス
 ```
 
 実行の口の約束:
 
-- 入力は画面の内容の JSON (`JobRunRequest.Arguments`。デザインの `UseSubmitData` が `false` なら `{}`。別プロセスでは標準入力で渡り、ジョブの引数の `--stdin` がこれに置き換わる)。ユーザーは押したユーザーの Id
-- 要求とは切り離して呼ばれ、非同期では要求が終わった後も動く。このプロセスの中で動かすなら、ホストは要求のもの (DB 接続・`ModuleDataIO`) を使わず、受け取ったユーザーの Id で DB アクセスを組み立てる。`JobApi` は呼ぶ前に要求の DB 接続をプールへ返す
-- 成功の文言は戻り値の `Message` (改行は空白に。null なら空)。返すデータは戻り値の `ResultJson` (同期は `JobRunResponse.ResultJson`、非同期は状態の `ResultJson` になる。失敗では返らない)。失敗の文言は例外のメッセージの最初の空でない行 (`RunInNewProcessAsync` の失敗は `JobResult.ErrorMessage`)
-- 待つかどうか・同時実行の判定・非同期の状態 (`JobProcess.Cache` / `GetStatusAsync`)・失敗の記録 (`JobProcess.LoggerFactory` に Error) は `JobApi` が実行の口を包んで行う。記録の中身は例外の全文 (`RunInNewProcessAsync` の失敗は標準エラーと標準出力の全文 = `JobResult` の記録用の文言)
+- 入力は画面の内容の JSON (`JobTriggerRunRequest.Arguments`。デザインの `UseSubmitData` が `false` なら `{}`。別プロセスでは標準入力で渡り、ジョブの引数の `--stdin` がこれに置き換わる)。ユーザーは押したユーザーの Id
+- 要求とは切り離して呼ばれ、非同期では要求が終わった後も動く。このプロセスの中で動かすなら、ホストは要求のもの (DB 接続・`ModuleDataIO`) を使わず、受け取ったユーザーの Id で DB アクセスを組み立てる。`JobTriggerApi` は呼ぶ前に要求の DB 接続をプールへ返す
+- 成功の文言は戻り値の `Message` (改行は空白に。null なら空)。返すデータは戻り値の `ResultJson` (同期は `JobTriggerRunResponse.ResultJson`、非同期は状態の `ResultJson` になる。失敗では返らない)。失敗の文言は例外のメッセージの最初の空でない行 (`RunInNewProcessAsync` の失敗は `JobRuntimeProcessResult.ErrorMessage`)
+- 待つかどうか・同時実行の判定・非同期の状態 (`JobTriggerTracker.Cache` / `GetStatusAsync`)・失敗の記録 (`JobTriggerTracker.LoggerFactory` に Error) は `JobTriggerApi` が実行の口を包んで行う。記録の中身は例外の全文 (`RunInNewProcessAsync` の失敗は標準エラーと標準出力の全文 = `JobRuntimeProcessResult` の記録用の文言)
 - 実行の口が `Task` を返す前に投げた例外もジョブの失敗になる (API の呼び出しの例外にはならない)
 - 要求の実行コンテキスト (監査ログの `AuditContext.Current` などの AsyncLocal) は引き継がずに呼ぶ (同期・非同期とも)。引き継ぐのはカルチャ (`CurrentCulture` / `CurrentUICulture`) だけ
 - 非同期はスレッドプールで呼ぶ。このプロセスの中で動かすジョブは、このプロセスが止まれば (再起動・デプロイ) 止まる
 - このプロセスの中で動かすジョブは標準出力を使わない。ジョブの中のログはホストが自分のログに出す
 
-別プロセスの起動自体の失敗 (実行ファイルが無い等) も、`JobApi` からはジョブの失敗です。同期では画面のエラー、非同期では起動済み (Id が返る) の後に状態が `Error` になります (どちらも失敗としてサーバーのログに記録される。非同期では監査ログの 1 件は受け付けた時点の成功のまま)。0.33.0 までの `JobApi` では、同期・非同期とも API の呼び出しが例外になっていました。
+別プロセスの起動自体の失敗 (実行ファイルが無い等) も、`JobTriggerApi` からはジョブの失敗です。同期では画面のエラー、非同期では起動済み (Id が返る) の後に状態が `Error` になります (どちらも失敗としてサーバーのログに記録される。非同期では監査ログの 1 件は受け付けた時点の成功のまま)。0.33.0 までは、同期・非同期とも API の呼び出しが例外になっていました。
 
 ### 同時実行
 
-実行中のジョブはジョブ名 (大文字小文字は区別しない) で数えています。`JobApi` の同期・非同期と、公開の `RunAsync` / `StartAsync` のどれもが同じ数を使い、実行の口がどこで動かしても (別プロセス・このプロセスの中) 同じジョブ名として数えます。
-`allowConcurrent` が `false` のとき、同じ名前のジョブが実行中 (誰が起動したものでも) なら起動しません。JobApi はデザインの JobTriggerField の `AllowsConcurrentRuns` を渡します。
+実行中のジョブはジョブ名 (大文字小文字は区別しない) で数えています。`JobTriggerApi` の同期・非同期と、`JobTriggerTracker.RunAsync` / `StartAsync` のどれもが同じ数を使い、実行の口がどこで動かしても (別プロセス・このプロセスの中) 同じジョブ名として数えます。
+`allowConcurrent` が `false` のとき、同じ名前のジョブが実行中 (誰が起動したものでも) なら起動しません。JobTriggerApi はデザインの JobTriggerField の `AllowsConcurrentRuns` を渡します。
 
 ### デザイナで作った Job
 
-デザイナで作った Job (`Jobs/名前.job.cs`) は本体の `JobExecutor` が動かします (名前の一覧は `JobExecutor.GetJobNames`、実行は `JobExecutor.RunAsync(context, jobName, args, logger)`)。ホストは `JobExecutor.RunAsync` を呼び、結果 (`JobExecutionResult`) を自分のジョブの約束 (戻り値 = `JobRunResult` (`Message` に `Message`、`ResultJson` に `ResultJson`)・失敗は例外) に変えて、`JobMode.RunAsync` の `runJob`・`JobApi` の実行の口 `run` から動かします。スクリプトの `Logger` の出し先もホストが `logger` で渡します。
+デザイナで作った Job (`Jobs/名前.job.cs`) は本体の `JobExecutor` が動かします (名前の一覧は `JobExecutor.GetJobNames`、実行は `JobExecutor.RunAsync(context, jobName, args, logger)`)。ホストは `JobExecutor.RunAsync` を呼び、結果 (`JobExecutionResult`) を自分のジョブの約束 (戻り値 = `JobRuntimeResult` (`Message` に `Message`、`ResultJson` に `ResultJson`)・失敗は例外) に変えて、`JobRuntime.RunAsync` の `runJob`・`JobTriggerApi` の実行の口 `run` から動かします。スクリプトの `Logger` の出し先もホストが `logger` で渡します。
 
 ### Job スクリプトで使えるもの (MailService / Excel / Resources / FileService)
 
@@ -313,16 +313,16 @@ string Run(JobArguments args)
 
 ## 親と子の約束
 
-| 項目 | 親 (`JobProcess`) | 子 (`JobMode`) |
+| 項目 | 親 (`JobRuntime.RunInNewProcessAsync` など) | 子 (`JobRuntime.RunAsync`) |
 |---|---|---|
-| 引数 | `job <ジョブ名> --stdin` | `--stdin` を標準入力の内容に置き換える (`JobMode.StandardInputArgument`) |
+| 引数 | `job <ジョブ名> --stdin` | `--stdin` を標準入力の内容に置き換える (`JobRuntime.StandardInputArgument`) |
 | 入力 | 標準入力に UTF-8 で書いて閉じる (コマンドラインの長さの上限に掛からない) | 標準入力を UTF-8 で読み切ってからジョブを動かす |
-| 起動したユーザー | 環境変数 `Jobs__UserId` (`JobProcess.UserIdEnvironmentVariable`) | 設定の `Jobs:UserId` として読める (環境変数が appsettings を上書きする) |
+| 起動したユーザー | 環境変数 `Jobs__UserId` (`JobRuntime.UserIdEnvironmentVariable`) | 設定の `Jobs:UserId` として読める (環境変数が appsettings を上書きする) |
 | 出力 | 標準出力・標準エラーを UTF-8 で読み切る (パイプが詰まらないように、終了を待つ前に読み始める) | `Console.OutputEncoding` を UTF-8 にする |
 | 成功 | 終了コード 0。文言は標準出力の最後の行 | ジョブの戻り値を最後に 1 行書く (改行は空白に。null なら空行) |
-| 返すデータ | 標準出力の最後から 2 行目が `#job-result:` (`JobMode.ResultJsonPrefix`) で始まれば、その後ろを JSON として取り出す (`JobResult.ResultJson`) | 成功して返すデータ (`JobRunResult.ResultJson`) があるときだけ、最後の行の直前に `#job-result:` + JSON を 1 行書く (改行は空白に)。無ければ書かない (出力は今までと同じ)。失敗したときは書かない |
+| 返すデータ | 標準出力の最後から 2 行目が `#job-result:` (`JobRuntime.ResultJsonPrefix`) で始まれば、その後ろを JSON として取り出す (`JobRuntimeProcessResult.ResultJson`) | 成功して返すデータ (`JobRuntimeResult.ResultJson`) があるときだけ、最後の行の直前に `#job-result:` + JSON を 1 行書く (改行は空白に)。無ければ書かない (出力は今までと同じ)。失敗したときは書かない |
 | 失敗 | 終了コード 0 以外。文言は標準エラーの最初の空でない行 | 例外のメッセージを標準エラーに、例外の全文を標準出力に書いて 1。ジョブが無ければ標準エラーに「ジョブ 'X' がありません」を書いて 2 |
-| 失敗の記録 | 同期・非同期とも、終了コードが 0 以外なら標準エラーと標準出力の全文を `LoggerFactory` に Error で書く | — |
+| 失敗の記録 | `JobTriggerApi` / `JobTriggerTracker` から起動したときは、同期・非同期とも、終了コードが 0 以外なら標準エラーと標準出力の全文を `JobTriggerTracker.LoggerFactory` に Error で書く | — |
 
 手で同じことをするには `echo {"data":{},"submit":null} | dotnet LowCodeApp.Server.dll job <ジョブ名> --stdin`。データを返すジョブは、手で動かしたときも最後の行の前に `#job-result:` で始まる行が出ます。
 
@@ -330,19 +330,39 @@ string Run(JobArguments args)
 
 | 設定 | 既定 |
 |---|---|
-| `JobProcess.HostExecutable` | `EntryDll` の隣の apphost (Windows は `.exe`、Linux は拡張子なし)。無ければ (single-file 発行) このプロセスの実行ファイル。apphost はランタイムを自分で見つけるので、IIS (`w3wp.exe`) の下や PATH に `dotnet` が無いサーバーでも動く。Linux で実行ビットが無い apphost は使わない |
-| `JobProcess.EntryDll` | このプロセスの入口の dll (`LowCodeApp.Server.dll`)。`HostExecutable` が空のとき `dotnet <dll>` で起動する |
-| `JobProcess.DotnetPath` | `HostExecutable` が空のときの `dotnet` (このプロセスを起動した dotnet。dotnet から起動されていなければ PATH の `dotnet`) |
+| `JobRuntime.HostExecutable` | `EntryDll` の隣の apphost (Windows は `.exe`、Linux は拡張子なし)。無ければ (single-file 発行) このプロセスの実行ファイル。apphost はランタイムを自分で見つけるので、IIS (`w3wp.exe`) の下や PATH に `dotnet` が無いサーバーでも動く。Linux で実行ビットが無い apphost は使わない |
+| `JobRuntime.EntryDll` | このプロセスの入口の dll (`LowCodeApp.Server.dll`)。`HostExecutable` が空のとき `dotnet <dll>` で起動する |
+| `JobRuntime.DotnetPath` | `HostExecutable` が空のときの `dotnet` (このプロセスを起動した dotnet。dotnet から起動されていなければ PATH の `dotnet`) |
 
-起動できないとき (実行ファイルが無い等) は `RunAsync` / `StartAsync` / `RunInNewProcessAsync` が例外を投げます (ジョブの失敗ではなく環境の不備)。`JobApi` から起動したときは、ジョブの失敗として返ります (「実行先」)。
+起動できないとき (実行ファイルが無い等) は `JobTriggerTracker.RunAsync` / `StartAsync`・`JobRuntime.RunInNewProcessAsync` が例外を投げます (ジョブの失敗ではなく環境の不備)。`JobTriggerApi` から起動したときは、ジョブの失敗として返ります (「実行先」)。
 
 ---
 
 ## 制限
 
 - 同じジョブを重ねて動かさないようにするには JobTriggerField の `AllowsConcurrentRuns` を `false` にします。止まるのは 1 台のサーバーの中だけです。サーバーを複数台で動かすときや、コマンドライン・タスクスケジューラから起動したジョブとは重なることがあるので、厳密な排他が要るならジョブが自分で取ります
-- 同期 (`RunAsync`) にタイムアウトはありません。長い処理はホストが非同期 (`StartAsync`) で起動します
+- 同期 (`JobTriggerTracker.RunAsync`) にタイムアウトはありません。長い処理はホストが非同期 (`StartAsync`) で起動します
 - ジョブが起動した別のプロセスが標準出力を引き継いだまま残ると、ジョブが終わっても出力の終わりを待ち続けます。ジョブから長く動くプロセスを起動するときは、標準出力・標準エラーをリダイレクトして切り離します
-- 非同期の結果は終了から `FinishedRetention` の間だけ `JobProcess.Cache` に残ります。共有キャッシュにすれば複数台でもどのサーバーからでも問い合わせられますが、同時実行の判定 (`AllowsConcurrentRuns`) だけは 1 台の中です。長く残したい結果はジョブ自身が DB 等に残します
+- 非同期の結果は終了から `FinishedRetention` の間だけ `JobTriggerTracker.Cache` に残ります。共有キャッシュにすれば複数台でもどのサーバーからでも問い合わせられますが、同時実行の判定 (`AllowsConcurrentRuns`) だけは 1 台の中です。長く残したい結果はジョブ自身が DB 等に残します
 - 成功したジョブの標準出力はどこにも残りません (使うのは最後の 1 行だけ)。失敗したときは全文がログに出るので、ジョブは受け取った内容や秘密情報を標準出力に出さないようにします
-- ジョブの中の書き込みは、実行先によらず起動したリクエストの監査ログ (AuditLog) には載りません。記録されるのは JobApi の呼び出し 1 件です
+- ジョブの中の書き込みは、実行先によらず起動したリクエストの監査ログ (AuditLog) には載りません。記録されるのは JobTriggerApi の呼び出し 1 件です
+
+---
+
+## 0.34.0 で名前が変わった型
+
+画面から起動を頼む・受ける・状態を返す側は `JobTrigger…`、ジョブを動かす側は `JobRuntime…` に揃えました。動作と通信の中身 (API の機能名・操作名・JSON・環境変数・標準出力の約束・コマンドライン) は変わりません。失敗の記録のログのカテゴリ名だけ、`Codeer.LowCode.Blazor.Extras.Server.Jobs.JobProcess` から `…Jobs.JobTriggerTracker` に変わります。
+
+| 0.33.0 まで | 0.34.0 から |
+|---|---|
+| `JobApi` | `JobTriggerApi` |
+| `JobApiNames` | `JobTriggerApiNames` |
+| `JobRunRequest` / `JobRunResponse` | `JobTriggerRunRequest` / `JobTriggerRunResponse` |
+| `JobStatus` (画面のスクリプトの `JobStatus.Running` なども) | `JobTriggerStatus` |
+| `JobStatusRequest` / `JobStatusResponse` | `JobTriggerStatusRequest` / `JobTriggerStatusResponse` |
+| `JobMode` (`RunAsync`・`Success` / `Failure` / `JobNotFound`・`StandardInputArgument`・`ResultJsonPrefix`) | `JobRuntime` (メンバーの名前は同じ) |
+| `JobProcess.LoggerFactory` / `Cache` / `FinishedRetention` / `RunAsync` / `StartAsync` / `GetStatusAsync` | `JobTriggerTracker.` の同じ名前 |
+| `JobProcess.HostExecutable` / `EntryDll` / `DotnetPath` / `UserIdEnvironmentVariable` | `JobRuntime.` の同じ名前 |
+| `JobResult` | `JobRuntimeProcessResult` |
+
+テンプレート (Codeer.LowCode.Blazor.Starter) の `Jobs/JobRunner.cs` (クラス `JobRunner`) は `Jobs/JobRuntimeHost.cs` (クラス `JobRuntimeHost`) になりました。

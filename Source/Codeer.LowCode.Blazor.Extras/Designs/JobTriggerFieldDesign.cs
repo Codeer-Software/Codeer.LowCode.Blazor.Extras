@@ -12,7 +12,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
     /// <summary>
     /// ボタン (またはスクリプトの Run()) で、ホストにジョブの実行を頼むフィールド (POST JobTriggerField.EndPoint)。
     /// ホストに渡すのはモジュール名・フィールド名・画面の内容の JSON で、どのジョブを動かすか (JobName)・待つかどうか (IsAsynchronous)・どこで動かすか (ProcessType) はホストがこのデザインから読む。
-    /// ジョブをどう動かすかはホストの実装 (Extras.Server の JobProcess とテンプレの Jobs/README.md)。保存はしない。データは持たない。
+    /// ジョブをどう動かすかはホストの実装 (Extras.Server の JobTriggerApi・JobRuntime とテンプレの Jobs/README.md)。保存はしない。データは持たない。
     /// 実行の可否はサーバーがこのフィールドの書き込み権限で判定する (行を持たないので、ユーザーだけで確定する条件しか適用されない)。
     /// </summary>
     [Designer(DisplayName = "$JobTriggerField")]

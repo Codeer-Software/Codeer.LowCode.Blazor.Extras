@@ -10,9 +10,9 @@ using System.Globalization;
 namespace Codeer.LowCode.Blazor.Extras.Test.Jobs
 {
     /// <summary>
-    /// JobApi がホストの実行の口を包んで動かす経路 (JobProcess.RunTrackedAsync / StartTrackedAsync)。実行の口はテストの中のデリゲートで、終わる時を TaskCompletionSource で決める。
-    /// 実行中の数・状態の置き場 (Cache)・失敗の記録 (LoggerFactory) は公開の RunAsync / StartAsync と共通の static なので、JobProcessTest と同じく直列で動かし後始末で戻す。
-    /// 公開の RunAsync / StartAsync との数え方の共通は、テスト用ホスト (Codeer.LowCode.Blazor.Extras.Test.JobHost) の Sleep で確かめる。
+    /// JobTriggerApi がホストの実行の口を包んで動かす経路 (JobTriggerTracker.RunTrackedAsync / StartTrackedAsync)。実行の口はテストの中のデリゲートで、終わる時を TaskCompletionSource で決める。
+    /// 実行中の数・状態の置き場 (Cache)・失敗の記録 (LoggerFactory) は別プロセスを起動する RunAsync / StartAsync と共通の static なので、JobRuntimeProcessTest と同じく直列で動かし後始末で戻す。
+    /// 別プロセスを起動する RunAsync / StartAsync との数え方の共通は、テスト用ホスト (Codeer.LowCode.Blazor.Extras.Test.JobHost) の Sleep で確かめる。
     /// </summary>
     [TestFixture, NonParallelizable]
     public class JobTrackedRunTest
@@ -26,29 +26,29 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Jobs
         [SetUp]
         public void SetUp()
         {
-            _entryDll = JobProcess.EntryDll;
-            _hostExecutable = JobProcess.HostExecutable;
-            _loggerFactory = JobProcess.LoggerFactory;
+            _entryDll = JobRuntime.EntryDll;
+            _hostExecutable = JobRuntime.HostExecutable;
+            _loggerFactory = JobTriggerTracker.LoggerFactory;
             _logs = [];
             _levels = [];
-            JobProcess.LoggerFactory = LoggerFactory.Create(builder => builder.AddProvider(new ListLoggerProvider(_logs, _levels)));
-            JobProcess.Cache = new MemoryDistributedCache(Options.Create(new MemoryDistributedCacheOptions()));
+            JobTriggerTracker.LoggerFactory = LoggerFactory.Create(builder => builder.AddProvider(new ListLoggerProvider(_logs, _levels)));
+            JobTriggerTracker.Cache = new MemoryDistributedCache(Options.Create(new MemoryDistributedCacheOptions()));
         }
 
         [TearDown]
         public void TearDown()
         {
-            JobProcess.LoggerFactory?.Dispose();
-            JobProcess.EntryDll = _entryDll;
-            JobProcess.HostExecutable = _hostExecutable;
-            JobProcess.LoggerFactory = _loggerFactory;
-            JobProcess.Cache = null;
+            JobTriggerTracker.LoggerFactory?.Dispose();
+            JobRuntime.EntryDll = _entryDll;
+            JobRuntime.HostExecutable = _hostExecutable;
+            JobTriggerTracker.LoggerFactory = _loggerFactory;
+            JobTriggerTracker.Cache = null;
         }
 
         [Test]
         public async Task 同期_成功は文言の改行を空白にして返る()
         {
-            var outcome = (await JobProcess.RunTrackedAsync("Tracked", () => Ok("1 件\r\n処理しました\n"), allowConcurrent: false))!;
+            var outcome = (await JobTriggerTracker.RunTrackedAsync("Tracked", () => Ok("1 件\r\n処理しました\n"), allowConcurrent: false))!;
             Assert.That(outcome.Succeeded, Is.True);
             Assert.That(outcome.Message, Is.EqualTo("1 件 処理しました"));
             Assert.That(outcome.ErrorMessage, Is.Empty);
@@ -58,20 +58,20 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Jobs
         [Test]
         public async Task 同期_返したデータはResultJsonで返り無ければnull()
         {
-            var outcome = (await JobProcess.RunTrackedAsync("Tracked", () => Task.FromResult(new JobRunResult { Message = "ok", ResultJson = "{\"Total\":1}" }), allowConcurrent: false))!;
+            var outcome = (await JobTriggerTracker.RunTrackedAsync("Tracked", () => Task.FromResult(new JobRuntimeResult { Message = "ok", ResultJson = "{\"Total\":1}" }), allowConcurrent: false))!;
             Assert.That(outcome.Succeeded, Is.True);
             Assert.That(outcome.ResultJson, Is.EqualTo("{\"Total\":1}"));
 
-            outcome = (await JobProcess.RunTrackedAsync("Tracked", () => Ok("ok"), allowConcurrent: false))!;
+            outcome = (await JobTriggerTracker.RunTrackedAsync("Tracked", () => Ok("ok"), allowConcurrent: false))!;
             Assert.That(outcome.ResultJson, Is.Null);
-            outcome = (await JobProcess.RunTrackedAsync("Tracked", () => Task.FromResult(new JobRunResult { ResultJson = "" }), allowConcurrent: false))!;
+            outcome = (await JobTriggerTracker.RunTrackedAsync("Tracked", () => Task.FromResult(new JobRuntimeResult { ResultJson = "" }), allowConcurrent: false))!;
             Assert.That(outcome.ResultJson, Is.Null);
         }
 
         [Test]
         public async Task 同期_失敗ではResultJsonは返らない()
         {
-            var outcome = (await JobProcess.RunTrackedAsync("Tracked", () => Task.FromException<JobRunResult>(new InvalidOperationException("失敗")), allowConcurrent: false))!;
+            var outcome = (await JobTriggerTracker.RunTrackedAsync("Tracked", () => Task.FromException<JobRuntimeResult>(new InvalidOperationException("失敗")), allowConcurrent: false))!;
             Assert.That(outcome.Succeeded, Is.False);
             Assert.That(outcome.ResultJson, Is.Null);
         }
@@ -79,13 +79,13 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Jobs
         [Test]
         public async Task 非同期_返したデータは状態のResultJsonで返る()
         {
-            var gate = new TaskCompletionSource<JobRunResult>(TaskCreationOptions.RunContinuationsAsynchronously);
-            var jobId = (await JobProcess.StartTrackedAsync("Tracked", () => gate.Task, "u", allowConcurrent: false))!;
-            Assert.That((await JobProcess.GetStatusAsync(jobId, "u"))!.ResultJson, Is.Null);
+            var gate = new TaskCompletionSource<JobRuntimeResult>(TaskCreationOptions.RunContinuationsAsynchronously);
+            var jobId = (await JobTriggerTracker.StartTrackedAsync("Tracked", () => gate.Task, "u", allowConcurrent: false))!;
+            Assert.That((await JobTriggerTracker.GetStatusAsync(jobId, "u"))!.ResultJson, Is.Null);
 
-            gate.SetResult(new JobRunResult { Message = "ok", ResultJson = "{\"Total\":1,\"Name\":\"a\"}" });
+            gate.SetResult(new JobRuntimeResult { Message = "ok", ResultJson = "{\"Total\":1,\"Name\":\"a\"}" });
             var status = await WaitFinishedAsync(jobId, "u");
-            Assert.That(status.Status, Is.EqualTo(JobStatus.Done));
+            Assert.That(status.Status, Is.EqualTo(JobTriggerStatus.Done));
             Assert.That(status.ResultJson, Is.EqualTo("{\"Total\":1,\"Name\":\"a\"}"));
             Assert.That(status.Result!["Name"], Is.EqualTo("a"));
         }
@@ -93,9 +93,9 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Jobs
         [Test]
         public async Task 非同期_失敗ではResultJsonは返らない()
         {
-            var jobId = (await JobProcess.StartTrackedAsync("Tracked", () => Task.FromException<JobRunResult>(new InvalidOperationException("失敗")), "u", allowConcurrent: false))!;
+            var jobId = (await JobTriggerTracker.StartTrackedAsync("Tracked", () => Task.FromException<JobRuntimeResult>(new InvalidOperationException("失敗")), "u", allowConcurrent: false))!;
             var status = await WaitFinishedAsync(jobId, "u");
-            Assert.That(status.Status, Is.EqualTo(JobStatus.Error));
+            Assert.That(status.Status, Is.EqualTo(JobTriggerStatus.Error));
             Assert.That(status.ResultJson, Is.Null);
             Assert.That(status.Result, Is.Null);
         }
@@ -103,7 +103,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Jobs
         [Test]
         public async Task 同期_戻り値がnullなら文言は空()
         {
-            var outcome = (await JobProcess.RunTrackedAsync("Tracked", () => Ok(null), allowConcurrent: false))!;
+            var outcome = (await JobTriggerTracker.RunTrackedAsync("Tracked", () => Ok(null), allowConcurrent: false))!;
             Assert.That(outcome.Succeeded, Is.True);
             Assert.That(outcome.Message, Is.Empty);
         }
@@ -111,7 +111,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Jobs
         [Test]
         public async Task 同期_例外は例外のメッセージが文言になり全文がログに1件出る()
         {
-            var outcome = (await JobProcess.RunTrackedAsync("Tracked", async () =>
+            var outcome = (await JobTriggerTracker.RunTrackedAsync("Tracked", async () =>
             {
                 await Task.Yield();
                 throw new InvalidOperationException("わざと失敗 (日本語)");
@@ -127,7 +127,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Jobs
         [Test]
         public async Task 同期_Taskを返す前に投げても失敗の結果になる()
         {
-            var outcome = (await JobProcess.RunTrackedAsync("Tracked", () => throw new InvalidOperationException("同期で失敗"), allowConcurrent: false))!;
+            var outcome = (await JobTriggerTracker.RunTrackedAsync("Tracked", () => throw new InvalidOperationException("同期で失敗"), allowConcurrent: false))!;
             Assert.That(outcome.Succeeded, Is.False);
             Assert.That(outcome.ErrorMessage, Is.EqualTo("同期で失敗"));
             Assert.That(_logs, Has.Count.EqualTo(1));
@@ -136,21 +136,21 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Jobs
         [Test]
         public async Task 同期_同時実行を許さなければ実行中の同名はnullで終わった後はまた動く()
         {
-            var gate = new TaskCompletionSource<JobRunResult>(TaskCreationOptions.RunContinuationsAsynchronously);
-            var first = JobProcess.RunTrackedAsync("Tracked", () => gate.Task, allowConcurrent: false);
+            var gate = new TaskCompletionSource<JobRuntimeResult>(TaskCreationOptions.RunContinuationsAsynchronously);
+            var first = JobTriggerTracker.RunTrackedAsync("Tracked", () => gate.Task, allowConcurrent: false);
             Assert.That(first.IsCompleted, Is.False);
 
             //実行中: 同期も非同期も (大文字小文字が違っても) 動かさない。デリゲートは呼ばれない
             var called = 0;
-            Func<Task<JobRunResult>> second = () => { called++; return Ok("second"); };
-            Assert.That(await JobProcess.RunTrackedAsync("Tracked", second, allowConcurrent: false), Is.Null);
-            Assert.That(await JobProcess.StartTrackedAsync("TRACKED", second, "u", allowConcurrent: false), Is.Null);
+            Func<Task<JobRuntimeResult>> second = () => { called++; return Ok("second"); };
+            Assert.That(await JobTriggerTracker.RunTrackedAsync("Tracked", second, allowConcurrent: false), Is.Null);
+            Assert.That(await JobTriggerTracker.StartTrackedAsync("TRACKED", second, "u", allowConcurrent: false), Is.Null);
             Assert.That(called, Is.EqualTo(0));
 
-            gate.SetResult(new JobRunResult { Message = "first" });
+            gate.SetResult(new JobRuntimeResult { Message = "first" });
             Assert.That((await first)!.Message, Is.EqualTo("first"));
 
-            var next = await JobProcess.RunTrackedAsync("Tracked", second, allowConcurrent: false);
+            var next = await JobTriggerTracker.RunTrackedAsync("Tracked", second, allowConcurrent: false);
             Assert.That(next!.Message, Is.EqualTo("second"));
             Assert.That(called, Is.EqualTo(1));
         }
@@ -158,59 +158,59 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Jobs
         [Test]
         public async Task 同時実行を許すなら実行中の同名でも動く()
         {
-            var gate = new TaskCompletionSource<JobRunResult>(TaskCreationOptions.RunContinuationsAsynchronously);
-            var first = JobProcess.RunTrackedAsync("Tracked", () => gate.Task, allowConcurrent: true);
-            var second = await JobProcess.RunTrackedAsync("Tracked", () => Ok("second"), allowConcurrent: true);
+            var gate = new TaskCompletionSource<JobRuntimeResult>(TaskCreationOptions.RunContinuationsAsynchronously);
+            var first = JobTriggerTracker.RunTrackedAsync("Tracked", () => gate.Task, allowConcurrent: true);
+            var second = await JobTriggerTracker.RunTrackedAsync("Tracked", () => Ok("second"), allowConcurrent: true);
             Assert.That(second!.Message, Is.EqualTo("second"));
-            gate.SetResult(new JobRunResult { Message = "first" });
+            gate.SetResult(new JobRuntimeResult { Message = "first" });
             Assert.That((await first)!.Message, Is.EqualTo("first"));
         }
 
         [Test]
         public async Task 例外で終わっても実行中に数えたままにしない()
         {
-            Assert.That((await JobProcess.RunTrackedAsync("Tracked", () => throw new InvalidOperationException("x"), allowConcurrent: false))!.Succeeded, Is.False);
-            Assert.That((await JobProcess.RunTrackedAsync("Tracked", () => Ok("ok"), allowConcurrent: false))!.Succeeded, Is.True);
+            Assert.That((await JobTriggerTracker.RunTrackedAsync("Tracked", () => throw new InvalidOperationException("x"), allowConcurrent: false))!.Succeeded, Is.False);
+            Assert.That((await JobTriggerTracker.RunTrackedAsync("Tracked", () => Ok("ok"), allowConcurrent: false))!.Succeeded, Is.True);
 
-            var jobId = (await JobProcess.StartTrackedAsync("Tracked", () => throw new InvalidOperationException("y"), "u", allowConcurrent: false))!;
-            Assert.That((await WaitFinishedAsync(jobId, "u")).Status, Is.EqualTo(JobStatus.Error));
-            await WaitAsync(async () => await JobProcess.RunTrackedAsync("Tracked", () => Ok("ok"), allowConcurrent: false) != null);
+            var jobId = (await JobTriggerTracker.StartTrackedAsync("Tracked", () => throw new InvalidOperationException("y"), "u", allowConcurrent: false))!;
+            Assert.That((await WaitFinishedAsync(jobId, "u")).Status, Is.EqualTo(JobTriggerStatus.Error));
+            await WaitAsync(async () => await JobTriggerTracker.RunTrackedAsync("Tracked", () => Ok("ok"), allowConcurrent: false) != null);
         }
 
         [Test]
-        public async Task 公開のRunAsyncやStartAsyncと実行の口は同じジョブ名で実行中を数える()
+        public async Task 別プロセスのRunAsyncやStartAsyncと実行の口は同じジョブ名で実行中を数える()
         {
-            JobProcess.EntryDll = HostDll;
-            JobProcess.HostExecutable = string.Empty;
+            JobRuntime.EntryDll = HostDll;
+            JobRuntime.HostExecutable = string.Empty;
 
-            //公開の StartAsync (別プロセス) が実行中 → 実行の口は動かさない
-            var process = (await JobProcess.StartAsync("Sleep", "3000", "u", allowConcurrent: false))!;
-            Assert.That(await JobProcess.RunTrackedAsync("sleep", () => Ok("tracked"), allowConcurrent: false), Is.Null);
-            Assert.That(await JobProcess.StartTrackedAsync("Sleep", () => Ok("tracked"), "u", allowConcurrent: false), Is.Null);
-            Assert.That((await WaitFinishedAsync(process, "u")).Status, Is.EqualTo(JobStatus.Done));
+            //StartAsync (別プロセス) が実行中 → 実行の口は動かさない
+            var process = (await JobTriggerTracker.StartAsync("Sleep", "3000", "u", allowConcurrent: false))!;
+            Assert.That(await JobTriggerTracker.RunTrackedAsync("sleep", () => Ok("tracked"), allowConcurrent: false), Is.Null);
+            Assert.That(await JobTriggerTracker.StartTrackedAsync("Sleep", () => Ok("tracked"), "u", allowConcurrent: false), Is.Null);
+            Assert.That((await WaitFinishedAsync(process, "u")).Status, Is.EqualTo(JobTriggerStatus.Done));
 
-            //実行の口が実行中 → 公開の RunAsync / StartAsync も起動しない
-            var gate = new TaskCompletionSource<JobRunResult>(TaskCreationOptions.RunContinuationsAsynchronously);
-            var tracked = JobProcess.RunTrackedAsync("Sleep", () => gate.Task, allowConcurrent: false);
-            Assert.That(await JobProcess.RunAsync("Sleep", "10", "u", allowConcurrent: false), Is.Null);
-            Assert.That(await JobProcess.StartAsync("Sleep", "10", "u", allowConcurrent: false), Is.Null);
-            gate.SetResult(new JobRunResult { Message = "done" });
+            //実行の口が実行中 → 別プロセスの RunAsync / StartAsync も起動しない
+            var gate = new TaskCompletionSource<JobRuntimeResult>(TaskCreationOptions.RunContinuationsAsynchronously);
+            var tracked = JobTriggerTracker.RunTrackedAsync("Sleep", () => gate.Task, allowConcurrent: false);
+            Assert.That(await JobTriggerTracker.RunAsync("Sleep", "10", "u", allowConcurrent: false), Is.Null);
+            Assert.That(await JobTriggerTracker.StartAsync("Sleep", "10", "u", allowConcurrent: false), Is.Null);
+            gate.SetResult(new JobRuntimeResult { Message = "done" });
             Assert.That((await tracked)!.Message, Is.EqualTo("done"));
 
-            Assert.That(await JobProcess.RunAsync("Sleep", "10", "u", allowConcurrent: false), Is.Not.Null);
+            Assert.That(await JobTriggerTracker.RunAsync("Sleep", "10", "u", allowConcurrent: false), Is.Not.Null);
         }
 
         [Test]
         public async Task 非同期_終わる前にIdが返りRunningからDoneになる()
         {
-            var gate = new TaskCompletionSource<JobRunResult>(TaskCreationOptions.RunContinuationsAsynchronously);
-            var jobId = await JobProcess.StartTrackedAsync("Tracked", () => gate.Task, "u", allowConcurrent: false);
+            var gate = new TaskCompletionSource<JobRuntimeResult>(TaskCreationOptions.RunContinuationsAsynchronously);
+            var jobId = await JobTriggerTracker.StartTrackedAsync("Tracked", () => gate.Task, "u", allowConcurrent: false);
             Assert.That(jobId, Is.Not.Null.And.Not.Empty);
-            Assert.That((await JobProcess.GetStatusAsync(jobId!, "u"))!.Status, Is.EqualTo(JobStatus.Running));
+            Assert.That((await JobTriggerTracker.GetStatusAsync(jobId!, "u"))!.Status, Is.EqualTo(JobTriggerStatus.Running));
 
-            gate.SetResult(new JobRunResult { Message = "3 件\n締めました" });
+            gate.SetResult(new JobRuntimeResult { Message = "3 件\n締めました" });
             var status = await WaitFinishedAsync(jobId!, "u");
-            Assert.That(status.Status, Is.EqualTo(JobStatus.Done));
+            Assert.That(status.Status, Is.EqualTo(JobTriggerStatus.Done));
             Assert.That(status.Message, Is.EqualTo("3 件 締めました"));
             Assert.That(status.Error, Is.Empty);
             Assert.That(_logs, Is.Empty);
@@ -219,13 +219,13 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Jobs
         [Test]
         public async Task 非同期_例外はErrorと例外のメッセージになりログに1件出る()
         {
-            var gate = new TaskCompletionSource<JobRunResult>(TaskCreationOptions.RunContinuationsAsynchronously);
-            var jobId = (await JobProcess.StartTrackedAsync("Tracked", () => gate.Task, "u", allowConcurrent: false))!;
-            Assert.That((await JobProcess.GetStatusAsync(jobId, "u"))!.Status, Is.EqualTo(JobStatus.Running));
+            var gate = new TaskCompletionSource<JobRuntimeResult>(TaskCreationOptions.RunContinuationsAsynchronously);
+            var jobId = (await JobTriggerTracker.StartTrackedAsync("Tracked", () => gate.Task, "u", allowConcurrent: false))!;
+            Assert.That((await JobTriggerTracker.GetStatusAsync(jobId, "u"))!.Status, Is.EqualTo(JobTriggerStatus.Running));
 
             gate.SetException(new InvalidOperationException("わざと失敗 (日本語)"));
             var status = await WaitFinishedAsync(jobId, "u");
-            Assert.That(status.Status, Is.EqualTo(JobStatus.Error));
+            Assert.That(status.Status, Is.EqualTo(JobTriggerStatus.Error));
             Assert.That(status.Error, Is.EqualTo("わざと失敗 (日本語)"));
             Assert.That(status.Message, Is.Empty);
             await WaitAsync(() => Task.FromResult(_logs.Count == 1));
@@ -236,10 +236,10 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Jobs
         [Test]
         public async Task 非同期_Taskを返す前に投げても呼び出しは例外にならず状態がErrorになる()
         {
-            var jobId = await JobProcess.StartTrackedAsync("Tracked", () => throw new InvalidOperationException("同期で失敗"), "u", allowConcurrent: false);
+            var jobId = await JobTriggerTracker.StartTrackedAsync("Tracked", () => throw new InvalidOperationException("同期で失敗"), "u", allowConcurrent: false);
             Assert.That(jobId, Is.Not.Null.And.Not.Empty);
             var status = await WaitFinishedAsync(jobId!, "u");
-            Assert.That(status.Status, Is.EqualTo(JobStatus.Error));
+            Assert.That(status.Status, Is.EqualTo(JobTriggerStatus.Error));
             Assert.That(status.Error, Is.EqualTo("同期で失敗"));
             await WaitAsync(() => Task.FromResult(_logs.Count == 1));
         }
@@ -247,14 +247,14 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Jobs
         [Test]
         public async Task 非同期_別のユーザーと知らないIdはnull()
         {
-            var gate = new TaskCompletionSource<JobRunResult>(TaskCreationOptions.RunContinuationsAsynchronously);
-            var jobId = (await JobProcess.StartTrackedAsync("Tracked", () => gate.Task, "u", allowConcurrent: true))!;
-            Assert.That(await JobProcess.GetStatusAsync(jobId, "other"), Is.Null);
-            Assert.That(await JobProcess.GetStatusAsync(Guid.NewGuid().ToString("N"), "u"), Is.Null);
+            var gate = new TaskCompletionSource<JobRuntimeResult>(TaskCreationOptions.RunContinuationsAsynchronously);
+            var jobId = (await JobTriggerTracker.StartTrackedAsync("Tracked", () => gate.Task, "u", allowConcurrent: true))!;
+            Assert.That(await JobTriggerTracker.GetStatusAsync(jobId, "other"), Is.Null);
+            Assert.That(await JobTriggerTracker.GetStatusAsync(Guid.NewGuid().ToString("N"), "u"), Is.Null);
 
-            gate.SetResult(new JobRunResult { Message = "ok" });
+            gate.SetResult(new JobRuntimeResult { Message = "ok" });
             await WaitFinishedAsync(jobId, "u");
-            Assert.That(await JobProcess.GetStatusAsync(jobId, "other"), Is.Null);
+            Assert.That(await JobTriggerTracker.GetStatusAsync(jobId, "other"), Is.Null);
         }
 
         //要求の監査レコード (AsyncLocal) を、要求が終わった後も動く非同期のジョブに引き継がない (AIChatService・SemanticSearchService と同じ)。
@@ -266,7 +266,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Jobs
             AuditContext.Current = new AuditContext();
             try
             {
-                var jobId = await JobProcess.StartTrackedAsync("Tracked", () =>
+                var jobId = await JobTriggerTracker.StartTrackedAsync("Tracked", () =>
                 {
                     seen.SetResult(AuditContext.Current != null);
                     return Ok(null);
@@ -282,7 +282,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Jobs
 
         static readonly AsyncLocal<string?> _requestValue = new();
 
-        //同期でも要求の中の AsyncLocal (監査レコード等) はジョブに見えない (ジョブの保存を JobApi の呼び出しの記録に混ぜない。別プロセスと同じ)
+        //同期でも要求の中の AsyncLocal (監査レコード等) はジョブに見えない (ジョブの保存を JobTriggerApi の呼び出しの記録に混ぜない。別プロセスと同じ)
         [Test]
         public async Task 同期_要求のAsyncLocalをジョブに引き継がない()
         {
@@ -292,7 +292,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Jobs
             {
                 bool? auditSeen = null;
                 string? valueSeen = "not called";
-                var outcome = await JobProcess.RunTrackedAsync("Tracked", () =>
+                var outcome = await JobTriggerTracker.RunTrackedAsync("Tracked", () =>
                 {
                     auditSeen = AuditContext.Current != null;
                     valueSeen = _requestValue.Value;
@@ -320,7 +320,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Jobs
             _requestValue.Value = "request";
             try
             {
-                await JobProcess.StartTrackedAsync("Tracked", () =>
+                await JobTriggerTracker.StartTrackedAsync("Tracked", () =>
                 {
                     seen.SetResult(_requestValue.Value);
                     return Ok(null);
@@ -344,7 +344,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Jobs
             try
             {
                 string? syncSeen = null;
-                await JobProcess.RunTrackedAsync("Tracked", () =>
+                await JobTriggerTracker.RunTrackedAsync("Tracked", () =>
                 {
                     syncSeen = $"{CultureInfo.CurrentCulture.Name}|{CultureInfo.CurrentUICulture.Name}";
                     return Ok(null);
@@ -352,12 +352,12 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Jobs
                 Assert.That(syncSeen, Is.EqualTo("fr-FR|de-DE"));
 
                 var asyncSeen = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
-                await JobProcess.StartTrackedAsync("Tracked", async () =>
+                await JobTriggerTracker.StartTrackedAsync("Tracked", async () =>
                 {
                     //await をまたいでも保たれる
                     await Task.Yield();
                     asyncSeen.SetResult($"{CultureInfo.CurrentCulture.Name}|{CultureInfo.CurrentUICulture.Name}");
-                    return new JobRunResult();
+                    return new JobRuntimeResult();
                 }, "u", allowConcurrent: true);
                 Assert.That(await asyncSeen.Task, Is.EqualTo("fr-FR|de-DE"));
             }
@@ -380,20 +380,20 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Jobs
         }
 
         //終わるまで状態を問い合わせる (最大 30 秒)
-        static async Task<JobStatusResponse> WaitFinishedAsync(string jobId, string userId)
+        static async Task<JobTriggerStatusResponse> WaitFinishedAsync(string jobId, string userId)
         {
             var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(30);
             while (true)
             {
-                var status = await JobProcess.GetStatusAsync(jobId, userId);
+                var status = await JobTriggerTracker.GetStatusAsync(jobId, userId);
                 Assert.That(status, Is.Not.Null, "状態が取れない");
-                if (status!.Status != JobStatus.Running) return status;
+                if (status!.Status != JobTriggerStatus.Running) return status;
                 if (DateTime.UtcNow > deadline) Assert.Fail("timeout");
                 await Task.Delay(20);
             }
         }
 
-        static Task<JobRunResult> Ok(string? message) => Task.FromResult(new JobRunResult { Message = message });
+        static Task<JobRuntimeResult> Ok(string? message) => Task.FromResult(new JobRuntimeResult { Message = message });
 
         static async Task WaitAsync(Func<Task<bool>> condition)
         {

@@ -4,7 +4,7 @@
 
 ボタンを押す (またはスクリプトで `Run()`) と、画面の内容の JSON をホストに渡してジョブ (サーバーの処理) の実行を頼み、結果を通知 (トースト) で出すフィールド。動かすジョブは `JobName` で、ホストがこのデザインから読む (クライアントからジョブ名は送らない)。このフィールド自体は保存しない (保存ボタンは別に置ける)。
 
-- **ジョブは 2 通りで作れる**: ホストの実装 (C#) か、デザインの Job (`Jobs/名前.job.cs`。デザイナで作る)。`JobName` はどちらの名前でもよい。ホスト側の結線 (`JobApi`) は要る。Starter テンプレートでは Web サーバー (Cookie。MAUI はそのサーバー経由) だけで、WPF / WinForms は未対応 (押すと「このアプリではジョブを実行できません」の通知が出る)。仕組みは Codeer.LowCode.Blazor.Extras の `docs/Jobs.md`、ジョブの書き方はテンプレートの `Jobs/README.md`
+- **ジョブは 2 通りで作れる**: ホストの実装 (C#) か、デザインの Job (`Jobs/名前.job.cs`。デザイナで作る)。`JobName` はどちらの名前でもよい。ホスト側の結線 (`JobTriggerApi`) は要る。Starter テンプレートでは Web サーバー (Cookie。MAUI はそのサーバー経由) だけで、WPF / WinForms は未対応 (押すと「このアプリではジョブを実行できません」の通知が出る)。仕組みは Codeer.LowCode.Blazor.Extras の `docs/Jobs.md`、ジョブの書き方はテンプレートの `Jobs/README.md`
 - **このフィールドに書けるユーザーが実行でき、ジョブはそのユーザーの権限で動く** (`ExecuteSqlField` の実行と同じ)。書けない (PermissionField の書き込み条件・閲覧モード・`CanCreate` / `CanUpdate` が `false` の読み取り専用のモジュール) ときは他のボタンと同じく押せず、`Run()` も何もせず `false` (読み取り専用のモジュールで使うなら OnLoad のスクリプトでこのフィールドの `IsViewOnly` を `false` にする)。絞るなら **CurrentUser だけで決まる** PermissionField の書き込み条件を使う。行の値を見る条件は、画面ではその行でボタンが押せなくなるが、**サーバーの実行可否の判定には使われない** (対象行が無い。モジュールの `DataReadCondition` / `DataWriteCondition` は設計チェック `JobTriggerFieldDesign:2`、このフィールドを対象にした PermissionField の行条件は `JobTriggerFieldDesign:3` で検出)。行の状態で実行を止めたいなら、ジョブが受け取った `data` や DB を見て自分で確かめる
 - ジョブが DB に保存しても画面には反映されない (新規の画面は仮 Id のまま。そのまま保存ボタンを押すと二重に登録される)。DB に書く用途は「保存ボタン → スクリプトから `Run()`」の順にするか、ジョブは画面の内容を読むだけにする
 - 見た目は固定 (枠線のボタン)。凝るときは `ShowButton` を `false` にして ButtonField の OnClick から `Run()` を呼ぶ
@@ -94,7 +94,7 @@ public class JobTriggerFieldDesign : FieldDesignBase
 ### ホストの結線 (ユーザーの作業。テンプレートには入っている)
 
 - クライアント: 設定不要 (共通の API `ExtrasTransport.EndPoint` = `/api/extras` に送る。`GetJobStatus` も同じ口で問い合わせる)。ジョブ専用のエンドポイントで受けるホストは `JobTriggerField.EndPoint` を設定する (状態は `GET {EndPoint}/{jobId}`)。HTTP を使わないホストは `JobTriggerField.RunCoreAsync` と `JobTriggerField.GetJobStatusCoreAsync` (非同期のジョブの状態の問い合わせ) を差し替える
-- サーバー: ホストの共通の API (テンプレートの `Controllers/ExtrasController.cs`) の対応表 `Extras/ExtrasApiTable.cs` に `JobApi` が載っていること (テンプレートは載せ済み: `new JobApi(() => JobRunner.Names, JobRunner.RunFromScreenAsync)`。`RunFromScreenAsync` はジョブ名・画面の内容の JSON・ユーザーの Id・`ProcessType` を受ける。動かせるジョブは `Jobs/JobRunner`)。`JobApi` が `JobRunRequest` を受け、書き込み権限を確かめてホストが渡した実行の口でジョブを動かす (既定は Extras.Server の `JobProcess` で別プロセス。Web サーバーのプロセスの中でも動かせる)。非同期では `JobId` を返し、状態の問い合わせに `JobStatusResponse` を返す。ジョブが返したデータは `JobRunResponse.ResultJson` (同期) / `JobStatusResponse.ResultJson` (非同期) の JSON。`AllowsConcurrentRuns` が `false` で同じジョブが実行中なら起動せず失敗を返す
+- サーバー: ホストの共通の API (テンプレートの `Controllers/ExtrasController.cs`) の対応表 `Extras/ExtrasApiTable.cs` に `JobTriggerApi` が載っていること (テンプレートは載せ済み: `new JobTriggerApi(() => JobRuntimeHost.Names, JobRuntimeHost.RunFromScreenAsync)`。`RunFromScreenAsync` はジョブ名・画面の内容の JSON・ユーザーの Id・`ProcessType` を受ける。動かせるジョブは `Jobs/JobRuntimeHost`)。`JobTriggerApi` が `JobTriggerRunRequest` を受け、書き込み権限を確かめてホストが渡した実行の口でジョブを動かす (既定は Extras.Server の `JobRuntime` で別プロセス。Web サーバーのプロセスの中でも動かせる)。非同期では `JobId` を返し、状態の問い合わせに `JobTriggerStatusResponse` を返す。ジョブが返したデータは `JobTriggerRunResponse.ResultJson` (同期) / `JobTriggerStatusResponse.ResultJson` (非同期) の JSON。`AllowsConcurrentRuns` が `false` で同じジョブが実行中なら起動せず失敗を返す
 
 ## Script
 
@@ -105,10 +105,10 @@ public class JobTriggerFieldDesign : FieldDesignBase
 | `Result` | JsonObject | 最後に `Run()` したジョブが返したデータ (Job スクリプトの `args.Result`)。`Run()` を始めると `null` に戻り、同期で成功してジョブがデータを返したときだけ入る。失敗・データを返さないジョブ・非同期では `null` (非同期は `GetJobStatus` の `Result`) |
 | `JobId` | string | 終わったことをまだ確かめていないジョブのうち、最後に起動したものの Id (`JobIds` の最後。無ければ空)。`GetJobStatus` で終わったと分かると `JobIds` から外れるので、同じジョブを二度問い合わせない |
 | `JobIds` | string[] | 非同期で起動して、終わったことをまだ確かめていないジョブの Id (起動順)。`GetJobStatus` で終わったと分かったら外れる |
-| `GetJobStatus(jobId)` | JobStatusResponse | 非同期のジョブの状態を 1 回問い合わせる (自動では呼ばれない)。終わっていれば `JobIds` から外す。分からない (知らない Id = サーバーの再起動・終了から 30 分以上・通信できない・問い合わせる口が無いホスト) なら `null`。サーバーが知らない Id も `JobIds` から外す (通信できなかっただけなら残る)。通信の失敗は通知しない |
-| `GetJobStatus()` | JobStatusResponse | 引数を省く (空文字も同じ) と `JobIds` の先頭 (一番古いもの) を問い合わせる。`JobIds` が空なら問い合わせずに `null`。`JobId` (`JobIds` の最後) とは違うものを指す (同時実行を許さないなら同じもの) |
+| `GetJobStatus(jobId)` | JobTriggerStatusResponse | 非同期のジョブの状態を 1 回問い合わせる (自動では呼ばれない)。終わっていれば `JobIds` から外す。分からない (知らない Id = サーバーの再起動・終了から 30 分以上・通信できない・問い合わせる口が無いホスト) なら `null`。サーバーが知らない Id も `JobIds` から外す (通信できなかっただけなら残る)。通信の失敗は通知しない |
+| `GetJobStatus()` | JobTriggerStatusResponse | 引数を省く (空文字も同じ) と `JobIds` の先頭 (一番古いもの) を問い合わせる。`JobIds` が空なら問い合わせずに `null`。`JobId` (`JobIds` の最後) とは違うものを指す (同時実行を許さないなら同じもの) |
 
-`JobStatusResponse`: `Status` (JobStatus。`JobStatus.Running` = まだ実行中 / `JobStatus.Done` = 成功して終わった / `JobStatus.Error` = 失敗して終わった) / `Message` (string。成功したときのジョブの戻り値の文言) / `Error` (string。失敗したときのエラーの文言) / `Result` (JsonObject。成功したときにジョブが返したデータ (Job スクリプトの `args.Result`)。無ければ `null`)
+`JobTriggerStatusResponse`: `Status` (JobTriggerStatus。`JobTriggerStatus.Running` = まだ実行中 / `JobTriggerStatus.Done` = 成功して終わった / `JobTriggerStatus.Error` = 失敗して終わった) / `Message` (string。成功したときのジョブの戻り値の文言) / `Error` (string。失敗したときのエラーの文言) / `Result` (JsonObject。成功したときにジョブが返したデータ (Job スクリプトの `args.Result`)。無ければ `null`)
 
 ジョブが返したデータを項目に入れる例 (同期。Job スクリプトは `args.Result` に `JsonObject` を入れる。キーは大文字始まりで届く。読むキーは Job で必ず入れる (値が無いときは `null` を入れる。入れていないキーを読むと `null` ではなく空の `JsonObject`)。数値は `decimal`、`Guid`・日付は文字列で届く):
 
@@ -157,9 +157,9 @@ void RunButton_OnClick()
 void CheckJob()
 {
     var status = ImportJob.GetJobStatus();
-    if (status == null || status.Status == JobStatus.Running) return;
+    if (status == null || status.Status == JobTriggerStatus.Running) return;
     Poll.Stop();
-    if (status.Status == JobStatus.Done) MessageBox.Show("完了しました: " + status.Message);
+    if (status.Status == JobTriggerStatus.Done) MessageBox.Show("完了しました: " + status.Message);
     else MessageBox.Show("失敗しました: " + status.Error);
 }
 ```

@@ -68,14 +68,14 @@ Codeer.LowCode.Blazor.Extras 0.23.0 以降（Codeer.LowCode.Blazor 1.3.53 以降
 | `Result` | JsonObject | 最後に `Run()` したジョブが返したデータ（下の「ジョブが返したデータ」）。`Run()` を始めると `null` に戻り、同期で成功してジョブがデータを返したときだけ入る。失敗・データを返さないジョブ・非同期では `null` |
 | `JobId` | string | 終わったことをまだ確かめていないジョブのうち、最後に起動したものの Id（`JobIds` の最後。無ければ空）。`GetJobStatus` で終わったと分かると `JobIds` から外れるので、同じジョブを二度問い合わせない |
 | `JobIds` | string[] | 非同期で起動して、終わったことをまだ確かめていないジョブの Id（起動順）。`GetJobStatus` で終わったと分かったら外れる |
-| `GetJobStatus(jobId)` | JobStatusResponse | 非同期のジョブの状態を 1 回問い合わせる。終わっていれば `JobIds` から外す。分からない（サーバーが再起動した・終わってから 30 分以上たった・通信できなかった）ときは `null`（サーバーが忘れたものは `JobIds` から外れ、通信できなかっただけなら残る）。終わるまで待つ機能はありません（確かめたいときに呼びます） |
-| `GetJobStatus()` | JobStatusResponse | 引数を省くと `JobIds` の先頭（一番古いもの）を問い合わせる。`JobIds` が空なら問い合わせずに `null`。`JobId`（`JobIds` の最後）とは違うものを指す（同時実行を許さないなら同じもの） |
+| `GetJobStatus(jobId)` | JobTriggerStatusResponse | 非同期のジョブの状態を 1 回問い合わせる。終わっていれば `JobIds` から外す。分からない（サーバーが再起動した・終わってから 30 分以上たった・通信できなかった）ときは `null`（サーバーが忘れたものは `JobIds` から外れ、通信できなかっただけなら残る）。終わるまで待つ機能はありません（確かめたいときに呼びます） |
+| `GetJobStatus()` | JobTriggerStatusResponse | 引数を省くと `JobIds` の先頭（一番古いもの）を問い合わせる。`JobIds` が空なら問い合わせずに `null`。`JobId`（`JobIds` の最後）とは違うものを指す（同時実行を許さないなら同じもの） |
 
 `GetJobStatus` が返すもの:
 
 | メンバー | 型 | 説明 |
 |---|---|---|
-| `Status` | JobStatus | `JobStatus.Running` (まだ実行中) / `JobStatus.Done` (成功して終わった) / `JobStatus.Error` (失敗して終わった) |
+| `Status` | JobTriggerStatus | `JobTriggerStatus.Running` (まだ実行中) / `JobTriggerStatus.Done` (成功して終わった) / `JobTriggerStatus.Error` (失敗して終わった) |
 | `Message` | string | 成功したときのジョブの戻り値の文言 |
 | `Error` | string | 失敗したときのエラーの文言 |
 | `Result` | JsonObject | 成功したときにジョブが返したデータ（下の「ジョブが返したデータ」）。無ければ `null` |
@@ -134,9 +134,9 @@ void RunButton_OnClick()
 void CheckJob()
 {
     var status = ImportJob.GetJobStatus();
-    if (status == null || status.Status == JobStatus.Running) return;
+    if (status == null || status.Status == JobTriggerStatus.Running) return;
     Poll.Stop();
-    if (status.Status == JobStatus.Done) MessageBox.Show("完了しました: " + status.Message);
+    if (status.Status == JobTriggerStatus.Done) MessageBox.Show("完了しました: " + status.Message);
     else MessageBox.Show("失敗しました: " + status.Error);
 }
 ```
@@ -148,11 +148,11 @@ void CheckJob()
 アプリのテンプレート（Cookie）には入っています。自分で組むときは次の 2 つです。
 
 - クライアント: 設定は不要です（共通の API `ExtrasTransport.EndPoint` = `/api/extras` に送ります）。HTTP を使わないホストは `JobTriggerField.RunCoreAsync` に送り方を、`JobTriggerField.GetJobStatusCoreAsync` に非同期のジョブの状態の問い合わせ方を設定します（`GetJobStatusCoreAsync` が無ければ `GetJobStatus` は `null`）
-- サーバー: 共通の API（`Controllers/ExtrasController.cs`）の対応表 `Extras/ExtrasApiTable.cs` に `JobApi` を並べます（全部のジョブを別プロセスで動かすなら `new JobApi(JobRunner.Names)`）。Extras.Server の `JobApi` が `JobRunRequest`（`Codeer.LowCode.Blazor.Extras.Jobs`）を受け、このフィールドへの書き込み権限を確かめて、ジョブを動かします。既定は別プロセスで、ホストが実行の口を渡せば Web サーバーのプロセスの中でも動かせます（[ジョブ (バッチ)](Jobs.md) の「実行先」。デザインの `ProcessType` は実行の口に渡り、`new JobApi(JobRunner.Names)` では見ません）。非同期では `JobRunResponse` の `JobId` を返し、状態の問い合わせに `JobStatusResponse` を返します。ジョブが返したデータは `JobRunResponse.ResultJson`（同期）/ `JobStatusResponse.ResultJson`（非同期）の JSON で返します（`RunCoreAsync` / `GetJobStatusCoreAsync` を使うホストも同じ）。同時実行を許さないジョブが実行中なら起動せずに失敗を返します
+- サーバー: 共通の API（`Controllers/ExtrasController.cs`）の対応表 `Extras/ExtrasApiTable.cs` に `JobTriggerApi` を並べます（全部のジョブを別プロセスで動かすなら `new JobTriggerApi(JobRuntimeHost.Names)`）。Extras.Server の `JobTriggerApi` が `JobTriggerRunRequest`（`Codeer.LowCode.Blazor.Extras.Jobs`）を受け、このフィールドへの書き込み権限を確かめて、ジョブを動かします。既定は別プロセスで、ホストが実行の口を渡せば Web サーバーのプロセスの中でも動かせます（[ジョブ (バッチ)](Jobs.md) の「実行先」。デザインの `ProcessType` は実行の口に渡り、`new JobTriggerApi(JobRuntimeHost.Names)` では見ません）。非同期では `JobTriggerRunResponse` の `JobId` を返し、状態の問い合わせに `JobTriggerStatusResponse` を返します。ジョブが返したデータは `JobTriggerRunResponse.ResultJson`（同期）/ `JobTriggerStatusResponse.ResultJson`（非同期）の JSON で返します（`RunCoreAsync` / `GetJobStatusCoreAsync` を使うホストも同じ）。同時実行を許さないジョブが実行中なら起動せずに失敗を返します
 
 ジョブ専用のコントローラで受ける場合は、従来どおり `JobTriggerField.EndPoint` にその URL を設定すればそちらに送ります（状態は `GET {EndPoint}/{jobId}`）。
 
 ## 関連
 
-- [ジョブ (バッチ)](Jobs.md) — サーバー側の仕組み（JobProcess / JobMode）
+- [ジョブ (バッチ)](Jobs.md) — サーバー側の仕組み（JobTriggerApi / JobTriggerTracker / JobRuntime）
 - [バッチ処理（ジョブ）](https://github.com/Codeer-Software/Codeer.LowCode.Blazor.Manual/blob/main/JP/user_code/batch_job.md) — ジョブの書き方・定期実行

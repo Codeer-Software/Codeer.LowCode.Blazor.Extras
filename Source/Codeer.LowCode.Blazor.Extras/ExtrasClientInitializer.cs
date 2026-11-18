@@ -20,8 +20,8 @@ namespace Codeer.LowCode.Blazor.Extras
             app.GetScriptRuntimeTypeManager().AddType<CrossTabCell>();
             app.GetScriptRuntimeTypeManager().AddType<TagSearchMatch>();
             //JobTriggerField.GetJobStatus の戻り値と、その Status の enum
-            app.GetScriptRuntimeTypeManager().AddType<Jobs.JobStatusResponse>();
-            app.GetScriptRuntimeTypeManager().AddType<Jobs.JobStatus>();
+            app.GetScriptRuntimeTypeManager().AddType<Jobs.JobTriggerStatusResponse>();
+            app.GetScriptRuntimeTypeManager().AddType<Jobs.JobTriggerStatus>();
             //WebApiField.Execute の戻り値 (WebApiService と共用)
             app.GetScriptRuntimeTypeManager().AddType<WebApiResult>();
         }
