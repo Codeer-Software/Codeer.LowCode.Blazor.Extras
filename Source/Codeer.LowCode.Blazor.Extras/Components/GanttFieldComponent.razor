@@ -555,6 +555,7 @@
             @onmousedown="e => OnBarMouseDown(e, capturedIdx, capturedItem)"
             @onmousedown:preventDefault="true"
             @onmousedown:stopPropagation="true"
+            @ondblclick="() => OnTaskClicked(capturedItem)"
             @oncontextmenu="e => OnBarContextMenu(e, capturedItem)"
             @oncontextmenu:preventDefault="true"
             @oncontextmenu:stopPropagation="true" />
@@ -586,11 +587,13 @@
         <rect x="@F(bar.X - outside)" y="@bar.Y" width="@F(handleW)" height="@bar.Height"
               class="gantt-resize-handle" rx="2" ry="2"
               @onmousedown="e => StartDrag(e, capturedIdx, DragMode.ResizeLeft)"
+              @ondblclick="() => OnTaskClicked(capturedItem)"
               @onmousedown:preventDefault="true"
               @onmousedown:stopPropagation="true" />
         <rect x="@F(bar.X + bar.Width - inside)" y="@bar.Y" width="@F(handleW)" height="@bar.Height"
               class="gantt-resize-handle" rx="2" ry="2"
               @onmousedown="e => StartDrag(e, capturedIdx, DragMode.ResizeRight)"
+              @ondblclick="() => OnTaskClicked(capturedItem)"
               @onmousedown:preventDefault="true"
               @onmousedown:stopPropagation="true" />
       }
