@@ -105,6 +105,14 @@
   <data name="DateFormatDayTitle" xml:space="preserve">
     <value>MMMM d, yyyy</value>
   </data>
+  <data name="GanttEndNotAfterStart" xml:space="preserve">
+    <value>{1} must be later than {0}.</value>
+    <comment>{0}=start field name, {1}=end field name</comment>
+  </data>
+  <data name="GanttEndBeforeStartDate" xml:space="preserve">
+    <value>{1} must be on or after {0}.</value>
+    <comment>{0}=start field name, {1}=end field name</comment>
+  </data>
   <data name="DateFormatDayTitleWithWeekday" xml:space="preserve">
     <value>dddd, MMMM d, yyyy</value>
   </data>

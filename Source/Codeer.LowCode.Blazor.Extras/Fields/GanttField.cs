@@ -433,15 +433,16 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             var mod = await this.CreateChildModuleAsync(ModuleName, ModuleLayoutType.Detail, Design.DetailLayoutName);
             await this.AssignConditionValuesAsync(Design.SearchCondition, mod);
 
+            //画面で入力する単位は分なので、それより下は持たせない (端数で開始と終了の前後が決まらないように)
+            date = GanttDateRange.TruncateToMinute(date);
             await SetDateFieldValueAsync(mod, Design.StartField, date);
             await SetDateFieldValueAsync(mod, Design.EndField, date.AddDays(1));
 
-            if (await mod.ShowDialogAsync(Properties.Resources.OK, Properties.Resources.Cancel) != Properties.Resources.OK) return;
-            if (!await mod.ValidateInput())
+            //入力に誤りがあれば、入力した内容とエラーを残したまま開き直す
+            do
             {
-                await Services.UIService.NotifyError(Properties.Resources.InputError);
-                return;
-            }
+                if (await mod.ShowDialogAsync(Properties.Resources.OK, Properties.Resources.Cancel) != Properties.Resources.OK) return;
+            } while (!await ValidateTaskAsync(mod));
 
             _tasks.Add(mod);
             Items.Add(ConvertToGanttItem(mod));
@@ -464,15 +465,15 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
                 return;
             }
 
-            var dialogResult = await popupMod.ShowDialogAsync(Properties.Resources.Update, Properties.Resources.Delete, Properties.Resources.Cancel);
+            //入力に誤りがあれば、入力した内容とエラーを残したまま開き直す
+            string dialogResult;
+            do
+            {
+                dialogResult = await popupMod.ShowDialogAsync(Properties.Resources.Update, Properties.Resources.Delete, Properties.Resources.Cancel);
+            } while (dialogResult == Properties.Resources.Update && !await ValidateTaskAsync(popupMod));
+
             if (dialogResult == Properties.Resources.Update)
             {
-                if (!await popupMod.ValidateInput())
-                {
-                    await Services.UIService.NotifyError(Properties.Resources.InputError);
-                    return;
-                }
-
                 await ModuleHelper.CopyFieldDataAsync(popupMod, cardMod);
                 UpdateItemFromModule(cardMod);
                 SortItems();
@@ -561,6 +562,32 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             await NotifyDataChangedAsync();
             await Module.ExecuteScriptAsync(Design.OnDataChanged);
             await OnDataChangedAsync();
+        }
+
+        //ダイアログで入力したタスクの検証。各項目の検証と、開始と終了の前後。
+        //誤りは項目に出し (開き直したダイアログで見える)、通知もする
+        private async Task<bool> ValidateTaskAsync(Module mod)
+        {
+            if (!await mod.ValidateInput())
+            {
+                await Services.UIService.NotifyError(Properties.Resources.InputError);
+                return false;
+            }
+
+            var error = GanttDateRange.GetError(
+                GetDateTimeValue(mod, Design.StartField), GetDateTimeValue(mod, Design.EndField), IsDateOnly,
+                GetFieldDisplayName(mod, Design.StartField), GetFieldDisplayName(mod, Design.EndField));
+            if (error == null) return true;
+
+            mod.GetField(Design.EndField)?.SetError(error);
+            await Services.UIService.NotifyError(error);
+            return false;
+        }
+
+        private static string GetFieldDisplayName(Module mod, string fieldName)
+        {
+            var displayName = (mod.GetField(fieldName)?.Design as IDisplayName)?.DisplayName;
+            return string.IsNullOrEmpty(displayName) ? fieldName : displayName;
         }
 
         private void SortItems()

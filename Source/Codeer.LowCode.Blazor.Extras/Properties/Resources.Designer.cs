@@ -534,6 +534,18 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
             }
         }
 
+        internal static string GanttEndNotAfterStart {
+            get {
+                return ResourceManager.GetString("GanttEndNotAfterStart", resourceCulture);
+            }
+        }
+
+        internal static string GanttEndBeforeStartDate {
+            get {
+                return ResourceManager.GetString("GanttEndBeforeStartDate", resourceCulture);
+            }
+        }
+
         internal static string DateFormatDayTitleWithWeekday {
             get {
                 return ResourceManager.GetString("DateFormatDayTitleWithWeekday", resourceCulture);
