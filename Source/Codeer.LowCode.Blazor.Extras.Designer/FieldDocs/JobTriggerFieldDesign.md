@@ -25,7 +25,7 @@
 | `true` | `{"data": ModuleData, "submit": [ModuleSubmitData] または null}` — `data` は画面の現在値、`submit` は保存ボタンが送るのと同じ内容 (変更なし・表を持たないモジュールなど送るものが無ければ `null`) |
 | `false` | `{}` (サーバーがデザインを見て `{}` にする。クライアントが何を送っても渡らない) |
 
-C# のジョブは引数の `args[0]` にこの JSON の文字列を受け取る。デザインの Job (`Jobs/名前.job.cs`) は解いた形を `args.Data` (`ModuleData`。画面の現在値) / `args.Submit` (`List<ModuleSubmitData>`。無ければ `null`) で受け取る。
+C# のジョブは引数の `args[0]` にこの JSON の文字列を受け取る。デザインの Job (`Jobs/名前.job.cs`) は `data` を解いた `args.Data` (`ModuleData`。画面の現在値。無ければ `null`) で受け取る (`submit` は受け取らない)。
 
 `data` はボタン (`Run()`) 起点のときだけ渡る。将来の別の起点 (保存時・スケジュール) では無いことがあるので、ジョブは `data` の有無を見て書く。
 
