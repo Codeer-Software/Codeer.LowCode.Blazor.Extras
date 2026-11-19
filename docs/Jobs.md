@@ -152,7 +152,7 @@ new JobTriggerApi(() => jobNames, (name, input, userId, processType) => processT
 
 ### デザイナで作った Job
 
-デザイナで作った Job (`Jobs/名前.job.cs`) は本体の `JobExecutor` が動かします (名前の一覧は `JobExecutor.GetJobNames`、実行は `JobExecutor.RunAsync(context, jobName, args, logger)`)。ホストは `JobExecutor.RunAsync` を呼び、結果 (`JobExecutionResult`) を自分のジョブの約束 (戻り値 = `JobRuntimeResult` (`Message` に `Message`、`ResultJson` に `ResultJson`)・失敗は例外) に変えて、`JobRuntime.RunFromCommandLineAsync` の `runJob`・`JobTriggerApi` の実行の口 `run` から動かします。スクリプトの `Logger` の出し先もホストが `logger` で渡します。
+デザイナで作った Job (`Jobs/名前.job.cs`) は本体の `JobExecutor` が動かします (名前の一覧は `JobExecutor.GetJobNames`、実行は `JobExecutor.RunAsync(context, jobName, args, logger)`)。ホストは `JobExecutor.RunAsync` を呼び、結果 (`JobExecutionResult`) を自分のジョブの約束 (戻り値 = `JobRuntimeResult` (`Message` に `Message`、`ResultJson` に `ResultJson`)・失敗は例外) に変えて、`JobRuntime.RunFromCommandLineAsync` の `runJob`・`JobTriggerApi` の実行の口 `run` から動かします。投げた例外のメッセージは画面に出るので、失敗の文言は結果の `Exception` を見て決めます (`LowCodeException` = スクリプトの `Fail` の理由と本体の検証・楽観ロック・権限の文言はそのまま。それ以外は `Error` にスクリプトの位置や DB の例外の原文が入るので、本番では固定の文言にする)。スクリプトの `Logger` の出し先もホストが `logger` で渡します。
 
 ### Job スクリプトで使えるもの (MailService / Excel / Resources / FileService)
 

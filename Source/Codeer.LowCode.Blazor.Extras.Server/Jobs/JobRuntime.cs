@@ -136,7 +136,17 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Jobs
         internal static Task<JobRuntimeProcessResult> Launch(string jobName, string input, string userId)
         {
             var info = CreateStartInfo(jobName, userId);
-            var process = Process.Start(info) ?? throw new InvalidOperationException($"The job '{jobName}' could not be started.");
+            Process? process;
+            try
+            {
+                process = Process.Start(info);
+            }
+            //OS の文言は実行ファイルのパスを含む。例外のメッセージは画面に出るので、パスの無い文言で包む (原文は内側の例外 = 記録に残る)
+            catch (Exception e) when (e is System.ComponentModel.Win32Exception or IOException or UnauthorizedAccessException)
+            {
+                throw new InvalidOperationException($"The job '{jobName}' could not be started.", e);
+            }
+            if (process == null) throw new InvalidOperationException($"The job '{jobName}' could not be started.");
             return WaitForExitAsync(jobName, process, input);
         }
 

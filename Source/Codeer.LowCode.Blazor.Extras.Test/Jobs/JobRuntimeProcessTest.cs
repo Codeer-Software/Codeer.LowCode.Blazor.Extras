@@ -233,7 +233,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Jobs
         {
             JobRuntime.DotnetPath = Path.Combine(Path.GetTempPath(), "no_such_dotnet_" + Guid.NewGuid());
             Assert.That(async () => await JobTriggerTracker.StartAsync("Echo", "{}", "u"), Throws.Exception);
-            Assert.ThrowsAsync<System.ComponentModel.Win32Exception>(async () => await JobTriggerTracker.RunAsync("Echo", "{}", "u"));
+            Assert.ThrowsAsync<InvalidOperationException>(async () => await JobTriggerTracker.RunAsync("Echo", "{}", "u"));
         }
 
         [Test]
@@ -298,8 +298,8 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Jobs
             JobRuntime.DotnetPath = Path.Combine(Path.GetTempPath(), "no_such_dotnet_" + Guid.NewGuid());
             Assert.That(async () => await JobTriggerTracker.StartAsync("Echo", "{}", "u", allowConcurrent: false), Throws.Exception);
             Assert.That(async () => await JobTriggerTracker.StartAsync("Echo", "{}", "u", allowConcurrent: false), Throws.Exception);
-            Assert.ThrowsAsync<System.ComponentModel.Win32Exception>(async () => await JobTriggerTracker.RunAsync("Echo", "{}", "u", allowConcurrent: false));
-            Assert.ThrowsAsync<System.ComponentModel.Win32Exception>(async () => await JobTriggerTracker.RunAsync("Echo", "{}", "u", allowConcurrent: false));
+            Assert.ThrowsAsync<InvalidOperationException>(async () => await JobTriggerTracker.RunAsync("Echo", "{}", "u", allowConcurrent: false));
+            Assert.ThrowsAsync<InvalidOperationException>(async () => await JobTriggerTracker.RunAsync("Echo", "{}", "u", allowConcurrent: false));
         }
 
         [Test]
@@ -340,7 +340,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Jobs
         public void RunInNewProcessAsync_起動できなければ起動の例外()
         {
             JobRuntime.DotnetPath = Path.Combine(Path.GetTempPath(), "no_such_dotnet_" + Guid.NewGuid());
-            Assert.ThrowsAsync<System.ComponentModel.Win32Exception>(async () => await JobRuntime.RunInNewProcessAsync("Echo", "{}", "u"));
+            Assert.ThrowsAsync<InvalidOperationException>(async () => await JobRuntime.RunInNewProcessAsync("Echo", "{}", "u"));
         }
 
         //実行中として数えるのは呼び出し側 (JobTriggerApi)。動いている間も同時実行を許さない起動は止まらない

@@ -355,13 +355,14 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Jobs
 
             var ret = await RunAsync(api, "Process", "{}", CreateContext("7"));
             Assert.That(ret.Succeeded, Is.False);
-            Assert.That(ret.Error, Does.Contain("no_such_dotnet_"));
+            //画面の文言に実行ファイルのパスは出さない。原文は記録に残る
+            Assert.That(ret.Error, Is.EqualTo("The job 'Echo' could not be started."));
             Assert.That(_logs, Has.Count.EqualTo(1));
-            Assert.That(_logs[0], Does.StartWith("ジョブ Echo が失敗しました: ").And.Contain("Win32Exception"));
+            Assert.That(_logs[0], Does.StartWith("ジョブ Echo が失敗しました: ").And.Contain("Win32Exception").And.Contain("no_such_dotnet_"));
 
             //同時実行を許さないジョブでも 2 回目は「実行中」にならない
             ret = await RunAsync(api, "Process", "{}", CreateContext("7"));
-            Assert.That(ret.Error, Does.Contain("no_such_dotnet_"));
+            Assert.That(ret.Error, Is.EqualTo("The job 'Echo' could not be started."));
         }
 
         //非同期では、起動の失敗も API の呼び出しの例外にならず、起動済み (Id が返る) → 状態が Error
@@ -376,9 +377,9 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Jobs
             Assert.That(ret.JobId, Is.Not.Empty);
             var status = await WaitFinishedAsync(api, ret.JobId, "7");
             Assert.That(status.Status, Is.EqualTo(JobTriggerStatus.Error));
-            Assert.That(status.Error, Does.Contain("no_such_dotnet_"));
+            Assert.That(status.Error, Is.EqualTo("The job 'Echo' could not be started."));
             await WaitAsync(() => _logs.Count == 1);
-            Assert.That(_logs[0], Does.StartWith("ジョブ Echo が失敗しました: ").And.Contain("Win32Exception"));
+            Assert.That(_logs[0], Does.StartWith("ジョブ Echo が失敗しました: ").And.Contain("Win32Exception").And.Contain("no_such_dotnet_"));
 
             //実行中に数えたままにしない
             ret = await RunAsync(api, "EchoAsync", "{}", CreateContext("7"));
