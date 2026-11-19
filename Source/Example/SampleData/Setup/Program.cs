@@ -34,11 +34,17 @@ Console.WriteLine($"DB: {dbPath}{(File.Exists(dbPath) ? "" : " (新しく作り�
 using var connection = new SqliteConnection(new SqliteConnectionStringBuilder { DataSource = dbPath }.ToString());
 connection.Open();
 
-// 以前から DB を持っている場合: ユーザーの表に部署の列が無ければ足す (CREATE TABLE IF NOT EXISTS は、すでにある表の列を変えない)
-if (TableExists("app_users") && !ColumnExists("app_users", "dept"))
+// 以前から DB を持っている場合: 後から足した列が無ければ足す (CREATE TABLE IF NOT EXISTS は、すでにある表の列を変えない)
+(string Table, string Column, string Type)[] addedColumns =
+[
+    ("app_users", "dept", "TEXT"),
+    ("app_users", "role", "TEXT"),
+];
+foreach (var (table, column, type) in addedColumns)
 {
-    Execute("ALTER TABLE app_users ADD COLUMN dept TEXT");
-    Console.WriteLine("app_users に dept 列を足しました");
+    if (!TableExists(table) || ColumnExists(table, column)) continue;
+    Execute($"ALTER TABLE {table} ADD COLUMN {column} {type}");
+    Console.WriteLine($"{table} に {column} 列を足しました");
 }
 
 foreach (var file in baseFiles) Run(file);

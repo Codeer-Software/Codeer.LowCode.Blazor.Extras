@@ -101,20 +101,13 @@
     },
     {
       "DbColumn": "",
-      "EnableMention": true,
+      "EnableMention": false,
       "MentionCandidateCondition": {
         "ModuleName": "",
         "Condition": {
           "IsOrMatch": false,
           "IsNot": false,
-          "Children": [
-            {
-              "SearchTargetVariable": "Dept.Value",
-              "Comparison": "Equal",
-              "Variable": "CurrentUser.Dept.Value",
-              "TypeFullName": "Codeer.LowCode.Blazor.Repository.Match.FieldVariableMatchCondition"
-            }
-          ],
+          "Children": [],
           "Name": "",
           "TypeFullName": "Codeer.LowCode.Blazor.Repository.Match.MultiMatchCondition"
         }

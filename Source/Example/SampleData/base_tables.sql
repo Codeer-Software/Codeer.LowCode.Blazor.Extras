@@ -8,7 +8,8 @@ CREATE TABLE IF NOT EXISTS app_users (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   name TEXT,
   email TEXT,
-  dept TEXT
+  dept TEXT,
+  role TEXT
 );
 
 -- ===== サーバーの機能が使う表 (appsettings.json に表の名前がある) =====
@@ -47,6 +48,14 @@ CREATE TABLE IF NOT EXISTS mail_histories (
   failure_details TEXT,
   source_module TEXT,
   source_id TEXT
+);
+
+-- ===== リッチテキストのメンション (MentionTest)。restricted_body は役割が「管理者」の人だけが読める項目 =====
+CREATE TABLE IF NOT EXISTS mention_tests (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  title TEXT,
+  body TEXT,
+  restricted_body TEXT
 );
 
 -- ===== 編集履歴 (EditHistory) と、履歴を取る画面 (Order / Project / Plan) =====

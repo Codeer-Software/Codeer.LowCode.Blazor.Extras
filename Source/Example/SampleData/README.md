@@ -16,7 +16,7 @@ dotnet run --project Source/Example/SampleData/Setup
 
 - DB のファイルとフォルダが無ければ作ります
 - 何度実行しても、今あるデータは消しません。足りない表だけを作ります
-- 以前から DB を持っている場合も、同じコマンドで足りない表と列 (`app_users` の `dept`) が入ります
+- 以前から DB を持っている場合も、同じコマンドで足りない表と列 (`app_users` の `dept` / `role`) が入ります
 - 最後に、表の一覧と行数を出します
 
 サンプルのデータを最初の状態に戻したいときは `--reset-samples` を付けます。
@@ -55,6 +55,7 @@ dotnet run --project Source/Example/SampleData/Setup -- C:\temp\sample.db
 | 監査ログ | `audit_log` |
 | アップロード中のファイルの控え | `temporary_files` |
 | メールの履歴 | `mail_histories` |
+| リッチテキストのメンション | `mention_tests` |
 | 編集履歴と、履歴を取る画面 | `edit_histories` / `orders` / `order_items` / `projects` / `project_tasks` / `plans` / `plan_events` / `plan_cards` / `plan_markers` |
 | 承認フローと、申請する画面 | `approval_routes` / `approval_route_steps` / `approval_route_step_members` / `approval_flows` / `approval_flow_members` / `approval_histories` / `expense_requests` / `purchase_requests` |
 | カレンダー | `schedule` |
@@ -73,12 +74,24 @@ SQLite のコマンド (`sqlite3`) などで実行するときは、上の表の
 sqlite3 C:\Codeer.LowCode.Blazor.Local\Data\sqlite_sample_extras.db ".read Source/Example/SampleData/base_tables.sql"
 ```
 
-以前から DB を持っていて `app_users` に `dept` 列が無い場合は、先に次の 1 行を 1 回だけ実行します
+以前から DB を持っていて `app_users` に `dept` 列や `role` 列が無い場合は、先に無い列の分だけ次の文を 1 回実行します
 (`base_tables.sql` は、すでにある表の列を変えません)。
 
 ```sql
 ALTER TABLE app_users ADD COLUMN dept TEXT;
+ALTER TABLE app_users ADD COLUMN role TEXT;
 ```
+
+## ユーザーのサンプル (`users_sample.sql`)
+
+ログインする人を変えて、権限や候補の違いを確かめるためのデータです。
+
+| 項目 | 値 | 使う場所 |
+|---|---|---|
+| 部署 (`dept`) | 営業部 5 人 / 開発部 5 人 / 総務部 1 人 / なし 2 人 | メンションの画面の「本文」。@ の候補が同じ部署の人だけになる |
+| 役割 (`role`) | 管理者 3 人 (承認 花子・決裁 次郎・総務 みどり) / 一般 9 人 / なし 1 人 | メンションの画面の「管理者だけが読める本文」。役割が管理者の人にだけ見える |
+
+部署と役割は、ユーザーの画面 (サイドバーの「ユーザー」) でも変えられます。
 
 ## 表や列を足すとき
 
@@ -86,5 +99,5 @@ ALTER TABLE app_users ADD COLUMN dept TEXT;
 DB はリポジトリに入っていないので、SQL に無い表や列は、ほかの人の環境には存在しません。
 
 - 既存の画面が使う表は `base_tables.sql` に `CREATE TABLE IF NOT EXISTS` で足す
-- すでにある表に列を足すときは、`Setup/Program.cs` にも「列が無ければ足す」処理を足す (`app_users` の `dept` と同じ形)
+- すでにある表に列を足すときは、`Setup/Program.cs` にも「列が無ければ足す」処理を足す (`addedColumns` の一覧に 1 行)
 - サンプルの行が要る表は、`〜_sample.sql` を作って `Setup/Program.cs` の一覧に足す
