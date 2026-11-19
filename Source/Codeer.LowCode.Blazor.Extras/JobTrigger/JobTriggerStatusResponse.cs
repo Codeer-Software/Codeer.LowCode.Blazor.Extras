@@ -2,7 +2,7 @@ using System.Text.Json.Serialization;
 using Codeer.LowCode.Blazor.Json;
 using Codeer.LowCode.Blazor.Script;
 
-namespace Codeer.LowCode.Blazor.Extras.Jobs
+namespace Codeer.LowCode.Blazor.Extras.JobTrigger
 {
     /// <summary>
     /// 非同期で起動したジョブの状態。フィールドの GetJobStatus が返す (HTTP では GET <see cref="Fields.JobTriggerField.EndPoint"/>/{jobId} の応答)。

@@ -3,7 +3,7 @@ using Codeer.LowCode.Blazor.Extras.Server.Jobs;
 //Jobs のテスト用の子プロセス。テンプレートの Program.cs と同じ形で JobRuntime を呼ぶ (DB は使わない)
 if (args is not ["job", ..]) return 99;
 
-return await JobRuntime.RunAsync(args[1..], ["Echo", "Fail", "Silent", "Partial", "Sleep", "Result"], async (name, jobArgs) =>
+return await JobRuntime.RunFromCommandLineAsync(args[1..], ["Echo", "Fail", "Silent", "Partial", "Sleep", "Result"], async (name, jobArgs) =>
 {
     switch (name)
     {

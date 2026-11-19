@@ -1,4 +1,4 @@
-using Codeer.LowCode.Blazor.Extras.Jobs;
+using Codeer.LowCode.Blazor.Extras.JobTrigger;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Logging;
 using System.Globalization;

@@ -1,4 +1,4 @@
-namespace Codeer.LowCode.Blazor.Extras.Jobs
+namespace Codeer.LowCode.Blazor.Extras.JobTrigger
 {
     /// <summary>非同期で起動したジョブの状態 (<see cref="JobTriggerStatusResponse.Status"/>)。</summary>
     public enum JobTriggerStatus

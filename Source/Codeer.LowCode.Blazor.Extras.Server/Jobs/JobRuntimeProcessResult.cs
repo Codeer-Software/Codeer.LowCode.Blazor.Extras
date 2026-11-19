@@ -17,7 +17,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Jobs
         /// <summary>ジョブの名前。</summary>
         public string JobName { get; }
 
-        /// <summary>プロセスの終了コード (<see cref="JobRuntime.Success"/> / <see cref="JobRuntime.Failure"/> / <see cref="JobRuntime.JobNotFound"/>。起動の失敗はここには来ない = 例外)。</summary>
+        /// <summary>プロセスの終了コード (<see cref="JobRuntime.ExitCodeSuccess"/> / <see cref="JobRuntime.ExitCodeFailure"/> / <see cref="JobRuntime.ExitCodeJobNotFound"/>。起動の失敗はここには来ない = 例外)。</summary>
         public int ExitCode { get; }
 
         /// <summary>標準出力の全文。</summary>
@@ -26,7 +26,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Jobs
         /// <summary>標準エラーの全文。</summary>
         public string Error { get; }
 
-        public bool Succeeded => ExitCode == JobRuntime.Success;
+        public bool Succeeded => ExitCode == JobRuntime.ExitCodeSuccess;
 
         /// <summary>成功したときの文言 (ジョブの戻り値 = 標準出力の最後の行)。ジョブが null を返したときは空。</summary>
         public string Message

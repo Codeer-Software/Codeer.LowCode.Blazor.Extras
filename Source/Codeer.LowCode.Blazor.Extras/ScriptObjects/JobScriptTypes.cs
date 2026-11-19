@@ -1,8 +1,7 @@
 using Codeer.LowCode.Blazor.Extras.Mail;
-using Codeer.LowCode.Blazor.Extras.ScriptObjects;
 using Codeer.LowCode.Blazor.Script;
 
-namespace Codeer.LowCode.Blazor.Extras.Jobs
+namespace Codeer.LowCode.Blazor.Extras.ScriptObjects
 {
     /// <summary>
     /// Job スクリプト (サーバーで動くスクリプト) で使える Extras の型・サービス。

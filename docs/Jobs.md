@@ -3,7 +3,7 @@
 ホストのアプリが持つジョブ (C# の処理) を、同じアプリの別プロセスで動かす部品です。画面のボタン ([JobTriggerField](JobTriggerField.md)) から起動するときも、
 コマンドライン (`dotnet LowCodeApp.Server.dll job <ジョブ名>`) から起動するときも、同じ経路を通ります。
 
-- `JobRuntime` (ジョブを動かす): 親側 (`RunInNewProcessAsync`) はこのプロセス自身を `job <ジョブ名> --stdin` で起動し、入力を標準入力で渡して結果を受け取る。子側 (`RunAsync`) は `job` より後ろの引数を受けてジョブを 1 つ実行し、終了コードを返す
+- `JobRuntime` (ジョブを動かす): 親側 (`RunInNewProcessAsync`) はこのプロセス自身を `job <ジョブ名> --stdin` で起動し、入力を標準入力で渡して結果を受け取る。子側 (`RunFromCommandLineAsync`) は `job` より後ろの引数を受けてジョブを 1 つ実行し、終了コードを返す
 - `JobTriggerApi` / `JobTriggerTracker` (画面から起動を頼む・受ける・状態を返す): 画面のボタンからの起動を受け、同時実行の判定・待たずに起動したジョブの状態 (Id で問い合わせる)・失敗の記録を持つ
 - 親と子の約束 (引数の並び・標準入力・環境変数・終了コード・UTF-8・結果の文言と返したデータの取り出し) は `JobRuntime` の中に閉じています。ホストはジョブの一覧と DB アクセスの組み立てだけを書きます
 - 画面のボタンから起動するジョブは、どこで動かすかをホストが実行の口で決められます。別プロセス (`JobRuntime`。既定) か、Web サーバーのプロセスの中 (「実行先」)。JobTriggerField の `ProcessType` (`NewProcess` / `InProcess`) が実行の口に渡るので、デザインで指定できます (どう動かすかはホスト)
@@ -26,10 +26,10 @@ var builder = isJob
     ? WebApplication.CreateBuilder(new WebApplicationOptions { Args = [], ContentRootPath = AppContext.BaseDirectory })
     : WebApplication.CreateBuilder(args);
 //...設定の読み込み (Web と同じ)...
-if (isJob) return await JobRuntime.RunAsync(args[1..], JobRuntimeHost.Names, (name, jobArgs) => JobRuntimeHost.RunAsync(builder.Configuration, name, jobArgs));
+if (isJob) return await JobRuntime.RunFromCommandLineAsync(args[1..], JobRuntimeHost.Names, (name, jobArgs) => JobRuntimeHost.RunFromCommandLineAsync(builder.Configuration, name, jobArgs));
 ```
 
-`JobRuntime.RunAsync(args, jobNames, runJob)`:
+`JobRuntime.RunFromCommandLineAsync(args, jobNames, runJob)`:
 
 | 引数 | 内容 |
 |---|---|
@@ -37,7 +37,7 @@ if (isJob) return await JobRuntime.RunAsync(args[1..], JobRuntimeHost.Names, (na
 | `jobNames` | ホストが持つジョブの名前 (大文字小文字は区別しない) |
 | `runJob` | ジョブを動かす (登録した名前・ジョブの引数 → 成功の文言と返すデータ (`JobRuntimeResult`)。失敗は例外)。ホストはここで DB アクセスとジョブを組み立てる (テンプレートの `Jobs/JobRuntimeHost.cs`)。成功の文言 (`string?`) だけを返す形も使える (返すデータなし) |
 
-戻り値はプロセスの終了コード (`JobRuntime.Success` = 0 / `Failure` = 1 / `JobNotFound` = 2)。
+戻り値はプロセスの終了コード (`JobRuntime.ExitCodeSuccess` = 0 / `ExitCodeFailure` = 1 / `ExitCodeJobNotFound` = 2)。
 
 `JobRuntimeResult` (ジョブが成功したときに実行の口が返すもの。失敗は例外で返す):
 
@@ -152,7 +152,7 @@ new JobTriggerApi(() => jobNames, (name, input, userId, processType) => processT
 
 ### デザイナで作った Job
 
-デザイナで作った Job (`Jobs/名前.job.cs`) は本体の `JobExecutor` が動かします (名前の一覧は `JobExecutor.GetJobNames`、実行は `JobExecutor.RunAsync(context, jobName, args, logger)`)。ホストは `JobExecutor.RunAsync` を呼び、結果 (`JobExecutionResult`) を自分のジョブの約束 (戻り値 = `JobRuntimeResult` (`Message` に `Message`、`ResultJson` に `ResultJson`)・失敗は例外) に変えて、`JobRuntime.RunAsync` の `runJob`・`JobTriggerApi` の実行の口 `run` から動かします。スクリプトの `Logger` の出し先もホストが `logger` で渡します。
+デザイナで作った Job (`Jobs/名前.job.cs`) は本体の `JobExecutor` が動かします (名前の一覧は `JobExecutor.GetJobNames`、実行は `JobExecutor.RunAsync(context, jobName, args, logger)`)。ホストは `JobExecutor.RunAsync` を呼び、結果 (`JobExecutionResult`) を自分のジョブの約束 (戻り値 = `JobRuntimeResult` (`Message` に `Message`、`ResultJson` に `ResultJson`)・失敗は例外) に変えて、`JobRuntime.RunFromCommandLineAsync` の `runJob`・`JobTriggerApi` の実行の口 `run` から動かします。スクリプトの `Logger` の出し先もホストが `logger` で渡します。
 
 ### Job スクリプトで使えるもの (MailService / Excel / Resources / FileService)
 
@@ -313,7 +313,7 @@ string Run(JobArguments args)
 
 ## 親と子の約束
 
-| 項目 | 親 (`JobRuntime.RunInNewProcessAsync` など) | 子 (`JobRuntime.RunAsync`) |
+| 項目 | 親 (`JobRuntime.RunInNewProcessAsync` など) | 子 (`JobRuntime.RunFromCommandLineAsync`) |
 |---|---|---|
 | 引数 | `job <ジョブ名> --stdin` | `--stdin` を標準入力の内容に置き換える (`JobRuntime.StandardInputArgument`) |
 | 入力 | 標準入力に UTF-8 で書いて閉じる (コマンドラインの長さの上限に掛からない) | 標準入力を UTF-8 で読み切ってからジョブを動かす |
@@ -349,7 +349,7 @@ string Run(JobArguments args)
 
 ---
 
-## 0.34.0 で名前が変わった型
+## 0.34.0 で名前が変わった型・名前空間
 
 画面から起動を頼む・受ける・状態を返す側は `JobTrigger…`、ジョブを動かす側は `JobRuntime…` に揃えました。動作と通信の中身 (API の機能名・操作名・JSON・環境変数・標準出力の約束・コマンドライン) は変わりません。失敗の記録のログのカテゴリ名だけ、`Codeer.LowCode.Blazor.Extras.Server.Jobs.JobProcess` から `…Jobs.JobTriggerTracker` に変わります。
 
@@ -360,9 +360,15 @@ string Run(JobArguments args)
 | `JobRunRequest` / `JobRunResponse` | `JobTriggerRunRequest` / `JobTriggerRunResponse` |
 | `JobStatus` (画面のスクリプトの `JobStatus.Running` なども) | `JobTriggerStatus` |
 | `JobStatusRequest` / `JobStatusResponse` | `JobTriggerStatusRequest` / `JobTriggerStatusResponse` |
-| `JobMode` (`RunAsync`・`Success` / `Failure` / `JobNotFound`・`StandardInputArgument`・`ResultJsonPrefix`) | `JobRuntime` (メンバーの名前は同じ) |
+| `JobMode` (`StandardInputArgument`・`ResultJsonPrefix`) | `JobRuntime` (メンバーの名前は同じ) |
+| `JobMode.RunAsync` | `JobRuntime.RunFromCommandLineAsync` |
+| `JobMode.Success` / `Failure` / `JobNotFound` | `JobRuntime.ExitCodeSuccess` / `ExitCodeFailure` / `ExitCodeJobNotFound` |
 | `JobProcess.LoggerFactory` / `Cache` / `FinishedRetention` / `RunAsync` / `StartAsync` / `GetStatusAsync` | `JobTriggerTracker.` の同じ名前 |
 | `JobProcess.HostExecutable` / `EntryDll` / `DotnetPath` / `UserIdEnvironmentVariable` | `JobRuntime.` の同じ名前 |
 | `JobResult` | `JobRuntimeProcessResult` |
+| 名前空間 `Codeer.LowCode.Blazor.Extras.Jobs` (`JobTrigger…` の通信の型 6 つ) | `Codeer.LowCode.Blazor.Extras.JobTrigger` |
+| `Codeer.LowCode.Blazor.Extras.Jobs.JobScriptTypes` | `Codeer.LowCode.Blazor.Extras.ScriptObjects.JobScriptTypes` |
 
-テンプレート (Codeer.LowCode.Blazor.Starter) の `Jobs/JobRunner.cs` (クラス `JobRunner`) は `Jobs/JobRuntimeHost.cs` (クラス `JobRuntimeHost`) になりました。
+サーバー側の名前空間 `Codeer.LowCode.Blazor.Extras.Server.Jobs` は変わりません。
+
+テンプレート (Codeer.LowCode.Blazor.Starter) の `Jobs/JobRunner.cs` (クラス `JobRunner`) は `Jobs/JobRuntimeHost.cs` (クラス `JobRuntimeHost`) になり、`RunAsync` は `RunFromCommandLineAsync` になりました。

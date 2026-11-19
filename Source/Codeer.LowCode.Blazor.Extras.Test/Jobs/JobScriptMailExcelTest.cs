@@ -613,14 +613,14 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Jobs
             //登録なしでは型が無い
             Assert.That(DesignCheck(ExcelMailScript), Is.Not.Empty);
 
-            JobExecutor.AddScriptTypes(m => Extras.Jobs.JobScriptTypes.Register(m, new Extras.ScriptObjects.MailService()));
+            JobExecutor.AddScriptTypes(m => Extras.ScriptObjects.JobScriptTypes.Register(m, new Extras.ScriptObjects.MailService()));
             Assert.That(DesignCheck(ExcelMailScript), Is.Empty);
         }
 
         [Test]
         public void 未結線のMailServiceは分かる文言で失敗する()
         {
-            JobExecutor.AddScriptTypes(m => Extras.Jobs.JobScriptTypes.Register(m, new Extras.ScriptObjects.MailService()));
+            JobExecutor.AddScriptTypes(m => Extras.ScriptObjects.JobScriptTypes.Register(m, new Extras.ScriptObjects.MailService()));
             var ex = Assert.ThrowsAsync<InvalidOperationException>(() => RunAsync(SendOneScript + """
 
                 void Run(JobArguments args)

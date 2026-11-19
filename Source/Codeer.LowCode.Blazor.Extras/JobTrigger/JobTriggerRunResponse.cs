@@ -1,4 +1,4 @@
-namespace Codeer.LowCode.Blazor.Extras.Jobs
+namespace Codeer.LowCode.Blazor.Extras.JobTrigger
 {
     /// <summary>
     /// ジョブ実行の結果。待ったときは <see cref="Succeeded"/> で成否、成功なら <see cref="Message"/>、失敗なら <see cref="Error"/> が画面に出る。

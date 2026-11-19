@@ -43,8 +43,8 @@ namespace Codeer.LowCode.Blazor.Extras.Designer
             DesignerApp.ScriptRuntimeTypeManager.AddType<CrossTabCell>();
             DesignerApp.ScriptRuntimeTypeManager.AddType<TagSearchMatch>();
             //JobTriggerField.GetJobStatus の戻り値と、その Status の enum (クライアントの ExtrasClientInitializer と同じ)
-            DesignerApp.ScriptRuntimeTypeManager.AddType<Codeer.LowCode.Blazor.Extras.Jobs.JobTriggerStatusResponse>();
-            DesignerApp.ScriptRuntimeTypeManager.AddType<Codeer.LowCode.Blazor.Extras.Jobs.JobTriggerStatus>();
+            DesignerApp.ScriptRuntimeTypeManager.AddType<Codeer.LowCode.Blazor.Extras.JobTrigger.JobTriggerStatusResponse>();
+            DesignerApp.ScriptRuntimeTypeManager.AddType<Codeer.LowCode.Blazor.Extras.JobTrigger.JobTriggerStatus>();
 
             //Extras のスクリプトオブジェクト/サービス (スクリプト補完・script-catalog 用)。
             //デザイナでは実行されないため依存はダミーでよい。差し替えたいアプリは
@@ -68,7 +68,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designer
 
             //Job スクリプト (Jobs/名前.job.cs) の設計チェック・入力補完・script-catalog 用。サーバー (MailApi.UseInJobScripts / ExcelApi.UseInJobScripts) と同じ登録。
             //デザイナでは送らないので MailService は未結線のもの
-            JobExecutor.AddScriptTypes(m => Extras.Jobs.JobScriptTypes.Register(m, new ScriptObjects.MailService()));
+            JobExecutor.AddScriptTypes(m => Extras.ScriptObjects.JobScriptTypes.Register(m, new ScriptObjects.MailService()));
 
             //custom property controls.
             PropertyTypeManager.AddPropertyControl<TaskBoardStatuses, TaskBoardStatusesPropertyControl>();

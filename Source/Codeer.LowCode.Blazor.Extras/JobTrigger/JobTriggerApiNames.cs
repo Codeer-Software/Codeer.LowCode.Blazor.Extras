@@ -1,4 +1,4 @@
-namespace Codeer.LowCode.Blazor.Extras.Jobs
+namespace Codeer.LowCode.Blazor.Extras.JobTrigger
 {
     /// <summary>ジョブの機能が共通の API (ExtrasTransport / Extras.Server の JobTriggerApi) で使う機能名と操作名。</summary>
     public static class JobTriggerApiNames

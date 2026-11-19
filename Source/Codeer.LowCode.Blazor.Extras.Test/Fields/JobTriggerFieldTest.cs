@@ -3,7 +3,7 @@ using Codeer.LowCode.Blazor.DataIO;
 using Codeer.LowCode.Blazor.DesignLogic;
 using Codeer.LowCode.Blazor.Extras.Designs;
 using Codeer.LowCode.Blazor.Extras.Fields;
-using Codeer.LowCode.Blazor.Extras.Jobs;
+using Codeer.LowCode.Blazor.Extras.JobTrigger;
 using Codeer.LowCode.Blazor.Extras.Services;
 using Codeer.LowCode.Blazor.Extras.Test.Harness;
 using Codeer.LowCode.Blazor.Json;

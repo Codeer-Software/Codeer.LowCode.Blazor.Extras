@@ -1,4 +1,4 @@
-using Codeer.LowCode.Blazor.Extras.Jobs;
+using Codeer.LowCode.Blazor.Extras.JobTrigger;
 using Codeer.LowCode.Blazor.Extras.Server.AuditLog;
 using Codeer.LowCode.Blazor.Extras.Server.Jobs;
 using Microsoft.Extensions.Caching.Distributed;

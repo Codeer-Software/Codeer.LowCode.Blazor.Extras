@@ -7,7 +7,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Jobs
     /// <summary>
     /// ジョブを動かす仕組み (ジョブモード)。2 つの側を持つ。
     /// <para>
-    /// 子側 (<see cref="RunAsync(string[], IEnumerable{string}, Func{string, string[], Task{JobRuntimeResult}})"/>): ホストの Program.cs が <c>dotnet &lt;ホスト&gt;.dll job &lt;ジョブ名&gt; [引数...]</c> のときに、
+    /// 子側 (<see cref="RunFromCommandLineAsync(string[], IEnumerable{string}, Func{string, string[], Task{JobRuntimeResult}})"/>): ホストの Program.cs が <c>dotnet &lt;ホスト&gt;.dll job &lt;ジョブ名&gt; [引数...]</c> のときに、
     /// Web ホストを立てずに <c>job</c> より後ろの引数を渡して呼ぶ。ジョブを 1 つ実行してプロセスの終了コードを返す。
     /// 引数の <c>--stdin</c> は標準入力の内容 (UTF-8) に置き換える。
     /// 標準出力・標準エラーは UTF-8。成功したときは最後にジョブの戻り値を 1 行 (null なら空行) 標準出力に書く (画面に出る文言)。
@@ -25,11 +25,11 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Jobs
     public static class JobRuntime
     {
         /// <summary>終了コード: 成功。</summary>
-        public const int Success = 0;
+        public const int ExitCodeSuccess = 0;
         /// <summary>終了コード: 失敗 (ジョブが例外を投げた)。</summary>
-        public const int Failure = 1;
+        public const int ExitCodeFailure = 1;
         /// <summary>終了コード: ジョブ名のジョブが無い (引数なしで使い方を出したときも)。</summary>
-        public const int JobNotFound = 2;
+        public const int ExitCodeJobNotFound = 2;
 
         /// <summary>引数のこの値を標準入力の内容に置き換える。</summary>
         public const string StandardInputArgument = "--stdin";
@@ -61,8 +61,8 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Jobs
         /// <param name="jobNames">ホストが持つジョブの名前 (大文字小文字は区別しない)。</param>
         /// <param name="runJob">ジョブを動かす (ジョブ名・ジョブの引数 → 成功の文言。失敗は例外)。ホストがここで DB アクセスとジョブを組み立てる。</param>
         /// <returns>プロセスの終了コード。</returns>
-        public static Task<int> RunAsync(string[] args, IEnumerable<string> jobNames, Func<string, string[], Task<string?>> runJob)
-            => RunAsync(args, jobNames, async (name, jobArgs) => new JobRuntimeResult { Message = await runJob(name, jobArgs) });
+        public static Task<int> RunFromCommandLineAsync(string[] args, IEnumerable<string> jobNames, Func<string, string[], Task<string?>> runJob)
+            => RunFromCommandLineAsync(args, jobNames, async (name, jobArgs) => new JobRuntimeResult { Message = await runJob(name, jobArgs) });
 
         /// <summary>
         /// ジョブを 1 つ実行する。
@@ -71,7 +71,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Jobs
         /// <param name="jobNames">ホストが持つジョブの名前 (大文字小文字は区別しない)。</param>
         /// <param name="runJob">ジョブを動かす (ジョブ名・ジョブの引数 → 成功の文言と返すデータ。失敗は例外)。ホストがここで DB アクセスとジョブを組み立てる。</param>
         /// <returns>プロセスの終了コード。</returns>
-        public static async Task<int> RunAsync(string[] args, IEnumerable<string> jobNames, Func<string, string[], Task<JobRuntimeResult>> runJob)
+        public static async Task<int> RunFromCommandLineAsync(string[] args, IEnumerable<string> jobNames, Func<string, string[], Task<JobRuntimeResult>> runJob)
         {
             Console.OutputEncoding = Encoding.UTF8;
             var names = jobNames.OrderBy(e => e, StringComparer.OrdinalIgnoreCase).ToList();
@@ -79,7 +79,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Jobs
             {
                 Console.WriteLine($"使い方: {HostName} job <ジョブ名> [引数...]");
                 Console.WriteLine($"ジョブ: {string.Join(", ", names)}");
-                return JobNotFound;
+                return ExitCodeJobNotFound;
             }
 
             var name = names.FirstOrDefault(e => string.Equals(e, args[0], StringComparison.OrdinalIgnoreCase));
@@ -87,14 +87,14 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Jobs
             {
                 Console.Error.WriteLine($"ジョブ '{args[0]}' がありません");
                 Console.WriteLine($"ジョブ: {string.Join(", ", names)}");
-                return JobNotFound;
+                return ExitCodeJobNotFound;
             }
 
             if (args.Contains(StandardInputArgument) && !Console.IsInputRedirected)
             {
                 //端末から --stdin を打つと標準入力の終わりを待ち続ける。間違いだと分かるようにする
                 Console.Error.WriteLine($"{StandardInputArgument} には標準入力が要ります (例: echo {{}} | {HostName} job {name} {StandardInputArgument})");
-                return Failure;
+                return ExitCodeFailure;
             }
 
             JobRuntimeResult? result;
@@ -106,7 +106,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Jobs
             {
                 Console.Error.WriteLine(e.Message);
                 Console.WriteLine(e);
-                return Failure;
+                return ExitCodeFailure;
             }
 
             //ジョブの出力の後に、行を改めてから書く (ジョブが改行で終わらない出力を残していても混ざらない)。標準出力の最後の行が画面の成功の通知になる (null なら空行 = 既定の文言)
@@ -114,7 +114,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Jobs
             Console.WriteLine();
             if (!string.IsNullOrEmpty(result?.ResultJson)) Console.WriteLine(ResultJsonPrefix + result.ResultJson.ReplaceLineEndings(" "));
             Console.WriteLine(result?.Message?.ReplaceLineEndings(" ") ?? string.Empty);
-            return Success;
+            return ExitCodeSuccess;
         }
 
         /// <summary>

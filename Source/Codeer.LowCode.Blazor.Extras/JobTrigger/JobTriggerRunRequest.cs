@@ -1,4 +1,4 @@
-namespace Codeer.LowCode.Blazor.Extras.Jobs
+namespace Codeer.LowCode.Blazor.Extras.JobTrigger
 {
     /// <summary>
     /// JobTriggerField からホストへのジョブ実行の依頼 (POST <see cref="Fields.JobTriggerField.EndPoint"/>)。

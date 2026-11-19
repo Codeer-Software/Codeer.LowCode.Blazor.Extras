@@ -34,7 +34,7 @@ ExtrasServerInitializer.Initialize();
 //Web ホストは立てず、同じ appsettings でジョブを 1 つ実行して終了コードを返す。
 //設定は exe の隣から読む (タスクスケジューラ等ではカレントフォルダが exe の場所とは限らない)。ジョブの引数は設定に混ぜない
 var isJob = args is ["job", ..];
-//ジョブモードの標準出力・標準エラーは UTF-8 (起動した側の JobRuntime がそのつもりで読む。JobRuntime.RunAsync より前 = 設定の読み込みで失敗したときの出力も含める)
+//ジョブモードの標準出力・標準エラーは UTF-8 (起動した側の JobRuntime がそのつもりで読む。JobRuntime.RunFromCommandLineAsync より前 = 設定の読み込みで失敗したときの出力も含める)
 if (isJob) Console.OutputEncoding = Encoding.UTF8;
 var builder = isJob
     ? WebApplication.CreateBuilder(new WebApplicationOptions { Args = [], ContentRootPath = AppContext.BaseDirectory })
@@ -73,7 +73,7 @@ SystemConfig.Instance.DataSources.ToList().ForEach(e => e.ConnectionString = bui
 
 GlobalFontSettings.FontResolver = new CustomFontResolver(SystemConfig.Instance.FontFileDirectory);
 
-if (isJob) return await JobRuntime.RunAsync(args[1..], JobRuntimeHost.Names, (name, jobArgs) => JobRuntimeHost.RunAsync(builder.Configuration, name, jobArgs));
+if (isJob) return await JobRuntime.RunFromCommandLineAsync(args[1..], JobRuntimeHost.Names, (name, jobArgs) => JobRuntimeHost.RunFromCommandLineAsync(builder.Configuration, name, jobArgs));
 
 builder.Services.AddControllersWithViews();
 builder.Services.AddRazorPages();

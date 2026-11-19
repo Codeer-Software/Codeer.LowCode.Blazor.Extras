@@ -1,4 +1,4 @@
-using Codeer.LowCode.Blazor.Extras.Jobs;
+using Codeer.LowCode.Blazor.Extras.JobTrigger;
 using Codeer.LowCode.Blazor.Extras.Server.Jobs;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Caching.Memory;
@@ -9,7 +9,7 @@ using Microsoft.Extensions.Options;
 namespace Codeer.LowCode.Blazor.Extras.Test.Jobs
 {
     /// <summary>
-    /// 親側 (JobRuntime.RunInNewProcessAsync・JobTriggerTracker) ↔ 子側 (JobRuntime.RunAsync) をプロセス越しに。子はテスト用の最小ホスト Codeer.LowCode.Blazor.Extras.Test.JobHost
+    /// 親側 (JobRuntime.RunInNewProcessAsync・JobTriggerTracker) ↔ 子側 (JobRuntime.RunFromCommandLineAsync) をプロセス越しに。子はテスト用の最小ホスト Codeer.LowCode.Blazor.Extras.Test.JobHost
     /// (Echo = 受け取った内容を最後の行に返す / Fail = 例外 / Silent = null / Partial = 改行で終わらない出力 / Sleep = 受け取ったミリ秒だけ動く)。dotnet &lt;dll&gt; と apphost の両方の起動経路を通す。
     /// 非同期の状態の置き場 (JobTriggerTracker.Cache) は時計を差し替えた MemoryDistributedCache。
     /// </summary>
@@ -81,7 +81,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Jobs
         {
             var result = (await JobTriggerTracker.RunAsync("Fail", "{}", "u"))!;
             Assert.That(result.Succeeded, Is.False);
-            Assert.That(result.ExitCode, Is.EqualTo(JobRuntime.Failure));
+            Assert.That(result.ExitCode, Is.EqualTo(JobRuntime.ExitCodeFailure));
             Assert.That(result.ErrorMessage, Is.EqualTo("わざと失敗 (日本語)"));
             Assert.That(result.Output, Does.Contain("before failure").And.Contain("InvalidOperationException"));
             Assert.That(_logs, Has.Count.EqualTo(1));
@@ -92,7 +92,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Jobs
         public async Task 同期_無いジョブは終了コード2で子の標準エラーが文言になる()
         {
             var result = (await JobTriggerTracker.RunAsync("Nope", "{}", "u"))!;
-            Assert.That(result.ExitCode, Is.EqualTo(JobRuntime.JobNotFound));
+            Assert.That(result.ExitCode, Is.EqualTo(JobRuntime.ExitCodeJobNotFound));
             Assert.That(result.ErrorMessage, Is.EqualTo("ジョブ 'Nope' がありません"));
             Assert.That(_logs, Has.Count.EqualTo(1));
         }

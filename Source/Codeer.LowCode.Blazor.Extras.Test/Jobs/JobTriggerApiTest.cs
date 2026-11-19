@@ -3,7 +3,7 @@ using Codeer.LowCode.Blazor.DataIO.Db;
 using Codeer.LowCode.Blazor.DbAccess;
 using Codeer.LowCode.Blazor.DesignLogic;
 using Codeer.LowCode.Blazor.Extras.Designs;
-using Codeer.LowCode.Blazor.Extras.Jobs;
+using Codeer.LowCode.Blazor.Extras.JobTrigger;
 using Codeer.LowCode.Blazor.Extras.Server.Api;
 using Codeer.LowCode.Blazor.Extras.Server.FileManagement;
 using Codeer.LowCode.Blazor.Extras.Server.Jobs;
