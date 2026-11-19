@@ -3,7 +3,7 @@
 調査日: 2026-11-16 / 最終更新: 2026-11-18 / 対象ブランチ: `feature/gantt` / 本体 `Codeer.LowCode.Blazor` 1.3.67
 
 GanttField と、Example のタスク詳細ダイアログ (`GanttTask` の「Gantt用」レイアウト) で見つかった不具合の原因と修正案。
-1・2・4・11・12 は対応済み、6・8 は一部対応済み (各項目の「状態」を参照)。残りは未着手。
+1・2・4・8・11・12 は対応済み、6 は一部対応済み (各項目の「状態」を参照)。残りは未着手。
 
 - 確認方法: ソースを読み、Example (`Extras.Server`、`/Main/Gantt`) を起動して実画面で再現した
 - 本体の動きは本体ソースの最新 (1.3.68、2026-11-17 時点の origin/main) で確認した。Extras が参照するのは 1.3.67
@@ -20,7 +20,7 @@ GanttField と、Example のタスク詳細ダイアログ (`GanttTask` の「Ga
 | 5 | 色の #000000 が既定値のように見える | ColorPickerField + Example のデザイン | 案を選ぶ | 未着手 |
 | 6 | 入力エラーで編集内容が消える | GanttField (Calendar / TaskBoard / MarkerList も同じ作り) | 残り 3 フィールドを直すか決める | Gantt は対応済み |
 | 7 | 「文字色」が何にも効かない | Example のデザイン | 不要 | 未着手 |
-| 8 | 追加時の初期値が現在時刻 | GanttField / GanttFieldComponent | 不要 | 一部対応済み (分までに切り捨て) |
+| 8 | 追加時の初期値が現在時刻 | GanttField / GanttFieldComponent | 不要 | 対応済み |
 | 9 | 期間指定ポップアップが無反応になる | GanttFieldComponent | 不要 | 未着手 |
 | 10 | スクリプトのメソッド名の不統一 | GanttField + Example のスクリプト | 変えるか決める | 未着手 |
 | 11 | バーをダブルクリックしても編集ダイアログが開かない | GanttFieldComponent | 不要 | 対応済み |
@@ -212,7 +212,7 @@ if (!await mod.ValidateInput())
 
 ### 8. 追加時の初期値が現在時刻
 
-**状態**: 一部対応済み。初期値を分までに切り捨てた (`GanttDateRange.TruncateToMinute`。2 の「同じ日時の判定が割れる」の原因だったため)。初期値が今日の現在時刻であること・表示中の期間と関係ないこと・DateField で 2 日のタスクになることは未着手。
+**状態**: 対応済み (`GanttDateRange.GetDefault`、テスト `Test/Fields/GanttDateRangeTest`)。初期値は、見えている期間 (`GetViewDateRange`) に今日があれば今日、無ければ期間の最初の日の 1 日ぶん。DateTimeField は その日の 0:00 〜 翌日の 0:00、DateField は 開始 = 終了 = その日 (1 日のタスク)。半端な時刻・秒より下の端数は入らなくなった。
 
 以下は対応前の調査内容。
 
@@ -378,7 +378,7 @@ return (ViewMode, Design.FitToWidth) switch
 ## 残りの進め方
 
 1. **すぐ直せるもの**: 7 (Example のデザイン)、9 (ポップアップ)
-2. **検証まわり**: 3 (進捗率)、8 の残り (初期値の日付)
+2. **検証まわり**: 3 (進捗率)
 3. **仕様を決めてから**: 5 (ColorPickerField)、13 (未保存の変更を持ったまま範囲を動かす)、14 (基準日の強調)、15 (週 14 日・月 42 日)
 4. **変えるか決めてから**: 6 の残り (Calendar / TaskBoard / MarkerList)、10
 

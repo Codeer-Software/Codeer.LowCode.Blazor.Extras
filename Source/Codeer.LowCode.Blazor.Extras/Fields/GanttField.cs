@@ -428,15 +428,16 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
 
         // ===== CRUD operations =====
 
-        internal async Task AddAsync(DateTime date)
+        internal async Task AddAsync(DateTime today)
         {
             var mod = await this.CreateChildModuleAsync(ModuleName, ModuleLayoutType.Detail, Design.DetailLayoutName);
             await this.AssignConditionValuesAsync(Design.SearchCondition, mod);
 
-            //画面で入力する単位は分なので、それより下は持たせない (端数で開始と終了の前後が決まらないように)
-            date = GanttDateRange.TruncateToMinute(date);
-            await SetDateFieldValueAsync(mod, Design.StartField, date);
-            await SetDateFieldValueAsync(mod, Design.EndField, date.AddDays(1));
+            //初期値は見えている期間に入る 1 日 (足したタスクが画面に現れるように)
+            var (rangeStart, rangeEnd) = GetViewDateRange();
+            var (start, end) = GanttDateRange.GetDefault(today, rangeStart, rangeEnd, IsDateOnly);
+            await SetDateFieldValueAsync(mod, Design.StartField, start);
+            await SetDateFieldValueAsync(mod, Design.EndField, end);
 
             //入力に誤りがあれば、入力した内容とエラーを残したまま開き直す
             do

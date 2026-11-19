@@ -16,7 +16,15 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
                 : TruncateToMinute(start.Value) < TruncateToMinute(end.Value);
         }
 
-        internal static DateTime TruncateToMinute(DateTime value)
+        //追加するタスクの初期値。見えている期間 (rangeStart 以上 rangeEnd 未満) に今日があれば今日、無ければ期間の最初の日の 1 日ぶん。
+        //日時は その日の 0:00 から翌日の 0:00、日付だけは 開始 = 終了 = その日
+        internal static (DateTime Start, DateTime End) GetDefault(DateTime today, DateTime rangeStart, DateTime rangeEnd, bool isDateOnly)
+        {
+            var day = rangeStart.Date <= today.Date && today.Date < rangeEnd ? today.Date : rangeStart.Date;
+            return (day, isDateOnly ? day : day.AddDays(1));
+        }
+
+        static DateTime TruncateToMinute(DateTime value)
             => new(value.Ticks - value.Ticks % TimeSpan.TicksPerMinute, value.Kind);
 
         //前後が逆のときのメッセージ。正しければ null。項目は画面に出ている名前で示す

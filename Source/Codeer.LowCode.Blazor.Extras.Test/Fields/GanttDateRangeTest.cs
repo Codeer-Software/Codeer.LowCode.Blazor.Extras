@@ -28,9 +28,53 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Fields
         }
 
         [Test]
-        public void 追加時の初期値は分までにする()
+        public void 追加時の初期値は見えている期間に今日があれば今日の1日ぶん()
         {
-            Assert.That(GanttDateRange.TruncateToMinute(new DateTime(2026, 11, 18, 10, 23, 45, 678)), Is.EqualTo(new DateTime(2026, 11, 18, 10, 23, 0)));
+            var now = new DateTime(2026, 11, 18, 10, 23, 45, 678);
+            var range = (Start: new DateTime(2026, 11, 15), End: new DateTime(2026, 11, 22));
+
+            Assert.That(GanttDateRange.GetDefault(now, range.Start, range.End, false),
+                Is.EqualTo((new DateTime(2026, 11, 18), new DateTime(2026, 11, 19))));
+            //期間の最初の日と最後の日も「今日がある」に入る
+            Assert.That(GanttDateRange.GetDefault(new DateTime(2026, 11, 15, 0, 0, 0), range.Start, range.End, false).Start,
+                Is.EqualTo(new DateTime(2026, 11, 15)));
+            Assert.That(GanttDateRange.GetDefault(new DateTime(2026, 11, 21, 23, 59, 0), range.Start, range.End, false).Start,
+                Is.EqualTo(new DateTime(2026, 11, 21)));
+        }
+
+        [Test]
+        public void 追加時の初期値は見えている期間に今日が無ければ期間の最初の日()
+        {
+            var range = (Start: new DateTime(2026, 11, 22), End: new DateTime(2026, 11, 29));
+
+            //今日が期間より前 / 期間の終わり (含まない) / 期間より後
+            foreach (var now in new[] { new DateTime(2026, 11, 18, 10, 23, 0), new DateTime(2026, 11, 29), new DateTime(2026, 12, 5) })
+            {
+                Assert.That(GanttDateRange.GetDefault(now, range.Start, range.End, false),
+                    Is.EqualTo((new DateTime(2026, 11, 22), new DateTime(2026, 11, 23))));
+            }
+        }
+
+        [Test]
+        public void 追加時の初期値は日付だけのとき開始と終了が同じ日()
+        {
+            var now = new DateTime(2026, 11, 18, 10, 23, 0);
+
+            Assert.That(GanttDateRange.GetDefault(now, new DateTime(2026, 11, 15), new DateTime(2026, 11, 22), true),
+                Is.EqualTo((new DateTime(2026, 11, 18), new DateTime(2026, 11, 18))));
+            Assert.That(GanttDateRange.GetDefault(now, new DateTime(2026, 12, 1), new DateTime(2027, 1, 1), true),
+                Is.EqualTo((new DateTime(2026, 12, 1), new DateTime(2026, 12, 1))));
+        }
+
+        [Test]
+        public void 追加時の初期値は開始と終了の検証を通る()
+        {
+            var now = new DateTime(2026, 11, 18, 10, 23, 0);
+            foreach (var isDateOnly in new[] { false, true })
+            {
+                var (start, end) = GanttDateRange.GetDefault(now, new DateTime(2026, 11, 15), new DateTime(2026, 11, 22), isDateOnly);
+                Assert.That(GanttDateRange.IsValid(start, end, isDateOnly), Is.True);
+            }
         }
 
         [Test]
