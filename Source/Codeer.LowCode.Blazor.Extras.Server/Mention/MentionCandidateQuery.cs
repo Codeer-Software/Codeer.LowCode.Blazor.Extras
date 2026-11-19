@@ -58,7 +58,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mention
                 return new();
             }
             if (candidate != null) conditions.Add(candidate);
-            text =text?.Trim() ?? string.Empty;
+            text = text?.Trim() ?? string.Empty;
             //画面はこの長さを超えた文字では問い合わせない。API を直接呼んだ長い文字では DB を読まない
             if (text.Length > MaxTextLength) return new();
             if (text.Length > 0)
