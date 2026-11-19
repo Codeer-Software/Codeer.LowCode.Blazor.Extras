@@ -125,7 +125,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Mail
         internal static MimeMessage CreateMimeMessage(string senderMailAddress, string senderDisplayName, MailMessage message)
         {
             var mime = new MimeMessage();
-            //From はサーバーが解決した本人のアドレスのみ (MailDispatcher が保証)。空ならプロバイダ設定の差出人
+            //From が入るのはサーバーのコードが送るシステムメールだけ (画面からの送信と Job スクリプトは MailDispatcher / MailApi が空にする)。空ならプロバイダ設定の差出人
             mime.From.Add(string.IsNullOrEmpty(message.From)
                 ? new MailboxAddress(senderDisplayName, senderMailAddress)
                 : new MailboxAddress(message.FromDisplayName, message.From));

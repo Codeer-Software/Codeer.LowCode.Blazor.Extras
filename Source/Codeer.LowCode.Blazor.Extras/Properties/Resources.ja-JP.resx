@@ -1896,6 +1896,15 @@
   <data name="JobTriggerAllowsConcurrentRuns" xml:space="preserve">
     <value>同時実行を許す</value>
   </data>
+  <data name="JobTriggerProcessType" xml:space="preserve">
+    <value>実行するプロセス</value>
+  </data>
+  <data name="JobTriggerProcessType_NewProcess" xml:space="preserve">
+    <value>別プロセス</value>
+  </data>
+  <data name="JobTriggerProcessType_InProcess" xml:space="preserve">
+    <value>Web サーバーのプロセス内</value>
+  </data>
   <data name="DesignCheck_JobTriggerJobNameRequired" xml:space="preserve">
     <value>ジョブ名を設定してください。</value>
   </data>

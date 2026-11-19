@@ -138,6 +138,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.DesignCheck
                 ButtonText = "取込",
                 UseSubmitData = false,
                 IsAsynchronous = true,
+                ProcessType = JobTriggerProcessType.InProcess,
             };
             var json = JsonConverterEx.SerializeObject(field);
             Assert.That(json, Does.Contain("\"TypeFullName\": \"Codeer.LowCode.Blazor.Extras.Designs.JobTriggerFieldDesign\""));
@@ -149,13 +150,15 @@ namespace Codeer.LowCode.Blazor.Extras.Test.DesignCheck
             Assert.That(back.ButtonText, Is.EqualTo("取込"));
             Assert.That(back.UseSubmitData, Is.False);
             Assert.That(back.IsAsynchronous, Is.True);
+            Assert.That(back.ProcessType, Is.EqualTo(JobTriggerProcessType.InProcess));
 
-            //既定値: ボタンを出す・画面の内容を渡す・同期
+            //既定値: ボタンを出す・画面の内容を渡す・同期・別プロセス
             var empty = (JobTriggerFieldDesign)JsonConverterEx.DeserializeObject<FieldDesignBase>(
                 "{\"Name\":\"Job2\",\"TypeFullName\":\"Codeer.LowCode.Blazor.Extras.Designs.JobTriggerFieldDesign\"}")!;
             Assert.That(empty.ShowButton, Is.True);
             Assert.That(empty.UseSubmitData, Is.True);
             Assert.That(empty.IsAsynchronous, Is.False);
+            Assert.That(empty.ProcessType, Is.EqualTo(JobTriggerProcessType.NewProcess));
             Assert.That(empty.CreateData(), Is.Null);
         }
     }

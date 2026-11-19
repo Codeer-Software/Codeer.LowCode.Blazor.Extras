@@ -4419,6 +4419,24 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
             }
         }
 
+        internal static string JobTriggerProcessType {
+            get {
+                return ResourceManager.GetString("JobTriggerProcessType", resourceCulture);
+            }
+        }
+
+        internal static string JobTriggerProcessType_NewProcess {
+            get {
+                return ResourceManager.GetString("JobTriggerProcessType_NewProcess", resourceCulture);
+            }
+        }
+
+        internal static string JobTriggerProcessType_InProcess {
+            get {
+                return ResourceManager.GetString("JobTriggerProcessType_InProcess", resourceCulture);
+            }
+        }
+
         internal static string DesignCheck_JobTriggerJobNameRequired {
             get {
                 return ResourceManager.GetString("DesignCheck_JobTriggerJobNameRequired", resourceCulture);
