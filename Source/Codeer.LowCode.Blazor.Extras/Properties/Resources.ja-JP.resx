@@ -2065,6 +2065,12 @@
     <value>メンションの候補の条件のモジュールが '{0}' になっています。ログインユーザーのモジュール '{1}' にしてください。</value>
   </data>
   <data name="RichTextMentionCheck_ConditionVariable" xml:space="preserve">
-    <value>メンションの候補の条件の '{0}' は、ログインユーザーのモジュール '{1}' の項目ではありません。左辺には候補になる人の項目を、右辺には値か CurrentUser.〜 を書いてください。</value>
+    <value>メンションの候補の条件の '{0}' は、ログインユーザーのモジュール '{1}' にありません。</value>
+  </data>
+  <data name="RichTextMentionCheck_ConditionLeftCurrentUser" xml:space="preserve">
+    <value>メンションの候補の条件の左辺に '{0}' は書けません。左辺には候補になる人の項目を書き、@ を打っている人の値 (CurrentUser.〜) は右辺に書いてください。</value>
+  </data>
+  <data name="RichTextMentionCheck_ConditionFieldComparison" xml:space="preserve">
+    <value>メンションの候補の条件の右辺に '{0}' は書けません。候補になる人の項目どうしは比べられません。右辺には値か CurrentUser.〜 を書いてください。</value>
   </data>
 </root>

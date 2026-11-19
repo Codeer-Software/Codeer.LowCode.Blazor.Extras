@@ -2065,6 +2065,12 @@ Recipients: {1}</value>
     <value>The mention candidate condition targets the module '{0}'. It must target the login user module '{1}'.</value>
   </data>
   <data name="RichTextMentionCheck_ConditionVariable" xml:space="preserve">
-    <value>The variable '{0}' in the mention candidate condition is not a field of the login user module '{1}'. Write the candidate's field on the left side, and a value or CurrentUser.* on the right side.</value>
+    <value>The variable '{0}' in the mention candidate condition does not exist in the login user module '{1}'.</value>
+  </data>
+  <data name="RichTextMentionCheck_ConditionLeftCurrentUser" xml:space="preserve">
+    <value>'{0}' cannot be written on the left side of the mention candidate condition. Write the candidate's field on the left side, and the value of the person typing @ (CurrentUser.*) on the right side.</value>
+  </data>
+  <data name="RichTextMentionCheck_ConditionFieldComparison" xml:space="preserve">
+    <value>'{0}' cannot be written on the right side of the mention candidate condition. Two fields of the candidate cannot be compared. Write a value or CurrentUser.* on the right side.</value>
   </data>
 </root>

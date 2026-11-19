@@ -217,6 +217,8 @@ HTML文字列を格納するためのテキスト型カラムが必要です。�
 | RichTextFieldDesign:3 | `MentionCandidateCondition` のモジュールがユーザーのモジュールでない (空は可) |
 | RichTextFieldDesign:4 | `MentionCandidateCondition` の項目がユーザーのモジュールの項目でない (左辺に無い項目・左辺の `CurrentUser.〜`・右辺の `CurrentUser.〜` に無い項目・右辺の `CurrentUser.〜` 以外の変数) |
 
+`:4` の文言は理由ごとに分けています (ユーザーのモジュールに無い項目 / 左辺に `CurrentUser.〜` は書けない / 候補になる人の項目どうしは比べられない)。
+
 `:3` と `:4` は `EnableMention` が true のときだけ見ます。条件の項目とモジュールの名前の変更 (リファクタ) にも追従します (`ChangeName`。左辺も右辺の `CurrentUser.〜` もユーザーのモジュールの項目として扱う)。
 
 ### まだしないこと

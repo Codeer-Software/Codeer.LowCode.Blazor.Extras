@@ -123,6 +123,25 @@ namespace Codeer.LowCode.Blazor.Extras.Test.DesignCheck
         }
 
         [Test]
+        public void 候補の条件_指摘の文言は理由ごとに分ける()
+        {
+            string Message(string left, string right)
+                => CheckCondition("AppUser", string.IsNullOrEmpty(right) ? Value(left) : Variable(left, right)).Single().Message;
+
+            //無い項目だけが「ユーザーのモジュールに無い」と言う。ある項目どうしの比較・左辺の CurrentUser は別の文言
+            var missing = Message("Dept.Value", "");
+            var leftCurrentUser = Message("CurrentUser.LoginName.Value", "");
+            var fieldComparison = Message("LoginName.Value", "Id.Value");
+            Assert.That(missing, Does.Contain("AppUser"));
+            Assert.That(leftCurrentUser, Does.Not.Contain("AppUser"));
+            Assert.That(fieldComparison, Does.Not.Contain("AppUser"));
+            Assert.That(new[] { missing, leftCurrentUser, fieldComparison }.Select(e => e.Replace("Dept.Value", "").Replace("CurrentUser.LoginName.Value", "").Replace("Id.Value", "")).Distinct().Count(), Is.EqualTo(3));
+            //右辺の無い項目は、CurrentUser でもそうでなくても「無い」
+            Assert.That(Message("LoginName.Value", "CurrentUser.Dept.Value"), Does.Contain("AppUser"));
+            Assert.That(Message("LoginName.Value", "Dept.Value"), Does.Contain("AppUser"));
+        }
+
+        [Test]
         public void 候補の条件_メンションを使わなければ見ない()
         {
             var (designData, module) = Utilities.CreateDesignData();

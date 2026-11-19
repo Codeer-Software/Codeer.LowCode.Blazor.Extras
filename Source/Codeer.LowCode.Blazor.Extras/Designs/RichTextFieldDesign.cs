@@ -103,32 +103,39 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
                 return;
             }
 
-            foreach (var variable in MissingVariables(MentionCandidateCondition.Condition).Distinct().ToList())
+            foreach (var message in Problems(MentionCandidateCondition.Condition).Distinct().ToList())
             {
                 result.Add(new FieldDesignCheckInfo
                 {
                     Code = DesignCheckCode.Create(typeof(RichTextFieldDesign), CodeMentionConditionVariable),
                     Location = new FieldDesignDataLocation { Module = context.OwnerModule, Field = Name, Member = nameof(MentionCandidateCondition) },
-                    Message = string.Format(Properties.Resources.RichTextMentionCheck_ConditionVariable, variable, userModuleName),
+                    Message = message,
                 });
             }
 
-            IEnumerable<string> MissingVariables(MatchConditionBase? node)
+            //番号は同じ (:4) で、文言は理由ごとに分ける (無い項目 / 左辺の CurrentUser.〜 / 候補になる人の項目どうしの比較)
+            IEnumerable<string> Problems(MatchConditionBase? node)
             {
                 if (node is MultiMatchCondition multi)
                 {
-                    foreach (var e in multi.Children.SelectMany(MissingVariables)) yield return e;
+                    foreach (var e in multi.Children.SelectMany(Problems)) yield return e;
                 }
                 if (node is IFieldMatchCondition field)
                 {
                     //左辺は候補になる人の項目。CurrentUser.〜 は書けない (@ を打っている人の値は右辺に書く)
                     var left = field.SearchTargetVariable;
-                    if (IsCurrentUserVariable(left) || IsMissing(left)) yield return left;
+                    if (IsCurrentUserVariable(left)) yield return string.Format(Properties.Resources.RichTextMentionCheck_ConditionLeftCurrentUser, left);
+                    else if (IsMissing(left)) yield return Missing(left);
                 }
-                //右辺の変数は CurrentUser.〜 だけ (候補になる人の項目どうしの比較は、本体の検索ができない)
-                if (node is FieldVariableMatchCondition { Variable: var right } && !string.IsNullOrEmpty(right) &&
-                    (!IsCurrentUserVariable(right) || IsMissing(right))) yield return right;
+                if (node is FieldVariableMatchCondition { Variable: var right } && !string.IsNullOrEmpty(right))
+                {
+                    if (IsMissing(right)) yield return Missing(right);
+                    //右辺の変数は CurrentUser.〜 だけ (候補になる人の項目どうしの比較は、本体の検索ができない)
+                    else if (!IsCurrentUserVariable(right)) yield return string.Format(Properties.Resources.RichTextMentionCheck_ConditionFieldComparison, right);
+                }
             }
+
+            string Missing(string variable) => string.Format(Properties.Resources.RichTextMentionCheck_ConditionVariable, variable, userModuleName);
 
             //CurrentUser.〜 は、本体がユーザーのモジュールの項目として確かめる
             bool IsMissing(string variable)

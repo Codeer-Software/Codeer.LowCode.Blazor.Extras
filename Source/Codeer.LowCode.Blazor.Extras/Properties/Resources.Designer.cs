@@ -4897,11 +4897,29 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
         }
 
         /// <summary>
-        ///   The variable &apos;{0}&apos; in the mention candidate condition is not a field of the login user module &apos;{1}&apos;. に類似しているローカライズされた文字列を検索します。
+        ///   The variable &apos;{0}&apos; in the mention candidate condition does not exist in the login user module &apos;{1}&apos;. に類似しているローカライズされた文字列を検索します。
         /// </summary>
         internal static string RichTextMentionCheck_ConditionVariable {
             get {
                 return ResourceManager.GetString("RichTextMentionCheck_ConditionVariable", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   &apos;{0}&apos; cannot be written on the left side of the mention candidate condition. に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string RichTextMentionCheck_ConditionLeftCurrentUser {
+            get {
+                return ResourceManager.GetString("RichTextMentionCheck_ConditionLeftCurrentUser", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   &apos;{0}&apos; cannot be written on the right side of the mention candidate condition. に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string RichTextMentionCheck_ConditionFieldComparison {
+            get {
+                return ResourceManager.GetString("RichTextMentionCheck_ConditionFieldComparison", resourceCulture);
             }
         }
     }
