@@ -1,5 +1,6 @@
 -- Extras Example のメンションの候補の条件のサンプル (Home 画面の RichText で @ を打つ確認用)。sqlite_sample_extras.db に対して実行する。
--- ユーザー (app_users) に部署の列を足し、部署の違う人を増やす。AppUser モジュールの Dept フィールドがこの列を読む。
+-- ★実行は必須 (ほかのサンプルと違い、既存の表を変える)。AppUser モジュールの Dept フィールドが dept 列を読むので、列が無いとユーザーを読む処理がすべてエラーになり Example が動かない。
+-- ユーザー (app_users) に部署の列を足し、部署の違う人を増やす。
 -- 条件の例: 「Dept = CurrentUser.Dept」で、ログインしている人と同じ部署の人だけが候補に出る。
 -- 最初の 1 行 (列の追加) は 1 回だけ実行する (2 回目はエラーになるので、やり直すときは 2 行目以降を実行する)。
 ALTER TABLE app_users ADD COLUMN dept TEXT;
