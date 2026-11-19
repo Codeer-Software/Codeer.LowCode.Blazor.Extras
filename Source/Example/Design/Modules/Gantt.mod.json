@@ -51,7 +51,7 @@
       "EnableWeekView": true,
       "EnableMonthView": true,
       "CustomRange": false,
-      "CustomRangeEditable": false,
+      "CustomRangeEditable": true,
       "FitToWidth": true,
       "ShowDetailHeader": true,
       "ShowToolbar": true,

@@ -154,6 +154,17 @@
   box-shadow: 0 0 0 1px #1a73e8;
 }
 
+.gantt-range-input-invalid,
+.gantt-range-input-invalid:focus {
+  border-color: #d93025;
+  box-shadow: 0 0 0 1px #d93025;
+}
+
+.gantt-range-popup-error {
+  font-size: 13px;
+  color: #d93025;
+}
+
 .gantt-range-popup-buttons {
   display: flex;
   justify-content: flex-end;
