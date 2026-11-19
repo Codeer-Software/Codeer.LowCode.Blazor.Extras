@@ -3,7 +3,7 @@
 調査日: 2026-11-16 / 最終更新: 2026-11-19 / 対象ブランチ: `feature/gantt` / 本体 `Codeer.LowCode.Blazor` 1.3.67
 
 GanttField と、Example のタスク詳細ダイアログ (`GanttTask` の「Gantt用」レイアウト) で見つかった不具合の原因と修正案。
-1・2・4・8・9・11・12 は対応済み、6 は一部対応済み (各項目の「状態」を参照)。残りは未着手。
+1・2・4・7・8・9・11・12 は対応済み、6 は一部対応済み (各項目の「状態」を参照)。残りは未着手。
 
 - 確認方法: ソースを読み、Example (`Extras.Server`、`/Main/Gantt`) を起動して実画面で再現した
 - 本体の動きは本体ソースの最新 (1.3.68、2026-11-17 時点の origin/main) で確認した。Extras が参照するのは 1.3.67
@@ -19,7 +19,7 @@ GanttField と、Example のタスク詳細ダイアログ (`GanttTask` の「Ga
 | 4 | ラベルが「Title, Start, End, Progress」と英語で出る | Example のデザイン | 不要 | 対応済み |
 | 5 | 色の #000000 が既定値のように見える | ColorPickerField + Example のデザイン | 案を選ぶ | 未着手 |
 | 6 | 入力エラーで編集内容が消える | GanttField (Calendar / TaskBoard / MarkerList も同じ作り) | 残り 3 フィールドを直すか決める | Gantt は対応済み |
-| 7 | 「文字色」が何にも効かない | Example のデザイン | 不要 | 未着手 |
+| 7 | 「文字色」が何にも効かない | Example のデザイン | 不要 | 対応済み |
 | 8 | 追加時の初期値が現在時刻 | GanttField / GanttFieldComponent | 不要 | 対応済み |
 | 9 | 期間指定ポップアップが無反応になる | GanttFieldComponent | 不要 | 対応済み |
 | 10 | スクリプトのメソッド名の不統一 | GanttField + Example のスクリプト | 変えるか決める | 未着手 |
@@ -203,6 +203,10 @@ if (!await mod.ValidateInput())
 ---
 
 ### 7. 「文字色」が何にも効かない
+
+**状態**: 対応済み (Example の `GanttTask.mod.json`)。「Gantt用」レイアウト (ガントのダイアログ) と既定のレイアウト (タスクの詳細ページ) の両方から、「文字色」の行 (`ColorLabel` と `Color`) を外した。フィールド `Color` (DB 列 `front`) とラベルのフィールド `ColorLabel` は、どのレイアウトにも置かれていないままモジュールに残している (データは消えない)。
+
+以下は対応前の調査内容。
 
 **現象**: 「Gantt用」レイアウトに「文字色」(`Color`) があるが、変えてもガントに反映されない。
 
@@ -430,7 +434,7 @@ if (ViewMode == GanttViewMode.CustomRange)
 
 ## 残りの進め方
 
-1. **すぐ直せるもの**: 7 (Example のデザイン)、17 (期間指定の読めない日付)
+1. **すぐ直せるもの**: 17 (期間指定の読めない日付)
 2. **検証まわり**: 3 (進捗率)
 3. **仕様を決めてから**: 5 (ColorPickerField)、13 (未保存の変更を持ったまま範囲を動かす)、14 (基準日の強調)、15 (週 14 日・月 42 日)、16 (期間指定の終了日)
 4. **変えるか決めてから**: 6 の残り (Calendar / TaskBoard / MarkerList)、10

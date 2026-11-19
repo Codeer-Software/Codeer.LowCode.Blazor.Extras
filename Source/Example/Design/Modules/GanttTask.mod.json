@@ -707,69 +707,6 @@
             "Columns": [
               {
                 "Layout": {
-                  "FieldName": "ColorLabel",
-                  "ContextMenu": "",
-                  "ClassName": "",
-                  "FontFamily": "",
-                  "Color": "",
-                  "Name": "",
-                  "BackgroundColor": "",
-                  "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.FieldLayoutDesign"
-                },
-                "Width": 109,
-                "IgnoreContentWidth": false,
-                "Padding": {},
-                "BackgroundColor": "",
-                "BorderStyle": {
-                  "LeftColor": "",
-                  "TopColor": "",
-                  "RightColor": "",
-                  "BottomColor": ""
-                },
-                "VerticalAlignment": "Middle",
-                "CanResize": false,
-                "AllowOverflow": false,
-                "Border": "None"
-              },
-              {
-                "Layout": {
-                  "FieldName": "Color",
-                  "ContextMenu": "",
-                  "ClassName": "",
-                  "FontFamily": "",
-                  "Color": "",
-                  "Name": "",
-                  "BackgroundColor": "",
-                  "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.FieldLayoutDesign"
-                },
-                "IgnoreContentWidth": false,
-                "Padding": {},
-                "BackgroundColor": "",
-                "BorderStyle": {
-                  "LeftColor": "",
-                  "TopColor": "",
-                  "RightColor": "",
-                  "BottomColor": ""
-                },
-                "CanResize": false,
-                "AllowOverflow": false,
-                "Border": "None"
-              }
-            ]
-          },
-          {
-            "IsWrap": false,
-            "IsAutoFillWrap": false,
-            "Margin": {},
-            "GridRowType": "Normal",
-            "CanResize": false,
-            "BackgroundColor": "",
-            "KeepInFillAvailableGrid": false,
-            "IsProportionalScale": false,
-            "IsRowMarginRemoved": false,
-            "Columns": [
-              {
-                "Layout": {
                   "FieldName": "サブミットボタン",
                   "ContextMenu": "",
                   "ClassName": "",
@@ -1119,69 +1056,6 @@
               {
                 "Layout": {
                   "FieldName": "BackgroundColor",
-                  "ContextMenu": "",
-                  "ClassName": "",
-                  "FontFamily": "",
-                  "Color": "",
-                  "Name": "",
-                  "BackgroundColor": "",
-                  "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.FieldLayoutDesign"
-                },
-                "IgnoreContentWidth": false,
-                "Padding": {},
-                "BackgroundColor": "",
-                "BorderStyle": {
-                  "LeftColor": "",
-                  "TopColor": "",
-                  "RightColor": "",
-                  "BottomColor": ""
-                },
-                "CanResize": false,
-                "AllowOverflow": false,
-                "Border": "None"
-              }
-            ]
-          },
-          {
-            "IsWrap": false,
-            "IsAutoFillWrap": false,
-            "Margin": {},
-            "GridRowType": "Normal",
-            "CanResize": false,
-            "BackgroundColor": "",
-            "KeepInFillAvailableGrid": false,
-            "IsProportionalScale": false,
-            "IsRowMarginRemoved": false,
-            "Columns": [
-              {
-                "Layout": {
-                  "FieldName": "ColorLabel",
-                  "ContextMenu": "",
-                  "ClassName": "",
-                  "FontFamily": "",
-                  "Color": "",
-                  "Name": "",
-                  "BackgroundColor": "",
-                  "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.FieldLayoutDesign"
-                },
-                "Width": 109,
-                "IgnoreContentWidth": false,
-                "Padding": {},
-                "BackgroundColor": "",
-                "BorderStyle": {
-                  "LeftColor": "",
-                  "TopColor": "",
-                  "RightColor": "",
-                  "BottomColor": ""
-                },
-                "VerticalAlignment": "Middle",
-                "CanResize": false,
-                "AllowOverflow": false,
-                "Border": "None"
-              },
-              {
-                "Layout": {
-                  "FieldName": "Color",
                   "ContextMenu": "",
                   "ClassName": "",
                   "FontFamily": "",
