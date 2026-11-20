@@ -30,6 +30,22 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         [Designer]
         public string AllowedExtensions { get; set; } = string.Empty;
 
+        /// <summary>
+        /// 抽出結果を JSON スキーマで受け取る (キーをフィールド名に固定)。表示名が同じフィールドがあるとモデルが表示名をキーにして値が捨てられるのを防ぐ。
+        /// スキーマを受け付けないモデルでは呼び出しが失敗し、スキーマなしでやり直す (失敗する呼び出しの分だけ遅くなる)。
+        /// </summary>
+        [Designer]
+        public bool UseJsonSchema { get; set; }
+
+        /// <summary>
+        /// 解析するファイルが画像 (jpg / png / gif / webp) のとき、文書解析 (OCR) の結果に加えて画像そのものもモデルに渡す。
+        /// OCR が落とす記号・小数点・似た形の文字をモデルが画像で確かめられる。画像の分だけトークンが増える。
+        /// 食い違うときは画像を正とさせるので、細かい文字が詰まった帳票ではモデルの読み違いが OCR の正しい値を上書きすることがある。
+        /// 画像を受け取れないモデルでは呼び出しが失敗し、OCR の結果だけでやり直す。
+        /// </summary>
+        [Designer]
+        public bool SendImage { get; set; }
+
         /// <summary>ドキュメント解析 (Azure Document Intelligence) が扱えるファイル形式</summary>
         public static readonly IReadOnlyList<string> DocumentAnalysisExtensions =
             ["pdf", "jpg", "jpeg", "png", "bmp", "tiff", "tif", "heif", "docx", "xlsx", "pptx", "html"];

@@ -11,10 +11,16 @@ Extras の作業ツリーにある変更は、この結果を反映した状態�
 
 | 項目 | 変更案 | 取り込んだ形 |
 |---|---|---|
-| JSON スキーマ (`TextAnalyzeJsonSchema`) | 既定 true | そのまま |
-| 画像も渡す (`TextAnalyzeSendImage`) | 既定 true | そのまま |
+| JSON スキーマ | `AISettings.TextAnalyzeJsonSchema`・既定 true | **AITextAnalyzerField のプロパティ `UseJsonSchema`・既定 false** |
+| 画像も渡す | `AISettings.TextAnalyzeSendImage`・既定 true | **AITextAnalyzerField のプロパティ `SendImage`・既定 false** |
 | strict の指定 | `AdditionalProperties["strictJsonSchema"] = true` | **`["strict"] = true` に修正** |
 | 推論の強さ (`TextAnalyzeReasoningEffort`) | 設定を追加 | **削除** |
+
+### フィールドのプロパティにして、既定は無効にしました
+
+appsettings (`AISettings`) の設定はやめ、デザイナで AITextAnalyzerField ごとに有効にします (帳票ごとに効果を確かめて決められる)。
+既定を無効にしたのは、パッケージを上げただけで今までの利用者の挙動が変わらないようにするためです。効果を測ったのはミルシートだけで、他の帳票では
+画像の読み違いが文字認識の正しい値を上書きする・受け付けないモデルでは毎回やり直しの分だけ遅くなる、という悪化があり得ます。
 
 ### strict のキーが違っていました
 
@@ -33,7 +39,7 @@ appsettings に `TextAnalyzeReasoningEffort` を書いていたら、消して�
 
 ## そちらのプロジェクトでやること
 
-- 新しい Extras.Server が公開されたら上げてください。新しい設定 2 つは既定 true なので、appsettings に何も書かなくても有効になります
+- 新しい Extras.Server が公開されたら上げてください。デザイナも新しい版にして、ミルシートの AITextAnalyzerField の `UseJsonSchema` と `SendImage` を true にしてください (既定は false で、そのままだと今までと同じ動きです)。appsettings に `TextAnalyzeJsonSchema` / `TextAnalyzeSendImage` を書いていたら消してください (無視されるだけで害はありません)
 - ミルシートが PDF のままなら画像は付きません (画像を渡すのは jpg / png / gif / webp だけ)。効果を出すには、ページごとの画像にしてから取り込んでください
 - Remarks の書き方が原因の誤り (原因 3: 規格の記号を結果の列に写す) はライブラリでは直しません。Remarks の側で詰めてください
 

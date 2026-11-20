@@ -21,6 +21,8 @@
 | Remarks | string (複数行) | - | AI への補足指示。表の読み方・値の解釈ルール・単位の扱いなどを日本語で書く。抽出精度のチューニングポイント |
 | DataImportCompleted | string (スクリプトイベント) | - | 取込完了後に実行するスクリプトメソッド名 |
 | FileField | string (フィールド参照) | - | 解析したファイルを格納する同一モジュール内の `FileField` 名 |
+| UseJsonSchema | bool | - | 抽出結果を JSON スキーマで受け取り、キーをフィールド名に固定する (既定 `false`)。表示名が同じフィールド (規格の「記号」と結果の「記号」など) があると AI が表示名をキーにして値が捨てられることがあり、それを防ぐ。スキーマを受け付けないモデルでは 1 回失敗してからスキーマなしでやり直すので、その分遅くなる |
+| SendImage | bool | - | 解析するファイルが画像 (jpg / png / gif / webp) のとき、文字認識の結果に加えて画像そのものも AI に渡す (既定 `false`)。文字認識が落とす記号 (`<` `≤` `≥` や下線)・小数点・似た形の文字 (6 と 8 など) を AI が画像で確かめられる。画像の分だけトークン (費用・応答時間) が増える。食い違うときは画像を正とさせるので、細かい文字が詰まった帳票では AI の読み違いが文字認識の正しい値を上書きすることがある (帳票で効果を確かめてから有効にする)。PDF や Office 文書には効かないので、PDF の帳票はページごとの画像にしてから解析させる |
 
 ## 値が入る対象フィールド型
 
@@ -51,15 +53,6 @@
 - `OpenAIEndPoint` / `OpenAIKey` / `ChatModel` — Azure OpenAI (項目抽出・候補マッチング)
 - `DocumentAnalysisEndPoint` / `DocumentAnalysisKey` — Azure Document Intelligence (ファイルのテキスト・表の抽出。テキスト入力のみ使う場合は不要)
 - `FileField` を併用する場合は FileField のサーバー要件 (一時ファイルテーブル・ファイルストレージ設定) も必要です
-
-抽出の精度に関わる設定 (同じ `AISettings` セクション。すべて任意):
-
-| キー | 既定 | 意味 |
-|---|---|---|
-| `TextAnalyzeJsonSchema` | `true` | 抽出結果を JSON スキーマで受け取り、キーをフィールド名に固定する。表示名が同じフィールド (規格の「記号」と結果の「記号」など) があるとモデルが表示名をキーにして値が捨てられることがあり、それを防ぐ |
-| `TextAnalyzeSendImage` | `true` | 解析するファイルが画像 (jpg / png / gif / webp) のとき、文書解析の結果に加えて画像そのものもモデルに渡す。文字認識が落とす記号 (`<` `≤` `≥` や下線)・小数点・似た形の文字 (6 と 8 など) をモデルが画像で確かめられる。画像の分だけトークンが増える。PDF や Office 文書は対象外 (文書解析の結果だけ) なので、PDF の帳票はページごとの画像にしてから解析させると効く |
-
-スキーマ・画像を付けた呼び出しが失敗したとき (受け付けないモデル / プロバイダ) は、従来の形 (文書解析の結果だけ・JSON モード) で 1 回やり直します。
 
 サーバー側の解析ロジックは `Codeer.LowCode.Blazor.Extras.Server` パッケージの `AITextAnalyzeService` が提供します
 (`AnalyzeFileAsync` / `AnalyzeTextAsync` に ModuleDataIO とモジュール名・フィールド名を渡す)。共通の API では `Extras/ExtrasApiTable.cs` の `new AITextAnalyzeApi(SystemConfig.Instance.AISettings)` がこれを呼びます (テンプレートは結線済み)。

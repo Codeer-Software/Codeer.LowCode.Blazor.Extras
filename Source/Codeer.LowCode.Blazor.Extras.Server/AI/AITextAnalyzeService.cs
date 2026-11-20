@@ -60,9 +60,9 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI
         public async Task<ModuleData> AnalyzeFileAsync(ModuleDataIO moduleDataIO, IModuleDesigns modules, string? moduleName, string? fieldName, string? fileName, MemoryStream memoryStream)
         {
             var design = await CheckAsync(moduleDataIO, moduleName, fieldName);
-            var image = _settings.TextAnalyzeSendImage ? CreateImageContent(memoryStream) : null;
+            var image = design.SendImage ? CreateImageContent(memoryStream) : null;
             var text = await ExtractTextFromFile(memoryStream);
-            return await AnalyzeCoreAsync(moduleDataIO, modules, moduleName!, design.Remarks, text, CreateFileSourcePrompt(fileName), image);
+            return await AnalyzeCoreAsync(moduleDataIO, modules, moduleName!, design.Remarks, text, CreateFileSourcePrompt(fileName), image, design.UseJsonSchema);
         }
 
         /// <summary>
@@ -71,16 +71,17 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI
         public async Task<ModuleData> AnalyzeTextAsync(ModuleDataIO moduleDataIO, IModuleDesigns modules, string? moduleName, string? fieldName, string? text)
         {
             var design = await CheckAsync(moduleDataIO, moduleName, fieldName);
-            return await AnalyzeCoreAsync(moduleDataIO, modules, moduleName!, design.Remarks, text ?? string.Empty, string.Empty);
+            return await AnalyzeCoreAsync(moduleDataIO, modules, moduleName!, design.Remarks, text ?? string.Empty, string.Empty, null, design.UseJsonSchema);
         }
 
         protected Task<ModuleData> AnalyzeCoreAsync(ModuleDataIO moduleDataIO, IModuleDesigns modules, string moduleName, string remarks, string text, string source)
-            => AnalyzeCoreAsync(moduleDataIO, modules, moduleName, remarks, text, source, null);
+            => AnalyzeCoreAsync(moduleDataIO, modules, moduleName, remarks, text, source, null, false);
 
-        /// <param name="image">解析元が画像のとき、その画像。text (文書解析の結果) と一緒にモデルに渡す。</param>
-        protected async Task<ModuleData> AnalyzeCoreAsync(ModuleDataIO moduleDataIO, IModuleDesigns modules, string moduleName, string remarks, string text, string source, DataContent? image)
+        /// <param name="image">解析元の画像も渡すとき、その画像 (フィールドの SendImage)。text (文書解析の結果) と一緒にモデルに渡す。</param>
+        /// <param name="useJsonSchema">抽出結果を JSON スキーマで受け取る (フィールドの UseJsonSchema)。</param>
+        protected async Task<ModuleData> AnalyzeCoreAsync(ModuleDataIO moduleDataIO, IModuleDesigns modules, string moduleName, string remarks, string text, string source, DataContent? image, bool useJsonSchema)
         {
-            var json = await DocumentAnalysisByText(modules, moduleName, remarks, text, source, image);
+            var json = await DocumentAnalysisByText(modules, moduleName, remarks, text, source, image, useJsonSchema);
             return await CreateModule(modules, moduleName,
                 new FieldCandidatesResolver(moduleDataIO, modules, FindCandidatesByAI),
                 JsonSerializer.Deserialize<JsonElement>(json));
@@ -135,13 +136,13 @@ JSON 出力では、その項目名をキーとして使用してください。
             return response.Text ?? string.Empty;
         }
 
-        async Task<string> DocumentAnalysisByText(IModuleDesigns moduleDesigns, string moduleName, string remarks, string text, string source, DataContent? image)
+        async Task<string> DocumentAnalysisByText(IModuleDesigns moduleDesigns, string moduleName, string remarks, string text, string source, DataContent? image, bool useJsonSchema)
         {
-            if (image != null || _settings.TextAnalyzeJsonSchema)
+            if (image != null || useJsonSchema)
             {
                 try
                 {
-                    var json = await GetExtractionAsync(moduleDesigns, moduleName, remarks, text, source, image, _settings.TextAnalyzeJsonSchema);
+                    var json = await GetExtractionAsync(moduleDesigns, moduleName, remarks, text, source, image, useJsonSchema);
                     if (IsJsonObject(json)) return json;
                 }
                 catch
