@@ -569,31 +569,32 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             await OnDataChangedAsync();
         }
 
-        //ダイアログで入力したタスクの検証。各項目の検証と、開始と終了の前後。
-        //誤りは項目に出し (開き直したダイアログで見える)、通知もする
+        //ダイアログで入力したタスクの検証。各項目の検証と、開始と終了の前後、進捗の範囲。
+        //誤りは 1 回で全部、項目に出す (開き直したダイアログで見える)。通知はどの誤りでも「入力エラー」の 1 回
         private async Task<bool> ValidateTaskAsync(Module mod)
         {
-            if (!await mod.ValidateInput())
-            {
-                await Services.UIService.NotifyError(Properties.Resources.InputError);
-                return false;
-            }
+            //各項目の検証 (必須・最小と最大・項目のスクリプト)。項目のエラーはここで付け直される
+            var isValid = await mod.ValidateInput();
 
-            //項目どうしの関係と、ガントが決めている範囲。誤りは全部その項目の下に出す
+            //項目どうしの関係と、ガントが決めている範囲
             var dateError = GanttDateRange.GetError(
                 GetDateTimeValue(mod, Design.StartField), GetDateTimeValue(mod, Design.EndField), IsDateOnly,
                 GetFieldDisplayName(mod, Design.StartField), GetFieldDisplayName(mod, Design.EndField));
             var progressError = string.IsNullOrEmpty(Design.ProgressField) ? null : GanttProgressRange.GetError(
                 GetProgressRawValue(mod), Design.ProgressScale, GetFieldDisplayName(mod, Design.ProgressField));
 
-            var isValid = true;
             foreach (var (fieldName, error) in new[] { (Design.EndField, dateError), (Design.ProgressField, progressError) })
             {
                 if (error == null) continue;
-                mod.GetField(fieldName)?.SetError(error);
-                await Services.UIService.NotifyError(error);
                 isValid = false;
+
+                //項目の検証が同じ項目にエラーを出していれば、そちらを残す (進捗に最小・最大があるとき)
+                var field = mod.GetField(fieldName);
+                if (field is { IsValid: false }) continue;
+                field?.SetError(error);
             }
+
+            if (!isValid) await Services.UIService.NotifyError(Properties.Resources.InputError);
             return isValid;
         }
 
