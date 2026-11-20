@@ -106,6 +106,39 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
             Assert.That(format.GetProperty("json_schema").GetProperty("schema").GetProperty("properties").TryGetProperty("Items", out _), Is.True);
         }
 
+        [Test]
+        public async Task 抽出は常にスキーマ付きで呼ぶ()
+        {
+            var chat = new FakeChatClient().Text("""{"LotNo":"A1"}""");
+
+            var data = await new TestService(chat).AnalyzeAsync(CreateDesign().Modules, "Sheet");
+
+            Assert.That(chat.Options, Has.Count.EqualTo(1));
+            Assert.That((chat.Options[0]!.ResponseFormat as ChatResponseFormatJson)?.Schema, Is.Not.Null);
+            Assert.That((data.Fields["LotNo"] as Codeer.LowCode.Blazor.Repository.Data.TextFieldData)?.Value, Is.EqualTo("A1"));
+        }
+
+        [Test]
+        public async Task スキーマ付きで失敗したらスキーマなしでやり直す()
+        {
+            var chat = new FakeChatClient().Text("not json").Text("""{"LotNo":"A1"}""");
+
+            var data = await new TestService(chat).AnalyzeAsync(CreateDesign().Modules, "Sheet");
+
+            Assert.That(chat.Options, Has.Count.EqualTo(2));
+            Assert.That((chat.Options[0]!.ResponseFormat as ChatResponseFormatJson)?.Schema, Is.Not.Null);
+            Assert.That(chat.Options[1]!.ResponseFormat, Is.InstanceOf<ChatResponseFormatJson>());
+            Assert.That(((ChatResponseFormatJson)chat.Options[1]!.ResponseFormat!).Schema, Is.Null);
+            Assert.That((data.Fields["LotNo"] as Codeer.LowCode.Blazor.Repository.Data.TextFieldData)?.Value, Is.EqualTo("A1"));
+        }
+
+        class TestService(IChatClient chat) : AITextAnalyzeService(new AISettings(), () => chat)
+        {
+            //候補の解決 (Select / Link) を通らないデザインなので ModuleDataIO は使われない
+            public Task<Codeer.LowCode.Blazor.Repository.Data.ModuleData> AnalyzeAsync(IModuleDesigns modules, string moduleName)
+                => AnalyzeCoreAsync(null!, modules, moduleName, "", "text", "");
+        }
+
         class CaptureHandler : HttpMessageHandler
         {
             public string? Body { get; private set; }

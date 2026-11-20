@@ -31,13 +31,6 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         public string AllowedExtensions { get; set; } = string.Empty;
 
         /// <summary>
-        /// 抽出結果を JSON スキーマで受け取る (キーをフィールド名に固定)。表示名が同じフィールドがあるとモデルが表示名をキーにして値が捨てられるのを防ぐ。
-        /// スキーマを受け付けないモデルでは呼び出しが失敗し、スキーマなしでやり直す (失敗する呼び出しの分だけ遅くなる)。
-        /// </summary>
-        [Designer]
-        public bool UseJsonSchema { get; set; }
-
-        /// <summary>
         /// 解析するファイルが画像 (jpg / png / gif / webp) のとき、文書解析 (OCR) の結果に加えて画像そのものもモデルに渡す。
         /// OCR が落とす記号・小数点・似た形の文字をモデルが画像で確かめられる。画像の分だけトークンが増える。
         /// 食い違うときは画像を正とさせるので、細かい文字が詰まった帳票ではモデルの読み違いが OCR の正しい値を上書きすることがある。

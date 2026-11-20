@@ -62,7 +62,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI
             var design = await CheckAsync(moduleDataIO, moduleName, fieldName);
             var image = design.SendImage ? CreateImageContent(memoryStream) : null;
             var text = await ExtractTextFromFile(memoryStream);
-            return await AnalyzeCoreAsync(moduleDataIO, modules, moduleName!, design.Remarks, text, CreateFileSourcePrompt(fileName), image, design.UseJsonSchema);
+            return await AnalyzeCoreAsync(moduleDataIO, modules, moduleName!, design.Remarks, text, CreateFileSourcePrompt(fileName), image);
         }
 
         /// <summary>
@@ -71,17 +71,16 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI
         public async Task<ModuleData> AnalyzeTextAsync(ModuleDataIO moduleDataIO, IModuleDesigns modules, string? moduleName, string? fieldName, string? text)
         {
             var design = await CheckAsync(moduleDataIO, moduleName, fieldName);
-            return await AnalyzeCoreAsync(moduleDataIO, modules, moduleName!, design.Remarks, text ?? string.Empty, string.Empty, null, design.UseJsonSchema);
+            return await AnalyzeCoreAsync(moduleDataIO, modules, moduleName!, design.Remarks, text ?? string.Empty, string.Empty, null);
         }
 
         protected Task<ModuleData> AnalyzeCoreAsync(ModuleDataIO moduleDataIO, IModuleDesigns modules, string moduleName, string remarks, string text, string source)
-            => AnalyzeCoreAsync(moduleDataIO, modules, moduleName, remarks, text, source, null, false);
+            => AnalyzeCoreAsync(moduleDataIO, modules, moduleName, remarks, text, source, null);
 
         /// <param name="image">解析元の画像も渡すとき、その画像 (フィールドの SendImage)。text (文書解析の結果) と一緒にモデルに渡す。</param>
-        /// <param name="useJsonSchema">抽出結果を JSON スキーマで受け取る (フィールドの UseJsonSchema)。</param>
-        protected async Task<ModuleData> AnalyzeCoreAsync(ModuleDataIO moduleDataIO, IModuleDesigns modules, string moduleName, string remarks, string text, string source, DataContent? image, bool useJsonSchema)
+        protected async Task<ModuleData> AnalyzeCoreAsync(ModuleDataIO moduleDataIO, IModuleDesigns modules, string moduleName, string remarks, string text, string source, DataContent? image)
         {
-            var json = await DocumentAnalysisByText(modules, moduleName, remarks, text, source, image, useJsonSchema);
+            var json = await DocumentAnalysisByText(modules, moduleName, remarks, text, source, image);
             return await CreateModule(modules, moduleName,
                 new FieldCandidatesResolver(moduleDataIO, modules, FindCandidatesByAI),
                 JsonSerializer.Deserialize<JsonElement>(json));
@@ -136,19 +135,17 @@ JSON 出力では、その項目名をキーとして使用してください。
             return response.Text ?? string.Empty;
         }
 
-        async Task<string> DocumentAnalysisByText(IModuleDesigns moduleDesigns, string moduleName, string remarks, string text, string source, DataContent? image, bool useJsonSchema)
+        //抽出結果は JSON スキーマで受け取る (キーをフィールド名に固定。プロンプトで頼むだけだとモデルが表示名をキーにして返し、値が捨てられることがある)。
+        async Task<string> DocumentAnalysisByText(IModuleDesigns moduleDesigns, string moduleName, string remarks, string text, string source, DataContent? image)
         {
-            if (image != null || useJsonSchema)
+            try
             {
-                try
-                {
-                    var json = await GetExtractionAsync(moduleDesigns, moduleName, remarks, text, source, image, useJsonSchema);
-                    if (IsJsonObject(json)) return json;
-                }
-                catch
-                {
-                    //画像・JSON スキーマを受け付けないモデル / プロバイダ。従来の形 (文書解析の結果だけ・JSON モード) でやり直す
-                }
+                var json = await GetExtractionAsync(moduleDesigns, moduleName, remarks, text, source, image, true);
+                if (IsJsonObject(json)) return json;
+            }
+            catch
+            {
+                //JSON スキーマ・画像を受け付けないモデル / プロバイダ。従来の形 (文書解析の結果だけ・JSON モード) でやり直す
             }
             return await GetExtractionAsync(moduleDesigns, moduleName, remarks, text, source, null, false);
         }
