@@ -52,6 +52,15 @@
 - `DocumentAnalysisEndPoint` / `DocumentAnalysisKey` — Azure Document Intelligence (ファイルのテキスト・表の抽出。テキスト入力のみ使う場合は不要)
 - `FileField` を併用する場合は FileField のサーバー要件 (一時ファイルテーブル・ファイルストレージ設定) も必要です
 
+抽出の精度に関わる設定 (同じ `AISettings` セクション。すべて任意):
+
+| キー | 既定 | 意味 |
+|---|---|---|
+| `TextAnalyzeJsonSchema` | `true` | 抽出結果を JSON スキーマで受け取り、キーをフィールド名に固定する。表示名が同じフィールド (規格の「記号」と結果の「記号」など) があるとモデルが表示名をキーにして値が捨てられることがあり、それを防ぐ |
+| `TextAnalyzeSendImage` | `true` | 解析するファイルが画像 (jpg / png / gif / webp) のとき、文書解析の結果に加えて画像そのものもモデルに渡す。文字認識が落とす記号 (`<` `≤` `≥` や下線)・小数点・似た形の文字 (6 と 8 など) をモデルが画像で確かめられる。画像の分だけトークンが増える。PDF や Office 文書は対象外 (文書解析の結果だけ) なので、PDF の帳票はページごとの画像にしてから解析させると効く |
+
+スキーマ・画像を付けた呼び出しが失敗したとき (受け付けないモデル / プロバイダ) は、従来の形 (文書解析の結果だけ・JSON モード) で 1 回やり直します。
+
 サーバー側の解析ロジックは `Codeer.LowCode.Blazor.Extras.Server` パッケージの `AITextAnalyzeService` が提供します
 (`AnalyzeFileAsync` / `AnalyzeTextAsync` に ModuleDataIO とモジュール名・フィールド名を渡す)。共通の API では `Extras/ExtrasApiTable.cs` の `new AITextAnalyzeApi(SystemConfig.Instance.AISettings)` がこれを呼びます (テンプレートは結線済み)。
 専用のルートで受ける場合は、クライアントの起動時に `AITextAnalyzerField.FileToModuleDataEndPoint` / `TextToModuleDataEndPoint` を設定するとそちらへ送ります。
