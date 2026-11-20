@@ -546,6 +546,12 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
             }
         }
 
+        internal static string GanttProgressOutOfRange {
+            get {
+                return ResourceManager.GetString("GanttProgressOutOfRange", resourceCulture);
+            }
+        }
+
         internal static string DateFormatDayTitleWithWeekday {
             get {
                 return ResourceManager.GetString("DateFormatDayTitleWithWeekday", resourceCulture);

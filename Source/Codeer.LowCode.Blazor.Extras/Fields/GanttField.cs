@@ -439,6 +439,10 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             await SetDateFieldValueAsync(mod, Design.StartField, start);
             await SetDateFieldValueAsync(mod, Design.EndField, end);
 
+            //進捗は 0 から始める (レイアウトの初期化のスクリプトが入れた値があれば、そのまま)
+            var progressField = mod.GetField<NumberField>(Design.ProgressField);
+            if (progressField != null && progressField.Value == null) await progressField.SetValueAsync(0);
+
             //入力に誤りがあれば、入力した内容とエラーを残したまま開き直す
             do
             {
@@ -575,15 +579,26 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
                 return false;
             }
 
-            var error = GanttDateRange.GetError(
+            //項目どうしの関係と、ガントが決めている範囲。誤りは全部その項目の下に出す
+            var dateError = GanttDateRange.GetError(
                 GetDateTimeValue(mod, Design.StartField), GetDateTimeValue(mod, Design.EndField), IsDateOnly,
                 GetFieldDisplayName(mod, Design.StartField), GetFieldDisplayName(mod, Design.EndField));
-            if (error == null) return true;
+            var progressError = string.IsNullOrEmpty(Design.ProgressField) ? null : GanttProgressRange.GetError(
+                GetProgressRawValue(mod), Design.ProgressScale, GetFieldDisplayName(mod, Design.ProgressField));
 
-            mod.GetField(Design.EndField)?.SetError(error);
-            await Services.UIService.NotifyError(error);
-            return false;
+            var isValid = true;
+            foreach (var (fieldName, error) in new[] { (Design.EndField, dateError), (Design.ProgressField, progressError) })
+            {
+                if (error == null) continue;
+                mod.GetField(fieldName)?.SetError(error);
+                await Services.UIService.NotifyError(error);
+                isValid = false;
+            }
+            return isValid;
         }
+
+        private decimal? GetProgressRawValue(Module mod)
+            => (mod.GetField(Design.ProgressField)?.GetData() as ValueFieldDataBase<decimal?>)?.Value;
 
         private static string GetFieldDisplayName(Module mod, string fieldName)
         {
@@ -646,8 +661,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         private double GetProgressValue(Module data)
         {
             if (string.IsNullOrEmpty(Design.ProgressField)) return 0d;
-            var val = (data.GetField(Design.ProgressField)?.GetData() as ValueFieldDataBase<decimal?>)?.Value;
-            return Design.ProgressScale.ToFillPercent(val);
+            return Design.ProgressScale.ToFillPercent(GetProgressRawValue(data));
         }
 
         private bool DetectIsDateOnly()

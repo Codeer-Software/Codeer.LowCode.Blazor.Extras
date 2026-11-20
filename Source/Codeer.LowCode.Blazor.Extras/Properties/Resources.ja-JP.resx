@@ -113,6 +113,10 @@
     <value>{1}は{0}と同じ日か、それより後にしてください。</value>
     <comment>{0}=start field name, {1}=end field name</comment>
   </data>
+  <data name="GanttProgressOutOfRange" xml:space="preserve">
+    <value>{0}は{1}から{2}の間で入力してください。</value>
+    <comment>{0}=progress field name, {1}=minimum, {2}=maximum</comment>
+  </data>
   <data name="DateFormatDayTitleWithWeekday" xml:space="preserve">
     <value>yyyy年M月d日(ddd)</value>
   </data>

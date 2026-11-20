@@ -113,6 +113,10 @@
     <value>{1} must be on or after {0}.</value>
     <comment>{0}=start field name, {1}=end field name</comment>
   </data>
+  <data name="GanttProgressOutOfRange" xml:space="preserve">
+    <value>{0} must be between {1} and {2}.</value>
+    <comment>{0}=progress field name, {1}=minimum, {2}=maximum</comment>
+  </data>
   <data name="DateFormatDayTitleWithWeekday" xml:space="preserve">
     <value>dddd, MMMM d, yyyy</value>
   </data>
