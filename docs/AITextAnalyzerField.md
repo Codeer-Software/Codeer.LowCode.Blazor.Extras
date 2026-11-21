@@ -60,6 +60,7 @@ JSON スキーマを受け付けないモデルでは、1 回失敗してから�
 専用のルートで受ける場合は、クライアントの起動時に `AITextAnalyzerField.FileToModuleDataEndPoint` / `TextToModuleDataEndPoint` を設定するとそちらへ送ります。
 チャットモデルは Microsoft.Extensions.AI の `IChatClient` 経由で呼びます。既定のコンストラクタ (`AISettings` だけ) は Azure OpenAI の IChatClient を組み立て、
 `AITextAnalyzeService(AISettings, Func<IChatClient>)` なら AIChat の Agent と同じくホストが好きなプロバイダを渡せます (AISettings は文書解析の接続に使う)。
+抽出は毎回同じ結果に寄せるため temperature 0 で呼びます。temperature を既定値でしか受け付けないモデル (推論モデル) では、断られた時点で temperature なしで送り直します (結果の揺れはモデルの既定に従います)。
 共通の API で使うときは ExtrasApiTable に `new AITextAnalyzeApi(new AITextAnalyzeService(settings, factory))` と並べます。
 サーバーは解析のたびに、その AITextAnalyzerField が今のユーザーに見えること (アプリのアクセス条件・モジュールの UserReadCondition・PermissionField の読取権限) を確かめてから AI を呼び、補足指示 (Remarks) はフィールドのデザインから取ります
 ([サーバー API の権限チェック](ServerApiAuthorization.md))。

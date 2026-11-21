@@ -132,6 +132,53 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
             Assert.That((data.Fields["LotNo"] as Codeer.LowCode.Blazor.Repository.Data.TextFieldData)?.Value, Is.EqualTo("A1"));
         }
 
+        [Test]
+        public async Task Temperatureを断るモデルにはTemperatureなしで送り直す()
+        {
+            var chat = new TemperatureRejectingChatClient();
+            var service = new TestService(chat);
+
+            var data = await service.AnalyzeAsync(CreateDesign().Modules, "Sheet");
+
+            Assert.That(chat.Temperatures, Is.EqualTo(new float?[] { 0f, null }));
+            Assert.That(chat.Schemas, Is.EqualTo(new[] { true, true }), "スキーマは付けたまま送り直す");
+            Assert.That((data.Fields["LotNo"] as Codeer.LowCode.Blazor.Repository.Data.TextFieldData)?.Value, Is.EqualTo("A1"));
+
+            //2 回目からは最初から送らない
+            await service.AnalyzeAsync(CreateDesign().Modules, "Sheet");
+            Assert.That(chat.Temperatures, Is.EqualTo(new float?[] { 0f, null, null }));
+        }
+
+        [Test]
+        public async Task Temperatureを受け付けるモデルには0を送る()
+        {
+            var chat = new FakeChatClient().Text("""{"LotNo":"A1"}""");
+
+            await new TestService(chat).AnalyzeAsync(CreateDesign().Modules, "Sheet");
+
+            Assert.That(chat.Options.Single()!.Temperature, Is.EqualTo(0f));
+        }
+
+        //gpt-6.2-sol と同じ断り方 (temperature は既定値だけ)
+        class TemperatureRejectingChatClient : IChatClient
+        {
+            public List<float?> Temperatures { get; } = new();
+            public List<bool> Schemas { get; } = new();
+
+            public Task<ChatResponse> GetResponseAsync(IEnumerable<ChatMessage> messages, ChatOptions? options = null, CancellationToken cancellationToken = default)
+            {
+                Temperatures.Add(options?.Temperature);
+                Schemas.Add((options?.ResponseFormat as ChatResponseFormatJson)?.Schema != null);
+                if (options?.Temperature != null) throw new InvalidOperationException("HTTP 400 (invalid_request_error: unsupported_value) Parameter: temperature Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.");
+                return Task.FromResult(new ChatResponse(new ChatMessage(ChatRole.Assistant, """{"LotNo":"A1"}""")));
+            }
+
+            public IAsyncEnumerable<ChatResponseUpdate> GetStreamingResponseAsync(IEnumerable<ChatMessage> messages, ChatOptions? options = null, CancellationToken cancellationToken = default)
+                => throw new NotSupportedException();
+            public object? GetService(Type serviceType, object? serviceKey = null) => null;
+            public void Dispose() { }
+        }
+
         class TestService(IChatClient chat) : AITextAnalyzeService(new AISettings(), () => chat)
         {
             //候補の解決 (Select / Link) を通らないデザインなので ModuleDataIO は使われない

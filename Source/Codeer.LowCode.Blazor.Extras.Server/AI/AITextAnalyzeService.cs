@@ -152,22 +152,40 @@ JSON 出力では、その項目名をキーとして使用してください。
 
         async Task<string> GetExtractionAsync(IModuleDesigns moduleDesigns, string moduleName, string remarks, string text, string source, DataContent? image, bool useJsonSchema)
         {
-            var options = CreateExtractionOptions(moduleDesigns, moduleName, useJsonSchema);
-            var response = await _chatClientFactory().GetResponseAsync(
+            ChatMessage[] messages =
                 [
                     new ChatMessage(ChatRole.System, CreateExtractionSystemPrompt(image == null ? source : source + CreateImageSourcePrompt(), remarks)),
                     new ChatMessage(ChatRole.User, CreateJsonExplanation(moduleDesigns, moduleName)),
                     image == null ? new ChatMessage(ChatRole.User, text) : new ChatMessage(ChatRole.User, [new TextContent(text), image]),
-                ], options);
-            return response.Text ?? string.Empty;
+                ];
+            var client = _chatClientFactory();
+            try
+            {
+                var response = await client.GetResponseAsync(messages, CreateExtractionOptions(moduleDesigns, moduleName, useJsonSchema, !_omitTemperature));
+                return response.Text ?? string.Empty;
+            }
+            catch (Exception e) when (!_omitTemperature && IsTemperatureRejected(e))
+            {
+                //temperature を既定値でしか受け付けないモデル (推論モデル)。以後は送らない
+                _omitTemperature = true;
+                var response = await client.GetResponseAsync(messages, CreateExtractionOptions(moduleDesigns, moduleName, useJsonSchema, false));
+                return response.Text ?? string.Empty;
+            }
         }
 
-        internal static ChatOptions CreateExtractionOptions(IModuleDesigns moduleDesigns, string moduleName, bool useJsonSchema)
+        bool _omitTemperature;
+
+        //OpenAI / Azure OpenAI は "Unsupported value: 'temperature' does not support 0 with this model." で断る
+        static bool IsTemperatureRejected(Exception e)
+            => e.Message.Contains("temperature", StringComparison.OrdinalIgnoreCase);
+
+        /// <param name="sendTemperature">毎回同じ結果に寄せるため Temperature = 0 を送る。受け付けないモデルには送らない (モデルの既定値で動く)。</param>
+        internal static ChatOptions CreateExtractionOptions(IModuleDesigns moduleDesigns, string moduleName, bool useJsonSchema, bool sendTemperature = true)
         {
             var options = new ChatOptions
             {
                 ResponseFormat = ChatResponseFormat.Json,
-                Temperature = 0,
+                Temperature = sendTemperature ? 0 : null,
             };
             if (useJsonSchema)
             {
