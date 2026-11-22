@@ -58,15 +58,25 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat.RawDataAccess
                 LoggerFactory = loggerFactory,
             };
             //設計として見せるのは、この Agent が読めるデータソース (DataSourceNames) のモジュールと、表を持たないモジュール (画面のロジック)。
-            //読めないデータソースの表は SQL を実行できないので案内しない
+            //読めないデータソースの表は SQL を実行できないので案内しない。
+            //DataSourceNames のモジュールが設計に 1 つも無いとき (AI 用に別名の読み取り専用接続を作っている場合) は絞らない (get_schema が表名で設計と結ぶのと同じ規則)
             var dataSourceNames = new HashSet<string>(options.DataSourceNames ?? Array.Empty<string>(), StringComparer.OrdinalIgnoreCase);
+            Tuple<DesignData, bool>? judged = null;   //判定済みのデザインと「絞るか」(ホットリロードでデザインが替わったら判定し直す)
+            bool IsVisible(ModuleDesign module)
+            {
+                var current = design?.Invoke();
+                if (current == null) return IsReadable(module, dataSourceNames);
+                var cache = judged;
+                if (cache == null || !ReferenceEquals(cache.Item1, current)) judged = cache = Tuple.Create(current, HasModuleOf(current, dataSourceNames));
+                return !cache.Item2 || IsReadable(module, dataSourceNames);
+            }
             if (design != null || documents != null)
-                conversation.ToolSets.Add(new DesignKnowledgeToolSet(design, documents, showDbNames: true, isVisible: (module, _) => IsReadable(module, dataSourceNames)));
+                conversation.ToolSets.Add(new DesignKnowledgeToolSet(design, documents, showDbNames: true, isVisible: (module, _) => IsVisible(module)));
             var rawDataAccess = new RawDataAccessToolSet(dbAccessorFactory, design, options);
             conversation.ToolSets.Add(rawDataAccess);
             if (design != null && semanticSearch != null)
             {
-                var toolSet = new SemanticSearchToolSet(design, dbAccessorFactory, semanticSearch.GetProvider, options.DataSourceNames);
+                var toolSet = new SemanticSearchToolSet(design, dbAccessorFactory, semanticSearch.GetProvider, options.DataSourceNames ?? Array.Empty<string>());
                 conversation.ToolSets.Add(toolSet);
                 //execute_sql の {embed:…} を質問の埋め込みに置き換える (DB 側のベクトル検索を SQL の中から使う)
                 rawDataAccess.SqlPreprocessor = toolSet.ExpandEmbeddingsAsync;
@@ -77,6 +87,11 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat.RawDataAccess
 
         internal static bool IsReadable(ModuleDesign module, ISet<string> dataSourceNames)
             => string.IsNullOrEmpty(module.DbTable) || dataSourceNames.Contains(module.DataSourceName ?? string.Empty);
+
+        /// <summary>表を持つモジュールのうち、データソースが dataSourceNames のものが設計にあるか。</summary>
+        internal static bool HasModuleOf(DesignData design, ISet<string> dataSourceNames)
+            => design.Modules.GetModuleNames().Select(design.Modules.Find)
+                .Any(m => m != null && !string.IsNullOrEmpty(m.DbTable) && dataSourceNames.Contains(m.DataSourceName ?? string.Empty));
 
         public Task<AIChatReply> ReplyAsync(AIChatAgentRequest request, IAIChatProgress progress, CancellationToken cancellationToken)
             => _agent.ReplyAsync(request, progress, cancellationToken);

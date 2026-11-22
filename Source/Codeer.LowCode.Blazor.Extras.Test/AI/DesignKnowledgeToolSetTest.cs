@@ -140,6 +140,19 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
             Assert.That(IsReadable("Main", ""), Is.True);   //表なし = 画面のロジック
         }
 
+        [Test]
+        public void DB直版は_読めるデータソースのモジュールが設計に無ければ絞らない()
+        {
+            //設計のモジュールは全部 Main。AI 用の読み取り専用接続を別名 (AIReadOnly) で作ると、名前の合うモジュールは 1 つも無い
+            var design = CreateDesign();
+            bool HasModuleOf(params string[] names)
+                => Codeer.LowCode.Blazor.Extras.Server.AI.Chat.RawDataAccess.RawDataAccessAgent.HasModuleOf(design, new HashSet<string>(names, StringComparer.OrdinalIgnoreCase));
+
+            Assert.That(HasModuleOf("AIReadOnly"), Is.False);   //絞らない (全モジュールを見せる)
+            Assert.That(HasModuleOf("main"), Is.True);          //絞る
+            Assert.That(HasModuleOf("AIReadOnly", "Main"), Is.True);
+        }
+
         static DesignData CreateDesign()
         {
             var design = new DesignData();
