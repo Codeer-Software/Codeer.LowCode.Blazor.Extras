@@ -111,8 +111,7 @@ public static class AIChatAgentTable
             chatClientFactory,                                           // IChatClient の作り方 (下記)
             () => new DbAccessor(SystemConfig.Instance.DataSources),     // IDbAccessor の作り方 (SQL ごとに作って捨てる)
             () => AppDesign.Store.GetDesignData(),                       // デザイン定義 (ホットリロードで変わるので都度。null 可)
-            folder => DesignDataFileManager.GetResourceTexts(designFileDirectory, folder, ".md", ".txt")   // 補足文書 = デザインの Resources/{DocumentFolder}/*.md|*.txt (本体 1.3.32 以降。null 可)
-                          .Select(e => new AIChatDocument(e.Name, e.Text)).ToList(),
+            folder => AIChatDocument.ReadResources(designFileDirectory, folder),   // 補足文書 = デザインの Resources/{DocumentFolder}/*.md|*.txt (null 可)
             new RawDataAccessOptions { DataSourceNames = { "Analytics" } }),  // AI 用の読み取り専用 DB ユーザーで接続するデータソース (複数可)
         _ => null,                                                   // 知らない名前 → ジョブは error
     };
@@ -262,8 +261,7 @@ DB 側でやること (ライブラリでは代われないもの):
         return Task.FromResult(new ModuleDataAccessScope(dataService.ModuleDataIO, dataService, dataService.DbAccess));  // 接続も渡すと SQL のタイムアウトが効く
     },
     () => AppDesign.Store.GetDesignData(),                      // デザイン定義 (ホットリロードで変わるので都度)
-    folder => DesignDataFileManager.GetResourceTexts(config.DesignFileDirectory, folder, ".md", ".txt")
-        .Select(e => new AIChatDocument(e.Name, e.Text)).ToList(),
+    folder => AIChatDocument.ReadResources(config.DesignFileDirectory, folder),   // 補足文書 = デザインの Resources/{DocumentFolder}/*.md|*.txt
     config.AIChat.ModuleDataAccess,                             // ModuleDataAccessOptions (appsettings の AIChat:ModuleDataAccess をそのまま束縛)
     semanticSearch: SemanticSearchTable.Service),                // 意味検索 (search_records)。SemanticSearchField を置いたモジュールを権限つきで探せる
 ```
@@ -271,11 +269,8 @@ DB 側でやること (ライブラリでは代われないもの):
 - `designForFront` を渡すと、AI に見せる設計 (`list_modules` / `describe_module`) は、そのユーザーへ画面用に送るデザインになります。DB の名前 (データソース・表・列) と SQL は本体が伏せてあり、ジョブのスクリプトは入っておらず、ページフレームはそのユーザーに解決済みです。渡さないときは、サーバーが持つデザインから DB の名前を除いて見せます
 
 ```csharp
-    designForFront: async userId =>
-    {
-        await using var ds = new DataService(userId);
-        return ds.Design.ForFrontDesignData(await ds.ModuleDataIO.AuthorizationChecker.GetCurrentUserAsync());   // RequestDesign に ForFrontDesignData (LoadedDesign の同名メソッドを呼ぶ) を足しておく
-    }
+    //引数は現在のユーザー (ユーザーモジュールの行)。Agent が、レコードを読むときと同じ ModuleDataIO から引いて渡す
+    designForFront: currentUser => AppDesign.Store.GetCurrent().ForFrontDesignData(new PageLinkUrlResolver(), currentUser)
 ```
 
 - ユーザー Id は `AIChatAgentRequest.UserName` (= `AIChatService.StartAsync` の ownerKey。テンプレートはログインユーザーの Id) で、Agent はそれで `ModuleDataAccessScope` を開きます。バックグラウンド実行なのでリクエストの `DataService` は使えず、意味検索の再索引と同じく「ユーザー Id を固定した DataService」を新しく開きます

@@ -51,7 +51,7 @@ namespace Extras.Server.AI
                 chatClientFactory,
                 () => new DbAccessor(config.DataSources),
                 () => DesignerService.GetDesignData(),
-                folder => DesignDataFileManager.GetResourceTexts(config.DesignFileDirectory, folder, ".md", ".txt").Select(e => new AIChatDocument(e.Name, e.Text)).ToList(),
+                folder => AIChatDocument.ReadResources(config.DesignFileDirectory, folder),
                 options,
                 //SemanticSearchField を置いたモジュールを search_records (意味検索) で探せるようにする (埋め込みプロバイダ未設定ならツールは付かない)
                 semanticSearch: SemanticSearchIndex.Service);
@@ -72,16 +72,12 @@ namespace Extras.Server.AI
                     return Task.FromResult(new ModuleDataAccessScope(dataService.ModuleDataIO, dataService, dataService.DbAccess));
                 },
                 () => DesignerService.GetDesignData(),
-                folder => DesignDataFileManager.GetResourceTexts(config.DesignFileDirectory, folder, ".md", ".txt").Select(e => new AIChatDocument(e.Name, e.Text)).ToList(),
+                folder => AIChatDocument.ReadResources(config.DesignFileDirectory, folder),
                 config.AIChat.ModuleDataAccess,
                 //SemanticSearchField を置いたモジュールを search_records (意味検索) で探せるようにする。権限は一覧検索と同じに効く
                 semanticSearch: SemanticSearchIndex.Service,
                 //AI に見せる設計は、そのユーザーへ画面用に送るデザイン (ブラウザが受け取るものと同じ範囲)
-                designForFront: async userId =>
-                {
-                    await using var dataService = new DataService(userId);
-                    return dataService.Design.ForFrontDesignData(await dataService.ModuleDataIO.AuthorizationChecker.GetCurrentUserAsync());
-                });
+                designForFront: currentUser => new RequestDesign().ForFrontDesignData(currentUser));
         }
     }
 }

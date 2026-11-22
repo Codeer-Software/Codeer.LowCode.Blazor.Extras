@@ -874,5 +874,29 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
             var toolResult = client.Calls[1].SelectMany(m => m.Contents.OfType<FunctionResultContent>()).Single();
             Assert.That(toolResult.Result?.ToString(), Does.Contain("\"totalCount\":3"));
         }
+
+        [Test]
+        public async Task designForFrontには依頼したユーザーの行が渡り_返したデザインが設計として出る()
+        {
+            var client = new FakeChatClient()
+                .Call("list_modules", new Dictionary<string, object?>())
+                .Text("以上です。");
+            var users = new List<string?>();
+            var front = new DesignData();
+            front.AddModule(new ModuleDesign { Name = "OnlyInFront" });
+            var agent = new ModuleDataAccessAgent(() => client, OpenScope, () => _designData, null, new ModuleDataAccessOptions { StreamPartialReplies = false },
+                designForFront: user =>
+                {
+                    users.Add((user?.Fields["Id"] as Codeer.LowCode.Blazor.Repository.Data.IdFieldData)?.Value);
+                    return front;
+                });
+
+            await agent.ReplyAsync(new AIChatAgentRequest { ConversationId = "c", Message = "モジュールは", UserName = "2" }, new Progress(), CancellationToken.None);
+
+            Assert.That(users, Is.EqualTo(new[] { "2" }));
+            var toolResult = client.Calls[1].SelectMany(m => m.Contents.OfType<FunctionResultContent>()).Single().Result?.ToString();
+            Assert.That(toolResult, Does.Contain("OnlyInFront"));
+            Assert.That(toolResult, Does.Not.Contain("Order"));
+        }
     }
 }
