@@ -10,25 +10,31 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat.DesignKnowledge
     /// 業務の意味に効くものだけを抜く: モジュール名・表・データソース、フィールドの表示名と型と DB 列、候補値 (コード → 名称)、
     /// リンク (結合の相手とキー)、システム項目 (Id / 論理削除)、行の閲覧条件の有無、スクリプト。
     /// QueryField の SQL はデザインプロジェクトの .sql ファイルにあり実行エンジン専用のバッファに読まれるだけなので出さない (AI はスキーマと定義から自分で SQL を書く)。
+    /// <para>
+    /// showDbNames = DB の名前 (データソース・表・列) と、SQL を書くための注意 (論理削除の列・行の閲覧条件) を出すか。SQL を書く Agent だけ true。
+    /// false のときに出すのは、本体が画面へ送るデザインと同じ範囲 (本体は画面へ送るデザインから DB の名前を伏せる)。
+    /// isVisible = 一覧と詳細に出すモジュールの絞り (null なら全部)。出さないモジュールは「無い」のと同じ扱いにする。
+    /// </para>
     /// </summary>
     internal static class DesignDescriber
     {
         /// <summary>モジュール一覧 (小さい。プロンプトに常時入れられる量を目指す)。</summary>
-        public static string ListModules(DesignData design)
+        public static string ListModules(DesignData design, bool showDbNames = true, Func<ModuleDesign, bool>? isVisible = null)
         {
             var sb = new StringBuilder();
             sb.AppendLine("モジュール (アプリの画面 / データの単位) の一覧。詳細は describe_module で取る。");
             foreach (var name in design.Modules.GetModuleNames())
             {
                 var module = design.Modules.Find(name);
-                if (module == null) continue;
+                if (module == null || isVisible?.Invoke(module) == false) continue;
                 sb.Append("- ").Append(module.Name);
                 AppendTitle(sb, design, module);
-                if (!string.IsNullOrEmpty(module.DbTable))
-                    sb.Append(": 表 ").Append(module.DbTable).Append(string.IsNullOrEmpty(module.DataSourceName) ? "" : " @ " + module.DataSourceName);
-                else
+                if (string.IsNullOrEmpty(module.DbTable))
                     sb.Append(": 表なし (画面や集計のみ)");
-                var links = module.Fields.OfType<LinkFieldDesign>().Select(l => l.SearchCondition.ModuleName).Where(n => !string.IsNullOrEmpty(n)).Distinct().ToList();
+                else if (showDbNames)
+                    sb.Append(": 表 ").Append(module.DbTable).Append(string.IsNullOrEmpty(module.DataSourceName) ? "" : " @ " + module.DataSourceName);
+                var links = module.Fields.OfType<LinkFieldDesign>().Select(l => l.SearchCondition.ModuleName)
+                    .Where(n => !string.IsNullOrEmpty(n) && (isVisible == null || design.Modules.Find(n) is { } target && isVisible(target))).Distinct().ToList();
                 if (links.Count > 0) sb.Append("; リンク先: ").Append(string.Join(", ", links));
                 var urls = PageUrls(design, module);
                 if (urls != null) sb.Append("; URL ").Append(urls.Value.List);
@@ -102,7 +108,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat.DesignKnowledge
         }
 
         /// <summary>1 モジュールの詳細。見つからなければ null。</summary>
-        public static string? DescribeModule(DesignData design, string moduleName, int maxScriptChars)
+        public static string? DescribeModule(DesignData design, string moduleName, int maxScriptChars, bool showDbNames = true, Func<ModuleDesign, bool>? isVisible = null)
         {
             var module = design.Modules.Find(moduleName);
             if (module == null)
@@ -113,32 +119,37 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat.DesignKnowledge
                 if (alt == null) return null;
                 module = design.Modules.Find(alt)!;
             }
+            if (isVisible?.Invoke(module) == false) return null;
 
             var sb = new StringBuilder();
             sb.Append("# モジュール ").Append(module.Name);
             AppendTitle(sb, design, module);
             sb.AppendLine();
-            if (!string.IsNullOrEmpty(module.DbTable))
-                sb.Append("表: ").Append(module.DbTable).Append(string.IsNullOrEmpty(module.DataSourceName) ? "" : " (データソース " + module.DataSourceName + ")").AppendLine();
-            else
+            if (string.IsNullOrEmpty(module.DbTable))
                 sb.AppendLine("表: なし (DB に保存しないモジュール)");
+            else if (showDbNames)
+                sb.Append("表: ").Append(module.DbTable).Append(string.IsNullOrEmpty(module.DataSourceName) ? "" : " (データソース " + module.DataSourceName + ")").AppendLine();
 
-            var logicalDelete = module.Fields.FirstOrDefault(f => f.Name == SystemFieldNames.LogicalDelete) as DbValueFieldDesignBase;
-            if (logicalDelete != null && !string.IsNullOrEmpty(logicalDelete.DbColumn))
-                sb.Append("論理削除: 列 ").Append(logicalDelete.DbColumn).AppendLine(" が真の行は削除済みとして扱う (通常は集計から除く)");
-            if (module.DataReadCondition?.Condition != null)
-                sb.AppendLine("行の閲覧条件: あり (画面ではユーザーに応じて行が絞られる。SQL では絞られないので注意)");
+            //SQL を書くための注意。SQL を書かない Agent では、論理削除も行の条件も読み出しの側で効くので出さない
+            if (showDbNames)
+            {
+                var logicalDelete = module.Fields.FirstOrDefault(f => f.Name == SystemFieldNames.LogicalDelete) as DbValueFieldDesignBase;
+                if (logicalDelete != null && !string.IsNullOrEmpty(logicalDelete.DbColumn))
+                    sb.Append("論理削除: 列 ").Append(logicalDelete.DbColumn).AppendLine(" が真の行は削除済みとして扱う (通常は集計から除く)");
+                if (module.DataReadCondition?.Condition != null)
+                    sb.AppendLine("行の閲覧条件: あり (画面ではユーザーに応じて行が絞られる。SQL では絞られないので注意)");
+            }
             var urls = PageUrls(design, module);
             if (urls != null)
             {
                 var idColumn = (module.Fields.FirstOrDefault(f => f.Name == SystemFieldNames.Id) as DbValueFieldDesignBase)?.DbColumn;
                 sb.Append("画面 URL: 一覧 ").Append(urls.Value.List).Append(" / 詳細 ").Append(urls.Value.Detail);
-                if (!string.IsNullOrEmpty(idColumn)) sb.Append(" ({Id} は列 ").Append(idColumn).Append(" の値)");
+                if (showDbNames && !string.IsNullOrEmpty(idColumn)) sb.Append(" ({Id} は列 ").Append(idColumn).Append(" の値)");
                 sb.AppendLine();
             }
 
             sb.AppendLine();
-            sb.AppendLine("## フィールド (名前 [表示名] 型, DB 列, 補足)");
+            sb.AppendLine(showDbNames ? "## フィールド (名前 [表示名] 型, DB 列, 補足)" : "## フィールド (名前 [表示名] 型, 補足)");
             foreach (var field in module.Fields)
             {
                 var type = field.GetType().Name.Replace("FieldDesign", "");
@@ -147,11 +158,12 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat.DesignKnowledge
                 sb.Append("- ").Append(field.Name);
                 if (!string.IsNullOrEmpty(display) && display != field.Name) sb.Append(" [").Append(display).Append(']');
                 sb.Append(' ').Append(type);
-                if (!string.IsNullOrEmpty(column)) sb.Append(", 列 ").Append(column);
+                if (showDbNames && !string.IsNullOrEmpty(column)) sb.Append(", 列 ").Append(column);
                 if (field is ValueFieldDesignBase { IsRequired: true }) sb.Append(", 必須");
                 var candidates = Candidates(design, field);
                 if (candidates.Count > 0) sb.Append(", 候補値: ").Append(string.Join(", ", candidates));
-                if (field is LinkFieldDesign link && !string.IsNullOrEmpty(link.SearchCondition.ModuleName))
+                if (field is LinkFieldDesign link && !string.IsNullOrEmpty(link.SearchCondition.ModuleName)
+                    && (isVisible == null || design.Modules.Find(link.SearchCondition.ModuleName) is { } target && isVisible(target)))
                 {
                     sb.Append(", リンク → ").Append(link.SearchCondition.ModuleName).Append('.').Append(string.IsNullOrEmpty(link.ValueVariable) ? SystemFieldNames.Id : link.ValueVariable);
                     if (!string.IsNullOrEmpty(link.DisplayTextVariable)) sb.Append(" (表示は ").Append(link.DisplayTextVariable).Append(')');

@@ -1,4 +1,5 @@
 using Codeer.LowCode.Blazor.DesignLogic;
+using Codeer.LowCode.Blazor.DesignLogic.Transfer;
 using Codeer.LowCode.Blazor.Repository.Data;
 
 namespace Extras.Server.Services
@@ -18,5 +19,8 @@ namespace Extras.Server.Services
 
         //フロントへ渡すデザイン (ユーザーごとのページフレームの解決つき)
         public byte[] ForFront(ModuleData? currentUser) => _design.ForFront(currentUser);
+
+        //フロントへ渡すデザインをそのまま読んだもの (そのユーザーのブラウザが持つデザインと同じ内容。AI に見せる設計に使う)
+        public DesignData ForFrontDesignData(ModuleData? currentUser) => DesignDataTransferLogic.ToDesignData(new MemoryStream(ForFront(currentUser)));
     }
 }

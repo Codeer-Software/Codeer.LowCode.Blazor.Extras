@@ -3,6 +3,7 @@ using Codeer.LowCode.Blazor.DesignLogic;
 using Codeer.LowCode.Blazor.Extras.Server.AI.Chat.ChatClient;
 using Codeer.LowCode.Blazor.Extras.Server.AI.Chat.DesignKnowledge;
 using Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch;
+using Codeer.LowCode.Blazor.Repository.Design;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Logging;
 
@@ -56,7 +57,11 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat.RawDataAccess
                 StreamPartialReplies = options.StreamPartialReplies,
                 LoggerFactory = loggerFactory,
             };
-            if (design != null || documents != null) conversation.ToolSets.Add(new DesignKnowledgeToolSet(design, documents));
+            //設計として見せるのは、この Agent が読めるデータソース (DataSourceNames) のモジュールと、表を持たないモジュール (画面のロジック)。
+            //読めないデータソースの表は SQL を実行できないので案内しない
+            var dataSourceNames = new HashSet<string>(options.DataSourceNames ?? Array.Empty<string>(), StringComparer.OrdinalIgnoreCase);
+            if (design != null || documents != null)
+                conversation.ToolSets.Add(new DesignKnowledgeToolSet(design, documents, showDbNames: true, isVisible: (module, _) => IsReadable(module, dataSourceNames)));
             var rawDataAccess = new RawDataAccessToolSet(dbAccessorFactory, design, options);
             conversation.ToolSets.Add(rawDataAccess);
             if (design != null && semanticSearch != null)
@@ -69,6 +74,9 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat.RawDataAccess
             conversation.ToolSets.Add(new ChartToolSet());
             _agent = new ChatClientAgent(clientFactory, conversation);
         }
+
+        internal static bool IsReadable(ModuleDesign module, ISet<string> dataSourceNames)
+            => string.IsNullOrEmpty(module.DbTable) || dataSourceNames.Contains(module.DataSourceName ?? string.Empty);
 
         public Task<AIChatReply> ReplyAsync(AIChatAgentRequest request, IAIChatProgress progress, CancellationToken cancellationToken)
             => _agent.ReplyAsync(request, progress, cancellationToken);

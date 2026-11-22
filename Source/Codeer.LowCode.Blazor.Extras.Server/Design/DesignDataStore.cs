@@ -25,6 +25,13 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Design
         public byte[] ForFront(IPageLinkUrlResolver pageLinkUrlResolver, ModuleData? currentUser)
             => TransferData.AddResolvedPageFrames(DesignData.ResolvePageFrames(pageLinkUrlResolver, currentUser)).ToBinary();
 
+        /// <summary>
+        /// フロントへ渡す形 (<see cref="ForFront"/>) をデザインとして読んだもの = そのユーザーのブラウザが持つデザインと同じ内容
+        /// (DB の名前と SQL は伏せてあり、ジョブのスクリプトは入っていない)。サーバーの機能が「ユーザーに見せてよい設計」を扱うときに使う。
+        /// </summary>
+        public DesignData ForFrontDesignData(IPageLinkUrlResolver pageLinkUrlResolver, ModuleData? currentUser)
+            => DesignDataTransferLogic.ToDesignData(new MemoryStream(ForFront(pageLinkUrlResolver, currentUser)));
+
         /// <summary>同じプロセスで動かすホスト (WPF / WinForms) へ渡す形。ページフレームをユーザーごとに解決した複製 (元は変えない)。</summary>
         public DesignData ForDesktop(IPageLinkUrlResolver pageLinkUrlResolver, ModuleData? currentUser)
         {

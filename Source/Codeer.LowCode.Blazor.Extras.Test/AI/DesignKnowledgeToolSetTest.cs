@@ -27,6 +27,119 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
             return result is JsonElement e ? e.GetString() ?? e.ToString() : result?.ToString() ?? string.Empty;
         }
 
+        [Test]
+        public async Task DBの名前を出さない指定では_データソースと表と列とSQL向けの注意が出ない()
+        {
+            var design = CreateDesign();
+            design.Modules.Find("Order")!.DataReadCondition = new() { Condition = new Codeer.LowCode.Blazor.Repository.Match.FieldValueMatchCondition() };
+            var toolSet = new DesignKnowledgeToolSet(() => design, null, showDbNames: false);
+            var tools = toolSet.CreateTools(Context()).ToList();
+
+            var all = toolSet.GetInstructions(Context())
+                + await InvokeAsync(tools, "list_modules")
+                + await InvokeAsync(tools, "describe_module", new() { ["moduleName"] = "Order" })
+                + await InvokeAsync(tools, "describe_module", new() { ["moduleName"] = "Customer" })
+                + string.Join("\n", tools.OfType<AIFunction>().Select(t => t.Description));
+
+            //DB の名前 (データソース・表・列) と、SQL を書くための注意は出ない
+            foreach (var hidden in new[] { "表 orders", "表: orders", "customers", "customer_id", "is_deleted", "amount", "status", "kind", "@ Main", "データソース", "DB 列", "論理削除", "行の閲覧条件", "SQL", "get_schema" })
+                Assert.That(all, Does.Not.Contain(hidden), hidden);
+
+            //項目・候補値・リンク・スクリプト・画面 URL は出る
+            var order = await InvokeAsync(tools, "describe_module", new() { ["moduleName"] = "Order" });
+            Assert.That(order, Does.Contain("- Amount [金額] Number"));
+            Assert.That(order, Does.Contain("候補値: 1=受付, 9=完了"));
+            Assert.That(order, Does.Contain("リンク → Customer.Id (表示は Name)"));
+            Assert.That(order, Does.Contain("Amount_OnDataChanged"));
+            Assert.That(order, Does.Contain("詳細 /Main/orders/{Id}"));
+        }
+
+        [Test]
+        public async Task 見せないモジュールは_一覧にも詳細にもリンク先にも出ない()
+        {
+            var design = CreateDesign();
+            var tools = new DesignKnowledgeToolSet(() => design, null, showDbNames: true, isVisible: (module, _) => module.Name != "Customer").CreateTools(Context()).ToList();
+
+            var list = await InvokeAsync(tools, "list_modules");
+            Assert.That(list, Does.Contain("- Order"));
+            Assert.That(list, Does.Not.Contain("Customer"));
+
+            //無いモジュールと同じ答え
+            Assert.That(await InvokeAsync(tools, "describe_module", new() { ["moduleName"] = "Customer" }), Does.Contain("モジュール 'Customer' はありません"));
+            Assert.That(await InvokeAsync(tools, "describe_module", new() { ["moduleName"] = "得意先" }), Does.Contain("はありません"));
+
+            //リンクの相手としても案内しない (項目自体は残る)
+            var order = await InvokeAsync(tools, "describe_module", new() { ["moduleName"] = "Order" });
+            Assert.That(order, Does.Contain("- Customer [得意先] Link"));
+            Assert.That(order, Does.Not.Contain("リンク →"));
+        }
+
+        sealed class UrlResolver : IPageLinkUrlResolver
+        {
+            public string GetModuleUrl(string currentPageFrame, PageLink pageLink) => "/" + currentPageFrame + "/" + pageLink.Module;
+        }
+
+        [Test]
+        public async Task 画面用に送るデザインを渡すと_ブラウザが受け取る範囲だけが見える()
+        {
+            //サーバーが持つデザイン (SQL 本文とジョブのスクリプト入り) から、ホストがブラウザへ返すのと同じ手順で画面用のデザインを作る
+            var server = CreateDesign();
+            server.Modules.Find("Order")!.Fields.OfType<QueryFieldDesign>().Single().QuerySetting.Parameters.Add(new DbParameterSetting { Name = "secret_param", DbType = "text", IsParameter = true });
+            server.JobScripts["Nightly"] = "void Run() { /* job-secret */ }";
+            var transfer = Codeer.LowCode.Blazor.DesignLogic.Transfer.DesignDataTransferLogic.CreateTransferDesignData(server);
+            var bytes = Codeer.LowCode.Blazor.DesignLogic.Transfer.DesignDataTransferLogic.ToBinary(
+                Codeer.LowCode.Blazor.DesignLogic.Transfer.DesignDataTransferLogic.AddResolvedPageFrames(transfer, server.ResolvePageFrames(new UrlResolver(), null)));
+            var forFront = Codeer.LowCode.Blazor.DesignLogic.Transfer.DesignDataTransferLogic.ToDesignData(new MemoryStream(bytes));
+
+            //渡したデザインに DB の名前は残っていない (本体が伏せている)
+            Assert.That(forFront.Modules.Find("Order")!.DbTable, Is.EqualTo("*"));
+            Assert.That(forFront.JobScripts, Is.Empty);
+
+            var users = new List<string>();
+            var toolSet = new DesignKnowledgeToolSet(context => { users.Add(context.Request.UserName); return Task.FromResult<DesignData?>(forFront); }, null, showDbNames: false);
+            var tools = toolSet.CreateTools(Context()).ToList();
+
+            var list = await InvokeAsync(tools, "list_modules");
+            var order = await InvokeAsync(tools, "describe_module", new() { ["moduleName"] = "Order" });
+            var customer = await InvokeAsync(tools, "describe_module", new() { ["moduleName"] = "Customer" });
+            var all = list + order + customer;
+
+            foreach (var hidden in new[] { "表 orders", "customers", "customer_id", "is_deleted", "secret_param", "job-secret", "表 *", "表: *", "列 *", "@ *", "データソース" })
+                Assert.That(all, Does.Not.Contain(hidden), hidden);
+
+            //項目・候補値・リンク・スクリプト・画面の呼び名と URL は出る
+            Assert.That(list, Does.Contain("- Order (受注)"));
+            Assert.That(order, Does.Contain("- Amount [金額] Number"));
+            Assert.That(order, Does.Contain("候補値: 1=受付, 9=完了"));
+            Assert.That(order, Does.Contain("リンク → Customer.Id (表示は Name)"));
+            Assert.That(order, Does.Contain("Amount_OnDataChanged"));
+            Assert.That(order, Does.Contain("詳細 /Main/orders/{Id}"));
+
+            //依頼したユーザーで取り、1 回の返事の中では取り直さない
+            Assert.That(users, Is.EqualTo(new[] { "u" }));
+        }
+
+        [Test]
+        public async Task デザインを取れなければ_設計が読めないと答える()
+        {
+            var tools = new DesignKnowledgeToolSet((AIChatToolContext _) => throw new InvalidOperationException("x"), null, showDbNames: false).CreateTools(Context()).ToList();
+            Assert.That(await InvokeAsync(tools, "list_modules"), Does.Contain("設計が読めません"));
+        }
+
+        [Test]
+        public void DB直版が設計として見せるのは_読めるデータソースのモジュールと表を持たないモジュール()
+        {
+            var readable = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "AIReadOnly" };
+            bool IsReadable(string dataSource, string table)
+                => Codeer.LowCode.Blazor.Extras.Server.AI.Chat.RawDataAccess.RawDataAccessAgent.IsReadable(new ModuleDesign { Name = "M", DataSourceName = dataSource, DbTable = table }, readable);
+
+            Assert.That(IsReadable("AIReadOnly", "orders"), Is.True);
+            Assert.That(IsReadable("aireadonly", "orders"), Is.True);
+            Assert.That(IsReadable("Main", "orders"), Is.False);
+            Assert.That(IsReadable("", "orders"), Is.False);
+            Assert.That(IsReadable("Main", ""), Is.True);   //表なし = 画面のロジック
+        }
+
         static DesignData CreateDesign()
         {
             var design = new DesignData();
@@ -81,7 +194,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
         public async Task list_modulesは表とリンク先を含む一覧を返す()
         {
             var design = CreateDesign();
-            var tools = new DesignKnowledgeToolSet(() => design, null).CreateTools(Context()).ToList();
+            var tools = new DesignKnowledgeToolSet(() => design, null, showDbNames: true).CreateTools(Context()).ToList();
             Assert.That(tools.Select(t => t.Name), Is.EqualTo(new[] { "list_modules", "describe_module" }), "文書が無ければ read_document は付かない");
 
             var list = await InvokeAsync(tools, "list_modules");
@@ -93,7 +206,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
         public async Task describe_moduleはフィールドと候補値とリンクと論理削除とスクリプトを返す()
         {
             var design = CreateDesign();
-            var tools = new DesignKnowledgeToolSet(() => design, null).CreateTools(Context()).ToList();
+            var tools = new DesignKnowledgeToolSet(() => design, null, showDbNames: true).CreateTools(Context()).ToList();
             var text = await InvokeAsync(tools, "describe_module", new() { ["moduleName"] = "Order" });
 
             Assert.That(text, Does.Contain("# モジュール Order (受注)"));
@@ -113,7 +226,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
         public async Task describe_moduleは表示名や大文字小文字の違いも寄せ無ければ案内を返す()
         {
             var design = CreateDesign();
-            var tools = new DesignKnowledgeToolSet(() => design, null).CreateTools(Context()).ToList();
+            var tools = new DesignKnowledgeToolSet(() => design, null, showDbNames: true).CreateTools(Context()).ToList();
             Assert.That(await InvokeAsync(tools, "describe_module", new() { ["moduleName"] = "受注" }), Does.Contain("# モジュール Order"));
             Assert.That(await InvokeAsync(tools, "describe_module", new() { ["moduleName"] = "customer" }), Does.Contain("# モジュール Customer"));
             Assert.That(await InvokeAsync(tools, "describe_module", new() { ["moduleName"] = "Nope" }), Does.Contain("list_modules"));
@@ -122,13 +235,13 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
         [Test]
         public async Task 文書は一覧が説明に入りread_documentで本文が読める()
         {
-            var toolSet = new DesignKnowledgeToolSet(null, Documents);
+            var toolSet = new DesignKnowledgeToolSet((Func<DesignData?>?)null, Documents, showDbNames: true);
             var instructions = toolSet.GetInstructions(Context());
             Assert.That(instructions, Does.Contain("### 文書: 用語集"), "小さい文書は全文がプロンプトに入る");
             Assert.That(instructions, Does.Contain("売上 = 受注の金額の合計"));
             Assert.That(instructions, Does.Not.Contain("list_modules"), "設計が無ければ設計の説明は入らない");
 
-            var large = new DesignKnowledgeToolSet(null, Documents, inlineDocumentsMaxChars: 10, excerptChars: 12);
+            var large = new DesignKnowledgeToolSet((Func<DesignData?>?)null, Documents, showDbNames: true, inlineDocumentsMaxChars: 10, excerptChars: 12);
             Assert.That(large.GetInstructions(Context()), Does.Contain("- 用語集: 用語集 売上 = 受注の…"), "大きければ一覧と抜粋");
             Assert.That(large.GetInstructions(Context()), Does.Not.Contain("### 文書"));
 

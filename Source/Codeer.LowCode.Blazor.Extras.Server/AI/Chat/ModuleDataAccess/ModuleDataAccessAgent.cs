@@ -26,7 +26,12 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat.ModuleDataAccess
     ///     () => AppDesign.Store.GetDesignData(),                     // デザイン定義 (ホットリロードで変わるので都度)
     ///     folder => DesignDataFileManager.GetResourceTexts(dir, folder, ".md", ".txt")   // 補足文書 (デザインの Resources/{DocumentFolder}。null 可)
     ///         .Select(e => new AIChatDocument(e.Name, e.Text)).ToList(),
-    ///     new ModuleDataAccessOptions());
+    ///     new ModuleDataAccessOptions(),
+    ///     designForFront: async userId =>                             // AI に見せる設計 = そのユーザーへ画面用に送るデザイン
+    ///     {
+    ///         await using var ds = new DataService(userId);
+    ///         return ds.Design.ForFrontDesignData(await ds.ModuleDataIO.AuthorizationChecker.GetCurrentUserAsync());
+    ///     });
     /// </code>
     /// </summary>
     public sealed class ModuleDataAccessAgent : IAIChatAgent
@@ -44,9 +49,15 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat.ModuleDataAccess
         /// <param name="loggerFactory">ツール呼び出しの実行ログとモデル呼び出しのログの出力先 (ILogger。監査ログ (AuditLog) ではない)。null ならログなし</param>
         /// <param name="semanticSearch">意味検索 (SemanticSearchField のサーバー側入口。保存時の索引付けに使っているものと同じ)。渡すと、設計に SemanticSearchField があり埋め込みプロバイダが設定されているとき search_records が付く。
         /// 検索は本体の一覧検索の条件 (SemanticMatchCondition) として走るので、行の条件・項目の読み取り権限が効く。null なら意味検索なし</param>
+        /// <param name="designForFront">
+        /// ユーザー Id → そのユーザーへ画面用に送るデザイン (<see cref="Design.LoadedDesign.ForFrontDesignData"/>)。渡すと、AI に見せる設計 (list_modules / describe_module) は
+        /// これになる = AI が知れる設計は、そのユーザーのブラウザが受け取るものと同じ範囲 (DB の名前と SQL は本体が伏せ済み・ジョブのスクリプトは入っていない・ページフレームはそのユーザーに解決済み)。
+        /// null なら <paramref name="design"/> (サーバーが持つデザイン) から DB の名前を除いて見せる
+        /// </param>
         public ModuleDataAccessAgent(Func<IChatClient> clientFactory, Func<string, Task<ModuleDataAccessScope>> openScope,
             Func<DesignData?> design, Func<string, IReadOnlyList<AIChatDocument>>? documents,
-            ModuleDataAccessOptions options, ILoggerFactory? loggerFactory = null, SemanticSearchService? semanticSearch = null)
+            ModuleDataAccessOptions options, ILoggerFactory? loggerFactory = null, SemanticSearchService? semanticSearch = null,
+            Func<string, Task<DesignData?>>? designForFront = null)
         {
             var conversation = new ChatClientAgentOptions
             {
@@ -59,7 +70,10 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat.ModuleDataAccess
                 StreamPartialReplies = options.StreamPartialReplies,
                 LoggerFactory = loggerFactory,
             };
-            conversation.ToolSets.Add(new DesignKnowledgeToolSet(design, documents));
+            //SQL を書かせないので DB の名前 (データソース・表・列) は見せない (本体が画面へ送るデザインと同じ範囲)
+            conversation.ToolSets.Add(designForFront == null
+                ? new DesignKnowledgeToolSet(design, documents, showDbNames: false)
+                : new DesignKnowledgeToolSet(context => designForFront(context.Request.UserName), documents, showDbNames: false));
             conversation.ToolSets.Add(new ModuleDataAccessToolSet(openScope, design, options, semanticSearch == null ? null : semanticSearch.GetProvider));
             conversation.ToolSets.Add(new ChartToolSet());
             _agent = new ChatClientAgent(clientFactory, conversation);
