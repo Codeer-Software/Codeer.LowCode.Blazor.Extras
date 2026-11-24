@@ -123,7 +123,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
             }
         }
 
-        //送信で消す従属レコード (Delete / SearchDelete) と更新する従属レコードの親を、保存の前に読んで控える (消える前 / 付け替える前の親)
+        //送信で消す従属レコード (Delete。一覧の完全洗い替えで消える行も本体が先に Delete に直している) と更新する従属レコードの親を、保存の前に読んで控える (消える前 / 付け替える前の親)
         static async Task AddParentsBeforeSaveAsync(ModuleDataIOSystemAccess io, Dictionary<string, List<OwnedParent>> ownedParents, List<ModuleSubmitData> transactionData, Targets targets)
         {
             foreach (var submit in transactionData)
@@ -134,18 +134,6 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch
                     if (!ownedParents.TryGetValue(moduleName, out var parents) || string.IsNullOrEmpty(id) || IdFieldData.IsTemporaryId(id)) continue;
                     var row = await io.GetWithOwnedRecordsAsync(moduleName, id, _ => false);
                     if (row != null) await AddParentsAsync(io, parents, row, targets);
-                }
-                foreach (var searchDelete in submit.SearchDelete)
-                {
-                    if (!ownedParents.TryGetValue(searchDelete.ModuleName, out var parents)) continue;
-                    var condition = searchDelete.JsonClone();
-                    condition.SelectFields.Clear();
-                    for (var pageIndex = 0; ; pageIndex++)
-                    {
-                        var page = await io.GetListAsync(condition, pageIndex);
-                        foreach (var row in page.Items) await AddParentsAsync(io, parents, row, targets);
-                        if (pageIndex + 1 >= page.PageCount || page.Items.Count == 0) break;
-                    }
                 }
             }
         }

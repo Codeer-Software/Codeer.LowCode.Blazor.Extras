@@ -1116,12 +1116,31 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AI
         }
 
         [Test]
-        public async Task 条件で消す子の親の文章が作り直される()
+        public async Task 一覧の完全洗い替えで消す子の親の文章が作り直される()
         {
-            //SearchDelete (条件で消す) の行の持ち主は保存の前に読んでおく
+            //洗い替えで消える行は本体が送信の Delete に直す。その行の持ち主は保存の前に読んでおく
             await SetUpContactSearchAsync();
-            var delete = new SearchCondition("ContactTags") { Condition = new FieldValueMatchCondition { SearchTargetVariable = "OwnerId.Value", Comparison = MatchComparison.Equal, Value = MultiTypeValue.Create("1") } };
-            AssertNoError(await CreateIO(Indexer()).SubmitWithTransactionAsync([new ModuleSubmitData { ModuleName = "Company", Id = "1", SearchDelete = [delete] }]));
+            //社員のタグを一覧で洗い替える別の画面 (社員の表を持つ。意味検索のフィールドは無い)
+            var sheet = new ModuleDesign { Name = "ContactTagSheet", DataSourceName = Ds, DbTable = "contacts", CanCreate = true, CanUpdate = true, CanDelete = true };
+            sheet.Fields.Add(new IdFieldDesign { Name = "Id", DbColumn = "id" });
+            sheet.Fields.Add(new ListFieldDesign
+            {
+                Name = "Tags",
+                ReplaceMode = ListReplaceMode.All,
+                CanCreate = true,
+                CanUpdate = true,
+                CanDelete = true,
+                SearchCondition = new SearchCondition("ContactTags")
+                {
+                    Condition = new FieldVariableMatchCondition { SearchTargetVariable = "OwnerId.Value", Comparison = MatchComparison.Equal, Variable = "Id.Value" },
+                },
+            });
+            _design.AddModule(sheet);
+            //社員 1 のデータに一覧の洗い替えの印を載せる (行は 0 件 = 今のタグを全部消す)
+            var contact = new ModuleData { Name = "ContactTagSheet" };
+            contact.Fields["Id"] = new IdFieldData { Value = "1" };
+            contact.Fields["Tags"] = new ListFieldData { IsReplaceAll = true };
+            AssertNoError(await CreateIO(Indexer()).SubmitWithTransactionAsync([new ModuleSubmitData { ModuleName = "ContactTagSheet", Id = "1", Update = [contact] }]));
             Assert.That((await _db.QueryAsync(Ds, "SELECT COUNT(*) AS c FROM contact_tags WHERE owner_id = 1", new())).Single()["c"]?.ToString(), Is.EqualTo("0"));
             Assert.That(await ContactTextAsync("1"), Is.EqualTo("名前: A"), "タグを消した社員 1 の文章を作り直す");
             Assert.That(await ContactTextAsync("2"), Is.Null, "他の社員は触らない");

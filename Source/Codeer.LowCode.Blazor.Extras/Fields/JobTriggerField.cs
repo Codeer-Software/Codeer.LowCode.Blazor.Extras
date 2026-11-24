@@ -240,7 +240,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         static string CreateArguments(Module module)
         {
             var submit = module.GetSubmitData();
-            var isEmpty = !submit.Delete.Any() && !submit.Update.Any() && !submit.Add.Any() && !submit.SearchDelete.Any() && submit.CurrentEditingData == null;
+            var isEmpty = !submit.Delete.Any() && !submit.Update.Any() && !submit.Add.Any() && submit.CurrentEditingData == null;
             var data = JsonConverterEx.SerializeObject(module.GetData(), indented: false);
             var submitJson = isEmpty ? "null" : JsonConverterEx.SerializeObject(new List<ModuleSubmitData> { submit }, indented: false);
             return "{\"data\":" + data + ",\"submit\":" + submitJson + "}";

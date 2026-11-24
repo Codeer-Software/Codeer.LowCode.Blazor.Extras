@@ -89,7 +89,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AuditLog
                 OccurredAtUtc = at, Category = AuditCategory.DataWrite, Action = "ModuleData.Submit", Result = AuditResult.Failure,
                 UserId = "u1", ClientIp = "10.0.0.1", UserAgent = "ua", RequestId = "req", Host = "web-1", Detail = "boom",
                 DesignVersion = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
-                Targets = { new AuditTarget { Module = "Customer", Id = "7", Operation = "Update" }, new AuditTarget { Module = "Order", Operation = "SearchDelete" } },
+                Targets = { new AuditTarget { Module = "Customer", Id = "7", Operation = "Update" }, new AuditTarget { Module = "Order", Operation = "Read" } },
             });
 
             await using var db = new DbAccessor(_dataSources);
@@ -106,7 +106,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.AuditLog
             Assert.That(row["host"], Is.EqualTo("web-1"));
             Assert.That(row["design_version"], Is.EqualTo("0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"));
             Assert.That(row["detail"], Is.EqualTo("boom"));
-            Assert.That(row["targets"]!.ToString(), Is.EqualTo("[{\"Module\":\"Customer\",\"Id\":\"7\",\"Operation\":\"Update\"},{\"Module\":\"Order\",\"Operation\":\"SearchDelete\"}]"));
+            Assert.That(row["targets"]!.ToString(), Is.EqualTo("[{\"Module\":\"Customer\",\"Id\":\"7\",\"Operation\":\"Update\"},{\"Module\":\"Order\",\"Operation\":\"Read\"}]"));
             Assert.That(row["occurred_at_utc"]!.ToString(), Does.StartWith("2026-09-30 01:02:03"));
         }
 

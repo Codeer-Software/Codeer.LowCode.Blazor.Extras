@@ -175,7 +175,7 @@ create index "ix_audit_log_occurred_at" on "audit_log" ("occurred_at_utc");
 | 操作 | `Targets` | `Detail` |
 |---|---|---|
 | 一覧・詳細の参照 | モジュール名の `Read` (`recordIds: true` なら行ごとの `Read` と Id) | `Rows=50` |
-| 保存 (画面)・一括取込・スクリプトの一括保存 | 行ごとの `Add` / `Update` / `Delete` と Id。条件での削除 (一覧の洗い替え) は `SearchDelete` でモジュール名だけ | `Add=3; Update=1; Delete=0` |
+| 保存 (画面)・一括取込・スクリプトの一括保存 | 行ごとの `Add` / `Update` / `Delete` と Id (一覧の完全洗い替えで消える行も行ごとの `Delete`) | `Add=3; Update=1; Delete=0` |
 | 一括取込 (ファイル) | 上に加えて、モジュール名の `Import` | 件数に加えて `File=取り込んだファイルの SHA-256` |
 | 一括ファイル出力 | 出した行ごとの `Export` と Id | `Rows=1234` |
 | メール送信 | 送信元のレコード (`Mail`) | `Total=1; Success=1; Failed=0` |
