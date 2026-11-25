@@ -250,6 +250,51 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Fields
         }
 
         [Test]
+        public async Task 一覧の読み込みに失敗したら候補を出さず打ち直したときに読み直す()
+        {
+            var client = await ClientAsync();
+            var body = Body(await client.OpenAsync("Memo", "1"));
+            var opened = client.ListCalls.Count;
+
+            //失敗しても例外は出さず、候補なし (「全員」も出ない)
+            client.ListFailure = new InvalidOperationException("network");
+            var failed = await body.GetMentionCandidatesAsync(string.Empty);
+            Assert.That(failed.Items, Is.Empty);
+            Assert.That(failed.HasPeople, Is.False);
+            Assert.That(client.ListCalls.Count, Is.EqualTo(opened + 1));
+
+            //続けて打った文字では読み直さない (打つたびに失敗する要求を出さない)。直っていても同じ
+            client.ListFailure = null;
+            Assert.That((await body.GetMentionCandidatesAsync("山")).Items, Is.Empty);
+            Assert.That((await body.GetMentionCandidatesAsync("山田")).Items, Is.Empty);
+            Assert.That(client.ListCalls.Count, Is.EqualTo(opened + 1));
+
+            //@ を打ち直すと (打った文字が空) 読み直し、以後は手元の行を使う
+            Assert.That(Names(await body.GetMentionCandidatesAsync(string.Empty)), Is.EqualTo("山田 太郎,佐藤 花子,suzuki"));
+            Assert.That(Names(await body.GetMentionCandidatesAsync("山")), Is.EqualTo("山田 太郎"));
+            Assert.That(client.ListCalls.Count, Is.EqualTo(opened + 2));
+        }
+
+        [Test]
+        public async Task 読んでも行が無かった一覧は打ち直したときに読み直す()
+        {
+            //Web のホストでは通信の失敗が空の結果で返るので、行が無いときも「読んだ」と覚えない
+            await _db.ExecuteAsync(Ds, "INSERT INTO memos (dept, body) VALUES ('総務', '')", new());
+            var client = await ClientAsync();
+            var body = Body(await client.OpenAsync("Memo", "3"));
+            var opened = client.ListCalls.Count;
+
+            Assert.That((await body.GetMentionCandidatesAsync(string.Empty)).HasPeople, Is.False);
+            Assert.That((await body.GetMentionCandidatesAsync("新")).Items, Is.Empty);
+            Assert.That(client.ListCalls.Count, Is.EqualTo(opened + 1));
+
+            await _db.ExecuteAsync(Ds, "INSERT INTO app_users (name, login, dept) VALUES ('新人', 'newcomer', '総務')", new());
+            Assert.That((await body.GetMentionCandidatesAsync("新")).Items, Is.Empty);
+            Assert.That(Names(await body.GetMentionCandidatesAsync(string.Empty)), Is.EqualTo("新人"));
+            Assert.That(client.ListCalls.Count, Is.EqualTo(opened + 2));
+        }
+
+        [Test]
         public async Task スクリプトで一覧を読み直した行を使う()
         {
             var client = await ClientAsync();

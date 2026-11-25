@@ -35,6 +35,8 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Harness
 
         /// <summary>GetListAsync に来た要求 (1 回の呼び出しが 1 要素)。</summary>
         public List<List<GetListRequest>> ListCalls { get; } = new();
+        /// <summary>設定している間、GetListAsync はこの例外で失敗する (通信の失敗の代わり。要求は ListCalls に残る)。</summary>
+        public Exception? ListFailure { get; set; }
         /// <summary>SubmitAsync に来たデータ。</summary>
         public List<List<ModuleSubmitData>> SubmitCalls { get; } = new();
 
@@ -47,6 +49,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Harness
         public async Task<List<Paging<ModuleData>>> GetListAsync(List<GetListRequest> requests)
         {
             lock (ListCalls) ListCalls.Add(requests);
+            if (ListFailure != null) throw ListFailure;
             var result = new List<Paging<ModuleData>>();
             foreach (var r in requests) result.Add(await _createIO().GetListAsync(r.Condition, r.PageIndex));
             return result;
