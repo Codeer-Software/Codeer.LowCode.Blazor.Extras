@@ -210,12 +210,13 @@ namespace Codeer.LowCode.Blazor.Extras.Test.CrossTab
         static readonly string NotTableModule = DesignCheckCode.Create(typeof(CrossTabFieldDesign), CrossTabFieldDesign.Codes.NotTableModule);
 
         [Test]
-        public void QueryFieldで定義したモジュールは集計できないと指摘される()
+        public void QueryFieldで定義したモジュールはテーブルの指摘なし()
         {
             var d = Design();
-            d.Modules.Find("Order")!.Fields.Add(new QueryFieldDesign { Name = "Query" });
-            var info = Check(d).Single(e => e.Code == NotTableModule);
-            Assert.That(((FieldDesignCheckInfo)info).Location.Member, Is.EqualTo(nameof(CrossTabFieldDesign.SearchCondition)));
+            var order = d.Modules.Find("Order")!;
+            order.DbTable = string.Empty;
+            order.Fields.Add(new QueryFieldDesign { Name = "Query" });
+            Assert.That(Check(d).Any(e => e.Code == NotTableModule), Is.False);
         }
 
         [Test]
@@ -223,7 +224,8 @@ namespace Codeer.LowCode.Blazor.Extras.Test.CrossTab
         {
             var d = Design();
             d.Modules.Find("Order")!.DbTable = string.Empty;
-            Assert.That(Check(d).Count(e => e.Code == NotTableModule), Is.EqualTo(1));
+            var info = Check(d).Single(e => e.Code == NotTableModule);
+            Assert.That(((FieldDesignCheckInfo)info).Location.Member, Is.EqualTo(nameof(CrossTabFieldDesign.SearchCondition)));
         }
 
         [Test]

@@ -1681,7 +1681,7 @@ Recipients: {1}</value>
     <value>{0} cannot be applied to {1}.</value>
   </data>
   <data name="CrossTab_NotTableModule" xml:space="preserve">
-    <value>Only modules that have a table can be aggregated (modules defined by a QueryField or without a table cannot be used): {0}</value>
+    <value>Only modules that have a table or a QueryField can be aggregated: {0}</value>
   </data>
   <data name="CrossTab_AggregateFailed" xml:space="preserve">
     <value>Could not aggregate. See the notification for the reason.</value>

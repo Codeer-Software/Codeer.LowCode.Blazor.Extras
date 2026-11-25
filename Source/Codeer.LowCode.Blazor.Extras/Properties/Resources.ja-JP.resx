@@ -1681,7 +1681,7 @@
     <value>{0} は {1} に使えません。</value>
   </data>
   <data name="CrossTab_NotTableModule" xml:space="preserve">
-    <value>集計できるのはテーブルを持つモジュールだけです (QueryField で定義したモジュール・テーブルの無いモジュールは使えません): {0}</value>
+    <value>集計できるのはテーブルか QueryField を持つモジュールだけです: {0}</value>
   </data>
   <data name="CrossTab_AggregateFailed" xml:space="preserve">
     <value>集計できませんでした。理由は画面の通知を確認してください。</value>

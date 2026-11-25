@@ -3901,7 +3901,7 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
         }
 
         /// <summary>
-        ///   Only modules that have a table can be aggregated (modules defined by a QueryField or without a table cannot be used): {0} に類似しているローカライズされた文字列を検索します。
+        ///   Only modules that have a table or a QueryField can be aggregated: {0} に類似しているローカライズされた文字列を検索します。
         /// </summary>
         internal static string CrossTab_NotTableModule {
             get {
