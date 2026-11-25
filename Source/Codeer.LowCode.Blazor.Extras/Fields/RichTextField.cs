@@ -61,7 +61,8 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
                 var candidate = ToCandidate(row);
                 if (candidate == null) continue;
                 result.HasPeople = true;
-                if (result.Items.Count == MentionCandidateLimit) continue;
+                //そろったら残りの行は見ない (人がいることも、もう分かっている)
+                if (result.Items.Count == MentionCandidateLimit) break;
                 if (text.Length > 0 && !Contains(candidate.DisplayName, text) && !Contains(candidate.LoginName, text)) continue;
                 result.Items.Add(candidate);
             }
