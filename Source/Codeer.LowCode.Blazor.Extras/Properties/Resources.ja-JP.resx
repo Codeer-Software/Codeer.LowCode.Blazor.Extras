@@ -2055,22 +2055,46 @@
   <data name="RichTextMentionCheck_NoUserModule" xml:space="preserve">
     <value>メンションを使うには、ログインユーザーのモジュール (AppSettings.CurrentUserModuleDesignName) を設定してください。</value>
   </data>
-  <data name="RichTextMentionCheck_NoLoginContract" xml:space="preserve">
-    <value>メンションを使うには、ログインユーザーのモジュール '{0}' にログインアカウント契約 (LoginAccountContractField) を置いてください。</value>
+  <data name="RichTextFieldMentionListField" xml:space="preserve">
+    <value>メンションの候補の一覧</value>
   </data>
-  <data name="RichTextFieldMentionCandidateCondition" xml:space="preserve">
-    <value>メンションの候補の条件</value>
+  <data name="RichTextFieldMentionDisplayNameField" xml:space="preserve">
+    <value>候補の表示名の項目</value>
   </data>
-  <data name="RichTextMentionCheck_ConditionModule" xml:space="preserve">
-    <value>メンションの候補の条件のモジュールが '{0}' になっています。ログインユーザーのモジュール '{1}' にしてください。</value>
+  <data name="RichTextFieldMentionLoginNameField" xml:space="preserve">
+    <value>候補のログイン ID の項目</value>
   </data>
-  <data name="RichTextMentionCheck_ConditionVariable" xml:space="preserve">
-    <value>メンションの候補の条件の '{0}' は、ログインユーザーのモジュール '{1}' にありません。</value>
+  <data name="RichTextMentionCheck_ListRequired" xml:space="preserve">
+    <value>メンションを使うには、メンションの候補の一覧 (同じモジュールの ListField) を指定してください。</value>
   </data>
-  <data name="RichTextMentionCheck_ConditionLeftCurrentUser" xml:space="preserve">
-    <value>メンションの候補の条件の左辺に '{0}' は書けません。左辺には候補になる人の項目を書き、@ を打っている人の値 (CurrentUser.〜) は右辺に書いてください。</value>
+  <data name="RichTextMentionCheck_ListNotListField" xml:space="preserve">
+    <value>メンションの候補の一覧 '{0}' は、同じモジュールの ListField ではありません (DetailList と TileList は指定できません)。</value>
   </data>
-  <data name="RichTextMentionCheck_ConditionFieldComparison" xml:space="preserve">
-    <value>メンションの候補の条件の右辺に '{0}' は書けません。候補になる人の項目どうしは比べられません。右辺には値か CurrentUser.〜 を書いてください。</value>
+  <data name="RichTextMentionCheck_ListColumnMode" xml:space="preserve">
+    <value>メンションの候補の一覧 '{0}' は列モード (DbColumn あり) です。モジュールを読む一覧にしてください。</value>
+  </data>
+  <data name="RichTextMentionCheck_ListBoundToSearchField" xml:space="preserve">
+    <value>メンションの候補の一覧 '{0}' は検索フィールド '{1}' と結び付いています。検索フィールドと結び付けていない一覧にしてください。</value>
+  </data>
+  <data name="RichTextMentionCheck_ListNotAllRecords" xml:space="preserve">
+    <value>メンションの候補の一覧 '{0}' に件数の上限があり、上限で切れた先の人が候補に出ません。上限を外すか、メモリ内ページングにしてください。</value>
+  </data>
+  <data name="RichTextMentionCheck_ListEditable" xml:space="preserve">
+    <value>メンションの候補の一覧 '{0}' は、行を編集できない設定にしてください (行の追加・更新・削除と DeleteTogether をすべて無しに)。</value>
+  </data>
+  <data name="RichTextMentionCheck_ListModule" xml:space="preserve">
+    <value>メンションの候補の一覧 '{0}' が読むモジュールが '{1}' になっています。ログインユーザーのモジュール '{2}' か、それと同じデータソース・表・Id の列のモジュールにしてください。</value>
+  </data>
+  <data name="RichTextMentionCheck_DisplayNameRequired" xml:space="preserve">
+    <value>メンションを使うには、候補の表示名の項目を指定してください。</value>
+  </data>
+  <data name="RichTextMentionCheck_RowFieldNotFound" xml:space="preserve">
+    <value>'{0}' は、メンションの候補の一覧が読むモジュール '{1}' にありません。</value>
+  </data>
+  <data name="RichTextMentionCheck_ModuleWritable" xml:space="preserve">
+    <value>モジュール '{0}' はログインユーザーのモジュール '{1}' と同じ表を見るので、書き込めない設計にしてください (作成・更新・削除をすべて不可に)。</value>
+  </data>
+  <data name="RichTextMentionCheck_ModuleLogicalDelete" xml:space="preserve">
+    <value>ログインユーザーのモジュール '{1}' は論理削除ですが、モジュール '{0}' に同じ論理削除の設定がありません。削除済みの人が候補に出ます。</value>
   </data>
 </root>

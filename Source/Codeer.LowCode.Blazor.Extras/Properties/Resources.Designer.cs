@@ -4852,6 +4852,132 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
         }
         
         /// <summary>
+        ///   Mention candidate list に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string RichTextFieldMentionListField {
+            get {
+                return ResourceManager.GetString("RichTextFieldMentionListField", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Candidate display name field に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string RichTextFieldMentionDisplayNameField {
+            get {
+                return ResourceManager.GetString("RichTextFieldMentionDisplayNameField", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Candidate login ID field に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string RichTextFieldMentionLoginNameField {
+            get {
+                return ResourceManager.GetString("RichTextFieldMentionLoginNameField", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   To use mentions, set the mention candidate list (a ListField in the same module). に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string RichTextMentionCheck_ListRequired {
+            get {
+                return ResourceManager.GetString("RichTextMentionCheck_ListRequired", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   The mention candidate list '{0}' is not a ListField in the same module (DetailList and TileList cannot be used). に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string RichTextMentionCheck_ListNotListField {
+            get {
+                return ResourceManager.GetString("RichTextMentionCheck_ListNotListField", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   The mention candidate list '{0}' is in column mode (DbColumn). Use a list that reads a module. に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string RichTextMentionCheck_ListColumnMode {
+            get {
+                return ResourceManager.GetString("RichTextMentionCheck_ListColumnMode", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   The mention candidate list '{0}' is bound to the SearchField '{1}'. Use a list that is not bound to a SearchField. に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string RichTextMentionCheck_ListBoundToSearchField {
+            get {
+                return ResourceManager.GetString("RichTextMentionCheck_ListBoundToSearchField", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   The mention candidate list '{0}' has a row limit, so people beyond the limit are not offered. Remove the limit or turn on in-memory paging. に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string RichTextMentionCheck_ListNotAllRecords {
+            get {
+                return ResourceManager.GetString("RichTextMentionCheck_ListNotAllRecords", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   The mention candidate list '{0}' must be read-only. Turn off CanCreate, CanUpdate, CanDelete and DeleteTogether. に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string RichTextMentionCheck_ListEditable {
+            get {
+                return ResourceManager.GetString("RichTextMentionCheck_ListEditable", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   The mention candidate list '{0}' reads the module '{1}'. It must read the login user module '{2}' or a module with the same data source, table and Id column. に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string RichTextMentionCheck_ListModule {
+            get {
+                return ResourceManager.GetString("RichTextMentionCheck_ListModule", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   To use mentions, set the candidate display name field. に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string RichTextMentionCheck_DisplayNameRequired {
+            get {
+                return ResourceManager.GetString("RichTextMentionCheck_DisplayNameRequired", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   The field '{0}' does not exist in the module '{1}' read by the mention candidate list. に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string RichTextMentionCheck_RowFieldNotFound {
+            get {
+                return ResourceManager.GetString("RichTextMentionCheck_RowFieldNotFound", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   The module '{0}' looks at the same table as the login user module '{1}', so it must not be writable. Turn off CanCreate, CanUpdate and CanDelete. に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string RichTextMentionCheck_ModuleWritable {
+            get {
+                return ResourceManager.GetString("RichTextMentionCheck_ModuleWritable", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   The login user module '{1}' uses logical delete, but the module '{0}' does not have the same logical delete fields. Deleted users would be offered as candidates. に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string RichTextMentionCheck_ModuleLogicalDelete {
+            get {
+                return ResourceManager.GetString("RichTextMentionCheck_ModuleLogicalDelete", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   everyone に類似しているローカライズされた文字列を検索します。
         /// </summary>
         internal static string RichTextMentionAll {
@@ -4869,58 +4995,5 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
             }
         }
         
-        /// <summary>
-        ///   To use mentions, place a LoginAccountContractField on the login user module '{0}'. に類似しているローカライズされた文字列を検索します。
-        /// </summary>
-        internal static string RichTextMentionCheck_NoLoginContract {
-            get {
-                return ResourceManager.GetString("RichTextMentionCheck_NoLoginContract", resourceCulture);
-            }
-        }
-
-        /// <summary>
-        ///   Mention candidate condition に類似しているローカライズされた文字列を検索します。
-        /// </summary>
-        internal static string RichTextFieldMentionCandidateCondition {
-            get {
-                return ResourceManager.GetString("RichTextFieldMentionCandidateCondition", resourceCulture);
-            }
-        }
-
-        /// <summary>
-        ///   The mention candidate condition targets the module &apos;{0}&apos;. It must target the login user module &apos;{1}&apos;. に類似しているローカライズされた文字列を検索します。
-        /// </summary>
-        internal static string RichTextMentionCheck_ConditionModule {
-            get {
-                return ResourceManager.GetString("RichTextMentionCheck_ConditionModule", resourceCulture);
-            }
-        }
-
-        /// <summary>
-        ///   The variable &apos;{0}&apos; in the mention candidate condition does not exist in the login user module &apos;{1}&apos;. に類似しているローカライズされた文字列を検索します。
-        /// </summary>
-        internal static string RichTextMentionCheck_ConditionVariable {
-            get {
-                return ResourceManager.GetString("RichTextMentionCheck_ConditionVariable", resourceCulture);
-            }
-        }
-
-        /// <summary>
-        ///   &apos;{0}&apos; cannot be written on the left side of the mention candidate condition. に類似しているローカライズされた文字列を検索します。
-        /// </summary>
-        internal static string RichTextMentionCheck_ConditionLeftCurrentUser {
-            get {
-                return ResourceManager.GetString("RichTextMentionCheck_ConditionLeftCurrentUser", resourceCulture);
-            }
-        }
-
-        /// <summary>
-        ///   &apos;{0}&apos; cannot be written on the right side of the mention candidate condition. に類似しているローカライズされた文字列を検索します。
-        /// </summary>
-        internal static string RichTextMentionCheck_ConditionFieldComparison {
-            get {
-                return ResourceManager.GetString("RichTextMentionCheck_ConditionFieldComparison", resourceCulture);
-            }
-        }
     }
 }

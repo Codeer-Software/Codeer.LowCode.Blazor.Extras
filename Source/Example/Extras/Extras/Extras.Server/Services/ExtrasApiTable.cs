@@ -6,7 +6,6 @@ using Codeer.LowCode.Blazor.Extras.Server.Approval;
 using Codeer.LowCode.Blazor.Extras.Server.Excel;
 using Codeer.LowCode.Blazor.Extras.Server.Jobs;
 using Codeer.LowCode.Blazor.Extras.Server.Mail;
-using Codeer.LowCode.Blazor.Extras.Server.Mention;
 using Codeer.LowCode.Blazor.Extras.Server.WebApi;
 using Extras.Server.AI;
 using Extras.Server.Jobs;
@@ -43,8 +42,6 @@ namespace Extras.Server.Services
                 new ExcelApi(),
                 //AI 文書解析 (AITextAnalyzerField)
                 new AITextAnalyzeApi(SystemConfig.Instance.AISettings),
-                //メンションの候補 (RichTextField の EnableMention)。候補はユーザーのモジュールのログインアカウント契約から引く
-                new MentionApi(),
             },
         };
     }

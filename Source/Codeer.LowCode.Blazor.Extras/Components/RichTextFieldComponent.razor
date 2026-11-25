@@ -358,9 +358,6 @@ else
 
   // ===== Mention =====
 
-  //打った文字が止まってから問い合わせるまで (TagField と同じ)
-  private const int MentionQueryDelayMs = 200;
-
   private record MentionItem(string Id, string DisplayName, string LoginName, bool IsAll);
 
   private bool _showMention;
@@ -368,7 +365,7 @@ else
   private double _mentionLeft;
   private int _mentionIndex;
   private List<MentionItem> _mentionItems = new();
-  //問い合わせの番号。後から打った文字の結果だけを使う (前の問い合わせの結果は捨てる)
+  //問い合わせの番号。候補の一覧を読んでいる間に打った文字が変わったら、後から打った文字の結果だけを使う
   private int _mentionSeq;
 
   private static string Px(double v) => v.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture) + "px";
@@ -378,17 +375,16 @@ else
   {
     var seq = ++_mentionSeq;
     if (IsDisabled || !Field.Design.EnableMention) return;
-    await Task.Delay(MentionQueryDelayMs);
-    if (seq != _mentionSeq) return;
 
+    //候補は一覧フィールドの行 (最初の @ と、一覧の条件が変わったときだけ一覧を読む。それ以外は手元の行に当てるだけ)
     var candidates = await Field.GetMentionCandidatesAsync(query);
     if (seq != _mentionSeq) return;
 
     var items = new List<MentionItem>();
-    //「全員」は打った文字が表記の先頭と一致するときだけ (何も打っていないときを含む)
+    //「全員」は一覧に人がいて、打った文字が表記の先頭と一致するときだけ (何も打っていないときを含む)
     var allLabel = Resources.RichTextMentionAll;
-    if (allLabel.StartsWith(query, StringComparison.CurrentCultureIgnoreCase)) items.Add(new MentionItem(string.Empty, allLabel, string.Empty, true));
-    items.AddRange(candidates.Select(e => new MentionItem(e.Id, e.DisplayName, e.LoginName, false)));
+    if (candidates.HasPeople && allLabel.StartsWith(query, StringComparison.CurrentCultureIgnoreCase)) items.Add(new MentionItem(string.Empty, allLabel, string.Empty, true));
+    items.AddRange(candidates.Items.Select(e => new MentionItem(e.Id, e.DisplayName, e.LoginName, false)));
 
     _mentionItems = items;
     _mentionIndex = 0;

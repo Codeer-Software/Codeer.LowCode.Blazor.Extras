@@ -347,14 +347,5 @@ namespace Codeer.LowCode.Blazor.Extras.Server.Properties {
                 return ResourceManager.GetString("WebApi_CallFailed", resourceCulture);
             }
         }
-        
-        /// <summary>
-        ///   Module '{0}' has no RichTextField named '{1}' with mentions enabled. に類似しているローカライズされた文字列を検索します。
-        /// </summary>
-        internal static string RichTextMention_NotFound {
-            get {
-                return ResourceManager.GetString("RichTextMention_NotFound", resourceCulture);
-            }
-        }
     }
 }

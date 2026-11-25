@@ -108,7 +108,4 @@
   <data name="WebApi_CallFailed" xml:space="preserve">
     <value>接続先 &apos;{0}&apos; の呼び出しに失敗しました。</value>
   </data>
-  <data name="RichTextMention_NotFound" xml:space="preserve">
-    <value>モジュール '{0}' に、メンションを使える RichTextField '{1}' がありません。</value>
-  </data>
 </root>

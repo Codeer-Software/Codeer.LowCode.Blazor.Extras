@@ -146,7 +146,7 @@ export function clearAllFormatting(editorElement) {
 
 const MENTION_MARKS = ['@', '＠'];
 const SPACE = /[\s 　]/;
-// サーバーの MentionCandidateQuery.MaxTextLength と同じ (超えた文字はサーバーも候補を返さない)
+// RichTextField.MaxMentionTextLength と同じ (超えた文字では候補を出さない)
 const MAX_MENTION_QUERY = 50;
 
 // カーソルの直前が「行頭か空白の後の @ + 空白を含まない文字」なら、その @ の位置と打った文字を返す

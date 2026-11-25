@@ -2055,22 +2055,46 @@ Recipients: {1}</value>
   <data name="RichTextMentionCheck_NoUserModule" xml:space="preserve">
     <value>To use mentions, set the login user module (AppSettings.CurrentUserModuleDesignName).</value>
   </data>
-  <data name="RichTextMentionCheck_NoLoginContract" xml:space="preserve">
-    <value>To use mentions, place a LoginAccountContractField on the login user module '{0}'.</value>
+  <data name="RichTextFieldMentionListField" xml:space="preserve">
+    <value>Mention candidate list</value>
   </data>
-  <data name="RichTextFieldMentionCandidateCondition" xml:space="preserve">
-    <value>Mention candidate condition</value>
+  <data name="RichTextFieldMentionDisplayNameField" xml:space="preserve">
+    <value>Candidate display name field</value>
   </data>
-  <data name="RichTextMentionCheck_ConditionModule" xml:space="preserve">
-    <value>The mention candidate condition targets the module '{0}'. It must target the login user module '{1}'.</value>
+  <data name="RichTextFieldMentionLoginNameField" xml:space="preserve">
+    <value>Candidate login ID field</value>
   </data>
-  <data name="RichTextMentionCheck_ConditionVariable" xml:space="preserve">
-    <value>The variable '{0}' in the mention candidate condition does not exist in the login user module '{1}'.</value>
+  <data name="RichTextMentionCheck_ListRequired" xml:space="preserve">
+    <value>To use mentions, set the mention candidate list (a ListField in the same module).</value>
   </data>
-  <data name="RichTextMentionCheck_ConditionLeftCurrentUser" xml:space="preserve">
-    <value>'{0}' cannot be written on the left side of the mention candidate condition. Write the candidate's field on the left side, and the value of the person typing @ (CurrentUser.*) on the right side.</value>
+  <data name="RichTextMentionCheck_ListNotListField" xml:space="preserve">
+    <value>The mention candidate list '{0}' is not a ListField in the same module (DetailList and TileList cannot be used).</value>
   </data>
-  <data name="RichTextMentionCheck_ConditionFieldComparison" xml:space="preserve">
-    <value>'{0}' cannot be written on the right side of the mention candidate condition. Two fields of the candidate cannot be compared. Write a value or CurrentUser.* on the right side.</value>
+  <data name="RichTextMentionCheck_ListColumnMode" xml:space="preserve">
+    <value>The mention candidate list '{0}' is in column mode (DbColumn). Use a list that reads a module.</value>
+  </data>
+  <data name="RichTextMentionCheck_ListBoundToSearchField" xml:space="preserve">
+    <value>The mention candidate list '{0}' is bound to the SearchField '{1}'. Use a list that is not bound to a SearchField.</value>
+  </data>
+  <data name="RichTextMentionCheck_ListNotAllRecords" xml:space="preserve">
+    <value>The mention candidate list '{0}' has a row limit, so people beyond the limit are not offered. Remove the limit or turn on in-memory paging.</value>
+  </data>
+  <data name="RichTextMentionCheck_ListEditable" xml:space="preserve">
+    <value>The mention candidate list '{0}' must be read-only. Turn off CanCreate, CanUpdate, CanDelete and DeleteTogether.</value>
+  </data>
+  <data name="RichTextMentionCheck_ListModule" xml:space="preserve">
+    <value>The mention candidate list '{0}' reads the module '{1}'. It must read the login user module '{2}' or a module with the same data source, table and Id column.</value>
+  </data>
+  <data name="RichTextMentionCheck_DisplayNameRequired" xml:space="preserve">
+    <value>To use mentions, set the candidate display name field.</value>
+  </data>
+  <data name="RichTextMentionCheck_RowFieldNotFound" xml:space="preserve">
+    <value>The field '{0}' does not exist in the module '{1}' read by the mention candidate list.</value>
+  </data>
+  <data name="RichTextMentionCheck_ModuleWritable" xml:space="preserve">
+    <value>The module '{0}' looks at the same table as the login user module '{1}', so it must not be writable. Turn off CanCreate, CanUpdate and CanDelete.</value>
+  </data>
+  <data name="RichTextMentionCheck_ModuleLogicalDelete" xml:space="preserve">
+    <value>The login user module '{1}' uses logical delete, but the module '{0}' does not have the same logical delete fields. Deleted users would be offered as candidates.</value>
   </data>
 </root>
