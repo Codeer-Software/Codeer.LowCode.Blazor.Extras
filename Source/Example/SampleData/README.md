@@ -93,6 +93,33 @@ ALTER TABLE app_users ADD COLUMN role TEXT;
 
 部署と役割は、ユーザーの画面 (サイドバーの「ユーザー」) でも変えられます。
 
+### メンションの候補の重さを確かめるとき (`mention_load_users.sql`)
+
+メンションの候補が 500 人のときの重さを確かめるための SQL です。「作り方」のコマンドは、引数を付けたときだけ実行します。
+
+| 引数 | ファイル | すること |
+|---|---|---|
+| `--mention-load` | `mention_load_users.sql` | `app_users` に営業部のユーザー 500 人を足す (Id 100001〜100500・名前「負荷確認 001」〜・メール `load001@example.com`〜)。何度実行しても同じ結果 |
+| `--mention-load-remove` | `mention_load_users_remove.sql` | 足した 500 人を消し、Id の採番を戻す |
+
+1. アプリを止めて、500 人を足す。
+
+   ```powershell
+   dotnet run --project Source/Example/SampleData/Setup -- --mention-load
+   ```
+
+2. 営業部の人 (申請 太郎・承認 花子 など) でログインし、メンションの画面のレコードを開く。
+3. 「本文」で `@` を打ち、候補が出るまでの時間を見る。続けて `load49` などと打つと、候補が絞られる。
+4. 終わったら、アプリを止めて 500 人を消す。
+
+   ```powershell
+   dotnet run --project Source/Example/SampleData/Setup -- --mention-load-remove
+   ```
+
+どちらの引数も、いつもの SQL (足りない表を作る・ユーザー 13 人を足す) を実行した後に、その SQL を実行します。2 つを一緒には指定できません。最後に出る行数で、`app_users` が 513 (足した後) / 13 (消した後) になっていることを確かめられます。
+
+入れている間は、ユーザーの画面などほかの画面にも 500 人が出ます。
+
 ## 表や列を足すとき
 
 設計 (`Source/Example/Design`) に表や列を足したら、このフォルダの SQL も合わせて直します。

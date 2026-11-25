@@ -4,9 +4,10 @@ using System.Text.RegularExpressions;
 using Microsoft.Data.Sqlite;
 
 // Example のテスト用 DB (SQLite) を、SampleData の SQL から作る。
-//   dotnet run --project Source/Example/SampleData/Setup [-- [DB のパス] [--reset-samples]]
+//   dotnet run --project Source/Example/SampleData/Setup [-- [DB のパス] [--reset-samples] [--mention-load | --mention-load-remove]]
 // 何度実行してもよい。今あるデータは消さない (--reset-samples を付けたときだけ、サンプルの表を作り直す)。
 // 実行する SQL と順番はここに書いてあるとおりで、README.md の「手で実行する場合」と同じ。
+// --mention-load はメンションの候補の重さを確かめるユーザー 500 人を足し、--mention-load-remove はそれを消す (いつもの SQL の後に実行する)。
 
 const string DefaultDbPath = @"C:\Codeer.LowCode.Blazor.Local\Data\sqlite_sample_extras.db";
 
@@ -16,12 +17,31 @@ string[] baseFiles = ["base_tables.sql", "users_sample.sql"];
 // 表を作り直す SQL (DROP → CREATE → INSERT)。表がまだ無いときだけ実行する。順番は依存の無い順
 string[] sampleFiles = ["sales_sample.sql", "inquiry_sample.sql", "job_trigger_sample.sql", "tag_sample.sql"];
 
+// 付けたときだけ実行する SQL (引数 → ファイル)。メンションの候補の重さを確かめるユーザー 500 人を足す・消す
+(string Option, string File)[] optionFiles =
+[
+    ("--mention-load", "mention_load_users.sql"),
+    ("--mention-load-remove", "mention_load_users_remove.sql"),
+];
+
 Console.OutputEncoding = Encoding.UTF8;
 var resetSamples = args.Contains("--reset-samples");
+var unknownOptions = args.Where(e => e.StartsWith("--") && e != "--reset-samples" && optionFiles.All(o => o.Option != e)).ToList();
+if (unknownOptions.Count > 0)
+{
+    Console.Error.WriteLine($"知らない引数です: {string.Join(", ", unknownOptions)}");
+    return 1;
+}
+var requestedFiles = optionFiles.Where(e => args.Contains(e.Option)).ToList();
+if (requestedFiles.Count > 1)
+{
+    Console.Error.WriteLine($"{string.Join(" と ", requestedFiles.Select(e => e.Option))} は一緒に指定できません");
+    return 1;
+}
 var dbPath = args.FirstOrDefault(e => !e.StartsWith("--")) ?? DefaultDbPath;
 var sqlDirectory = Path.GetDirectoryName(Path.GetDirectoryName(SourceFile())!)!;
 
-var missing = baseFiles.Concat(sampleFiles).Where(e => !File.Exists(Path.Combine(sqlDirectory, e))).ToList();
+var missing = baseFiles.Concat(sampleFiles).Concat(requestedFiles.Select(e => e.File)).Where(e => !File.Exists(Path.Combine(sqlDirectory, e))).ToList();
 if (missing.Count > 0)
 {
     Console.Error.WriteLine($"SQL が見つかりません: {string.Join(", ", missing)} ({sqlDirectory})");
@@ -60,6 +80,8 @@ foreach (var file in sampleFiles)
     }
     Run(file);
 }
+
+foreach (var (_, file) in requestedFiles) Run(file);
 
 Console.WriteLine();
 Console.WriteLine("表と行数:");
