@@ -28,7 +28,9 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Fields
         ListFieldDesign _list = null!;
         RichTextFieldDesign _body = null!;
 
-        public Task<string> GetCurrentUserIdAsync() => Task.FromResult("1");
+        string _userId = "1";
+
+        public Task<string> GetCurrentUserIdAsync() => Task.FromResult(_userId);
 
         [SetUp]
         public async Task SetUp()
@@ -94,8 +96,10 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Fields
         //ログインしている人 (既定は Id 1 = 営業の 山田 太郎)。ユーザーのモジュールがある設計では、今のユーザーの行が無いと本体は一覧を読ませない
         async Task<DbClientServices> ClientAsync(string userId = "1")
         {
+            _userId = userId;
             var client = new DbClientServices(_design, CreateIO);
-            client.CurrentUserData = (await CreateIO().GetListAsync(new SearchCondition
+            //今のユーザーの行はシステムの権限で読む (ユーザーのモジュールを読めない人でも、本体は今のユーザーの行を持っている)
+            client.CurrentUserData = (await CreateIO().CreateSystemAccess().GetListAsync(new SearchCondition
             {
                 ModuleName = "AppUser",
                 Condition = MultiMatchCondition.And(new FieldValueMatchCondition { SearchTargetVariable = "Id.Value", Comparison = MatchComparison.Equal, Value = new StringValue { Value = userId } }),
@@ -303,6 +307,64 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Fields
             Assert.That(ret.HasPeople, Is.False);
         }
 
+        #region 一般向けのユーザーモジュール (ユーザーのモジュールは限られた人だけが読める設計)
+
+        //ユーザーのモジュール (AppUser) は開発の人だけが読める。同じ表を見る一般向けのモジュール (PublicUser・書き込めない・名前とログイン ID だけ) は誰でも読める
+        void RestrictUserModule()
+        {
+            _design.Modules.Find("AppUser")!.UserReadCondition = new ModuleMatchCondition
+            {
+                ModuleName = "AppUser",
+                Condition = MultiMatchCondition.And(new FieldValueMatchCondition { SearchTargetVariable = "Dept.Value", Comparison = MatchComparison.Equal, Value = new StringValue { Value = "開発" } }),
+            };
+            var publicUser = new ModuleDesign { Name = "PublicUser", DataSourceName = Ds, DbTable = "app_users", CanCreate = false, CanUpdate = false, CanDelete = false };
+            publicUser.Fields.Add(new IdFieldDesign { Name = "Id", DbColumn = "id" });
+            publicUser.Fields.Add(new TextFieldDesign { Name = "Name", DbColumn = "name" });
+            publicUser.Fields.Add(new TextFieldDesign { Name = "Login", DbColumn = "login" });
+            publicUser.Fields.Add(new TextFieldDesign { Name = "Dept", DbColumn = "dept" });
+            publicUser.ListLayouts[""] = new ListLayoutDesign { Elements = [[new ListElement { FieldName = "Name" }, new ListElement { FieldName = "Login" }]] };
+            _design.AddModule(publicUser);
+        }
+
+        [Test]
+        public async Task ユーザーのモジュールを読めない人には候補が出ない()
+        {
+            RestrictUserModule();
+            //営業の人 (Id 1) は AppUser を読めない。本体は問い合わせずに一覧を空にする
+            var client = await ClientAsync("1");
+            var body = Body(await client.OpenAsync("Memo", "1"));
+            var opened = client.ListCalls.Count;
+            var ret = await body.GetMentionCandidatesAsync(string.Empty);
+            Assert.That(ret.Items, Is.Empty);
+            Assert.That(ret.HasPeople, Is.False);
+            Assert.That(client.ListCalls.Count, Is.EqualTo(opened));
+
+            //開発の人 (Id 4) は読めるので候補が出る
+            var reader = Body(await (await ClientAsync("4")).OpenAsync("Memo", "1"));
+            Assert.That(Names(await reader.GetMentionCandidatesAsync(string.Empty)), Is.EqualTo("山田 太郎,佐藤 花子,suzuki"));
+        }
+
+        [Test]
+        public async Task 一般向けのユーザーモジュールを読む一覧ならユーザーのモジュールを読めない人にも候補が出る()
+        {
+            RestrictUserModule();
+            _list.SearchCondition.ModuleName = "PublicUser";
+            var noTables = new Dictionary<string, List<Codeer.LowCode.Blazor.DataIO.Db.Definition.DbTableDefinition>>();
+            Assert.That(_body.CheckDesign(new DesignCheckContext("Memo", _design, noTables)), Is.Empty);
+
+            var client = await ClientAsync("1");
+            var body = Body(await client.OpenAsync("Memo", "1"));
+            var ret = await body.GetMentionCandidatesAsync(string.Empty);
+
+            //Id はユーザーの表の Id (ユーザーのモジュールを読んだときと同じ値)
+            Assert.That(Names(ret), Is.EqualTo("山田 太郎,佐藤 花子,suzuki"));
+            Assert.That(ret.Items.Select(e => e.Id), Is.EqualTo(new[] { "1", "2", "3" }));
+            Assert.That(client.ListCalls.Last().Single().Condition.ModuleName, Is.EqualTo("PublicUser"));
+            Assert.That(client.Logger.ErrorList, Is.Empty);
+        }
+
+        #endregion
+
         [Test]
         public void テストのデザインは設計チェックを通る()
         {
@@ -344,7 +406,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Fields
             var noTables = new Dictionary<string, List<Codeer.LowCode.Blazor.DataIO.Db.Definition.DbTableDefinition>>();
             var context = new DesignCheckContext("MentionTest", d, noTables);
             var fields = module!.Fields.OfType<RichTextFieldDesign>().ToList();
-            Assert.That(fields.Select(e => e.MentionListField), Is.EqualTo(new[] { "MentionDeptUsers", "MentionAllUsers" }));
+            Assert.That(fields.Select(e => e.MentionListField), Is.EqualTo(new[] { "MentionDeptUsers", "MentionAdminUsers" }));
             foreach (var field in fields)
             {
                 Assert.That(field.EnableMention, Is.True);
@@ -355,6 +417,18 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Fields
                 var columns = d.Modules.Find(list.SearchCondition.ModuleName)!.ListLayouts[list.LayoutName].Elements.SelectMany(e => e).Select(e => e.FieldName).ToList();
                 Assert.That(columns, Does.Contain(field.MentionDisplayNameField).And.Contain(field.MentionLoginNameField));
             }
+            //一般の利用者が @ を打つ本文の一覧は一般向けのユーザーモジュールを読む。管理者だけが読める本文の一覧は、ユーザーのモジュールを役割で絞って読む
+            //(@ を打つのは管理者だけで、候補もその本文を読める人にする。役割は一般向けのモジュールには置かない)
+            Assert.That(module.Fields.OfType<ListFieldDesign>().Select(e => (e.Name, e.SearchCondition.ModuleName)),
+                Is.EqualTo(new[] { ("MentionDeptUsers", "NormalUser"), ("MentionAdminUsers", "AppUser") }));
+            //一般向けのユーザーモジュール: ユーザーのモジュールと同じ表で、書き込めず、役割 (Role) とログインアカウント契約は置かない
+            var user = d.Modules.Find(d.AppSettings.CurrentUserModuleDesignName)!;
+            var normal = d.Modules.Find("NormalUser")!;
+            Assert.That((normal.DataSourceName, normal.DbTable), Is.EqualTo((user.DataSourceName, user.DbTable)));
+            Assert.That(normal.CanCreate || normal.CanUpdate || normal.CanDelete, Is.False);
+            Assert.That(normal.Fields.Select(e => e.Name), Is.EqualTo(new[] { "Id", "Name", "Email", "Dept" }));
+            var normalContext = new DesignCheckContext("NormalUser", d, noTables);
+            Assert.That(normal.Fields.SelectMany(e => e.CheckDesign(normalContext)).Select(e => $"{e.Code} {e.Message}"), Is.Empty);
             //Home の RichText はメンションなし
             Assert.That(d.Modules.Find("Home")!.Fields.OfType<RichTextFieldDesign>().All(e => !e.EnableMention), Is.True);
         }

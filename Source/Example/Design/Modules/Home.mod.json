@@ -102,16 +102,9 @@
     {
       "DbColumn": "",
       "EnableMention": false,
-      "MentionCandidateCondition": {
-        "ModuleName": "",
-        "Condition": {
-          "IsOrMatch": false,
-          "IsNot": false,
-          "Children": [],
-          "Name": "",
-          "TypeFullName": "Codeer.LowCode.Blazor.Repository.Match.MultiMatchCondition"
-        }
-      },
+      "MentionListField": "",
+      "MentionDisplayNameField": "",
+      "MentionLoginNameField": "",
       "DisplayName": "",
       "IsRequired": false,
       "OnDataChanged": "",

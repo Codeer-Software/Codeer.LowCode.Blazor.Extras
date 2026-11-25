@@ -66,6 +66,133 @@
       "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.TextFieldDesign"
     },
     {
+      "LayoutName": "",
+      "CanNavigateToDetail": false,
+      "NavigateModuleUrlSegment": "",
+      "CanCustomizeColumns": false,
+      "FixedColumnCount": 0,
+      "ApplyBackgroundToBoxInput": false,
+      "DisplayName": "",
+      "SearchCondition": {
+        "SelectFields": [],
+        "SortConditions": [
+          {
+            "Variable": "Name.Value",
+            "IsDescending": false
+          }
+        ],
+        "SortFieldVariable": "",
+        "SortDescending": false,
+        "ModuleName": "NormalUser",
+        "Condition": {
+          "IsOrMatch": false,
+          "IsNot": false,
+          "Children": [
+            {
+              "SearchTargetVariable": "Dept.Value",
+              "Comparison": "Equal",
+              "Variable": "CurrentUser.Dept.Value",
+              "TypeFullName": "Codeer.LowCode.Blazor.Repository.Match.FieldVariableMatchCondition"
+            }
+          ],
+          "Name": "",
+          "TypeFullName": "Codeer.LowCode.Blazor.Repository.Match.MultiMatchCondition"
+        }
+      },
+      "DbColumn": "",
+      "IsInMemoryPaging": false,
+      "PagingGroupField": "",
+      "PagingGroupRowCount": 0,
+      "ConfirmBeforePageChange": true,
+      "PagerPosition": "Top",
+      "PagerAlignment": "Right",
+      "ReplaceMode": "None",
+      "DeleteTogether": false,
+      "CanCreate": false,
+      "CanUpdate": false,
+      "CanDelete": false,
+      "CanUserSort": true,
+      "CanSelect": false,
+      "UseIndexSort": false,
+      "OnDataChanged": "",
+      "OnSearchDataChanged": "",
+      "OnSelectedIndexChanged": "",
+      "OnSelectedIndexChanging": "",
+      "OnDoubleClickRow": "",
+      "Name": "MentionDeptUsers",
+      "IgnoreModification": false,
+      "OnValidateInput": "",
+      "IsFocusSkip": false,
+      "NextFocusField": "",
+      "OnFocusMoving": "",
+      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.ListFieldDesign"
+    },
+    {
+      "LayoutName": "",
+      "CanNavigateToDetail": false,
+      "NavigateModuleUrlSegment": "",
+      "CanCustomizeColumns": false,
+      "FixedColumnCount": 0,
+      "ApplyBackgroundToBoxInput": false,
+      "DisplayName": "",
+      "SearchCondition": {
+        "SelectFields": [],
+        "SortConditions": [
+          {
+            "Variable": "Name.Value",
+            "IsDescending": false
+          }
+        ],
+        "SortFieldVariable": "",
+        "SortDescending": false,
+        "ModuleName": "AppUser",
+        "Condition": {
+          "IsOrMatch": false,
+          "IsNot": false,
+          "Children": [
+            {
+              "SearchTargetVariable": "Role.Value",
+              "Comparison": "Equal",
+              "Value": {
+                "Value": "管理者",
+                "TypeFullName": "Codeer.LowCode.Blazor.Repository.StringValue"
+              },
+              "TypeFullName": "Codeer.LowCode.Blazor.Repository.Match.FieldValueMatchConditionNonNull"
+            }
+          ],
+          "Name": "",
+          "TypeFullName": "Codeer.LowCode.Blazor.Repository.Match.MultiMatchCondition"
+        }
+      },
+      "DbColumn": "",
+      "IsInMemoryPaging": false,
+      "PagingGroupField": "",
+      "PagingGroupRowCount": 0,
+      "ConfirmBeforePageChange": true,
+      "PagerPosition": "Top",
+      "PagerAlignment": "Right",
+      "ReplaceMode": "None",
+      "DeleteTogether": false,
+      "CanCreate": false,
+      "CanUpdate": false,
+      "CanDelete": false,
+      "CanUserSort": true,
+      "CanSelect": false,
+      "UseIndexSort": false,
+      "OnDataChanged": "",
+      "OnSearchDataChanged": "",
+      "OnSelectedIndexChanged": "",
+      "OnSelectedIndexChanging": "",
+      "OnDoubleClickRow": "",
+      "Name": "MentionAdminUsers",
+      "IgnoreModification": false,
+      "OnValidateInput": "",
+      "IsFocusSkip": false,
+      "NextFocusField": "",
+      "OnFocusMoving": "",
+      "TypeFullName": "Codeer.LowCode.Blazor.Repository.Design.ListFieldDesign"
+    },
+    {
       "Text": "本文 (@ の候補 = ログインしている人と同じ部署の人)",
       "Icon": "",
       "IsHtml": false,
@@ -83,23 +210,9 @@
     {
       "DbColumn": "body",
       "EnableMention": true,
-      "MentionCandidateCondition": {
-        "ModuleName": "",
-        "Condition": {
-          "IsOrMatch": false,
-          "IsNot": false,
-          "Children": [
-            {
-              "SearchTargetVariable": "Dept.Value",
-              "Comparison": "Equal",
-              "Variable": "CurrentUser.Dept.Value",
-              "TypeFullName": "Codeer.LowCode.Blazor.Repository.Match.FieldVariableMatchCondition"
-            }
-          ],
-          "Name": "",
-          "TypeFullName": "Codeer.LowCode.Blazor.Repository.Match.MultiMatchCondition"
-        }
-      },
+      "MentionListField": "MentionDeptUsers",
+      "MentionDisplayNameField": "Name",
+      "MentionLoginNameField": "Email",
       "DisplayName": "",
       "IsRequired": false,
       "OnDataChanged": "",
@@ -112,7 +225,7 @@
       "TypeFullName": "Codeer.LowCode.Blazor.Extras.Designs.RichTextFieldDesign"
     },
     {
-      "Text": "管理者だけが読める本文 (役割が「管理者」の人にだけ見える。@ の候補の条件はなし)",
+      "Text": "管理者だけが読める本文 (役割が「管理者」の人にだけ見える。@ の候補 = 役割が「管理者」の人)",
       "Icon": "",
       "IsHtml": false,
       "Style": "Default",
@@ -129,16 +242,9 @@
     {
       "DbColumn": "restricted_body",
       "EnableMention": true,
-      "MentionCandidateCondition": {
-        "ModuleName": "",
-        "Condition": {
-          "IsOrMatch": false,
-          "IsNot": false,
-          "Children": [],
-          "Name": "",
-          "TypeFullName": "Codeer.LowCode.Blazor.Repository.Match.MultiMatchCondition"
-        }
-      },
+      "MentionListField": "MentionAdminUsers",
+      "MentionDisplayNameField": "Name",
+      "MentionLoginNameField": "Email",
       "DisplayName": "",
       "IsRequired": false,
       "OnDataChanged": "",
