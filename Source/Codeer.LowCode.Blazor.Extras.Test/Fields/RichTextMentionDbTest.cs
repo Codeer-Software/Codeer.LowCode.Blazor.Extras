@@ -206,6 +206,29 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Fields
         }
 
         [Test]
+        public async Task 読んだ後に条件へ仮Idが入ったら前の条件の行を候補にしない()
+        {
+            var client = await ClientAsync();
+            var module = await client.OpenAsync("Memo", "1");
+            var body = Body(module);
+            Assert.That(Names(await body.GetMentionCandidatesAsync(string.Empty)), Does.StartWith("山田 太郎"));
+            var loaded = client.ListCalls.Count;
+
+            //条件の項目が未保存のレコードの仮 Id になると、本体は読まずに戻る (一覧の行は前の条件のまま残る)
+            await ((TextField)module.GetField("Dept")!).SetValueAsync("@temporary:1");
+            var ret = await body.GetMentionCandidatesAsync(string.Empty);
+            Assert.That(ret.Items, Is.Empty);
+            Assert.That(ret.HasPeople, Is.False);
+            Assert.That((await body.GetMentionCandidatesAsync("山")).Items, Is.Empty);
+            Assert.That(client.ListCalls.Count, Is.EqualTo(loaded));
+
+            //条件が読める値に変われば読み直す
+            await ((TextField)module.GetField("Dept")!).SetValueAsync("開発");
+            Assert.That(Names(await body.GetMentionCandidatesAsync(string.Empty)), Is.EqualTo("高橋"));
+            Assert.That(client.ListCalls.Count, Is.EqualTo(loaded + 1));
+        }
+
+        [Test]
         public async Task CurrentUserの条件は問い合わせた人の値で絞る()
         {
             ((FieldVariableMatchCondition)((MultiMatchCondition)_list.SearchCondition.Condition!).Children[0]).Variable = "CurrentUser.Dept.Value";

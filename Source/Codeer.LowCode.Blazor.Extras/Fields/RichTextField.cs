@@ -25,8 +25,8 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         //読んでも行が無かった・読み込みが例外になったときの検索条件。同じ条件のままなら打つたびには読み直さず、@ を打ち直したとき (打った文字が空) にだけ読み直す。
         //行が無いときも含めるのは、Web のホストでは通信の失敗が例外にならず空の結果で返るため (失敗と「該当者なし」を見分けられない)
         string? _mentionListFailedCondition;
-        //上の条件が、例外で読めなかったものか (そのとき一覧の行は前の条件のままかもしれないので使わない)
-        bool _mentionListFailedByError;
+        //上の条件のとき、一覧の行が前の条件のままかもしれないか (例外で読めなかった・本体が読まずに戻った)。そのときの行は使わない
+        bool _mentionListFailedWithOldRows;
 
         /// <summary>今の値に入っているメンションの人の Id (重複を除き、本文の順)。</summary>
         public string[] MentionedIds => MentionHtml.GetMentionedIds(Value);
@@ -100,21 +100,32 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             if (key == _mentionListFailedCondition && !retryFailed)
             {
                 //行が無かっただけなら、その後にスクリプトが読み直した行は使う
-                return _mentionListFailedByError || list.Rows.Count == 0 ? null : list;
+                return _mentionListFailedWithOldRows || list.Rows.Count == 0 ? null : list;
             }
 
-            //未保存のレコードの仮 Id が条件に入っているとき・一覧のモジュールを読めない人のときは、本体が読まずに済ませる (行は空のまま)
+            //一覧のモジュールを読めない人のときは、本体が読まずに行を空にする。
+            //未保存のレコードの仮 Id が条件に入っているときは、本体が読まずに戻り、行は前のまま残る
+            var before = list.Rows;
             var loading = list.ReloadAsync();
             _mentionListLoading = loading;
             try
             {
                 await loading;
+                var after = list.Rows;
                 //行が無いときは「読んだ」と覚えない (通信の失敗かもしれない)。@ を打ち直したときにもう一度読む
-                if (list.Rows.Count == 0)
+                if (after.Count == 0)
                 {
                     _mentionListCondition = null;
                     _mentionListFailedCondition = key;
-                    _mentionListFailedByError = false;
+                    _mentionListFailedWithOldRows = false;
+                    return null;
+                }
+                //読めば行は作り直される。前と同じ行が残っているのは、本体が読まずに戻ったとき (前の条件の行なので、この条件の候補にしない)
+                if (before.Count > 0 && ReferenceEquals(before[0], after[0]))
+                {
+                    _mentionListCondition = null;
+                    _mentionListFailedCondition = key;
+                    _mentionListFailedWithOldRows = true;
                     return null;
                 }
                 _mentionListCondition = key;
@@ -125,7 +136,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
                 //読み込みの失敗 (通信の失敗など) では候補を出さない。打っている最中の画面を例外で止めない
                 _mentionListCondition = null;
                 _mentionListFailedCondition = key;
-                _mentionListFailedByError = true;
+                _mentionListFailedWithOldRows = true;
                 return null;
             }
             finally
