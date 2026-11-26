@@ -15,8 +15,9 @@ using Codeer.LowCode.Blazor.SystemSettings;
 namespace Codeer.LowCode.Blazor.Extras.Test.Fields
 {
     /// <summary>
-    /// RichTextField のメンションの候補 = 同じモジュールの一覧フィールド (レイアウトに置いていない ListField) の行。実 DB (SQLite) で、
-    /// 一覧をいつ読むか (最初の問い合わせ・一覧の条件が変わったとき)、手元の行への絞り込み、候補にしない行を確かめる。
+    /// RichTextField のメンションの候補 = 同じモジュールの一覧フィールド (レイアウトに置いていない ListField) が読む行。実 DB (SQLite) で、
+    /// いつ読むか (最初の問い合わせ・一覧の条件が変わったとき)、手元の候補への絞り込み、候補にしない行を確かめる。
+    /// 読むのは RichTextField で、一覧からは検索条件だけを借りる (一覧フィールドの行 = Module は作らない)。
     /// データ: メモ 1 = 営業 / メモ 2 = 開発。ユーザー: 営業 = 山田 太郎 (yamada), 佐藤 花子 (Sato), 表示名なし (suzuki) / 開発 = 高橋 (takahashi) / 部署なし = 名前もログイン ID も無い人。
     /// </summary>
     public class RichTextMentionDbTest : IAuthenticationContext
@@ -137,7 +138,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Fields
             Assert.That(client.ListCalls.Count, Is.EqualTo(opened + 1));
             Assert.That(client.ListCalls.Last().Single().Condition.ModuleName, Is.EqualTo("AppUser"));
 
-            //打つたびには読まない (手元の行に当てる)
+            //打つたびには読まない (手元の候補に当てる)
             await body.GetMentionCandidatesAsync("山");
             await body.GetMentionCandidatesAsync("山田");
             Assert.That(client.ListCalls.Count, Is.EqualTo(opened + 1));
@@ -206,7 +207,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Fields
         }
 
         [Test]
-        public async Task 読んだ後に条件へ仮Idが入ったら前の条件の行を候補にしない()
+        public async Task 読んだ後に条件へ仮Idが入ったら前の条件の候補を出さない()
         {
             var client = await ClientAsync();
             var module = await client.OpenAsync("Memo", "1");
@@ -214,7 +215,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Fields
             Assert.That(Names(await body.GetMentionCandidatesAsync(string.Empty)), Does.StartWith("山田 太郎"));
             var loaded = client.ListCalls.Count;
 
-            //条件の項目が未保存のレコードの仮 Id になると、本体は読まずに戻る (一覧の行は前の条件のまま残る)
+            //条件の項目が未保存のレコードの仮 Id になると読まない (前の条件の候補は出さない)
             await ((TextField)module.GetField("Dept")!).SetValueAsync("@temporary:1");
             var ret = await body.GetMentionCandidatesAsync(string.Empty);
             Assert.That(ret.Items, Is.Empty);
@@ -292,7 +293,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Fields
             Assert.That((await body.GetMentionCandidatesAsync("山田")).Items, Is.Empty);
             Assert.That(client.ListCalls.Count, Is.EqualTo(opened + 1));
 
-            //@ を打ち直すと (打った文字が空) 読み直し、以後は手元の行を使う
+            //@ を打ち直すと (打った文字が空) 読み直し、以後は手元の候補を使う
             Assert.That(Names(await body.GetMentionCandidatesAsync(string.Empty)), Is.EqualTo("山田 太郎,佐藤 花子,suzuki"));
             Assert.That(Names(await body.GetMentionCandidatesAsync("山")), Is.EqualTo("山田 太郎"));
             Assert.That(client.ListCalls.Count, Is.EqualTo(opened + 2));
@@ -318,17 +319,36 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Fields
         }
 
         [Test]
-        public async Task スクリプトで一覧を読み直した行を使う()
+        public async Task 候補を読んでも一覧フィールドの行は作らない()
         {
             var client = await ClientAsync();
             var module = await client.OpenAsync("Memo", "1");
             var body = Body(module);
+            var list = (ListField)module.GetField("Users")!;
+
+            //一覧の検索条件だけを借りて行のデータを読む。一覧フィールドには読ませない (行ごとの Module を作らない)
+            Assert.That(Names(await body.GetMentionCandidatesAsync(string.Empty)), Is.EqualTo("山田 太郎,佐藤 花子,suzuki"));
+            Assert.That(list.Rows, Is.Empty);
+
+            //候補は RichTextField が持つ。スクリプトで一覧を読み直しても候補は変わらない (条件が変わるまで読み直さない)
+            await _db.ExecuteAsync(Ds, "INSERT INTO app_users (name, login, dept) VALUES ('新人', 'newcomer', '営業')", new());
+            await list.ReloadAsync();
+            var loaded = client.ListCalls.Count;
+            Assert.That(Names(await body.GetMentionCandidatesAsync("新")), Is.Empty);
+            Assert.That(client.ListCalls.Count, Is.EqualTo(loaded));
+        }
+
+        [Test]
+        public async Task 読む項目は一覧の行のレイアウトの項目だけ()
+        {
+            var client = await ClientAsync();
+            var body = Body(await client.OpenAsync("Memo", "1"));
             await body.GetMentionCandidatesAsync(string.Empty);
 
-            await _db.ExecuteAsync(Ds, "INSERT INTO app_users (name, login, dept) VALUES ('新人', 'newcomer', '営業')", new());
-            Assert.That(Names(await body.GetMentionCandidatesAsync("新")), Is.Empty);
-            await ((ListField)module.GetField("Users")!).ReloadAsync();
-            Assert.That(Names(await body.GetMentionCandidatesAsync("新")), Is.EqualTo("新人"));
+            //行のレイアウトに置いた Name と Login。Dept は読まない
+            var condition = client.ListCalls.Last().Single().Condition;
+            Assert.That(condition.SelectFields, Does.Contain("Name").And.Contain("Login"));
+            Assert.That(condition.SelectFields, Does.Not.Contain("Dept"));
         }
 
         [Test]
@@ -398,7 +418,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Fields
         public async Task ユーザーのモジュールを読めない人には候補が出ない()
         {
             RestrictUserModule();
-            //営業の人 (Id 1) は AppUser を読めない。本体は問い合わせずに一覧を空にする
+            //営業の人 (Id 1) は AppUser を読めない。問い合わせない
             var client = await ClientAsync("1");
             var body = Body(await client.OpenAsync("Memo", "1"));
             var opened = client.ListCalls.Count;

@@ -1,10 +1,14 @@
+using Codeer.LowCode.Blazor.DataIO;
 using Codeer.LowCode.Blazor.DataLogic;
+using Codeer.LowCode.Blazor.DesignLogic;
 using Codeer.LowCode.Blazor.Extras.Data;
 using Codeer.LowCode.Blazor.Extras.Designs;
 using Codeer.LowCode.Blazor.Json;
 using Codeer.LowCode.Blazor.OperatingModel;
 using Codeer.LowCode.Blazor.Repository.Data;
 using Codeer.LowCode.Blazor.Repository.Design;
+using Codeer.LowCode.Blazor.Repository.Match;
+using Codeer.LowCode.Blazor.RequestInterfaces;
 using Codeer.LowCode.Blazor.Script;
 
 namespace Codeer.LowCode.Blazor.Extras.Fields
@@ -18,15 +22,15 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         /// <summary>打った文字の長さの上限 (画面の richtext-interop.js の MAX_MENTION_QUERY と同じ)。超えたら候補なし。</summary>
         internal const int MaxMentionTextLength = 50;
 
-        //候補の一覧を前回読んだときの検索条件 (編集中のレコードの値・CurrentUser.〜 を入れたもの)。変わっていれば読み直す
-        string? _mentionListCondition;
-        //候補の一覧を読んでいる最中の処理 (読んでいる間に来た問い合わせは、これが終わるのを待つ)
-        Task? _mentionListLoading;
+        //候補を前回読んだときの一覧の検索条件 (編集中のレコードの値・CurrentUser.〜 を入れたもの)。変わっていれば読み直す
+        string? _mentionCondition;
+        //読んだ候補 (一覧の並びのまま。絞り込む前の全員)。一覧フィールドには読ませず、ここに持つ (行ごとの Module は作らない)
+        List<MentionCandidate> _mentionPeople = new();
+        //候補を読んでいる最中の処理 (読んでいる間に来た問い合わせは、これが終わるのを待つ)
+        Task? _mentionLoading;
         //読んでも行が無かった・読み込みが例外になったときの検索条件。同じ条件のままなら打つたびには読み直さず、@ を打ち直したとき (打った文字が空) にだけ読み直す。
         //行が無いときも含めるのは、Web のホストでは通信の失敗が例外にならず空の結果で返るため (失敗と「該当者なし」を見分けられない)
-        string? _mentionListFailedCondition;
-        //上の条件のとき、一覧の行が前の条件のままかもしれないか (例外で読めなかった・本体が読まずに戻った)。そのときの行は使わない
-        bool _mentionListFailedWithOldRows;
+        string? _mentionFailedCondition;
 
         /// <summary>今の値に入っているメンションの人の Id (重複を除き、本文の順)。</summary>
         public string[] MentionedIds => MentionHtml.GetMentionedIds(Value);
@@ -46,9 +50,10 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         }
 
         /// <summary>
-        /// 打った文字に合うメンションの候補。候補は <see cref="RichTextFieldDesign.MentionListField"/> の一覧の行で、サーバーの専用の処理は無い。
-        /// 一覧は最初の問い合わせと、一覧の検索条件が前回と変わったときだけ読む (打つたびには読まない)。絞り込みは手元の行に当てる。
-        /// 一覧の読み込みに失敗したとき・読んでも行が無かったときは候補なし (例外は出さない)。同じ条件のままなら、次に読み直すのは @ を打ち直したとき。
+        /// 打った文字に合うメンションの候補。候補は <see cref="RichTextFieldDesign.MentionListField"/> の一覧が読む行で、サーバーの専用の処理は無い。
+        /// 一覧の検索条件 (と、一覧が読むモジュールの権限) だけを借りて、行のデータをここで読む。一覧フィールドには読ませない (行ごとの Module を作らない。一覧の行は空のまま)。
+        /// 読むのは最初の問い合わせと、一覧の検索条件が前回と変わったときだけ (打つたびには読まない)。絞り込みは手元の候補に当てる。
+        /// 読み込みに失敗したとき・読んでも行が無かったときは候補なし (例外は出さない)。同じ条件のままなら、次に読み直すのは @ を打ち直したとき。
         /// メンションを使わない設定・デザインモード・一覧が無い・一覧が読み込みを止めている (AllowLoad が false) ときは候補なし。
         /// </summary>
         [ScriptHide]
@@ -59,97 +64,98 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             text ??= string.Empty;
             if (text.Length > MaxMentionTextLength) return result;
 
-            var list = await LoadMentionListAsync(retryFailed: text.Length == 0);
-            if (list == null) return result;
-
-            foreach (var row in list.Rows)
+            var people = await LoadMentionPeopleAsync(retryFailed: text.Length == 0);
+            result.HasPeople = people.Count > 0;
+            foreach (var candidate in people)
             {
-                var candidate = ToCandidate(row);
-                if (candidate == null) continue;
-                result.HasPeople = true;
-                //そろったら残りの行は見ない (人がいることも、もう分かっている)
-                if (result.Items.Count == MentionCandidateLimit) break;
                 if (text.Length > 0 && !Contains(candidate.DisplayName, text) && !Contains(candidate.LoginName, text)) continue;
                 result.Items.Add(candidate);
+                if (result.Items.Count == MentionCandidateLimit) break;
             }
             return result;
 
             static bool Contains(string value, string text) => value.Contains(text, StringComparison.OrdinalIgnoreCase);
         }
 
-        //候補の一覧。レイアウトに置いていない一覧は本体が自分では読まないので、ここで Reload を呼んで読ませる
-        //(本体の従属レコードの読み込み IOwnedRecordsField.LoadOwnedRecordsAsync と同じ形)
-        async Task<ListField?> LoadMentionListAsync(bool retryFailed)
+        //候補にする全員。読むかどうかの判定は本体の ListField.ReloadAsync と同じ (読めない人・仮 Id の条件では問い合わせない)
+        async Task<IReadOnlyList<MentionCandidate>> LoadMentionPeopleAsync(bool retryFailed)
         {
             //読んでいる間に来た問い合わせは、読み終わるのを待ってから条件を比べる (同じ条件を二重に読まない)
-            while (_mentionListLoading != null)
+            while (_mentionLoading != null)
             {
-                try { await _mentionListLoading; } catch { }
+                try { await _mentionLoading; } catch { }
             }
 
             var list = Module.GetField<ListField>(Design.MentionListField);
-            if (list == null || list.Design is not ListFieldDesign) return null;
+            if (list == null || list.Design is not ListFieldDesign) return [];
 
-            //読み込みを止めた一覧 (AllowLoad が false) とデータソースの無いモジュールの一覧は、本体が検索条件を返さない
+            //読み込みを止めた一覧 (AllowLoad が false) とデータソースの無いモジュールの一覧は、本体が検索条件を返さない。
+            //行のレイアウトの項目だけを読む指定は、この条件に入っている
             var condition = list.GetSearchCondition();
-            if (condition == null) return null;
+            if (condition == null) return [];
 
             var key = JsonConverterEx.SerializeObject(condition, false);
-            if (key == _mentionListCondition) return list;
+            if (key == _mentionCondition) return _mentionPeople;
             //前回この条件で読めなかった (失敗か、行が無かった)。打つたびには読み直さない
-            if (key == _mentionListFailedCondition && !retryFailed)
-            {
-                //行が無かっただけなら、その後にスクリプトが読み直した行は使う
-                return _mentionListFailedWithOldRows || list.Rows.Count == 0 ? null : list;
-            }
+            if (key == _mentionFailedCondition && !retryFailed) return [];
 
-            //一覧のモジュールを読めない人のときは、本体が読まずに行を空にする。
-            //未保存のレコードの仮 Id が条件に入っているときは、本体が読まずに戻り、行は前のまま残る
-            var before = list.Rows;
-            var loading = list.ReloadAsync();
-            _mentionListLoading = loading;
+            _mentionCondition = null;
+            _mentionFailedCondition = null;
+            _mentionPeople = new();
+
+            //一覧のモジュールを読めない人は問い合わせない (サーバーに投げるとエラーになる)
+            var listModule = Services.AppInfoService.GetDesignData().Modules.Find(condition.ModuleName);
+            if (listModule == null || !listModule.HasUserReadPermission(Services)) return [];
+            //未保存のレコードの仮 Id が条件に入っているときは読まない
+            if (condition.GetFieldValueConditions().Any(e => IdFieldData.IsTemporaryId(e.Value.GetValue()?.ToString()))) return [];
+
+            var loading = ReadMentionPeopleAsync(condition, listModule);
+            _mentionLoading = loading;
             try
             {
-                await loading;
-                var after = list.Rows;
+                var people = await loading;
                 //行が無いときは「読んだ」と覚えない (通信の失敗かもしれない)。@ を打ち直したときにもう一度読む
-                if (after.Count == 0)
+                if (people == null)
                 {
-                    _mentionListCondition = null;
-                    _mentionListFailedCondition = key;
-                    _mentionListFailedWithOldRows = false;
-                    return null;
+                    _mentionFailedCondition = key;
+                    return [];
                 }
-                //読めば行は作り直される。前と同じ行が残っているのは、本体が読まずに戻ったとき (前の条件の行なので、この条件の候補にしない)
-                if (before.Count > 0 && ReferenceEquals(before[0], after[0]))
-                {
-                    _mentionListCondition = null;
-                    _mentionListFailedCondition = key;
-                    _mentionListFailedWithOldRows = true;
-                    return null;
-                }
-                _mentionListCondition = key;
-                _mentionListFailedCondition = null;
+                _mentionPeople = people;
+                _mentionCondition = key;
+                return people;
             }
             catch (Exception)
             {
                 //読み込みの失敗 (通信の失敗など) では候補を出さない。打っている最中の画面を例外で止めない
-                _mentionListCondition = null;
-                _mentionListFailedCondition = key;
-                _mentionListFailedWithOldRows = true;
-                return null;
+                _mentionFailedCondition = key;
+                return [];
             }
             finally
             {
-                _mentionListLoading = null;
+                _mentionLoading = null;
             }
-            return list;
         }
 
-        //一覧の行を候補にする。Id の無い行と、表示名もログイン ID も空の行は候補にしない
-        MentionCandidate? ToCandidate(Module row)
+        //一覧の検索条件で行のデータを読み、候補にする。行が 1 つも返らなければ null
+        async Task<List<MentionCandidate>?> ReadMentionPeopleAsync(SearchCondition condition, ModuleDesign listModule)
         {
-            var id = (row.GetFields().FirstOrDefault(e => e.Design is IdFieldDesign)?.GetData() as IdFieldData)?.Value;
+            var page = (await Services.ModuleDataService.GetListAsync([new GetListRequest { Condition = condition, PageIndex = 0 }])).FirstOrDefault();
+            if (page == null || page.Items.Count == 0) return null;
+
+            var idField = listModule.Fields.OfType<IdFieldDesign>().FirstOrDefault()?.Name ?? string.Empty;
+            var people = new List<MentionCandidate>();
+            foreach (var row in page.Items)
+            {
+                var candidate = ToCandidate(row, idField);
+                if (candidate != null) people.Add(candidate);
+            }
+            return people;
+        }
+
+        //行のデータを候補にする。Id の無い行と、表示名もログイン ID も空の行は候補にしない
+        MentionCandidate? ToCandidate(ModuleData row, string idField)
+        {
+            var id = row.Fields.TryGetValue(idField, out var idData) ? (idData as IdFieldData)?.Value : null;
             if (string.IsNullOrEmpty(id) || IdFieldData.IsTemporaryId(id)) return null;
             var loginName = Text(row, Design.MentionLoginNameField);
             var displayName = Text(row, Design.MentionDisplayNameField);
@@ -158,16 +164,13 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             return new MentionCandidate { Id = id, DisplayName = displayName, LoginName = loginName };
         }
 
-        //行の項目の値 (行のレイアウトに置いていない項目は一覧が読まないので空)
-        static string Text(Module row, string fieldName)
+        //行の項目の値 (行のレイアウトに置いていない項目は読まれないので空)
+        static string Text(ModuleData row, string fieldName)
         {
             if (string.IsNullOrEmpty(fieldName)) return string.Empty;
-            var data = row.GetField(fieldName)?.GetData();
-            if (data == null) return string.Empty;
+            if (!row.Fields.TryGetValue(fieldName, out var data) || data == null) return string.Empty;
             if (data is TextFieldData text) return text.Value ?? string.Empty;
-            var holder = new ModuleData();
-            holder.Fields[fieldName] = data;
-            return holder.TryGetVariableValue($"{fieldName}.Value", out var value) ? value?.ToString() ?? string.Empty : string.Empty;
+            return row.TryGetVariableValue($"{fieldName}.Value", out var value) ? value?.ToString() ?? string.Empty : string.Empty;
         }
     }
 }
