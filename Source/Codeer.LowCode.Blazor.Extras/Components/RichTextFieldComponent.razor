@@ -234,6 +234,8 @@ else
 
       Field.OnDataChangedAsync = OnFieldDataChanged;
     }
+    //候補の枠を画面に収め、選んでいる候補を見える位置にする (↑↓ で選び直したときも)
+    if (_showMention && _jsModule != null) await _jsModule.InvokeVoidAsync("placeMentionPopup", _editorElement);
   }
 
   private async Task OnFieldDataChanged()

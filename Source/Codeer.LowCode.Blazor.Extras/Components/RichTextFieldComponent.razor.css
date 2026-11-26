@@ -251,7 +251,7 @@
   z-index: 1060;
   min-width: 200px;
   max-width: 320px;
-  max-height: 280px;
+  /* 高さは候補の数のまま (最大 11 件)。画面に収まらないときだけ richtext-interop.js が高さを抑え、そのときだけスクロールする */
   overflow-y: auto;
   padding: 4px 0;
   background: white;

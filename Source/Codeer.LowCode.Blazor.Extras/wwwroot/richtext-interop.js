@@ -193,6 +193,7 @@ function checkMention(editorElement) {
     range.setStart(m.node, m.start);
     range.setEnd(m.node, Math.min(m.start + 1, m.node.length));
     const rect = range.getBoundingClientRect();
+    s.mentionCaret = { top: rect.top, bottom: rect.bottom, left: rect.left };
     s.dotNetRef.invokeMethodAsync('OnMentionQuery', m.query, rect.bottom + 4, rect.left);
 }
 
@@ -208,6 +209,33 @@ function closeMention(editorElement) {
 // .NET が候補を出しているか (出ていなければ Enter などは普段どおり)
 export function setMentionVisible(editorElement, visible) {
     getState(editorElement).mentionVisible = !!visible;
+}
+
+// 候補の枠を画面に収め、選んでいる候補が見えるようにする (.NET が候補を描くたびに呼ぶ)。
+// 枠は候補の数のままの高さで @ の下に出す。下に収まらなければ、上のほうが広いときは @ の上に出す。
+// どちらにも収まらないときだけ高さを抑える (そのときだけ枠の中をスクロールする)
+export function placeMentionPopup(editorElement) {
+    const caret = getState(editorElement).mentionCaret;
+    const popup = editorElement.parentElement && editorElement.parentElement.querySelector('.richtext-mention-popup');
+    if (!popup || !caret) return;
+    const GAP = 4;
+    const MARGIN = 8;
+    popup.style.maxHeight = '';
+    const height = popup.offsetHeight;
+    const below = window.innerHeight - caret.bottom - GAP - MARGIN;
+    const above = caret.top - GAP - MARGIN;
+    const placeAbove = height > below && above > below;
+    const room = Math.max(placeAbove ? above : below, 0);
+    if (height > room) popup.style.maxHeight = room + 'px';
+    popup.style.top = (placeAbove ? caret.top - GAP - Math.min(height, room) : caret.bottom + GAP) + 'px';
+    const maxLeft = window.innerWidth - popup.offsetWidth - MARGIN;
+    popup.style.left = Math.max(Math.min(caret.left, maxLeft), MARGIN) + 'px';
+
+    const active = popup.querySelector('.richtext-mention-item.active');
+    if (!active) return;
+    const bottom = active.offsetTop + active.offsetHeight;
+    if (active.offsetTop < popup.scrollTop) popup.scrollTop = active.offsetTop;
+    else if (bottom > popup.scrollTop + popup.clientHeight) popup.scrollTop = bottom - popup.clientHeight;
 }
 
 // 打った @文字 を部品に置き換え、後ろに空白を 1 つ入れてカーソルをその後ろへ。値の HTML を返す (置き換える場所が無くなっていれば null)
