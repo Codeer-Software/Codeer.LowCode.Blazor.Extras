@@ -166,7 +166,7 @@ else
           var item = _mentionItems[i];
           <div class="richtext-mention-item @(index == _mentionIndex ? "active" : "") @(item.IsAll ? "richtext-mention-item-all" : "")"
                role="option" aria-selected="@(index == _mentionIndex ? "true" : "false")" data-mention-candidate="@(item.IsAll ? "*" : item.Id)"
-               @onmouseenter="() => _mentionIndex = index" @onclick="() => SelectMentionAsync(item)">
+               @onmouseenter="e => OnMentionHover(index, e)" @onclick="() => SelectMentionAsync(item)">
             <span class="richtext-mention-name">@item.DisplayName</span>
             @if (!string.IsNullOrEmpty(item.LoginName) && item.LoginName != item.DisplayName)
             {
@@ -369,6 +369,18 @@ else
   private List<MentionItem> _mentionItems = new();
   //問い合わせの番号。候補の一覧を読んでいる間に打った文字が変わったら、後から打った文字の結果だけを使う
   private int _mentionSeq;
+  //候補にマウスが載ったときのマウスの位置 (前と同じ位置なら、マウスは動いていない)
+  private (double X, double Y)? _mentionMouse;
+
+  //マウスを載せた候補を選ぶ。マウスを動かしていないのに載った (↑ ↓ で枠の中が送られて、
+  //止まっているマウスの下に別の候補が来た) ときは選び直さない
+  private void OnMentionHover(int index, MouseEventArgs e)
+  {
+    var mouse = (e.ClientX, e.ClientY);
+    if (_mentionMouse == mouse) return;
+    _mentionMouse = mouse;
+    _mentionIndex = index;
+  }
 
   private static string Px(double v) => v.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture) + "px";
 

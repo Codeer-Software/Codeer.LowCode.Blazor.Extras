@@ -220,6 +220,9 @@ export function placeMentionPopup(editorElement) {
     if (!popup || !caret) return;
     const GAP = 4;
     const MARGIN = 8;
+    // 高さを測るために上限を外すと枠の中の送り位置が先頭に戻るので、覚えておいて後で戻す
+    // (候補にマウスを載せただけでも描き直すので、戻さないとホイールで送った位置が消える)
+    const scrollTop = popup.scrollTop;
     popup.style.maxHeight = '';
     const height = popup.offsetHeight;
     const below = window.innerHeight - caret.bottom - GAP - MARGIN;
@@ -227,6 +230,7 @@ export function placeMentionPopup(editorElement) {
     const placeAbove = height > below && above > below;
     const room = Math.max(placeAbove ? above : below, 0);
     if (height > room) popup.style.maxHeight = room + 'px';
+    popup.scrollTop = scrollTop;
     popup.style.top = (placeAbove ? caret.top - GAP - Math.min(height, room) : caret.bottom + GAP) + 'px';
     const maxLeft = window.innerWidth - popup.offsetWidth - MARGIN;
     popup.style.left = Math.max(Math.min(caret.left, maxLeft), MARGIN) + 'px';
