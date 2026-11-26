@@ -76,6 +76,17 @@ export function initEditor(editorElement, toolbarElement, dotNetRef, options) {
             editorElement.parentElement.addEventListener('mousedown', (e) => {
                 if (e.target instanceof Element && e.target.closest('.richtext-mention-popup')) e.preventDefault();
             });
+            // マウスを動かして載せた候補を選ぶ。mousemove で見るのは、↑ ↓ やホイールで枠の中が送られて
+            // 止まっているマウスの下に別の候補が来たとき (mouseenter / mouseover は起きる) に選び直さないため
+            editorElement.parentElement.addEventListener('mousemove', (e) => {
+                const item = e.target instanceof Element ? e.target.closest('.richtext-mention-item') : null;
+                if (!item) return;
+                const last = editorState.mentionMouse;
+                if (last && last.x === e.clientX && last.y === e.clientY) return;
+                editorState.mentionMouse = { x: e.clientX, y: e.clientY };
+                if (item.classList.contains('active')) return;
+                dotNetRef.invokeMethodAsync('OnMentionHover', Array.prototype.indexOf.call(item.parentElement.children, item));
+            });
         }
     }
     editorElement.addEventListener('click', (e) => {
