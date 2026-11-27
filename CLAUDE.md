@@ -17,18 +17,33 @@ NuGetパッケージ `Codeer.LowCode.Blazor.Extras` (MIT) として配布。
 ```
 Codeer.LowCode.Blazor.Extras/
 ├── Source/
-│   ├── Codeer.LowCode.Blazor.Extras/   # メインライブラリ (Razor Class Library)
-│   │   ├── Components/                   # Blazor UIコンポーネント (.razor + .razor.css)
-│   │   ├── Designs/                      # フィールドデザインクラス (JSON定義)
-│   │   └── Fields/                       # ランタイムフィールドクラス
-│   └── Example/Extras/                   # 動作確認用サンプルアプリ
-├── Experiments/                          # 実験的プロトタイプ (統合前の検証用)
-│   ├── BlazorMyCalendarApp/              # カレンダーUI実験
-│   └── GanttBlazor/                      # ガントチャートUI実験 (SVGベース)
-├── bk/                                   # バックアップ
-│   └── GanttBlazor/                      # ガントチャート旧版
+│   ├── Codeer.LowCode.Blazor.Extras/              # メインライブラリ (Razor Class Library)
+│   │   ├── Components/                              # Blazor UIコンポーネント (.razor + .razor.css)
+│   │   ├── Designs/                                 # フィールドデザインクラス (JSON定義)
+│   │   ├── Fields/                                  # ランタイムフィールドクラス
+│   │   ├── Data/                                    # フィールドのデータクラス
+│   │   ├── Properties/                              # Resources(.ja-JP).resx (デザイナの表示名・設計チェックの文言)
+│   │   └── wwwroot/                                 # JS interop・CSS
+│   ├── Codeer.LowCode.Blazor.Extras.Server/       # サーバー側の機能 (ExtrasApi・AI・監査ログ・編集履歴・ジョブ・認証)
+│   ├── Codeer.LowCode.Blazor.Extras.Designer/     # デザイナ拡張 (プロパティの編集部品・セットアップ) と AI 向けの文書
+│   │   ├── FieldDocs/                               # フィールドごとの AI 向け文書 (XxxFieldDesign.md)
+│   │   ├── ScriptObjectDocs/                        # スクリプトのオブジェクトの AI 向け文書
+│   │   ├── ListElementComponentDocs/                # 一覧の要素の部品の AI 向け文書
+│   │   ├── SpecDocs/                                # フィールドの無い機能の AI 向け文書
+│   │   └── Setup/                                   # セットアップ (Tools メニューと CLI)
+│   ├── Codeer.LowCode.Blazor.Extras.SeleniumDrivers/  # e2e テスト用のドライバ (XxxFieldDriver.cs)
+│   ├── Codeer.LowCode.Blazor.Extras.Test/         # テスト (Test.JobHost はジョブのテスト用の最小ホスト)
+│   └── Example/                                   # 動作確認用サンプル
+│       ├── Extras/                                  # アプリ (Extras.sln。Server / Client / Designer)
+│       ├── Design/                                  # デザイン (Modules/*.mod.json・*.mod.cs)
+│       └── SampleData/                              # DB を空から作る SQL と Setup
+├── docs/                                          # 利用者向けの文書 (Xxx.md・Xxx-CSS-Customization.md)
+├── Document/                                      # 仕様書・TODO (メール・承認フローなど)
+├── Tools/                                         # 補助ツール (MailSender)
 └── LICENSE, README.md
 ```
+
+AI 向けの文書 (`Extras.Designer` の 4 フォルダ) は Extras.Designer のアセンブリに埋め込まれ、デザイナの ai-refresh が CCFD (デザインを作る Claude Code) に配る。**CCFD が Extras のフィールド・機能について知る経路はこれだけ** (`docs/` は配られない)。
 
 ## 依存関係
 
@@ -345,6 +360,25 @@ Extrasでは以下の3ファイル構成が基本 (データなしフィール�
 | `XxxFieldComponent.razor` | `Components/` | Blazor UI + `.razor.css` |
 
 値を持つフィールドは `Data/XxxFieldData.cs` も必要 (4ファイル構成。データクラスは `Data/` に配置)。
+
+### ★フィールドを足す・変えるときに一緒に直す所
+
+コードだけ直して終わりにしない。プロパティ・スクリプトのメンバー・設計チェック・CSS のクラス・画面の操作を足す・変える・消すたびに、次を上から確かめる (当てはまらない行は飛ばす)。
+
+| 直す所 | 読む人 | 直すとき |
+|---|---|---|
+| `Extras.Designer/FieldDocs/XxxFieldDesign.md` | CCFD (AI がデザインを作るとき) | プロパティ・設計チェック・スクリプトのメンバー・置き方の制約が変わった。**新しいフィールドなら新しく作る**。書くのは設定のしかたと制約だけ (経緯・計測の数値は書かない)。設計チェックで分からず「動かない」だけになる置き方は必ず書く |
+| `Extras.Designer/ScriptObjectDocs/Xxx.md` | CCFD | スクリプトに公開するオブジェクト (フィールド以外) を足した・変えた |
+| `Extras.Designer/SpecDocs/Xxx.md` | CCFD | フィールドの無い機能 (サーバー機能・セットアップ) を足した・変えた |
+| `docs/Xxx.md` | 利用者 | 仕様が変わった (仕様の正本)。同じ文書の中の古い記述も探して直す |
+| `docs/Xxx-CSS-Customization.md` | 利用者 (見た目を変える人) | CSS のクラスを足した・改名した |
+| `Properties/Resources.resx` / `Resources.ja-JP.resx` / `Resources.Designer.cs` | デザイナの利用者 | プロパティの表示名・設計チェックの文言・画面の文言 (3 ファイルを揃える) |
+| `Extras.SeleniumDrivers/XxxFieldDriver.cs` | e2e テスト | 画面の操作・要素の構造・クラスが変わった |
+| `Source/Example/Design/Modules/*.mod.json` | Example・テスト | プロパティを改名した・消した (JSON のキー)。表や列を足したら `Source/Example/SampleData` の SQL も |
+| `README.md` のフィールド一覧 | 利用者 | フィールドを足した |
+| この `CLAUDE.md` の該当の節 | 次の作業者 | 実装の地図と罠だけを書く (経緯・数値・確認の記録は `docs/` に) |
+
+改名・削除のあとは、古い名前を `git grep` で探して 0 件にする (上の文書と JSON も対象)。
 
 ### 名前空間
 
