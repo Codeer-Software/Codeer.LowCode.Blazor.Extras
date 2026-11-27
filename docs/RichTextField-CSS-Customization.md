@@ -3,6 +3,21 @@
 RichTextFieldComponent の各要素にはCSSクラスが付与されています。
 ローコード設定のCSSでこれらのクラスを指定することで、見た目を自由にカスタマイズできます。
 
+## セレクタの書き方
+
+**セレクタの前に `:root` を付けてください**（例: `:root .richtext-toolbar`）。
+
+```css
+:root .richtext-toolbar {
+  background: #e3f2fd;
+}
+```
+
+- クラス名だけのセレクタ（`.richtext-toolbar { … }`）だと、既定のスタイルが同じプロパティを指定している所では既定のほうが勝ち、変わりません（ツールバーの背景・ボタンの大きさ・編集領域の文字の大きさなど、ほとんどの所が当てはまります）。
+- 下の「CSS クラス一覧」は要素を示すためのクラス名です。CSS を書くときは、前に `:root` を付けます。
+- `wwwroot/css` に置いたファイルで変えるときは、`index.html` でそのファイルを `〜.styles.css`（コンポーネントのスタイル）より後に読み込んでください。デザイナーの CSS に書いた分は、後に読み込まれるのでそのまま効きます。
+- 無効（入力できない状態）のときのツールバーと編集領域の見た目を変えるときは、`:root .richtext-disabled .richtext-toolbar` のように `.richtext-disabled` を入れます。
+
 ## CSS クラス一覧
 
 ### エディター全体
@@ -82,14 +97,12 @@ RichTextFieldComponent の各要素にはCSSクラスが付与されています
 | `.richtext-mention-sub` | 補助の表示名（表示名の横の小さい文字） | `color`, `font-size` |
 | `.richtext-content span.mention` / `.richtext-view span.mention` | 本文に入ったメンションの部品（編集領域・表示領域） | `background`, `color`, `border-radius`, `padding`, `font-weight` |
 
-- **セレクタの前に `:root` を付けてください**（例: `:root .richtext-mention-item.active`）。クラス名だけのセレクタだと、既定のスタイルが同じプロパティを指定している所（選択中の行の背景・補助の表示名の色・本文の部品の背景と文字色など）では既定のほうが勝ち、変わりません。
-- `wwwroot/css` に置いたファイルで変えるときは、`index.html` でそのファイルを `〜.styles.css`（コンポーネントのスタイル）より後に読み込んでください。デザイナーの CSS に書いた分は、後に読み込まれるのでそのまま効きます。
 - 候補の枠の位置（`position`・`top`・`left`）と高さ（`max-height`）は、画面に収まるようにプログラムが決めています。CSS で変えないでください。
 - 「全員」のメンションだけを変えるときは `span.mention[data-mention-all]`、人のメンションだけなら `span.mention[data-mention-id]` を使います。
 
 ### コンテンツ内の要素（編集領域・表示領域共通）
 
-エディター内のHTML要素は `::deep` セレクタでスタイリングされています。
+エディター内のHTML要素です（CSS を書くときは、ほかと同じく前に `:root` を付けます）。
 
 | セレクタ | 要素 | カスタマイズ例 |
 |---|---|---|
@@ -105,7 +118,7 @@ RichTextFieldComponent の各要素にはCSSクラスが付与されています
 ### 枠線と角丸を変更する
 
 ```css
-.richtext-editor-wrapper {
+:root .richtext-editor-wrapper {
   border: 2px solid #1a73e8;
   border-radius: 8px;
 }
@@ -114,16 +127,16 @@ RichTextFieldComponent の各要素にはCSSクラスが付与されています
 ### ツールバーの外観を変更する
 
 ```css
-.richtext-toolbar {
+:root .richtext-toolbar {
   background: #e3f2fd;
   border-bottom: 2px solid #1a73e8;
 }
-.richtext-toolbar-btn {
+:root .richtext-toolbar-btn {
   border-radius: 50%;
   width: 32px;
   height: 32px;
 }
-.richtext-toolbar-btn:hover {
+:root .richtext-toolbar-btn:hover {
   background: #bbdefb;
 }
 ```
@@ -131,7 +144,7 @@ RichTextFieldComponent の各要素にはCSSクラスが付与されています
 ### 編集領域のフォントを変更する
 
 ```css
-.richtext-content {
+:root .richtext-content {
   font-family: "游ゴシック", "Yu Gothic", sans-serif;
   font-size: 16px;
   line-height: 1.8;
@@ -142,12 +155,12 @@ RichTextFieldComponent の各要素にはCSSクラスが付与されています
 ### 見出しの色を変更する
 
 ```css
-.richtext-content h1,
-.richtext-view h1 {
+:root .richtext-content h1,
+:root .richtext-view h1 {
   color: #1a73e8;
 }
-.richtext-content h2,
-.richtext-view h2 {
+:root .richtext-content h2,
+:root .richtext-view h2 {
   color: #1557b0;
 }
 ```
@@ -155,8 +168,8 @@ RichTextFieldComponent の各要素にはCSSクラスが付与されています
 ### リンクの色を変更する
 
 ```css
-.richtext-content a,
-.richtext-view a {
+:root .richtext-content a,
+:root .richtext-view a {
   color: #e91e63;
 }
 ```
@@ -184,7 +197,7 @@ RichTextFieldComponent の各要素にはCSSクラスが付与されています
 ### ツールバーを非表示にする（表示専用風）
 
 ```css
-.richtext-toolbar {
+:root .richtext-toolbar {
   display: none;
 }
 ```
@@ -192,11 +205,11 @@ RichTextFieldComponent の各要素にはCSSクラスが付与されています
 ### カラーパレットのサイズを変更する
 
 ```css
-.richtext-color-swatch {
+:root .richtext-color-swatch {
   width: 24px;
   height: 24px;
 }
-.richtext-color-palette {
+:root .richtext-color-palette {
   gap: 3px;
   padding: 8px;
 }
