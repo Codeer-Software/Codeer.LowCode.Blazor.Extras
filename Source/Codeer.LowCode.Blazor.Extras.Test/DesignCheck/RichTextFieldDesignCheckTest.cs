@@ -33,7 +33,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.DesignCheck
         static RichTextFieldDesign CreateField() => new()
         {
             Name = "Body", DbColumn = "DbColumn",
-            MentionListField = "Users", MentionDisplayNameField = "Name", MentionLoginNameField = "LoginName",
+            MentionListField = "Users", MentionDisplayNameField = "Name", MentionDisplayNameSubField = "LoginName",
         };
 
         //正しい形を作ってから、テストごとに 1 か所だけ崩す
@@ -87,7 +87,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.DesignCheck
                 e.List = null;
                 e.Field.MentionListField = string.Empty;
                 e.Field.MentionDisplayNameField = "Nickname";
-                e.Field.MentionLoginNameField = "Account";
+                e.Field.MentionDisplayNameSubField = "Account";
             });
             Assert.That(ret, Is.Empty);
         }
@@ -97,8 +97,8 @@ namespace Codeer.LowCode.Blazor.Extras.Test.DesignCheck
             => Assert.That(Check(), Is.Empty);
 
         [Test]
-        public void ログインIDの項目は空でもよい()
-            => Assert.That(Check(e => e.Field.MentionLoginNameField = string.Empty), Is.Empty);
+        public void 補助の表示名の項目は空でもよい()
+            => Assert.That(Check(e => e.Field.MentionDisplayNameSubField = string.Empty), Is.Empty);
 
         #region :1 一覧そのもの
 
@@ -210,7 +210,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.DesignCheck
 
         #endregion
 
-        #region :5 表示名とログイン ID の項目
+        #region :5 表示名と補助の表示名の項目
 
         [Test]
         public void 表示名の項目の指定が要る()
@@ -228,10 +228,10 @@ namespace Codeer.LowCode.Blazor.Extras.Test.DesignCheck
         }
 
         [Test]
-        public void ログインIDの項目は一覧が読むモジュールにあること()
+        public void 補助の表示名の項目は一覧が読むモジュールにあること()
         {
-            var ret = Check(e => e.Field.MentionLoginNameField = "Account");
-            AssertSingle(ret, 5, nameof(RichTextFieldDesign.MentionLoginNameField));
+            var ret = Check(e => e.Field.MentionDisplayNameSubField = "Account");
+            AssertSingle(ret, 5, nameof(RichTextFieldDesign.MentionDisplayNameSubField));
         }
 
         [Test]
@@ -239,7 +239,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.DesignCheck
         {
             //ユーザーのモジュールにあっても、一覧が読むモジュールに無ければ指摘
             var ret = Check(e => e.AddPublicUserModule().Fields.RemoveAll(f => f.Name == "LoginName"));
-            AssertSingle(ret, 5, nameof(RichTextFieldDesign.MentionLoginNameField));
+            AssertSingle(ret, 5, nameof(RichTextFieldDesign.MentionDisplayNameSubField));
             Assert.That(ret[0].Message, Does.Contain("PublicUser"));
         }
 
@@ -345,7 +345,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.DesignCheck
             Assert.That(result.RenameNeeded, Is.True);
             result.RenameAction();
             Assert.That(field.MentionDisplayNameField, Is.EqualTo("FullName"));
-            Assert.That(field.MentionLoginNameField, Is.EqualTo("LoginName"));
+            Assert.That(field.MentionDisplayNameSubField, Is.EqualTo("LoginName"));
         }
 
         #endregion

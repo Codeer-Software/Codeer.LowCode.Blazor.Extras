@@ -46,9 +46,11 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         [Designer(Index = 2, DisplayName = "$RichTextFieldMentionDisplayNameField")]
         public string MentionDisplayNameField { get; set; } = string.Empty;
 
-        /// <summary>一覧の行のうち、ログイン ID として補助に出す項目 (一覧が読むモジュールのフィールド名)。空なら出さない。</summary>
-        [Designer(Index = 3, DisplayName = "$RichTextFieldMentionLoginNameField")]
-        public string MentionLoginNameField { get; set; } = string.Empty;
+        /// <summary>
+        /// 一覧の行のうち、表示名の横に補助で出す項目 (一覧が読むモジュールのフィールド名)。絞り込みにも使い、表示名が空の人はこの値で出す。空なら出さない。
+        /// </summary>
+        [Designer(Index = 3, DisplayName = "$RichTextFieldMentionDisplayNameSubField")]
+        public string MentionDisplayNameSubField { get; set; } = string.Empty;
 
         public override string GetWebComponentTypeFullName() => typeof(RichTextFieldComponent).FullName!;
 
@@ -128,12 +130,12 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
                 return;
             }
 
-            //:5 表示名・ログイン ID の項目 (行のレイアウトに置かれているかは見ない)
+            //:5 表示名・補助の表示名の項目 (行のレイアウトに置かれているかは見ない)
             if (string.IsNullOrEmpty(MentionDisplayNameField))
             {
                 Add(CodeMentionListRowField, nameof(MentionDisplayNameField), Properties.Resources.RichTextMentionCheck_DisplayNameRequired);
             }
-            foreach (var (member, field) in new[] { (nameof(MentionDisplayNameField), MentionDisplayNameField), (nameof(MentionLoginNameField), MentionLoginNameField) })
+            foreach (var (member, field) in new[] { (nameof(MentionDisplayNameField), MentionDisplayNameField), (nameof(MentionDisplayNameSubField), MentionDisplayNameSubField) })
             {
                 if (string.IsNullOrEmpty(field) || listModule.Fields.Any(e => e.Name == field)) continue;
                 Add(CodeMentionListRowField, member, string.Format(Properties.Resources.RichTextMentionCheck_RowFieldNotFound, field, listModule.Name));
@@ -192,13 +194,13 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         {
             var builder = context.Builder(base.ChangeName(context))
                 .AddField(MentionListField, x => MentionListField = x);
-            //表示名・ログイン ID の項目は、一覧が読むモジュールの項目
+            //表示名・補助の表示名の項目は、一覧が読むモジュールの項目
             var list = context.DesignData.Modules.Find(context.OwnerModule)?.Fields.FirstOrDefault(e => e.Name == MentionListField) as ListFieldDesign;
             var listModuleName = list?.SearchCondition.ModuleName;
             if (!string.IsNullOrEmpty(listModuleName))
             {
                 builder.AddField(listModuleName, MentionDisplayNameField, x => MentionDisplayNameField = x)
-                    .AddField(listModuleName, MentionLoginNameField, x => MentionLoginNameField = x);
+                    .AddField(listModuleName, MentionDisplayNameSubField, x => MentionDisplayNameSubField = x);
             }
             return builder.Build();
         }

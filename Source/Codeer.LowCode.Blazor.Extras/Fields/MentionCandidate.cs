@@ -6,11 +6,11 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         /// <summary>行の Id (ユーザーのモジュールの Id。本文の data-mention-id に入る)。</summary>
         public string Id { get; set; } = string.Empty;
 
-        /// <summary>表示名 (空の人はログイン ID)。</summary>
+        /// <summary>表示名 (空の人は補助の表示名)。</summary>
         public string DisplayName { get; set; } = string.Empty;
 
-        /// <summary>ログイン ID (候補の補助の表示。項目を指定していなければ空)。</summary>
-        public string LoginName { get; set; } = string.Empty;
+        /// <summary>補助の表示名 (候補の行で表示名の横に小さく出す。絞り込みにも使う。項目を指定していなければ空)。</summary>
+        public string DisplayNameSub { get; set; } = string.Empty;
     }
 
     /// <summary>メンションの候補の問い合わせの結果。</summary>

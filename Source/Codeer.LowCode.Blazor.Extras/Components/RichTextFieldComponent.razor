@@ -168,9 +168,9 @@ else
                role="option" aria-selected="@(index == _mentionIndex ? "true" : "false")" data-mention-candidate="@(item.IsAll ? "*" : item.Id)"
                @onclick="() => SelectMentionAsync(item)">
             <span class="richtext-mention-name">@item.DisplayName</span>
-            @if (!string.IsNullOrEmpty(item.LoginName) && item.LoginName != item.DisplayName)
+            @if (!string.IsNullOrEmpty(item.DisplayNameSub) && item.DisplayNameSub != item.DisplayName)
             {
-              <span class="richtext-mention-login">@item.LoginName</span>
+              <span class="richtext-mention-sub">@item.DisplayNameSub</span>
             }
           </div>
         }
@@ -360,7 +360,7 @@ else
 
   // ===== Mention =====
 
-  private record MentionItem(string Id, string DisplayName, string LoginName, bool IsAll);
+  private record MentionItem(string Id, string DisplayName, string DisplayNameSub, bool IsAll);
 
   private bool _showMention;
   private double _mentionTop;
@@ -396,7 +396,7 @@ else
     //「全員」は一覧に人がいて、打った文字が表記の先頭と一致するときだけ (何も打っていないときを含む)
     var allLabel = Resources.RichTextMentionAll;
     if (candidates.HasPeople && allLabel.StartsWith(query, StringComparison.CurrentCultureIgnoreCase)) items.Add(new MentionItem(string.Empty, allLabel, string.Empty, true));
-    items.AddRange(candidates.Items.Select(e => new MentionItem(e.Id, e.DisplayName, e.LoginName, false)));
+    items.AddRange(candidates.Items.Select(e => new MentionItem(e.Id, e.DisplayName, e.DisplayNameSub, false)));
 
     _mentionItems = items;
     _mentionIndex = 0;

@@ -68,7 +68,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             result.HasPeople = people.Count > 0;
             foreach (var candidate in people)
             {
-                if (text.Length > 0 && !Contains(candidate.DisplayName, text) && !Contains(candidate.LoginName, text)) continue;
+                if (text.Length > 0 && !Contains(candidate.DisplayName, text) && !Contains(candidate.DisplayNameSub, text)) continue;
                 result.Items.Add(candidate);
                 if (result.Items.Count == MentionCandidateLimit) break;
             }
@@ -152,16 +152,16 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             return people;
         }
 
-        //行のデータを候補にする。Id の無い行と、表示名もログイン ID も空の行は候補にしない
+        //行のデータを候補にする。Id の無い行と、表示名も補助の表示名も空の行は候補にしない
         MentionCandidate? ToCandidate(ModuleData row, string idField)
         {
             var id = row.Fields.TryGetValue(idField, out var idData) ? (idData as IdFieldData)?.Value : null;
             if (string.IsNullOrEmpty(id) || IdFieldData.IsTemporaryId(id)) return null;
-            var loginName = Text(row, Design.MentionLoginNameField);
+            var displayNameSub = Text(row, Design.MentionDisplayNameSubField);
             var displayName = Text(row, Design.MentionDisplayNameField);
-            if (displayName.Length == 0) displayName = loginName;
+            if (displayName.Length == 0) displayName = displayNameSub;
             if (displayName.Length == 0) return null;
-            return new MentionCandidate { Id = id, DisplayName = displayName, LoginName = loginName };
+            return new MentionCandidate { Id = id, DisplayName = displayName, DisplayNameSub = displayNameSub };
         }
 
         //行の項目の値 (行のレイアウトに置いていない項目は読まれないので空)

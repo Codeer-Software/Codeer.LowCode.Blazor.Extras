@@ -103,7 +103,7 @@
       "DbColumn": "",
       "MentionListField": "",
       "MentionDisplayNameField": "",
-      "MentionLoginNameField": "",
+      "MentionDisplayNameSubField": "",
       "DisplayName": "",
       "IsRequired": false,
       "OnDataChanged": "",

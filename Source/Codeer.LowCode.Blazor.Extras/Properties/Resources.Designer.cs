@@ -4861,11 +4861,11 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
         }
         
         /// <summary>
-        ///   Candidate login ID field に類似しているローカライズされた文字列を検索します。
+        ///   Candidate sub display name field に類似しているローカライズされた文字列を検索します。
         /// </summary>
-        internal static string RichTextFieldMentionLoginNameField {
+        internal static string RichTextFieldMentionDisplayNameSubField {
             get {
-                return ResourceManager.GetString("RichTextFieldMentionLoginNameField", resourceCulture);
+                return ResourceManager.GetString("RichTextFieldMentionDisplayNameSubField", resourceCulture);
             }
         }
         

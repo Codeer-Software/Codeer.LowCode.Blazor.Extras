@@ -18,7 +18,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Fields
     /// RichTextField のメンションの候補 = 同じモジュールの一覧フィールド (レイアウトに置いていない ListField) が読む行。実 DB (SQLite) で、
     /// いつ読むか (最初の問い合わせ・一覧の条件が変わったとき)、手元の候補への絞り込み、候補にしない行を確かめる。
     /// 読むのは RichTextField で、一覧からは検索条件だけを借りる (一覧フィールドの行 = Module は作らない)。
-    /// データ: メモ 1 = 営業 / メモ 2 = 開発。ユーザー: 営業 = 山田 太郎 (yamada), 佐藤 花子 (Sato), 表示名なし (suzuki) / 開発 = 高橋 (takahashi) / 部署なし = 名前もログイン ID も無い人。
+    /// データ: メモ 1 = 営業 / メモ 2 = 開発。ユーザー: 営業 = 山田 太郎 (yamada), 佐藤 花子 (Sato), 表示名なし (suzuki) / 開発 = 高橋 (takahashi) / 部署なし = 名前も補助の表示名も無い人。
     /// </summary>
     public class RichTextMentionDbTest : IAuthenticationContext
     {
@@ -85,7 +85,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Fields
             _body = new RichTextFieldDesign
             {
                 Name = "Body", DbColumn = "body",
-                MentionListField = "Users", MentionDisplayNameField = "Name", MentionLoginNameField = "Login",
+                MentionListField = "Users", MentionDisplayNameField = "Name", MentionDisplayNameSubField = "Login",
             };
             memo.Fields.Add(_body);
             memo.DetailLayouts[""] = new DetailLayoutDesign { DataOnlyFields = { "Dept", "Body" } };
@@ -119,11 +119,11 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Fields
             var body = Body(await client.OpenAsync("Memo", "1"));
             var ret = await body.GetMentionCandidatesAsync(string.Empty);
 
-            //表示名が空の人はログイン ID で出す。どちらも空の行は出さない。開発の人は一覧の条件で外れる
+            //表示名が空の人は補助の表示名で出す。どちらも空の行は出さない。開発の人は一覧の条件で外れる
             Assert.That(Names(ret), Is.EqualTo("山田 太郎,佐藤 花子,suzuki"));
             Assert.That(ret.HasPeople, Is.True);
             Assert.That(ret.Items.Select(e => e.Id), Is.EqualTo(new[] { "1", "2", "3" }));
-            Assert.That(ret.Items.Select(e => e.LoginName), Is.EqualTo(new[] { "yamada", "Sato", "suzuki" }));
+            Assert.That(ret.Items.Select(e => e.DisplayNameSub), Is.EqualTo(new[] { "yamada", "Sato", "suzuki" }));
             Assert.That(client.Logger.ErrorList, Is.Empty);
         }
 
@@ -160,12 +160,12 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Fields
 
         [TestCase("山田", "山田 太郎")]
         [TestCase("花", "佐藤 花子")]
-        //ログイン ID にも当てる。大文字と小文字は区別しない
+        //補助の表示名にも当てる。大文字と小文字は区別しない
         [TestCase("YAMA", "山田 太郎")]
         [TestCase("sato", "佐藤 花子")]
         [TestCase("s", "佐藤 花子,suzuki")]
         [TestCase("いない", "")]
-        public async Task 打った文字を表示名とログインIDに部分一致で当てる(string text, string expected)
+        public async Task 打った文字を表示名と補助の表示名に部分一致で当てる(string text, string expected)
         {
             var body = Body(await (await ClientAsync()).OpenAsync("Memo", "1"));
             var ret = await body.GetMentionCandidatesAsync(text);
@@ -388,7 +388,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Fields
         [Test]
         public async Task 行のレイアウトに置いていない項目は読まれないので候補に出ない()
         {
-            //一覧は行のレイアウトに置いた項目だけを読む。表示名もログイン ID も置き忘れると、誰も候補に出ない (設計チェックでは分からない)
+            //一覧は行のレイアウトに置いた項目だけを読む。表示名も補助の表示名も置き忘れると、誰も候補に出ない (設計チェックでは分からない)
             _design.Modules.Find("AppUser")!.ListLayouts[""] = new ListLayoutDesign { Elements = [[new ListElement { FieldName = "Dept" }]] };
             var ret = await Body(await (await ClientAsync()).OpenAsync("Memo", "1")).GetMentionCandidatesAsync(string.Empty);
             Assert.That(ret.Items, Is.Empty);
@@ -397,7 +397,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Fields
 
         #region 一般向けのユーザーモジュール (ユーザーのモジュールは限られた人だけが読める設計)
 
-        //ユーザーのモジュール (AppUser) は開発の人だけが読める。同じ表を見る一般向けのモジュール (PublicUser・書き込めない・名前とログイン ID だけ) は誰でも読める
+        //ユーザーのモジュール (AppUser) は開発の人だけが読める。同じ表を見る一般向けのモジュール (PublicUser・書き込めない・名前と補助の表示名だけ) は誰でも読める
         void RestrictUserModule()
         {
             _design.Modules.Find("AppUser")!.UserReadCondition = new ModuleMatchCondition
@@ -500,9 +500,9 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Fields
                 Assert.That(field.CheckDesign(context).Select(e => $"{e.Code} {e.Message}"), Is.Empty, field.Name);
                 var list = module.Fields.OfType<ListFieldDesign>().Single(e => e.Name == field.MentionListField);
                 Assert.That(list.CheckDesign(context).Select(e => $"{e.Code} {e.Message}"), Is.Empty, list.Name);
-                //表示名とログイン ID の項目は、一覧の行のレイアウトに置いてある (置き忘れると候補が出ない)
+                //表示名と補助の表示名の項目は、一覧の行のレイアウトに置いてある (置き忘れると候補が出ない)
                 var columns = d.Modules.Find(list.SearchCondition.ModuleName)!.ListLayouts[list.LayoutName].Elements.SelectMany(e => e).Select(e => e.FieldName).ToList();
-                Assert.That(columns, Does.Contain(field.MentionDisplayNameField).And.Contain(field.MentionLoginNameField));
+                Assert.That(columns, Does.Contain(field.MentionDisplayNameField).And.Contain(field.MentionDisplayNameSubField));
             }
             //一般の利用者が @ を打つ本文の一覧は一般向けのユーザーモジュールを読む。管理者だけが読める本文の一覧は、ユーザーのモジュールを役割で絞って読む
             //(@ を打つのは管理者だけで、候補もその本文を読める人にする。役割は一般向けのモジュールには置かない)
