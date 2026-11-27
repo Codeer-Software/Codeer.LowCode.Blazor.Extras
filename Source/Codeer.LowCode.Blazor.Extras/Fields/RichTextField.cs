@@ -56,8 +56,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         /// 読み込みに失敗したとき・読んでも行が無かったときは候補なし (例外は出さない)。同じ条件のままなら、次に読み直すのは @ を打ち直したとき。
         /// メンションを使わない (候補の一覧を指定していない)・デザインモード・一覧が無い・一覧が読み込みを止めている (AllowLoad が false) ときは候補なし。
         /// </summary>
-        [ScriptHide]
-        public async Task<MentionCandidates> GetMentionCandidatesAsync(string text)
+        internal async Task<MentionCandidates> GetMentionCandidatesAsync(string text)
         {
             var result = new MentionCandidates();
             if (!Design.UsesMention || Services.AppInfoService.IsDesignMode) return result;

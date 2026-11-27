@@ -1,7 +1,7 @@
 namespace Codeer.LowCode.Blazor.Extras.Fields
 {
     /// <summary>メンションの候補 1 人 (RichTextField の候補の一覧の 1 行)。</summary>
-    public class MentionCandidate
+    internal class MentionCandidate
     {
         /// <summary>行の Id (ユーザーのモジュールの Id。本文の data-mention-id に入る)。</summary>
         public string Id { get; set; } = string.Empty;
@@ -14,7 +14,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
     }
 
     /// <summary>メンションの候補の問い合わせの結果。</summary>
-    public class MentionCandidates
+    internal class MentionCandidates
     {
         /// <summary>候補の一覧に人がいるか (打った文字で絞る前)。いなければ「全員」も出さない。</summary>
         public bool HasPeople { get; set; }
