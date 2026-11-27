@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <!-- Jobs のテスト用の子プロセス (JobMode を持つ最小のホスト)。Extras.Test の JobProcessTest が dotnet <dll> / apphost で起動する -->
+  <!-- Jobs のテスト用の子プロセス (JobRuntime を持つ最小のホスト)。Extras.Test の JobRuntimeProcessTest が dotnet <dll> / apphost で起動する -->
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>net8.0</TargetFramework>

@@ -251,7 +251,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.EditHistory
             //親の版に含める従属レコードの行を、親の画面以外 (行のモジュールの画面・取込・他のモジュールの送信) で保存したときも、その行を含む親の版にする。
             //保存の前に、これから変わる・消える行が今入っている親を引いておく (保存の後では、消えた行・別の親へ付け替えた行の元の親が引けない)
             var owners = new HashSet<(string Module, string Id)>();
-            var ownersError = await AddOwnersAsync(access, await RowsBeforeAsync(io, access, transactionData), owners);
+            var ownersError = await AddOwnersAsync(access, await RowsBeforeAsync(access, transactionData), owners);
             if (ownersError != null) return Fail(transactionData, ownersError);
             //保存の前に引いた親の、保存の前の内容。保存の後の内容と比べて、この保存で変わった親だけを版にする
             var baselines = new Dictionary<(string Module, string Id), string>();
@@ -401,9 +401,9 @@ namespace Codeer.LowCode.Blazor.Extras.Server.EditHistory
 
         Dictionary<string, List<EditHistoryPolicy.IncludedOwner>> IncludedOwners => _includedOwners ??= EditHistoryPolicy.IncludedOwners(_designData);
 
-        //保存の前に親を引く行: 送信に乗った更新・削除の行、検索条件での削除で消える行、削除するレコードの従属レコードの行 (一緒に消える行)。
+        //保存の前に親を引く行: 送信に乗った更新・削除の行 (一覧の完全洗い替えで消える行は、本体が先に削除の行に直している)、削除するレコードの従属レコードの行 (一緒に消える行)。
         //多めに拾ってよい (実際には変わらなかった行の親は、保存後の内容が最新の版と同じなので版にならない)
-        async Task<List<(string Module, string Id)>> RowsBeforeAsync(ModuleDataIO userIo, ModuleDataIOSystemAccess io, List<ModuleSubmitData> transactionData)
+        async Task<List<(string Module, string Id)>> RowsBeforeAsync(ModuleDataIOSystemAccess io, List<ModuleSubmitData> transactionData)
         {
             var rows = new List<(string Module, string Id)>();
             if (IncludedOwners.Count == 0) return rows;
@@ -413,17 +413,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.EditHistory
                 rows.Add((submitData.ModuleName, submitData.Id));
                 rows.AddRange(submitData.Update.Select(e => (e.Name, ModuleDataValues.GetId(e))));
 
-                var deletes = submitData.Delete.Select(e => (Module: e.ModuleName, e.Id)).ToList();
-                foreach (var condition in submitData.SearchDelete)
-                {
-                    //条件の無い検索削除は本体が拒否する
-                    if (condition.Condition == null || !TouchesIncludedRows(condition.ModuleName)) continue;
-                    var copy = condition.JsonClone();
-                    copy.SelectFields = new List<string> { SystemFieldNames.Id };
-                    //本体の検索削除と同じく、利用者の権限で読む (読めない要求はここで拒否される)
-                    deletes.AddRange((await userIo.GetListAsync(copy, 0)).Items.Select(e => (condition.ModuleName, ModuleDataValues.GetId(e))));
-                }
-                foreach (var (moduleName, id) in deletes)
+                foreach (var (moduleName, id) in submitData.Delete.Select(e => (e.ModuleName, e.Id)))
                 {
                     rows.Add((moduleName, id));
                     var design = _designData.Modules.Find(moduleName);
@@ -435,10 +425,6 @@ namespace Codeer.LowCode.Blazor.Extras.Server.EditHistory
             }
             return rows;
         }
-
-        //そのモジュールの行か、その従属レコードの行 (子・孫) が、どれかの親の版に含まれるか
-        bool TouchesIncludedRows(string moduleName)
-            => IncludedOwners.ContainsKey(moduleName) || (_designData.Modules.Find(moduleName) is { } design && OwnsIncludedRows(design));
 
         //そのモジュールの従属レコードの行 (子・孫) に、どれかの親の版に含まれるモジュールの行があるか (設計から決まる)
         bool OwnsIncludedRows(ModuleDesign design)
@@ -657,8 +643,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.EditHistory
             var field = EditHistoryContracts.Field(module);
             if (field == null || (field.IndividuallyRecordedOwnedRecords.Count == 0 && field.ExcludedOwnedRecords.Count == 0)) return false;
             var rows = EditHistoryPolicy.NotIncludedModules(_designData, module, field);
-            return submitData.SearchDelete.Count == 0
-                && submitData.Add.All(e => rows.Contains(e.Name))
+            return submitData.Add.All(e => rows.Contains(e.Name))
                 && submitData.Update.All(e => rows.Contains(e.Name))
                 && submitData.Delete.All(e => rows.Contains(e.ModuleName));
         }
@@ -685,7 +670,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.EditHistory
                 .Any(name => EditHistoryContracts.Field(_designData.Modules.Find(name)) != null || IncludedOwners.ContainsKey(name));
 
         static bool IsEmpty(ModuleSubmitData submitData)
-            => submitData.Add.Count == 0 && submitData.Update.Count == 0 && submitData.Delete.Count == 0 && submitData.SearchDelete.Count == 0;
+            => submitData.Add.Count == 0 && submitData.Update.Count == 0 && submitData.Delete.Count == 0;
 
         static bool IsStandalone(ModuleDesign module, ModuleSubmitData submitData)
             => IsEmpty(submitData) && module.Fields.OfType<ExecuteSqlFieldDesign>().Any(e => e.Timing == ExecuteSqlTiming.Standalone);

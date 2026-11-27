@@ -14,7 +14,8 @@
     {
         /// <summary>
         /// 差出人アドレス (任意)。空 = プロバイダ設定 (Smtp / Gmail などのセクション) の SenderMailAddress。
-        /// 動的な From は送信者設定の AllowedFromDomains で許可されたドメインのみ (サーバーが検証する)。
+        /// 使われるのはサーバーのコードが送るシステムメール (MailDispatcher.SendAsync(mailInfraName, message)) だけ。
+        /// 画面からの送信と Job スクリプトの MailService はサーバーが空にする (差出人は常にシステム送信者)。
         /// </summary>
         public string From { get; set; } = string.Empty;
 

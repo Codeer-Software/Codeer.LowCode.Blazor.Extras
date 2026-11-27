@@ -254,9 +254,9 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
                 context.GetScriptMethodAttribute(GetType(), nameof(OnCellClick))).AddTo(result);
             if (string.IsNullOrEmpty(SearchCondition.ModuleName)) return result;
 
-            //集計はテーブルを持つモジュールだけ (サーバーが拒否する)。元モジュールは設計でしか変わらないのでここで見る。モジュールが無いことは SearchCondition の確認が出す
+            //集計はテーブルか QueryField を持つモジュールだけ (サーバーが拒否する)。元モジュールは設計でしか変わらないのでここで見る。モジュールが無いことは SearchCondition の確認が出す
             if (context.DesignData.Modules.Find(SearchCondition.ModuleName) is { } module
-                && (module.Fields.OfType<QueryFieldDesign>().Any() || string.IsNullOrEmpty(module.DbTable)))
+                && string.IsNullOrEmpty(module.DbTable) && !module.Fields.OfType<QueryFieldDesign>().Any())
                 result.Add(Info(context, Codes.NotTableModule, string.Format(Resources.CrossTab_NotTableModule, SearchCondition.ModuleName), nameof(SearchCondition)));
 
             foreach (var variable in Setting.Rows.Concat(Setting.Columns).Select(g => g.Variable)

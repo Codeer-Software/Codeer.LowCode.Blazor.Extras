@@ -21,6 +21,7 @@
 | Remarks | string (複数行) | - | AI への補足指示。表の読み方・値の解釈ルール・単位の扱いなどを日本語で書く。抽出精度のチューニングポイント |
 | DataImportCompleted | string (スクリプトイベント) | - | 取込完了後に実行するスクリプトメソッド名 |
 | FileField | string (フィールド参照) | - | 解析したファイルを格納する同一モジュール内の `FileField` 名 |
+| SendImage | bool | - | 解析するファイルが画像 (jpg / png / gif / webp) のとき、文字認識の結果に加えて画像そのものも AI に渡す (既定 `false`)。文字認識が落とす記号 (`<` `≤` `≥` や下線)・小数点・似た形の文字 (6 と 8 など) を AI が画像で確かめられる。画像の分だけトークン (費用・応答時間) が増える。食い違うときは画像を正とさせるので、細かい文字が詰まった帳票では AI の読み違いが文字認識の正しい値を上書きすることがある (帳票で効果を確かめてから有効にする)。PDF や Office 文書には効かないので、PDF の帳票はページごとの画像にしてから解析させる |
 
 ## 値が入る対象フィールド型
 
@@ -32,6 +33,8 @@
 - List — 子モジュールの行としてネスト抽出します (明細表の取込)
 
 フィールドの表示名 (DisplayName) は抽出時の項目名として使われるため、帳票上の見出しに近い日本語を設定すると精度が上がります。
+AI が返す項目のキーはフィールド名に固定されるので (JSON スキーマ)、表示名が同じフィールド (規格の「記号」と結果の「記号」など) があっても別の項目として扱われます。
+JSON スキーマを受け付けないモデルでは、1 回失敗してから固定なしでやり直します (その分遅くなり、AI が表示名をキーにした値は取り込まれません)。
 
 ## サーバー側設定
 
@@ -57,6 +60,7 @@
 専用のルートで受ける場合は、クライアントの起動時に `AITextAnalyzerField.FileToModuleDataEndPoint` / `TextToModuleDataEndPoint` を設定するとそちらへ送ります。
 チャットモデルは Microsoft.Extensions.AI の `IChatClient` 経由で呼びます。既定のコンストラクタ (`AISettings` だけ) は Azure OpenAI の IChatClient を組み立て、
 `AITextAnalyzeService(AISettings, Func<IChatClient>)` なら AIChat の Agent と同じくホストが好きなプロバイダを渡せます (AISettings は文書解析の接続に使う)。
+抽出は毎回同じ結果に寄せるため temperature 0 で呼びます。temperature を既定値でしか受け付けないモデル (推論モデル) では、断られた時点で temperature なしで送り直します (結果の揺れはモデルの既定に従います)。
 共通の API で使うときは ExtrasApiTable に `new AITextAnalyzeApi(new AITextAnalyzeService(settings, factory))` と並べます。
 サーバーは解析のたびに、その AITextAnalyzerField が今のユーザーに見えること (アプリのアクセス条件・モジュールの UserReadCondition・PermissionField の読取権限) を確かめてから AI を呼び、補足指示 (Remarks) はフィールドのデザインから取ります
 ([サーバー API の権限チェック](ServerApiAuthorization.md))。

@@ -50,7 +50,6 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AuditLog
             => new[] { e.ModuleName }
                 .Concat(e.Add.Select(d => d.Name))
                 .Concat(e.Update.Select(d => d.Name))
-                .Concat(e.Delete.Select(d => d.ModuleName))
-                .Concat(e.SearchDelete.Select(d => d.ModuleName));
+                .Concat(e.Delete.Select(d => d.ModuleName));
     }
 }

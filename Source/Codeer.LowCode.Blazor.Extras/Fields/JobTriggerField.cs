@@ -1,7 +1,7 @@
 using Codeer.LowCode.Blazor.DataIO;
 using Codeer.LowCode.Blazor.Extras.Designs;
 using Codeer.LowCode.Blazor.Extras.Api;
-using Codeer.LowCode.Blazor.Extras.Jobs;
+using Codeer.LowCode.Blazor.Extras.JobTrigger;
 using Codeer.LowCode.Blazor.Extras.Properties;
 using Codeer.LowCode.Blazor.Extras.Services;
 using Codeer.LowCode.Blazor.Json;
@@ -24,9 +24,9 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         public JobTriggerField(JobTriggerFieldDesign design) : base(design) { }
 
         /// <summary>
-        /// ジョブ専用の API の URL (POST。本文は <see cref="JobRunRequest"/>、応答は <see cref="JobRunResponse"/>)。
-        /// 空 (既定) なら共通の口 (<see cref="Api.ExtrasTransport"/> = ホストの 1 本の API の JobApi) を使う。ジョブ専用の Controller を持つホストが起動時に設定する。
-        /// 非同期で起動したジョブの状態は GET {EndPoint}/{jobId} (応答は <see cref="JobStatusResponse"/>。知らない Id は 404) で問い合わせる。
+        /// ジョブ専用の API の URL (POST。本文は <see cref="JobTriggerRunRequest"/>、応答は <see cref="JobTriggerRunResponse"/>)。
+        /// 空 (既定) なら共通の口 (<see cref="Api.ExtrasTransport"/> = ホストの 1 本の API の JobTriggerApi) を使う。ジョブ専用の Controller を持つホストが起動時に設定する。
+        /// 非同期で起動したジョブの状態は GET {EndPoint}/{jobId} (応答は <see cref="JobTriggerStatusResponse"/>。知らない Id は 404) で問い合わせる。
         /// 空のまま (かつ <see cref="RunCoreAsync"/> も無い) ならジョブは動かせず、押すとその旨を通知する。
         /// </summary>
         public static string EndPoint { get; set; } = string.Empty;
@@ -35,14 +35,14 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         /// 依頼の送り方を差し替える (デスクトップなど HTTP を使わないホスト向け)。設定されていれば <see cref="EndPoint"/> より優先する。
         /// 通信の失敗 (理由はホストが通知済み) は null を返す。
         /// </summary>
-        public static Func<JobTriggerField, JobRunRequest, Task<JobRunResponse?>>? RunCoreAsync { get; set; }
+        public static Func<JobTriggerField, JobTriggerRunRequest, Task<JobTriggerRunResponse?>>? RunCoreAsync { get; set; }
 
         /// <summary>
         /// 非同期で起動したジョブの状態の問い合わせ方 (<see cref="RunCoreAsync"/> の相方。引数はフィールドとジョブ Id)。
         /// <see cref="RunCoreAsync"/> を使うときは <see cref="GetJobStatusAsync"/> がこちらで問い合わせる。無ければ <see cref="GetJobStatusAsync"/> は null を返す。
         /// 知らない Id (結果を忘れた) なら null を返す。
         /// </summary>
-        public static Func<JobTriggerField, string, Task<JobStatusResponse?>>? GetJobStatusCoreAsync { get; set; }
+        public static Func<JobTriggerField, string, Task<JobTriggerStatusResponse?>>? GetJobStatusCoreAsync { get; set; }
 
         readonly List<string> _jobIds = new();
 
@@ -61,6 +61,12 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         /// 呼んだ時点の写し (スクリプトで扱える型にするため配列)。
         /// </summary>
         public string[] JobIds => _jobIds.ToArray();
+
+        /// <summary>
+        /// 最後に待って (同期で) 動かしたジョブが返したデータ (Job スクリプトの args.Result)。スクリプトで <c>Result.Total</c> のように読む。
+        /// <see cref="RunAsync"/> (Run) を始めると null に戻り、成功してジョブがデータを返したときだけ入る (失敗・データを返さないジョブ・非同期では null。非同期の結果は GetJobStatus の Result)。
+        /// </summary>
+        public JsonObject? Result { get; private set; }
 
         /// <summary>ボタンの文言 (デザインが空なら既定)。</summary>
         [ScriptHide]
@@ -90,8 +96,9 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             //他のボタンと同じく、書けない (ViewOnly) か無効なら動かさない (ホストも書き込み権限で判定する)
             if (Services.AppInfoService.IsDesignMode || IsRunning || Module == null || IsViewOnly || IsEnabled == false) return false;
 
-            //入力チェックの間も二重に押されないよう、先に実行中にする
+            //入力チェックの間も二重に押されないよう、先に実行中にする。前の実行の結果は残さない
             IsRunning = true;
+            Result = null;
             NotifyStateChanged();
             try
             {
@@ -106,13 +113,13 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
                     arguments = CreateArguments(Module);
                 }
 
-                var request = new JobRunRequest
+                var request = new JobTriggerRunRequest
                 {
                     ModuleName = Module.Design.Name,
                     FieldName = Design.Name,
                     Arguments = arguments,
                 };
-                JobRunResponse? response;
+                JobTriggerRunResponse? response;
                 try
                 {
                     response = await SendAsync(request);
@@ -124,7 +131,11 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
                 }
                 //null はホストが通知済み
                 if (response == null) return false;
-                if (!response.Started) return await NotifyResultAsync(response.Succeeded, response.Message, response.Error);
+                if (!response.Started)
+                {
+                    if (response.Succeeded && !string.IsNullOrEmpty(response.ResultJson)) Result = JsonObject.ToJsonObject(response.ResultJson);
+                    return await NotifyResultAsync(response.Succeeded, response.Message, response.Error);
+                }
 
                 await Services.UIService.NotifySuccess(string.Format(Resources.JobTrigger_StartedFormat, Design.JobName));
                 if (!string.IsNullOrEmpty(response.JobId)) _jobIds.Add(response.JobId);
@@ -146,12 +157,12 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         /// <param name="jobId">ジョブの Id (<see cref="JobId"/> / <see cref="JobIds"/>)。空なら <see cref="JobIds"/> の先頭 (一番古いもの。無ければ問い合わせずに null)。</param>
         //スクリプトは省略可能引数を解決しない (本体の流儀どおりオーバーロードで出す)
         [ScriptName("GetJobStatus")]
-        public async Task<JobStatusResponse?> GetJobStatusAsync(string jobId)
+        public async Task<JobTriggerStatusResponse?> GetJobStatusAsync(string jobId)
         {
             if (Services.AppInfoService.IsDesignMode) return null;
             if (string.IsNullOrEmpty(jobId)) jobId = _jobIds.FirstOrDefault() ?? string.Empty;
             if (string.IsNullOrEmpty(jobId)) return null;
-            JobStatusResponse? status;
+            JobTriggerStatusResponse? status;
             bool unknown;
             try
             {
@@ -161,18 +172,18 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             {
                 return null;
             }
-            if (unknown || (status != null && status.Status != JobStatus.Running)) _jobIds.Remove(jobId);
+            if (unknown || (status != null && status.Status != JobTriggerStatus.Running)) _jobIds.Remove(jobId);
             return status;
         }
 
         /// <summary><see cref="JobIds"/> の先頭 (一番古いもの) を問い合わせる。無ければ問い合わせずに null。</summary>
         [ScriptName("GetJobStatus")]
-        public async Task<JobStatusResponse?> GetJobStatusAsync() => await GetJobStatusAsync(string.Empty);
+        public async Task<JobTriggerStatusResponse?> GetJobStatusAsync() => await GetJobStatusAsync(string.Empty);
 
         //差し替え (RunCoreAsync) を使うホストは GetJobStatusCoreAsync (無ければ null)、ジョブ専用のルート (EndPoint) なら GET {EndPoint}/{jobId}、
         //どちらも無ければ共通の口 (ExtrasTransport) の Status。HTTP の失敗はトーストに出さず null。
         //Unknown = サーバーが知らない Id (差し替えが null・ジョブ専用ルートが 404・共通の口に届いて応答なし)
-        async Task<(JobStatusResponse? Status, bool Unknown)> GetJobStatusCoreOrHttpAsync(string jobId)
+        async Task<(JobTriggerStatusResponse? Status, bool Unknown)> GetJobStatusCoreOrHttpAsync(string jobId)
         {
             if (RunCoreAsync != null)
             {
@@ -186,11 +197,11 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
                 if (http == null) return (null, false);
                 HttpStatusCode? code = null;
                 using var checker = http.AddChecker((c, _) => code = c);
-                var result = await http.GetFromJsonAsync<JobStatusResponse>($"{EndPoint}/{Uri.EscapeDataString(jobId)}", loading: false);
+                var result = await http.GetFromJsonAsync<JobTriggerStatusResponse>($"{EndPoint}/{Uri.EscapeDataString(jobId)}", loading: false);
                 return (result, result == null && code == HttpStatusCode.NotFound);
             }
-            //HTTP の失敗 (404 = 口に JobApi が無い、を含む) は Unknown にしない (トーストも出さない)
-            var (response, delivered) = await ExtrasTransport.CallAsync<JobStatusResponse>(http, JobApiNames.Feature, JobApiNames.Status, new JobStatusRequest { JobId = jobId }, loading: false, onError: (_, _) => { });
+            //HTTP の失敗 (404 = 口に JobTriggerApi が無い、を含む) は Unknown にしない (トーストも出さない)
+            var (response, delivered) = await ExtrasTransport.CallAsync<JobTriggerStatusResponse>(http, JobTriggerApiNames.Feature, JobTriggerApiNames.Status, new JobTriggerStatusRequest { JobId = jobId }, loading: false, onError: (_, _) => { });
             return (response, response == null && delivered);
         }
 
@@ -212,24 +223,24 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
 
         //差し替え (RunCoreAsync) があればそれ、ジョブ専用のルート (EndPoint) があればそこへ POST、どちらも無ければ共通の口 (ExtrasTransport) の Run。
         //送る先の無いホストでは動かせない旨を例外で (呼び出し元が通知する)
-        async Task<JobRunResponse?> SendAsync(JobRunRequest request)
+        async Task<JobTriggerRunResponse?> SendAsync(JobTriggerRunRequest request)
         {
             if (RunCoreAsync != null) return await RunCoreAsync(this, request);
             var http = Services.Provider?.GetService<IHttpService>();
             if (!string.IsNullOrEmpty(EndPoint))
             {
                 if (http == null) throw new InvalidOperationException(Resources.JobTrigger_NotConfigured);
-                return await http.PostAsJsonAsync<JobRunRequest, JobRunResponse>(EndPoint, request);
+                return await http.PostAsJsonAsync<JobTriggerRunRequest, JobTriggerRunResponse>(EndPoint, request);
             }
             if (!ExtrasTransport.CanSend(http)) throw new InvalidOperationException(Resources.JobTrigger_NotConfigured);
-            return (await ExtrasTransport.CallAsync<JobRunResponse>(http, JobApiNames.Feature, JobApiNames.Run, request)).Response;
+            return (await ExtrasTransport.CallAsync<JobTriggerRunResponse>(http, JobTriggerApiNames.Feature, JobTriggerApiNames.Run, request)).Response;
         }
 
         //画面の内容 {"data":現在値,"submit":保存ボタンが送るのと同じもの}。送るものが無ければ (変更なし・表を持たないモジュール) submit は null
         static string CreateArguments(Module module)
         {
             var submit = module.GetSubmitData();
-            var isEmpty = !submit.Delete.Any() && !submit.Update.Any() && !submit.Add.Any() && !submit.SearchDelete.Any() && submit.CurrentEditingData == null;
+            var isEmpty = !submit.Delete.Any() && !submit.Update.Any() && !submit.Add.Any() && submit.CurrentEditingData == null;
             var data = JsonConverterEx.SerializeObject(module.GetData(), indented: false);
             var submitJson = isEmpty ? "null" : JsonConverterEx.SerializeObject(new List<ModuleSubmitData> { submit }, indented: false);
             return "{\"data\":" + data + ",\"submit\":" + submitJson + "}";

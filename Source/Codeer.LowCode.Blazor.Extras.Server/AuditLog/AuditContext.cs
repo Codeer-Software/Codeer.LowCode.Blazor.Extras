@@ -97,7 +97,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AuditLog
         /// <summary>
         /// 保存 (Submit) を包んで記録する。保存の合流点 (<see cref="AuditIOInterceptor"/>) から呼ばれるので、
         /// 画面の保存・ファイル取込・スクリプトの一括保存のどれも同じ形で残る。
-        /// - 対象は行ごとの Add / Update / Delete と Id (条件での削除 SearchDelete はモジュール名だけ)。件数は AddCount で Detail に入る
+        /// - 対象は行ごとの Add / Update / Delete と Id (一覧の完全洗い替えで消える行も、本体が先に行ごとの Delete に直している)。件数は AddCount で Detail に入る
         /// - 本体は保存の途中で新規行の Id を書き換えるので、対象は保存の前に取り、新規行の仮 Id は結果の採番 Id に置き換える。
         ///   Id の無い新規行 (ファイル取込の自動採番) には、採番 Id を結果から引くために仮 Id を付ける。
         ///   記録が済んだら、呼び出し元へ返す結果は仮 Id を付ける前の形に戻す (監査ログの有無で保存の応答を変えない)
@@ -113,7 +113,6 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AuditLog
                 Adds = s.Add.Select(e => (e.Name, Id: ModuleDataValues.GetId(e))).ToList(),
                 Updates = s.Update.Select(e => (e.Name, Id: ModuleDataValues.GetId(e))).ToList(),
                 Deletes = s.Delete.Select(e => (e.ModuleName, e.Id)).ToList(),
-                SearchDeletes = s.SearchDelete.Select(e => e.ModuleName).ToList(),
             }).ToList();
 
             List<ModuleSubmitResult>? results = null;
@@ -149,14 +148,11 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AuditLog
                     }
                     foreach (var (module, id) in planned[i].Updates) AddTarget(module, id, "Update");
                     foreach (var (module, id) in planned[i].Deletes) AddTarget(module, id, "Delete");
-                    foreach (var module in planned[i].SearchDeletes) AddTarget(module, null, "SearchDelete");
                     if (!string.IsNullOrEmpty(result?.ExceptionMessage)) Fail(result.ExceptionMessage);
                 }
                 AddCount("Add", planned.Sum(e => e.Adds.Count));
                 AddCount("Update", planned.Sum(e => e.Updates.Count));
                 AddCount("Delete", planned.Sum(e => e.Deletes.Count));
-                var searchDeletes = planned.Sum(e => e.SearchDeletes.Count);
-                if (searchDeletes != 0) AddCount("SearchDelete", searchDeletes);
                 RestoreAssignedIds(data, results, assignedIds);
             }
         }

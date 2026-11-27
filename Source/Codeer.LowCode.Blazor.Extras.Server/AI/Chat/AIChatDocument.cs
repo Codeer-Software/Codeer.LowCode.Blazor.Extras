@@ -1,3 +1,5 @@
+using Codeer.LowCode.Blazor.DesignLogic;
+
 namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat
 {
     /// <summary>
@@ -7,5 +9,12 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat
     /// </summary>
     /// <param name="Name">文書名 (モデルが read_document で指定する。ファイル名から拡張子を除いたもの等)</param>
     /// <param name="Text">本文 (Markdown かプレーンテキスト)</param>
-    public sealed record AIChatDocument(string Name, string Text);
+    public sealed record AIChatDocument(string Name, string Text)
+    {
+        /// <summary>
+        /// 配置されたデザイン (designFileDirectory の App.zip) の Resources/{folder} にある .md / .txt を文書として読む (文書名はファイル名から拡張子を除いたもの)。
+        /// </summary>
+        public static IReadOnlyList<AIChatDocument> ReadResources(string designFileDirectory, string folder)
+            => DesignDataFileManager.GetResourceTexts(designFileDirectory, folder, ".md", ".txt").Select(e => new AIChatDocument(e.Name, e.Text)).ToList();
+    }
 }

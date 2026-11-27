@@ -952,30 +952,49 @@ namespace Codeer.LowCode.Blazor.Extras.Test.EditHistory
             Assert.That(_errors, Is.Empty);
         }
 
-        // ===== 検索条件での削除・一緒に消える行 =====
+        // ===== 一覧の完全洗い替え・一緒に消える行 =====
+
+        //見積 (Quote。履歴なし) の明細一覧 (OrderItem.Quote で親を指す) を完全洗い替えの一覧にする。
+        //洗い替えで消える行は、本体が保存の入口で送信の Delete (行の Id) に直す
+        static void AddReplaceAllQuote(DesignData d)
+        {
+            AddQuote(d, withItems: true, withCustomer: false, withHistory: false);
+            var items = d.Modules.Find("Quote")!.Fields.OfType<ListFieldDesign>().Single(e => e.Name == "Items");
+            items.DeleteTogether = false;
+            items.ReplaceMode = ListReplaceMode.All;
+            items.CanCreate = true;
+            items.CanUpdate = true;
+            items.CanDelete = true;
+        }
+
+        //見積の画面からの洗い替えの保存 (見積のデータに一覧の洗い替えの印を載せて Update に入れ、一覧の全行を Add で送る)
+        static ModuleSubmitData ReplaceQuoteItems(string quoteId, params ModuleData[] add)
+        {
+            var quote = new ModuleData { Name = "Quote" };
+            quote.Fields["Id"] = new IdFieldData { Value = quoteId };
+            quote.Fields["Items"] = new ListFieldData { IsReplaceAll = true };
+            return new() { ModuleName = "Quote", Id = quoteId, Update = [quote], Add = [.. add] };
+        }
 
         [Test]
-        public async Task 検索条件での削除で消えた行の親それぞれに版ができる()
+        public async Task 一覧の完全洗い替えで消えた行の親それぞれに版ができる()
         {
+            AddReplaceAllQuote(_design);
             await CreateOrderAsync("受注A");
             await CreateOrderAsync("受注B");
-            //品Y は受注A (2) と受注B (4) の両方にある
-            static ModuleSubmitData DeleteByName(string name) => new()
-            {
-                ModuleName = "OrderItem",
-                SearchDelete = [new SearchCondition("OrderItem")
-                {
-                    Condition = new FieldValueMatchCondition { SearchTargetVariable = "Name.Value", Comparison = MatchComparison.Equal, Value = MultiTypeValue.Create(name) },
-                }],
-            };
-            AssertNoError(await CreateIO().SubmitWithTransactionAsync([DeleteByName("品Y")]));
+            //見積Q (1) の明細は 受注A の品Y (2) と 受注B の品Y (4)。見積R (2) の明細は無い
+            await _db.ExecuteAsync(Ds, "INSERT INTO quotes (title) VALUES ('見積Q'), ('見積R')", new());
+            await _db.ExecuteAsync(Ds, "UPDATE order_items SET quote_id = 1 WHERE id IN (2, 4)", new());
+
+            //見積Q の明細を 0 行に洗い替える
+            AssertNoError(await CreateIO().SubmitWithTransactionAsync([ReplaceQuoteItems("1")]));
             Assert.That(await ScalarAsync("SELECT COUNT(*) FROM order_items WHERE name = '品Y'"), Is.EqualTo(0));
             var h = await HistoriesAsync();
             Assert.That(h.Skip(2).Select(e => (e.Module, e.DataId, e.ChangeType)), Is.EquivalentTo(new[] { ("Order", "1", "Update"), ("Order", "2", "Update") }));
             Assert.That(h.Skip(2).All(e => Items(e.Snapshot).Select(x => Text(x, "Name")).SequenceEqual(new[] { "品X" })), Is.True, "消えた行はスナップショットに無い");
 
-            //条件に合う行が無い削除は版にならない
-            AssertNoError(await CreateIO().SubmitWithTransactionAsync([DeleteByName("無い品")]));
+            //消える行の無い洗い替えは版にならない
+            AssertNoError(await CreateIO().SubmitWithTransactionAsync([ReplaceQuoteItems("2")]));
             Assert.That((await HistoriesAsync()).Count, Is.EqualTo(4));
             Assert.That(_errors, Is.Empty);
         }
@@ -1255,23 +1274,18 @@ namespace Codeer.LowCode.Blazor.Extras.Test.EditHistory
             Assert.That(_errors, Is.Empty);
         }
 
-        // ----- 検索条件での削除の権限 -----
-
-        static ModuleSubmitData DeleteItemsByName(string name) => new()
-        {
-            ModuleName = "OrderItem",
-            SearchDelete = [new SearchCondition("OrderItem")
-            {
-                Condition = new FieldValueMatchCondition { SearchTargetVariable = "Name.Value", Comparison = MatchComparison.Equal, Value = MultiTypeValue.Create(name) },
-            }],
-        };
+        // ----- 一覧の完全洗い替えの権限 -----
 
         [TestCase("削除不可")]
         [TestCase("閲覧不可")]
-        public async Task 削除か閲覧の権限の無い利用者の検索条件での削除は今までどおり拒否され版にならない(string kind)
+        public async Task 削除か閲覧の権限の無い利用者の一覧の完全洗い替えは本体だけのときと同じく拒否され版にならない(string kind)
         {
+            AddReplaceAllQuote(_design);
             await CreateOrderAsync("受注A");
             await CreateOrderAsync("受注B");
+            //見積Q (1) の明細は 受注A の品Y (2) と 受注B の品Y (4)
+            await _db.ExecuteAsync(Ds, "INSERT INTO quotes (title) VALUES ('見積Q')", new());
+            await _db.ExecuteAsync(Ds, "UPDATE order_items SET quote_id = 1 WHERE id IN (2, 4)", new());
             var item = _design.Modules.Find("OrderItem")!;
             if (kind == "削除不可") item.CanDelete = false;
             else item.UserReadCondition = new ModuleMatchCondition
@@ -1281,10 +1295,10 @@ namespace Codeer.LowCode.Blazor.Extras.Test.EditHistory
             };
 
             //履歴のインターセプタを付けない本体だけの結果 (今までの結果の形)
-            var plain = await new ModuleDataIO(_design, this, _db, new TemporaryFileManager(_db, [], new List<IFileStorage>())).SubmitWithTransactionAsync([DeleteItemsByName("品Y")]);
+            var plain = await new ModuleDataIO(_design, this, _db, new TemporaryFileManager(_db, [], new List<IFileStorage>())).SubmitWithTransactionAsync([ReplaceQuoteItems("1")]);
             AssertFailed(plain);
 
-            var results = await CreateIO().SubmitWithTransactionAsync([DeleteItemsByName("品Y")]);
+            var results = await CreateIO().SubmitWithTransactionAsync([ReplaceQuoteItems("1")]);
             AssertFailed(results);
             Assert.That(results.Count, Is.EqualTo(plain.Count));
             Assert.That(results.Select(e => e.ExceptionMessage), Is.EqualTo(plain.Select(e => e.ExceptionMessage)), "拒否の結果は本体だけのときと同じ");

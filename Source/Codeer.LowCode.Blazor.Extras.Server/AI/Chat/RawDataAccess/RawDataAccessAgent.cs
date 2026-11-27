@@ -3,6 +3,7 @@ using Codeer.LowCode.Blazor.DesignLogic;
 using Codeer.LowCode.Blazor.Extras.Server.AI.Chat.ChatClient;
 using Codeer.LowCode.Blazor.Extras.Server.AI.Chat.DesignKnowledge;
 using Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch;
+using Codeer.LowCode.Blazor.Repository.Design;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Logging;
 
@@ -24,8 +25,7 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat.RawDataAccess
     ///     chatClientFactory,                                          // IChatClient の作り方 (アプリの責務)
     ///     () => new DbAccessor(SystemConfig.Instance.DataSources),    // IDbAccessor の作り方 (SQL ごとに作って捨てる)
     ///     () => AppDesign.Store.GetDesignData(),                     // デザイン定義 (ホットリロードで変わるので都度。null 可)
-    ///     folder => DesignDataFileManager.GetResourceTexts(dir, folder, ".md", ".txt")   // 補足文書 (デザインの Resources/{DocumentFolder}。null 可)
-    ///         .Select(e => new AIChatDocument(e.Name, e.Text)).ToList(),
+    ///     folder => AIChatDocument.ReadResources(dir, folder),        // 補足文書 (デザインの Resources/{DocumentFolder}。null 可)
     ///     new RawDataAccessOptions { DataSourceNames = { "Analytics" } }); // AI 用の読み取り専用ユーザーで接続するデータソース
     /// </code>
     /// </summary>
@@ -56,12 +56,26 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat.RawDataAccess
                 StreamPartialReplies = options.StreamPartialReplies,
                 LoggerFactory = loggerFactory,
             };
-            if (design != null || documents != null) conversation.ToolSets.Add(new DesignKnowledgeToolSet(design, documents));
+            //設計として見せるのは、この Agent が読めるデータソース (DataSourceNames) のモジュールと、表を持たないモジュール (画面のロジック)。
+            //読めないデータソースの表は SQL を実行できないので案内しない。
+            //DataSourceNames のモジュールが設計に 1 つも無いとき (AI 用に別名の読み取り専用接続を作っている場合) は絞らない (get_schema が表名で設計と結ぶのと同じ規則)
+            var dataSourceNames = new HashSet<string>(options.DataSourceNames ?? Array.Empty<string>(), StringComparer.OrdinalIgnoreCase);
+            Tuple<DesignData, bool>? judged = null;   //判定済みのデザインと「絞るか」(ホットリロードでデザインが替わったら判定し直す)
+            bool IsVisible(ModuleDesign module)
+            {
+                var current = design?.Invoke();
+                if (current == null) return IsReadable(module, dataSourceNames);
+                var cache = judged;
+                if (cache == null || !ReferenceEquals(cache.Item1, current)) judged = cache = Tuple.Create(current, HasModuleOf(current, dataSourceNames));
+                return !cache.Item2 || IsReadable(module, dataSourceNames);
+            }
+            if (design != null || documents != null)
+                conversation.ToolSets.Add(new DesignKnowledgeToolSet(design, documents, showDbNames: true, isVisible: (module, _) => IsVisible(module)));
             var rawDataAccess = new RawDataAccessToolSet(dbAccessorFactory, design, options);
             conversation.ToolSets.Add(rawDataAccess);
             if (design != null && semanticSearch != null)
             {
-                var toolSet = new SemanticSearchToolSet(design, dbAccessorFactory, semanticSearch.GetProvider, options.DataSourceNames);
+                var toolSet = new SemanticSearchToolSet(design, dbAccessorFactory, semanticSearch.GetProvider, options.DataSourceNames ?? Array.Empty<string>());
                 conversation.ToolSets.Add(toolSet);
                 //execute_sql の {embed:…} を質問の埋め込みに置き換える (DB 側のベクトル検索を SQL の中から使う)
                 rawDataAccess.SqlPreprocessor = toolSet.ExpandEmbeddingsAsync;
@@ -69,6 +83,14 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI.Chat.RawDataAccess
             conversation.ToolSets.Add(new ChartToolSet());
             _agent = new ChatClientAgent(clientFactory, conversation);
         }
+
+        internal static bool IsReadable(ModuleDesign module, ISet<string> dataSourceNames)
+            => string.IsNullOrEmpty(module.DbTable) || dataSourceNames.Contains(module.DataSourceName ?? string.Empty);
+
+        /// <summary>表を持つモジュールのうち、データソースが dataSourceNames のものが設計にあるか。</summary>
+        internal static bool HasModuleOf(DesignData design, ISet<string> dataSourceNames)
+            => design.Modules.GetModuleNames().Select(design.Modules.Find)
+                .Any(m => m != null && !string.IsNullOrEmpty(m.DbTable) && dataSourceNames.Contains(m.DataSourceName ?? string.Empty));
 
         public Task<AIChatReply> ReplyAsync(AIChatAgentRequest request, IAIChatProgress progress, CancellationToken cancellationToken)
             => _agent.ReplyAsync(request, progress, cancellationToken);

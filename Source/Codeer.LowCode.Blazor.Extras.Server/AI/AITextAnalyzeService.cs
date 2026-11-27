@@ -11,6 +11,7 @@ using Microsoft.Extensions.AI;
 using System.Globalization;
 using System.Text.Encodings.Web;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 
 namespace Codeer.LowCode.Blazor.Extras.Server.AI
@@ -59,8 +60,9 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI
         public async Task<ModuleData> AnalyzeFileAsync(ModuleDataIO moduleDataIO, IModuleDesigns modules, string? moduleName, string? fieldName, string? fileName, MemoryStream memoryStream)
         {
             var design = await CheckAsync(moduleDataIO, moduleName, fieldName);
+            var image = design.SendImage ? CreateImageContent(memoryStream) : null;
             var text = await ExtractTextFromFile(memoryStream);
-            return await AnalyzeCoreAsync(moduleDataIO, modules, moduleName!, design.Remarks, text, CreateFileSourcePrompt(fileName));
+            return await AnalyzeCoreAsync(moduleDataIO, modules, moduleName!, design.Remarks, text, CreateFileSourcePrompt(fileName), image);
         }
 
         /// <summary>
@@ -69,12 +71,16 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI
         public async Task<ModuleData> AnalyzeTextAsync(ModuleDataIO moduleDataIO, IModuleDesigns modules, string? moduleName, string? fieldName, string? text)
         {
             var design = await CheckAsync(moduleDataIO, moduleName, fieldName);
-            return await AnalyzeCoreAsync(moduleDataIO, modules, moduleName!, design.Remarks, text ?? string.Empty, string.Empty);
+            return await AnalyzeCoreAsync(moduleDataIO, modules, moduleName!, design.Remarks, text ?? string.Empty, string.Empty, null);
         }
 
-        protected async Task<ModuleData> AnalyzeCoreAsync(ModuleDataIO moduleDataIO, IModuleDesigns modules, string moduleName, string remarks, string text, string source)
+        protected Task<ModuleData> AnalyzeCoreAsync(ModuleDataIO moduleDataIO, IModuleDesigns modules, string moduleName, string remarks, string text, string source)
+            => AnalyzeCoreAsync(moduleDataIO, modules, moduleName, remarks, text, source, null);
+
+        /// <param name="image">解析元の画像も渡すとき、その画像 (フィールドの SendImage)。text (文書解析の結果) と一緒にモデルに渡す。</param>
+        protected async Task<ModuleData> AnalyzeCoreAsync(ModuleDataIO moduleDataIO, IModuleDesigns modules, string moduleName, string remarks, string text, string source, DataContent? image)
         {
-            var json = await DocumentAnalysisByText(modules, moduleName, remarks, text, source);
+            var json = await DocumentAnalysisByText(modules, moduleName, remarks, text, source, image);
             return await CreateModule(modules, moduleName,
                 new FieldCandidatesResolver(moduleDataIO, modules, FindCandidatesByAI),
                 JsonSerializer.Deserialize<JsonElement>(json));
@@ -86,6 +92,12 @@ namespace Codeer.LowCode.Blazor.Extras.Server.AI
 表は rowCount/columnCount と rows(行×列の2次元配列) を持ちます。rows[行番号][列番号] が各セルの文字列で、空セルは "" です。
 結合セルは左上のマスにのみ値が入り、覆われた残りのマスは "" です。"" のマスは値なし(空欄)として扱い、隣や下の値で埋めないでください。
 空欄も含めて列位置は厳密に揃っているので、途中に空欄があっても列をずらさず、見出し行/見出し列との対応で値を抽出してください。";
+
+        /// <summary>画像も渡すときに、文書解析の結果の説明の後ろに足す文。</summary>
+        protected string CreateImageSourcePrompt()
+            => @"
+文書解析の JSON に加えて、同じページの画像も渡します。JSON は文字認識の結果なので、記号 (<, >, ≤, ≥ と下線付きの不等号)・小数点・似た形の文字 (6 と 8、0 と D、B と 8、1 と l) を取り違えたり落としたりします。
+必ず画像で確かめ、食い違うときは画像を正としてください。表の行と列の対応は JSON を手がかりにしてください。";
 
         protected string CreateExtractionSystemPrompt(string source, string remarks)
         {
@@ -123,19 +135,99 @@ JSON 出力では、その項目名をキーとして使用してください。
             return response.Text ?? string.Empty;
         }
 
-        async Task<string> DocumentAnalysisByText(IModuleDesigns moduleDesigns, string moduleName, string remarks, string text, string source)
+        //抽出結果は JSON スキーマで受け取る (キーをフィールド名に固定。プロンプトで頼むだけだとモデルが表示名をキーにして返し、値が捨てられることがある)。
+        async Task<string> DocumentAnalysisByText(IModuleDesigns moduleDesigns, string moduleName, string remarks, string text, string source, DataContent? image)
         {
-            var response = await _chatClientFactory().GetResponseAsync(
+            try
+            {
+                var json = await GetExtractionAsync(moduleDesigns, moduleName, remarks, text, source, image, true);
+                if (IsJsonObject(json)) return json;
+            }
+            catch
+            {
+                //JSON スキーマ・画像を受け付けないモデル / プロバイダ。従来の形 (文書解析の結果だけ・JSON モード) でやり直す
+            }
+            return await GetExtractionAsync(moduleDesigns, moduleName, remarks, text, source, null, false);
+        }
+
+        async Task<string> GetExtractionAsync(IModuleDesigns moduleDesigns, string moduleName, string remarks, string text, string source, DataContent? image, bool useJsonSchema)
+        {
+            ChatMessage[] messages =
                 [
-                    new ChatMessage(ChatRole.System, CreateExtractionSystemPrompt(source, remarks)),
+                    new ChatMessage(ChatRole.System, CreateExtractionSystemPrompt(image == null ? source : source + CreateImageSourcePrompt(), remarks)),
                     new ChatMessage(ChatRole.User, CreateJsonExplanation(moduleDesigns, moduleName)),
-                    new ChatMessage(ChatRole.User, text),
-                ], new ChatOptions
-                {
-                    ResponseFormat = ChatResponseFormat.Json,
-                    Temperature = 0,
-                });
-            return response.Text ?? string.Empty;
+                    image == null ? new ChatMessage(ChatRole.User, text) : new ChatMessage(ChatRole.User, [new TextContent(text), image]),
+                ];
+            var client = _chatClientFactory();
+            try
+            {
+                var response = await client.GetResponseAsync(messages, CreateExtractionOptions(moduleDesigns, moduleName, useJsonSchema, !_omitTemperature));
+                return response.Text ?? string.Empty;
+            }
+            catch (Exception e) when (!_omitTemperature && IsTemperatureRejected(e))
+            {
+                //temperature を既定値でしか受け付けないモデル (推論モデル)。以後は送らない
+                _omitTemperature = true;
+                var response = await client.GetResponseAsync(messages, CreateExtractionOptions(moduleDesigns, moduleName, useJsonSchema, false));
+                return response.Text ?? string.Empty;
+            }
+        }
+
+        bool _omitTemperature;
+
+        //OpenAI / Azure OpenAI は "Unsupported value: 'temperature' does not support 0 with this model." で断る
+        static bool IsTemperatureRejected(Exception e)
+            => e.Message.Contains("temperature", StringComparison.OrdinalIgnoreCase);
+
+        /// <param name="sendTemperature">毎回同じ結果に寄せるため Temperature = 0 を送る。受け付けないモデルには送らない (モデルの既定値で動く)。</param>
+        internal static ChatOptions CreateExtractionOptions(IModuleDesigns moduleDesigns, string moduleName, bool useJsonSchema, bool sendTemperature = true)
+        {
+            var options = new ChatOptions
+            {
+                ResponseFormat = ChatResponseFormat.Json,
+                Temperature = sendTemperature ? 0 : null,
+            };
+            if (useJsonSchema)
+            {
+                options.ResponseFormat = ChatResponseFormat.ForJsonSchema(CreateJsonSchema(moduleDesigns, moduleName), "extraction");
+                //Microsoft.Extensions.AI.OpenAI はこのキーで strict (スキーマ外のキーを出さない) にする
+                options.AdditionalProperties = new AdditionalPropertiesDictionary { ["strict"] = true };
+            }
+            return options;
+        }
+
+        static bool IsJsonObject(string json)
+        {
+            try
+            {
+                return JsonSerializer.Deserialize<JsonElement>(json).ValueKind == JsonValueKind.Object;
+            }
+            catch (JsonException)
+            {
+                return false;
+            }
+        }
+
+        //モデルに画像として渡せる形式 (jpeg / png / gif / webp) だけ。PDF や Office 文書は文書解析の結果だけを渡す。
+        const int MaxImageBytes = 20 * 1024 * 1024;
+
+        internal static DataContent? CreateImageContent(MemoryStream stream)
+        {
+            if (stream.Length < 12 || MaxImageBytes < stream.Length) return null;
+            var bytes = stream.ToArray();
+            var mediaType = GetImageMediaType(bytes);
+            return mediaType == null ? null : new DataContent(bytes, mediaType);
+        }
+
+        internal static string? GetImageMediaType(byte[] bytes)
+        {
+            if (bytes.Length < 12) return null;
+            if (bytes[0] == 0xFF && bytes[1] == 0xD8 && bytes[2] == 0xFF) return "image/jpeg";
+            if (bytes[0] == 0x89 && bytes[1] == 0x50 && bytes[2] == 0x4E && bytes[3] == 0x47) return "image/png";
+            if (bytes[0] == 0x47 && bytes[1] == 0x49 && bytes[2] == 0x46 && bytes[3] == 0x38) return "image/gif";
+            if (bytes[0] == 0x52 && bytes[1] == 0x49 && bytes[2] == 0x46 && bytes[3] == 0x46
+                && bytes[8] == 0x57 && bytes[9] == 0x45 && bytes[10] == 0x42 && bytes[11] == 0x50) return "image/webp";
+            return null;
         }
 
         async Task<string> ExtractTextFromFile(MemoryStream stream)
@@ -325,6 +417,44 @@ JSON 出力では、その項目名をキーとして使用してください。
                 list.Add(explanation);
             }
             return string.Join(",", list);
+        }
+
+        /// <summary>
+        /// 抽出結果の JSON スキーマ。<see cref="CreateJsonExplanation"/> と同じフィールドを、フィールド名をキーにして並べる (表示名は description)。
+        /// 値は null 可。Number は帳票の表記のまま文字列で返す指示 (Remarks) もあるので number / string の両方を受ける。
+        /// </summary>
+        internal static JsonElement CreateJsonSchema(IModuleDesigns moduleDesigns, string moduleName)
+            => JsonSerializer.SerializeToElement(CreateJsonSchemaNode(moduleDesigns, moduleName));
+
+        static JsonObject CreateJsonSchemaNode(IModuleDesigns moduleDesigns, string moduleName)
+        {
+            var moduleDesign = moduleDesigns.Find(moduleName) ?? throw LowCodeException.Create($"Invalid Module {moduleName}");
+            var properties = new JsonObject();
+            var required = new JsonArray();
+            foreach (var field in moduleDesign.Fields.Where(e => IsSupportedType(e)))
+            {
+                if (properties.ContainsKey(field.Name)) continue;
+                JsonObject property = field switch
+                {
+                    ListFieldDesign list => new JsonObject { ["type"] = "array", ["items"] = CreateJsonSchemaNode(moduleDesigns, list.SearchCondition.ModuleName) },
+                    BooleanFieldDesign => new JsonObject { ["type"] = new JsonArray("boolean", "null") },
+                    NumberFieldDesign => new JsonObject { ["type"] = new JsonArray("number", "string", "null") },
+                    _ => new JsonObject { ["type"] = new JsonArray("string", "null") },
+                };
+                if (field is IDisplayName displayName && !string.IsNullOrEmpty(displayName.DisplayName) && displayName.DisplayName != field.Name)
+                {
+                    property["description"] = displayName.DisplayName;
+                }
+                properties[field.Name] = property;
+                required.Add(field.Name);
+            }
+            return new JsonObject
+            {
+                ["type"] = "object",
+                ["properties"] = properties,
+                ["required"] = required,
+                ["additionalProperties"] = false,
+            };
         }
 
         static bool IsSupportedType(FieldDesignBase? e) =>

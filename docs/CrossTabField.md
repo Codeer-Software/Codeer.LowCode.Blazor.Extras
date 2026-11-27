@@ -96,7 +96,13 @@ agg.Count("件数");
 
 ## 注意事項
 
-- 集計できるのはテーブルを持つモジュールだけです (QueryField で定義したモジュールは使えません)
+- 集計できるのはテーブルを持つモジュールと、QueryField で定義したモジュールです
+- QueryField で定義したモジュールを元にするときは次の点に注意してください
+  - 行・列・値・条件に使えるのはクエリが返す列だけです (リンク先の項目は使えません。必要な列はクエリの SQL で結合して返します)
+  - クエリは副問い合わせとして実行されます (SQL Server では SQL の末尾に ORDER BY を書けません)
+  - PostgreSQL / Oracle では、SQL の列の別名を引用符で囲まないでください (`as "Period"` ではなく `as period`)
+  - ページングを自分で行うクエリ (offset / rows_per_page パラメータ・件数取得クエリの指定) は集計できません
+  - 行の閲覧条件は一覧と同じく効きません (見せる行は SQL の WHERE で絞ります。ユーザーごとの絞り込みは current_user_id パラメータ)
 - SQLite では日付の列を DATE / DATETIME で宣言してください (TEXT で宣言した列は、日付の単位 (月・四半期・年など) でまとめられず、セルをクリックしたときの明細の絞り込みも効きません)
 - リンク先のモジュールの行の閲覧条件は効きません (一覧のリンク表示と同じ)。隠したい項目は元モジュール側の PermissionField で制御します
 - ホスト (アプリ) が本体の集計 API に対応している必要があります。対応していないホストでは、表の代わりに「ホストが集計 API を実装していない」旨のエラー (The host does not implement IModuleDataService.AggregateAsync …) が出ます。1.3.39 より前のテンプレートで作ったアプリは [集計 API の結線](https://github.com/Codeer-Software/Codeer.LowCode.Blazor.Manual/blob/main/JP/user_code/aggregate_api.md) を行ってください
