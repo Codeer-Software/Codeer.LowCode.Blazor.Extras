@@ -209,7 +209,6 @@
     },
     {
       "DbColumn": "body",
-      "EnableMention": true,
       "MentionListField": "MentionDeptUsers",
       "MentionDisplayNameField": "Name",
       "MentionLoginNameField": "Email",
@@ -241,7 +240,6 @@
     },
     {
       "DbColumn": "restricted_body",
-      "EnableMention": true,
       "MentionListField": "MentionAdminUsers",
       "MentionDisplayNameField": "Name",
       "MentionLoginNameField": "Email",

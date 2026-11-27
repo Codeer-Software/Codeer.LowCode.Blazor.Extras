@@ -54,13 +54,13 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
         /// 一覧の検索条件 (と、一覧が読むモジュールの権限) だけを借りて、行のデータをここで読む。一覧フィールドには読ませない (行ごとの Module を作らない。一覧の行は空のまま)。
         /// 読むのは最初の問い合わせと、一覧の検索条件が前回と変わったときだけ (打つたびには読まない)。絞り込みは手元の候補に当てる。
         /// 読み込みに失敗したとき・読んでも行が無かったときは候補なし (例外は出さない)。同じ条件のままなら、次に読み直すのは @ を打ち直したとき。
-        /// メンションを使わない設定・デザインモード・一覧が無い・一覧が読み込みを止めている (AllowLoad が false) ときは候補なし。
+        /// メンションを使わない (候補の一覧を指定していない)・デザインモード・一覧が無い・一覧が読み込みを止めている (AllowLoad が false) ときは候補なし。
         /// </summary>
         [ScriptHide]
         public async Task<MentionCandidates> GetMentionCandidatesAsync(string text)
         {
             var result = new MentionCandidates();
-            if (!Design.EnableMention || Services.AppInfoService.IsDesignMode) return result;
+            if (!Design.UsesMention || Services.AppInfoService.IsDesignMode) return result;
             text ??= string.Empty;
             if (text.Length > MaxMentionTextLength) return result;
 

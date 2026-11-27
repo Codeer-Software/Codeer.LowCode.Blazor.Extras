@@ -32,7 +32,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.DesignCheck
 
         static RichTextFieldDesign CreateField() => new()
         {
-            Name = "Body", DbColumn = "DbColumn", EnableMention = true,
+            Name = "Body", DbColumn = "DbColumn",
             MentionListField = "Users", MentionDisplayNameField = "Name", MentionLoginNameField = "LoginName",
         };
 
@@ -79,14 +79,15 @@ namespace Codeer.LowCode.Blazor.Extras.Test.DesignCheck
         }
 
         [Test]
-        public void メンションを使わなければ一覧は要らない()
+        public void 一覧が空ならメンションを使わないので何も見ない()
         {
+            //表示名の項目などが入ったままでも指摘しない (使われないだけ)
             var ret = Check(e =>
             {
                 e.List = null;
-                e.Field.EnableMention = false;
                 e.Field.MentionListField = string.Empty;
-                e.Field.MentionDisplayNameField = string.Empty;
+                e.Field.MentionDisplayNameField = "Nickname";
+                e.Field.MentionLoginNameField = "Account";
             });
             Assert.That(ret, Is.Empty);
         }
@@ -100,13 +101,6 @@ namespace Codeer.LowCode.Blazor.Extras.Test.DesignCheck
             => Assert.That(Check(e => e.Field.MentionLoginNameField = string.Empty), Is.Empty);
 
         #region :1 一覧そのもの
-
-        [Test]
-        public void 一覧の指定が要る()
-        {
-            var ret = Check(e => e.Field.MentionListField = string.Empty);
-            AssertSingle(ret, 1, nameof(RichTextFieldDesign.MentionListField));
-        }
 
         [Test]
         public void 一覧は同じモジュールにあること()

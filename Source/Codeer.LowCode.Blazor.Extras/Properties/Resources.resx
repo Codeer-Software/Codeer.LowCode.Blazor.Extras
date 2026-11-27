@@ -2046,9 +2046,6 @@ Recipients: {1}</value>
   <data name="ClipboardCopyButtonSourceInvalid" xml:space="preserve">
     <value>Set either Source Field or Copy Text (only one of them).</value>
   </data>
-  <data name="RichTextFieldEnableMention" xml:space="preserve">
-    <value>Mention</value>
-  </data>
   <data name="RichTextMentionAll" xml:space="preserve">
     <value>everyone</value>
   </data>
@@ -2063,9 +2060,6 @@ Recipients: {1}</value>
   </data>
   <data name="RichTextFieldMentionLoginNameField" xml:space="preserve">
     <value>Candidate login ID field</value>
-  </data>
-  <data name="RichTextMentionCheck_ListRequired" xml:space="preserve">
-    <value>To use mentions, set the mention candidate list (a ListField in the same module).</value>
   </data>
   <data name="RichTextMentionCheck_ListNotListField" xml:space="preserve">
     <value>The mention candidate list '{0}' is not a ListField in the same module (DetailList and TileList cannot be used).</value>

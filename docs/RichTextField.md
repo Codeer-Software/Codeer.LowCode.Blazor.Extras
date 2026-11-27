@@ -25,8 +25,7 @@
 | DbColumn | DBカラム | string | データを保存するDBカラム名 |
 | IsRequired | 必須 | bool | true で未入力をバリデーションエラー (`ValueFieldDesignBase` 継承) |
 | OnDataChanged | データ変更イベント | string | データ変更時に呼び出すスクリプトイベント (`ValueFieldDesignBase` 継承) |
-| EnableMention | メンション | bool | true で `@` によるメンションを使えるようにする。既定 false (下の「メンション」) |
-| MentionListField | メンションの候補の一覧 | string | メンションの候補の行を持つ一覧フィールド (同じモジュールの ListField) の名前 (下の「メンション」) |
+| MentionListField | メンションの候補の一覧 | string | メンションの候補の行を持つ一覧フィールド (同じモジュールの ListField) の名前。空でなければ `@` によるメンションを使う。既定は空 = 使わない (下の「メンション」) |
 | MentionDisplayNameField | 候補の表示名の項目 | string | 一覧の行のうち、候補の表示名として出す項目 |
 | MentionLoginNameField | 候補のログイン ID の項目 | string | 一覧の行のうち、ログイン ID として補助に出す項目。空なら出さない |
 
@@ -66,12 +65,13 @@ HTML文字列を格納するためのテキスト型カラムが必要です。�
 
 | プロパティ | デザイナ表示名 | 型 | 説明 |
 |---|---|---|---|
-| EnableMention | メンション | bool | true で `@` によるメンションを使えるようにする。既定 false (今のアプリの動きを変えない) |
-| MentionListField | メンションの候補の一覧 | string | 候補の行を持つ一覧フィールド (同じモジュールの全体設定に置いた ListField) の名前 |
+| MentionListField | メンションの候補の一覧 | string | 候補の行を持つ一覧フィールド (同じモジュールの全体設定に置いた ListField) の名前。空でなければ `@` によるメンションを使う。既定は空 = 使わない (今のアプリの動きを変えない) |
 | MentionDisplayNameField | 候補の表示名の項目 | string | 一覧の行のうち、表示名として出す項目 (TextField) |
 | MentionLoginNameField | 候補のログイン ID の項目 | string | 一覧の行のうち、ログイン ID として補助に出す項目 (TextField)。空なら出さない |
 
 `MentionDisplayNameField` と `MentionLoginNameField` は、一覧が読むモジュールのフィールド名を手で入力します (デザイナの候補は出ません。名前の間違いは設計チェック `:5` が指摘します)。
+
+メンションを使うかどうかの設定は別にありません。`MentionListField` に一覧を指定すれば使い、空なら使いません (空のときは、ほかの 2 つに値が入っていても使われないだけで、設計チェックも指摘しません)。
 
 ホストの結線は要りません (サーバーの API を使わないため)。
 
@@ -83,7 +83,7 @@ HTML文字列を格納するためのテキスト型カラムが必要です。�
 4. 一覧の行のレイアウト (`LayoutName`) に、表示名の項目 (とログイン ID の項目) を置く。一覧は行のレイアウトに置いた項目だけを読むため (一覧自体をレイアウトに置かなくても、行のレイアウトは要る)。**置き忘れは設計チェックでは分からず、候補が出なくなる**ので、候補が出ないときはまずここを確かめる。
 5. 一覧は全部の行を持つ設定にする。件数の上限を付けないか、メモリ内ページング (`IsInMemoryPaging`) にする。
 6. 一覧は行を編集できない設定にする (行の追加・更新・削除なし、`DeleteTogether` なし)。列モード (`DbColumn`) にしない。検索フィールドと結び付けない。
-7. RichTextField の `MentionListField` にその一覧を、`MentionDisplayNameField` に表示名の項目を指定する。
+7. RichTextField の `MentionListField` にその一覧を (これでメンションが有効になる)、`MentionDisplayNameField` に表示名の項目を指定する。
 
 一覧の並び順が、候補の並び順になります。
 
@@ -225,11 +225,11 @@ Example の `MentionTest` はこの形です。本文の一覧 (`MentionDeptUser
 
 ### 設計チェック
 
-どれも `EnableMention` が true のときだけ見ます。メンションはまだ公開していないので、番号は前の方式から振り直しています。
+どれも `MentionListField` が空でないとき (メンションを使うとき) だけ見ます。空なら、ほかの設定に値が入っていても何も指摘しません。メンションはまだ公開していないので、番号は前の方式から振り直しています。
 
 | コード | 内容 |
 |---|---|
-| RichTextFieldDesign:1 | `MentionListField` が空か、同じモジュールの ListField (`ListFieldDesign`) でないか、列モード (`DbColumn` あり) の一覧か、検索フィールドと結び付いた一覧 |
+| RichTextFieldDesign:1 | `MentionListField` の一覧が、同じモジュールの ListField (`ListFieldDesign`) でないか、列モード (`DbColumn` あり) の一覧か、検索フィールドと結び付いた一覧 |
 | RichTextFieldDesign:2 | 一覧が全部の行を持たない (件数の上限があり、メモリ内ページングでない。本体の従属レコードの宣言の `HoldsAllRecords` と同じ判定) |
 | RichTextFieldDesign:3 | 一覧が行を編集できるか、親と一緒に消す設定になっている (`CanCreate` / `CanUpdate` / `CanDelete` / `DeleteTogether` のどれか。`DeleteTogether` だと、このモジュールのレコードを消したときに候補のユーザーの行が消える) |
 | RichTextFieldDesign:4 | 一覧が読むモジュールが、ユーザーのモジュールでも、ユーザーのモジュールと同じデータソース・表・Id の列のモジュールでもない (ユーザーのモジュールが無いときを含む) |

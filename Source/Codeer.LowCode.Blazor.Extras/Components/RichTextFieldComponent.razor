@@ -225,7 +225,7 @@ else
       _jsModule = await JSRuntime.InvokeAsync<IJSObjectReference>(
         "import", "./_content/Codeer.LowCode.Blazor.Extras/richtext-interop.js");
       _dotNetRef = DotNetObjectReference.Create(this);
-      await _jsModule.InvokeVoidAsync("initEditor", _editorElement, _toolbarElement, _dotNetRef, new { mention = Field.Design.EnableMention });
+      await _jsModule.InvokeVoidAsync("initEditor", _editorElement, _toolbarElement, _dotNetRef, new { mention = Field.Design.UsesMention });
 
       if (!string.IsNullOrEmpty(Field.Value))
       {
@@ -386,7 +386,7 @@ else
   public async Task OnMentionQuery(string query, double top, double left)
   {
     var seq = ++_mentionSeq;
-    if (IsDisabled || !Field.Design.EnableMention) return;
+    if (IsDisabled || !Field.Design.UsesMention) return;
 
     //候補は一覧フィールドの行 (最初の @ と、一覧の条件が変わったときだけ一覧を読む。それ以外は手元の行に当てるだけ)
     var candidates = await Field.GetMentionCandidatesAsync(query);

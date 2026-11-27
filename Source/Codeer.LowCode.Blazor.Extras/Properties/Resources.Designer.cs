@@ -4843,15 +4843,6 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
         }
         
         /// <summary>
-        ///   Mention に類似しているローカライズされた文字列を検索します。
-        /// </summary>
-        internal static string RichTextFieldEnableMention {
-            get {
-                return ResourceManager.GetString("RichTextFieldEnableMention", resourceCulture);
-            }
-        }
-        
-        /// <summary>
         ///   Mention candidate list に類似しているローカライズされた文字列を検索します。
         /// </summary>
         internal static string RichTextFieldMentionListField {
@@ -4875,15 +4866,6 @@ namespace Codeer.LowCode.Blazor.Extras.Properties {
         internal static string RichTextFieldMentionLoginNameField {
             get {
                 return ResourceManager.GetString("RichTextFieldMentionLoginNameField", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   To use mentions, set the mention candidate list (a ListField in the same module). に類似しているローカライズされた文字列を検索します。
-        /// </summary>
-        internal static string RichTextMentionCheck_ListRequired {
-            get {
-                return ResourceManager.GetString("RichTextMentionCheck_ListRequired", resourceCulture);
             }
         }
         

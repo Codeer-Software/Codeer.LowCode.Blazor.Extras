@@ -2046,9 +2046,6 @@
   <data name="ClipboardCopyButtonSourceInvalid" xml:space="preserve">
     <value>コピー元フィールドとコピーする文字列は、どちらか一方だけを設定してください。</value>
   </data>
-  <data name="RichTextFieldEnableMention" xml:space="preserve">
-    <value>メンション</value>
-  </data>
   <data name="RichTextMentionAll" xml:space="preserve">
     <value>全員</value>
   </data>
@@ -2063,9 +2060,6 @@
   </data>
   <data name="RichTextFieldMentionLoginNameField" xml:space="preserve">
     <value>候補のログイン ID の項目</value>
-  </data>
-  <data name="RichTextMentionCheck_ListRequired" xml:space="preserve">
-    <value>メンションを使うには、メンションの候補の一覧 (同じモジュールの ListField) を指定してください。</value>
   </data>
   <data name="RichTextMentionCheck_ListNotListField" xml:space="preserve">
     <value>メンションの候補の一覧 '{0}' は、同じモジュールの ListField ではありません (DetailList と TileList は指定できません)。</value>

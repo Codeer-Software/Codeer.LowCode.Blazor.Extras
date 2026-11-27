@@ -84,7 +84,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Fields
             memo.Fields.Add(_list);
             _body = new RichTextFieldDesign
             {
-                Name = "Body", DbColumn = "body", EnableMention = true,
+                Name = "Body", DbColumn = "body",
                 MentionListField = "Users", MentionDisplayNameField = "Name", MentionLoginNameField = "Login",
             };
             memo.Fields.Add(_body);
@@ -365,9 +365,9 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Fields
         }
 
         [Test]
-        public async Task メンションを使わない設定では一覧を読まない()
+        public async Task 候補の一覧が空ならメンションを使わないので何も読まない()
         {
-            _body.EnableMention = false;
+            _body.MentionListField = string.Empty;
             var client = await ClientAsync();
             var body = Body(await client.OpenAsync("Memo", "1"));
             var opened = client.ListCalls.Count;
@@ -497,7 +497,6 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Fields
             Assert.That(fields.Select(e => e.MentionListField), Is.EqualTo(new[] { "MentionDeptUsers", "MentionAdminUsers" }));
             foreach (var field in fields)
             {
-                Assert.That(field.EnableMention, Is.True);
                 Assert.That(field.CheckDesign(context).Select(e => $"{e.Code} {e.Message}"), Is.Empty, field.Name);
                 var list = module.Fields.OfType<ListFieldDesign>().Single(e => e.Name == field.MentionListField);
                 Assert.That(list.CheckDesign(context).Select(e => $"{e.Code} {e.Message}"), Is.Empty, list.Name);
@@ -518,7 +517,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.Fields
             var normalContext = new DesignCheckContext("NormalUser", d, noTables);
             Assert.That(normal.Fields.SelectMany(e => e.CheckDesign(normalContext)).Select(e => $"{e.Code} {e.Message}"), Is.Empty);
             //Home の RichText はメンションなし
-            Assert.That(d.Modules.Find("Home")!.Fields.OfType<RichTextFieldDesign>().All(e => !e.EnableMention), Is.True);
+            Assert.That(d.Modules.Find("Home")!.Fields.OfType<RichTextFieldDesign>().All(e => string.IsNullOrEmpty(e.MentionListField)), Is.True);
         }
     }
 }

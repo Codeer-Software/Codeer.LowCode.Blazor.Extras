@@ -31,25 +31,23 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         public string DbColumn { get; set; } = string.Empty;
 
         /// <summary>
-        /// 本文の中で @ を打つと候補を出して、選んだ人を埋め込めるようにする。候補は <see cref="MentionListField"/> の一覧の行。既定 false。
-        /// </summary>
-        [Designer(Index = 1, DisplayName = "$RichTextFieldEnableMention")]
-        public bool EnableMention { get; set; }
-
-        /// <summary>
         /// メンションの候補の行を持つ一覧フィールド (同じモジュールの全体設定に置いた ListField) の名前。
+        /// 空でなければメンションを使う (本文の中で @ を打つと候補を出して、選んだ人を埋め込める)。既定は空 = 使わない。
         /// 誰が候補になるかは、その一覧の検索条件と、一覧が読むモジュールの権限で決まる。
         /// </summary>
-        [Designer(Index = 2, CandidateType = CandidateType.Field, DisplayName = "$RichTextFieldMentionListField")]
+        [Designer(Index = 1, CandidateType = CandidateType.Field, DisplayName = "$RichTextFieldMentionListField")]
         [TargetFieldType(Types = [typeof(ListFieldDesign)])]
         public string MentionListField { get; set; } = string.Empty;
 
+        /// <summary>メンションを使うか (候補の一覧 <see cref="MentionListField"/> が指定されているか)。</summary>
+        internal bool UsesMention => !string.IsNullOrEmpty(MentionListField);
+
         /// <summary>一覧の行のうち、候補の表示名として出す項目 (一覧が読むモジュールのフィールド名)。</summary>
-        [Designer(Index = 3, DisplayName = "$RichTextFieldMentionDisplayNameField")]
+        [Designer(Index = 2, DisplayName = "$RichTextFieldMentionDisplayNameField")]
         public string MentionDisplayNameField { get; set; } = string.Empty;
 
         /// <summary>一覧の行のうち、ログイン ID として補助に出す項目 (一覧が読むモジュールのフィールド名)。空なら出さない。</summary>
-        [Designer(Index = 4, DisplayName = "$RichTextFieldMentionLoginNameField")]
+        [Designer(Index = 3, DisplayName = "$RichTextFieldMentionLoginNameField")]
         public string MentionLoginNameField { get; set; } = string.Empty;
 
         public override string GetWebComponentTypeFullName() => typeof(RichTextFieldComponent).FullName!;
@@ -69,7 +67,8 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
             context.CheckFieldDbColumnExistence(Name, nameof(DbColumn), DbColumn).AddTo(result);
             context.CheckFieldFunctionExistence(Name, nameof(OnDataChanged), OnDataChanged,
                 context.GetScriptMethodAttribute(GetType(), nameof(OnDataChanged))).AddTo(result);
-            if (EnableMention) CheckMention(context, result);
+            //一覧が空 = メンションを使わない。そのときは表示名の項目などが入っていても見ない (使われないだけ)
+            if (UsesMention) CheckMention(context, result);
             return result;
         }
 
@@ -84,11 +83,6 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
             });
 
             //:1 一覧そのもの (一覧が決まらないと、先は見られない)
-            if (string.IsNullOrEmpty(MentionListField))
-            {
-                Add(CodeMentionList, nameof(MentionListField), Properties.Resources.RichTextMentionCheck_ListRequired);
-                return;
-            }
             var ownerModule = context.DesignData.Modules.Find(context.OwnerModule);
             if (ownerModule?.Fields.FirstOrDefault(e => e.Name == MentionListField) is not ListFieldDesign list)
             {

@@ -101,7 +101,6 @@
     },
     {
       "DbColumn": "",
-      "EnableMention": false,
       "MentionListField": "",
       "MentionDisplayNameField": "",
       "MentionLoginNameField": "",
