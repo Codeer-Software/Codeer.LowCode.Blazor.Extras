@@ -68,6 +68,25 @@ RichTextFieldComponent の各要素にはCSSクラスが付与されています
 | `.richtext-link-popup-ok` | OKボタン | `background`, `color` |
 | `.richtext-link-popup-cancel` | キャンセルボタン | `color` |
 
+### メンション
+
+`@` を打つと出る候補の枠と、本文に入ったメンションの部品です（メンションの設定は [RichTextField](RichTextField.md) の「メンション」）。
+
+| クラス名 | 要素 | カスタマイズ例 |
+|---|---|---|
+| `.richtext-mention-popup` | 候補の枠全体 | `min-width`, `max-width`, `background`, `border`, `border-radius`, `box-shadow`, `font-size` |
+| `.richtext-mention-item` | 候補の 1 行 | `padding`, `gap` |
+| `.richtext-mention-item.active` | 選択中の候補（↑↓ やマウスで選んでいる行） | `background`, `color` |
+| `.richtext-mention-item-all` | 「全員」の行（`.richtext-mention-item` と一緒に付く） | `border-bottom` |
+| `.richtext-mention-name` | 候補の表示名 | `font-weight`, `color` |
+| `.richtext-mention-sub` | 補助の表示名（表示名の横の小さい文字） | `color`, `font-size` |
+| `.richtext-content span.mention` / `.richtext-view span.mention` | 本文に入ったメンションの部品（編集領域・表示領域） | `background`, `color`, `border-radius`, `padding`, `font-weight` |
+
+- **セレクタの前に `:root` を付けてください**（例: `:root .richtext-mention-item.active`）。クラス名だけのセレクタだと、既定のスタイルが同じプロパティを指定している所（選択中の行の背景・補助の表示名の色・本文の部品の背景と文字色など）では既定のほうが勝ち、変わりません。
+- `wwwroot/css` に置いたファイルで変えるときは、`index.html` でそのファイルを `〜.styles.css`（コンポーネントのスタイル）より後に読み込んでください。デザイナーの CSS に書いた分は、後に読み込まれるのでそのまま効きます。
+- 候補の枠の位置（`position`・`top`・`left`）と高さ（`max-height`）は、画面に収まるようにプログラムが決めています。CSS で変えないでください。
+- 「全員」のメンションだけを変えるときは `span.mention[data-mention-all]`、人のメンションだけなら `span.mention[data-mention-id]` を使います。
+
 ### コンテンツ内の要素（編集領域・表示領域共通）
 
 エディター内のHTML要素は `::deep` セレクタでスタイリングされています。
@@ -139,6 +158,26 @@ RichTextFieldComponent の各要素にはCSSクラスが付与されています
 .richtext-content a,
 .richtext-view a {
   color: #e91e63;
+}
+```
+
+### メンションの色を変更する
+
+```css
+/* 本文に入ったメンション */
+:root .richtext-content span.mention,
+:root .richtext-view span.mention {
+  background: #fff3cd;
+  color: #664d03;
+}
+/* 「全員」だけ太字にする */
+:root .richtext-content span.mention[data-mention-all],
+:root .richtext-view span.mention[data-mention-all] {
+  font-weight: 600;
+}
+/* 候補の枠で選択中の行 */
+:root .richtext-mention-item.active {
+  background: #fff3cd;
 }
 ```
 

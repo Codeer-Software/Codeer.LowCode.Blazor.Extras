@@ -53,7 +53,80 @@ namespace Codeer.LowCode.Blazor.Extras.SeleniumDrivers
             Editor.SendKeys(Keys.Delete);
             Editor.SendKeys(text);
         }
+
+        /// <summary>@ を打って出ている候補 (上から順)。出ていなければ空。</summary>
+        public IReadOnlyList<RichTextMentionCandidate> MentionCandidates
+            => Element.FindElements(By.CssSelector(".richtext-mention-popup .richtext-mention-item")).Select(ToCandidate).ToList();
+
+        /// <summary>候補の枠が出ているか。</summary>
+        public bool IsMentionPopupVisible => Element.FindElements(By.CssSelector(".richtext-mention-popup")).Count > 0;
+
+        /// <summary>本文に入っているメンション (本文の順。編集/閲覧どちらでも)。</summary>
+        public IReadOnlyList<RichTextMention> Mentions
+            => (IsViewOnly ? View : Editor).FindElements(By.CssSelector("span.mention")).Select(ToMention).ToList();
+
+        /// <summary>
+        /// 本文の末尾に @ と文字を打ち、候補の枠が出るまで待つ (選ばない)。
+        /// @ は行頭か空白の後でないとメンションにならないので、本文が空白で終わっていなければ空白を 1 つ入れる。
+        /// 候補が 1 つも無い文字だと枠は出ないので、そのときは TypeText で打つ。
+        /// </summary>
+        public void TypeMention(string text = "", int timeoutSeconds = 10)
+        {
+            Editor.Click();
+            Editor.SendKeys(Keys.Control + Keys.End);
+            var current = Editor.GetAttribute("textContent") ?? string.Empty;
+            if (current.Length > 0 && !char.IsWhiteSpace(current[^1])) Editor.SendKeys(" ");
+            Editor.SendKeys("@" + text);
+            WaitFor(() => IsMentionPopupVisible, timeoutSeconds, "the mention candidates did not appear.");
+        }
+
+        /// <summary>本文の末尾に @ と文字を打ち、表示名が一致する候補をクリックして、本文に入るまで待つ。</summary>
+        public void PickMention(string text, string displayName, int timeoutSeconds = 10)
+        {
+            var count = Mentions.Count;
+            TypeMention(text, timeoutSeconds);
+            WaitFor(() => MentionCandidates.Any(e => e.DisplayName == displayName), timeoutSeconds, "the mention candidate did not appear.");
+            Element.FindElements(By.CssSelector(".richtext-mention-popup .richtext-mention-item"))
+                .First(e => ToCandidate(e).DisplayName == displayName).Click();
+            WaitFor(() => Mentions.Count > count && !IsMentionPopupVisible, timeoutSeconds, "the mention was not inserted.");
+        }
+
+        static RichTextMentionCandidate ToCandidate(IWebElement item)
+        {
+            var id = item.GetAttribute("data-mention-candidate") ?? string.Empty;
+            var isAll = item.HasClass("richtext-mention-item-all");
+            return new RichTextMentionCandidate(
+                isAll ? string.Empty : id,
+                item.FindElement(By.CssSelector(".richtext-mention-name")).TextContent(),
+                item.FindElements(By.CssSelector(".richtext-mention-sub")).FirstOrDefault()?.TextContent() ?? string.Empty,
+                isAll,
+                item.HasClass("active"));
+        }
+
+        static RichTextMention ToMention(IWebElement span)
+            => new(span.GetAttribute("data-mention-id") ?? string.Empty, span.TextContent(), span.GetAttribute("data-mention-all") != null);
+
+        static void WaitFor(Func<bool> condition, int timeoutSeconds, string message)
+        {
+            var end = DateTime.Now.AddSeconds(timeoutSeconds);
+            while (DateTime.Now < end)
+            {
+                if (condition()) return;
+                Thread.Sleep(200);
+            }
+            throw new TimeoutException("RichTextField: " + message);
+        }
+
         public RichTextFieldDriver(IWebElement element) : base(element) { }
         public static implicit operator RichTextFieldDriver(ElementFinder finder) => finder.Find<RichTextFieldDriver>();
     }
+
+    /// <summary>
+    /// メンションの候補 1 行。Id は行の Id (「全員」は空)、DisplayNameSub は補助の表示名 (出ていなければ空)、
+    /// IsActive は選択中 (↑↓ やマウスで選んでいる行) か。
+    /// </summary>
+    public record RichTextMentionCandidate(string Id, string DisplayName, string DisplayNameSub, bool IsAll, bool IsActive);
+
+    /// <summary>本文に入っているメンション 1 つ。Id はユーザーの Id (「全員」は空)、Text は表示の文字 (@ 付き)。</summary>
+    public record RichTextMention(string Id, string Text, bool IsAll);
 }
