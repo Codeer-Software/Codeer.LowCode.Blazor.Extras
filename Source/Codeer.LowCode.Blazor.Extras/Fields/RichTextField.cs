@@ -151,7 +151,7 @@ namespace Codeer.LowCode.Blazor.Extras.Fields
             return people;
         }
 
-        //行のデータを候補にする。Id の無い行と、表示名も補助の表示名も空の行は候補にしない
+        //行のデータを候補にする。Id の無い行と、表示名もサブ表示名も空の行は候補にしない
         MentionCandidate? ToCandidate(ModuleData row, string idField)
         {
             var id = row.Fields.TryGetValue(idField, out var idData) ? (idData as IdFieldData)?.Value : null;

@@ -2059,7 +2059,7 @@
     <value>候補の表示名の項目</value>
   </data>
   <data name="RichTextFieldMentionDisplayNameSubField" xml:space="preserve">
-    <value>候補の表示名 (補助) の項目</value>
+    <value>候補のサブ表示名の項目</value>
   </data>
   <data name="RichTextMentionCheck_ListNotListField" xml:space="preserve">
     <value>メンションの候補の一覧 '{0}' は、同じモジュールの ListField ではありません (DetailList と TileList は指定できません)。</value>

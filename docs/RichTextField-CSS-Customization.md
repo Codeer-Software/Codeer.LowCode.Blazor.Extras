@@ -94,7 +94,7 @@ RichTextFieldComponent の各要素にはCSSクラスが付与されています
 | `.richtext-mention-item.active` | 選択中の候補（↑↓ やマウスで選んでいる行） | `background`, `color` |
 | `.richtext-mention-item-all` | 「全員」の行（`.richtext-mention-item` と一緒に付く） | `border-bottom` |
 | `.richtext-mention-name` | 候補の表示名 | `font-weight`, `color` |
-| `.richtext-mention-sub` | 補助の表示名（表示名の横の小さい文字） | `color`, `font-size` |
+| `.richtext-mention-sub` | サブ表示名（表示名の横の小さい文字） | `color`, `font-size` |
 | `.richtext-content span.mention` / `.richtext-view span.mention` | 本文に入ったメンションの部品（編集領域・表示領域） | `background`, `color`, `border-radius`, `padding`, `font-weight` |
 
 - 候補の枠の位置（`position`・`top`・`left`）と高さ（`max-height`）は、画面に収まるようにプログラムが決めています。CSS で変えないでください。

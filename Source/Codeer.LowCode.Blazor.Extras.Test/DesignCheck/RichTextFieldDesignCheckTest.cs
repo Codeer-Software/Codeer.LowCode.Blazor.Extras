@@ -97,7 +97,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.DesignCheck
             => Assert.That(Check(), Is.Empty);
 
         [Test]
-        public void 補助の表示名の項目は空でもよい()
+        public void サブ表示名の項目は空でもよい()
             => Assert.That(Check(e => e.Field.MentionDisplayNameSubField = string.Empty), Is.Empty);
 
         #region :1 一覧そのもの
@@ -210,7 +210,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.DesignCheck
 
         #endregion
 
-        #region :5 表示名と補助の表示名の項目
+        #region :5 表示名とサブ表示名の項目
 
         [Test]
         public void 表示名の項目の指定が要る()
@@ -228,7 +228,7 @@ namespace Codeer.LowCode.Blazor.Extras.Test.DesignCheck
         }
 
         [Test]
-        public void 補助の表示名の項目は一覧が読むモジュールにあること()
+        public void サブ表示名の項目は一覧が読むモジュールにあること()
         {
             var ret = Check(e => e.Field.MentionDisplayNameSubField = "Account");
             AssertSingle(ret, 5, nameof(RichTextFieldDesign.MentionDisplayNameSubField));

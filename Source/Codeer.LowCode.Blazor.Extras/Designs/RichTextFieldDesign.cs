@@ -130,7 +130,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
                 return;
             }
 
-            //:5 表示名・補助の表示名の項目 (行のレイアウトに置かれているかは見ない)
+            //:5 表示名・サブ表示名の項目 (行のレイアウトに置かれているかは見ない)
             if (string.IsNullOrEmpty(MentionDisplayNameField))
             {
                 Add(CodeMentionListRowField, nameof(MentionDisplayNameField), Properties.Resources.RichTextMentionCheck_DisplayNameRequired);
@@ -194,7 +194,7 @@ namespace Codeer.LowCode.Blazor.Extras.Designs
         {
             var builder = context.Builder(base.ChangeName(context))
                 .AddField(MentionListField, x => MentionListField = x);
-            //表示名・補助の表示名の項目は、一覧が読むモジュールの項目
+            //表示名・サブ表示名の項目は、一覧が読むモジュールの項目
             var list = context.DesignData.Modules.Find(context.OwnerModule)?.Fields.FirstOrDefault(e => e.Name == MentionListField) as ListFieldDesign;
             var listModuleName = list?.SearchCondition.ModuleName;
             if (!string.IsNullOrEmpty(listModuleName))

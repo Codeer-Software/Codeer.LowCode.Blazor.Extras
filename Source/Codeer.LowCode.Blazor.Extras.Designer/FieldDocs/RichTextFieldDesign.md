@@ -35,7 +35,7 @@
 1. RichTextField と同じモジュールの**全体設定の `Fields` に ListField を置く。レイアウトには置かない** (画面に一覧は出ない)。
 2. 一覧の `SearchCondition.ModuleName` に、ユーザーのモジュール (`AppSettings.CurrentUserModuleDesignName`) か、下の「一般向けのユーザーモジュール」を指定する。
 3. 一覧の検索条件に、候補を絞る条件を書く (同じ部署の人だけ・有効な人だけ、など。編集中のレコードの値も `CurrentUser.〜` も書ける)。停止中の人などを自動で外す処理は無いので、外すなら条件に書く。並び順が候補の並び順になる。
-4. **一覧の行のレイアウト (`LayoutName` の ListLayout) に、表示名の項目 (と補助の表示名の項目) を置く。** 一覧は行のレイアウトに置いた項目だけを読む (一覧自体をレイアウトに置かなくても、行のレイアウトは要る)。
+4. **一覧の行のレイアウト (`LayoutName` の ListLayout) に、表示名の項目 (とサブ表示名の項目) を置く。** 一覧は行のレイアウトに置いた項目だけを読む (一覧自体をレイアウトに置かなくても、行のレイアウトは要る)。
 5. 一覧は全部の行を持つ設定にする (`SearchCondition.LimitCount` を付けないか、`IsInMemoryPaging`)。
 6. 一覧は行を編集できない設定にする (`CanCreate` / `CanUpdate` / `CanDelete` / `DeleteTogether` をすべて false)。列モード (`DbColumn`) にしない。SearchField と結び付けない。
 7. RichTextField の `MentionListField` に一覧の名前、`MentionDisplayNameField` に表示名の項目の名前を入れる。
@@ -67,7 +67,7 @@
 | `RichTextFieldDesign:2` | 一覧が全部の行を持たない (件数の上限があり、メモリ内ページングでない) |
 | `RichTextFieldDesign:3` | 一覧が行を編集できるか、親と一緒に消す設定 (`CanCreate` / `CanUpdate` / `CanDelete` / `DeleteTogether` のどれか) |
 | `RichTextFieldDesign:4` | 一覧が読むモジュールが、ユーザーのモジュールでも、同じデータソース・表・Id の列のモジュールでもない (ユーザーのモジュールが無いときを含む) |
-| `RichTextFieldDesign:5` | `MentionDisplayNameField` が空か、表示名・補助の表示名の項目が一覧の読むモジュールに無い (行のレイアウトに置かれているかは見ない) |
+| `RichTextFieldDesign:5` | `MentionDisplayNameField` が空か、表示名・サブ表示名の項目が一覧の読むモジュールに無い (行のレイアウトに置かれているかは見ない) |
 | `RichTextFieldDesign:6` | 一般向けのユーザーモジュールが書き込める |
 | `RichTextFieldDesign:7` | ユーザーのモジュールが論理削除なのに、一般向けのユーザーモジュールに同じ論理削除の設定が無い |
 

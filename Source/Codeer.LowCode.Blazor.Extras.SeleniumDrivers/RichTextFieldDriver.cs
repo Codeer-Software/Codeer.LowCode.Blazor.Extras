@@ -122,7 +122,7 @@ namespace Codeer.LowCode.Blazor.Extras.SeleniumDrivers
     }
 
     /// <summary>
-    /// メンションの候補 1 行。Id は行の Id (「全員」は空)、DisplayNameSub は補助の表示名 (出ていなければ空)、
+    /// メンションの候補 1 行。Id は行の Id (「全員」は空)、DisplayNameSub はサブ表示名 (出ていなければ空)、
     /// IsActive は選択中 (↑↓ やマウスで選んでいる行) か。
     /// </summary>
     public record RichTextMentionCandidate(string Id, string DisplayName, string DisplayNameSub, bool IsAll, bool IsActive);
