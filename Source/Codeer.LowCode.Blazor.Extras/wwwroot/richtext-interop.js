@@ -109,6 +109,7 @@ export function setContent(editorElement, html) {
 }
 
 export function dispose(editorElement) {
+    if (state.has(editorElement)) watchMentionScroll(editorElement, false);
     state.delete(editorElement);
 }
 
@@ -199,6 +200,7 @@ function checkMention(editorElement) {
     s.mentionDismissed = null;
     s.mentionRange = m;
     s.mentionOpen = true;
+    watchMentionScroll(editorElement, true);
     // 候補は画面に固定で出す (編集欄の枠は overflow: hidden なので、枠の中に置くと下端で切れる)
     const range = document.createRange();
     range.setStart(m.node, m.start);
@@ -210,11 +212,39 @@ function checkMention(editorElement) {
 
 function closeMention(editorElement) {
     const s = getState(editorElement);
+    watchMentionScroll(editorElement, false);
     s.mentionVisible = false;
     s.mentionRange = null;
     if (!s.mentionOpen) return;
     s.mentionOpen = false;
     if (s.dotNetRef) s.dotNetRef.invokeMethodAsync('OnMentionClose');
+}
+
+// 候補を出している間だけ、ページ (や途中のスクロールする枠) のスクロールを聞く。候補の枠は画面に固定で、
+// 位置を決め直すのは描くときだけなので、スクロールで @ が動いたら候補を閉じる (枠が @ から離れた位置に残らないように)。
+// 候補の枠の中のスクロール (画面が低いときの枠の中の送り) と、@ が動かなかったスクロール (関係のない枠) では閉じない
+function watchMentionScroll(editorElement, on) {
+    const s = getState(editorElement);
+    if (!on) {
+        if (s.mentionScroll) window.removeEventListener('scroll', s.mentionScroll, true);
+        s.mentionScroll = null;
+        return;
+    }
+    if (s.mentionScroll) return;
+    s.mentionScroll = (e) => {
+        if (e.target instanceof Element && e.target.closest('.richtext-mention-popup')) return;
+        const m = s.mentionRange;
+        const caret = s.mentionCaret;
+        if (m && caret && m.node.isConnected) {
+            const range = document.createRange();
+            range.setStart(m.node, Math.min(m.start, m.node.length));
+            range.setEnd(m.node, Math.min(m.start + 1, m.node.length));
+            const rect = range.getBoundingClientRect();
+            if (rect.top === caret.top && rect.left === caret.left) return;
+        }
+        closeMention(editorElement);
+    };
+    window.addEventListener('scroll', s.mentionScroll, true);
 }
 
 // .NET が候補を出しているか (出ていなければ Enter などは普段どおり)
@@ -257,6 +287,7 @@ export function placeMentionPopup(editorElement) {
 export function insertMention(editorElement, id, label, isAll) {
     const s = getState(editorElement);
     const m = findMentionQuery(editorElement) || s.mentionRange;
+    watchMentionScroll(editorElement, false);
     s.mentionVisible = false;
     s.mentionOpen = false;
     s.mentionRange = null;
