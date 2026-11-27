@@ -10,7 +10,8 @@ NuGetパッケージ `Codeer.LowCode.Blazor.Extras` (MIT) として配布。
 - **ターゲット**: .NET 8.0
 - **言語**: C# (Nullable有効, ImplicitUsings有効)
 - **ライセンス**: MIT
-- **本体リポジトリ**: `C:\tfs\codeer\Codeer.LowCode.Blazor` (参照用、直接編集しない)
+- **本体リポジトリ**: `Codeer.LowCode.Blazor` のソース (参照用、直接編集しない)。手元での場所はマシンごとに違うので、`CLAUDE.local.md` (コミットしない) に書く。無ければ場所をユーザーに尋ねる
+- **ほかのリポジトリ**: https://github.com/Codeer-Software の下 (Starter / Designer.Standard / Manual / DbAccess)。手元での場所は同じく `CLAUDE.local.md`
 
 ## リポジトリ構成
 
@@ -571,10 +572,10 @@ await mod.SubmitAsync();
 
 ## 本体ソースの参照先
 
-フィールド実装の参考にする場合、本体ソースは以下から読める:
+フィールド実装の参考にする場合、本体ソースは以下から読める (本体リポジトリの場所は `CLAUDE.local.md`):
 
 ```
-C:\tfs\codeer\Codeer.LowCode.Blazor\Source\Codeer.LowCode.Blazor\
+<本体リポジトリ>\Source\Codeer.LowCode.Blazor\
 ├── Repository\Design\          # デザインクラスの実装例
 ├── OperatingModel\             # ランタイムクラスの実装例
 ├── Components\Fields\          # Blazorコンポーネントの実装例
